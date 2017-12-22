@@ -442,20 +442,17 @@ void database_fixture::convert(
 {
    try
    {
-      const account_object& account = db->get_account( account_name );
-
-
       if ( amount.symbol == STEEM_SYMBOL )
       {
-         db->adjust_balance( account, -amount );
-         db->adjust_balance( account, db->to_sbd( amount ) );
+         db->adjust_balance( account_name, -amount );
+         db->adjust_balance( account_name, db->to_sbd( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_sbd( amount ) );
       }
       else if ( amount.symbol == SBD_SYMBOL )
       {
-         db->adjust_balance( account, -amount );
-         db->adjust_balance( account, db->to_steem( amount ) );
+         db->adjust_balance( account_name, -amount );
+         db->adjust_balance( account_name, db->to_steem( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_steem( amount ) );
       }

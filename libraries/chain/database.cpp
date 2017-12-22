@@ -2057,15 +2057,14 @@ void database::process_conversions()
 
    while( itr != request_by_date.end() && itr->conversion_date <= now )
    {
-      const auto& user = get_account( itr->owner );
       auto amount_to_issue = itr->amount * fhistory.current_median_history;
 
-      adjust_balance( user, amount_to_issue );
+      adjust_balance( itr->owner, amount_to_issue );
 
       net_sbd   += itr->amount;
       net_steem += amount_to_issue;
 
-      push_virtual_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
+      push_virtual_operation( fill_convert_request_operation ( itr->owner, itr->requestid, itr->amount, amount_to_issue ) );
 
       remove( *itr );
       itr = request_by_date.begin();
@@ -2139,10 +2138,9 @@ void database::expire_escrow_ratification()
       const auto& old_escrow = *escrow_itr;
       ++escrow_itr;
 
-      const auto& from_account = get_account( old_escrow.from );
-      adjust_balance( from_account, old_escrow.steem_balance );
-      adjust_balance( from_account, old_escrow.sbd_balance );
-      adjust_balance( from_account, old_escrow.pending_fee );
+      adjust_balance( old_escrow.from, old_escrow.steem_balance );
+      adjust_balance( old_escrow.from, old_escrow.sbd_balance );
+      adjust_balance( old_escrow.from, old_escrow.pending_fee );
 
       remove( old_escrow );
    }
@@ -3358,9 +3356,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
          order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
          ("order", order)("pays", pays)("receives", receives) );
 
-      const account_object& seller = get_account( order.seller );
-
-      adjust_balance( seller, receives );
+      adjust_balance( order.seller, receives );
 
       if( pays == order.amount_for_sale() )
       {
@@ -3400,7 +3396,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
 
 void database::cancel_order( const limit_order_object& order )
 {
-   adjust_balance( get_account(order.seller), order.amount_for_sale() );
+   adjust_balance( order.seller, order.amount_for_sale() );
    remove(order);
 }
 
@@ -3447,11 +3443,10 @@ void database::clear_expired_delegations()
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type >
-void database::adjust_smt_balance( const account_name_type& a, const asset& delta )
+void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account )
 {
-   //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
    const smt_balance_object_type* bo =
-      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple(a, delta.symbol) );
+      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple( name, delta.symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -3461,9 +3456,12 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
       if( delta.amount.value == 0 )
          return;
 
-      const auto& new_balance = create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      if( check_account )
+         get_account( name );
+
+      create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.owner = a;
+         smt_balance.owner = name;
          smt_balance.balance = delta;
       } );
    }
@@ -3471,7 +3469,7 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
    {
       asset result = bo->balance + delta;
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
       // Zero balance is the same as non object balance at all.
       if( result.amount.value == 0 )
       {
@@ -3487,19 +3485,9 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
    }
 }
 #endif
-void database::adjust_balance( const account_object& a, const asset& delta )
-{
-   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-#ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
-   {
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta );
-      return;
-   }
-#endif
+void database::modify_balance( const account_object& a, const asset& delta, bool check_balance )
+{
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
@@ -3550,6 +3538,38 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    } );
 }
 
+void database::adjust_balance( const account_object& a, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/ );
+      return;
+   }
+#endif
+   modify_balance( a, delta, check_balance );
+}
+
+void database::adjust_balance( const account_name_type& name, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/ );
+      return;
+   }
+#endif
+   const auto& a = get_account( name );
+   modify_balance( a, delta, check_balance );
+}
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
 {
@@ -3615,7 +3635,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_rewards_balance_object >( a.name, delta );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, delta, false/*check_account*/ );
       return;
    }
 #endif

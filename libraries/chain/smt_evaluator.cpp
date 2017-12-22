@@ -100,16 +100,13 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       }
    }
 
-   const account_object& acct = _db.get_account( o.control_account );
    FC_ASSERT( o.smt_creation_fee >= effective_elevation_fee, 
       "Fee of ${of} is too small, must be at least ${ef}", ("of", o.smt_creation_fee)("ef", effective_elevation_fee) );
-   FC_ASSERT( _db.get_balance( acct, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
+   FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
     "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
 
-   const account_object& null_account = _db.get_account( STEEM_NULL_ACCOUNT );
-
-   _db.adjust_balance( acct        , -o.smt_creation_fee );
-   _db.adjust_balance( null_account,  o.smt_creation_fee );
+   _db.adjust_balance( o.control_account , -o.smt_creation_fee );
+   _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
 
    _db.create< smt_token_object >( [&]( smt_token_object& token )
    {

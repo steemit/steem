@@ -843,17 +843,15 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       if( reject_escrow )
       {
-         const auto& from_account = _db.get_account( o.from );
-         _db.adjust_balance( from_account, escrow.steem_balance );
-         _db.adjust_balance( from_account, escrow.sbd_balance );
-         _db.adjust_balance( from_account, escrow.pending_fee );
+         _db.adjust_balance( o.from, escrow.steem_balance );
+         _db.adjust_balance( o.from, escrow.sbd_balance );
+         _db.adjust_balance( o.from, escrow.pending_fee );
 
          _db.remove( escrow );
       }
       else if( escrow.to_approved && escrow.agent_approved )
       {
-         const auto& agent_account = _db.get_account( o.agent );
-         _db.adjust_balance( agent_account, escrow.pending_fee );
+         _db.adjust_balance( o.agent, escrow.pending_fee );
 
          _db.modify( escrow, [&]( escrow_object& esc )
          {
@@ -890,7 +888,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
    try
    {
       _db.get_account(o.from); // Verify from account exists
-      const auto& receiver_account = _db.get_account(o.receiver);
 
       const auto& e = _db.get_escrow( o.from, o.escrow_id );
       FC_ASSERT( e.steem_balance >= o.steem_amount, "Release amount exceeds escrow balance. Amount: ${a}, Balance: ${b}", ("a", o.steem_amount)("b", e.steem_balance) );
@@ -924,8 +921,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
 
-      _db.adjust_balance( receiver_account, o.steem_amount );
-      _db.adjust_balance( receiver_account, o.sbd_amount );
+      _db.adjust_balance( o.receiver, o.steem_amount );
+      _db.adjust_balance( o.receiver, o.sbd_amount );
 
       _db.modify( e, [&]( escrow_object& esc )
       {
@@ -943,12 +940,9 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   const auto& from_account = _db.get_account(o.from);
-   const auto& to_account = _db.get_account(o.to);
-
-   FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
-   _db.adjust_balance( from_account, -o.amount );
-   _db.adjust_balance( to_account, o.amount );
+   FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
+   _db.adjust_balance( o.from, -o.amount );
+   _db.adjust_balance( o.to, o.amount );
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
@@ -1828,10 +1822,9 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-  const auto& owner = _db.get_account( o.owner );
-  FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
+  FC_ASSERT( _db.get_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
-  _db.adjust_balance( owner, -o.amount );
+  _db.adjust_balance( o.owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
@@ -1854,11 +1847,9 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -1879,11 +1870,9 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
