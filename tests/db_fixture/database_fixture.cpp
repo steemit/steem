@@ -668,8 +668,8 @@ void set_create_op(smt_create_operation* op, account_name_type control_account, 
    sub_set_create_op(op, control_account);
 }
 
-void smt_database_fixture::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key,
-   smt_database_fixture::TFollowUpOps followUpOps )
+std::array<asset_symbol_type, 3>
+smt_database_fixture::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
 {
    smt_create_operation op0;
    smt_create_operation op1;
@@ -699,7 +699,8 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
 
       generate_block();
 
-      followUpOps(op0.symbol, op1.symbol, op2.symbol);
+      std::array<asset_symbol_type, 3> retVal = {op0.symbol, op1.symbol, op2.symbol};
+      return retVal;
    }
    FC_LOG_AND_RETHROW();
 }
