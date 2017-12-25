@@ -23,6 +23,7 @@
 using namespace steemit;
 using namespace steemit::chain;
 using namespace steemit::protocol;
+using namespace graphene::utilities;
 using fc::string;
 
 BOOST_FIXTURE_TEST_SUITE( operation_tests, clean_database_fixture )
@@ -6651,6 +6652,71 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( memo_protection )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+      generate_block();
+      fund( "alice", 10000 );
+
+      std::string owner_seed = "foo12ownerbarman";
+      std::string active_seed = "foo12activebarman";
+      std::string posting_seed = "foo12postingbarman";
+
+      auto owner_secret = fc::sha256::hash( owner_seed.c_str(), owner_seed.size() );
+      auto active_secret = fc::sha256::hash( active_seed.c_str(), active_seed.size() );
+      auto posting_secret = fc::sha256::hash( posting_seed.c_str(), posting_seed.size() );
+
+      fc::ecc::private_key owner_key   = fc::ecc::private_key::regenerate( owner_secret );
+      fc::ecc::private_key active_key  = fc::ecc::private_key::regenerate( active_secret );
+      fc::ecc::private_key posting_key = fc::ecc::private_key::regenerate( posting_secret );
+
+      public_key_type owner_pub = owner_key.get_public_key();
+      public_key_type active_pub = active_key.get_public_key();
+      public_key_type posting_pub = posting_key.get_public_key();
+
+      // ilog( "priv owner: ${o}   active: ${a}   posting: ${p}",
+      //    ("o", key_to_wif(owner_key) )
+      //    ("a", key_to_wif(active_key) )
+      //    ("p", key_to_wif(posting_key) ) );
+      // ilog( "pub  owner: ${o}   active: ${a}   posting: ${p}", ("o", owner_pub)("a", active_pub)("p", posting_pub) );
+
+      account_update_operation update_op;
+      update_op.account = "alice";
+      update_op.owner = authority(1, owner_pub, 1);
+      update_op.active = authority(1, active_pub, 1);
+      update_op.posting = authority(1, posting_pub, 1);
+
+      signed_transaction tx;
+      tx.operations.push_back( update_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+
+      generate_block();
+
+      transfer_operation xfer_op;
+
+      xfer_op.from = "alice";
+      xfer_op.to = "bob";
+      xfer_op.memo = key_to_wif(active_key);
+      xfer_op.amount = ASSET( "1.000 TESTS" );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( xfer_op );
+      tx.sign( active_key, db.get_chain_id() );
+
+      BOOST_REQUIRE_THROW( db.push_transaction(tx), chain::plugin_exception );
+
+      // 5JydgrFLN6NQRXiei9e4yaKBaKawEU6eSN1BnyL95FUoPd4KyKG
+      // 5JXQeyjR38EdRVr5fWF6GCUqePKX73exRKYvt3UFxJqtEc2qJaM
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif
