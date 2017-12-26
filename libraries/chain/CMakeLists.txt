@@ -107,7 +107,7 @@ else()
 endif()
 
 add_dependencies(golos_chain golos_protocol build_hardfork_hpp)
-target_link_libraries(golos_chain golos_protocol fc chainbase graphene_schema ${PATCH_MERGE_LIB})
+target_link_libraries(golos_chain golos_protocol fc chainbase ${PATCH_MERGE_LIB})
 target_include_directories(golos_chain
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include")
 
