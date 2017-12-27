@@ -37,6 +37,9 @@
 
 #define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 
+/// Allows to limit number of total produced blocks. 
+#define TESTNET_BLOCK_LIMIT                   (3000000)
+
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 4) )

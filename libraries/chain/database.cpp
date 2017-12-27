@@ -570,6 +570,10 @@ void database::_maybe_warn_multiple_production( uint32_t height )const
 
 bool database::_push_block(const signed_block& new_block)
 { try {
+   #ifdef IS_TEST_NET
+   FC_ASSERT(new_block.block_num() < TESTNET_BLOCK_LIMIT, "Testnet block limit exceeded");
+   #endif /// IS_TEST_NET
+
    uint32_t skip = get_node_properties().skip_flags;
    //uint32_t skip_undo_db = skip & skip_undo_block;
 
