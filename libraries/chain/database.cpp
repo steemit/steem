@@ -344,7 +344,7 @@ const signed_transaction database::get_recent_transaction( const transaction_id_
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
-   fc::raw::unpack( itr->packed_trx, trx );
+   fc::raw::unpack_from_buffer( itr->packed_trx, trx );
    return trx;;
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -2961,7 +2961,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx_id;
          transaction.expiration = trx.expiration;
-         fc::raw::pack( transaction.packed_trx, trx );
+         fc::raw::pack_to_buffer( transaction.packed_trx, trx );
       });
    }
 

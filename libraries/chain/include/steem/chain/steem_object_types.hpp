@@ -31,8 +31,6 @@ typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > s
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
 
-typedef bip::vector< char, allocator< char > > buffer_type;
-
 struct by_id;
 
 enum object_type
@@ -108,7 +106,7 @@ class vesting_delegation_expiration_object;
 class smt_token_object;
 template < enum object_type ObjectType > class account_balance_object;
 typedef account_balance_object< account_regular_balance_object_type > account_regular_balance_object;
-typedef account_balance_object< account_rewards_balance_object_type > account_rewards_balance_object;    
+typedef account_balance_object< account_rewards_balance_object_type > account_rewards_balance_object;
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -193,38 +191,6 @@ namespace fc
          s.read( (char*)&id._id, sizeof(id._id));
       }
    }
-
-   namespace raw
-   {
-      namespace bip = chainbase::bip;
-      using chainbase::allocator;
-
-      template< typename T > inline void pack( steem::chain::buffer_type& raw, const T& v )
-      {
-         auto size = pack_size( v );
-         raw.resize( size );
-         datastream< char* > ds( raw.data(), size );
-         pack( ds, v );
-      }
-
-      template< typename T > inline void unpack( const steem::chain::buffer_type& raw, T& v )
-      {
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-      }
-
-      template< typename T > inline T unpack( const steem::chain::buffer_type& raw )
-      {
-         T v;
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-         return v;
-      }
-   }
-}
-
-namespace fc {
-
 }
 
 FC_REFLECT_ENUM( steem::chain::object_type,
@@ -266,6 +232,5 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                )
 
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
-FC_REFLECT_TYPENAME( steem::chain::buffer_type )
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

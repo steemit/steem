@@ -136,49 +136,49 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    auto itr = o.props.find( "key" );
 
    // This existence of 'key' is checked in witness_set_properties_operation::validate
-   fc::raw::unpack( itr->second, signing_key );
+   fc::raw::unpack_from_vector( itr->second, signing_key );
    FC_ASSERT( signing_key == witness.signing_key, "'key' does not match witness signing key.",
       ("key", signing_key)("signing_key", witness.signing_key) );
 
    itr = o.props.find( "account_creation_fee" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.account_creation_fee );
+      fc::raw::unpack_from_vector( itr->second, props.account_creation_fee );
       account_creation_changed = true;
    }
 
    itr = o.props.find( "maximum_block_size" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.maximum_block_size );
+      fc::raw::unpack_from_vector( itr->second, props.maximum_block_size );
       max_block_changed = true;
    }
 
    itr = o.props.find( "sbd_interest_rate" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.sbd_interest_rate );
+      fc::raw::unpack_from_vector( itr->second, props.sbd_interest_rate );
       sbd_interest_changed = true;
    }
 
    itr = o.props.find( "account_subsidy_limit" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.account_subsidy_limit );
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_limit );
       account_subsidy_changed = true;
    }
 
    itr = o.props.find( "new_signing_key" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, signing_key );
+      fc::raw::unpack_from_vector( itr->second, signing_key );
       key_changed = true;
    }
 
    itr = o.props.find( "sbd_exchange_rate" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, sbd_exchange_rate );
+      fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
       last_sbd_exchange_update = _db.head_block_time();
       sbd_exchange_changed = true;
    }
@@ -186,7 +186,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    itr = o.props.find( "url" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack< std::string >( itr->second, url );
+      fc::raw::unpack_from_vector< std::string >( itr->second, url );
       url_changed = true;
    }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <steem/protocol/transaction.hpp>
 
+#include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -28,7 +29,7 @@ namespace steem { namespace chain {
 
          id_type              id;
 
-         bip::vector< char, allocator< char > > packed_trx;
+         buffer_type          packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
    };
