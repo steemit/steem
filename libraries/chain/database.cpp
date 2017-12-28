@@ -2,23 +2,23 @@
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
-#include <steemit/protocol/steem_operations.hpp>
+#include <golos/protocol/steem_operations.hpp>
 
-#include <steemit/chain/block_summary_object.hpp>
-#include <steemit/chain/compound.hpp>
-#include <steemit/chain/custom_operation_interpreter.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/db_with.hpp>
-#include <steemit/chain/evaluator_registry.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/snapshot_state.hpp>
-#include <steemit/chain/steem_evaluator.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/transaction_object.hpp>
-#include <steemit/chain/shared_db_merkle.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <golos/chain/block_summary_object.hpp>
+#include <golos/chain/compound.hpp>
+#include <golos/chain/custom_operation_interpreter.hpp>
+#include <golos/chain/database.hpp>
+#include <golos/chain/database_exceptions.hpp>
+#include <golos/chain/db_with.hpp>
+#include <golos/chain/evaluator_registry.hpp>
+#include <golos/chain/history_object.hpp>
+#include <golos/chain/index.hpp>
+#include <golos/chain/snapshot_state.hpp>
+#include <golos/chain/steem_evaluator.hpp>
+#include <golos/chain/steem_objects.hpp>
+#include <golos/chain/transaction_object.hpp>
+#include <golos/chain/shared_db_merkle.hpp>
+#include <golos/chain/operation_notification.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -27,13 +27,13 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
-#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128_t(uint64_t(-1)) )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128_t::max_value() )
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
-//namespace db2 = graphene::db2;
+//namespace db2 = golos::db2;
 
         struct object_schema_repr {
             std::pair<uint16_t, uint16_t> space_type;
@@ -55,16 +55,16 @@ namespace steemit {
     }
 }
 
-FC_REFLECT(steemit::chain::object_schema_repr, (space_type)(type))
-FC_REFLECT(steemit::chain::operation_schema_repr, (id)(type))
-FC_REFLECT(steemit::chain::db_schema, (types)(object_types)(operation_type)(custom_operation_types))
+FC_REFLECT((golos::chain::object_schema_repr), (space_type)(type))
+FC_REFLECT((golos::chain::operation_schema_repr), (id)(type))
+FC_REFLECT((golos::chain::db_schema), (types)(object_types)(operation_type)(custom_operation_types))
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         using boost::container::flat_set;
 
-        inline u256 to256(const fc::uint128 &t) {
+        inline u256 to256(const fc::uint128_t &t) {
             u256 v(t.hi);
             v <<= 64;
             v += t.lo;
@@ -525,11 +525,11 @@ namespace steemit {
                         b.last_bandwidth_update = now;
                     });
 
-                    fc::uint128 account_vshares(a.vesting_shares.amount.value);
-                    fc::uint128 total_vshares(props.total_vesting_shares.amount.value);
+                    fc::uint128_t account_vshares(a.vesting_shares.amount.value);
+                    fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
 
-                    fc::uint128 account_average_bandwidth(band->average_bandwidth.value);
-                    fc::uint128 max_virtual_bandwidth(props.max_virtual_bandwidth);
+                    fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
+                    fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
 
                     FC_ASSERT((account_vshares * max_virtual_bandwidth) >
                               (account_average_bandwidth * total_vshares),
@@ -568,7 +568,7 @@ namespace steemit {
                     new_bandwidth = (
                             ((STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS -
                               delta_time) *
-                             fc::uint128(band->average_bandwidth.value))
+                             fc::uint128_t(band->average_bandwidth.value))
                             /
                             STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS).to_uint64();
                 }
@@ -581,10 +581,10 @@ namespace steemit {
                     b.last_bandwidth_update = head_block_time();
                 });
 
-                fc::uint128 account_vshares(a.vesting_shares.amount.value);
-                fc::uint128 total_vshares(props.total_vesting_shares.amount.value);
-                fc::uint128 account_average_bandwidth(band->average_bandwidth.value);
-                fc::uint128 max_virtual_bandwidth(props.max_virtual_bandwidth);
+                fc::uint128_t account_vshares(a.vesting_shares.amount.value);
+                fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
+                fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
+                fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
 
                 has_bandwidth = (account_vshares * max_virtual_bandwidth) >
                                 (account_average_bandwidth * total_vshares);
@@ -1221,7 +1221,7 @@ namespace steemit {
 
             /// Add the running witnesses in the lead
             const witness_schedule_object &wso = get_witness_schedule_object();
-            fc::uint128 new_virtual_time = wso.current_virtual_time;
+            fc::uint128_t new_virtual_time = wso.current_virtual_time;
             const auto &schedule_idx = get_index<witness_index>().indices().get<by_schedule_time>();
             auto sitr = schedule_idx.begin();
             vector<decltype(sitr)> processed_witnesses;
@@ -1261,13 +1261,13 @@ namespace steemit {
                     break;
                 }
                 modify(*(*itr), [&](witness_object &wo) {
-                    wo.virtual_position = fc::uint128();
+                    wo.virtual_position = fc::uint128_t();
                     wo.virtual_last_update = new_virtual_time;
                     wo.virtual_scheduled_time = new_virtual_scheduled_time;
                 });
             }
             if (reset_virtual_time) {
-                new_virtual_time = fc::uint128();
+                new_virtual_time = fc::uint128_t();
                 reset_virtual_schedule_time();
             }
 
@@ -1414,7 +1414,7 @@ namespace steemit {
                 vector<account_name_type> active_witnesses;
                 active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
 
-                fc::uint128 new_virtual_time;
+                fc::uint128_t new_virtual_time;
 
                 /// only use vote based scheduling after the first 1M STEEM is created or if there is no POW queued
                 if (props.num_pow_witnesses == 0 ||
@@ -1433,7 +1433,7 @@ namespace steemit {
 
                         /// don't consider the top 19 for the purpose of virtual time scheduling
                         modify(*itr, [&](witness_object &wo) {
-                            wo.virtual_scheduled_time = fc::uint128::max_value();
+                            wo.virtual_scheduled_time = fc::uint128_t::max_value();
                         });
                     }
 
@@ -1448,14 +1448,14 @@ namespace steemit {
                     if (sitr != schedule_idx.end()) {
                         active_witnesses.push_back(sitr->owner);
                         modify(*sitr, [&](witness_object &wo) {
-                            wo.virtual_position = fc::uint128();
+                            wo.virtual_position = fc::uint128_t();
                             new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
 
                             /// extra cautious sanity check... we should never end up here if witnesses are
                             /// properly voted on. TODO: remove this line if it is not triggered and therefore
                             /// the code path is unreachable.
-                            if (new_virtual_time == fc::uint128::max_value()) {
-                                new_virtual_time = fc::uint128();
+                            if (new_virtual_time == fc::uint128_t::max_value()) {
+                                new_virtual_time = fc::uint128_t();
                             }
 
                             /// this witness will produce again here
@@ -1683,7 +1683,7 @@ namespace steemit {
                 /** witnesses with a low number of votes could overflow the time field and end up with a scheduled time in the past */
                 if (has_hardfork(STEEMIT_HARDFORK_0_4)) {
                     if (w.virtual_scheduled_time < wso.current_virtual_time) {
-                        w.virtual_scheduled_time = fc::uint128::max_value();
+                        w.virtual_scheduled_time = fc::uint128_t::max_value();
                     }
                 }
             });
@@ -2795,7 +2795,7 @@ namespace steemit {
       schema_list.back()->get_name( ds.custom_operation_types.back().type );
    }
 
-   graphene::db::add_dependent_schemas( schema_list );
+   golos::db::add_dependent_schemas( schema_list );
    std::sort( schema_list.begin(), schema_list.end(),
       []( const std::shared_ptr< abstract_schema >& a,
           const std::shared_ptr< abstract_schema >& b )
@@ -2900,7 +2900,7 @@ namespace steemit {
                 create<dynamic_global_property_object>([&](dynamic_global_property_object &p) {
                     p.current_witness = STEEMIT_INIT_MINER_NAME;
                     p.time = STEEMIT_GENESIS_TIME;
-                    p.recent_slots_filled = fc::uint128::max_value();
+                    p.recent_slots_filled = fc::uint128_t::max_value();
                     p.participation_count = 128;
                     p.current_supply = asset(init_supply, STEEM_SYMBOL);
                     p.virtual_supply = p.current_supply;
@@ -2976,7 +2976,7 @@ namespace steemit {
 
         void database::notify_changed_objects() {
             try {
-                /*vector< graphene::chainbase::generic_id > ids;
+                /*vector< golos::chainbase::generic_id > ids;
       get_changed_ids( ids );
       STEEMIT_TRY_NOTIFY( changed_objects, ids )*/
                 /*
@@ -3485,12 +3485,8 @@ namespace steemit {
                 modify(_dgp, [&](dynamic_global_property_object &dgp) {
                     // This is constant time assuming 100% participation. It is O(B) otherwise (B = Num blocks between update)
                     for (uint32_t i = 0; i < missed_blocks + 1; i++) {
-                        dgp.participation_count -= dgp.recent_slots_filled.hi &
-                                                   0x8000000000000000ULL ? 1
-                                                                         : 0;
-                        dgp.recent_slots_filled =
-                                (dgp.recent_slots_filled << 1) +
-                                (i == 0 ? 1 : 0);
+                        dgp.participation_count -= dgp.recent_slots_filled.hi & 0x8000000000000000ULL ? 1 : 0;
+                        dgp.recent_slots_filled = (dgp.recent_slots_filled << 1) + (i == 0 ? 1 : 0);
                         dgp.participation_count += (i == 0 ? 1 : 0);
                     }
 
@@ -4089,13 +4085,13 @@ namespace steemit {
         void database::reset_virtual_schedule_time() {
             const witness_schedule_object &wso = get_witness_schedule_object();
             modify(wso, [&](witness_schedule_object &o) {
-                o.current_virtual_time = fc::uint128(); // reset it 0
+                o.current_virtual_time = fc::uint128_t(); // reset it 0
             });
 
             const auto &idx = get_index<witness_index>().indices();
             for (const auto &witness : idx) {
                 modify(witness, [&](witness_object &wobj) {
-                    wobj.virtual_position = fc::uint128();
+                    wobj.virtual_position = fc::uint128_t();
                     wobj.virtual_last_update = wso.current_virtual_time;
                     wobj.virtual_scheduled_time = VIRTUAL_SCHEDULE_LAP_LENGTH2 /
                                                   (wobj.votes.value + 1);
@@ -4590,4 +4586,4 @@ namespace steemit {
             }
         }
     }
-} //steemit::chain
+} //golos::chain

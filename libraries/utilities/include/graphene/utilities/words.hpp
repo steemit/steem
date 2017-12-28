@@ -23,7 +23,7 @@
  */
 #pragma once
 
-namespace graphene {
+namespace golos {
     namespace words {
 
         typedef const char *const_char_ptr;

@@ -28,7 +28,7 @@
 
 #include <steemit/protocol/protocol.hpp>
 
-using namespace steemit::protocol;
+using namespace golos::protocol;
 
 std::vector<fc::variant_object> g_op_types;
 
@@ -58,7 +58,7 @@ struct size_check_type_visitor {
 
 int main(int argc, char **argv) {
     try {
-        steemit::protocol::operation op;
+        golos::protocol::operation op;
 
 
         std::vector<uint64_t> witnesses;

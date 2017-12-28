@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <graphene/utilities/words.hpp>
 
-namespace graphene {
+namespace golos {
     namespace words {
 
         const const_char_ptr word_list[] = {
@@ -27418,7 +27418,7 @@ namespace graphene {
                 "nestle",
                 "nestler",
                 "nesty",
-                "net",
+                "network",
                 "netball",
                 "netbush",
                 "netcha",
@@ -49784,4 +49784,4 @@ namespace graphene {
         }
 
     }
-} // graphene::words
+} // golos::words

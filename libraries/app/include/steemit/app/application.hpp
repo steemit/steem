@@ -35,7 +35,7 @@
 
 #include <boost/program_options.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
         namespace detail { class application_impl; }
         using std::string;
@@ -95,7 +95,7 @@ namespace steemit {
             graphene::net::node_ptr p2p_node();
 
             std::shared_ptr<chain::database> chain_database() const;
-            //std::shared_ptr<graphene::db::object_database> pending_trx_database() const;
+            //std::shared_ptr<golos::db::object_database> pending_trx_database() const;
 
             void set_block_production(bool producing_blocks);
 
@@ -162,4 +162,4 @@ namespace steemit {
         }
 
     }
-} // steemit::app
+} // golos::app

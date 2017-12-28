@@ -16,11 +16,11 @@
 #define VPOW_OFF        9
 #define REWARD_TYPES   10
 
-using steemit::protocol::asset;
-using steemit::protocol::share_type;
-using steemit::protocol::calc_percent_reward_per_block;
-using steemit::protocol::calc_percent_reward_per_round;
-using steemit::protocol::calc_percent_reward_per_hour;
+using golos::protocol::asset;
+using golos::protocol::share_type;
+using golos::protocol::calc_percent_reward_per_block;
+using golos::protocol::calc_percent_reward_per_round;
+using golos::protocol::calc_percent_reward_per_hour;
 
 /*
 Explanation of output

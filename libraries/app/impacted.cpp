@@ -26,11 +26,11 @@
 
 #include <steemit/app/impacted.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         using namespace fc;
-        using namespace steemit::protocol;
+        using namespace golos::protocol;
 
 // TODO:  Review all of these, especially no-ops
         struct get_impacted_account_visitor {

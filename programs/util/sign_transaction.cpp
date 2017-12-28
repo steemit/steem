@@ -10,16 +10,16 @@
 #include <steemit/protocol/transaction.hpp>
 
 struct tx_signing_request {
-    steemit::protocol::transaction tx;
+    golos::protocol::transaction tx;
     std::string wif;
 };
 
 struct tx_signing_result {
-    steemit::protocol::transaction tx;
+    golos::protocol::transaction tx;
     fc::sha256 digest;
     fc::sha256 sig_digest;
-    steemit::protocol::public_key_type key;
-    steemit::protocol::signature_type sig;
+    golos::protocol::public_key_type key;
+    golos::protocol::signature_type sig;
 };
 
 FC_REFLECT(tx_signing_request, (tx)(wif))
@@ -44,9 +44,9 @@ int main(int argc, char **argv, char **envp) {
         sres.digest = sreq.tx.digest();
         sres.sig_digest = sreq.tx.sig_digest(STEEMIT_CHAIN_ID);
 
-        fc::ecc::private_key priv_key = *graphene::utilities::wif_to_key(sreq.wif);
+        fc::ecc::private_key priv_key = *golos::utilities::wif_to_key(sreq.wif);
         sres.sig = priv_key.sign_compact(sres.sig_digest);
-        sres.key = steemit::protocol::public_key_type(priv_key.get_public_key());
+        sres.key = golos::protocol::public_key_type(priv_key.get_public_key());
         std::cout << fc::json::to_string(sres) << std::endl;
     }
     return 0;

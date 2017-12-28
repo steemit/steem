@@ -1,4 +1,4 @@
-#include <steemit/protocol/asset.hpp>
+#include <golos/protocol/asset.hpp>
 
 /*
 
@@ -10,7 +10,7 @@ index : field
    7  : \0
 */
 
-namespace steemit {
+namespace golos {
     namespace protocol {
         typedef boost::multiprecision::int128_t int128_t;
 
@@ -202,4 +202,4 @@ namespace steemit {
 
 
     }
-} // steemit::protocol
+} // golos::protocol

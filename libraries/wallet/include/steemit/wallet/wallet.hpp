@@ -10,16 +10,16 @@
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
 
-using namespace steemit::app;
-using namespace steemit::chain;
-using namespace graphene::utilities;
+using namespace golos::app;
+using namespace golos::chain;
+using namespace golos::utilities;
 using namespace std;
 
-namespace steemit {
+namespace golos {
     namespace wallet {
 
-        using steemit::app::discussion;
-        using namespace steemit::private_message;
+        using golos::app::discussion;
+        using namespace golos::private_message;
 
         typedef uint16_t transaction_handle_type;
 
@@ -970,23 +970,23 @@ namespace steemit {
     }
 }
 
-FC_REFLECT(steemit::wallet::wallet_data,
+FC_REFLECT(golos::wallet::wallet_data,
         (cipher_keys)
                 (ws_server)
                 (ws_user)
                 (ws_password)
 )
 
-FC_REFLECT(steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key)(pub_key))
+FC_REFLECT(golos::wallet::brain_key_info, (brain_priv_key)(wif_priv_key)(pub_key))
 
-FC_REFLECT_DERIVED(steemit::wallet::signed_block_with_info, (steemit::chain::signed_block),
+FC_REFLECT_DERIVED(golos::wallet::signed_block_with_info, (golos::chain::signed_block),
         (block_id)(signing_key)(transaction_ids))
 
-FC_REFLECT(steemit::wallet::plain_keys, (checksum)(keys))
+FC_REFLECT(golos::wallet::plain_keys, (checksum)(keys))
 
-FC_REFLECT_ENUM(steemit::wallet::authority_type, (owner)(active)(posting))
+FC_REFLECT_ENUM(golos::wallet::authority_type, (owner)(active)(posting))
 
-FC_API(steemit::wallet::wallet_api,
+FC_API(golos::wallet::wallet_api,
 /// wallet api
         (help)(gethelp)
                 (about)(is_new)(is_locked)(lock)(unlock)(set_password)
@@ -1074,4 +1074,4 @@ FC_API(steemit::wallet::wallet_api,
                 (get_transaction)
 )
 
-FC_REFLECT(steemit::wallet::memo_data, (from)(to)(nonce)(check)(encrypted))
+FC_REFLECT(golos::wallet::memo_data, (from)(to)(nonce)(check)(encrypted))

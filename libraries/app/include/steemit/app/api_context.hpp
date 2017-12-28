@@ -14,7 +14,7 @@ namespace fc {
     }
 }
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         class application;

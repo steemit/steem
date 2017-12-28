@@ -30,19 +30,19 @@
 
 #include <fc/string.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         using namespace fc;
 
         void operation_get_impacted_accounts(
-                const steemit::protocol::operation &op,
+                const golos::protocol::operation &op,
                 fc::flat_set<protocol::account_name_type> &result);
 
         void transaction_get_impacted_accounts(
-                const steemit::protocol::transaction &tx,
+                const golos::protocol::transaction &tx,
                 fc::flat_set<protocol::account_name_type> &result
         );
 
     }
-} // steemit::app
+} // golos::app

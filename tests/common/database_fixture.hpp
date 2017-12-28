@@ -14,7 +14,7 @@
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
-using namespace graphene::db;
+using namespace golos::db;
 
 extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
@@ -132,27 +132,27 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #define ASSET(s) \
    asset::from_string( s )
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
-        using namespace steemit::protocol;
+        using namespace golos::protocol;
 
         struct database_fixture {
             // the reason we use an app is to exercise the indexes of built-in
             //   plugins
-            steemit::app::application app;
+            golos::app::application app;
             chain::database &db;
             signed_transaction trx;
             public_key_type committee_key;
             account_id_type committee_account;
             fc::ecc::private_key private_key = fc::ecc::private_key::generate();
             fc::ecc::private_key init_account_priv_key;
-            string debug_key = graphene::utilities::key_to_wif(init_account_priv_key);
+            string debug_key = golos::utilities::key_to_wif(init_account_priv_key);
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
             uint32_t default_skip = 0 | database::skip_undo_history_check |
                                     database::skip_authority_check;
 
-            std::shared_ptr<steemit::plugin::debug_node::debug_node_plugin> db_plugin;
+            std::shared_ptr<golos::plugin::debug_node::debug_node_plugin> db_plugin;
 
             optional<fc::temp_directory> data_dir;
             bool skip_key_index_test = false;

@@ -4,3 +4,6 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/GolosChain/chainbase.git
+[submodule "libraries/appbase"]
+	path = libraries/appbase
+	url = https://github.com/GolosChain/appbase.git

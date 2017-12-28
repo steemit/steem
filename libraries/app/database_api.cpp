@@ -14,14 +14,14 @@
 
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
-namespace steemit {
+namespace golos {
     namespace app {
         class database_api_impl;
 
         class database_api_impl
                 : public std::enable_shared_from_this<database_api_impl> {
         public:
-            database_api_impl(const steemit::app::api_context &ctx);
+            database_api_impl(const golos::app::api_context &ctx);
 
             ~database_api_impl();
 
@@ -93,8 +93,8 @@ namespace steemit {
             std::function<void(const fc::variant &)> _pending_trx_callback;
             std::function<void(const fc::variant &)> _block_applied_callback;
 
-            steemit::chain::database &_db;
-            std::shared_ptr<steemit::follow::follow_api> _follow_api;
+            golos::chain::database &_db;
+            std::shared_ptr<golos::follow::follow_api> _follow_api;
 
             boost::signals2::scoped_connection _block_applied_connection;
         };
@@ -187,20 +187,20 @@ namespace steemit {
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-        database_api::database_api(const steemit::app::api_context &ctx)
+        database_api::database_api(const golos::app::api_context &ctx)
                 : my(new database_api_impl(ctx)) {
         }
 
         database_api::~database_api() {
         }
 
-        database_api_impl::database_api_impl(const steemit::app::api_context &ctx)
+        database_api_impl::database_api_impl(const golos::app::api_context &ctx)
                 : _db(*ctx.app.chain_database()) {
             wlog("creating database api ${x}", ("x", int64_t(this)));
 
             try {
                 ctx.app.get_plugin<follow::follow_plugin>(FOLLOW_PLUGIN_NAME);
-                _follow_api = std::make_shared<steemit::follow::follow_api>(ctx);
+                _follow_api = std::make_shared<golos::follow::follow_api>(ctx);
             }
             catch (fc::assert_exception) {
                 ilog("Follow Plugin not loaded");
@@ -283,7 +283,7 @@ namespace steemit {
         }
 
         fc::variant_object database_api_impl::get_config() const {
-            return steemit::protocol::get_config();
+            return golos::protocol::get_config();
         }
 
         dynamic_global_property_api_obj database_api::get_dynamic_global_properties() const {
@@ -403,7 +403,7 @@ namespace steemit {
         std::vector<account_id_type> database_api_impl::get_account_references(account_id_type account_id) const {
             /*const auto& idx = _db.get_index<account_index>();
    const auto& aidx = dynamic_cast<const primary_index<account_index>&>(idx);
-   const auto& refs = aidx.get_secondary_index<steemit::chain::account_member_index>();
+   const auto& refs = aidx.get_secondary_index<golos::chain::account_member_index>();
    auto itr = refs.account_to_account_memberships.find(account_id);
    std::vector<account_id_type> result;
 
@@ -2234,401 +2234,6 @@ namespace steemit {
             });
         }
 
-
-        state database_api::get_state(std::string path) const {
-            return my->_db.with_read_lock([&]() {
-                state _state;
-                _state.props = get_dynamic_global_properties();
-                _state.current_route = path;
-                _state.feed_price = get_current_median_history_price();
-
-                try {
-                    if (path.size() && path[0] == '/') {
-                        path = path.substr(1);
-                    } /// remove '/' from front
-
-                    if (!path.size()) {
-                        path = "trending";
-                    }
-
-                    /// FETCH CATEGORY STATE
-                    auto trending_tags = get_trending_tags(std::string(), 50);
-                    for (const auto &t : trending_tags) {
-                        _state.tag_idx.trending.push_back(std::string(t.name));
-                    }
-                    /// END FETCH CATEGORY STATE
-
-                    std::set<std::string> accounts;
-
-                    std::vector<std::string> part;
-                    part.reserve(4);
-                    boost::split(part, path, boost::is_any_of("/"));
-                    part.resize(std::max(part.size(), size_t(4))); // at least 4
-
-                    auto tag = fc::to_lower(part[1]);
-
-                    if (part[0].size() && part[0][0] == '@') {
-                        auto acnt = part[0].substr(1);
-                        _state.accounts[acnt] = extended_account(my->_db.get_account(acnt), my->_db);
-                        _state.accounts[acnt].tags_usage = get_tags_used_by_author(acnt);
-                        if (my->_follow_api) {
-                            _state.accounts[acnt].guest_bloggers = my->_follow_api->get_blog_authors(acnt);
-                            _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations(acnt, 1)[0].reputation;
-                        }
-                        auto &eacnt = _state.accounts[acnt];
-                        if (part[1] == "transfers") {
-                            auto history = get_account_history(acnt, uint64_t(-1), 1000);
-                            for (auto &item : history) {
-                                switch (item.second.op.which()) {
-                                    case operation::tag<transfer_to_vesting_operation>::value:
-                                    case operation::tag<withdraw_vesting_operation>::value:
-                                    case operation::tag<interest_operation>::value:
-                                    case operation::tag<transfer_operation>::value:
-                                    case operation::tag<liquidity_reward_operation>::value:
-                                    case operation::tag<author_reward_operation>::value:
-                                    case operation::tag<curation_reward_operation>::value:
-                                    case operation::tag<transfer_to_savings_operation>::value:
-                                    case operation::tag<transfer_from_savings_operation>::value:
-                                    case operation::tag<cancel_transfer_from_savings_operation>::value:
-                                    case operation::tag<escrow_transfer_operation>::value:
-                                    case operation::tag<escrow_approve_operation>::value:
-                                    case operation::tag<escrow_dispute_operation>::value:
-                                    case operation::tag<escrow_release_operation>::value:
-                                        eacnt.transfer_history[item.first] = item.second;
-                                        break;
-                                    case operation::tag<comment_operation>::value:
-                                        //   eacnt.post_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<limit_order_create_operation>::value:
-                                    case operation::tag<limit_order_cancel_operation>::value:
-                                    case operation::tag<fill_convert_request_operation>::value:
-                                    case operation::tag<fill_order_operation>::value:
-                                        //   eacnt.market_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<vote_operation>::value:
-                                    case operation::tag<account_witness_vote_operation>::value:
-                                    case operation::tag<account_witness_proxy_operation>::value:
-                                        //   eacnt.vote_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<account_create_operation>::value:
-                                    case operation::tag<account_update_operation>::value:
-                                    case operation::tag<witness_update_operation>::value:
-                                    case operation::tag<pow_operation>::value:
-                                    case operation::tag<custom_operation>::value:
-                                    default:
-                                        eacnt.other_history[item.first] = item.second;
-                                }
-                            }
-                        } else if (part[1] == "recent-replies") {
-                            auto replies = get_replies_by_last_update(acnt, "", 50);
-                            eacnt.recent_replies = std::vector<std::string>();
-                            for (const auto &reply : replies) {
-                                auto reply_ref =
-                                        reply.author + "/" + reply.permlink;
-                                _state.content[reply_ref] = reply;
-                                if (my->_follow_api) {
-                                    _state.accounts[reply_ref].reputation = my->_follow_api->get_account_reputations(reply.author, 1)[0].reputation;
-                                }
-                                eacnt.recent_replies->push_back(reply_ref);
-                            }
-                        } else if (part[1] == "posts" ||
-                                   part[1] == "comments") {
-#ifndef IS_LOW_MEM
-                            int count = 0;
-                            const auto &pidx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
-                            auto itr = pidx.lower_bound(acnt);
-                            eacnt.comments = std::vector<std::string>();
-
-                            while (itr != pidx.end() && itr->author == acnt &&
-                                   count < 20) {
-                                if (itr->parent_author.size()) {
-                                    const auto link = acnt + "/" +
-                                                      to_string(itr->permlink);
-                                    eacnt.comments->push_back(link);
-                                    _state.content[link] = *itr;
-                                    set_pending_payout(_state.content[link]);
-                                    ++count;
-                                }
-
-                                ++itr;
-                            }
-#endif
-                        } else if (part[1].size() == 0 || part[1] == "blog") {
-                            if (my->_follow_api) {
-                                auto blog = my->_follow_api->get_blog_entries(eacnt.name, 0, 20);
-                                eacnt.blog = std::vector<std::string>();
-
-                                for (auto b: blog) {
-                                    const auto link =
-                                            b.author + "/" + b.permlink;
-                                    eacnt.blog->push_back(link);
-                                    _state.content[link] = my->_db.get_comment(b.author, b.permlink);
-                                    set_pending_payout(_state.content[link]);
-
-                                    if (b.reblog_on > time_point_sec()) {
-                                        _state.content[link].first_reblogged_on = b.reblog_on;
-                                    }
-                                }
-                            }
-                        } else if (part[1].size() == 0 || part[1] == "feed") {
-                            if (my->_follow_api) {
-                                auto feed = my->_follow_api->get_feed_entries(eacnt.name, 0, 20);
-                                eacnt.feed = std::vector<std::string>();
-
-                                for (auto f: feed) {
-                                    const auto link =
-                                            f.author + "/" + f.permlink;
-                                    eacnt.feed->push_back(link);
-                                    _state.content[link] = my->_db.get_comment(f.author, f.permlink);
-                                    set_pending_payout(_state.content[link]);
-                                    if (f.reblog_by.size()) {
-                                        if (f.reblog_by.size()) {
-                                            _state.content[link].first_reblogged_by = f.reblog_by[0];
-                                        }
-                                        _state.content[link].reblogged_by = f.reblog_by;
-                                        _state.content[link].first_reblogged_on = f.reblog_on;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                        /// pull a complete discussion
-                    else if (part[1].size() && part[1][0] == '@') {
-
-                        auto account = part[1].substr(1);
-                        auto category = part[0];
-                        auto slug = part[2];
-
-                        auto key = account + "/" + slug;
-                        auto dis = get_content(account, slug);
-
-                        recursively_fetch_content(_state, dis, accounts);
-                        _state.content[key] = std::move(dis);
-                    } else if (part[0] == "witnesses" ||
-                               part[0] == "~witnesses") {
-                        auto wits = get_witnesses_by_vote("", 50);
-                        for (const auto &w : wits) {
-                            _state.witnesses[w.owner] = w;
-                        }
-                        _state.pow_queue = get_miner_queue();
-                    } else if (part[0] == "trending") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-                        auto trending_disc = get_discussions_by_trending(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.trending.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "trending30") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_trending30(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.trending30.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "promoted") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_promoted(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.promoted.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "responses") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_children(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.responses.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (!part[0].size() || part[0] == "hot") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_hot(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.hot.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (!part[0].size() || part[0] == "promoted") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_promoted(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.promoted.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "votes") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_votes(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.votes.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "cashout") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_cashout(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.cashout.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "active") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_active(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.active.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "created") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_created(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.created.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "recent") {
-                        discussion_query q;
-                        q.select_tags.insert(tag);
-                        q.limit = 20;
-                        q.truncate_body = 1024;
-
-                        auto trending_disc = get_discussions_by_created(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.created.push_back(key);
-                            if (d.author.size()) {
-                                accounts.insert(d.author);
-                            }
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "tags") {
-                        _state.tag_idx.trending.clear();
-                        auto trending_tags = get_trending_tags(std::string(), 250);
-                        for (const auto &t : trending_tags) {
-                            std::string name = t.name;
-                            _state.tag_idx.trending.push_back(name);
-                            _state.tags[name] = t;
-                        }
-                    } else {
-                        elog("What... no matches");
-                    }
-
-                    for (const auto &a : accounts) {
-                        _state.accounts.erase("");
-                        _state.accounts[a] = extended_account(my->_db.get_account(a), my->_db);
-                        if (my->_follow_api) {
-                            _state.accounts[a].reputation = my->_follow_api->get_account_reputations(a, 1)[0].reputation;
-                        }
-                    }
-                    for (auto &d : _state.content) {
-                        d.second.active_votes = get_active_votes(d.second.author, d.second.permlink);
-                    }
-
-                    _state.witness_schedule = my->_db.get_witness_schedule_object();
-
-                } catch (const fc::exception &e) {
-                    _state.error = e.to_detail_string();
-                }
-                return _state;
-            });
-        }
-
         annotated_signed_transaction database_api::get_transaction(transaction_id_type id) const {
             return my->_db.with_read_lock([&]() {
                 const auto &idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
@@ -2646,4 +2251,4 @@ namespace steemit {
             });
         }
     }
-} // steemit::app
+} // golos::app

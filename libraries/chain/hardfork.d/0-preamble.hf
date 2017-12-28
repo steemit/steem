@@ -9,10 +9,10 @@
 
 #pragma once
 
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/version.hpp>
+#include <golos/protocol/types.hpp>
+#include <golos/protocol/version.hpp>
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         class hardfork_property_object
@@ -46,10 +46,9 @@ namespace steemit {
     }
 } // namespace steemit::chain
 
-FC_REFLECT(steemit::chain::hardfork_property_object,
+FC_REFLECT((golos::chain::hardfork_property_object),
         (id)(processed_hardforks)(last_hardfork)(current_hardfork_version)
                 (next_hardfork)(next_hardfork_time))
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::hardfork_property_object, steemit::chain::hardfork_property_index
-)
+CHAINBASE_SET_INDEX_TYPE( golos::chain::hardfork_property_object, golos::chain::hardfork_property_index)
 
 #define STEEMIT_NUM_HARDFORKS 16

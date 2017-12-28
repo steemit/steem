@@ -43,7 +43,7 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
         using graphene::net::item_hash_t;
         using graphene::net::item_id;
@@ -218,7 +218,7 @@ namespace steemit {
 
                 application_impl(application *self)
                         : _self(self),
-                        //_pending_trx_db(std::make_shared<graphene::db::object_database>()),
+                        //_pending_trx_db(std::make_shared<golos::db::object_database>()),
                           _chain_db(std::make_shared<chain::database>()) {
                 }
 
@@ -451,7 +451,7 @@ namespace steemit {
                             try {
                                 // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
                                 // you can help the network code out by throwing a block_older_than_undo_history exception.
-                                // when the net code sees that, it will stop trying to push blocks from that chain, but
+                                // when the network code sees that, it will stop trying to push blocks from that chain, but
                                 // leave that peer connected so that they can get sync blocks from us
                                 bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer |
                                                                                     _force_validate)
@@ -466,8 +466,8 @@ namespace steemit {
                                 }
 
                                 return result;
-                            } catch (const steemit::chain::unlinkable_block_exception &e) {
-                                // translate to a graphene::net exception
+                            } catch (const golos::chain::unlinkable_block_exception &e) {
+                                // translate to a golos::network exception
                                 fc_elog(fc::logger::get("sync"),
                                         "Error when pushing block, current head block is ${head}:\n${e}",
                                         ("e", e.to_detail_string())
@@ -700,7 +700,7 @@ namespace steemit {
                                     boost::reverse(fork_history);
 
                                     if (last_non_fork_block ==
-                                        block_id_type()) { // if the fork goes all the way back to genesis (does graphene's fork db allow this?)
+                                        block_id_type()) { // if the fork goes all the way back to genesis (does golos's fork db allow this?)
                                         non_fork_high_block_num = 0;
                                     } else {
                                         non_fork_high_block_num = block_header::num_from_id(last_non_fork_block);
@@ -816,7 +816,7 @@ namespace steemit {
                 }
 
                 virtual uint32_t estimate_last_known_fork_from_git_revision_timestamp(uint32_t unix_timestamp) const override {
-                    return 0; // there are no forks in graphene
+                    return 0; // there are no forks in golos
                 }
 
                 virtual void error_encountered(const std::string &message, const fc::oexception &error) override {
@@ -847,8 +847,8 @@ namespace steemit {
                 const bpo::variables_map *_options = nullptr;
                 api_access _apiaccess;
 
-                //std::shared_ptr<graphene::db::object_database>   _pending_trx_db;
-                std::shared_ptr<steemit::chain::database> _chain_db;
+                //std::shared_ptr<golos::db::object_database>   _pending_trx_db;
+                std::shared_ptr<golos::chain::database> _chain_db;
                 std::shared_ptr<graphene::net::node> _p2p_network;
                 std::shared_ptr<fc::http::websocket_server> _websocket_server;
                 std::shared_ptr<fc::http::websocket_tls_server> _websocket_tls_server;
@@ -962,7 +962,7 @@ namespace steemit {
             return my->_chain_db;
         }
 
-/*std::shared_ptr<graphene::db::object_database> application::pending_trx_database() const
+/*std::shared_ptr<golos::db::object_database> application::pending_trx_database() const
 {
    return my->_pending_trx_db;
 }*/

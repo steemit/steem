@@ -11,10 +11,10 @@
 
 #include <steemit/tags/tags_plugin.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
-        using namespace steemit::chain;
+        using namespace golos::chain;
 
 /*struct limit_order
 {
@@ -479,9 +479,9 @@ namespace steemit {
         };
 
     }
-} // steemit::app
+} // golos::app
 
-FC_REFLECT(steemit::app::comment_api_obj,
+FC_REFLECT(golos::app::comment_api_obj,
         (id)(author)(permlink)
                 (category)(parent_author)(parent_permlink)
                 (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
@@ -492,11 +492,11 @@ FC_REFLECT(steemit::app::comment_api_obj,
                 (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
 )
 
-FC_REFLECT(steemit::app::category_api_obj,
+FC_REFLECT(golos::app::category_api_obj,
         (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
 )
 
-FC_REFLECT(steemit::app::account_api_obj,
+FC_REFLECT(golos::app::account_api_obj,
         (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
                 (created)(mined)
                 (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
@@ -515,21 +515,21 @@ FC_REFLECT(steemit::app::account_api_obj,
                 (new_average_bandwidth)(new_average_market_bandwidth)
 )
 
-FC_REFLECT(steemit::app::owner_authority_history_api_obj,
+FC_REFLECT(golos::app::owner_authority_history_api_obj,
         (id)
                 (account)
                 (previous_owner_authority)
                 (last_valid_time)
 )
 
-FC_REFLECT(steemit::app::account_recovery_request_api_obj,
+FC_REFLECT(golos::app::account_recovery_request_api_obj,
         (id)
                 (account_to_recover)
                 (new_owner_authority)
                 (expires)
 )
 
-FC_REFLECT(steemit::app::savings_withdraw_api_obj,
+FC_REFLECT(golos::app::savings_withdraw_api_obj,
         (id)
                 (from)
                 (to)
@@ -539,13 +539,13 @@ FC_REFLECT(steemit::app::savings_withdraw_api_obj,
                 (complete)
 )
 
-FC_REFLECT(steemit::app::feed_history_api_obj,
+FC_REFLECT(golos::app::feed_history_api_obj,
         (id)
                 (current_median_history)
                 (price_history)
 )
 
-FC_REFLECT(steemit::app::tag_api_obj,
+FC_REFLECT(golos::app::tag_api_obj,
         (name)
                 (total_children_rshares2)
                 (total_payouts)
@@ -554,7 +554,7 @@ FC_REFLECT(steemit::app::tag_api_obj,
                 (comments)
 )
 
-FC_REFLECT(steemit::app::witness_api_obj,
+FC_REFLECT(golos::app::witness_api_obj,
         (id)
                 (owner)
                 (created)

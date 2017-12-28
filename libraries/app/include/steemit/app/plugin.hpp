@@ -35,7 +35,7 @@
 
 #include <memory>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         using fc::static_variant;
@@ -152,7 +152,7 @@ if( options.count(name) ) { \
 /// @}
 
     }
-} //steemit::app
+} //golos::app
 
 #define STEEMIT_DEFINE_PLUGIN(plugin_name, plugin_class) \
    namespace steemit { namespace plugin { \

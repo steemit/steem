@@ -1,7 +1,7 @@
-#include <steemit/protocol/block.hpp>
+#include <golos/protocol/block.hpp>
 #include <fc/bitutil.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
         digest_type block_header::digest() const {
             return digest_type::hash(*this);
@@ -64,4 +64,4 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol

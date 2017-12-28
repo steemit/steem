@@ -24,7 +24,7 @@
 
 #include <steemit/app/plugin.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         plugin::plugin(application *app) : _app(app) {
@@ -59,4 +59,4 @@ namespace steemit {
         }
 
     }
-} // steemit::app
+} // golos::app

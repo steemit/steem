@@ -1,6 +1,6 @@
-#include <steemit/chain/shared_authority.hpp>
+#include <golos/chain/shared_authority.hpp>
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         shared_authority::operator authority() const {
@@ -95,4 +95,4 @@ namespace steemit {
         }
 
     }
-} // steemit::chain
+} // golos::chain
