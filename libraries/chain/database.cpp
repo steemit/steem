@@ -2924,7 +2924,8 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       try
       {
-         trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH );
+         trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH,
+            has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
       }
       catch( protocol::tx_missing_active_auth& e )
       {
@@ -2994,7 +2995,8 @@ const witness_object& database::validate_block_header( uint32_t skip, const sign
    const witness_object& witness = get_witness( next_block.witness );
 
    if( !(skip&skip_witness_signature) )
-      FC_ASSERT( next_block.validate_signee( witness.signing_key ) );
+      FC_ASSERT( next_block.validate_signee( witness.signing_key,
+         has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical ) );
 
    if( !(skip&skip_witness_schedule_check) )
    {
@@ -4339,15 +4341,15 @@ void database::validate_smt_invariants()const
       const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
       add_from_balance_index( rewards_balance_idx, theMap );
 
-      // - Total vesting 
+      // - Total vesting
 #pragma message( "TODO: Add SMT vesting support here once it is implemented." )
-         
+
       // - Market orders
 #pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
 
       // - Reward funds
 #pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
-                  
+
       // - Escrow & savings - no support of SMT is expected.
 
       // Do the verification of total balances.

@@ -361,10 +361,10 @@ namespace steem { namespace protocol {
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
    {
       input  = i;
-      signature = w.sign_compact(input,false);
+      signature = w.sign_compact(input,fc::ecc::canonical_signature_type::non_canonical);
 
       auto sig_hash            = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, fc::ecc::canonical_signature_type::non_canonical );
 
       work = fc::sha256::hash(recover);
    }
@@ -376,7 +376,7 @@ namespace steem { namespace protocol {
 
       auto prv_key = fc::sha256::hash( input );
       auto input = fc::sha256::hash( prv_key );
-      auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input);
+      auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input, fc::ecc::canonical_signature_type::fc_canonical );
 
       auto sig_hash            = fc::sha256::hash( signature );
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
@@ -399,9 +399,9 @@ namespace steem { namespace protocol {
    void pow::validate()const
    {
       FC_ASSERT( work != fc::sha256() );
-      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, false )) == worker );
+      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, fc::ecc::canonical_signature_type::non_canonical )) == worker );
       auto sig_hash = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, fc::ecc::canonical_signature_type::non_canonical );
       FC_ASSERT( work == fc::sha256::hash(recover) );
    }
 
@@ -473,7 +473,7 @@ namespace steem { namespace protocol {
       validate_account_name( first_block.witness );
       FC_ASSERT( first_block.witness   == second_block.witness );
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
-      FC_ASSERT( first_block.signee()  == second_block.signee() );
+      FC_ASSERT( first_block.signee( fc::ecc::canonical_signature_type::bip_0062 )  == second_block.signee( fc::ecc::canonical_signature_type::bip_0062 ) );
       FC_ASSERT( first_block.id() != second_block.id() );
    }
 

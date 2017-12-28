@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
 #define OP2TX(OP,TX,KEY) \
 TX.operations.push_back( OP ); \
 TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-TX.sign( KEY, db->get_chain_id() );
+sign( TX, KEY );
 
 #define PUSH_OP(OP,KEY) \
 { \
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       generate_block();
 
       fund( "alice", 10 * 1000 * 1000 );
-      
+
       generate_block();
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       fail_op.emissions_unit.token_unit["bob"] = 10;
 
       // Do invalid attempt at SMT creation.
-      create_invalid_smt("alice", alice_private_key);      
+      create_invalid_smt("alice", alice_private_key);
 
       // Fail due to non-existing SMT (too early).
       FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
    try
    {
       ACTORS( (dany)(eddy) )
-      
+
       generate_block();
 
       fund( "dany", 5000000 );
@@ -404,16 +404,16 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
-      
+
       smt_set_setup_parameters_operation fail_op;
       fail_op.control_account = "dany";
 
       // Do invalid attempt at SMT creation.
       create_invalid_smt("dany", dany_private_key);
-      
+
       // Fail due to non-existing SMT (too early).
       FAIL_WITH_OP(fail_op, dany_private_key, fc::assert_exception)
-      
+
       // Create SMT(s) and continue.
       auto smts = create_smt_3("dany", dany_private_key);
       {
@@ -674,7 +674,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       db->validate_invariants();
       db->validate_smt_invariants();
    }
-   FC_LOG_AND_RETHROW()   
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()

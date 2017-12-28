@@ -155,6 +155,7 @@ struct database_fixture {
    string debug_key = steem::utilities::key_to_wif( init_account_priv_key );
    public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
    uint32_t default_skip = 0 | database::skip_undo_history_check | database::skip_authority_check;
+   fc::ecc::canonical_signature_type default_sig_canon = fc::ecc::canonical_signature_type::fc_canonical;
 
    plugins::debug_node::debug_node_plugin* db_plugin;
 

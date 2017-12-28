@@ -7,6 +7,8 @@
 
 namespace steem { namespace protocol {
 
+   using fc::ecc::canonical_signature_type;
+
    struct transaction
    {
       uint16_t           ref_block_num    = 0;
@@ -53,9 +55,9 @@ namespace steem { namespace protocol {
       signed_transaction( const transaction& trx = transaction() )
          : transaction(trx){}
 
-      const signature_type& sign( const private_key_type& key, const chain_id_type& chain_id );
+      const signature_type& sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/ );
 
-      signature_type sign( const private_key_type& key, const chain_id_type& chain_id )const;
+      signature_type sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/ )const;
 
       set<public_key_type> get_required_signatures(
          const chain_id_type& chain_id,
@@ -63,7 +65,8 @@ namespace steem { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH
+         uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH */,
+         canonical_signature_type canon_type/* = fc::ecc::fc_canonical */
          )const;
 
       void verify_authority(
@@ -71,7 +74,9 @@ namespace steem { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH )const;
+         uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH */,
+         canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/
+         )const;
 
       set<public_key_type> minimize_required_signatures(
          const chain_id_type& chain_id,
@@ -79,10 +84,11 @@ namespace steem { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH
-         ) const;
+         uint32_t max_recursion /*= STEEM_MAX_SIG_CHECK_DEPTH*/,
+         canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/
+         )const;
 
-      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
+      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id, canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/ )const;
 
       vector<signature_type> signatures;
 

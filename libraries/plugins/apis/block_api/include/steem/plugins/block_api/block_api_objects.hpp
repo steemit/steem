@@ -18,7 +18,7 @@ struct api_signed_block_object : public signed_block
    api_signed_block_object( const signed_block& block ) : signed_block( block )
    {
       block_id = id();
-      signing_key = signee();
+      signing_key = signee( fc::ecc::canonical_signature_type::bip_0062 );
       transaction_ids.reserve( transactions.size() );
       for( const signed_transaction& tx : transactions )
          transaction_ids.push_back( tx.id() );

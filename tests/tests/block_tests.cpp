@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       cop.active = cop.owner;
       trx.operations.push_back(cop);
       trx.set_expiration( db1.head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
       PUSH_TX( db1, trx );
       //*/
       // generate blocks
@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       cop.active = cop.owner;
       trx.operations.push_back(cop);
       trx.set_expiration( db1.head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
       PUSH_TX( db1, trx, skip_sigs );
 
       trx = decltype(trx)();
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       t.amount = asset(500,STEEM_SYMBOL);
       trx.operations.push_back(t);
       trx.set_expiration( db1.head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
       PUSH_TX( db1, trx, skip_sigs );
 
       STEEM_CHECK_THROW(PUSH_TX( db1, trx, skip_sigs ), fc::exception);
@@ -370,7 +370,7 @@ BOOST_AUTO_TEST_CASE( tapos )
       cop.active = cop.owner;
       trx.operations.push_back(cop);
       trx.set_expiration( db1.head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
 
       BOOST_TEST_MESSAGE( "Pushing Pending Transaction" );
       idump((trx));
@@ -385,13 +385,13 @@ BOOST_AUTO_TEST_CASE( tapos )
       t.amount = asset(50,STEEM_SYMBOL);
       trx.operations.push_back(t);
       trx.set_expiration( db1.head_block_time() + fc::seconds(2) );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
       idump((trx)(db1.head_block_time()));
       b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       idump((b));
       b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       trx.signatures.clear();
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
+      trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::canonical_signature_type::fc_canonical );
       BOOST_REQUIRE_THROW( db1.push_transaction(trx, 0/*database::skip_transaction_signatures | database::skip_authority_check*/), fc::exception );
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
@@ -424,14 +424,14 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
       tx.ref_block_prefix = 0;
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       PUSH_TX( *db, tx );
 
       BOOST_TEST_MESSAGE( "proper ref_block_num, ref_block_prefix" );
 
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       PUSH_TX( *db, tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "ref_block_num=0, ref_block_prefix=12345678" );
@@ -440,7 +440,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
       tx.ref_block_prefix = 0x12345678;
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( PUSH_TX( *db, tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_TEST_MESSAGE( "ref_block_num=1, ref_block_prefix=12345678" );
@@ -449,7 +449,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
       tx.ref_block_prefix = 0x12345678;
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( PUSH_TX( *db, tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_TEST_MESSAGE( "ref_block_num=9999, ref_block_prefix=12345678" );
@@ -458,7 +458,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
       tx.ref_block_prefix = 0x12345678;
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( PUSH_TX( *db, tx, database::skip_transaction_dupe_check ), fc::exception );
    }
    catch (fc::exception& e)
@@ -495,19 +495,19 @@ BOOST_FIXTURE_TEST_CASE( double_sign_check, clean_database_fixture )
    STEEM_REQUIRE_THROW( db->push_transaction(trx, 0), fc::exception );
 
    BOOST_TEST_MESSAGE( "Verify that double-signing causes an exception" );
-   trx.sign( bob_private_key, db->get_chain_id() );
-   trx.sign( bob_private_key, db->get_chain_id() );
+   sign( trx, bob_private_key );
+   sign( trx, bob_private_key );
    STEEM_REQUIRE_THROW( db->push_transaction(trx, 0), tx_duplicate_sig );
 
    BOOST_TEST_MESSAGE( "Verify that signing with an extra, unused key fails" );
    trx.signatures.pop_back();
-   trx.sign( generate_private_key("bogus" ), db->get_chain_id() );
+   sign( trx, generate_private_key("bogus" ) );
    STEEM_REQUIRE_THROW( db->push_transaction(trx, 0), tx_irrelevant_sig );
 
    BOOST_TEST_MESSAGE( "Verify that signing once with the proper key passes" );
    trx.signatures.pop_back();
    db->push_transaction(trx, 0);
-   trx.sign( bob_private_key, db->get_chain_id() );
+   sign( trx, bob_private_key );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -715,6 +715,8 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
    try
    {
       try {
+      default_sig_canon = fc::ecc::canonical_signature_type::fc_canonical;
+
       int argc = boost::unit_test::framework::master_test_suite().argc;
       char** argv = boost::unit_test::framework::master_test_suite().argv;
       for( int i=1; i<argc; i++ )

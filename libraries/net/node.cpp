@@ -1425,8 +1425,8 @@ namespace graphene { namespace net { namespace detail {
               wlog( "Sending a keepalive message to peer ${peer} who hasn't sent us any messages in the last ${timeout} seconds",
                     ( "peer", active_peer->get_remote_endpoint() )("timeout", active_send_keepalive_timeout ) );
               peers_to_send_keep_alive.push_back(active_peer);
-            }            
-            else if (active_peer->we_need_sync_items_from_peer && 
+            }
+            else if (active_peer->we_need_sync_items_from_peer &&
                      !active_peer->is_currently_handling_message() &&
                      !active_peer->item_ids_requested_from_peer &&
                      active_peer->ids_of_items_to_get.empty())
@@ -1913,7 +1913,7 @@ namespace graphene { namespace net { namespace detail {
       fc::sha256::encoder shared_secret_encoder;
       fc::sha512 shared_secret = originating_peer->get_shared_secret();
       shared_secret_encoder.write(shared_secret.data(), sizeof(shared_secret));
-      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), false);
+      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), fc::ecc::canonical_signature_type::non_canonical);
 
       // store off the data provided in the hello message
       originating_peer->user_agent = hello_message_received.user_agent;
@@ -3344,7 +3344,7 @@ namespace graphene { namespace net { namespace detail {
                        ("endpoint", peer->get_remote_endpoint())("len", peer->ids_of_items_being_processed.size()));
 
                   // if we just processed the last item in our list from this peer, we will want to
-                  // send another request to find out if we are now in sync (this is normally handled in 
+                  // send another request to find out if we are now in sync (this is normally handled in
                   // send_sync_block_to_node_delegate)
                   if (peer->ids_of_items_to_get.empty() &&
                       peer->number_of_unfetched_item_ids == 0 &&

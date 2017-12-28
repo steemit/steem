@@ -1373,7 +1373,8 @@ DEFINE_API_IMPL( database_api_impl, get_required_signatures )
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
-                                                   STEEM_MAX_SIG_CHECK_DEPTH );
+                                                   STEEM_MAX_SIG_CHECK_DEPTH,
+                                                   _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
 
    return result;
 }
@@ -1405,7 +1406,8 @@ DEFINE_API_IMPL( database_api_impl, get_potential_signatures )
             result.keys.insert( k );
          return authority( auth );
       },
-      STEEM_MAX_SIG_CHECK_DEPTH
+      STEEM_MAX_SIG_CHECK_DEPTH,
+      _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical
    );
 
    return result;
@@ -1417,7 +1419,8 @@ DEFINE_API_IMPL( database_api_impl, verify_authority )
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
-                           STEEM_MAX_SIG_CHECK_DEPTH );
+                           STEEM_MAX_SIG_CHECK_DEPTH,
+                           _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
    return verify_authority_return( { true } );
 }
 
@@ -1444,7 +1447,7 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
    for( const auto&  sig : args.signatures )
    {
       STEEM_ASSERT(
-         sig_keys.insert( fc::ecc::public_key( sig, args.hash ) ).second,
+         sig_keys.insert( fc::ecc::public_key( sig, args.hash, fc::ecc::canonical_signature_type::bip_0062 ) ).second,
          protocol::tx_duplicate_sig,
          "Duplicate Signature detected" );
    }
