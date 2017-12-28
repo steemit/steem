@@ -389,6 +389,56 @@ void database::set_chain_id( const std::string& _chain_id_name )
    steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
+void database::foreach_block(std::function<bool(const signed_block&)> processor) const
+{
+   if(!_block_log.head())
+      return;
+
+   auto itr = _block_log.read_block( 0 );
+   auto last_block_num = _block_log.head()->block_num();
+   while( itr.first.block_num() != last_block_num )
+   {
+      if(processor(itr.first) == false)
+         return;
+
+      itr = _block_log.read_block( itr.second );
+   }
+
+   processor(itr.first);
+}
+
+void database::foreach_tx(std::function<bool(const signed_block&, const signed_transaction&)> processor) const
+{
+   foreach_block([&processor](const signed_block& block) -> bool
+   {
+      for( const auto& trx : block.transactions )
+      {
+         if(processor(block, trx) == false)
+            return false;
+      }
+
+      return true;
+   }
+   );
+}
+
+void database::foreach_operation(std::function<bool(const signed_block&, const signed_transaction&,
+   const operation&)> processor) const
+{
+   foreach_tx([&processor](const signed_block& block, const signed_transaction& tx) -> bool
+   {
+      for(const auto& op : tx.operations)
+      {
+         if(processor(block, tx, op) == false)
+            return false;
+      }
+
+      return true;
+   }
+   );
+}
+
+
 const witness_object& database::get_witness( const account_name_type& name ) const
 { try {
    return get< witness_object, by_name >( name );

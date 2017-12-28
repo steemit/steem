@@ -1,0 +1,5 @@
+{
+   "plugin_name": "rocksdb",
+   "plugin_namespace": "rocksdb",
+   "plugin_project": "rocksdb_plugin"
+}
