@@ -310,6 +310,7 @@ namespace steem { namespace chain {
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
          void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
@@ -484,8 +485,10 @@ namespace steem { namespace chain {
          ///@}
 #ifdef STEEM_ENABLE_SMT
          template< typename smt_balance_object_type >
-         void adjust_smt_balance( const account_name_type& a, const asset& delta );
+         void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account );
 #endif
+         void modify_balance( const account_object& a, const asset& delta, bool check_balance );
+
          std::unique_ptr< database_impl > _my;
 
          vector< signed_transaction >  _pending_tx;

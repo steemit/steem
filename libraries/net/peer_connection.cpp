@@ -49,7 +49,7 @@ namespace graphene { namespace net
       {
         // patch the current time into the message.  Since this operates on the packed version of the structure,
         // it won't work for anything after a variable-length field
-        std::vector<char> packed_current_time = fc::raw::pack(fc::time_point::now());
+        std::vector<char> packed_current_time = fc::raw::pack_to_vector(fc::time_point::now());
         assert(message_send_time_field_offset + packed_current_time.size() <= message_to_send.data.size());
         memcpy(message_to_send.data.data() + message_send_time_field_offset,
                packed_current_time.data(), packed_current_time.size());

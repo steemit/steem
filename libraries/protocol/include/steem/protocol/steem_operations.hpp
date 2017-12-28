@@ -497,7 +497,7 @@ namespace steem { namespace protocol {
          if( key_itr != props.end() )
          {
             public_key_type signing_key;
-            fc::raw::unpack( key_itr->second, signing_key );
+            fc::raw::unpack_from_vector( key_itr->second, signing_key );
             a.push_back( authority( 1, signing_key, 1 ) );
          }
          else

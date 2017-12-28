@@ -15,6 +15,7 @@
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
 
+#include <array>
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
@@ -222,6 +223,7 @@ struct database_fixture {
    void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
+   void set_witness_props( const flat_map< string, vector< char > >& new_props );
    const asset& get_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 
@@ -255,9 +257,8 @@ struct smt_database_fixture : public clean_database_fixture
    asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
 
-   typedef std::function< void(const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) > TFollowUpOps;
    /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
-   void create_smt_3( const char* control_account_name, const fc::ecc::private_key& key, TFollowUpOps followUpOps );
+   std::array<asset_symbol_type, 3> create_smt_3(const char* control_account_name, const fc::ecc::private_key& key);
    /// Tries to create SMTs with too big precision or invalid name.
    void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
    /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
