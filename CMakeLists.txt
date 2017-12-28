@@ -202,7 +202,6 @@ endif()
 # external_plugins needs to be compiled first because libraries/app depends on GOLOSIT_EXTERNAL_PLUGINS being fully populated
 add_subdirectory(libraries)
 add_subdirectory(programs)
-
 #add_subdirectory(tests)
 
 if(ENABLE_INSTALLER)

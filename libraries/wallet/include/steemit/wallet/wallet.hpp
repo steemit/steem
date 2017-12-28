@@ -1,9 +1,9 @@
 #pragma once
 
-#include <steemit/app/api.hpp>
-#include <steemit/private_message/private_message_plugin.hpp>
-#include <steemit/follow/follow_plugin.hpp>
-#include <steemit/app/steem_api_objects.hpp>
+#include <golos/app/api.hpp>
+#include <golos/private_message/private_message_plugin.hpp>
+#include <golos/follow/follow_plugin.hpp>
+#include <golos/app/steem_api_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -1074,4 +1074,4 @@ FC_API(golos::wallet::wallet_api,
                 (get_transaction)
 )
 
-FC_REFLECT(golos::wallet::memo_data, (from)(to)(nonce)(check)(encrypted))
+FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

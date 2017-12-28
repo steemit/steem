@@ -15,6 +15,7 @@ RUN \
         cmake \
         doxygen \
         git \
+        ccache\
         libboost-all-dev \
         libreadline-dev \
         libssl-dev \

@@ -101,7 +101,7 @@ else()
             include/golos/chain/witness_objects.hpp
 
             ${hardfork_hpp_file}
-            "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/include/golos/chain/hardfork.hpp"
             )
 endif()
 
