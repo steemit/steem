@@ -91,6 +91,13 @@ if( SKIP_BY_TX_ID )
    SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSKIP_BY_TX_ID" )
 endif()
 
+OPTION( STEEM_STATIC_BUILD "Build steemd as a static library (ON or OFF)" OFF )
+if( STEEM_STATIC_BUILD AND ( ( MSVC AND NOT MINGW ) OR APPLE ) )
+   MESSAGE( STATUS "Statuc build is not available on Windows or OS X" )
+   SET( STEEM_STATIC_BUILD OFF )
+endif()
+MESSAGE( STATUS "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" )
+
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
   set(Boost_USE_MULTITHREADED ON)

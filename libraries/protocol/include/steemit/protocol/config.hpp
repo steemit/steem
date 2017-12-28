@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 1) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 3) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -226,6 +226,8 @@
 #define STEEMIT_MAX_TRANSACTION_SIZE            (1024*64)
 #define STEEMIT_MIN_BLOCK_SIZE_LIMIT            (STEEMIT_MAX_TRANSACTION_SIZE)
 #define STEEMIT_MAX_BLOCK_SIZE                  (STEEMIT_MAX_TRANSACTION_SIZE*STEEMIT_BLOCK_INTERVAL*2000)
+#define STEEMIT_SOFT_MAX_BLOCK_SIZE             (2*1024*1024)
+#define STEEMIT_MIN_BLOCK_SIZE                  115
 #define STEEMIT_BLOCKS_PER_HOUR                 (60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_FEED_INTERVAL_BLOCKS            (STEEMIT_BLOCKS_PER_HOUR)
 #define STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day

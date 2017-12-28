@@ -149,7 +149,7 @@ namespace steemit { namespace app {
           * @brief Get advanced node parameters, such as desired and max
           *        number of connections
           */
-         fc::variant_object get_advanced_node_parameters() const;
+         graphene::net::node_configuration get_advanced_node_parameters() const;
 
          /**
           * @brief Set advanced node parameters, such as desired and max

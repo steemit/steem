@@ -323,7 +323,7 @@ namespace steemit { namespace app {
        return _app.p2p_node()->get_potential_peers();
     }
 
-    fc::variant_object network_node_api::get_advanced_node_parameters() const
+    graphene::net::node_configuration network_node_api::get_advanced_node_parameters() const
     {
        return _app.p2p_node()->get_advanced_node_parameters();
     }

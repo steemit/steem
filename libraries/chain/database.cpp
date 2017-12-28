@@ -1678,7 +1678,7 @@ void database::process_comment_cashout()
       rf_ctx.reward_balance = itr->reward_balance;
 
       // The index is by ID, so the ID should be the current size of the vector (0, 1, 2, etc...)
-      assert( funds.size() == itr->id._id );
+      assert( funds.size() == size_t( itr->id._id ) );
 
       funds.push_back( rf_ctx );
    }
@@ -2614,6 +2614,13 @@ void database::_apply_block( const signed_block& next_block )
    if( has_hardfork( STEEMIT_HARDFORK_0_12 ) )
    {
       FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
+   }
+
+   if( block_size < STEEMIT_MIN_BLOCK_SIZE )
+   {
+      elog( "Block size is too small",
+         ("next_block_num",next_block_num)("block_size", block_size)("min",STEEMIT_MIN_BLOCK_SIZE)
+      );
    }
 
    /// modify current witness so transaction evaluators can know who included the transaction,

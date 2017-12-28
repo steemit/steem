@@ -375,7 +375,7 @@ namespace steemit { namespace chain {
          /** when popping a block, the transactions that were removed get cached here so they
           * can be reapplied at the proper time */
          std::deque< signed_transaction >       _popped_tx;
-
+         vector< signed_transaction >           _pending_tx;
 
          bool apply_order( const limit_order_object& new_order_object );
          bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
@@ -450,7 +450,6 @@ namespace steemit { namespace chain {
 
          std::unique_ptr< database_impl > _my;
 
-         vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];

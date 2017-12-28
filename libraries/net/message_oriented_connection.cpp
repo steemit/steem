@@ -32,6 +32,8 @@
 #include <graphene/net/stcp_socket.hpp>
 #include <graphene/net/config.hpp>
 
+#include <atomic>
+
 #ifdef DEFAULT_LOGGER
 # undef DEFAULT_LOGGER
 #endif
@@ -61,7 +63,6 @@ namespace graphene { namespace net {
       fc::time_point _last_message_sent_time;
 
       bool _send_message_in_progress;
-
 #ifndef NDEBUG
       fc::thread* _thread;
 #endif
@@ -136,7 +137,6 @@ namespace graphene { namespace net {
       VERIFY_CORRECT_THREAD();
       _sock.bind(local_endpoint);
     }
-
 
     void message_oriented_connection_impl::read_loop()
     {
@@ -261,8 +261,13 @@ namespace graphene { namespace net {
         //pad the message we send to a multiple of 16 bytes
         size_t size_with_padding = 16 * ((size_of_message_and_header + 15) / 16);
         std::unique_ptr<char[]> padded_message(new char[size_with_padding]);
+
         memcpy(padded_message.get(), (char*)&message_to_send, sizeof(message_header));
         memcpy(padded_message.get() + sizeof(message_header), message_to_send.data.data(), message_to_send.size );
+        char* paddingSpace = padded_message.get() + sizeof(message_header) + message_to_send.size;
+        size_t toClean = size_with_padding - size_of_message_and_header;
+        memset(paddingSpace, 0, toClean);
+
         _sock.write(padded_message.get(), size_with_padding);
         _sock.flush();
         _bytes_sent += size_with_padding;
