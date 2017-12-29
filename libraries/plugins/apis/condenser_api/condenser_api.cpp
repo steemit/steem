@@ -1690,7 +1690,7 @@ namespace detail
       CHECK_ARG_SIZE( 0 )
       FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
 
-      return _market_history_api->get_ticker( {} );
+      return get_ticker_return( _market_history_api->get_ticker( {} ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_volume )
@@ -1698,7 +1698,7 @@ namespace detail
       CHECK_ARG_SIZE( 0 )
       FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
 
-      return _market_history_api->get_volume( {} );
+      return get_volume_return( _market_history_api->get_volume( {} ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_order_book )
@@ -1706,7 +1706,7 @@ namespace detail
       FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
 
-      return _market_history_api->get_order_book( { args.size() == 1 ? args[0].as< uint32_t >() : 500 } );
+      return get_order_book_return( _market_history_api->get_order_book( { args.size() == 1 ? args[0].as< uint32_t >() : 500 } ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_trade_history )
@@ -1714,7 +1714,12 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
 
-      return _market_history_api->get_trade_history( { args[0].as< time_point_sec >(), args[1].as< time_point_sec >(), args.size() == 3 ? args[2].as< uint32_t >() : 1000 } ).trades;
+      const auto& trades = _market_history_api->get_trade_history( { args[0].as< time_point_sec >(), args[1].as< time_point_sec >(), args.size() == 3 ? args[2].as< uint32_t >() : 1000 } ).trades;
+      get_trade_history_return result;
+
+      for( const auto& t : trades ) result.push_back( market_trade( t ) );
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_recent_trades )
@@ -1722,7 +1727,12 @@ namespace detail
       FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
 
-      return _market_history_api->get_recent_trades( { args.size() == 1 ? args[0].as< uint32_t >() : 1000 } ).trades;
+      const auto& trades = _market_history_api->get_recent_trades( { args.size() == 1 ? args[0].as< uint32_t >() : 1000 } ).trades;
+      get_trade_history_return result;
+
+      for( const auto& t : trades ) result.push_back( market_trade( t ) );
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_market_history )

@@ -60,6 +60,7 @@ struct extended_limit_order : public database_api::api_limit_order_object
 
 struct api_operation_object
 {
+   api_operation_object() {}
    api_operation_object( const account_history::api_operation_object& obj, const legacy_operation& l_op ) :
       trx_id( obj.trx_id ),
       block( obj.block ),
@@ -764,6 +765,83 @@ struct get_version_return
 
 typedef map< uint32_t, api_operation_object > get_account_history_return_type;
 
+struct ticker
+{
+   ticker() {}
+   ticker( const market_history::get_ticker_return& t ) :
+      latest( t.latest ),
+      lowest_ask( t.lowest_ask ),
+      highest_bid( t.highest_bid ),
+      percent_change( t.percent_change ),
+      steem_volume( legacy_asset::from_asset( t.steem_volume ) ),
+      sbd_volume( legacy_asset::from_asset( t.sbd_volume ) )
+   {}
+
+   double         latest = 0;
+   double         lowest_ask = 0;
+   double         highest_bid = 0;
+   double         percent_change = 0;
+   legacy_asset   steem_volume;
+   legacy_asset   sbd_volume;
+};
+
+struct volume
+{
+   volume() {}
+   volume( const market_history::get_volume_return& v ) :
+      steem_volume( legacy_asset::from_asset( v.steem_volume ) ),
+      sbd_volume( legacy_asset::from_asset( v.sbd_volume ) )
+   {}
+
+   legacy_asset   steem_volume;
+   legacy_asset   sbd_volume;
+};
+
+struct order
+{
+   order() {}
+   order( const market_history::order& o ) :
+      order_price( o.order_price ),
+      real_price( o.real_price ),
+      steem( o.steem ),
+      sbd( o.sbd ),
+      created( o.created )
+   {}
+
+   legacy_price   order_price;
+   double         real_price;
+   share_type     steem;
+   share_type     sbd;
+   time_point_sec created;
+};
+
+struct order_book
+{
+   order_book() {}
+   order_book( const market_history::get_order_book_return& b )
+   {
+      for( auto& b : b.bids ) bids.push_back( order( b ) );
+      for( auto& a : b.asks ) asks.push_back( order( a ) );
+   }
+
+   vector< order > bids;
+   vector< order > asks;
+};
+
+struct market_trade
+{
+   market_trade() {}
+   market_trade( const market_history::market_trade& t ) :
+      date( t.date ),
+      current_pays( legacy_asset::from_asset( t.current_pays ) ),
+      open_pays( legacy_asset::from_asset( t.open_pays ) )
+   {}
+
+   time_point_sec date;
+   legacy_asset   current_pays;
+   legacy_asset   open_pays;
+};
+
 #define DEFINE_API_ARGS( api_name, arg_type, return_type )  \
 typedef arg_type api_name ## _args;                         \
 typedef return_type api_name ## _return;
@@ -846,11 +924,11 @@ DEFINE_API_ARGS( get_blog,                               vector< variant >,   ve
 DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< follow::account_reputation > )
 DEFINE_API_ARGS( get_reblogged_by,                       vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_blog_authors,                       vector< variant >,   vector< follow::reblog_count > )
-DEFINE_API_ARGS( get_ticker,                             vector< variant >,   market_history::get_ticker_return )
-DEFINE_API_ARGS( get_volume,                             vector< variant >,   market_history::get_volume_return )
-DEFINE_API_ARGS( get_order_book,                         vector< variant >,   market_history::get_order_book_return )
-DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   vector< market_history::market_trade > )
-DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_history::market_trade > )
+DEFINE_API_ARGS( get_ticker,                             vector< variant >,   ticker )
+DEFINE_API_ARGS( get_volume,                             vector< variant >,   volume )
+DEFINE_API_ARGS( get_order_book,                         vector< variant >,   order_book )
+DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   vector< market_trade > )
+DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
 
@@ -1112,3 +1190,18 @@ FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(
 
 FC_REFLECT( steem::plugins::condenser_api::get_version_return,
             (blockchain_version)(steem_revision)(fc_revision) )
+
+FC_REFLECT( steem::plugins::condenser_api::ticker,
+            (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )
+
+FC_REFLECT( steem::plugins::condenser_api::volume,
+            (steem_volume)(sbd_volume) )
+
+FC_REFLECT( steem::plugins::condenser_api::order,
+            (order_price)(real_price)(steem)(sbd)(created) )
+
+FC_REFLECT( steem::plugins::condenser_api::order_book,
+            (bids)(asks) )
+
+FC_REFLECT( steem::plugins::condenser_api::market_trade,
+            (date)(current_pays)(open_pays) )

@@ -8,6 +8,8 @@
 #define STEEM_SYMBOL_LEGACY_SER_4   (uint64_t(3) | (uint64_t('0') << 8) | (uint64_t('.') << 16) | (uint64_t('0') << 24) | (uint64_t('0') << 32) | (uint64_t('1') << 40))
 #define STEEM_SYMBOL_LEGACY_SER_5   (uint64_t(3) | (uint64_t('6') << 8) | (uint64_t('.') << 16) | (uint64_t('0') << 24) | (uint64_t('0') << 32) | (uint64_t('0') << 40))
 
+#define UNKNOWN_SYMBOL_U64          (uint64_t('U') | (uint64_t('N') << 8) | (uint64_t('K') << 16) | (uint64_t('N') << 24) | (uint64_t('O') << 32) | (uint64_t('W') << 40) | (uint64_t('N') << 48) )
+
 namespace steem { namespace protocol {
 
 class legacy_asset_symbol_type
@@ -69,7 +71,7 @@ struct legacy_asset
             case STEEM_ASSET_NUM_VESTS:
                leg.symbol.ser = VESTS_SYMBOL_SER;
             default:
-               FC_ASSERT( false, "Unknown legacy asset symbol" );
+               leg.symbol.ser = uint64_t( a.symbol.decimals() ) | ( UNKNOWN_SYMBOL_U64 << 8 );
          }
 
          return leg;
