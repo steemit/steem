@@ -52,6 +52,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     fi
     if [[ "$IS_BROADCAST_NODE" ]]; then
       FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    else if [[ "$IS_AH_NODE" ]]; then
+      FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
     else
       FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
     fi
@@ -70,7 +72,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     fi
     # upload a current block_log
     cd $HOME
-    if [[ ! "$IS_BROADCAST_NODE" ]]; then
+    if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
       aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
       aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
     fi

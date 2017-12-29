@@ -200,6 +200,7 @@ ADD doc/seednodes.txt /etc/steemd/seednodes.txt
 ADD contrib/config-for-docker.ini /etc/steemd/config.ini
 ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
+ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
