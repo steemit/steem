@@ -13,17 +13,19 @@
 #include <steem/protocol/transaction.hpp>
 #include <steem/protocol/types.hpp>
 
+#define CHAIN_ID_PARAM "--chain-id"
+
 struct tx_signing_request
 {
    steem::protocol::transaction     tx;
-   std::string                        wif;
+   std::string                      wif;
 };
 
 struct tx_signing_result
 {
    steem::protocol::transaction     tx;
-   fc::sha256                         digest;
-   fc::sha256                         sig_digest;
+   fc::sha256                       digest;
+   fc::sha256                       sig_digest;
    steem::protocol::public_key_type key;
    steem::protocol::signature_type  sig;
 };
@@ -39,8 +41,39 @@ FC_REFLECT( error_result, (error) )
 
 int main(int argc, char** argv, char** envp)
 {
+   fc::sha256 chainId;
+
+   chainId = STEEM_CHAIN_ID;
+   
+   const size_t chainIdLen = strlen(CHAIN_ID_PARAM);
+
+   if(argc > 1 && !strncmp(argv[1], CHAIN_ID_PARAM, chainIdLen))
+   {
+      const char* strChainId = argv[1] + chainIdLen;
+      if(*strChainId == '=')
+      {
+         ++strChainId;
+      }
+      else
+      if(argc > 2)
+      {
+         /// ChainId passed as another parameter
+         strChainId = argv[2];
+      }
+      else
+      {
+         std::cerr << "Missing parameter for `--chain-id' option. Option ignored, default chain-id used."
+            << std::endl;
+         std::cerr << "Usage: sign_transaction [--chain-id=<hex-chain-id>]" << std::endl;
+      }
+
+      std::cerr << "Using explicit chain-id: `" << strChainId << "'" << std::endl;
+      fc::sha256 parsedId(strChainId);
+      chainId = parsedId;
+   }
+
    // hash key pairs on stdin
-   std::string chain_id, hash, wif;
+   std::string hash, wif;
    while( std::cin )
    {
       std::string line;
@@ -57,7 +90,7 @@ int main(int argc, char** argv, char** envp)
          tx_signing_result sres;
          sres.tx = sreq.tx;
          sres.digest = sreq.tx.digest();
-         sres.sig_digest = sreq.tx.sig_digest(STEEM_CHAIN_ID);
+         sres.sig_digest = sreq.tx.sig_digest(chainId);
 
          fc::ecc::private_key priv_key = *steem::utilities::wif_to_key( sreq.wif );
          sres.sig = priv_key.sign_compact( sres.sig_digest );
