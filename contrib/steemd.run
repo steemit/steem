@@ -60,6 +60,10 @@ ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
 # overwrite local config with image one
 if [[ "$USE_FULL_WEB_NODE" ]]; then
   cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+else if [[ "$IS_BROADCAST_NODE" ]]; then
+  cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
+else if [[ "$IS_AH_NODE" ]]; then
+  cp /etc/steemd/config-for-ahnode.ini $HOME/config.ini
 else
   cp /etc/steemd/config.ini $HOME/config.ini
 fi
