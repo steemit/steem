@@ -4,7 +4,7 @@ VERSION=`cat /etc/steemdversion`
 
 if [[ "$IS_BROADCAST_NODE" ]]; then
   STEEMD="/usr/local/steemd-default/bin/steemd"
-else if [[ "$IS_AH_NODE" ]]; then
+elif [[ "$IS_AH_NODE" ]]; then
   STEEMD="/usr/local/steemd-default/bin/steemd"
 else
   STEEMD="/usr/local/steemd-full/bin/steemd"
@@ -57,7 +57,7 @@ fi
 # overwrite local config with image one
 if [[ "$IS_BROADCAST_NODE" ]]; then
   cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
-else if [[ "$IS_AH_NODE" ]]; then
+elif [[ "$IS_AH_NODE" ]]; then
   cp /etc/steemd/config-for-ahnode.ini $HOME/config.ini
 else
   cp /etc/steemd/fullnode.config.ini $HOME/config.ini
@@ -78,7 +78,7 @@ if [[ "$USE_RAMDISK" ]]; then
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
   if [[ "$IS_BROADCAST_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-  else if [[ "$IS_AH_NODE" ]]; then
+  elif [[ "$IS_AH_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   else
     s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
@@ -87,7 +87,7 @@ if [[ "$USE_RAMDISK" ]]; then
 else
   if [[ "$IS_BROADCAST_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
-  else if [[ "$IS_AH_NODE" ]]; then
+  elif [[ "$IS_AH_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
   else
     s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
