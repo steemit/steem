@@ -802,7 +802,7 @@ namespace detail
       auto fund = _db.find< reward_fund_object, by_name >( name );
       FC_ASSERT( fund != nullptr, "Invalid reward fund name" );
 
-      return *fund;
+      return api_reward_fund_object( *fund );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_key_references )
@@ -995,10 +995,20 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_savings_withdraw_from )
    {
       CHECK_ARG_SIZE( 1 )
-      return _database_api->find_savings_withdrawals(
+
+      auto withdrawals = _database_api->find_savings_withdrawals(
          {
             args[0].as< string >()
          }).withdrawals;
+
+      get_savings_withdraw_from_return result;
+
+      for( auto& w : withdrawals )
+      {
+         result.push_back( api_savings_withdraw_object( w ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_savings_withdraw_to )
@@ -1006,13 +1016,13 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       account_name_type account = args[0].as< account_name_type >();
 
-      vector< database_api::api_savings_withdraw_object > result;
+      get_savings_withdraw_to_return result;
 
       const auto& to_complete_idx = _db.get_index< savings_withdraw_index, by_to_complete >();
       auto itr = to_complete_idx.lower_bound( account );
       while( itr != to_complete_idx.end() && itr->to == account )
       {
-         result.push_back( database_api::api_savings_withdraw_object( *itr ) );
+         result.push_back( api_savings_withdraw_object( *itr ) );
          ++itr;
       }
 
@@ -1028,7 +1038,15 @@ namespace detail
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_delegation;
 
-      return _database_api->list_vesting_delegations( a ).delegations;
+      auto delegations = _database_api->list_vesting_delegations( a ).delegations;
+      get_vesting_delegations_return result;
+
+      for( auto& d : delegations )
+      {
+         result.push_back( api_vesting_delegation_object( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_expiring_vesting_delegations )
@@ -1040,7 +1058,15 @@ namespace detail
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_account_expiration;
 
-      return _database_api->list_vesting_delegation_expirations( a ).delegations;
+      auto delegations = _database_api->list_vesting_delegation_expirations( a ).delegations;
+      get_expiring_vesting_delegations_return result;
+
+      for( auto& d : delegations )
+      {
+         result.push_back( api_vesting_delegation_expiration_object( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_witnesses )
@@ -1048,17 +1074,17 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       vector< witness_id_type > witness_ids = args[0].as< vector< witness_id_type > >();
 
-      vector< optional< database_api::api_witness_object > > result;
+      get_witnesses_return result;
       result.reserve( witness_ids.size() );
 
       std::transform(
          witness_ids.begin(),
          witness_ids.end(),
          std::back_inserter(result),
-         [this](witness_id_type id) -> optional< database_api::api_witness_object >
+         [this](witness_id_type id) -> optional< api_witness_object >
          {
             if( auto o = _db.find(id) )
-               return *o;
+               return api_witness_object( database_api::api_witness_object ( *o ) );
             return {};
          });
 
@@ -1068,10 +1094,19 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_conversion_requests )
    {
       CHECK_ARG_SIZE( 1 )
-      return _database_api->find_sbd_conversion_requests(
+      auto requests = _database_api->find_sbd_conversion_requests(
          {
             args[0].as< account_name_type >()
          }).requests;
+
+      get_conversion_requests_return result;
+
+      for( auto& r : requests )
+      {
+         result.push_back( api_convert_request_object( r ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_witness_by_account )
@@ -1085,7 +1120,7 @@ namespace detail
       get_witness_by_account_return result;
 
       if( witnesses.size() )
-         result = witnesses[0];
+         result = api_witness_object( witnesses[0] );
 
       return result;
    }
@@ -1096,14 +1131,23 @@ namespace detail
       auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
 
       if( start.witnesses.size() == 0 )
-         return start.witnesses;
+         return get_witnesses_by_vote_return();
 
       auto limit = args[1].as< uint32_t >();
       vector< fc::variant > start_key;
       start_key.push_back( fc::variant( start.witnesses[0].votes ) );
       start_key.push_back( fc::variant( start.witnesses[0].owner ) );
 
-      return _database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
+      auto witnesses = _database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
+
+      get_witnesses_by_vote_return result;
+
+      for( auto& w : witnesses )
+      {
+         result.push_back( api_witness_object( w ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, lookup_witness_accounts )
@@ -1235,7 +1279,7 @@ namespace detail
       CHECK_ARG_SIZE( 2 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } );
+      return discussion( _tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_content_replies )
@@ -1243,7 +1287,15 @@ namespace detail
       CHECK_ARG_SIZE( 2 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
+      auto discussions = _tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_tags_used_by_author )
@@ -1259,8 +1311,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_post_discussions_by_payout(
+      auto discussions = _tags_api->get_post_discussions_by_payout(
          args[0].as< tags::get_post_discussions_by_payout_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_comment_discussions_by_payout )
@@ -1268,8 +1328,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_comment_discussions_by_payout(
+      auto discussions = _tags_api->get_comment_discussions_by_payout(
          args[0].as< tags::get_comment_discussions_by_payout_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_trending )
@@ -1277,8 +1345,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_trending(
+      auto discussions = _tags_api->get_discussions_by_trending(
          args[0].as< tags::get_discussions_by_trending_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_created )
@@ -1286,8 +1362,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_created(
+      auto discussions = _tags_api->get_discussions_by_created(
          args[0].as< tags::get_discussions_by_created_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_active )
@@ -1295,8 +1379,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_active(
+      auto discussions = _tags_api->get_discussions_by_active(
          args[0].as< tags::get_discussions_by_active_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_cashout )
@@ -1304,8 +1396,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_cashout(
+      auto discussions = _tags_api->get_discussions_by_cashout(
          args[0].as< tags::get_discussions_by_cashout_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_votes )
@@ -1313,8 +1413,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_votes(
+      auto discussions = _tags_api->get_discussions_by_votes(
          args[0].as< tags::get_discussions_by_votes_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_children )
@@ -1322,8 +1430,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_children(
+      auto discussions = _tags_api->get_discussions_by_children(
          args[0].as< tags::get_discussions_by_children_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_hot )
@@ -1331,8 +1447,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_hot(
+      auto discussions = _tags_api->get_discussions_by_hot(
          args[0].as< tags::get_discussions_by_hot_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_feed )
@@ -1340,8 +1464,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_feed(
+      auto discussions = _tags_api->get_discussions_by_feed(
          args[0].as< tags::get_discussions_by_feed_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_blog )
@@ -1349,8 +1481,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_blog(
+      auto discussions = _tags_api->get_discussions_by_blog(
          args[0].as< tags::get_discussions_by_blog_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_comments )
@@ -1358,8 +1498,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_comments(
+      auto discussions = _tags_api->get_discussions_by_comments(
          args[0].as< tags::get_discussions_by_comments_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_promoted )
@@ -1367,8 +1515,16 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_promoted(
+      auto discussions = _tags_api->get_discussions_by_promoted(
          args[0].as< tags::get_discussions_by_promoted_args >() ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_replies_by_last_update )
@@ -1376,7 +1532,15 @@ namespace detail
       CHECK_ARG_SIZE( 3 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
+      auto discussions = _tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_author_before_date )
@@ -1384,7 +1548,15 @@ namespace detail
       CHECK_ARG_SIZE( 4 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_discussions_by_author_before_date( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< time_point_sec >(), args[3].as< uint32_t >() } ).discussions;
+      auto discussions = _tags_api->get_discussions_by_author_before_date( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< time_point_sec >(), args[3].as< uint32_t >() } ).discussions;
+      vector< discussion > result;
+
+      for( auto& d : discussions )
+      {
+         result.push_back( discussion( d ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_account_history )
