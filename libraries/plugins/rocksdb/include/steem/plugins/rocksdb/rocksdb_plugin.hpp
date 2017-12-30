@@ -8,6 +8,8 @@
 
 namespace steem { namespace plugins { namespace rocksdb {
 
+namespace bfs = boost::filesystem;
+
 class rocksdb_plugin final : public appbase::plugin< rocksdb_plugin >
 {
 public:
@@ -29,9 +31,9 @@ public:
 
 private:
    class impl;
-   std::unique_ptr<impl> my;
 
-   std::string _dbPath;
+   std::unique_ptr<impl> _my;
+   bfs::path             _dbPath;
 };
 
 
