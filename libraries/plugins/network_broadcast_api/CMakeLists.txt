@@ -1,13 +1,11 @@
 set(CURRENT_TARGET network_broadcast_api_plugin)
 
 list(APPEND CURRENT_TARGET_HEADERS
-     include/golos/plugins/network_broadcast_api/network_broadcast_api.hpp
      include/golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp
      )
 
 list(APPEND CURRENT_TARGET_SOURCES
      network_broadcast_api.cpp
-     network_broadcast_api_plugin.cpp
      )
 
 if(BUILD_SHARED_LIBRARIES)
