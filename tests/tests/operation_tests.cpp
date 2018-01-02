@@ -3354,9 +3354,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Creating account bob with alice" );
 
-      account_create_with_delegation_operation acc_create;
+      account_create_operation acc_create;
       acc_create.fee = ASSET( "10.000 TESTS" );
-      acc_create.delegation = ASSET( "0.000000 VESTS" );
       acc_create.creator = "alice";
       acc_create.new_account_name = "bob";
       acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
@@ -5916,55 +5915,23 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
    {
      BOOST_TEST_MESSAGE( "Testing: account_create_with_delegation_authorities" );
 
-     signed_transaction tx;
-     ACTORS( (alice) );
-     generate_blocks(1);
-     fund( "alice", ASSET("1000.000 TESTS") );
-     vest( "alice", ASSET("10000.000000 VESTS") );
+      account_create_with_delegation_operation op;
+      op.creator = "alice";
 
-     private_key_type priv_key = generate_private_key( "temp_key" );
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
 
-     account_create_with_delegation_operation op;
-     op.fee = ASSET("0.000 TESTS");
-     op.delegation = asset(100, VESTS_SYMBOL);
-     op.creator = "alice";
-     op.new_account_name = "bob";
-     op.owner = authority( 1, priv_key.get_public_key(), 1 );
-     op.active = authority( 2, priv_key.get_public_key(), 2 );
-     op.memo_key = priv_key.get_public_key();
-     op.json_metadata = "{\"foo\":\"bar\"}";
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
 
-     tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-     tx.operations.push_back( op );
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
 
-     BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-     STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
-
-     BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
-     tx.sign( alice_private_key, db->get_chain_id() );
-     db->push_transaction( tx, 0 );
-
-     BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
-     tx.operations.clear();
-     tx.signatures.clear();
-     op.new_account_name = "sam";
-     tx.operations.push_back( op );
-     tx.sign( alice_private_key, db->get_chain_id() );
-     tx.sign( alice_private_key, db->get_chain_id() );
-     STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
-
-     BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
-     tx.signatures.clear();
-     tx.sign( init_account_priv_key, db->get_chain_id() );
-     tx.sign( alice_private_key, db->get_chain_id() );
-     STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
-
-     BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
-     tx.signatures.clear();
-     tx.sign( init_account_priv_key, db->get_chain_id() );
-     STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
-
-     validate_database();
+      expected.clear();
+      auths.clear();
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
    }
    FC_LOG_AND_RETHROW()
 
@@ -5997,10 +5964,8 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
 
       generate_block();
 
-      BOOST_TEST_MESSAGE( "--- Test failure when VESTS are powering down." );
-      withdraw_vesting_operation withdraw;
-      withdraw.account = "alice";
-      withdraw.vesting_shares = db->get_account( "alice" ).vesting_shares;
+      // This test passed pre HF20
+      BOOST_TEST_MESSAGE( "--- Test deprecation. " );
       account_create_with_delegation_operation op;
       op.fee = ASSET( "10.000 TESTS" );
       op.delegation = ASSET( "100000000.000000 VESTS" );
@@ -6010,85 +5975,10 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       op.active = authority( 2, priv_key.get_public_key(), 2 );
       op.memo_key = priv_key.get_public_key();
       op.json_metadata = "{\"foo\":\"bar\"}";
-      tx.operations.push_back( withdraw );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
-
-
-      BOOST_TEST_MESSAGE( "--- Test success under normal conditions. " );
-      tx.clear();
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      const account_object& bob_acc = db->get_account( "bob" );
-      const account_object& alice_acc = db->get_account( "alice" );
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( bob_acc.effective_vesting_shares() == bob_acc.vesting_shares - bob_acc.delegated_vesting_shares + bob_acc.received_vesting_shares);
-
-      BOOST_TEST_MESSAGE( "--- Test delegator object integrety. " );
-      auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.creator, op.new_account_name ) );
-
-      BOOST_REQUIRE( delegation != nullptr);
-      BOOST_REQUIRE( delegation->delegator == op.creator);
-      BOOST_REQUIRE( delegation->delegatee == op.new_account_name );
-      BOOST_REQUIRE( delegation->vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( delegation->min_delegation_time == db->head_block_time() + STEEM_CREATE_ACCOUNT_DELEGATION_TIME );
-      auto del_amt = delegation->vesting_shares;
-      auto exp_time = delegation->min_delegation_time;
-
-      generate_block();
-
-      BOOST_TEST_MESSAGE( "--- Test success using only STEEM to reach target delegation." );
-
-      tx.clear();
-      op.fee=asset( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEM_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL );
-      op.delegation = asset(0, VESTS_SYMBOL);
-      op.new_account_name = "sam";
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      BOOST_TEST_MESSAGE( "--- Test failure when insufficient funds to process transaction." );
-      tx.clear();
-      op.fee = ASSET( "10.000 TESTS" );
-      op.delegation = ASSET( "0.000000 VESTS" );
-      op.new_account_name = "pam";
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
-
-      BOOST_TEST_MESSAGE( "--- Test failure when insufficient fee fo reach target delegation." );
-      fund( "alice" , asset( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEM_CREATE_ACCOUNT_DELEGATION_RATIO , STEEM_SYMBOL ));
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
-
-      validate_database();
-
-
-      BOOST_TEST_MESSAGE( "--- Test removing delegation from new account" );
-      tx.clear();
-      delegate_vesting_shares_operation delegate;
-      delegate.delegator = "alice";
-      delegate.delegatee = "bob";
-      delegate.vesting_shares = ASSET( "0.000000 VESTS" );
-      tx.operations.push_back( delegate );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      auto itr = db->get_index< vesting_delegation_expiration_index, by_id >().begin();
-      auto end = db->get_index< vesting_delegation_expiration_index, by_id >().end();
-
-      BOOST_REQUIRE( itr != end );
-      BOOST_REQUIRE( itr->delegator == "alice" );
-      BOOST_REQUIRE( itr->vesting_shares == del_amt );
-      BOOST_REQUIRE( itr->expiration == exp_time );
-      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }

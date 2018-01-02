@@ -300,7 +300,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
 {
-   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_17__818 ), "Account creation with delegation is not enabled until hardfork 17" );
+   FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_20__1760 ), "Account creation with delegation is deprecated as of Hardfork 20" );
 
    const auto& creator = _db.get_account( o.creator );
    const auto& props = _db.get_dynamic_global_properties();
