@@ -617,8 +617,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
 
       generate_block();
 
-      signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
 
       transfer_operation op;
       op.from = "alice";
@@ -643,9 +642,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       generate_block();
 
       // Create SMT.
-      signed_transaction tx, ty;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
-      asset_symbol_type bob_symbol = create_smt(ty, "bob", bob_private_key, 1);
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
+      asset_symbol_type bob_symbol = create_smt("bob", bob_private_key, 1);
 
       // Give some SMT to creators.
       asset alice_symbol_supply( 100, alice_symbol );
@@ -675,6 +673,89 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()   
+}
+
+BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+      ACTORS((alice));
+
+      generate_block();
+
+      std::array<asset_symbol_type, SMT_MAX_VOTABLE_ASSETS + 1> smts;
+      /// Create one more than limit to test negative cases
+      for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS + 1; ++i)
+      {
+         asset_symbol_type smt = create_smt("alice", alice_private_key, 0);
+         smts[i] = std::move(smt);
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+            
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration: no votable_assets" );
+         allowed_vote_assets ava;
+         op.extensions.insert( ava );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+            
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration of votable_assets" );
+         allowed_vote_assets ava;
+         for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS; ++i)
+         {
+            const auto& smt = smts[i];
+            ava.add_votable_asset(smt, share_type(10 + i), (i & 2) != 0);
+         }
+         
+         op.extensions.insert( ava );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+            
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - too much assets specified" );
+         allowed_vote_assets ava;
+         for(size_t i = 0; i < smts.size(); ++i)
+         {
+            const auto& smt = smts[i];
+            ava.add_votable_asset(smt, share_type(20 + i), (i & 2) != 0);
+         }
+         
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+            
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - STEEM added to container" );
+         allowed_vote_assets ava;
+         const auto& smt = smts.front();
+         ava.add_votable_asset(smt, share_type(20), false);
+         ava.add_votable_asset(STEEM_SYMBOL, share_type(20), true);
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()

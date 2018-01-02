@@ -88,7 +88,7 @@ namespace steem { namespace protocol {
 #ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
-         FC_TODO("To be implemented  suppport for allowed_vote_assets");
+         va.validate();
       }
 #endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
