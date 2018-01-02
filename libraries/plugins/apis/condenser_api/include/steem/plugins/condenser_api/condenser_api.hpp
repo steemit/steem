@@ -818,10 +818,10 @@ struct order
 struct order_book
 {
    order_book() {}
-   order_book( const market_history::get_order_book_return& b )
+   order_book( const market_history::get_order_book_return& book )
    {
-      for( auto& b : b.bids ) bids.push_back( order( b ) );
-      for( auto& a : b.asks ) asks.push_back( order( a ) );
+      for( auto& b : book.bids ) bids.push_back( order( b ) );
+      for( auto& a : book.asks ) asks.push_back( order( a ) );
    }
 
    vector< order > bids;
