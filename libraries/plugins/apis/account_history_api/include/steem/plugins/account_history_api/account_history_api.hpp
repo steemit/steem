@@ -25,16 +25,16 @@ struct api_operation_object
       virtual_op( op_obj.virtual_op() ),
       timestamp( op_obj.timestamp )
    {
-      op = fc::raw::unpack< steem::protocol::operation >( op_obj.serialized_op );
+      op = fc::raw::unpack_from_buffer< steem::protocol::operation >( op_obj.serialized_op );
    }
 
    steem::protocol::transaction_id_type trx_id;
-   uint32_t                             block = 0;
-   uint32_t                             trx_in_block = 0;
-   uint16_t                             op_in_trx = 0;
-   uint64_t                             virtual_op = 0;
-   fc::time_point_sec                   timestamp;
-   steem::protocol::operation           op;
+   uint32_t                               block = 0;
+   uint32_t                               trx_in_block = 0;
+   uint16_t                               op_in_trx = 0;
+   uint64_t                               virtual_op = 0;
+   fc::time_point_sec                     timestamp;
+   steem::protocol::operation             op;
 };
 
 

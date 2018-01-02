@@ -1,6 +1,7 @@
 #pragma once
 #include <steem/protocol/transaction.hpp>
 
+#include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -29,9 +30,7 @@ namespace steem { namespace chain {
 
          id_type              id;
 
-         using t_packed_trx = t_vector< char >;
-
-         t_packed_trx         packed_trx;
+         buffer_type          packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
    };
@@ -60,7 +59,7 @@ namespace helpers
    {
    public:
       typedef steem::chain::transaction_index IndexType;
-      typedef typename steem::chain::transaction_object::t_packed_trx t_packed_trx;
+      typedef typename steem::chain::buffer_type t_packed_trx;
 
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {

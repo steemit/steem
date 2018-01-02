@@ -4,11 +4,12 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <chainbase/chainbase.hpp>
 
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/authority.hpp>
+
+#include <steem/chain/buffer_type.hpp>
 
 
 namespace steem { namespace chain {
@@ -31,8 +32,6 @@ using chainbase::shared_string;
 
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
-
-using buffer_type = chainbase::t_vector< char >;
 
 struct by_id;
 
@@ -109,7 +108,7 @@ class vesting_delegation_expiration_object;
 class smt_token_object;
 template < enum object_type ObjectType > class account_balance_object;
 typedef account_balance_object< account_regular_balance_object_type > account_regular_balance_object;
-typedef account_balance_object< account_rewards_balance_object_type > account_rewards_balance_object;    
+typedef account_balance_object< account_rewards_balance_object_type > account_rewards_balance_object;
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -193,38 +192,21 @@ namespace fc
       {
          s.read( (char*)&id._id, sizeof(id._id));
       }
-   }
-
-   namespace raw
-   {
-      template< typename T > inline void pack( steem::chain::buffer_type& raw, const T& v )
-      {
-         auto size = pack_size( v );
-         raw.resize( size );
-         datastream< char* > ds( raw.data(), size );
-         pack( ds, v );
-      }
 
 #if ENABLE_STD_ALLOCATOR == 0
-      template< typename T > inline void unpack( const steem::chain::buffer_type& raw, T& v )
-      {
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-      }
-
-      template< typename T > inline T unpack( const steem::chain::buffer_type& raw )
-      {
-         T v;
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-         return v;
-      }
+      template< typename T >
+      inline T unpack_from_vector( const steem::chain::buffer_type& s )
+      { try  {
+         T tmp;
+         if( s.size() ) {
+         datastream<const char*>  ds( s.data(), size_t(s.size()) );
+         fc::raw::unpack(ds,tmp);
+         }
+         return tmp;
+      } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
 #endif
+
    }
-}
-
-namespace fc {
-
 }
 
 FC_REFLECT_ENUM( steem::chain::object_type,
@@ -267,7 +249,6 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 
 #if ENABLE_STD_ALLOCATOR == 0
    FC_REFLECT_TYPENAME( steem::chain::shared_string )
-   FC_REFLECT_TYPENAME( steem::chain::buffer_type )
 #endif
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

@@ -236,7 +236,7 @@ public:
          plain_keys data;
          data.keys = _keys;
          data.checksum = _checksum;
-         auto plain_txt = fc::raw::pack(data);
+         auto plain_txt = fc::raw::pack_to_vector(data);
          _wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
       }
    }
@@ -984,7 +984,7 @@ brain_key_info wallet_api::suggest_brain_key()const
 
 string wallet_api::serialize_transaction( signed_transaction tx )const
 {
-   return fc::to_hex(fc::raw::pack(tx));
+   return fc::to_hex(fc::raw::pack_to_vector(tx));
 }
 
 string wallet_api::get_wallet_filename() const
@@ -1142,7 +1142,7 @@ void wallet_api::unlock(string password)
    FC_ASSERT(password.size() > 0);
    auto pw = fc::sha512::hash(password.c_str(), password.size());
    vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
-   auto pk = fc::raw::unpack<plain_keys>(decrypted);
+   auto pk = fc::raw::unpack_from_vector<plain_keys>(decrypted);
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
@@ -1742,7 +1742,7 @@ string wallet_api::get_encrypted_memo( string from, string to, string memo ) {
        fc::raw::pack( enc, shared_secret );
        auto encrypt_key = enc.result();
 
-       m.encrypted = fc::aes_encrypt( encrypt_key, fc::raw::pack(memo.substr(1)) );
+       m.encrypted = fc::aes_encrypt( encrypt_key, fc::raw::pack_to_vector(memo.substr(1)) );
        m.check = fc::sha256::hash( encrypt_key )._hash[0];
        return m;
     } else {
@@ -2042,7 +2042,7 @@ string wallet_api::decrypt_memo( string encrypted_memo ) {
 
          try {
             vector<char> decrypted = fc::aes_decrypt( encryption_key, m->encrypted );
-            return fc::raw::unpack<std::string>( decrypted );
+            return fc::raw::unpack_from_vector<std::string>( decrypted );
          } catch ( ... ){}
       }
    }

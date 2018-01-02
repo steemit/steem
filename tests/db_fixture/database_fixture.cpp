@@ -387,7 +387,7 @@ void database_fixture::fund(
 {
    try
    {
-      transfer( STEEM_INIT_MINER_NAME, account_name, amount );
+      transfer( STEEM_INIT_MINER_NAME, account_name, asset( amount, STEEM_SYMBOL ) );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -442,20 +442,17 @@ void database_fixture::convert(
 {
    try
    {
-      const account_object& account = db->get_account( account_name );
-
-
       if ( amount.symbol == STEEM_SYMBOL )
       {
-         db->adjust_balance( account, -amount );
-         db->adjust_balance( account, db->to_sbd( amount ) );
+         db->adjust_balance( account_name, -amount );
+         db->adjust_balance( account_name, db->to_sbd( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_sbd( amount ) );
       }
       else if ( amount.symbol == SBD_SYMBOL )
       {
-         db->adjust_balance( account, -amount );
-         db->adjust_balance( account, db->to_steem( amount ) );
+         db->adjust_balance( account_name, -amount );
+         db->adjust_balance( account_name, db->to_steem( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_steem( amount ) );
       }
@@ -465,7 +462,7 @@ void database_fixture::convert(
 void database_fixture::transfer(
    const string& from,
    const string& to,
-   const share_type& amount )
+   const asset& amount )
 {
    try
    {
@@ -532,27 +529,39 @@ void database_fixture::proxy( const string& account, const string& proxy )
 
 void database_fixture::set_price_feed( const price& new_price )
 {
-   try
-   {
-      for ( int i = 1; i < 8; i++ )
-      {
-         feed_publish_operation op;
-         op.publisher = STEEM_INIT_MINER_NAME + fc::to_string( i );
-         op.exchange_rate = new_price;
-         trx.operations.push_back( op );
-         trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         db->push_transaction( trx, ~0 );
-         trx.operations.clear();
-      }
-   } FC_CAPTURE_AND_RETHROW( (new_price) )
+   flat_map< string, vector< char > > props;
+   props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( new_price );
 
-   generate_blocks( STEEM_BLOCKS_PER_HOUR );
+   set_witness_props( props );
+
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db->skip_price_feed_limit_check ||
 #endif
       db->get(feed_history_id_type()).current_median_history == new_price
    );
+}
+
+void database_fixture::set_witness_props( const flat_map< string, vector< char > >& props )
+{
+   for( size_t i = 1; i < 8; i++ )
+   {
+      witness_set_properties_operation op;
+      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i );
+      op.props = props;
+
+      if( op.props.find( "key" ) == op.props.end() )
+      {
+         op.props[ "key" ] = fc::raw::pack_to_vector( init_account_pub_key );
+      }
+
+      trx.operations.push_back( op );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      db->push_transaction( trx, ~0 );
+      trx.operations.clear();
+   }
+
+   generate_blocks( STEEM_BLOCKS_PER_HOUR );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
@@ -580,7 +589,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops, con
       for(auto opI = histOps.crbegin(); opI != histOps.crend() && ops.size() < num_ops; ++opI)
       {
          const auto& op = db->get(*opI);
-         operation o = fc::raw::unpack< steem::chain::operation >( op.serialized_op );
+         operation o = fc::raw::unpack_from_vector< steem::chain::operation >( op.serialized_op );
          ops.emplace_back( std::move(o) );
       }
    }
@@ -590,7 +599,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops, con
       for(auto opI = opIdx.crbegin(); opI != opIdx.crend() && ops.size() < num_ops; ++opI)
       {
          const auto& op = *opI;
-         operation o = fc::raw::unpack< steem::chain::operation >( op.serialized_op );
+         operation o = fc::raw::unpack_from_vector< steem::chain::operation >( op.serialized_op );
          ops.emplace_back( std::move(o) );
       }
    }
@@ -626,9 +635,10 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       fund( account_name, 10 * 1000 * 1000 );
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
       // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
@@ -646,32 +656,12 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
       tx.sign( key, db->get_chain_id() );
 
       db->push_transaction( tx, 0 );
+
+      generate_block();
    }
    FC_LOG_AND_RETHROW();
 
    return op.symbol;
-}
-
-void smt_database_fixture::transfer_smt(
-   const string& from,
-   const string& to,
-   const asset& amount )
-{
-   FC_ASSERT( amount.symbol.space() == asset_symbol_type::smt_nai_space, "Use transfer_smt wit SMT only" );
-
-   try
-   {
-      transfer_operation op;
-      op.from = from;
-      op.to = to;
-      op.amount = amount;
-
-      trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.validate();
-      db->push_transaction( trx, ~0 );
-      trx.operations.clear();
-   } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
 void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)
@@ -693,8 +683,8 @@ void set_create_op(smt_create_operation* op, account_name_type control_account, 
    sub_set_create_op(op, control_account);
 }
 
-void smt_database_fixture::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key,
-   smt_database_fixture::TFollowUpOps followUpOps )
+std::array<asset_symbol_type, 3>
+smt_database_fixture::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
 {
    smt_create_operation op0;
    smt_create_operation op1;
@@ -704,9 +694,10 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       fund( control_account_name, 10 * 1000 * 1000 );
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
 
       set_create_op(&op0, control_account_name, token_name + "0", 0);
@@ -721,7 +712,10 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
       tx.sign( key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
-      followUpOps(op0.symbol, op1.symbol, op2.symbol);
+      generate_block();
+
+      std::array<asset_symbol_type, 3> retVal = {op0.symbol, op1.symbol, op2.symbol};
+      return retVal;
    }
    FC_LOG_AND_RETHROW();
 }

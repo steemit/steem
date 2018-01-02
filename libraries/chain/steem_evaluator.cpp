@@ -128,6 +128,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    bool account_creation_changed = false;
    bool max_block_changed        = false;
    bool sbd_interest_changed     = false;
+   bool account_subsidy_changed  = false;
    bool key_changed              = false;
    bool sbd_exchange_changed     = false;
    bool url_changed              = false;
@@ -135,42 +136,49 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    auto itr = o.props.find( "key" );
 
    // This existence of 'key' is checked in witness_set_properties_operation::validate
-   fc::raw::unpack( itr->second, signing_key );
+   fc::raw::unpack_from_vector( itr->second, signing_key );
    FC_ASSERT( signing_key == witness.signing_key, "'key' does not match witness signing key.",
       ("key", signing_key)("signing_key", witness.signing_key) );
 
    itr = o.props.find( "account_creation_fee" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.account_creation_fee );
+      fc::raw::unpack_from_vector( itr->second, props.account_creation_fee );
       account_creation_changed = true;
    }
 
    itr = o.props.find( "maximum_block_size" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.maximum_block_size );
+      fc::raw::unpack_from_vector( itr->second, props.maximum_block_size );
       max_block_changed = true;
    }
 
    itr = o.props.find( "sbd_interest_rate" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, props.sbd_interest_rate );
+      fc::raw::unpack_from_vector( itr->second, props.sbd_interest_rate );
       sbd_interest_changed = true;
+   }
+
+   itr = o.props.find( "account_subsidy_limit" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_limit );
+      account_subsidy_changed = true;
    }
 
    itr = o.props.find( "new_signing_key" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, signing_key );
+      fc::raw::unpack_from_vector( itr->second, signing_key );
       key_changed = true;
    }
 
    itr = o.props.find( "sbd_exchange_rate" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack( itr->second, sbd_exchange_rate );
+      fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
       last_sbd_exchange_update = _db.head_block_time();
       sbd_exchange_changed = true;
    }
@@ -178,7 +186,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    itr = o.props.find( "url" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack< std::string >( itr->second, url );
+      fc::raw::unpack_from_vector< std::string >( itr->second, url );
       url_changed = true;
    }
 
@@ -192,6 +200,9 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
 
       if( sbd_interest_changed )
          w.props.sbd_interest_rate = props.sbd_interest_rate;
+
+      if( account_subsidy_changed )
+         w.props.account_subsidy_limit = props.account_subsidy_limit;
 
       if( key_changed )
          w.signing_key = signing_key;
@@ -833,17 +844,15 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       if( reject_escrow )
       {
-         const auto& from_account = _db.get_account( o.from );
-         _db.adjust_balance( from_account, escrow.steem_balance );
-         _db.adjust_balance( from_account, escrow.sbd_balance );
-         _db.adjust_balance( from_account, escrow.pending_fee );
+         _db.adjust_balance( o.from, escrow.steem_balance );
+         _db.adjust_balance( o.from, escrow.sbd_balance );
+         _db.adjust_balance( o.from, escrow.pending_fee );
 
          _db.remove( escrow );
       }
       else if( escrow.to_approved && escrow.agent_approved )
       {
-         const auto& agent_account = _db.get_account( o.agent );
-         _db.adjust_balance( agent_account, escrow.pending_fee );
+         _db.adjust_balance( o.agent, escrow.pending_fee );
 
          _db.modify( escrow, [&]( escrow_object& esc )
          {
@@ -880,7 +889,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
    try
    {
       _db.get_account(o.from); // Verify from account exists
-      const auto& receiver_account = _db.get_account(o.receiver);
 
       const auto& e = _db.get_escrow( o.from, o.escrow_id );
       FC_ASSERT( e.steem_balance >= o.steem_amount, "Release amount exceeds escrow balance. Amount: ${a}, Balance: ${b}", ("a", o.steem_amount)("b", e.steem_balance) );
@@ -914,8 +922,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
 
-      _db.adjust_balance( receiver_account, o.steem_amount );
-      _db.adjust_balance( receiver_account, o.sbd_amount );
+      _db.adjust_balance( o.receiver, o.steem_amount );
+      _db.adjust_balance( o.receiver, o.sbd_amount );
 
       _db.modify( e, [&]( escrow_object& esc )
       {
@@ -933,12 +941,9 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   const auto& from_account = _db.get_account(o.from);
-   const auto& to_account = _db.get_account(o.to);
-
-   FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
-   _db.adjust_balance( from_account, -o.amount );
-   _db.adjust_balance( to_account, o.amount );
+   FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
+   _db.adjust_balance( o.from, -o.amount );
+   _db.adjust_balance( o.to, o.amount );
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
@@ -1251,6 +1256,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.effective_vesting_shares().amount.value) * used_power) / (STEEM_100_PERCENT)).to_uint64();
    if( !_db.has_hardfork( STEEM_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1764 ) )
+   {
+      abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
+      abs_rshares = std::max( int64_t(0), abs_rshares );
+   }
    if( _db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
    {
       FC_ASSERT( abs_rshares > STEEM_VOTE_DUST_THRESHOLD || o.weight == 0, "Voting weight is too small, please accumulate more voting power or steem power." );
@@ -1820,10 +1830,9 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-  const auto& owner = _db.get_account( o.owner );
-  FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
+  FC_ASSERT( _db.get_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
-  _db.adjust_balance( owner, -o.amount );
+  _db.adjust_balance( o.owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
@@ -1845,11 +1854,9 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -1870,11 +1877,9 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {

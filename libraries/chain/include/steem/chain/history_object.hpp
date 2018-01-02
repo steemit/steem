@@ -1,6 +1,11 @@
 #pragma once
 
 #include <steem/protocol/types.hpp>
+#include <steem/protocol/authority.hpp>
+#include <steem/protocol/operations.hpp>
+#include <steem/protocol/steem_operations.hpp>
+
+#include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/composite_key.hpp>

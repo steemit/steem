@@ -136,15 +136,22 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice)(bob) )
-      SMT_SYMBOL( alice, 3 );
+
+      generate_block();
+
+      fund( "alice", 10 * 1000 * 1000 );
+      
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
       asset required_creation_fee = dgpo.smt_creation_fee;
       FC_ASSERT( required_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
       unsigned int test_amount = required_creation_fee.amount.value;
+
+      SMT_SYMBOL( alice, 3 );
 
       smt_create_operation op;
       op.control_account = "alice";
@@ -197,6 +204,9 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       convert( "bob", asset( too_low_fee_amount, STEEM_SYMBOL ) );
       op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );
       FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -333,6 +343,8 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
    {
       ACTORS( (alice)(bob) )
 
+      generate_block();
+
       smt_setup_emissions_operation fail_op;
       fail_op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
@@ -346,8 +358,11 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
 
       // Create SMT(s) and continue.
-      create_smt_3("alice", alice_private_key, [&fail_op, this, alice_private_key]
-                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
+         const auto& smt1 = smts[0];
+         const auto& smt2 = smts[1];
+
          // Do successful op with one smt.
          smt_setup_emissions_operation valid_op = fail_op;
          valid_op.symbol = smt1;
@@ -367,7 +382,10 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          });
          // Fail due to closed setup phase (too late).
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
-      });
+      }
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -376,12 +394,17 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       ACTORS( (dany)(eddy) )
+      
+      generate_block();
 
       fund( "dany", 5000000 );
-      convert( "dany", ASSET( "5000.000 TESTS" ) );
 
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( "dany", ASSET( "5000.000 TESTS" ) );
+      
       smt_set_setup_parameters_operation fail_op;
       fail_op.control_account = "dany";
 
@@ -392,8 +415,11 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       FAIL_WITH_OP(fail_op, dany_private_key, fc::assert_exception)
       
       // Create SMT(s) and continue.
-      create_smt_3("dany", dany_private_key, [&fail_op, this, dany_private_key, eddy_private_key]
-                                             (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("dany", dany_private_key);
+      {
+         const auto& smt1 = smts[0];
+         const auto& smt2 = smts[1];
+
          // "Reset" parameters to default value.
          smt_set_setup_parameters_operation valid_op = fail_op;
          valid_op.symbol = smt1;
@@ -419,7 +445,10 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
          // TODO:
          // - check applying smt_set_setup_parameters_operation after setup completed
-         });
+      }
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -536,9 +565,11 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice) )
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       smt_set_runtime_parameters_operation op;
 
@@ -565,12 +596,15 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       FAIL_WITH_OP(op, alice_private_key, fc::assert_exception)
 
       // Create SMT(s) and continue.
-      create_smt_3("alice", alice_private_key, [&op, this, alice_private_key]
-                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
          //Make transaction again.
-         op.symbol = smt3;
+         op.symbol = smts[2];
          PUSH_OP(op, alice_private_key);
-      });
+      }
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -580,6 +614,9 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
    try
    {
       ACTORS( (alice) )
+
+      generate_block();
+
       signed_transaction tx;
       asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
 
@@ -588,6 +625,9 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
       op.to = "bob";
       op.amount = asset(100, alice_symbol);
       op.validate();
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -600,16 +640,20 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
    {
       ACTORS( (alice)(bob) )
 
+      generate_block();
+
       // Create SMT.
       signed_transaction tx, ty;
       asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
       asset_symbol_type bob_symbol = create_smt(ty, "bob", bob_private_key, 1);
 
       // Give some SMT to creators.
-      const account_object& alice_account = db->get_account("alice");
-      db->adjust_balance(alice_account, asset(100, alice_symbol));
-      const account_object& bob_account = db->get_account("bob");
-      db->adjust_balance(bob_account, asset(110, bob_symbol));
+      asset alice_symbol_supply( 100, alice_symbol );
+      db->adjust_supply( alice_symbol_supply );
+      db->adjust_balance( "alice", alice_symbol_supply );
+      asset bob_symbol_supply( 110, bob_symbol );
+      db->adjust_supply( bob_symbol_supply );
+      db->adjust_balance( "bob", bob_symbol_supply );
 
       // Check pre-tranfer amounts.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
@@ -618,14 +662,17 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
 
       // Transfer SMT.
-      transfer_smt( "alice", "bob", asset(20, alice_symbol) );
-      transfer_smt( "bob", "alice", asset(50, bob_symbol) );
+      transfer( "alice", "bob", asset(20, alice_symbol) );
+      transfer( "bob", "alice", asset(50, bob_symbol) );
 
       // Check transfer outcome.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()   
 }

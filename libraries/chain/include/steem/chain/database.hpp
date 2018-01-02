@@ -13,7 +13,6 @@
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -261,7 +260,7 @@ namespace steem { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         //fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
+         //fc::signal<void(const vector< object_id_type >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
@@ -313,6 +312,7 @@ namespace steem { namespace chain {
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
          void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
@@ -440,7 +440,7 @@ namespace steem { namespace chain {
 #ifdef STEEM_ENABLE_SMT
          ///Smart Media Tokens related methods
          ///@{
-
+         void validate_smt_invariants()const;
          /**
           * @return a list of available NAIs.
          */
@@ -487,8 +487,10 @@ namespace steem { namespace chain {
          ///@}
 #ifdef STEEM_ENABLE_SMT
          template< typename smt_balance_object_type >
-         void adjust_smt_balance( const account_name_type& a, const asset& delta );
+         void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account );
 #endif
+         void modify_balance( const account_object& a, const asset& delta, bool check_balance );
+
          std::unique_ptr< database_impl > _my;
 
          vector< signed_transaction >  _pending_tx;

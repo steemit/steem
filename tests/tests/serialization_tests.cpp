@@ -77,8 +77,8 @@ BOOST_AUTO_TEST_CASE( serialization_raw_test )
       op.amount = asset(100,STEEM_SYMBOL);
 
       trx.operations.push_back( op );
-      auto packed = fc::raw::pack( trx );
-      signed_transaction unpacked = fc::raw::unpack<signed_transaction>(packed);
+      auto packed = fc::raw::pack_to_vector( trx );
+      signed_transaction unpacked = fc::raw::unpack_from_vector<signed_transaction>(packed);
       unpacked.validate();
       BOOST_CHECK( trx.digest() == unpacked.digest() );
    } catch (fc::exception& e) {
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE( asset_test )
 template< typename T >
 std::string hex_bytes( const T& obj )
 {
-   std::vector<char> data = fc::raw::pack( obj );
+   std::vector<char> data = fc::raw::pack_to_vector( obj );
    std::ostringstream ss;
    static const char hexdigits[] = "0123456789abcdef";
 
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE( asset_raw_test )
             asset a = asset( amount, symbol );
             vector<char> v_old;
             old_pack_asset( v_old, a );
-            vector<char> v_cur = fc::raw::pack(a);
+            vector<char> v_cur = fc::raw::pack_to_vector(a);
             // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_old )) );
             // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_cur )) );
             BOOST_CHECK( v_cur == v_old );

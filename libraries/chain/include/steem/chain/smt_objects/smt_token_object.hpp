@@ -37,9 +37,11 @@ public:
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
+   share_type        current_supply = 0;
+
    /// set_setup_parameters
-   bool                 allow_voting = false;
-   bool                 allow_vesting = false;
+   bool              allow_voting = false;
+   bool              allow_vesting = false;
 
    /// set_runtime_parameters
    uint32_t cashout_window_seconds = 0;

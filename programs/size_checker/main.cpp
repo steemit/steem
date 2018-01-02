@@ -43,7 +43,7 @@ template< typename T >
 uint64_t get_wire_size()
 {
    T data;
-   return fc::raw::pack( data ).size();
+   return fc::raw::pack_to_vector( data ).size();
 }
 
 struct size_check_type_visitor

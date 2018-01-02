@@ -809,9 +809,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_REQUIRE( alice.voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) / max_vote_denom ) );
          BOOST_REQUIRE( alice.last_vote_time == db->head_block_time() );
-         BOOST_REQUIRE( alice_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEM_100_PERCENT );
+         BOOST_REQUIRE( alice_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( alice_comment.cashout_time == alice_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( itr->rshares == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEM_100_PERCENT );
+         BOOST_REQUIRE( itr->rshares == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -845,7 +845,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          itr = vote_idx.find( std::make_tuple( bob_comment.id, alice.id ) );
 
          BOOST_REQUIRE( db->get_account( "alice" ).voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) * STEEM_100_PERCENT / ( 2 * max_vote_denom * STEEM_100_PERCENT ) ) );
-         BOOST_REQUIRE( bob_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - db->get_account( "alice" ).voting_power ) / STEEM_100_PERCENT );
+         BOOST_REQUIRE( bob_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - db->get_account( "alice" ).voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -875,7 +875,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          uint128_t new_cashout_time = db->head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS;
 
          BOOST_REQUIRE( new_bob.voting_power == STEEM_100_PERCENT - ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / max_vote_denom ) );
-         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEM_100_PERCENT );
+         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( new_alice_comment.cashout_time == new_alice_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -900,7 +900,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
          new_cashout_time = db->head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS;
          auto sam_weight /*= ( ( uint128_t( new_sam.vesting_shares.amount.value ) ) / 400 + 1 ).to_uint64();*/
-                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEM_100_PERCENT ).to_uint64();
+                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_sam.voting_power == STEEM_100_PERCENT - ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
          BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.net_rshares.value) == old_abs_rshares - sam_weight );
@@ -937,7 +937,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.sign( alice_private_key, db->get_chain_id() );
          db->push_transaction( tx, 0 );
 
-         auto new_rshares = ( ( fc::uint128_t( db->get_account( "alice" ).vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64();
+         auto new_rshares = ( ( fc::uint128_t( db->get_account( "alice" ).vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( db->get_comment( "alice", string( "foo" ) ).cashout_time == db->get_comment( "alice", string( "foo" ) ).created + STEEM_CASHOUT_WINDOW_SECONDS );
 
@@ -966,7 +966,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64();
+         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -996,7 +996,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64();
+         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -6347,8 +6347,8 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
       auto itr = vote_idx.find( std::make_tuple( alice_comment.id, bob_acc.id ) );
-      BOOST_REQUIRE( alice_comment.net_rshares.value == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT );
-      BOOST_REQUIRE( itr->rshares == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT );
+      BOOST_REQUIRE( alice_comment.net_rshares.value == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD);
+      BOOST_REQUIRE( itr->rshares == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
 
 
       generate_block();
@@ -6704,140 +6704,6 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
-{
-   try
-   {
-      BOOST_TEST_MESSAGE( "Test enable content editing " );
-      ACTORS( (alice)  )
-      generate_block();
-
-      comment_operation comment;
-      vote_operation vote;
-      custom_json_operation custom;
-      signed_transaction tx;
-
-      BOOST_TEST_MESSAGE( "--- Publish initial comment" );
-
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "test";
-      comment.body = "foobar";
-
-      tx.operations.push_back( comment );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-
-      BOOST_TEST_MESSAGE( "--- Vote on the comment" );
-      vote.author = "alice";
-      vote.permlink = "test";
-      vote.voter = "alice";
-      vote.weight = STEEM_100_PERCENT;
-
-      tx.clear();
-      tx.operations.push_back( vote );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-
-      BOOST_TEST_MESSAGE( "--- Payout rewards and lock post" );
-
-      generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time - STEEM_BLOCK_INTERVAL );
-      db_plugin->debug_update( [=]( database& db )
-      {
-         db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
-         {
-            gpo.current_supply -= gpo.total_reward_fund_steem;
-            gpo.total_reward_fund_steem = ASSET( "100.000 TESTS" );
-            gpo.current_supply += gpo.total_reward_fund_steem;
-         });
-      });
-      generate_block();
-
-      BOOST_TEST_MESSAGE( "--- Test failing to edit archived comment" );
-
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "test";
-      comment.body = "foobar2";
-
-      tx.clear();
-      tx.operations.push_back( comment );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      BOOST_REQUIRE_THROW(db->push_transaction( tx ), chain::plugin_exception);
-
-      BOOST_TEST_MESSAGE( "--- Test unlocking and editing post" );
-
-      custom.required_auths.insert( "alice" );
-      custom.id = "witness";
-      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"2100-01-01T12:00:00\"}]";
-
-      tx.clear();
-      tx.operations.push_back( custom );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-      generate_block();
-
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "test";
-      comment.body = "foobar3";
-
-      tx.clear();
-      tx.operations.push_back( comment );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-      generate_block();
-
-      BOOST_TEST_MESSAGE( "--- Test relocking and editing post" );
-
-      custom.required_auths.insert( "alice" );
-      custom.id = "witness";
-      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"" + fc::string(db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT) + "\"}]";
-
-      tx.clear();
-      tx.operations.push_back( custom );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-      generate_block();
-
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "test";
-      comment.body = "foobar4";
-
-      tx.clear();
-      tx.operations.push_back( comment );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx );
-      generate_blocks( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "test";
-      comment.body = "foobar5";
-
-      tx.clear();
-      tx.operations.push_back( comment );
-      tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      BOOST_REQUIRE_THROW(db->push_transaction( tx ), chain::plugin_exception);
-
-   }
-   FC_LOG_AND_RETHROW()
-}
-
 BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
 {
    try
@@ -6869,38 +6735,38 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TBD" ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TBD" ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting maximum_block_size below STEEM_MIN_BLOCK_SIZE_LIMIT" );
       prop_op.props.erase( "account_creation_fee" );
-      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT - 1 );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack_to_vector( STEEM_MIN_BLOCK_SIZE_LIMIT - 1 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate with negative number" );
       prop_op.props.erase( "maximum_block_size" );
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( -700 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( -700 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate to STEEM_100_PERCENT + 1" );
       prop_op.props[ "sbd_interest_rate" ].clear();
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( STEEM_100_PERCENT + 1 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( STEEM_100_PERCENT + 1 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new sbd_exchange_rate with SBD / STEEM" );
       prop_op.props.erase( "sbd_interest_rate" );
-      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new url with length of zero" );
       prop_op.props.erase( "sbd_exchange_rate" );
-      prop_op.props[ "url" ] = fc::raw::pack( "" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new url with non UTF-8 character" );
       prop_op.props[ "url" ].clear();
-      prop_op.props[ "url" ] = fc::raw::pack( "\xE0\x80\x80" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "\xE0\x80\x80" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
    }
@@ -6915,7 +6781,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_authorities )
 
       witness_set_properties_operation op;
       op.owner = "alice";
-      op.props[ "key" ] = fc::raw::pack( generate_private_key( "key" ).get_public_key() );
+      op.props[ "key" ] = fc::raw::pack_to_vector( generate_private_key( "key" ).get_public_key() );
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -6986,8 +6852,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       const witness_object& alice_witness = db->get_witness( "alice" );
       witness_set_properties_operation prop_op;
       prop_op.owner = "alice";
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TESTS" ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TESTS" ) );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6996,7 +6862,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting maximum_block_size
       prop_op.props.erase( "account_creation_fee" );
-      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack_to_vector( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -7005,7 +6871,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting sbd_interest_rate
       prop_op.props.erase( "maximim_block_size" );
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( 700 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( 700 );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -7017,7 +6883,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       signing_key = generate_private_key( "new_key" );
       public_key_type alice_pub = signing_key.get_public_key();
       prop_op.props.erase( "sbd_interest_rate" );
-      prop_op.props[ "new_signing_key" ] = fc::raw::pack( alice_pub );
+      prop_op.props[ "new_signing_key" ] = fc::raw::pack_to_vector( alice_pub );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( old_signing_key, db->get_chain_id() );
@@ -7027,8 +6893,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       // Setting new sbd_exchange_rate
       prop_op.props.erase( "new_signing_key" );
       prop_op.props[ "key" ].clear();
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -7038,21 +6904,39 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting new url
       prop_op.props.erase( "sbd_exchange_rate" );
-      prop_op.props[ "url" ] = fc::raw::pack( "foo.bar" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "foo.bar" );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.url == "foo.bar" );
 
+      // Setting new extranious_property
+      prop_op.props.erase( "sbd_exchange_rate" );
+      prop_op.props[ "extraneous_property" ] = fc::raw::pack_to_vector( "foo" );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
       BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
       prop_op.props.erase( "extranious_property" );
       prop_op.props[ "key" ].clear();
-      prop_op.props[ "key" ] = fc::raw::pack( old_signing_key.get_public_key() );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( old_signing_key.get_public_key() );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( old_signing_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack_to_vector( 1000 );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_limit == 1000 );
 
       validate_database();
    }

@@ -37,8 +37,6 @@
 
 namespace steem { namespace chain {
 
-//namespace db2 = graphene::db2;
-
 struct object_schema_repr
 {
    std::pair< uint16_t, uint16_t > space_type;
@@ -350,7 +348,7 @@ const signed_transaction database::get_recent_transaction( const transaction_id_
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
-   fc::raw::unpack( itr->packed_trx, trx );
+   fc::raw::unpack_from_buffer( itr->packed_trx, trx );
    return trx;;
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -1032,7 +1030,7 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
          adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
          adjust_supply( sbd );
          assets.first = sbd;
-         assets.second = to_steem;
+         assets.second = asset( to_steem, STEEM_SYMBOL );
       }
       else
       {
@@ -1583,7 +1581,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             for( auto& b : comment.beneficiaries )
             {
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEM_100_PERCENT;
-               auto vest_created = create_vesting( get_account( b.account ), benefactor_tokens, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+               auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
                push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
                total_beneficiary += benefactor_tokens;
             }
@@ -1594,8 +1592,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             auto vesting_steem = author_tokens - sbd_steem;
 
             const auto& author = get_account( comment.author );
-            auto vest_created = create_vesting( author, vesting_steem, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-            auto sbd_payout = create_sbd( author, sbd_steem, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+            auto vest_created = create_vesting( author, asset( vesting_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+            auto sbd_payout = create_sbd( author, asset( sbd_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
             adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( curation_tokens, STEEM_SYMBOL ) ), to_sbd( asset( total_beneficiary, STEEM_SYMBOL ) ) );
 
@@ -1794,7 +1792,7 @@ void database::process_comment_cashout()
          modify( get< reward_fund_object, by_id >( reward_fund_id_type( i ) ), [&]( reward_fund_object& rfo )
          {
             rfo.recent_claims = funds[ i ].recent_claims;
-            rfo.reward_balance -= funds[ i ].steem_awarded;
+            rfo.reward_balance -= asset( funds[ i ].steem_awarded, STEEM_SYMBOL );
          });
       }
    }
@@ -2065,15 +2063,14 @@ void database::process_conversions()
 
    while( itr != request_by_date.end() && itr->conversion_date <= now )
    {
-      const auto& user = get_account( itr->owner );
       auto amount_to_issue = itr->amount * fhistory.current_median_history;
 
-      adjust_balance( user, amount_to_issue );
+      adjust_balance( itr->owner, amount_to_issue );
 
       net_sbd   += itr->amount;
       net_steem += amount_to_issue;
 
-      push_virtual_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
+      push_virtual_operation( fill_convert_request_operation ( itr->owner, itr->requestid, itr->amount, amount_to_issue ) );
 
       remove( *itr );
       itr = request_by_date.begin();
@@ -2147,10 +2144,9 @@ void database::expire_escrow_ratification()
       const auto& old_escrow = *escrow_itr;
       ++escrow_itr;
 
-      const auto& from_account = get_account( old_escrow.from );
-      adjust_balance( from_account, old_escrow.steem_balance );
-      adjust_balance( from_account, old_escrow.sbd_balance );
-      adjust_balance( from_account, old_escrow.pending_fee );
+      adjust_balance( old_escrow.from, old_escrow.steem_balance );
+      adjust_balance( old_escrow.from, old_escrow.sbd_balance );
+      adjust_balance( old_escrow.from, old_escrow.pending_fee );
 
       remove( old_escrow );
    }
@@ -2509,7 +2505,7 @@ void database::notify_changed_objects()
 {
    try
    {
-      /*vector< graphene::chainbase::generic_id > ids;
+      /*vector< chainbase::generic_id > ids;
       get_changed_ids( ids );
       STEEM_TRY_NOTIFY( changed_objects, ids )*/
       /*
@@ -2989,7 +2985,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx_id;
          transaction.expiration = trx.expiration;
-         fc::raw::pack( transaction.packed_trx, trx );
+         fc::raw::pack_to_buffer( transaction.packed_trx, trx );
       });
    }
 
@@ -3384,9 +3380,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
          order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
          ("order", order)("pays", pays)("receives", receives) );
 
-      const account_object& seller = get_account( order.seller );
-
-      adjust_balance( seller, receives );
+      adjust_balance( order.seller, receives );
 
       if( pays == order.amount_for_sale() )
       {
@@ -3426,7 +3420,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
 
 void database::cancel_order( const limit_order_object& order )
 {
-   adjust_balance( get_account(order.seller), order.amount_for_sale() );
+   adjust_balance( order.seller, order.amount_for_sale() );
    remove(order);
 }
 
@@ -3473,11 +3467,10 @@ void database::clear_expired_delegations()
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type >
-void database::adjust_smt_balance( const account_name_type& a, const asset& delta )
+void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account )
 {
-   //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
    const smt_balance_object_type* bo =
-      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple(a, delta.symbol) );
+      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple( name, delta.symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -3487,9 +3480,12 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
       if( delta.amount.value == 0 )
          return;
 
-      const auto& new_balance = create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      if( check_account )
+         get_account( name );
+
+      create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.owner = a;
+         smt_balance.owner = name;
          smt_balance.balance = delta;
       } );
    }
@@ -3497,7 +3493,7 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
    {
       asset result = bo->balance + delta;
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
       // Zero balance is the same as non object balance at all.
       if( result.amount.value == 0 )
       {
@@ -3513,19 +3509,9 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
    }
 }
 #endif
-void database::adjust_balance( const account_object& a, const asset& delta )
-{
-   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-#ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
-   {
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta );
-      return;
-   }
-#endif
+void database::modify_balance( const account_object& a, const asset& delta, bool check_balance )
+{
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
@@ -3576,6 +3562,38 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    } );
 }
 
+void database::adjust_balance( const account_object& a, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/ );
+      return;
+   }
+#endif
+   modify_balance( a, delta, check_balance );
+}
+
+void database::adjust_balance( const account_name_type& name, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/ );
+      return;
+   }
+#endif
+   const auto& a = get_account( name );
+   modify_balance( a, delta, check_balance );
+}
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
 {
@@ -3641,7 +3659,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_rewards_balance_object >( a.name, delta );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, delta, false/*check_account*/ );
       return;
    }
 #endif
@@ -3672,6 +3690,20 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
+#ifdef STEEM_ENABLE_SMT
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      const auto& smt = get< smt_token_object, by_symbol >( delta.symbol );
+      auto smt_new_supply = smt.current_supply + delta.amount;
+      FC_ASSERT( smt_new_supply >= 0 );
+      modify( smt, [smt_new_supply]( smt_token_object& smt )
+      {
+         smt.current_supply = smt_new_supply;
+      });
+      return;
+   }
+#endif
+
    bool check_supply = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
    const auto& props = get_dynamic_global_properties();
@@ -3812,10 +3844,10 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_19 ] = fc::time_point_sec( STEEM_HARDFORK_0_19_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_19 ] = STEEM_HARDFORK_0_19_VERSION;
+#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
@@ -4267,18 +4299,6 @@ void database::validate_invariants()const
          else
             FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
-      fc::uint128_t total_rshares2;
-
-      const auto& comment_idx = get_index< comment_index >().indices();
-
-      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
-      {
-         if( itr->net_rshares.value > 0 )
-         {
-            auto delta = util::evaluate_reward_curve( itr->net_rshares.value );
-            total_rshares2 += delta;
-         }
-      }
 
       const auto& reward_idx = get_index< reward_fund_index, by_id >();
 
@@ -4304,6 +4324,70 @@ void database::validate_invariants()const
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
+
+#ifdef STEEM_ENABLE_SMT
+
+namespace {
+   typedef std::map< asset_symbol_type, asset > TTotalSupplyMap;
+
+   template <typename index_type>
+   void add_from_balance_index(const index_type& balance_idx, TTotalSupplyMap& theMap)
+   {
+      auto it = balance_idx.begin();
+      auto end = balance_idx.end();
+      for( ; it != end; ++it )
+      {
+         const auto& balance = *it;
+         auto insertInfo = theMap.emplace( balance.balance.symbol, balance.balance );
+         if( insertInfo.second == false )
+            insertInfo.first->second += balance.balance;
+      }
+   }
+}
+
+/**
+ * SMT version of validate_invariants.
+ */
+void database::validate_smt_invariants()const
+{
+   try
+   {
+      // Get total balances.
+      TTotalSupplyMap theMap;
+
+      // - Balances
+      const auto& balance_idx = get_index< account_regular_balance_index, by_id >();
+      add_from_balance_index( balance_idx, theMap );
+
+      // - Reward balances
+      const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
+      add_from_balance_index( rewards_balance_idx, theMap );
+
+      // - Total vesting 
+#pragma message( "TODO: Add SMT vesting support here once it is implemented." )
+         
+      // - Market orders
+#pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
+
+      // - Reward funds
+#pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
+                  
+      // - Escrow & savings - no support of SMT is expected.
+
+      // Do the verification of total balances.
+      auto itr = get_index< smt_token_index, by_id >().begin();
+      auto end = get_index< smt_token_index, by_id >().end();
+      for( ; itr != end; ++itr )
+      {
+         const smt_token_object& smt = *itr;
+         auto totalIt = theMap.find( smt.symbol );
+         asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
+         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+      }
+   }
+   FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
+}
+#endif
 
 void database::perform_vesting_share_split( uint32_t magnitude )
 {

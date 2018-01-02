@@ -208,7 +208,7 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          asset account_creation_fee;
-         fc::raw::unpack( itr->second, account_creation_fee );
+         fc::raw::unpack_from_vector( itr->second, account_creation_fee );
          FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
          FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE , "account_creation_fee smaller than minimum account creation fee" );
       }
@@ -217,7 +217,7 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          uint32_t maximum_block_size;
-         fc::raw::unpack( itr->second, maximum_block_size );
+         fc::raw::unpack_from_vector( itr->second, maximum_block_size );
          FC_ASSERT( maximum_block_size >= STEEM_MIN_BLOCK_SIZE_LIMIT, "maximum_block_size smaller than minimum max block size" );
       }
 
@@ -225,7 +225,7 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          uint16_t sbd_interest_rate;
-         fc::raw::unpack( itr->second, sbd_interest_rate );
+         fc::raw::unpack_from_vector( itr->second, sbd_interest_rate );
          FC_ASSERT( sbd_interest_rate >= 0, "sbd_interest_rate must be positive" );
          FC_ASSERT( sbd_interest_rate <= STEEM_100_PERCENT, "sbd_interest_rate must not exceed 100%" );
       }
@@ -234,7 +234,7 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          public_key_type signing_key;
-         fc::raw::unpack( itr->second, signing_key );
+         fc::raw::unpack_from_vector( itr->second, signing_key );
          FC_UNUSED( signing_key ); // This tests the deserialization of the key
       }
 
@@ -242,7 +242,7 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          price sbd_exchange_rate;
-         fc::raw::unpack( itr->second, sbd_exchange_rate );
+         fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
          FC_ASSERT( ( is_asset_type( sbd_exchange_rate.base, SBD_SYMBOL ) && is_asset_type( sbd_exchange_rate.quote, STEEM_SYMBOL ) ),
             "Price feed must be a STEEM/SBD price" );
          sbd_exchange_rate.validate();
@@ -252,11 +252,19 @@ namespace steem { namespace protocol {
       if( itr != props.end() )
       {
          std::string url;
-         fc::raw::unpack< std::string >( itr->second, url );
+         fc::raw::unpack_from_vector< std::string >( itr->second, url );
 
          FC_ASSERT( url.size() <= STEEM_MAX_WITNESS_URL_LENGTH, "URL is too long" );
          FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
          FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
+      }
+
+      itr = props.find( "account_subsidy_limit" );
+      if( itr != props.end() )
+      {
+         uint32_t account_subsidy_limit;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_limit ); // Checks that the value can be deserialized
+         FC_UNUSED( account_subsidy_limit );
       }
    }
 

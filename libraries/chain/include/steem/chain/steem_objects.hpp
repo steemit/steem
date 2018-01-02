@@ -17,7 +17,7 @@ namespace steem { namespace chain {
    using steem::protocol::asset_symbol_type;
    using chainbase::t_deque;
 
-   typedef protocol::fixed_string_16 reward_fund_name_type;
+   typedef protocol::fixed_string< 16 > reward_fund_name_type;
 
    /**
     *  This object is used to track pending requests to convert sbd to steem
