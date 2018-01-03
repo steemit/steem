@@ -9,6 +9,7 @@
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/authority.hpp>
 
+#include <steem/chain/buffer_type.hpp>
 
 namespace steem { namespace chain {
 
@@ -190,6 +191,16 @@ namespace fc
       {
          s.read( (char*)&id._id, sizeof(id._id));
       }
+      template< typename T >
+      inline T unpack_from_vector( const steem::chain::buffer_type& s )
+      { try  {
+         T tmp;
+         if( s.size() ) {
+         datastream<const char*>  ds( s.data(), size_t(s.size()) );
+         fc::raw::unpack(ds,tmp);
+         }
+         return tmp;
+      } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
    }
 }
 

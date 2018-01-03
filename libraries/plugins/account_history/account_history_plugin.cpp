@@ -5,6 +5,7 @@
 #include <steem/protocol/config.hpp>
 
 #include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
 #include <steem/chain/history_object.hpp>
 
 #include <steem/utilities/plugin_utilities.hpp>
@@ -23,9 +24,17 @@ using namespace steem::protocol;
 
 using chain::database;
 using chain::operation_notification;
+using chain::operation_id_type;
 using chain::operation_object;
+using chain::account_object;
+using chain::account_history_object;
 
 namespace detail {
+
+enum
+   {
+      OPERATION_HISTORY_MAX_LENGTH = 30
+   };
 
 class account_history_plugin_impl
 {
@@ -48,21 +57,22 @@ class account_history_plugin_impl
 
 struct operation_visitor
 {
-   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, bool prune )
-      :_db(db), _note(note), new_obj(n), item(i), _prune(prune) {}
+   operation_visitor( database& db, const operation_notification& note, const operation_object*& n,
+      const account_object& account, bool prune )
+      :_db(db), _note(note), new_obj(n), _account(account), _prune(prune) {}
 
    typedef void result_type;
 
    database& _db;
    const operation_notification& _note;
    const operation_object*& new_obj;
-   account_name_type item;
+   const account_object& _account;
    bool _prune;
 
    template<typename Op>
    void operator()( Op&& )const
    {
-      const auto& hist_idx = _db.get_index< chain::account_history_index >().indices().get< chain::by_account >();
+      /// \warning This visitor can be called multiple times (in given op. context) for separate accounts
       if( !new_obj )
       {
          new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
@@ -70,8 +80,6 @@ struct operation_visitor
             obj.trx_id       = _note.trx_id;
             obj.block        = _note.block;
             obj.trx_in_block = _note.trx_in_block;
-            obj.op_in_trx    = _note.op_in_trx;
-            obj.virtual_op   = _note.virtual_op;
             obj.timestamp    = _db.head_block_time();
             //fc::raw::pack( obj.serialized_op , _note.op);  //call to 'pack' is ambiguous
             auto size = fc::raw::pack_size( _note.op );
@@ -81,51 +89,61 @@ struct operation_visitor
          });
       }
 
-      auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
-      uint32_t sequence = 0;
-      if( hist_itr != hist_idx.end() && hist_itr->account == item )
-         sequence = hist_itr->sequence + 1;
+      const auto& op_idx = _db.get_index<chain::operation_index, chain::by_id>();
+      const auto& hist_idx = _db.get_index<chain::account_history_index, chain::by_account>();
 
-      _db.create< chain::account_history_object >( [&]( chain::account_history_object& ahist )
-      {
-         ahist.account  = item;
-         ahist.sequence = sequence;
-         ahist.op       = new_obj->id;
-      });
+      auto hist_itr = hist_idx.find(_account.id);
 
-      if( _prune )
-      {
-         // Clean up accounts to last 30 days or 30 items, whichever is more.
-         const auto& seq_idx = _db.get_index< chain::account_history_index, chain::by_account >();
-         auto seq_itr = seq_idx.lower_bound( boost::make_tuple( item, 0 ) );
-         vector< const chain::account_history_object* > to_remove;
-         auto now = _db.head_block_time();
+      auto now = _db.head_block_time();
 
-         if( seq_itr == seq_idx.begin() )
-            return;
-
-         --seq_itr;
-
-         while( seq_itr->account == item
-               && sequence - seq_itr->sequence > 30
-               && now - _db.get< chain::operation_object >( seq_itr->op ).timestamp > fc::days(30) )
+      auto outdated_op_filter = [&now, &op_idx](const operation_id_type& opId) -> bool
          {
-            to_remove.push_back( &(*seq_itr) );
-            --seq_itr;
-         }
+            auto opI = op_idx.find(opId);
+            assert(opI != op_idx.end());
+            const operation_object& op = *opI;
+            return (now - op.timestamp) > fc::days(30);
+         };
 
-         for( const auto* seq_ptr : to_remove )
+      if( hist_itr == hist_idx.end())
+      {
+         _db.create<account_history_object>(
+            [this, &outdated_op_filter](account_history_object& o)
          {
-            _db.remove( *seq_ptr );
-         }
+            o.account  = _account.id;
+            if(_prune == false || outdated_op_filter(new_obj->id) == false)
+               o.store_operation(*new_obj);
+         });
+      }
+      else
+      {
+         const account_history_object& histInfo = *hist_itr;
+         _db.modify(histInfo,
+            [this, &outdated_op_filter](account_history_object& o)
+            {
+               if( _prune )
+               {
+                  // Clean up accounts to last 30 days or 30 items, whichever is more.
+                  o.truncate_operation_list(OPERATION_HISTORY_MAX_LENGTH - 1); /// new item will be added in a sec
+                  auto filter(outdated_op_filter);
+                  o.remove_outdated_operations(std::move(filter));
+                  if(outdated_op_filter(new_obj->id) == false)
+                     o.store_operation(*new_obj);
+               }
+               else
+               {
+                  o.store_operation(*new_obj);
+               }
+            }
+         );
       }
    }
 };
 
 struct operation_visitor_filter : operation_visitor
 {
-   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, const flat_set< string >& filter, bool p, bool blacklist ):
-      operation_visitor( db, note, n, i, p ), _filter( filter ), _blacklist( blacklist ) {}
+   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n,
+      const account_object& account, const flat_set< string >& filter, bool prune, bool blacklist ):
+      operation_visitor( db, note, n, account, prune ), _filter( filter ), _blacklist( blacklist ) {}
 
    const flat_set< string >& _filter;
    bool _blacklist;
@@ -183,13 +201,14 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
 
       if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) )
       {
+         const account_object* account = _db.find_account(item);
+
+         if(account != nullptr)
+         {
          if(_filter_content)
-         {
-            note.op.visit( operation_visitor_filter( _db, note, new_obj, item, _op_list, _prune, _blacklist ) );
-         }
+            note.op.visit( operation_visitor_filter( _db, note, new_obj, *account, _op_list, _prune, _blacklist ) );
          else
-         {
-            note.op.visit( operation_visitor( _db, note, new_obj, item, _prune ) );
+            note.op.visit( operation_visitor( _db, note, new_obj, *account, _prune ) );
          }
       }
    }
