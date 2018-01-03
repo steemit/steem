@@ -44,7 +44,7 @@ int main(int argc, char** argv, char** envp)
    fc::sha256 chainId;
 
    chainId = STEEM_CHAIN_ID;
-   
+
    const size_t chainIdLen = strlen(CHAIN_ID_PARAM);
 
    if(argc > 1 && !strncmp(argv[1], CHAIN_ID_PARAM, chainIdLen))
@@ -53,6 +53,21 @@ int main(int argc, char** argv, char** envp)
       if(*strChainId == '=')
       {
          ++strChainId;
+         if(*strChainId == '\0')
+         {
+            if(argc == 2)
+            {
+               /// --chain-id=
+               std::cerr << "Missing parameter for `--chain-id' option. Option ignored, default chain-id used."
+                  << std::endl;
+               std::cerr << "Usage: sign_transaction [--chain-id=<hex-chain-id>]" << std::endl;
+            }
+            else
+            {
+               /// --chain-id= XXXXX
+               strChainId = argv[2]; /// ChainId passed as another parameter
+            }
+         }
       }
       else
       if(argc > 2)
@@ -67,9 +82,12 @@ int main(int argc, char** argv, char** envp)
          std::cerr << "Usage: sign_transaction [--chain-id=<hex-chain-id>]" << std::endl;
       }
 
-      std::cerr << "Using explicit chain-id: `" << strChainId << "'" << std::endl;
-      fc::sha256 parsedId(strChainId);
-      chainId = parsedId;
+      if(*strChainId != '\0')
+      {
+         std::cerr << "Using explicit chain-id: `" << strChainId << "'" << std::endl;
+         fc::sha256 parsedId(strChainId);
+         chainId = parsedId;
+      }
    }
 
    // hash key pairs on stdin
