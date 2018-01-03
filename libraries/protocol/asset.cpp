@@ -2,6 +2,7 @@
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/lexical_cast.hpp>
 
 /*
 
@@ -298,6 +299,11 @@ void asset_symbol_type::validate()const
    // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
 }
 
+uint8_t asset::decimals()const
+{
+   return symbol.decimals();
+}
+
 void asset::validate()const
 {
    symbol.validate();
@@ -370,21 +376,27 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 namespace fc {
    void to_variant( const steem::protocol::asset& var, fc::variant& vo )
    {
-      std::vector< int64_t > v( 3 );
-      v[0] = var.amount.value;
-      v[1] = uint64_t( var.symbol.decimals() );
-      v[2] = uint64_t( var.symbol.to_nai() );
-      vo = v;
+      try
+      {
+         std::vector< variant > v( 3 );
+         v[0] = boost::lexical_cast< std::string >( var.amount.value );
+         v[1] = uint64_t( var.symbol.decimals() );
+         v[2] = uint64_t( var.symbol.to_nai() );
+         vo = v;
+      } FC_CAPTURE_AND_RETHROW()
    }
 
    void from_variant( const fc::variant& var, steem::protocol::asset& vo )
    {
-      auto v = var.as< std::vector< int64_t > >();
-      FC_ASSERT( v.size() == 3, "Expected tuple of length 3." );
-      FC_ASSERT( v[0] > 0, "Amount must be non-negative" );
-      FC_ASSERT( (uint64_t)(v[1]) <= std::numeric_limits< uint8_t >::max(), "Precision is out of bounds (value is uint8_t)" );
-      FC_ASSERT( (uint64_t)(v[2]) <= std::numeric_limits< uint32_t >::max(), "NAI is out of bounds (value is uint32_t)" );
-      vo.amount = v[0];
-      vo.symbol.from_nai( v[2], v[1] );
+      try
+      {
+         auto v = var.as< std::vector< variant > >();
+         FC_ASSERT( v.size() == 3, "Expected tuple of length 3." );
+
+         // share_type is safe< int64_t >
+         vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
+         FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
+         vo.symbol.from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
+      } FC_CAPTURE_AND_RETHROW()
    }
 }
