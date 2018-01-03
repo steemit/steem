@@ -1,7 +1,15 @@
 #include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
 #include <steem/plugins/account_history_api/account_history_api.hpp>
 
-namespace steem { namespace plugins { namespace account_history {
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/history_object.hpp>
+
+namespace steem {
+
+using chain::account_history_object;
+using chain::operation_object;
+
+namespace plugins { namespace account_history {
 
 namespace detail {
 
@@ -60,17 +68,37 @@ DEFINE_API_IMPL( account_history_api_impl, get_account_history )
    FC_ASSERT( args.limit <= 10000, "limit of ${l} is greater than maxmimum allowed", ("l",args.limit) );
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
 
-   const auto& idx = _db.get_index< chain::account_history_index, chain::by_account >();
-   auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
-   auto end = idx.upper_bound( boost::make_tuple( args.account, std::max( int64_t(0), int64_t(itr->sequence) - args.limit ) ) );
+   const chain::account_object* account = _db.find_account(args.account);
+
+   if(account == nullptr)
+      return get_account_history_return();
+
+   const auto& idx = _db.get_index<chain::account_history_index, chain::by_account>();
+   auto itr = idx.find(account->id);
+   if(itr == idx.end())
+      return get_account_history_return();
 
    get_account_history_return result;
-   while( itr != end )
-   {
-      result.history[ itr->sequence ] = _db.get( itr->op );
-      ++itr;
-   }
 
+   const account_history_object& data = *itr;
+
+   const auto& collectedOps = data.get_ops();
+   auto opsCount = collectedOps.size();
+   
+   auto shift = opsCount > args.start ? opsCount - args.start : 0;
+   auto count = opsCount - shift > args.limit ? args.limit : opsCount - shift;
+
+   auto opI = std::next(collectedOps.crbegin(), shift);
+   auto endI = std::next(opI, count + 1); /// Last item selected by `count` must be included too
+
+   uint32_t sequence = opsCount - shift;
+   for(; opI != endI; ++opI)
+   {
+      const auto& opId = *opI;
+      const operation_object& op = _db.get(opId);
+      result.history[sequence] = api_operation_object(op);
+      --sequence;
+   }
    return result;
 }
 

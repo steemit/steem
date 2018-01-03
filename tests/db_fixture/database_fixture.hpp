@@ -227,7 +227,7 @@ struct database_fixture {
    const asset& get_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 
-   vector< operation > get_last_operations( uint32_t ops );
+   vector< operation > get_last_operations( uint32_t ops, const char* account_name = nullptr);
 
    void validate_database( void );
 };
@@ -254,7 +254,7 @@ struct smt_database_fixture : public clean_database_fixture
    smt_database_fixture();
    virtual ~smt_database_fixture();
 
-   asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
+   asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
 
    /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
