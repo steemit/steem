@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       ACTORS( (alice)(bob)(sam)(smtcreator) );
 
       signed_transaction tx;
-      asset_symbol_type any_smt_symbol = create_smt( tx, "smtcreator", smtcreator_private_key, 3);
+      asset_symbol_type any_smt_symbol = create_smt( "smtcreator", smtcreator_private_key, 3);
  
       fund( "alice", ASSET( "1000.000 TESTS" ) );
       fund( "bob", ASSET( "1000.000 TESTS" ) );

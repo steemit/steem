@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
 
       //Create SMT and give some SMT to creators.
       signed_transaction tx;
-      asset_symbol_type any_smt_symbol = create_smt( tx, "smtcreator", smtcreator_private_key, 3);
+      asset_symbol_type any_smt_symbol = create_smt( "smtcreator", smtcreator_private_key, 3);
 
       generate_block();
       vest( "alice", ASSET( "10.000 TESTS" ) );

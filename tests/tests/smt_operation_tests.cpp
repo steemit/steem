@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_authorities )
 
       //Create SMT and give some SMT to creator.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_authorities )
 
       //Create SMT and give some SMT to creator.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
 
       //Create SMT and give some SMT to creators.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt( tx, "alice", alice_private_key, 3);
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3);
 
       const account_object& alice_account = db->get_account( "alice" );
       const account_object& bob_account = db->get_account( "bob" );
@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_authorities )
 
       //Create SMT and give some SMT to creator.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt( tx, "alice", alice_private_key, 3 );
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
 
       const account_object& alice_account = db->get_account( "alice" );
       db->adjust_balance( alice_account, asset( 100000, alice_symbol ) );
@@ -530,7 +530,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
 
       //Create SMT and give some SMT to creator.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt( tx, "alice", alice_private_key, 3 );
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
 
       const account_object& alice_account = db->get_account( "alice" );
 
@@ -593,7 +593,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
 
       //Create SMT and give some SMT to creators.
       signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt( tx, "alice", alice_private_key, 3);
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3);
 
       const account_object& alice_account = db->get_account( "alice" );
       const account_object& bob_account = db->get_account( "bob" );
