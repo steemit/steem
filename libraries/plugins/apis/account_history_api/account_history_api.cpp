@@ -3,6 +3,8 @@
 
 namespace steem { namespace plugins { namespace account_history {
 
+using boost::container::flat_set;
+
 namespace detail {
 
 class account_history_api_impl
@@ -23,15 +25,28 @@ DEFINE_API_IMPL( account_history_api_impl, get_ops_in_block )
 {
    const auto& idx = _db.get_index< chain::operation_index, chain::by_location >();
    auto itr = idx.lower_bound( args.block_num );
-   get_ops_in_block_return result;
+
+   flat_set< api_operation_object > tmp_result;
+
    while( itr != idx.end() && itr->block == args.block_num )
    {
       api_operation_object temp = *itr;
       if( !args.only_virtual || is_virtual_operation( temp.op ) )
-         result.ops.push_back( temp );
+         tmp_result.insert( temp );
       ++itr;
    }
-   return result;
+
+   if( !tmp_result.empty() )
+   {
+      get_ops_in_block_return result;
+
+      result.ops.resize( tmp_result.size() );
+      std::copy( tmp_result.begin(), tmp_result.end(), result.ops.begin() );
+
+      return result;
+   }
+
+   return get_ops_in_block_return();
 }
 
 DEFINE_API_IMPL( account_history_api_impl, get_transaction )

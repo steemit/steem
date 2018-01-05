@@ -71,8 +71,20 @@ class database_api_impl
       template< typename ResultType >
       static ResultType on_push_default( const ResultType& r ) { return r; }
 
-      template< typename IndexType, typename OrderType, typename ValueType, typename ResultType, typename OnPush >
-      void iterate_results( ValueType start, vector< ResultType >& result, uint32_t limit, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
+      template< typename ValueType >
+      void add( flat_set< ValueType >& c, const ValueType& val )
+      {
+         c.insert( val );
+      }
+
+      template< typename ValueType >
+      void add( std::vector< ValueType >& c, const ValueType& val )
+      {
+         c.push_back( val );
+      }
+
+      template< typename IndexType, typename OrderType, template< typename... > typename Collection, typename ValueType, typename ResultType, typename OnPush >
+      void iterate_results( ValueType start, Collection< ResultType >& result, uint32_t limit, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
       {
          const auto& idx = _db.get_index< IndexType, OrderType >();
          auto itr = idx.lower_bound( start );
@@ -80,7 +92,7 @@ class database_api_impl
 
          while( result.size() < limit && itr != end )
          {
-            result.push_back( on_push( *itr ) );
+            add( result, on_push( *itr ) );
             ++itr;
          }
       }
@@ -1077,9 +1089,40 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
    return result;
 }
 
+template< template< typename... > typename Collection, typename ResultType >
+void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key )
+{
+   FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, ${desc}account_name_type, string)", ("nr_args", nr_args )("desc",( nr_args == 4 )?"time_point_sec, ":"" ) );
+
+   auto voter = key[0].as< account_name_type >();
+   account_id_type voter_id;
+
+   if( voter != account_name_type() )
+   {
+      auto account = _impl._db.find< chain::account_object, chain::by_name >( voter );
+      FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
+      voter_id = account->id;
+   }
+
+   auto author = key[ nr_args - 2 ].as< account_name_type >();
+   auto permlink = key[ nr_args - 1 ].as< string >();
+   comment_id_type comment_id;
+
+   if( author != account_name_type() || permlink.size() )
+   {
+      auto comment = _impl._db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
+      FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
+      comment_id = comment->id;
+   }
+
+   _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
+      boost::make_tuple( voter_id, comment_id ),
+      c,
+      limit,
+      [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+}
 
 /* Votes */
-
 DEFINE_API_IMPL( database_api_impl, list_votes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -1125,67 +1168,24 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
       case( by_voter_comment ):
       {
          auto key = args.start.as< vector< fc::variant > >();
-         FC_ASSERT( key.size() == 3, "by_comment_voter start requires 3 values. (account_name_type, account_name_type, string)" );
-
-         auto voter = key[0].as< account_name_type >();
-         account_id_type voter_id;
-
-         if( voter != account_name_type() )
-         {
-            auto account = _db.find< chain::account_object, chain::by_name >( voter );
-            FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
-            voter_id = account->id;
-         }
-
-         auto author = key[1].as< account_name_type >();
-         auto permlink = key[2].as< string >();
-         comment_id_type comment_id;
-
-         if( author != account_name_type() || permlink.size() )
-         {
-            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
-            FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
-            comment_id = comment->id;
-         }
-
-         iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
-            boost::make_tuple( voter_id, comment_id ),
-            result.votes,
-            args.limit,
-            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); } );
+         votes_impl( *this, result.votes, 3/*nr_args*/, args.limit, key );
          break;
       }
       case( by_voter_last_update ):
       {
+         flat_set< api_comment_vote_object > tmp_votes;
+
          auto key = args.start.as< vector< fc::variant > >();
-         FC_ASSERT( key.size() == 4, "by_comment_voter start requires 4 values. (account_name_type, time_point_sec, account_name_type, string)" );
+         votes_impl( *this, tmp_votes, 4/*nr_args*/, std::numeric_limits<int>::max(), key );
 
-         auto voter = key[0].as< account_name_type >();
-         account_id_type voter_id;
+         auto itr = tmp_votes.lower_bound( api_comment_vote_object( key[1].as< fc::time_point_sec >() ) );
+         decltype( tmp_votes.rend() ) ritr( itr );
 
-         if( voter != account_name_type() )
-         {
-            auto account = _db.find< chain::account_object, chain::by_name >( voter );
-            FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
-            voter_id = account->id;
-         }
+         size_t idx = 0;
+         votes_impl( *this, result.votes, 3/*nr_args*/, args.limit, key );
+         while( idx++ < args.limit && ritr < tmp_votes.rend() )
+            result.votes.push_back( *ritr );
 
-         auto author = key[2].as< account_name_type >();
-         auto permlink = key[3].as< string >();
-         comment_id_type comment_id;
-
-         if( author != account_name_type() || permlink.size() )
-         {
-            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
-            FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
-            comment_id = comment->id;
-         }
-
-         iterate_results< chain::comment_vote_index, chain::by_voter_last_update >(
-            boost::make_tuple( voter_id, key[1].as< fc::time_point_sec >(), comment_id ),
-            result.votes,
-            args.limit,
-            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); } );
          break;
       }
       case( by_comment_weight_voter ):
