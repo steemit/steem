@@ -1,6 +1,7 @@
 seed-east.steemit.com:2001          # steemit
 seed-central.steemit.com:2001       # steemit
 seed-west.steemit.com:2001          # steemit
+seed1.blockbrothers.io:2001    # blockbrothers
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
