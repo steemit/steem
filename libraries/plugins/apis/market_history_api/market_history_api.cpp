@@ -61,8 +61,8 @@ DEFINE_API_IMPL( market_history_api_impl, get_volume )
    uint32_t bucket_size = itr->seconds;
    do
    {
-      result.steem_volume.amount += itr->steem_volume;
-      result.sbd_volume.amount += itr->sbd_volume;
+      result.steem_volume.amount += itr->steem.volume;
+      result.sbd_volume.amount += itr->non_steem.volume;
 
       ++itr;
    } while( itr != bucket_idx.end() && itr->seconds == bucket_size );

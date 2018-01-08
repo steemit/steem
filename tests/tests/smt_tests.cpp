@@ -223,8 +223,6 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
 
       FC_UNUSED(an);
 
-      ilog( "alice_symbol: ${s}", ("s", alice_symbol) );
-
       smt_setup_emissions_operation op;
       // Invalid account name.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
