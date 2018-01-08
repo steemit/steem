@@ -8,6 +8,8 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multi_index/composite_key.hpp>
 
 
@@ -15,6 +17,7 @@ namespace steem { namespace chain {
 
    class operation_object : public object< operation_object_type, operation_object >
    {
+      SERIALIZABLE_OBJECT;
       operation_object() = delete;
 
       public:
@@ -66,6 +69,7 @@ namespace steem { namespace chain {
 
    class account_history_object : public object< account_history_object_type, account_history_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          account_history_object( Constructor&& c, allocator< Allocator > a )

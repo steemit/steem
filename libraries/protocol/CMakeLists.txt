@@ -36,8 +36,10 @@ add_library( steem_protocol
 
 add_dependencies( steem_protocol build_hardfork_hpp )
 target_link_libraries( steem_protocol fc )
-target_include_directories( steem_protocol
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
+target_include_directories( steem_protocol PUBLIC
+                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" # for serialize3
+                            "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
    set_target_properties(

@@ -3,10 +3,15 @@
 #include <steem/protocol/config.hpp>
 #include <steem/protocol/asset_symbol.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace protocol {
 
    struct asset
    {
+      SERIALIZABLE_OBJECT;
+      public:
+
       asset( share_type a, asset_symbol_type id )
          :amount(a),symbol(id){}
       asset()
@@ -106,6 +111,9 @@ namespace steem { namespace protocol {
    */
    struct price
    {
+      SERIALIZABLE_OBJECT;
+      public:
+      
       /** Even non-single argument, lets make it an explicit one to avoid implicit calls for
           initialization lists.
 

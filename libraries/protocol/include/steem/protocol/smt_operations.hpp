@@ -4,6 +4,8 @@
 #include <steem/protocol/asset.hpp>
 #include <steem/protocol/misc_utilities.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #ifdef STEEM_ENABLE_SMT
 namespace steem { namespace protocol {
 
@@ -165,6 +167,9 @@ struct smt_refund_operation : public base_operation
 
 struct smt_emissions_unit
 {
+   SERIALIZABLE_OBJECT;
+   public:
+   
    flat_map< account_name_type, uint16_t >        token_unit;
 };
 

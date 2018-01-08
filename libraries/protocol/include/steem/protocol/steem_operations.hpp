@@ -7,6 +7,8 @@
 
 #include <fc/crypto/equihash.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace protocol {
 
    struct account_create_operation : public base_operation
@@ -81,6 +83,9 @@ namespace steem { namespace protocol {
 
    struct beneficiary_route_type
    {
+      SERIALIZABLE_OBJECT;
+      public:
+      
       beneficiary_route_type() {}
       beneficiary_route_type( const account_name_type& a, const uint16_t& w ) : account( a ), weight( w ){}
 

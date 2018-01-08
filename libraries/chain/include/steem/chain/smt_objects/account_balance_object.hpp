@@ -3,6 +3,8 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain {
@@ -15,6 +17,7 @@ namespace steem { namespace chain {
 template <enum object_type ObjectType>
 class account_balance_object : public object< ObjectType, account_balance_object<ObjectType> >
 {
+   SERIALIZABLE_OBJECT;
    account_balance_object() = delete;
 
 public:   

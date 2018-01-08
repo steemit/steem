@@ -3,6 +3,8 @@
 #include <fc/string.hpp>
 #include <fc/time.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace protocol {
 
 /*
@@ -12,6 +14,9 @@ namespace steem { namespace protocol {
  */
 struct version
 {
+   SERIALIZABLE_OBJECT;
+   public:
+
    version() {}
    version( uint8_t m, uint8_t h, uint16_t r );
    virtual ~version() {}
@@ -34,6 +39,9 @@ struct version
 
 struct hardfork_version : version
 {
+   SERIALIZABLE_OBJECT;
+   public:
+   
    hardfork_version():version() {}
    hardfork_version( uint8_t m, uint8_t h ):version( m, h, 0 ) {}
    hardfork_version( version v ) { v_num = v.v_num & 0xFFFF0000; }

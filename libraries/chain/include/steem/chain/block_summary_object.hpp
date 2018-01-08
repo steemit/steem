@@ -1,6 +1,8 @@
 #pragma once
 #include <steem/chain/steem_object_types.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace chain {
 
    using steem::protocol::block_id_type;
@@ -16,6 +18,7 @@ namespace steem { namespace chain {
     */
    class block_summary_object : public object< block_summary_object_type, block_summary_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          block_summary_object( Constructor&& c, allocator< Allocator > a )

@@ -8,6 +8,8 @@
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/shared_authority.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multi_index/composite_key.hpp>
 
 #include <numeric>
@@ -18,6 +20,7 @@ namespace steem { namespace chain {
 
    class account_object : public object< account_object_type, account_object >
    {
+      SERIALIZABLE_OBJECT;
       account_object() = delete;
 
       public:
@@ -124,6 +127,7 @@ namespace steem { namespace chain {
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
    {
+      SERIALIZABLE_OBJECT;
       account_authority_object() = delete;
 
       public:
@@ -147,6 +151,7 @@ namespace steem { namespace chain {
 
    class vesting_delegation_object : public object< vesting_delegation_object_type, vesting_delegation_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          vesting_delegation_object( Constructor&& c, allocator< Allocator > a )
@@ -165,6 +170,7 @@ namespace steem { namespace chain {
 
    class vesting_delegation_expiration_object : public object< vesting_delegation_expiration_object_type, vesting_delegation_expiration_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          vesting_delegation_expiration_object( Constructor&& c, allocator< Allocator > a )
@@ -182,6 +188,7 @@ namespace steem { namespace chain {
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
+      SERIALIZABLE_OBJECT;
       owner_authority_history_object() = delete;
 
       public:
@@ -201,6 +208,7 @@ namespace steem { namespace chain {
 
    class account_recovery_request_object : public object< account_recovery_request_object_type, account_recovery_request_object >
    {
+      SERIALIZABLE_OBJECT;
       account_recovery_request_object() = delete;
 
       public:
@@ -220,6 +228,7 @@ namespace steem { namespace chain {
 
    class change_recovery_account_request_object : public object< change_recovery_account_request_object_type, change_recovery_account_request_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          change_recovery_account_request_object( Constructor&& c, allocator< Allocator > a )

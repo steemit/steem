@@ -4,6 +4,8 @@
 #include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multi_index/hashed_index.hpp>
 
 namespace steem { namespace chain {
@@ -17,6 +19,7 @@ namespace steem { namespace chain {
     */
    class transaction_object : public object< transaction_object_type, transaction_object >
    {
+      SERIALIZABLE_OBJECT;
       transaction_object() = delete;
 
       public:

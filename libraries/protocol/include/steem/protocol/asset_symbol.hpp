@@ -3,6 +3,8 @@
 #include <fc/io/raw.hpp>
 #include <steem/protocol/types_fwd.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #define STEEM_ASSET_SYMBOL_PRECISION_BITS 4
 #define SMT_MAX_NAI                       99999999
 #define SMT_MIN_NAI                       1
@@ -39,6 +41,7 @@ namespace steem { namespace protocol {
 
 class asset_symbol_type
 {
+   SERIALIZABLE_OBJECT;
    public:
       enum asset_symbol_space
       {

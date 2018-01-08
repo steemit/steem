@@ -16,6 +16,8 @@ add_library( steem_chain
              shared_authority.cpp
              block_log.cpp
 
+             serialized_headers_injected.cpp
+
              util/reward.cpp
              util/impacted.cpp
 
@@ -23,9 +25,34 @@ add_library( steem_chain
            )
 
 target_link_libraries( steem_chain steem_protocol fc chainbase steem_schema ${PATCH_MERGE_LIB} )
-target_include_directories( steem_chain
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
+target_include_directories( steem_chain PUBLIC
+                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" # for serialize3
+                            "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
+#MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: " ${CMAKE_CURRENT_SOURCE_DIR})
+
+#function (ListToString result delim)
+#list(GET ARGV 2 temp)
+#math(EXPR N "${ARGC}-1")
+#foreach(IDX RANGE 3 ${N})
+#    list(GET ARGV ${IDX} STR)
+#    set(temp "${temp}${delim}${STR}")
+#endforeach()
+#set(${result} "${temp}" PARENT_SCOPE)
+#endfunction(ListToString)
+
+#execute_process(COMMAND /home/syncad/serialize3/build/Release/serialize3/serialize3
+#                ./include/steem/chain/serialized_headers.hpp
+#                --xml-generator=castxml --xml-generator-path="/home/syncad/castxml/build/Release/bin" --xml-generator-options="-std=c++14 -I../chainbase/include -I./include" --compiler=gcc --compiler-path=/usr/bin --compiler-options="-std=c++14 -I../chainbase/include -I./include"                OUTPUT_VARIABLE RESULT)
+#get_target_property(VAR steem_chain INCLUDE_DIRECTORIES)
+#SET(STR)
+#ListToString(STR " -I" ${VAR})
+#SET(STR " -I" ${STR})
+#MESSAGE(STATUS "INCLUDE_DIRECTORIES: " ${STR})
+#GET_DIRECTORY_PROPERTY(output INCLUDE_DIRECTORIES)
+#MESSAGE(WARNING ${output})
+                
 if( CLANG_TIDY_EXE )
    set_target_properties(
       steem_chain PROPERTIES

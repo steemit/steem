@@ -22,6 +22,8 @@
 #include <fc/static_variant.hpp>
 #include <fc/smart_ref_fwd.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include <memory>
@@ -83,6 +85,9 @@ namespace steem {
 
       struct public_key_type
       {
+         SERIALIZABLE_OBJECT;
+         public:
+         
             struct binary_key
             {
                binary_key() {}
@@ -107,6 +112,9 @@ namespace steem {
 
       struct extended_public_key_type
       {
+         SERIALIZABLE_OBJECT;
+         public:
+
          struct binary_key
          {
             binary_key() {}
@@ -129,6 +137,9 @@ namespace steem {
 
       struct extended_private_key_type
       {
+         SERIALIZABLE_OBJECT;
+         public:
+
          struct binary_key
          {
             binary_key() {}

@@ -5,6 +5,8 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multi_index/composite_key.hpp>
 
 namespace steem { namespace chain {
@@ -24,22 +26,24 @@ namespace steem { namespace chain {
     */
    struct chain_properties
    {
-      /**
-       *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
-       *  without vesting shares cannot earn usage rations and therefore are powerless. This minimum
-       *  fee requires all accounts to have some kind of commitment to the network that includes the
-       *  ability to vote and make transactions.
-       */
-      asset             account_creation_fee =
-         asset( STEEM_MIN_ACCOUNT_CREATION_FEE, STEEM_SYMBOL );
+      SERIALIZABLE_OBJECT;
+      public:
+         /**
+          *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
+          *  without vesting shares cannot earn usage rations and therefore are powerless. This minimum
+          *  fee requires all accounts to have some kind of commitment to the network that includes the
+          *  ability to vote and make transactions.
+          */
+         asset             account_creation_fee =
+            asset( STEEM_MIN_ACCOUNT_CREATION_FEE, STEEM_SYMBOL );
 
-      /**
-       *  This witnesses vote for the maximum_block_size which is used by the network
-       *  to tune rate limiting and capacity
-       */
-      uint32_t          maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
-      uint16_t          sbd_interest_rate  = STEEM_DEFAULT_SBD_INTEREST_RATE;
-      uint32_t          account_subsidy_limit = 0;
+         /**
+          *  This witnesses vote for the maximum_block_size which is used by the network
+          *  to tune rate limiting and capacity
+          */
+         uint32_t          maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
+         uint16_t          sbd_interest_rate  = STEEM_DEFAULT_SBD_INTEREST_RATE;
+         uint32_t          account_subsidy_limit = 0;
    };
 
    /**
@@ -49,6 +53,7 @@ namespace steem { namespace chain {
     */
    class witness_object : public object< witness_object_type, witness_object >
    {
+      SERIALIZABLE_OBJECT;
       witness_object() = delete;
 
       public:
@@ -145,6 +150,7 @@ namespace steem { namespace chain {
 
    class witness_vote_object : public object< witness_vote_object_type, witness_vote_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          witness_vote_object( Constructor&& c, allocator< Allocator > a )
@@ -162,6 +168,7 @@ namespace steem { namespace chain {
 
    class witness_schedule_object : public object< witness_schedule_object_type, witness_schedule_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          witness_schedule_object( Constructor&& c, allocator< Allocator > a )

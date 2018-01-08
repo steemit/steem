@@ -7,6 +7,8 @@
 
 #include <steem/protocol/types_fwd.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 // These overloads need to be defined before the implementation in fixed_string
 namespace fc
 {
@@ -66,6 +68,7 @@ namespace steem { namespace protocol {
 template< typename Storage >
 class fixed_string_impl
 {
+   SERIALIZABLE_OBJECT;
    public:
       fixed_string_impl(){}
       fixed_string_impl( const fixed_string_impl& c ) : data( c.data ){}

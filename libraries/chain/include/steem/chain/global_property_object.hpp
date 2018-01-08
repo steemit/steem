@@ -5,6 +5,8 @@
 
 #include <steem/protocol/asset.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace chain {
 
    using steem::protocol::asset;
@@ -21,6 +23,7 @@ namespace steem { namespace chain {
     */
    class dynamic_global_property_object : public object< dynamic_global_property_object_type, dynamic_global_property_object>
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          dynamic_global_property_object( Constructor&& c, allocator< Allocator > a )

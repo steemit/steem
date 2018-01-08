@@ -3,12 +3,15 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain {
 
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
+   SERIALIZABLE_OBJECT;
    smt_token_object() = delete;
 
 public:

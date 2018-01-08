@@ -4,10 +4,14 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
+
 namespace steem { namespace chain {
 
    class hardfork_property_object : public object< hardfork_property_object_type, hardfork_property_object >
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          hardfork_property_object( Constructor&& c, allocator< Allocator > a )

@@ -6,6 +6,8 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/multi_index/composite_key.hpp>
 
 
@@ -39,6 +41,7 @@ namespace steem { namespace chain {
 
    class comment_object : public object < comment_object_type, comment_object >
    {
+      SERIALIZABLE_OBJECT;
       comment_object() = delete;
 
       public:
@@ -100,6 +103,7 @@ namespace steem { namespace chain {
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
    {
+      SERIALIZABLE_OBJECT;
       comment_content_object() = delete;
 
       public:
@@ -125,6 +129,7 @@ namespace steem { namespace chain {
     */
    class comment_vote_object : public object< comment_vote_object_type, comment_vote_object>
    {
+      SERIALIZABLE_OBJECT;
       public:
          template< typename Constructor, typename Allocator >
          comment_vote_object( Constructor&& c, allocator< Allocator > a )

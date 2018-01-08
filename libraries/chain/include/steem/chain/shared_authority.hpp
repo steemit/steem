@@ -2,6 +2,8 @@
 #include <steem/protocol/authority.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace chain {
    using steem::protocol::authority;
    using steem::protocol::public_key_type;
@@ -17,6 +19,7 @@ namespace steem { namespace chain {
     */
    struct shared_authority
    {
+      SERIALIZABLE_OBJECT;
       private:
          shared_authority() = delete;
 

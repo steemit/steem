@@ -1,5 +1,7 @@
 #pragma once
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/set.hpp>
@@ -87,6 +89,7 @@ namespace chainbase {
     */
    template<typename T>
    class oid {
+      SERIALIZABLE_OBJECT;
       public:
          oid( int64_t i = 0 ):_id(i){}
 
@@ -102,8 +105,10 @@ namespace chainbase {
    template<uint16_t TypeNumber, typename Derived>
    struct object
    {
-      typedef oid<Derived> id_type;
-      static const uint16_t type_id = TypeNumber;
+      NOT_SERIALIZABLE;
+      public:
+         typedef oid<Derived> id_type;
+         static const uint16_t type_id = TypeNumber;
 
    };
 
@@ -996,4 +1001,3 @@ namespace chainbase {
    template<typename Object, typename... Args>
    using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
 }  // namepsace chainbase
-
