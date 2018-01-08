@@ -1,6 +1,7 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/GolosChain/fc.git
+	branch = 16.5
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/GolosChain/chainbase.git
