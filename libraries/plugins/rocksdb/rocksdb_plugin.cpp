@@ -48,6 +48,7 @@ public:
       if(status.ok())
       {
          ilog("RocksDB opened successfully");
+         importData();
       }
       else
       {
@@ -56,8 +57,6 @@ public:
       }
 
       _storage.reset(storageDb);
-
-      importData();
    }
 
 private:
