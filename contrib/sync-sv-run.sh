@@ -52,7 +52,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     fi
     if [[ "$IS_BROADCAST_NODE" ]]; then
       FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
-    else if [[ "$IS_AH_NODE" ]]; then
+    elif [[ "$IS_AH_NODE" ]]; then
       FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
     else
       FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
