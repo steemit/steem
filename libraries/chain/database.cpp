@@ -4552,7 +4552,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
-   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+   return vector< asset_symbol_type >( 1, new_symbol );
 }
 #endif
 

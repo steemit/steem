@@ -677,7 +677,10 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
 
       this->generate_block();
 
-      std::array<asset_symbol_type, 3> retVal = {op0.symbol, op1.symbol, op2.symbol};
+      std::array<asset_symbol_type, 3> retVal;
+      retVal[0] = op0.symbol;
+      retVal[1] = op1.symbol;
+      retVal[2] = op2.symbol;
       return retVal;
    }
    FC_LOG_AND_RETHROW();
