@@ -798,8 +798,13 @@ namespace detail
       auto fund = _db.find< reward_fund_object, by_name >( name );
       FC_ASSERT( fund != nullptr, "Invalid reward fund name" );
 
+<<<<<<< 7874dffb8d2b5be84238428d6d3dc00d0caa5ffd
       return api_reward_fund_object( *fund );
    }
+=======
+      return *fund;
+   }  
+>>>>>>> Small correction + refactoring.
 
    DEFINE_API_IMPL( condenser_api_impl, get_key_references )
    {
