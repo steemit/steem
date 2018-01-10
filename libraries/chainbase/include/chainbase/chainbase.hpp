@@ -1,6 +1,7 @@
 #pragma once
 
 #include <serialize3/h/client_code/serialize_macros.h>
+#include <serialize3/h/client_code/serialize_utils.h>
 
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/map.hpp>
@@ -184,15 +185,21 @@ namespace chainbase {
    template<typename MultiIndexType>
    class generic_index
    {
+      SERIALIZABLE_OBJECT;
       public:
          typedef bip::managed_mapped_file::segment_manager             segment_manager_type;
          typedef MultiIndexType                                        index_type;
          typedef typename index_type::value_type                       value_type;
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
+         typedef boost::interprocess::deque<undo_state_type, allocator<undo_state_type>>
+                                                                       undo_state_stack;
 
          generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+            : _stack(undo_state_stack(a)),
+              _indices( a ),
+              _size_of_value_type( sizeof(typename MultiIndexType::node_type) ),
+              _size_of_this(sizeof(*this)) {}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -294,9 +301,9 @@ namespace chainbase {
 
          session start_undo_session( bool enabled ) {
             if( enabled ) {
-               _stack.emplace_back( _indices.get_allocator() );
-               _stack.back().old_next_id = _next_id;
-               _stack.back().revision = ++_revision;
+               _stack->emplace_back( _indices.get_allocator() );
+               _stack->back().old_next_id = _next_id;
+               _stack->back().revision = ++_revision;
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -314,7 +321,7 @@ namespace chainbase {
          void undo() {
             if( !enabled() ) return;
 
-            const auto& head = _stack.back();
+            const auto& head = _stack->back();
 
             for( auto& item : head.old_values ) {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
@@ -334,7 +341,7 @@ namespace chainbase {
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
             }
 
-            _stack.pop_back();
+            _stack->pop_back();
             --_revision;
          }
 
@@ -347,13 +354,13 @@ namespace chainbase {
          void squash()
          {
             if( !enabled() ) return;
-            if( _stack.size() == 1 ) {
-               _stack.pop_front();
+            if( _stack->size() == 1 ) {
+               _stack->pop_front();
                return;
             }
 
-            auto& state = _stack.back();
-            auto& prev_state = _stack[_stack.size()-2];
+            auto& state = _stack->back();
+            auto& prev_state = (*_stack)[_stack->size()-2];
 
             // An object's relationship to a state can be:
             // in new_ids            : new
@@ -442,7 +449,7 @@ namespace chainbase {
                prev_state.removed_values.emplace( std::move(obj) ); //[obj.second->id] = std::move(obj.second);
             }
 
-            _stack.pop_back();
+            _stack->pop_back();
             --_revision;
          }
 
@@ -451,9 +458,9 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
-            while( _stack.size() && _stack[0].revision <= revision )
+            while( _stack->size() && (*_stack)[0].revision <= revision )
             {
-               _stack.pop_front();
+               _stack->pop_front();
             }
          }
 
@@ -468,17 +475,17 @@ namespace chainbase {
 
          void set_revision( int64_t revision )
          {
-            if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
+            if( _stack->size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
          }
 
       private:
-         bool enabled()const { return _stack.size(); }
+         bool enabled()const { return _stack->size(); }
 
          void on_modify( const value_type& v ) {
             if( !enabled() ) return;
 
-            auto& head = _stack.back();
+            auto& head = _stack->back();
 
             if( head.new_ids.find( v.id ) != head.new_ids.end() )
                return;
@@ -493,7 +500,7 @@ namespace chainbase {
          void on_remove( const value_type& v ) {
             if( !enabled() ) return;
 
-            auto& head = _stack.back();
+            auto& head = _stack->back();
             if( head.new_ids.count(v.id) ) {
                head.new_ids.erase( v.id );
                return;
@@ -514,12 +521,12 @@ namespace chainbase {
 
          void on_create( const value_type& v ) {
             if( !enabled() ) return;
-            auto& head = _stack.back();
+            auto& head = _stack->back();
 
             head.new_ids.insert( v.id );
          }
 
-         boost::interprocess::deque< undo_state_type, allocator<undo_state_type> > _stack;
+         TNoSerializeWrapper<undo_state_stack>  _stack;
 
          /**
           *  Each new session increments the revision, a squash will decrement the revision by combining
@@ -559,6 +566,7 @@ namespace chainbase {
 
    class index_extension
    {
+      SERIALIZABLE_OBJECT;
       public:
          index_extension() {}
          virtual ~index_extension() {}
@@ -568,7 +576,9 @@ namespace chainbase {
 
    class abstract_index
    {
+      SERIALIZABLE;
       public:
+         abstract_index() = default;
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
          virtual void     set_revision( int64_t revision ) = 0;
@@ -584,38 +594,43 @@ namespace chainbase {
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
-      private:
-         void*              _idx_ptr;
-         index_extensions   _extensions;
+      protected:
+         TNoSerializeWrapper<void*> _idx_ptr;
+         index_extensions           _extensions;
    };
 
    template<typename BaseIndex>
    class index_impl : public abstract_index {
+      MANUALLY_SERIALIZABLE;
       public:
-         index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
+         index_impl() = default;
+         explicit index_impl( BaseIndex& base ):abstract_index( &base ),_base( &base ){}
+         virtual ~index_impl() {}
 
          virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override {
-            return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session( enabled ) ) );
+            return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base->start_undo_session( enabled ) ) );
          }
 
-         virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
-         virtual int64_t  revision()const  override { return _base.revision(); }
-         virtual void     undo()const  override { _base.undo(); }
-         virtual void     squash()const  override { _base.squash(); }
-         virtual void     commit( int64_t revision )const  override { _base.commit(revision); }
-         virtual void     undo_all() const override {_base.undo_all(); }
+         virtual void     set_revision( int64_t revision ) override { _base->set_revision( revision ); }
+         virtual int64_t  revision()const  override { return _base->revision(); }
+         virtual void     undo()const  override { _base->undo(); }
+         virtual void     squash()const  override { _base->squash(); }
+         virtual void     commit( int64_t revision )const  override { _base->commit(revision); }
+         virtual void     undo_all() const override {_base->undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
       private:
-         BaseIndex& _base;
+         BaseIndex* _base = nullptr;
    };
 
    template<typename IndexType>
    class index : public index_impl<IndexType> {
+      SERIALIZABLE;
       public:
+         index() = default;
          index( IndexType& i ):index_impl<IndexType>( i ){}
+         virtual ~index() {}
    };
-
 
    class read_write_mutex_manager
    {
@@ -661,6 +676,7 @@ namespace chainbase {
     */
    class database
    {
+      MANUALLY_SERIALIZABLE_OBJECT;
       public:
          void open( const bfs::path& dir, uint32_t flags = 0, uint64_t shared_file_size = 0 );
          void close();

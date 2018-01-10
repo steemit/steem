@@ -21,9 +21,10 @@ namespace steem { namespace chain {
    class account_object : public object< account_object_type, account_object >
    {
       SERIALIZABLE_OBJECT;
-      account_object() = delete;
+      //account_object() = delete;
 
       public:
+         account_object() = default;
          template<typename Constructor, typename Allocator>
          account_object( Constructor&& c, allocator< Allocator > a )
             :json_metadata( a )
@@ -128,9 +129,10 @@ namespace steem { namespace chain {
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
    {
       SERIALIZABLE_OBJECT;
-      account_authority_object() = delete;
+      //account_authority_object() = delete;
 
       public:
+         account_authority_object() = default;
          template< typename Constructor, typename Allocator >
          account_authority_object( Constructor&& c, allocator< Allocator > a )
             : owner( a ), active( a ), posting( a )
@@ -189,9 +191,10 @@ namespace steem { namespace chain {
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
       SERIALIZABLE_OBJECT;
-      owner_authority_history_object() = delete;
+      //owner_authority_history_object() = delete;
 
       public:
+         owner_authority_history_object() = default;
          template< typename Constructor, typename Allocator >
          owner_authority_history_object( Constructor&& c, allocator< Allocator > a )
             :previous_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
@@ -209,9 +212,10 @@ namespace steem { namespace chain {
    class account_recovery_request_object : public object< account_recovery_request_object_type, account_recovery_request_object >
    {
       SERIALIZABLE_OBJECT;
-      account_recovery_request_object() = delete;
+      //account_recovery_request_object() = delete;
 
       public:
+         account_recovery_request_object() = default;
          template< typename Constructor, typename Allocator >
          account_recovery_request_object( Constructor&& c, allocator< Allocator > a )
             :new_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )

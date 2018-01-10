@@ -17,6 +17,9 @@
 
 #include <fc/log/logger.hpp>
 
+#include <serialize3/h/client_code/serialize_macros.h>
+#include <serialize3/h/client_code/serialize_utils.h>
+
 #include <map>
 
 namespace steem { namespace chain {
@@ -41,6 +44,7 @@ namespace steem { namespace chain {
     */
    class database : public chainbase::database
    {
+      MANUALLY_SERIALIZABLE_OBJECT;
       public:
          database();
          ~database();
@@ -496,6 +500,7 @@ namespace steem { namespace chain {
          fc::time_point_sec            _hardfork_times[ STEEM_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEM_NUM_HARDFORKS + 1 ];
 
+         fc::path                      _block_log_dir;
          block_log                     _block_log;
 
          // this function needs access to _plugin_index_signal

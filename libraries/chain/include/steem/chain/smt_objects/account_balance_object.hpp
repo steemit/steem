@@ -18,12 +18,13 @@ template <enum object_type ObjectType>
 class account_balance_object : public object< ObjectType, account_balance_object<ObjectType> >
 {
    SERIALIZABLE_OBJECT;
-   account_balance_object() = delete;
+   //account_balance_object() = delete;
 
 public:   
    typedef account_balance_object<ObjectType>   _this_type;
    using typename object< ObjectType, _this_type >::id_type;
 
+   account_balance_object() = default;
    template <class Constructor, class Allocator>
    account_balance_object(Constructor&& c, allocator< Allocator > a)
    {

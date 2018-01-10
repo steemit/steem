@@ -1,5 +1,7 @@
 #pragma once
 
+#include <serialize3/h/client_code/serialize_macros.h>
+
 namespace steem { namespace chain {
 
    /**
@@ -14,6 +16,7 @@ namespace steem { namespace chain {
     */
    class node_property_object
    {
+      SERIALIZABLE_OBJECT;
       public:
          node_property_object(){}
          ~node_property_object(){}
