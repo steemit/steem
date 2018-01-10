@@ -13,7 +13,7 @@
   - group: *api
   - url: "/rpc"
   - method: "POST"
-  - body: {template: {file: "request_template.json"}}
+  - body: {template: {file: "compare_block_appbase.json"}}
   - validators:
     - extract_test: {jsonpath_mini: "error", test: "not_exists"}
     - extract_test: {jsonpath_mini: "result", test: "exists"}
