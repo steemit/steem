@@ -1123,6 +1123,7 @@ void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t n
 }
 
 /* Votes */
+
 DEFINE_API_IMPL( database_api_impl, list_votes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -1182,8 +1183,7 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
          decltype( tmp_votes.rend() ) ritr( itr );
 
          size_t idx = 0;
-         votes_impl( *this, result.votes, 3/*nr_args*/, args.limit, key );
-         while( idx++ < args.limit && ritr < tmp_votes.rend() )
+         while( idx++ < args.limit && ritr != tmp_votes.rend() )
             result.votes.push_back( *ritr );
 
          break;
