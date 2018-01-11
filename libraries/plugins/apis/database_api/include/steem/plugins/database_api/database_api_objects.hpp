@@ -132,11 +132,6 @@ struct api_comment_object
 
 struct api_comment_vote_object
 {
-   api_comment_vote_object( const time_point_sec& _last_update ) : last_update( _last_update )
-   {
-
-   }
-
    api_comment_vote_object( const comment_vote_object& cv, const database& db ) :
       id( cv.id ),
       weight( cv.weight ),
@@ -161,11 +156,6 @@ struct api_comment_vote_object
    int16_t              vote_percent = 0;
    time_point_sec       last_update;
    int8_t               num_changes = 0;
-
-   bool operator<( const api_comment_vote_object& obj ) const
-   {
-      return last_update < obj.last_update;
-   }
 };
 
 struct api_account_object

@@ -71,20 +71,8 @@ class database_api_impl
       template< typename ResultType >
       static ResultType on_push_default( const ResultType& r ) { return r; }
 
-      template< typename ValueType >
-      void add( flat_set< ValueType >& c, const ValueType& val )
-      {
-         c.insert( val );
-      }
-
-      template< typename ValueType >
-      void add( std::vector< ValueType >& c, const ValueType& val )
-      {
-         c.push_back( val );
-      }
-
-      template< typename IndexType, typename OrderType, template< typename... > typename Collection, typename ValueType, typename ResultType, typename OnPush >
-      void iterate_results( ValueType start, Collection< ResultType >& result, uint32_t limit, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
+      template< typename IndexType, typename OrderType, typename ValueType, typename ResultType, typename OnPush >
+      void iterate_results( ValueType start, vector< ResultType >& result, uint32_t limit, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
       {
          const auto& idx = _db.get_index< IndexType, OrderType >();
          auto itr = idx.lower_bound( start );
@@ -92,7 +80,7 @@ class database_api_impl
 
          while( result.size() < limit && itr != end )
          {
-            add( result, on_push( *itr ) );
+            result.push_back( on_push( *itr ) );
             ++itr;
          }
       }
@@ -1090,7 +1078,7 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
 }
 
 template< template< typename... > typename Collection, typename ResultType >
-void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key )
+void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp )
 {
    FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, ${desc}account_name_type, string)", ("nr_args", nr_args )("desc",( nr_args == 4 )?"time_point_sec, ":"" ) );
 
@@ -1116,10 +1104,10 @@ void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t n
    }
 
    _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
-      boost::make_tuple( voter_id, comment_id ),
-      c,
-      limit,
-      [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+   boost::make_tuple( voter_id, timestamp, comment_id ),
+   c,
+   limit,
+   [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
 }
 
 /* Votes */
@@ -1169,23 +1157,15 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
       case( by_voter_comment ):
       {
          auto key = args.start.as< vector< fc::variant > >();
-         votes_impl( *this, result.votes, 3/*nr_args*/, args.limit, key );
+         fc::time_point_sec timestamp( -1 );
+         votes_impl( *this, result.votes, 3/*nr_args*/, args.limit, key, timestamp );
          break;
       }
       case( by_voter_last_update ):
       {
-         flat_set< api_comment_vote_object > tmp_votes;
-
          auto key = args.start.as< vector< fc::variant > >();
-         votes_impl( *this, tmp_votes, 4/*nr_args*/, std::numeric_limits<int>::max(), key );
-
-         auto itr = tmp_votes.lower_bound( api_comment_vote_object( key[1].as< fc::time_point_sec >() ) );
-         decltype( tmp_votes.rend() ) ritr( itr );
-
-         size_t idx = 0;
-         while( idx++ < args.limit && ritr != tmp_votes.rend() )
-            result.votes.push_back( *ritr );
-
+         fc::time_point_sec timestamp = key[1].as< fc::time_point_sec >();
+         votes_impl( *this, result.votes, 4/*nr_args*/, args.limit, key, timestamp );
          break;
       }
       case( by_comment_weight_voter ):
