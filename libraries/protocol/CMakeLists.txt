@@ -34,11 +34,11 @@ add_library( steem_protocol
              "${CMAKE_CURRENT_BINARY_DIR}/include/steem/protocol/hardfork.hpp"
            )
 
-add_dependencies( steem_protocol build_hardfork_hpp )
+add_dependencies( steem_protocol build_hardfork_hpp castxml serialize3 )
 target_link_libraries( steem_protocol fc )
 target_include_directories( steem_protocol PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" # for serialize3
+                            "${serialize3_SOURCE_DIR}/../"
                             "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if( CLANG_TIDY_EXE )

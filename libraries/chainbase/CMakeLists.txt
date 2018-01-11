@@ -63,10 +63,11 @@ endif()
 
 file(GLOB HEADERS "include/*.hpp")
 add_library( chainbase src/chainbase.cpp ${HEADERS} )
+add_dependencies( chainbase castxml serialize3 )
 target_link_libraries( chainbase  ${Boost_LIBRARIES} )
 target_include_directories( chainbase PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" # for serialize3
+                            "${serialize3_SOURCE_DIR}/../"
                             "${Boost_INCLUDE_DIR}" )
 
 if( CLANG_TIDY_EXE )

@@ -16,7 +16,7 @@ add_library( steem_chain
              shared_authority.cpp
              block_log.cpp
 
-             serialized_headers_injected.cpp
+             ${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_injected.cpp
 
              util/reward.cpp
              util/impacted.cpp
@@ -24,35 +24,36 @@ add_library( steem_chain
              ${HEADERS}
            )
 
+add_dependencies( steem_chain castxml serialize3 )
 target_link_libraries( steem_chain steem_protocol fc chainbase steem_schema ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" # for serialize3
+                            "${serialize3_SOURCE_DIR}/../"
                             "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
-#MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: " ${CMAKE_CURRENT_SOURCE_DIR})
-
-#function (ListToString result delim)
-#list(GET ARGV 2 temp)
-#math(EXPR N "${ARGC}-1")
-#foreach(IDX RANGE 3 ${N})
-#    list(GET ARGV ${IDX} STR)
-#    set(temp "${temp}${delim}${STR}")
-#endforeach()
-#set(${result} "${temp}" PARENT_SCOPE)
-#endfunction(ListToString)
-
-#execute_process(COMMAND /home/syncad/serialize3/build/Release/serialize3/serialize3
-#                ./include/steem/chain/serialized_headers.hpp
-#                --xml-generator=castxml --xml-generator-path="/home/syncad/castxml/build/Release/bin" --xml-generator-options="-std=c++14 -I../chainbase/include -I./include" --compiler=gcc --compiler-path=/usr/bin --compiler-options="-std=c++14 -I../chainbase/include -I./include"                OUTPUT_VARIABLE RESULT)
-#get_target_property(VAR steem_chain INCLUDE_DIRECTORIES)
-#SET(STR)
-#ListToString(STR " -I" ${VAR})
-#SET(STR " -I" ${STR})
-#MESSAGE(STATUS "INCLUDE_DIRECTORIES: " ${STR})
-#GET_DIRECTORY_PROPERTY(output INCLUDE_DIRECTORIES)
-#MESSAGE(WARNING ${output})
-                
+#get_property(INCLUDES TARGET steem_chain PROPERTY INCLUDE_DIRECTORIES)
+SET(INCLUDES "-I$<JOIN:$<TARGET_PROPERTY:steem_chain,INCLUDE_DIRECTORIES>, -I>")
+MESSAGE(STATUS "INCLUDES: ${INCLUDES}")
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_injected.cpp"
+   MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp"
+   DEPENDS castxml serialize3
+   #IMPLICIT_DEPENDENCY CXX
+   USES_TERMINAL 
+   COMMENT  "RUN SERIALIZE3 ON ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp"
+   COMMAND  ${serialize3_BINARY_DIR}/serialize3
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp
+            -d ${CMAKE_CURRENT_BINARY_DIR}
+            --xml-generator castxml
+            --xml-generator-path ${CastXML_BINARY_DIR}/bin
+            --xml-generator-options "-undef -std=c++14"
+            --compiler ${CMAKE_CXX_COMPILER}
+            --compiler-options "${CMAKE_CXX_FLAGS} ${INCLUDES} -D_X86INTRIN_H_INCLUDED"
+            #--compiler-includes ${INCLUDES}
+            --check-changes xml
+            --indent 3
+            --verbose
+   )
+                                                     
 if( CLANG_TIDY_EXE )
    set_target_properties(
       steem_chain PROPERTIES
