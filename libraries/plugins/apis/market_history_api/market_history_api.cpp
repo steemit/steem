@@ -38,9 +38,9 @@ DEFINE_API_IMPL( market_history_api_impl, get_ticker )
 
    if( itr != bucket_idx.end() )
    {
-      auto open = ASSET_TO_REAL( asset( itr->open_sbd, SBD_SYMBOL ) ) / ASSET_TO_REAL( asset( itr->open_steem, STEEM_SYMBOL ) );
+      auto open = ASSET_TO_REAL( asset( itr->non_steem.open, SBD_SYMBOL ) ) / ASSET_TO_REAL( asset( itr->steem.open, STEEM_SYMBOL ) );
       itr = bucket_idx.lower_bound( boost::make_tuple( 0, _db.head_block_time() ) );
-      result.latest = ASSET_TO_REAL( asset( itr->close_sbd, SBD_SYMBOL ) ) / ASSET_TO_REAL( asset( itr->close_steem, STEEM_SYMBOL ) );
+      result.latest = ASSET_TO_REAL( asset( itr->non_steem.close, SBD_SYMBOL ) ) / ASSET_TO_REAL( asset( itr->steem.close, STEEM_SYMBOL ) );
       result.percent_change = ( (result.latest - open ) / open ) * 100;
    }
 
