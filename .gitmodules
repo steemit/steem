@@ -1,3 +1,9 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/steemit/fc.git
+[submodule "programs/castxml"]
+	path = programs/castxml
+	url = https://github.com/castxml/castxml
+[submodule "programs/serialize3"]
+	path = programs/serialize3
+	url = https://github.com/itwasntme-mk/serialize3
