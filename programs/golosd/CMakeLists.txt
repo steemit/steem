@@ -23,7 +23,7 @@ target_link_libraries(
         golos::network_broadcast_api_plugin
         golos::tags_plugin
         golos::witness_plugin
-        golos::database_api_plugin
+        golos::database_api
         golos::test_api_plugin
         golos::tolstoy_api_plugin
         golos_protocol

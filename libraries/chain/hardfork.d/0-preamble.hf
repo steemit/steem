@@ -44,7 +44,7 @@ namespace golos {
         hardfork_property_index;
 
     }
-} // namespace steemit::chain
+} // namespace golos::chain
 
 FC_REFLECT((golos::chain::hardfork_property_object),
         (id)(processed_hardforks)(last_hardfork)(current_hardfork_version)

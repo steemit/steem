@@ -1,79 +1,62 @@
 #pragma once
 
-#include <golos/app/api.hpp>
-#include <golos/private_message/private_message_plugin.hpp>
-#include <golos/follow/follow_plugin.hpp>
-#include <golos/app/steem_api_objects.hpp>
+#include <golos/wallet/remote_node_api.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
+#include <fc/macros.hpp>
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
+#include <fc/api.hpp>
 
-using namespace golos::app;
-using namespace golos::chain;
-using namespace golos::utilities;
-using namespace std;
+namespace golos { namespace wallet {
 
-namespace golos {
-    namespace wallet {
+        using namespace std;
 
-        using golos::app::discussion;
-        using namespace golos::private_message;
+        using namespace golos::utilities;
+        using namespace golos::protocol;
 
         typedef uint16_t transaction_handle_type;
 
         struct memo_data {
 
-            static optional<memo_data> from_string(string str) {
+            static optional<memo_data> from_string( string str ) {
                 try {
-                    if (str.size() > sizeof(memo_data) && str[0] == '#') {
-                        auto data = fc::from_base58(str.substr(1));
-                        auto m = fc::raw::unpack<memo_data>(data);
-                        FC_ASSERT(string(m) == str);
+                    if( str.size() > sizeof(memo_data) && str[0] == '#') {
+                        auto data = fc::from_base58( str.substr(1) );
+                        auto m  = fc::raw::unpack<memo_data>( data );
+                        FC_ASSERT( string(m) == str );
                         return m;
                     }
-                } catch (...) {
-                }
+                } catch ( ... ) {}
                 return optional<memo_data>();
             }
 
             public_key_type from;
             public_key_type to;
-            uint64_t nonce = 0;
-            uint32_t check = 0;
-            vector<char> encrypted;
+            uint64_t        nonce = 0;
+            uint32_t        check = 0;
+            vector<char>    encrypted;
 
-            operator string() const {
+            operator string()const {
                 auto data = fc::raw::pack(*this);
-                auto base58 = fc::to_base58(data);
-                return '#' + base58;
+                auto base58 = fc::to_base58( data );
+                return '#'+base58;
             }
         };
 
-
         struct brain_key_info {
-            string brain_priv_key;
-            public_key_type pub_key;
-            string wif_priv_key;
+            string               brain_priv_key;
+            public_key_type      pub_key;
+            string               wif_priv_key;
         };
 
         struct wallet_data {
-            vector<char> cipher_keys; /** encrypted keys */
+            vector<char>              cipher_keys; /** encrypted keys */
 
-            string ws_server = "ws://localhost:8090";
-            string ws_user;
-            string ws_password;
-        };
-
-        struct signed_block_with_info : public signed_block {
-            signed_block_with_info(const signed_block &block);
-
-            signed_block_with_info(const signed_block_with_info &block) = default;
-
-            block_id_type block_id;
-            public_key_type signing_key;
-            vector<transaction_id_type> transaction_ids;
+            string                    ws_server = "ws://localhost:8090";
+            string                    ws_user;
+            string                    ws_password;
         };
 
         enum authority_type {
@@ -92,11 +75,10 @@ namespace golos {
  */
         class wallet_api {
         public:
-            wallet_api(const wallet_data &initial_data, fc::api<login_api> rapi);
-
+            wallet_api( const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi );
             virtual ~wallet_api();
 
-            bool copy_wallet_file(string destination_filename);
+            bool copy_wallet_file( string destination_filename );
 
 
             /** Returns a list of all commands supported by the wallet API.
@@ -106,17 +88,17 @@ namespace golos {
              *
              * @returns a multi-line string suitable for displaying on a terminal
              */
-            string help() const;
+            string                              help()const;
 
             /**
              * Returns info about the current state of the blockchain
              */
-            variant info();
+            variant                             info();
 
             /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
              * @returns compile time info and client and dependencies versions
              */
-            variant_object about() const;
+            variant_object                      about() const;
 
             /** Returns the information about a block
              *
@@ -124,35 +106,26 @@ namespace golos {
              *
              * @returns Public block data on the blockchain
              */
-            optional<signed_block_with_info> get_block(uint32_t num);
+            optional< database_api::signed_block > get_block( uint32_t num );
 
             /** Returns sequence of operations included/generated in a specified block
              *
              * @param block_num Block height of specified block
              * @param only_virtual Whether to only return virtual operations
              */
-            vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual = true);
+            //vector< account_history::api_operation_object > get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
             /** Return the current price feed history
              *
              * @returns Price feed history data on the blockchain
              */
-            feed_history_api_obj get_feed_history() const;
+            //database_api::api_feed_history_object get_feed_history()const;
 
             /**
              * Returns the list of witnesses producing blocks in the current round (21 Blocks)
              */
-            vector<account_name_type> get_active_witnesses() const;
+            vector< account_name_type > get_active_witnesses()const;
 
-            /**
-             * Returns the queue of pow miners waiting to produce blocks.
-             */
-            vector<account_name_type> get_miner_queue() const;
-
-            /**
-             * Returns the state info associated with the URL
-             */
-            app::state get_state(string url);
 
             /**
              * Returns vesting withdraw routes for an account.
@@ -160,22 +133,12 @@ namespace golos {
              * @param account Account to query routes
              * @param type Withdraw type type [incoming, outgoing, all]
              */
-            vector<withdraw_route> get_withdraw_routes(string account, withdraw_route_type type = all) const;
-
-            /**
-            *  Returns the amount of accounts registered in blockchain
-            */
-            string get_account_count() const;
-
-            /**
-            *  Gets the steem price per mvests
-            */
-            string get_steem_per_mvests() const;
+            vector< database_api::withdraw_vesting_route_api_object > get_withdraw_routes( string account, database_api::withdraw_route_type type = database_api::all )const;
 
             /**
              *  Gets the account information for all accounts for which this wallet has a private key
              */
-            vector<account_api_obj> list_my_accounts() const;
+            vector< database_api::account_api_object > list_my_accounts();
 
             /** Lists all accounts registered in the blockchain.
              * This returns a list of all account names and their account ids, sorted by account name.
@@ -189,7 +152,7 @@ namespace golos {
              * @param limit the maximum number of accounts to return (max: 1000)
              * @returns a list of accounts mapping account names to account ids
              */
-            set<string> list_accounts(const string &lowerbound, uint32_t limit);
+            vector< account_name_type > list_accounts(const string& lowerbound, uint32_t limit);
 
             /** Returns the block chain's rapidly-changing properties.
              * The returned object contains information that changes every block interval
@@ -197,14 +160,14 @@ namespace golos {
              * @see \c get_global_properties() for less-frequently changing properties
              * @returns the dynamic global properties
              */
-            dynamic_global_property_api_obj get_dynamic_global_properties() const;
+            database_api::dynamic_global_property_object get_dynamic_global_properties() const;
 
             /** Returns information about the given account.
              *
              * @param account_name the name of the account to provide information about
              * @returns the public account data stored in the blockchain
              */
-            account_api_obj get_account(string account_name) const;
+            database_api::account_api_object get_account( string account_name ) const;
 
             /** Returns the current wallet filename.
              *
@@ -213,24 +176,27 @@ namespace golos {
              * @see set_wallet_filename()
              * @return the wallet filename
              */
-            string get_wallet_filename() const;
+            string                            get_wallet_filename() const;
 
             /**
              * Get the WIF private key corresponding to a public key.  The
              * private key must already be in the wallet.
              */
-            string get_private_key(public_key_type pubkey) const;
+            string                            get_private_key( public_key_type pubkey )const;
 
             /**
-             *  @param role - active | owner | posting | memo
+             *  @param account  - the name of the account to retrieve key for
+             *  @param role     - active | owner | posting | memo
+             *  @param password - the password to be used at key generation
+             *  @return public key corresponding to generated private key, and private key in WIF format.
              */
-            pair<public_key_type, string> get_private_key_from_password(string account, string role, string password) const;
+            pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
 
 
             /**
              * Returns transaction by ID.
              */
-            annotated_signed_transaction get_transaction(transaction_id_type trx_id) const;
+            annotated_signed_transaction get_transaction( transaction_id_type trx_id )const;
 
             /** Checks whether the wallet has just been created and has not yet had a password set.
              *
@@ -238,7 +204,7 @@ namespace golos {
              * @return true if the wallet is new
              * @ingroup Wallet Management
              */
-            bool is_new() const;
+            bool    is_new()const;
 
             /** Checks whether the wallet is locked (is unable to use its private keys).
              *
@@ -246,12 +212,12 @@ namespace golos {
              * @return true if the wallet is locked
              * @ingroup Wallet Management
              */
-            bool is_locked() const;
+            bool    is_locked()const;
 
             /** Locks the wallet immediately.
              * @ingroup Wallet Management
              */
-            void lock();
+            void    lock();
 
             /** Unlocks the wallet.
              *
@@ -260,7 +226,7 @@ namespace golos {
              * @param password the password previously set with \c set_password()
              * @ingroup Wallet Management
              */
-            void unlock(string password);
+            void    unlock(string password);
 
             /** Sets a new password on the wallet.
              *
@@ -268,7 +234,7 @@ namespace golos {
              * execute this command.
              * @ingroup Wallet Management
              */
-            void set_password(string password);
+            void    set_password(string password);
 
             /** Dumps all private keys owned by the wallet.
              *
@@ -282,7 +248,7 @@ namespace golos {
              * @param method the name of the API command you want help with
              * @returns a multi-line string suitable for displaying on a terminal
              */
-            string gethelp(const string &method) const;
+            string  gethelp(const string& method)const;
 
             /** Loads a specified Graphene wallet.
              *
@@ -297,7 +263,7 @@ namespace golos {
              *                        existing wallet file
              * @returns true if the specified wallet is loaded
              */
-            bool load_wallet_file(string wallet_filename = "");
+            bool    load_wallet_file(string wallet_filename = "");
 
             /** Saves the current wallet to the given filename.
              *
@@ -309,7 +275,7 @@ namespace golos {
              *                        or overwrite.  If \c wallet_filename is empty,
              *                        save to the current filename.
              */
-            void save_wallet_file(string wallet_filename = "");
+            void    save_wallet_file(string wallet_filename = "");
 
             /** Sets the wallet filename used for future writes.
              *
@@ -318,7 +284,7 @@ namespace golos {
              *
              * @param wallet_filename the new filename to use for future saves
              */
-            void set_wallet_filename(string wallet_filename);
+            void    set_wallet_filename(string wallet_filename);
 
             /** Suggests a safe brain key to use for creating your account.
              * \c create_account_with_brain_key() requires you to specify a 'brain key',
@@ -327,7 +293,7 @@ namespace golos {
              * be easy to write down (and, with effort, memorize).
              * @returns a suggested brain_key
              */
-            brain_key_info suggest_brain_key() const;
+            brain_key_info suggest_brain_key()const;
 
             /** Converts a signed_transaction in JSON form to its binary representation.
              *
@@ -346,7 +312,7 @@ namespace golos {
              *
              * @param wif_key the WIF Private Key to import
              */
-            bool import_key(string wif_key);
+            bool import_key( string wif_key );
 
             /** Transforms a brain key to reduce the chance of errors when re-entering the key from memory.
              *
@@ -369,7 +335,7 @@ namespace golos {
              *  @param json_meta JSON Metadata associated with the new account
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account(string creator, string new_account_name, string json_meta, bool broadcast);
+            annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
 
             /**
              * This method is used by faucets to create new accounts for other users which must
@@ -386,15 +352,63 @@ namespace golos {
              * @param memo public memo key of the new account
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account_with_keys(string creator,
-                    string newname,
-                    string json_meta,
-                    public_key_type owner,
-                    public_key_type active,
-                    public_key_type posting,
-                    public_key_type memo,
-                    bool broadcast) const;
+            annotated_signed_transaction create_account_with_keys( string creator,
+                                                                   string newname,
+                                                                   string json_meta,
+                                                                   public_key_type owner,
+                                                                   public_key_type active,
+                                                                   public_key_type posting,
+                                                                   public_key_type memo,
+                                                                   bool broadcast )const;
 
+            /**
+             *  This method will genrate new owner, active, and memo keys for the new account which
+             *  will be controlable by this wallet. There is a fee associated with account creation
+             *  that is paid by the creator. The current account creation fee can be found with the
+             *  'info' wallet command.
+             *
+             *  These accounts are created with combination of STEEM and delegated SP
+             *
+             *  @param creator The account creating the new account
+             *  @param steem_fee The amount of the fee to be paid with STEEM
+             *  @param delegated_vests The amount of the fee to be paid with delegation
+             *  @param new_account_name The name of the new account
+             *  @param json_meta JSON Metadata associated with the new account
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+           // annotated_signed_transaction create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast );
+
+            /**
+             * This method is used by faucets to create new accounts for other users which must
+             * provide their desired keys. The resulting account may not be controllable by this
+             * wallet. There is a fee associated with account creation that is paid by the creator.
+             * The current account creation fee can be found with the 'info' wallet command.
+             *
+             * These accounts are created with combination of STEEM and delegated SP
+             *
+             * @param creator The account creating the new account
+             * @param steem_fee The amount of the fee to be paid with STEEM
+             * @param delegated_vests The amount of the fee to be paid with delegation
+             * @param newname The name of the new account
+             * @param json_meta JSON Metadata associated with the new account
+             * @param owner public owner key of the new account
+             * @param active public active key of the new account
+             * @param posting public posting key of the new account
+             * @param memo public memo key of the new account
+             * @param broadcast true if you wish to broadcast the transaction
+             */
+/*
+            annotated_signed_transaction create_account_with_keys_delegated( string creator,
+                                                                             asset steem_fee,
+                                                                             asset delegated_vests,
+                                                                             string newname,
+                                                                             string json_meta,
+                                                                             public_key_type owner,
+                                                                             public_key_type active,
+                                                                             public_key_type posting,
+                                                                             public_key_type memo,
+                                                                             bool broadcast )const;
+*/
             /**
              * This method updates the keys of an existing account.
              *
@@ -406,13 +420,13 @@ namespace golos {
              * @param memo New public memo key for the account
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account(string accountname,
-                    string json_meta,
-                    public_key_type owner,
-                    public_key_type active,
-                    public_key_type posting,
-                    public_key_type memo,
-                    bool broadcast) const;
+            annotated_signed_transaction update_account( string accountname,
+                                                         string json_meta,
+                                                         public_key_type owner,
+                                                         public_key_type active,
+                                                         public_key_type posting,
+                                                         public_key_type memo,
+                                                         bool broadcast )const;
 
             /**
              * This method updates the key of an authority for an exisiting account.
@@ -426,7 +440,7 @@ namespace golos {
              * @param weight The weight the key should have in the authority. A weight of 0 indicates the removal of the key.
              * @param broadcast true if you wish to broadcast the transaction.
              */
-            annotated_signed_transaction update_account_auth_key(string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast);
+            annotated_signed_transaction update_account_auth_key( string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast );
 
             /**
              * This method updates the account of an authority for an exisiting account.
@@ -440,7 +454,7 @@ namespace golos {
              * @param weight The weight the account should have in the authority. A weight of 0 indicates the removal of the account.
              * @param broadcast true if you wish to broadcast the transaction.
              */
-            annotated_signed_transaction update_account_auth_account(string account_name, authority_type type, string auth_account, weight_type weight, bool broadcast);
+            annotated_signed_transaction update_account_auth_account( string account_name, authority_type type, string auth_account, weight_type weight, bool broadcast );
 
             /**
              * This method updates the weight threshold of an authority for an account.
@@ -454,7 +468,7 @@ namespace golos {
              * @param threshold The weight threshold required for the authority to be met
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account_auth_threshold(string account_name, authority_type type, uint32_t threshold, bool broadcast);
+            annotated_signed_transaction update_account_auth_threshold( string account_name, authority_type type, uint32_t threshold, bool broadcast );
 
             /**
              * This method updates the account JSON metadata
@@ -463,7 +477,7 @@ namespace golos {
              * @param json_meta The new JSON metadata for the account. This overrides existing metadata
              * @param broadcast ture if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account_meta(string account_name, string json_meta, bool broadcast);
+            annotated_signed_transaction update_account_meta( string account_name, string json_meta, bool broadcast );
 
             /**
              * This method updates the memo key of an account
@@ -472,14 +486,24 @@ namespace golos {
              * @param key The new memo public key
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account_memo_key(string account_name, public_key_type key, bool broadcast);
+            annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
+
+
+            /**
+             * This method delegates VESTS from one account to another.
+             *
+             * @param delegator The name of the account delegating VESTS
+             * @param delegatee The name of the account receiving VESTS
+             * @param vesting_shares The amount of VESTS to delegate
+             * @param broadcast true if you wish to broadcast the transaction
+             */
+           // annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
+
 
             /**
              *  This method is used to convert a JSON transaction to its transaction ID.
              */
-            transaction_id_type get_transaction_id(const signed_transaction &trx) const {
-                return trx.id();
-            }
+            transaction_id_type get_transaction_id( const signed_transaction& trx )const { return trx.id(); }
 
             /** Lists all witnesses registered in the blockchain.
              * This returns a list of all account names that own witnesses, and the associated witness id,
@@ -494,13 +518,13 @@ namespace golos {
              * @param limit the maximum number of witnesss to return (max: 1000)
              * @returns a list of witnesss mapping witness names to witness ids
              */
-            set<account_name_type> list_witnesses(const string &lowerbound, uint32_t limit);
+            vector< account_name_type > list_witnesses(const string& lowerbound, uint32_t limit);
 
             /** Returns information about the given witness.
              * @param owner_account the name or id of the witness account owner, or the id of the witness
              * @returns the information about the witness stored in the block chain
              */
-            optional<witness_api_obj> get_witness(string owner_account);
+            optional< database_api::witness_api_object > get_witness(string owner_account);
 
             /** Returns conversion requests by an account
              *
@@ -508,7 +532,7 @@ namespace golos {
              *
              * @returns All pending conversion requests by account
              */
-            vector<convert_request_api_obj> get_conversion_requests(string owner);
+            vector< database_api::convert_request_api_object > get_conversion_requests( string owner );
 
 
             /**
@@ -521,10 +545,10 @@ namespace golos {
              * @param broadcast true if you wish to broadcast the transaction.
              */
             annotated_signed_transaction update_witness(string witness_name,
-                    string url,
-                    public_key_type block_signing_key,
-                    const chain_properties &props,
-                    bool broadcast = false);
+                                                        string url,
+                                                        public_key_type block_signing_key,
+                                                        const chain_properties& props,
+                                                        bool broadcast = false);
 
             /** Set the voting proxy for an account.
              *
@@ -542,8 +566,8 @@ namespace golos {
              * @param broadcast true if you wish to broadcast the transaction
              */
             annotated_signed_transaction set_voting_proxy(string account_to_modify,
-                    string proxy,
-                    bool broadcast = false);
+                                                          string proxy,
+                                                          bool broadcast = false);
 
             /**
              * Vote for a witness to become a block producer. By default an account has not voted
@@ -557,9 +581,9 @@ namespace golos {
              * @param broadcast true if you wish to broadcast the transaction
              */
             annotated_signed_transaction vote_for_witness(string account_to_vote_with,
-                    string witness_to_vote_for,
-                    bool approve = true,
-                    bool broadcast = false);
+                                                          string witness_to_vote_for,
+                                                          bool approve = true,
+                                                          bool broadcast = false);
 
             /**
              * Transfer funds from one account to another. STEEM and SBD can be transferred.
@@ -682,18 +706,24 @@ namespace golos {
             /**
              *  Transfers into savings happen immediately, transfers from savings take 72 hours
              */
-            annotated_signed_transaction transfer_to_savings(string from, string to, asset amount, string memo, bool broadcast = false);
+            annotated_signed_transaction transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast = false );
 
             /**
-             * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+             *  @param from       - the account that initiated the transfer
+             *  @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+             *  @param to         - the account getting the transfer
+             *  @param amount     - the amount of assets to be transfered
+             *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+             *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction transfer_from_savings(string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false);
+            annotated_signed_transaction transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false );
 
             /**
-             *  @param request_id the id used in transfer_from_savings
              *  @param from the account that initiated the transfer
+             *  @param request_id the id used in transfer_from_savings
+             *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction cancel_transfer_from_savings(string from, uint32_t request_id, bool broadcast = false);
+            annotated_signed_transaction cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast = false );
 
 
             /**
@@ -704,7 +734,7 @@ namespace golos {
              *    withdrawn and deposited back as STEEM. i.e. "10.000000 VESTS"
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction withdraw_vesting(string from, asset vesting_shares, bool broadcast = false);
+            annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
 
             /**
              * Set up a vesting withdraw route. When vesting shares are withdrawn, they will be routed to these accounts
@@ -718,7 +748,7 @@ namespace golos {
              *    them as STEEM.
              * @param broadcast true if you wish to broadcast the transaction.
              */
-            annotated_signed_transaction set_withdraw_vesting_route(string from, string to, uint16_t percent, bool auto_vest, bool broadcast = false);
+            annotated_signed_transaction set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast = false );
 
             /**
              *  This method will convert SBD to STEEM at the current_median_history price one
@@ -728,7 +758,7 @@ namespace golos {
              *  @param amount The amount of SBD to convert
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction convert_sbd(string from, asset amount, bool broadcast = false);
+            annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
 
             /**
              * A witness can public a price feed for the STEEM:SBD market. The median price feed is used
@@ -738,7 +768,7 @@ namespace golos {
              * @param exchange_rate The desired exchange rate
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast);
+            annotated_signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast );
 
             /** Signs a transaction.
              *
@@ -762,24 +792,19 @@ namespace golos {
              * you can fill in.  It's better than nothing.
              *
              * @param operation_type the type of operation to return, must be one of the
-             *                       operations defined in `steemit/chain/operations.hpp`
+             *                       operations defined in `steem/chain/operations.hpp`
              *                       (e.g., "global_parameters_update_operation")
              * @return a default-constructed operation of the given type
              */
             operation get_prototype_operation(string operation_type);
-
-            void network_add_nodes(const vector<string> &nodes);
-
-            vector<variant> network_get_connected_peers();
 
             /**
              * Gets the current order book for STEEM:SBD
              *
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
-            order_book get_order_book(uint32_t limit = 1000);
-
-            vector<extended_limit_order> get_open_orders(string accountname);
+            //market_history::get_order_book_return get_order_book( uint32_t limit = 1000 );
+            //vector< database_api::extended_limit_order > get_open_orders( string accountname );
 
             /**
              *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
@@ -792,7 +817,7 @@ namespace golos {
              *  @param expiration the time the order should expire if it has not been filled
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_order(string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast);
+            //annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
 
             /**
              * Cancel an order created with create_order
@@ -801,7 +826,7 @@ namespace golos {
              * @param orderid The unique identifier assigned to the order by its creator
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction cancel_order(string owner, uint32_t orderid, bool broadcast);
+            //annotated_signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
 
             /**
              *  Post or update a comment.
@@ -815,41 +840,7 @@ namespace golos {
              *  @param json the json metadata of the comment
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction post_comment(string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast);
-
-            /**
-             * Send the encrypted private email-like message to user
-             * @param from message author name
-             * @param to message recipient name
-             * @param subject message subject
-             * @param body message content
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction send_private_message(string from, string to, string subject, string body, bool broadcast);
-
-            /**
-             * Retrieves the private message inbox for the account mentioned
-             * @param account account to retrieve inbox for
-             * @param newest timestamp to start retrieve messages from
-             * @param limit amount of messages to retrieve
-             * @return message api objects vector
-             */
-            vector<extended_message_object> get_inbox(string account, fc::time_point newest, uint32_t limit);
-
-            /**
-             * Retrieves the private message outbox for the account mentioned
-             * @param account account to retrieve outbox for
-             * @param newest timestamp to start retireve messages from
-             * @param limit amount of messages to retrieve
-             * @return message api objects vector
-             */
-            vector<extended_message_object> get_outbox(string account, fc::time_point newest, uint32_t limit);
-
-            /**
-             *
-             * @param mo message api object to try to decrypt
-             */
-            message_body try_decrypt_message(const message_api_obj &mo);
+            annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
 
             /**
              * Vote on a comment to be paid STEEM
@@ -860,22 +851,12 @@ namespace golos {
              * @param weight The weight [-100,100] of the vote
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction vote(string voter, string author, string permlink, int16_t weight, bool broadcast);
+            annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
             /**
              * Sets the amount of time in the future until a transaction expires.
              */
             void set_transaction_expiration(uint32_t seconds);
-
-            /**
-             * Challenge a user's authority. The challenger pays a fee to the challenged which is depositted as
-             * Golos Power. Until the challenged proves their active key, all posting rights are revoked.
-             *
-             * @param challenger The account issuing the challenge
-             * @param challenged The account being challenged
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction challenge(string challenger, string challenged, bool broadcast);
 
             /**
              * Create an account recovery request as a recover account. The syntax for this command contains a serialized authority object
@@ -888,7 +869,7 @@ namespace golos {
              * @param new_authority The new owner authority for the recovered account. This should be given to you by the holder of the compromised or lost account.
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction request_account_recovery(string recovery_account, string account_to_recover, authority new_authority, bool broadcast);
+            annotated_signed_transaction request_account_recovery( string recovery_account, string account_to_recover, authority new_authority, bool broadcast );
 
             /**
              * Recover your account using a recovery request created by your recovery account. The syntax for this commain contains a serialized
@@ -901,7 +882,7 @@ namespace golos {
              * @param new_authority The new authority that your recovery account used in the account recover request.
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction recover_account(string account_to_recover, authority recent_authority, authority new_authority, bool broadcast);
+            annotated_signed_transaction recover_account( string account_to_recover, authority recent_authority, authority new_authority, bool broadcast );
 
             /**
              * Change your recovery account after a 30 day delay.
@@ -910,18 +891,9 @@ namespace golos {
              * @param new_recovery_account The name of the recovery account you wish to have
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction change_recovery_account(string owner, string new_recovery_account, bool broadcast);
+            annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
-            vector<owner_authority_history_api_obj> get_owner_history(string account) const;
-
-            /**
-             * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
-             * the account immune to challenge for 24 hours.
-             *
-             * @param challenged The account that was challenged and is proving its authority.
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction prove(string challenged, bool broadcast);
+            vector< database_api::owner_authority_history_api_object > get_owner_history( string account )const;
 
             /**
              *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
@@ -931,62 +903,68 @@ namespace golos {
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
              */
-            map<uint32_t, applied_operation> get_account_history(string account, uint32_t from, uint32_t limit);
+            //map< uint32_t, account_history::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
 
 
+            FC_TODO(Supplement API argument description)
             /**
              *  Marks one account as following another account.  Requires the posting authority of the follower.
              *
+             *  @param follower
+             *  @param following
              *  @param what - a set of things to follow: posts, comments, votes, ignore
+             *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction follow(string follower, string following, set<string> what, bool broadcast);
+            //annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
 
 
-            std::map<string, std::function<string(fc::variant, const fc::variants &)>> get_result_formatters() const;
+            std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
             fc::signal<void(bool)> lock_changed;
             std::shared_ptr<detail::wallet_api_impl> my;
-
             void encrypt_keys();
+
+            /**
+             * Checks memos against private keys on account and imported in wallet
+             */
+            void check_memo( const string& memo, const database_api::account_api_object& account )const;
 
             /**
              *  Returns the encrypted memo if memo starts with '#' otherwise returns memo
              */
-            string get_encrypted_memo(string from, string to, string memo);
+            string get_encrypted_memo( string from, string to, string memo );
 
             /**
              * Returns the decrypted memo if possible given wallet's known private keys
              */
-            string decrypt_memo(string memo);
+            string decrypt_memo( string memo );
 
-            annotated_signed_transaction decline_voting_rights(string account, bool decline, bool broadcast);
+            annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
+
+            //annotated_signed_transaction claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast );
         };
 
         struct plain_keys {
-            fc::sha512 checksum;
-            map<public_key_type, string> keys;
+            fc::sha512                  checksum;
+            map<public_key_type,string> keys;
         };
 
-    }
-}
+    } }
 
-FC_REFLECT(golos::wallet::wallet_data,
-        (cipher_keys)
-                (ws_server)
-                (ws_user)
-                (ws_password)
+FC_REFLECT( (golos::wallet::wallet_data),
+            (cipher_keys)
+                    (ws_server)
+                    (ws_user)
+                    (ws_password)
 )
 
-FC_REFLECT(golos::wallet::brain_key_info, (brain_priv_key)(wif_priv_key)(pub_key))
+FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
-FC_REFLECT_DERIVED(golos::wallet::signed_block_with_info, (golos::chain::signed_block),
-        (block_id)(signing_key)(transaction_ids))
+FC_REFLECT( (golos::wallet::plain_keys), (checksum)(keys) )
 
-FC_REFLECT(golos::wallet::plain_keys, (checksum)(keys))
+FC_REFLECT_ENUM( golos::wallet::authority_type, (owner)(active)(posting) )
 
-FC_REFLECT_ENUM(golos::wallet::authority_type, (owner)(active)(posting))
-
-FC_API(golos::wallet::wallet_api,
+FC_API( golos::wallet::wallet_api,
 /// wallet api
         (help)(gethelp)
                 (about)(is_new)(is_locked)(lock)(unlock)(set_password)
@@ -1006,45 +984,47 @@ FC_API(golos::wallet::wallet_api,
                 (list_accounts)
                 (list_witnesses)
                 (get_witness)
-                (get_steem_per_mvests)
-                (get_account_count)
                 (get_account)
                 (get_block)
-                (get_ops_in_block)
-                (get_feed_history)
+                //(get_ops_in_block)
+                //(get_feed_history)
                 (get_conversion_requests)
-                (get_account_history)
-                (get_state)
+                //(get_account_history)
                 (get_withdraw_routes)
 
                 /// transaction api
                 (create_account)
                 (create_account_with_keys)
+                //(create_account_delegated)
+                //(create_account_with_keys_delegated)
                 (update_account)
                 (update_account_auth_key)
                 (update_account_auth_account)
                 (update_account_auth_threshold)
                 (update_account_meta)
                 (update_account_memo_key)
+                //(delegate_vesting_shares)
                 (update_witness)
                 (set_voting_proxy)
                 (vote_for_witness)
-                (follow)
+                //(follow)
                 (transfer)
+                (escrow_transfer)
+                (escrow_approve)
+                (escrow_dispute)
+                (escrow_release)
                 (transfer_to_vesting)
                 (withdraw_vesting)
                 (set_withdraw_vesting_route)
                 (convert_sbd)
                 (publish_feed)
-                (get_order_book)
-                (get_open_orders)
-                (create_order)
-                (cancel_order)
+                //(get_order_book)
+                //(get_open_orders)
+                //(create_order)
+                //(cancel_order)
                 (post_comment)
                 (vote)
                 (set_transaction_expiration)
-                (challenge)
-                (prove)
                 (request_account_recovery)
                 (recover_account)
                 (change_recovery_account)
@@ -1055,23 +1035,15 @@ FC_API(golos::wallet::wallet_api,
                 (get_encrypted_memo)
                 (decrypt_memo)
                 (decline_voting_rights)
-
-                // private message api
-                (send_private_message)
-                (get_inbox)
-                (get_outbox)
+                //(claim_reward_balance)
 
                 /// helper api
                 (get_prototype_operation)
                 (serialize_transaction)
                 (sign_transaction)
 
-                (network_add_nodes)
-                (network_get_connected_peers)
-
                 (get_active_witnesses)
-                (get_miner_queue)
                 (get_transaction)
 )
 
-FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
+FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )

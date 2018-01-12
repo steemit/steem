@@ -1,6 +1,6 @@
 
-#include <steemit/chain/compound.hpp>
-#include <steemit/protocol/asset.hpp>
+#include <golos/chain/compound.hpp>
+#include <golos/protocol/asset.hpp>
 
 #include <fc/io/json.hpp>
 

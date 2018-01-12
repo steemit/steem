@@ -1,7 +1,7 @@
 add_executable(get_dev_key get_dev_key.cpp)
 
 target_link_libraries(get_dev_key
-        PRIVATE golos_app golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE  golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 install(TARGETS
         get_dev_key
@@ -15,12 +15,12 @@ install(TARGETS
 add_executable(test_shared_mem test_shared_mem.cpp)
 
 target_link_libraries(test_shared_mem
-        PRIVATE golos_app golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE  golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 add_executable(sign_digest sign_digest.cpp)
 
 target_link_libraries(sign_digest
-        PRIVATE golos_app golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE  golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 install(TARGETS
         sign_digest
@@ -33,7 +33,7 @@ install(TARGETS
 add_executable(sign_transaction sign_transaction.cpp)
 
 target_link_libraries(sign_transaction
-        PRIVATE golos_app golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE  golos_chain golos_protocol graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 install(TARGETS
         sign_transaction
