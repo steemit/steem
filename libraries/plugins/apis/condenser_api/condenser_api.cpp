@@ -803,8 +803,12 @@ namespace detail
    }
 =======
       return *fund;
+<<<<<<< 03303d8bf8e88a81d8a847777701be3b6034c291
    }  
 >>>>>>> Small correction + refactoring.
+=======
+   }
+>>>>>>> Issue 1952 - definitely work: `by_voter_comment` and `by_voter_last_update`.
 
    DEFINE_API_IMPL( condenser_api_impl, get_key_references )
    {

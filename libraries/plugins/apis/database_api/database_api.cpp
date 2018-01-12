@@ -1077,6 +1077,109 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
    return result;
 }
 
+struct by_voter_last_update_item
+{
+   comment_vote_object* cvo = nullptr;
+
+   account_id_type* voter = nullptr;
+   comment_id_type* comment = nullptr;
+   time_point_sec* last_update = nullptr;
+
+   by_voter_last_update_item( const comment_vote_object& _cvo )
+   : cvo( const_cast< comment_vote_object* >( &_cvo ) ), voter( &cvo->voter ), comment( &cvo->comment ), last_update( &cvo->last_update ){}
+
+   by_voter_last_update_item( account_id_type& _voter, comment_id_type& _comment, time_point_sec& _last_update )
+   : voter( &_voter ), comment( &_comment ), last_update( &_last_update ){}
+
+   bool operator<( const by_voter_last_update_item& obj ) const
+   {
+      if( *voter == *obj.voter )
+      {
+         if( *last_update == *obj.last_update )
+            return *comment < *obj.comment;
+         else
+            return *last_update > *obj.last_update;
+      }
+      else
+         return *voter < *obj.voter;
+   }
+
+   by_voter_last_update_item& operator=( const by_voter_last_update_item& obj )
+   {
+      cvo = obj.cvo;
+
+      voter = obj.voter;
+      comment = obj.comment;
+      last_update = obj.last_update;
+
+      return *this;
+   }
+
+   static account_id_type get_value( const comment_vote_object& obj )
+   {
+      return obj.voter;
+   }
+};
+
+template< typename WrapperType, typename IndexType, typename OrderType, typename ValueType1, typename ValueType2, typename ValueType3, typename ResultType, typename OnPush >
+void process_result( database_api_impl& _impl, vector< ResultType >& result, uint32_t limit, ValueType1& v1, ValueType2& v2, ValueType3& v3, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
+{
+   std::set< WrapperType > s;
+   typename std::set< WrapperType >::iterator start;
+
+   WrapperType start_obj( v1, v2, v3 );
+
+   const auto& idx = _impl._db.get_index< IndexType, OrderType >();
+   const auto& end = idx.end();
+
+   auto& val = v1;
+
+   auto itr = idx.lower_bound( val );
+   auto itr_u = idx.upper_bound( val );
+
+   std::string str;
+
+   if( ( itr == itr_u ) && ( itr_u == end ) )
+      return;
+
+   uint32_t size = 0;
+   uint32_t skip = 0;
+
+   while( size < limit && itr_u != end )
+   {
+      while( itr != itr_u )
+      {
+         s.emplace( std::move( WrapperType( *itr ) ) );
+         ++itr;
+      }
+
+      if( size == 0 )
+      {
+         start = s.lower_bound( start_obj );
+         skip = std::distance( s.begin(), start );
+      }
+
+      size = s.size() - skip;
+
+      if( size < limit && itr_u != end )
+      {
+         val = WrapperType::get_value( *itr_u );
+
+         itr = idx.lower_bound( val );
+         itr_u = idx.upper_bound( val );
+      }
+   }
+
+   uint32_t cnt = 0;
+   start = s.begin();
+   std::advance( start, skip );
+   while( start != s.end() && cnt++ < limit )
+   {
+      result.push_back( on_push( *( start->cvo ) ) );
+      ++start;
+   }
+}
+
 template< template< typename... > typename Collection, typename ResultType >
 void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp )
 {
@@ -1103,11 +1206,26 @@ void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t n
       comment_id = comment->id;
    }
 
-   _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
-   boost::make_tuple( voter_id, timestamp, comment_id ),
-   c,
-   limit,
-   [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+   if( nr_args == 3 )
+   {
+      _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
+      boost::make_tuple( voter_id, comment_id ),
+      c,
+      limit,
+      [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+   } else if( nr_args == 4 )
+   {
+      process_result< by_voter_last_update_item, chain::comment_vote_index, chain::by_voter_comment >
+      (
+         _impl,
+         c,
+         limit,
+         voter_id,
+         comment_id,
+         timestamp,
+         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); }
+      );
+   }
 }
 
 /* Votes */
@@ -1194,8 +1312,8 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
             voter_id = account->id;
          }
 
-         iterate_results< chain::comment_vote_index, chain::by_comment_weight_voter >(
-            boost::make_tuple( comment_id, key[2].as< uint64_t >(), voter_id ),
+         iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
+            boost::make_tuple( comment_id, voter_id, key[2].as< uint64_t >() ),
             result.votes,
             args.limit,
             [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); } );

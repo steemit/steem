@@ -1595,6 +1595,31 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
  */
 share_type database::pay_curators( const comment_object& c, share_type& max_rewards )
 {
+   struct proxy_item
+   {
+      account_id_type* voter;
+      uint64_t weight;
+
+      proxy_item( const account_id_type& _voter, uint64_t _weight )
+      : voter( const_cast< account_id_type* >( &_voter ) ), weight( _weight ) {}
+
+      bool operator<( const proxy_item& obj ) const
+      {
+         if( weight == obj.weight )
+            return *voter < *obj.voter;
+         else
+            return weight > obj.weight;
+      }
+
+      proxy_item& operator=( const proxy_item& obj )
+      {
+         voter = obj.voter;
+         weight = obj.weight;
+
+         return *this;
+      }
+   };
+
    try
    {
       uint128_t total_weight( c.total_vote_weight );
@@ -1608,16 +1633,24 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
       }
       else if( c.total_vote_weight > 0 )
       {
-         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_weight_voter>();
+         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
          auto itr = cvidx.lower_bound( c.id );
+
+         std::set< proxy_item > proxy_set;
          while( itr != cvidx.end() && itr->comment == c.id )
          {
-            uint128_t weight( itr->weight );
+            proxy_set.emplace( std::move( proxy_item( itr->voter, itr->weight ) ) ); 
+            ++itr;
+         }
+
+         for( auto& item : proxy_set )
+         {
+            uint128_t weight( item.weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
-               const auto& voter = get(itr->voter);
+               const auto& voter = get( *item.voter );
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
                push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
@@ -1629,7 +1662,6 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                   });
                #endif
             }
-            ++itr;
          }
       }
       max_rewards -= unclaimed_rewards;
