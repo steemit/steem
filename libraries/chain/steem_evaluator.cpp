@@ -259,10 +259,17 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.mined = mined;
 
    FC_TODO( "If after HF 20, there are no temp account recoveries, the HF check can be removed." )
-   if( !_db.has_hardfork( STEEM_HARDFORK_0_11__169 ) )
-         acc.recovery_account = "steem";
-   else if( o.creator != STEEM_TEMP_ACCOUNT || !_db.has_hardfork( STEEM_HARDFORK_0_20__1782 ) )
-      acc.recovery_account = recovery_account;
+   if( _db.has_hardfork( STEEM_HARDFORK_0_11 ) )
+   {
+      if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1782 ) || o.creator != STEEM_TEMP_ACCOUNT )
+      {
+         acc.recovery_account = recovery_account;
+      }
+   }
+   else
+   {
+      acc.recovery_account = "steem";
+   }
 }
 
 void account_create_evaluator::do_apply( const account_create_operation& o )
@@ -301,8 +308,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
-      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/,
-                                 _db.has_hardfork( STEEM_HARDFORK_0_11__169 ) ? o.creator : "steem" );
+      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator );
       #ifndef IS_LOW_MEM
          from_string( acc.json_metadata, o.json_metadata );
       #endif
@@ -1573,8 +1579,7 @@ void pow_apply( database& db, Operation o )
    {
       db.create< account_object >( [&]( account_object& acc )
       {
-         initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/,
-                                    db.has_hardfork( STEEM_HARDFORK_0_11__169 ) ? "" : "steem" );
+         initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/, account_name_type() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
 
@@ -1687,7 +1692,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       FC_ASSERT( o.new_owner_key.valid(), "New owner key is not valid." );
       db.create< account_object >( [&]( account_object& acc )
       {
-         initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, "" );
+         initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, account_name_type() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
 
