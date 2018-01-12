@@ -67,7 +67,8 @@ add_dependencies( chainbase castxml serialize3 )
 target_link_libraries( chainbase  ${Boost_LIBRARIES} )
 target_include_directories( chainbase PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${serialize3_SOURCE_DIR}/../"
+                            #"${serialize3_SOURCE_DIR}/../"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../../programs"
                             "${Boost_INCLUDE_DIR}" )
 
 if( CLANG_TIDY_EXE )

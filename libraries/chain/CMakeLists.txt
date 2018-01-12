@@ -28,7 +28,8 @@ add_dependencies( steem_chain castxml serialize3 )
 target_link_libraries( steem_chain steem_protocol fc chainbase steem_schema ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${serialize3_SOURCE_DIR}/../"
+                            #"${serialize3_SOURCE_DIR}/../"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../../programs"
                             "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 #get_property(INCLUDES TARGET steem_chain PROPERTY INCLUDE_DIRECTORIES)
@@ -49,9 +50,9 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_inject
             --compiler ${CMAKE_CXX_COMPILER}
             --compiler-options "${CMAKE_CXX_FLAGS} ${INCLUDES} -D_X86INTRIN_H_INCLUDED"
             #--compiler-includes ${INCLUDES}
-            --check-changes xml
+            --check-changes preparse
             --indent 3
-            --verbose
+            #--verbose
    )
                                                      
 if( CLANG_TIDY_EXE )
