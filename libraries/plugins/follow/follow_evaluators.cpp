@@ -1,6 +1,7 @@
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
@@ -121,6 +122,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 {
    try
    {
+      performance perf( _db );
+
       const auto& c = _db.get_comment( o.author, o.permlink );
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
@@ -160,60 +163,52 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          });
       }
 
-      const auto& feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
       const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
+      const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       auto itr = idx.find( o.account );
+
+      performance_data pd;
 
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
          while( itr != idx.end() && itr->following == o.account )
          {
-
             if( itr->what & ( 1 << blog ) )
             {
-               uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( itr->follower );
-
-               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
-               {
-                  next_id = last_feed->account_feed_id + 1;
-               }
-
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+               bool is_empty = feed_itr == comment_idx.end();
 
-               if( feed_itr == comment_idx.end() )
+               pd.init( o.account, _db.head_block_time(), c.id, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
+               uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, itr->follower, _plugin->max_feed_size, pd );
+
+               if( pd.s.creation )
                {
-                  _db.create< feed_object >( [&]( feed_object& f )
+                  if( is_empty )
                   {
-                     f.account = itr->follower;
-                     f.reblogged_by.push_back( o.account );
-                     f.first_reblogged_by = o.account;
-                     f.first_reblogged_on = _db.head_block_time();
-                     f.comment = c.id;
-                     f.reblogs = 1;
-                     f.account_feed_id = next_id;
-                  });
-               }
-               else
-               {
-                  _db.modify( *feed_itr, [&]( feed_object& f )
+                     _db.create< feed_object >( [&]( feed_object& f )
+                     {
+                        f.account = itr->follower;
+                        f.reblogged_by.push_back( o.account );
+                        f.first_reblogged_by = o.account;
+                        f.first_reblogged_on = _db.head_block_time();
+                        f.comment = c.id;
+                        f.account_feed_id = next_id;
+                     });
+                  }
+                  else
                   {
-                     f.reblogged_by.push_back( o.account );
-                     f.reblogs++;
-                  });
+                     if( pd.s.allow_modify )
+                     {
+                        _db.modify( *feed_itr, [&]( feed_object& f )
+                        {
+                           f.reblogged_by.push_back( o.account );
+                        });
+                     }
+                  }
                }
 
-               const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_old_feed >();
-               auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-               while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
-               {
-                  _db.remove( *old_feed );
-                  old_feed = old_feed_idx.lower_bound( itr->follower );
-               };
             }
-
             ++itr;
          }
       }
