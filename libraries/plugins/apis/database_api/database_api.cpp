@@ -1127,7 +1127,7 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
          auto key = args.start.as< vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_comment_voter start requires 3 values. (account_name_type, account_name_type, string)" );
 
-         auto voter = key[1].as< account_name_type >();
+         auto voter = key[0].as< account_name_type >();
          account_id_type voter_id;
 
          if( voter != account_name_type() )
@@ -1160,7 +1160,7 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
          auto key = args.start.as< vector< fc::variant > >();
          FC_ASSERT( key.size() == 4, "by_comment_voter start requires 4 values. (account_name_type, time_point_sec, account_name_type, string)" );
 
-         auto voter = key[1].as< account_name_type >();
+         auto voter = key[0].as< account_name_type >();
          account_id_type voter_id;
 
          if( voter != account_name_type() )
