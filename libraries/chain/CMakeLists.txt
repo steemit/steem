@@ -35,10 +35,10 @@ target_include_directories( steem_chain PUBLIC
 #get_property(INCLUDES TARGET steem_chain PROPERTY INCLUDE_DIRECTORIES)
 SET(INCLUDES "-I$<JOIN:$<TARGET_PROPERTY:steem_chain,INCLUDE_DIRECTORIES>, -I>")
 MESSAGE(STATUS "INCLUDES: ${INCLUDES}")
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_injected.cpp"
-   MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp"
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_injected.cpp
+   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp
    DEPENDS castxml serialize3
-   #IMPLICIT_DEPENDENCY CXX
+   IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp
    USES_TERMINAL 
    COMMENT  "RUN SERIALIZE3 ON ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/chain/serialized_headers.hpp"
    COMMAND  ${serialize3_BINARY_DIR}/serialize3
@@ -50,7 +50,7 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/serialized_headers_inject
             --compiler ${CMAKE_CXX_COMPILER}
             --compiler-options "${CMAKE_CXX_FLAGS} ${INCLUDES} -D_X86INTRIN_H_INCLUDED"
             #--compiler-includes ${INCLUDES}
-            --check-changes preparse
+            --check-changes preprocess
             --indent 3
             #--verbose
    )
