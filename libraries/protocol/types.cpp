@@ -1,9 +1,9 @@
-#include <steemit/protocol/config.hpp>
-#include <steemit/protocol/types.hpp>
+#include <golos/protocol/config.hpp>
+#include <golos/protocol/types.hpp>
 
 #include <fc/crypto/base58.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
         public_key_type::public_key_type() : key_data() {
@@ -171,32 +171,32 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol
 
 namespace fc {
     using namespace std;
 
-    void to_variant(const steemit::protocol::public_key_type &var, fc::variant &vo) {
+    void to_variant(const golos::protocol::public_key_type &var, fc::variant &vo) {
         vo = std::string(var);
     }
 
-    void from_variant(const fc::variant &var, steemit::protocol::public_key_type &vo) {
-        vo = steemit::protocol::public_key_type(var.as_string());
+    void from_variant(const fc::variant &var, golos::protocol::public_key_type &vo) {
+        vo = golos::protocol::public_key_type(var.as_string());
     }
 
-    void to_variant(const steemit::protocol::extended_public_key_type &var, fc::variant &vo) {
+    void to_variant(const golos::protocol::extended_public_key_type &var, fc::variant &vo) {
         vo = std::string(var);
     }
 
-    void from_variant(const fc::variant &var, steemit::protocol::extended_public_key_type &vo) {
-        vo = steemit::protocol::extended_public_key_type(var.as_string());
+    void from_variant(const fc::variant &var, golos::protocol::extended_public_key_type &vo) {
+        vo = golos::protocol::extended_public_key_type(var.as_string());
     }
 
-    void to_variant(const steemit::protocol::extended_private_key_type &var, fc::variant &vo) {
+    void to_variant(const golos::protocol::extended_private_key_type &var, fc::variant &vo) {
         vo = std::string(var);
     }
 
-    void from_variant(const fc::variant &var, steemit::protocol::extended_private_key_type &vo) {
-        vo = steemit::protocol::extended_private_key_type(var.as_string());
+    void from_variant(const fc::variant &var, golos::protocol::extended_private_key_type &vo) {
+        vo = golos::protocol::extended_private_key_type(var.as_string());
     }
 } // fc

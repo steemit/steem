@@ -9,9 +9,9 @@
 
 #include "../common/database_fixture.hpp"
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace golos;
+using namespace golos::chain;
+using namespace golos::protocol;
 
 #ifndef STEEMIT_BUILD_TESTNET
 

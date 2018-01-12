@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 
-namespace graphene {
+namespace golos {
     namespace utilities {
 
         extern const char *const git_revision_sha;
@@ -33,4 +33,4 @@ namespace graphene {
         extern const char *const git_revision_description;
 
     }
-} // end namespace graphene::utilities
+} // end namespace golos::utilities

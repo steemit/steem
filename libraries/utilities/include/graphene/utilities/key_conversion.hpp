@@ -27,7 +27,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/optional.hpp>
 
-namespace graphene {
+namespace golos {
     namespace utilities {
 
         std::string key_to_wif(const fc::sha256 &private_secret);
@@ -37,4 +37,4 @@ namespace graphene {
         fc::optional<fc::ecc::private_key> wif_to_key(const std::string &wif_key);
 
     }
-} // end namespace graphene::utilities
+} // end namespace golos::utilities

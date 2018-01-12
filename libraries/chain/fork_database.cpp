@@ -1,8 +1,8 @@
-#include <steemit/chain/fork_database.hpp>
+#include <golos/chain/fork_database.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
+#include <golos/chain/database_exceptions.hpp>
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         fork_database::fork_database() {
@@ -239,4 +239,4 @@ namespace steemit {
         }
 
     }
-} // steemit::chain
+} // golos::chain

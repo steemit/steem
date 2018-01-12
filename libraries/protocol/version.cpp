@@ -1,19 +1,19 @@
-#include <steemit/protocol/version.hpp>
+#include <golos/protocol/version.hpp>
 
 #include <fc/exception/exception.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
 /* Quick conversion utilities from http://joelverhagen.com/blog/2010/11/convert-an-int-to-a-string-and-vice-versa-in-c/ */
-        inline int string_to_int(fc::string input) {
+        inline int string_to_int(std::string input) {
             std::stringstream s(input);
             int i;
             s >> i;
             return i;
         }
 
-        inline fc::string int_to_string(int input) {
+        inline std::string int_to_string(int input) {
             std::stringstream s;
             s << input;
             return s.str();
@@ -25,7 +25,7 @@ namespace steemit {
             v_num = v_num | r;
         }
 
-        version::operator fc::string() const {
+        version::operator std::string() const {
             std::stringstream s;
             s << ((v_num >> 24) & 0x000000FF)
               << '.'
@@ -37,14 +37,14 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol
 
 namespace fc {
-    void to_variant(const steemit::protocol::version &v, variant &var) {
-        var = fc::string(v);
+    void to_variant(const golos::protocol::version &v, variant &var) {
+        var = std::string(v);
     }
 
-    void from_variant(const variant &var, steemit::protocol::version &v) {
+    void from_variant(const variant &var, golos::protocol::version &v) {
         uint32_t major = 0, hardfork = 0, revision = 0;
         char dot_a = 0, dot_b = 0;
 
@@ -62,12 +62,12 @@ namespace fc {
         v.v_num = 0 | (major << 24) | (hardfork << 16) | revision;
     }
 
-    void to_variant(const steemit::protocol::hardfork_version &hv, variant &var) {
-        to_variant((const steemit::protocol::version &)hv, var);
+    void to_variant(const golos::protocol::hardfork_version &hv, variant &var) {
+        to_variant((const golos::protocol::version &)hv, var);
     }
 
-    void from_variant(const variant &var, steemit::protocol::hardfork_version &hv) {
-        steemit::protocol::version ver;
+    void from_variant(const variant &var, golos::protocol::hardfork_version &hv) {
+        golos::protocol::version ver;
         from_variant(var, ver);
         hv.v_num = ver.v_num & 0xffff0000;
     }

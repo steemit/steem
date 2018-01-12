@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         struct api_access_info {
@@ -44,15 +44,15 @@ namespace steemit {
         };
 
     }
-} // steemit::app
+} // golos::app
 
-FC_REFLECT(steemit::app::api_access_info,
+FC_REFLECT(golos::app::api_access_info,
         (username)
                 (password_hash_b64)
                 (password_salt_b64)
                 (allowed_apis)
 )
 
-FC_REFLECT(steemit::app::api_access,
+FC_REFLECT(golos::app::api_access,
         (permission_map)
 )

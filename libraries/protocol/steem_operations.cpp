@@ -1,7 +1,7 @@
-#include <steemit/protocol/steem_operations.hpp>
+#include <golos/protocol/steem_operations.hpp>
 #include <fc/io/json.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
         /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
@@ -136,7 +136,7 @@ namespace steemit {
             validate_account_name(from_account);
             validate_account_name(to_account);
             FC_ASSERT(0 <= percent && percent <=
-                                      STEEMIT_100_PERCENT, "Percent must be valid steemit percent");
+                                      STEEMIT_100_PERCENT, "Percent must be valid golos percent");
         }
 
         void witness_update_operation::validate() const {
@@ -497,4 +497,4 @@ namespace steemit {
 
 
     }
-} // steemit::protocol
+} // golos::protocol

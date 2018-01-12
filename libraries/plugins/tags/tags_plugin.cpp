@@ -1,50 +1,58 @@
-#include <steemit/tags/tags_plugin.hpp>
-
-#include <steemit/app/impacted.hpp>
-
-#include <steemit/protocol/config.hpp>
-
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-
+#include <golos/protocol/config.hpp>
+#include <golos/chain/database.hpp>
+#include <golos/chain/hardfork.hpp>
+#include <golos/chain/operation_notification.hpp>
+#include <golos/chain/account_object.hpp>
+#include <golos/chain/comment_object.hpp>
+#include <golos/chain/index.hpp>
 #include <fc/smart_ref_impl.hpp>
-#include <fc/thread/thread.hpp>
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>
 
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit {
-    namespace tags {
+#include "golos/plugins/tags/tags_plugin.hpp"
 
-        namespace detail {
+namespace golos {
+    namespace plugins {
+        namespace tags {
 
-            using namespace steemit::protocol;
 
-            class tags_plugin_impl {
+            using namespace golos::protocol;
+
+            struct tags_plugin::tags_plugin_impl final {
             public:
-                tags_plugin_impl(tags_plugin &_plugin)
-                        : _self(_plugin) {
+                tags_plugin_impl() : _db(appbase::app().get_plugin<chain::plugin>().db()) {
                 }
 
-                virtual ~tags_plugin_impl();
-
-                steemit::chain::database &database() {
-                    return _self.database();
+                ~tags_plugin_impl() {
                 }
+
+                golos::chain::database &database() {
+                    return _db;
+                }
+
+                get_tags_r get_tags() ;
 
                 void on_operation(const operation_notification &note);
 
-                tags_plugin &_self;
+                golos::chain::database &_db;
             };
 
-            tags_plugin_impl::~tags_plugin_impl() {
-                return;
+            get_tags_r tags_plugin::tags_plugin_impl::get_tags() {
+                get_tags_r result;
+                result.tags = std::vector<tag_stats_object>();
+                return result;
+            }
+
+            DEFINE_API ( tags_plugin, get_tags ) {
+                auto &db = my->database();
+                return db.with_read_lock([&]() {
+                    get_tags_r result;
+                    result = my->get_tags();
+                    return result;
+                });
             }
 
             struct operation_visitor {
@@ -127,7 +135,7 @@ namespace steemit {
                         ++count;
                         if (count > tag_limit ||
                             lower_tags.size() > tag_limit) {
-                                break;
+                            break;
                         }
                         if (tag == "") {
                             continue;
@@ -327,7 +335,7 @@ namespace steemit {
                     auto itr = voteidx.lower_bound(boost::make_tuple(comment_id_type(c.id), account_id_type()));
                     while (itr != voteidx.end() && itr->comment == c.id) {
                         update_indirect_vote(voter.id, itr->voter,
-                                (itr->vote_percent > 0) == (vote > 0));
+                                             (itr->vote_percent > 0) == (vote > 0));
                         ++itr;
                     }
                 }
@@ -416,51 +424,48 @@ namespace steemit {
             };
 
 
-            void tags_plugin_impl::on_operation(const operation_notification &note) {
+            void tags_plugin::tags_plugin_impl::on_operation(const operation_notification &note) {
                 try {
                     /// plugins shouldn't ever throw
                     note.op.visit(operation_visitor(database()));
-                }
-                catch (const fc::exception &e) {
+                } catch (const fc::exception &e) {
                     edump((e.to_detail_string()));
-                }
-                catch (...) {
+                } catch (...) {
                     elog("unhandled exception");
                 }
             }
 
-        } /// end detail namespace
 
-        tags_plugin::tags_plugin(application *app)
-                : plugin(app), my(new detail::tags_plugin_impl(*this)) {
-            chain::database &db = database();
-            add_plugin_index<tag_index>(db);
-            add_plugin_index<tag_stats_index>(db);
-            add_plugin_index<peer_stats_index>(db);
-            add_plugin_index<author_tag_stats_index>(db);
+            tags_plugin::tags_plugin() {
+            }
+
+            tags_plugin::~tags_plugin() {
+
+            }
+
+
+            void tags_plugin::set_program_options(boost::program_options::options_description &cli,
+                                                  boost::program_options::options_description &cfg) {
+
+            }
+
+            void tags_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
+                ilog("Initializing tags plugin");
+                my.reset(new tags_plugin_impl);
+                my->database().post_apply_operation.connect([&](const operation_notification &note) {
+                    my->on_operation(note);
+                });
+                auto &db = my->database();
+                add_plugin_index<tag_index>(db);
+                add_plugin_index<tag_stats_index>(db);
+                add_plugin_index<peer_stats_index>(db);
+                add_plugin_index<author_tag_stats_index>(db);
+
+                JSON_RPC_REGISTER_API ( name() ) ;
+            }
+
+            void tags_plugin::plugin_startup() {
+            }
         }
-
-        tags_plugin::~tags_plugin() {
-        }
-
-        void tags_plugin::plugin_set_program_options(
-                boost::program_options::options_description &cli,
-                boost::program_options::options_description &cfg
-        ) {
-        }
-
-        void tags_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
-            ilog("Intializing tags plugin");
-            database().post_apply_operation.connect([&](const operation_notification &note) { my->on_operation(note); });
-
-            app().register_api_factory<tag_api>("tag_api");
-        }
-
-
-        void tags_plugin::plugin_startup() {
-        }
-
-    }
-} /// steemit::tags
-
-STEEMIT_DEFINE_PLUGIN(tags, steemit::tags::tags_plugin)
+    } /// golos::tags
+}

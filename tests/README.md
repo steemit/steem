@@ -27,7 +27,7 @@ Then, inside the container:
 (These steps are taken from `/Dockerfile.test` in the
 repository root.)
 
-    git clone https://github.com/steemit/steem.git \
+    git clone https://github.com/golos/steem.git \
         /usr/local/src/steem
     cd /usr/local/src/steem
     git checkout <branch> # e.g. 123-feature

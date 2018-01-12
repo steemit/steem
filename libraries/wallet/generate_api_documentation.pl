@@ -13,10 +13,10 @@ my $outFile = new IO::File($outputFileName, "w")
 my $fileHeader = <<'END';
 /** GENERATED FILE **/
 #include <set>
-#include <steemit/wallet/api_documentation.hpp>
-#include <steemit/wallet/wallet.hpp>
+#include <golos/wallet/api_documentation.hpp>
+#include <golos/wallet/wallet.hpp>
 
-namespace steemit { namespace wallet {
+namespace golos { namespace wallet {
    namespace detail
    {
       struct api_method_name_collector_visitor
@@ -84,7 +84,7 @@ my $fileFooter = <<'END';
           ++iter;
    }
 
-} } // end namespace steemit::wallet
+} } // end namespace golos::wallet
 END
 $outFile->print($fileFooter);
 $outFile->close();

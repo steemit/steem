@@ -1,10 +1,10 @@
-#include <steemit/chain/block_log.hpp>
+#include <golos/chain/block_log.hpp>
 #include <fstream>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         namespace detail {

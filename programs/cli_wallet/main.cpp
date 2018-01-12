@@ -56,10 +56,10 @@
 #endif
 
 
-using namespace graphene::utilities;
-using namespace steemit::app;
-using namespace steemit::chain;
-using namespace steemit::wallet;
+using namespace golos::utilities;
+using namespace golos::app;
+using namespace golos::chain;
+using namespace golos::wallet;
 using namespace std;
 namespace bpo = boost::program_options;
 

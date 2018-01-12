@@ -1,8 +1,8 @@
-#include <steemit/protocol/operations.hpp>
+#include <golos/protocol/operations.hpp>
 
-#include <steemit/protocol/operation_util_impl.hpp>
+#include <golos/protocol/operation_util_impl.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
         struct is_market_op_visitor {
@@ -48,6 +48,6 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol
 
-DEFINE_OPERATION_TYPE(steemit::protocol::operation)
+DEFINE_OPERATION_TYPE(golos::protocol::operation)

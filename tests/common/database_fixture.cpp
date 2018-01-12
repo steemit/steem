@@ -13,11 +13,11 @@
 
 #include "database_fixture.hpp"
 
-//using namespace steemit::chain::test;
+//using namespace golos::chain::test;
 
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
-namespace steemit {
+namespace golos {
     namespace chain {
 
         using std::cout;
@@ -38,8 +38,8 @@ namespace steemit {
                                   << std::endl;
                     }
                 }
-                auto ahplugin = app.register_plugin<steemit::account_history::account_history_plugin>();
-                db_plugin = app.register_plugin<steemit::plugin::debug_node::debug_node_plugin>();
+                auto ahplugin = app.register_plugin<golos::account_history::account_history_plugin>();
+                db_plugin = app.register_plugin<golos::plugin::debug_node::debug_node_plugin>();
                 init_account_pub_key = init_account_priv_key.get_public_key();
 
                 boost::program_options::variables_map options;
@@ -142,11 +142,11 @@ namespace steemit {
                 _chain_dir = fc::current_path() / "test_blockchain";
                 FC_ASSERT(fc::exists(_chain_dir), "Requires blockchain to test on in ./test_blockchain");
 
-                auto ahplugin = app.register_plugin<steemit::account_history::account_history_plugin>();
+                auto ahplugin = app.register_plugin<golos::account_history::account_history_plugin>();
                 ahplugin->plugin_initialize(boost::program_options::variables_map());
 
                 db.open(_chain_dir, _chain_dir);
-                graphene::time::now();
+                golos::time::now();
 
                 validate_database();
                 generate_block();
@@ -184,7 +184,7 @@ namespace steemit {
 
         void database_fixture::open_database() {
             if (!data_dir) {
-                data_dir = fc::temp_directory(graphene::utilities::temp_directory_path());
+                data_dir = fc::temp_directory(golos::utilities::temp_directory_path());
                 db._log_hardforks = false;
                 db.open(data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY,
                         1024 * 1024 *
@@ -194,7 +194,7 @@ namespace steemit {
 
         void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key &key, int miss_blocks) {
             skip |= default_skip;
-            db_plugin->debug_generate_blocks(graphene::utilities::key_to_wif(key), 1, skip, miss_blocks);
+            db_plugin->debug_generate_blocks(golos::utilities::key_to_wif(key), 1, skip, miss_blocks);
         }
 
         void database_fixture::generate_blocks(uint32_t block_count) {
@@ -465,7 +465,7 @@ namespace steemit {
 
             while (itr != acc_hist_idx.begin() && ops.size() < num_ops) {
                 itr--;
-                ops.push_back(fc::raw::unpack<steemit::chain::operation>(db.get(itr->op).serialized_op));
+                ops.push_back(fc::raw::unpack<golos::chain::operation>(db.get(itr->op).serialized_op));
             }
 
             return ops;
@@ -490,7 +490,7 @@ namespace steemit {
                 } FC_CAPTURE_AND_RETHROW((tx))
             }
 
-        } // steemit::chain::test
+        } // golos::chain::test
 
     }
-} // steemit::chain
+} // golos::chain

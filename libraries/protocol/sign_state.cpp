@@ -1,7 +1,7 @@
 
-#include <steemit/protocol/sign_state.hpp>
+#include <golos/protocol/sign_state.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
         bool sign_state::signed_by(const public_key_type &k) {
@@ -83,4 +83,4 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol

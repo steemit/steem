@@ -1,9 +1,9 @@
-#include <steemit/protocol/get_config.hpp>
-#include <steemit/protocol/config.hpp>
-#include <steemit/protocol/asset.hpp>
-#include <steemit/protocol/version.hpp>
+#include <golos/protocol/get_config.hpp>
+#include <golos/protocol/config.hpp>
+#include <golos/protocol/asset.hpp>
+#include <golos/protocol/version.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
         fc::variant_object get_config() {
@@ -127,4 +127,4 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol

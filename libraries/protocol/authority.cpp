@@ -1,6 +1,6 @@
-#include <steemit/protocol/authority.hpp>
+#include <golos/protocol/authority.hpp>
 
-namespace steemit {
+namespace golos {
     namespace protocol {
 
 // authority methods
@@ -202,4 +202,4 @@ namespace steemit {
         }
 
     }
-} // steemit::protocol
+} // golos::protocol

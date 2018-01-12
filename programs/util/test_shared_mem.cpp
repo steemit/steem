@@ -76,7 +76,7 @@ struct book {
     template<typename Constructor, typename Allocator>
     book(Constructor &&c, const Allocator &al)
             :name(al), author(al), pages(0), prize(0),
-             auth(bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>(al.get_segment_manager())),
+             auth(bip::allocator<golos::chain::shared_authority, bip::managed_mapped_file::segment_manager>(al.get_segment_manager())),
              deq(basic_string_allocator(al.get_segment_manager())) {
         c(*this);
     }
@@ -85,12 +85,12 @@ struct book {
     shared_string author;
     int32_t pages;
     int32_t prize;
-    steemit::chain::shared_authority auth;
+    golos::chain::shared_authority auth;
     bip::deque<shared_string, basic_string_allocator> deq;
 
     book(const shared_string::allocator_type &al) :
             name(al), author(al), pages(0), prize(0),
-            auth(bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>(al.get_segment_manager())),
+            auth(bip::allocator<golos::chain::shared_authority, bip::managed_mapped_file::segment_manager>(al.get_segment_manager())),
             deq(basic_string_allocator(al.get_segment_manager())) {
     }
 
@@ -144,7 +144,7 @@ int main(int argc, char **argv, char **envp) {
         }
 
         //b.pages = pbc->size();
-        //b.auth = steemit::chain::authority( 1, "dan", pbc->size() );
+        //b.auth = golos::chain::authority( 1, "dan", pbc->size() );
         pbc->emplace([&](book &b) {
             b.name = "emplace name";
             b.pages = pbc->size();

@@ -33,7 +33,7 @@
 #include <graphene/utilities/git_revision.hpp>
 #include <fc/git_revision.hpp>
 
-namespace steemit {
+namespace golos {
     namespace app {
 
         login_api::login_api(const api_context &ctx)
@@ -106,7 +106,7 @@ namespace steemit {
         steem_version_info login_api::get_version() {
             return steem_version_info(
                     fc::string(STEEMIT_BLOCKCHAIN_VERSION),
-                    fc::string(graphene::utilities::git_revision_sha),
+                    fc::string(golos::utilities::git_revision_sha),
                     fc::string(fc::git_revision_sha));
         }
 
@@ -128,7 +128,7 @@ namespace steemit {
                     return false;
                 }
 
-                fc::time_point_sec now = graphene::time::now();
+                fc::time_point_sec now = golos::time::now();
                 std::shared_ptr<database> db = _app.chain_database();
                 const dynamic_global_property_object &dgpo = db->get_dynamic_global_properties();
 
@@ -223,7 +223,7 @@ namespace steemit {
                 (*_app._remote_net_api)->broadcast_block(b);
             } else {
                 _app.chain_database()->push_block(b);
-                _app.p2p_node()->broadcast(graphene::net::block_message(b));
+                _app.p2p_node()->broadcast(golos::net::block_message(b));
             }
         }
 
@@ -258,11 +258,11 @@ namespace steemit {
             _app.p2p_node()->add_node(ep);
         }
 
-        std::vector<graphene::net::peer_status> network_node_api::get_connected_peers() const {
+        std::vector<golos::net::peer_status> network_node_api::get_connected_peers() const {
             return _app.p2p_node()->get_connected_peers();
         }
 
-        std::vector<graphene::net::potential_peer_record> network_node_api::get_potential_peers() const {
+        std::vector<golos::net::potential_peer_record> network_node_api::get_potential_peers() const {
             return _app.p2p_node()->get_potential_peers();
         }
 
@@ -275,4 +275,4 @@ namespace steemit {
         }
 
     }
-} // steemit::app
+} // golos::app

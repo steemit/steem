@@ -27,7 +27,7 @@
 // support the wallet, e.g. allow specifying operations by name
 // instead of ID.
 
-namespace steemit {
+namespace golos {
     namespace wallet {
 
         struct static_variant_map {
@@ -39,9 +39,9 @@ namespace steemit {
 
             std::string clean_name(const std::string &name) {
                 std::string result;
-                const static std::string prefix = "steemit::protocol::";
+                const static std::string prefix = "golos::protocol::";
                 const static std::string suffix = "_operation";
-                // graphene::chain::.*_operation
+                // golos::chain::.*_operation
                 if ((name.size() >= prefix.size() + suffix.size())
                     && (name.substr(0, prefix.size()) == prefix)
                     &&
@@ -119,4 +119,4 @@ namespace steemit {
         }
 
     }
-} // namespace steemit::wallet
+} // namespace golos::wallet
