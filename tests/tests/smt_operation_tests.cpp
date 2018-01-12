@@ -151,7 +151,9 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       asset bob_balance = bob_account.balance;
 
       db->adjust_balance( alice_account, alice_smt_balance );
+      db->adjust_supply( alice_smt_balance );
       db->adjust_balance( bob_account, bob_smt_balance );
+      db->adjust_supply( bob_smt_balance );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -469,7 +471,9 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_authorities )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
 
       const account_object& alice_account = db->get_account( "alice" );
-      db->adjust_balance( alice_account, asset( 100000, alice_symbol ) );
+      asset alice_balance( 100000, alice_symbol );
+      db->adjust_balance( alice_account, alice_balance );
+      db->adjust_supply( alice_balance );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -541,6 +545,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
       asset alice_balance = alice_account.balance;
 
       db->adjust_balance( alice_account, alice_smt_balance );
+      db->adjust_supply( alice_smt_balance );
 
       const auto& limit_order_idx = db->get_index< limit_order_index >().indices().get< by_account >();
 
@@ -611,7 +616,9 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       asset bob_balance = bob_account.balance;
 
       db->adjust_balance( alice_account, alice_smt_balance );
+      db->adjust_supply( alice_smt_balance );
       db->adjust_balance( bob_account, bob_smt_balance );
+      db->adjust_supply( bob_smt_balance );
 
       tx.operations.clear();
       tx.signatures.clear();
