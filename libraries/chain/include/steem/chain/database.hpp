@@ -150,9 +150,10 @@ namespace steem { namespace chain {
          void foreach_block(std::function<bool(const signed_block&)> processor) const;
 
          /// Allows to process all blocks visit all transactions held there until processor returns true.
-         void foreach_tx(std::function<bool(const signed_block&, const signed_transaction&)> processor) const;
+         void foreach_tx(std::function<bool(const signed_block&, const signed_transaction&, uint32_t)> processor) const;
          /// Allows to process all operations held in blocks and transactions until processor returns true.
-         void foreach_operation(std::function<bool(const signed_block&, const signed_transaction&, const operation&)> processor) const;
+         void foreach_operation(std::function<bool(const signed_block&, const signed_transaction&, uint32_t,
+            const operation&, uint16_t)> processor) const;
 
          const witness_object&  get_witness(  const account_name_type& name )const;
          const witness_object*  find_witness( const account_name_type& name )const;
