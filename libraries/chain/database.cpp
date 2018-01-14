@@ -394,14 +394,16 @@ void database::foreach_block(std::function<bool(const signed_block&)> processor)
    processor(itr.first);
 }
 
-void database::foreach_tx(std::function<bool(const signed_block&, const signed_transaction&)> processor) const
+void database::foreach_tx(std::function<bool(const signed_block&, const signed_transaction&, uint32_t)> processor) const
 {
    foreach_block([&processor](const signed_block& block) -> bool
    {
+      uint32_t txInBlock = 0;
       for( const auto& trx : block.transactions )
       {
-         if(processor(block, trx) == false)
+         if(processor(block, trx, txInBlock) == false)
             return false;
+         ++txInBlock;
       }
 
       return true;
@@ -409,15 +411,17 @@ void database::foreach_tx(std::function<bool(const signed_block&, const signed_t
    );
 }
 
-void database::foreach_operation(std::function<bool(const signed_block&, const signed_transaction&,
-   const operation&)> processor) const
+void database::foreach_operation(std::function<bool(const signed_block&, const signed_transaction&, uint32_t,
+   const operation&, uint16_t)> processor) const
 {
-   foreach_tx([&processor](const signed_block& block, const signed_transaction& tx) -> bool
+   foreach_tx([&processor](const signed_block& block, const signed_transaction& tx, uint32_t txInBlock) -> bool
    {
+      uint16_t opInTx = 0;
       for(const auto& op : tx.operations)
       {
-         if(processor(block, tx, op) == false)
+         if(processor(block, tx, txInBlock, op, opInTx) == false)
             return false;
+         ++opInTx;
       }
 
       return true;

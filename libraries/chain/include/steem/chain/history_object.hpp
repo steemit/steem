@@ -101,4 +101,5 @@ FC_REFLECT( steem::chain::operation_object, (id)(trx_id)(block)(trx_in_block)(op
 CHAINBASE_SET_INDEX_TYPE( steem::chain::operation_object, steem::chain::operation_index )
 
 FC_REFLECT( steem::chain::account_history_object, (id)(account)(sequence)(op) )
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_history_object, steem::chain::account_history_index )
