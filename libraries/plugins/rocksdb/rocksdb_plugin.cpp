@@ -1,6 +1,8 @@
 #include <steem/plugins/rocksdb/rocksdb_plugin.hpp>
 
 #include <steem/chain/database.hpp>
+#include <steem/chain/history_object.hpp>
+
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
@@ -26,28 +28,128 @@ using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
 using ::rocksdb::Options;
+using ::rocksdb::Slice;
+using ::rocksdb::Comparator;
+using ::rocksdb::ColumnFamilyDescriptor;
+using ::rocksdb::ColumnFamilyOptions;
+using ::rocksdb::ColumnFamilyHandle;
 
-class rocksdb_plugin::impl
+namespace 
+{
+
+/** Helper class to simplify construction of Slice objects holding primitive type values.
+ * 
+ */
+template <typename T>
+class PrimitiveTypeSlice final : public Slice
 {
 public:
+   explicit PrimitiveTypeSlice(T value) : _value(value)
+   {
+      data_ = reinterpret_cast<const char*>(&_value);
+      size_ = sizeof(T);
+   }
+private:
+   T _value;
+};
+
+template <typename T>
+class PrimitiveTypeComparatorImpl final : public Comparator
+{
+public:
+   virtual const char* Name() const override
+   {
+      static const std::string name = boost::core::demangle(typeid(this).name());
+      return name.c_str();
+   }
+
+  virtual int Compare(const Slice& a, const Slice& b) const override
+  {
+      auto id1 = retrieveKey(a);
+      auto id2 = retrieveKey(b);
+
+      if(id1 < id2)
+         return -1;
+
+      if(id1 > id2)
+         return 1;
+
+      return 0; 
+  }
+
+  virtual bool Equal(const Slice& a, const Slice& b) const override
+  {
+      auto id1 = retrieveKey(a);
+      auto id2 = retrieveKey(b);
+      return id1 == id2;
+  }
+
+  virtual void FindShortestSeparator(std::string* start, const Slice& limit) const override
+  {
+     /// Nothing to do.
+  }
+
+  virtual void FindShortSuccessor(std::string* key) const override
+  {
+     /// Nothing to do.
+  }
+
+private:
+   T retrieveKey(const Slice& slice) const
+   {
+      assert(sizeof(T) == slice.size());
+      const char* rawData = slice.data();
+      return *reinterpret_cast<const T*>(rawData);
+   }
+};
+
+typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
+typedef PrimitiveTypeComparatorImpl<uint32_t> by_location_ComparatorImpl;
+
+Comparator* by_id_Comparator()
+{
+   static by_id_ComparatorImpl c;
+   return &c; 
+}
+
+Comparator* by_location_Comparator()
+{
+   static by_location_ComparatorImpl c;
+   return &c;
+}
+
+} /// anonymous
+
+class rocksdb_plugin::impl final
+{
+public:
+
    impl() : _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()) {}
-   
+   ~impl()
+   {
+      shutdownDb();
+   }
+
    void openDb(const bfs::path& path)
    {
+      createDbSchema(path);
+
+      auto columnDefs = prepareColumnDefinitions(true);
+
       DB* storageDb = nullptr;
+      auto strPath = path.string();
       Options options;
-      // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
+      /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
       options.IncreaseParallelism();
       options.OptimizeLevelStyleCompaction();
-      // create the DB if it's not already present
-      options.create_if_missing = true;
       
-      auto strPath = path.string();
-      auto status = DB::Open(options, strPath, &storageDb);
+      auto status = DB::Open(options, strPath, columnDefs, &_columnHandles, &storageDb);
 
       if(status.ok())
       {
          ilog("RocksDB opened successfully");
+
+         _storage.reset(storageDb);
          importData();
       }
       else
@@ -55,11 +157,30 @@ public:
          elog("RocksDB cannot open database at location: `${p}'.\nReturned error: ${e}",
             ("p", strPath)("e", status.ToString()));
       }
+   }
 
-      _storage.reset(storageDb);
+   void shutdownDb()
+   {
+      cleanupColumnHandles();
+      _storage.reset();
    }
 
 private:
+   typedef std::vector<ColumnFamilyDescriptor> ColumnDefinitions;
+   ColumnDefinitions prepareColumnDefinitions(bool addDefaultColumn);
+
+   void createDbSchema(const bfs::path& path);
+
+   void cleanupColumnHandles()
+   {
+      for(auto* h : _columnHandles)
+         delete h;
+      _columnHandles.clear();
+   }
+
+   void importOperation(const signed_block& block, const signed_transaction& tx, uint32_t txInBlock,
+      const operation& op, uint16_t opInTx, size_t opSeqId);
+
    void importData()
    {
       ilog("Starting data import...");
@@ -73,7 +194,8 @@ private:
       benchmark_dumper dumper;
       dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
 
-      _mainDb.foreach_operation([&](const signed_block& block, const signed_transaction& tx, const operation& op) -> bool
+      _mainDb.foreach_operation([&blockNo, &txNo, &lastBlock, &lastTx, &totalOps, this](const signed_block& block,
+         const signed_transaction& tx, uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
       {
          if(lastBlock != block.previous)
          {
@@ -87,7 +209,17 @@ private:
             lastTx = &tx;
          }
 
+         importOperation(block, tx, txInBlock, op, opInTx, totalOps);
+
          ++totalOps;
+
+         if(blockNo % 10000 == 0)
+         {
+            ilog( "RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
+               ("n", blockNo)
+               ("tx", txNo)
+               ("op", totalOps));
+         }
 
          return true;
       }
@@ -108,9 +240,108 @@ private:
    }
 
 private:
-   const chain::database&         _mainDb;
-   std::unique_ptr<::rocksdb::DB> _storage;
+   const chain::database&           _mainDb;
+   std::unique_ptr<DB>              _storage;
+   std::vector<ColumnFamilyHandle*> _columnHandles;
 };
+
+
+rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
+{
+   ColumnDefinitions columnDefs;
+   if(addDefaultColumn)
+      columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, ColumnFamilyOptions());
+
+   columnDefs.emplace_back("operation_by_id", ColumnFamilyOptions());
+   auto& byIdColumn = columnDefs.back();
+   byIdColumn.options.comparator = by_id_Comparator();
+
+   columnDefs.emplace_back("operation_by_location", ColumnFamilyOptions());
+   auto& byLocationColumn = columnDefs.back();
+   byLocationColumn.options.comparator = by_location_Comparator();
+
+   return columnDefs;
+}
+
+void rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
+{
+   DB* db = nullptr;
+
+   auto columnDefs = prepareColumnDefinitions(true);
+   auto strPath = path.string();
+   Options options;
+   /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
+   options.IncreaseParallelism();
+   options.OptimizeLevelStyleCompaction();
+   auto s = DB::OpenForReadOnly(options, strPath, columnDefs, &_columnHandles, &db);
+
+   if(s.ok())
+   {
+      cleanupColumnHandles();
+      delete db;
+      return;
+   }
+
+   options.create_if_missing = true;
+   
+   s = DB::Open(options, strPath, &db);
+   if(s.ok())
+   {
+      columnDefs = prepareColumnDefinitions(false);
+      s = db->CreateColumnFamilies(columnDefs, &_columnHandles);
+      if(s.ok())
+      {
+         ilog("RockDB column definitions created successfully.");
+         cleanupColumnHandles();
+      }
+      else
+      {
+         elog("RocksDB can not create column definitions at location: `${p}'.\nReturned error: ${e}",
+            ("p", strPath)("e", s.ToString()));
+      }
+
+      delete db;
+   }
+   else
+   {
+      elog("RocksDB can not create storage at location: `${p}'.\nReturned error: ${e}",
+         ("p", strPath)("e", s.ToString()));
+   }
+}
+
+void rocksdb_plugin::impl::importOperation(const signed_block& block, const signed_transaction& tx,
+   uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
+{
+   std::allocator<steem::chain::operation_object> a;
+   steem::chain::operation_object obj([](steem::chain::operation_object&){}, a);
+   obj.id._id       = opSeqNo;
+   obj.trx_id       = tx.id();
+   obj.block        = block.block_num();
+   obj.trx_in_block = txInBlock;
+   obj.timestamp    = _mainDb.head_block_time();
+   auto size = fc::raw::pack_size(op);
+   obj.serialized_op.resize(size);
+   {
+      fc::datastream<char*> ds(obj.serialized_op.data(), size);
+      fc::raw::pack(ds, op);
+   }
+
+   steem::chain::buffer_type serializedObj;
+   size = fc::raw::pack_size(obj);
+   serializedObj.resize(size);
+   {
+      fc::datastream<char*> ds(serializedObj.data(), size);
+      fc::raw::pack(ds, obj);
+   }
+
+   ::rocksdb::WriteBatch batch;
+   PrimitiveTypeSlice<size_t> idSlice(obj.id._id);
+   batch.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
+   batch.Put(_columnHandles[2], PrimitiveTypeSlice<uint32_t>(obj.block), idSlice);
+
+   auto s = _storage->Write(::rocksdb::WriteOptions(), &batch);
+   FC_ASSERT(s.ok(), "Data write failed");
+}
 
 rocksdb_plugin::rocksdb_plugin()
 {
@@ -156,6 +387,7 @@ void rocksdb_plugin::plugin_startup()
 void rocksdb_plugin::plugin_shutdown()
 {
    ilog("Shutting down rocksdb_plugin...");
+   _my->shutdownDb();
 }
 
 } } }
