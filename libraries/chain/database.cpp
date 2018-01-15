@@ -4347,7 +4347,17 @@ void database::validate_smt_invariants()const
 #pragma message( "TODO: Add SMT vesting support here once it is implemented." )
          
       // - Market orders
-#pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
+      const auto& limit_order_idx = get_index< limit_order_index >().indices();
+      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); ++itr )
+      {
+         if( itr->sell_price.base.symbol.space() == asset_symbol_type::smt_nai_space )
+         {
+            asset a( itr->for_sale, itr->sell_price.base.symbol );
+            auto insertInfo = theMap.emplace( a.symbol, a );
+            if( insertInfo.second == false )
+               insertInfo.first->second += a;
+         }
+      }
 
       // - Reward funds
 #pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )

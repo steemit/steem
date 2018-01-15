@@ -580,6 +580,9 @@ void database_fixture::validate_database( void )
    try
    {
       db->validate_invariants();
+#ifdef STEEM_ENABLE_SMT
+      db->validate_smt_invariants();
+#endif
    }
    FC_LOG_AND_RETHROW();
 }
