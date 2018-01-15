@@ -95,7 +95,8 @@ namespace steem { namespace chain {
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
 
-         bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > beneficiaries;
+         typedef bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > t_beneficiaries;
+         t_beneficiaries   beneficiaries;
    };
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >

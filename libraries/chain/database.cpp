@@ -141,11 +141,11 @@ void database::open( const open_args& args )
          init_hardforks(); // Writes to local state, but reads from db
       });
 
-      if (benchmark.first)
+      if (args.benchmark.first)
       {
-         benchmark.second(0, get_abstract_index_cntr());
+         args.benchmark.second(0, get_abstract_index_cntr());
          auto last_block_num = _block_log.head()->block_num();
-         benchmark.second(last_block_num, get_abstract_index_cntr());
+         args.benchmark.second(last_block_num, get_abstract_index_cntr());
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )

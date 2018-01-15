@@ -505,6 +505,13 @@ namespace chainbase {
             _revision = revision;
          }
 
+         void remove_object( int64_t id )
+         {
+            const value_type* val = find( typename value_type::id_type(id) );
+            if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
+            remove( *val );
+         }
+
       private:
          bool enabled()const { return _stack.size(); }
 
@@ -616,6 +623,7 @@ namespace chainbase {
          virtual void    undo_all()const = 0;
          virtual uint32_t type_id()const  = 0;
 
+         virtual void remove_object( int64_t id ) = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual size_t size() const = 0;
@@ -647,7 +655,7 @@ namespace chainbase {
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
-         virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
+         virtual void     remove_object( int64_t id ) override { _base.remove_object( id ); }
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const override final
          {

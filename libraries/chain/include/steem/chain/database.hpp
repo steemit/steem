@@ -84,7 +84,7 @@ namespace steem { namespace chain {
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
-            TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;});
+            TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 
          /**

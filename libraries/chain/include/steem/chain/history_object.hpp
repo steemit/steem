@@ -140,9 +140,9 @@ namespace helpers
 
          if(onlyStaticInfo == false)
          {
-            for(const auto& o : index)
-               info._item_additional_allocation += o.get_ops().capacity()*
-                  sizeof(steem::chain::account_history_object::operation_container::value_type);
+            //for(const auto& o : index)
+            //   info._item_additional_allocation += o.get_ops().capacity()*
+            //      sizeof(steem::chain::account_history_object::operation_container::value_type);
          }
 
          return info;

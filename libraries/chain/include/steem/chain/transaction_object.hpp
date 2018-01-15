@@ -29,7 +29,9 @@ namespace steem { namespace chain {
 
          id_type              id;
 
-         buffer_type          packed_trx;
+         typedef buffer_type t_packed_trx;
+
+         t_packed_trx         packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
    };

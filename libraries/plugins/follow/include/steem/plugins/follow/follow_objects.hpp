@@ -54,7 +54,8 @@ typedef oid< follow_object > follow_id_type;
 class feed_object : public object< feed_object_type, feed_object >
 {
    public:
-      typedef t_vector<account_name_type> t_reblogged_by_container;
+      //typedef t_vector<account_name_type> t_reblogged_by_container;
+      typedef shared_vector<account_name_type> t_reblogged_by_container;
 
       feed_object() = delete;
 
