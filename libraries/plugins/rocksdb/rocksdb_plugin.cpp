@@ -95,7 +95,7 @@ public:
   }
 
 private:
-   T retrieveKey(const Slice& slice) const
+   const T& retrieveKey(const Slice& slice) const
    {
       assert(sizeof(T) == slice.size());
       const char* rawData = slice.data();
@@ -104,7 +104,12 @@ private:
 };
 
 typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
-typedef PrimitiveTypeComparatorImpl<uint32_t> by_location_ComparatorImpl;
+/** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended 
+ *  by some unique part (ie ID).
+ * 
+ */
+typedef std::pair<uint32_t, size_t> location_id_pair;
+typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
 
 Comparator* by_id_Comparator()
 {
@@ -225,6 +230,9 @@ private:
       }
       );
 
+      if(this->_collectedOps != 0)
+         flushWriteBuffer();
+
       const auto& measure = dumper.measure(blockNo, [](benchmark_dumper::index_memory_details_cntr_t&, bool) {});
       ilog( "RocksDb data import - Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
          ("n", blockNo)
@@ -239,10 +247,25 @@ private:
          ("op", totalOps));
    }
 
+   void flushWriteBuffer()
+   {
+      auto s = _storage->Write(::rocksdb::WriteOptions(), &_writeBuffer);
+      FC_ASSERT(s.ok(), "Data write failed");
+      _writeBuffer.Clear();
+      _collectedOps = 0;
+   }
+
+   enum
+   {
+      WRITE_BUFFER_FLUSH_LIMIT = 100
+   };
+
 private:
    const chain::database&           _mainDb;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
+   ::rocksdb::WriteBatch            _writeBuffer;
+   unsigned int                     _collectedOps = 0;
 };
 
 
@@ -334,13 +357,14 @@ void rocksdb_plugin::impl::importOperation(const signed_block& block, const sign
       fc::raw::pack(ds, obj);
    }
 
-   ::rocksdb::WriteBatch batch;
    PrimitiveTypeSlice<size_t> idSlice(obj.id._id);
-   batch.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
-   batch.Put(_columnHandles[2], PrimitiveTypeSlice<uint32_t>(obj.block), idSlice);
-
-   auto s = _storage->Write(::rocksdb::WriteOptions(), &batch);
+   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(obj.block, obj.id._id));
+   auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
    FC_ASSERT(s.ok(), "Data write failed");
+   s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
+   FC_ASSERT(s.ok(), "Data write failed");
+   if(++this->_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
+      flushWriteBuffer();
 }
 
 rocksdb_plugin::rocksdb_plugin()
