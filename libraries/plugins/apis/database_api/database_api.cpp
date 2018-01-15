@@ -1135,30 +1135,67 @@ namespace last_votes_misc
 
       auto& val = v1;
 
+      /*
+         Short explanation:
+            - Index 'idx' contains complex key: a,c.
+            - We want to sort, using complex key: a,b,c.
+
+         So we have to emulate missing key( here 'b' ) by 'set'. This collection has to have implemented 'operator<', which allows to sort 
+         using complex key: a,b,c. 
+
+         Important
+            Since second level of sorting doesn't exist, so it is necessary to gather always(!!!),
+            all records for first key( variable 'val' ). Longer explanation is below.
+
+            For example( limit = 11, 2 keys, no skip ):
+            a a a a a b b b b c c c c c d d d d
+            p q p q r s t t p p u v p u p v q v
+
+            1) take all 'a' items
+               a a a a a   <-- here is 5 items
+               p q p q r
+
+            2) take all 'b' items
+            b b b b        <-- here is 4 items
+            s t t p 
+
+            3) take all 'c' items
+            c c c c c        <-- here is 5 items
+            p u v p u
+
+            We have enough items: 5 + 4 + 5 >= 11
+            Finally on the output we have 11 items( sorted according to two keys ):
+            a a a a a b b b b c c
+            p p q q r p s t t p u
+
+      */
       auto itr = idx.lower_bound( val );
       auto itr_u = idx.upper_bound( val );
 
-      std::string str;
-
+      //Check if any output data exist.
       if( ( itr == itr_u ) && ( itr_u == end ) )
          return;
 
       uint32_t size = 0;
       uint32_t skip = 0;
 
+      //Gathering 'limit' data and sorting in-fly according to 'operator<' in 'WrapperType'.
       while( size < limit && itr_u != end )
       {
          while( itr != itr_u )
          {
+            //Add new current item.
             auto& cvo = const_cast< comment_vote_object& >( *itr );
             s.emplace( std::move( WrapperType( &cvo, WrapperType::get_val1( cvo ), WrapperType::get_val2( cvo ), WrapperType::get_val3( cvo ) ) ) );
 
             ++itr;
          }
 
+         //Find first item, which matches to 'v1' and 'v2' and 'v3'.
          if( size == 0 )
          {
             start = s.lower_bound( start_obj );
+            //Calculate what is offset between first saved data in 's' collection and first correct(!!!) data.
             skip = std::distance( s.begin(), start );
          }
 
@@ -1168,6 +1205,7 @@ namespace last_votes_misc
          {
             val = WrapperType::get_val1( *itr_u );
 
+            //It is necessary to gather always(!!!) all records for first key( variable 'val' ).
             itr = idx.lower_bound( val );
             itr_u = idx.upper_bound( val );
          }
@@ -1175,7 +1213,10 @@ namespace last_votes_misc
 
       uint32_t cnt = 0;
       start = s.begin();
+
+      //Make offset from first element to first correct(!!!) element.
       std::advance( start, skip );
+      //Save sorted data to output collection.
       while( start != s.end() && cnt++ < limit )
       {
          result.push_back( on_push( *( start->cvo ) ) );
