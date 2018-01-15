@@ -1,25 +1,46 @@
-file(GLOB HEADERS "include/steemit/market_history/*.hpp")
+set(CURRENT_TARGET market_history_plugin)
+
+list(APPEND CURRENT_TARGET_HEADERS
+     include/golos/plugins/market_history/market_history_plugin.hpp
+     )
+
+list(APPEND CURRENT_TARGET_SOURCES
+     market_history_plugin.cpp
+     )
 
 if(BUILD_SHARED_LIBRARIES)
-    add_library(golos_market_history SHARED
-            market_history_plugin.cpp
-            market_history_api.cpp
-            )
+    add_library(golos_${CURRENT_TARGET} SHARED
+                ${CURRENT_TARGET_HEADERS}
+                ${CURRENT_TARGET_SOURCES}
+                )
 else()
-    add_library(golos_market_history STATIC
-            market_history_plugin.cpp
-            market_history_api.cpp
-            )
+    add_library(golos_${CURRENT_TARGET} STATIC
+                ${CURRENT_TARGET_HEADERS}
+                ${CURRENT_TARGET_SOURCES}
+                )
 endif()
 
-target_link_libraries(golos_market_history golos_chain golos_protocol golos_app)
-target_include_directories(golos_market_history
-        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+add_library(golos::${CURRENT_TARGET} ALIAS golos_${CURRENT_TARGET})
+set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGET})
+
+target_link_libraries(
+        golos_${CURRENT_TARGET}
+        golos::chain_plugin
+        golos::p2p_plugin
+        golos::protocol
+        golos::network
+        graphene_utilities
+        graphene_time
+        appbase
+)
+target_include_directories(golos_${CURRENT_TARGET}
+                           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 install(TARGETS
-        golos_market_history
+        golos_${CURRENT_TARGET}
 
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         )
+

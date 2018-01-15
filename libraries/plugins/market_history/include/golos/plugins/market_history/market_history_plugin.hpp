@@ -143,17 +143,22 @@ namespace golos {
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
             public:
+
+                APPBASE_PLUGIN_REQUIRES((json_rpc::plugin))
+
                 market_history_plugin();
 
                 virtual ~market_history_plugin();
 
-                virtual void set_program_options(
+                void set_program_options(
                         boost::program_options::options_description &cli,
                         boost::program_options::options_description &cfg) override;
 
-                virtual void plugin_initialize(const boost::program_options::variables_map &options) override;
+                void plugin_initialize(const boost::program_options::variables_map &options) override;
 
-                virtual void plugin_startup() override;
+                void plugin_startup() override;
+
+                void plugin_shutdown() override;
 
                 flat_set<uint32_t> get_tracked_buckets() const;
 

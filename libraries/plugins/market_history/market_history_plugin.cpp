@@ -363,10 +363,13 @@ namespace golos {
             void market_history_plugin::plugin_startup() {
                 ilog("market_history plugin: plugin_startup() begin");
 
-                //TODO
-                //appbase::app()->register_api_factory<market_history_api>("market_history_api");
-
                 ilog("market_history plugin: plugin_startup() end");
+            }
+
+            void market_history_plugin::plugin_shutdown() {
+                ilog("market_history plugin: plugin_shutdown() begin");
+
+                ilog("market_history plugin: plugin_shutdown() end");
             }
 
             flat_set<uint32_t> market_history_plugin::get_tracked_buckets() const {
