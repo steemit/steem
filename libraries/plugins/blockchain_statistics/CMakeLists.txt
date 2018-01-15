@@ -3,6 +3,7 @@ set(CURRENT_TARGET blockchain_statistics)
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/blockchain_statistics/plugin.hpp
     include/golos/plugins/blockchain_statistics/statistics_sender.hpp
+    include/golos/plugins/blockchain_statistics/bucket_object.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES

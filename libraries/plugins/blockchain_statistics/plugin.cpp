@@ -14,11 +14,9 @@
 
 
 
-
 namespace golos {
 namespace plugins {
 namespace blockchain_statistics {
-
 
 std::string increment_counter(std::string name);
 std::string increment_counter(std::string name, uint32_t value);
@@ -504,7 +502,7 @@ void plugin::set_program_options( options_description& cli, options_description&
                     "How far back in time to track history for each bucket size, measured in the number of buckets (default: 100)")
             ("statsd-endpoints", boost::program_options::value<std::vector<std::string>>()->multitoken()->
                     zero_tokens()->composing(), "StatsD endpoints that will receive the statistics in StatsD string format.")
-            ("statsd_default_port", boost::program_options::value<uint32_t>()->default_value(8125), "Default port for StatsD nodes.");
+            ("statsd-default-port", boost::program_options::value<uint32_t>()->default_value(8125), "Default port for StatsD nodes.");
     cfg.add(cli);
 }
 
@@ -518,8 +516,8 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
         uint32_t statsd_default_port;
 
         if (options.count("statsd-default-port")) {
-            statsd_default_port = options["statsd_default_port"].as<uint32_t>();
-        } // If it's not configured, then we've got some troubles///
+            statsd_default_port = options["statsd-default-port"].as<uint32_t>();
+        } // If it's not configured, then we've got some troubles...
         _my->stat_sender = std::shared_ptr<statistics_sender>(new statistics_sender(statsd_default_port) );
 
         db.applied_block.connect([&](const signed_block &b) {
@@ -543,7 +541,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
         if (options.count("chain-stats-history-per-bucket")) {
             _my->_maximum_history_per_bucket_size = options["chain-stats-history-per-bucket"].as<uint32_t>();
         }
-        if (options.count("chain-stats-recipient-ip")) {
+        if (options.count("statsd-endpoints")) {
             for (auto it : options["statsd-endpoints"].as<std::vector<std::string>>()) {
                 _my->stat_sender->add_address(it);
             }
@@ -560,7 +558,6 @@ void plugin::plugin_startup() {
     ilog("chain_stats plugin: plugin_startup() begin");
 
     if (_my->stat_sender->can_start()) {
-        // _my->stat_sender->start();
         wlog("chain_stats plugin: statitistics sender was started");
         wlog("StatsD endpoints: ${endpoints}", ( "endpoints", _my->stat_sender->get_endpoint_string_vector() ) );
     }
