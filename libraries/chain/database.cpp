@@ -1514,26 +1514,18 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
 {
    struct proxy_item
    {
-      account_id_type* voter;
+      const account_id_type& voter;
       uint64_t weight;
 
       proxy_item( const account_id_type& _voter, uint64_t _weight )
-      : voter( const_cast< account_id_type* >( &_voter ) ), weight( _weight ) {}
+      : voter( _voter ), weight( _weight ) {}
 
       bool operator<( const proxy_item& obj ) const
       {
          if( weight == obj.weight )
-            return *voter < *obj.voter;
+            return voter < obj.voter;
          else
             return weight > obj.weight;
-      }
-
-      proxy_item& operator=( const proxy_item& obj )
-      {
-         voter = obj.voter;
-         weight = obj.weight;
-
-         return *this;
       }
    };
 
@@ -1567,7 +1559,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
-               const auto& voter = get( *item.voter );
+               const auto& voter = get( item.voter );
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
                push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
