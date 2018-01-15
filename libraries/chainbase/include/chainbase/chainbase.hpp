@@ -20,6 +20,8 @@
 #include <boost/thread.hpp>
 #include <boost/throw_exception.hpp>
 
+#include <chainbase/allocators.hpp>
+
 #include <array>
 #include <atomic>
 #include <fstream>
@@ -85,14 +87,6 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
-   template<typename T>
-   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
-
-   typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
-
-   template<typename T>
-   using shared_vector = std::vector<T, allocator<T> >;
-
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -100,6 +94,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
+#ifndef ENABLE_STD_ALLOCATOR
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -109,16 +104,13 @@ namespace chainbase {
       {
          return less( a.c_str(), b.c_str() );
       }
+#endif
       private:
          inline bool less( const char* a, const char* b )const
          {
             return std::strcmp( a, b ) < 0;
          }
    };
-
-   typedef boost::interprocess::interprocess_sharable_mutex read_write_mutex;
-   typedef boost::interprocess::sharable_lock< read_write_mutex > read_lock;
-   typedef boost::unique_lock< read_write_mutex > write_lock;
 
    /**
     *  Object ID type that includes the type of the object it references
@@ -171,9 +163,9 @@ namespace chainbase {
 
          template<typename T>
          undo_state( allocator<T> al )
-         :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          new_ids( id_allocator_type( al.get_segment_manager() ) ){}
+         :old_values( id_value_allocator_type( al ) ),
+          removed_values( id_value_allocator_type( al ) ),
+          new_ids( id_allocator_type( al ) ){}
 
          typedef boost::interprocess::map< id_type, value_type, std::less<id_type>, id_value_allocator_type >  id_value_type_map;
          typedef boost::interprocess::set< id_type, std::less<id_type>, id_allocator_type >                    id_type_set;
@@ -218,10 +210,9 @@ namespace chainbase {
    class generic_index
    {
       public:
-         typedef bip::managed_mapped_file::segment_manager             segment_manager_type;
          typedef MultiIndexType                                        index_type;
          typedef typename index_type::value_type                       value_type;
-         typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
+         typedef allocator< generic_index >                            allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
 
          generic_index( allocator<value_type> a )
@@ -807,7 +798,11 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
+#ifndef ENABLE_STD_ALLOCATOR
              idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+#else
+             idx_ptr = new index_type( index_alloc() );
+#endif
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
@@ -818,13 +813,25 @@ namespace chainbase {
              _index_list.push_back( new_index );
          }
 
+#ifndef ENABLE_STD_ALLOCATOR
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
+         }
+#endif
+         unsigned long long get_total_system_memory() const
+         {
+            long pages = sysconf(_SC_AVPHYS_PAGES);
+            long page_size = sysconf(_SC_PAGE_SIZE);
+            return pages * page_size;
          }
 
          size_t get_free_memory()const
          {
+#ifdef ENABLE_STD_ALLOCATOR
+            return get_total_system_memory();
+#else
             return _segment->get_segment_manager()->get_free_memory();
+#endif
          }
 
          template<typename MultiIndexType>
@@ -964,7 +971,12 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
+#ifndef ENABLE_STD_ALLOCATOR
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
+#else
+            read_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
+#endif
+
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _read_lock_count );
@@ -1031,9 +1043,11 @@ namespace chainbase {
 
       private:
          read_write_mutex_manager                                    _rw_manager;
+#ifndef ENABLE_STD_ALLOCATOR
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;
+#endif
 
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions

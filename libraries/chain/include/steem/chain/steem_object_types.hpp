@@ -9,6 +9,7 @@
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/authority.hpp>
 
+#include <steem/chain/buffer_type.hpp>
 
 namespace steem { namespace chain {
 
@@ -27,7 +28,8 @@ using steem::protocol::chain_id_type;
 using steem::protocol::account_name_type;
 using steem::protocol::share_type;
 
-typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
+using chainbase::shared_string;
+
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
 
@@ -190,6 +192,18 @@ namespace fc
       {
          s.read( (char*)&id._id, sizeof(id._id));
       }
+#ifndef ENABLE_STD_ALLOCATOR
+      template< typename T >
+      inline T unpack_from_vector( const steem::chain::buffer_type& s )
+      { try  {
+         T tmp;
+         if( s.size() ) {
+         datastream<const char*>  ds( s.data(), size_t(s.size()) );
+         fc::raw::unpack(ds,tmp);
+         }
+         return tmp;
+      } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
+#endif
    }
 }
 
@@ -231,6 +245,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
+#ifndef ENABLE_STD_ALLOCATOR
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
+#endif
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

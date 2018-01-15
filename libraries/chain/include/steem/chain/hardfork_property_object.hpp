@@ -6,19 +6,23 @@
 
 namespace steem { namespace chain {
 
+   using chainbase::t_vector;
+
    class hardfork_property_object : public object< hardfork_property_object_type, hardfork_property_object >
    {
       public:
          template< typename Constructor, typename Allocator >
          hardfork_property_object( Constructor&& c, allocator< Allocator > a )
-            :processed_hardforks( a.get_segment_manager() )
+            :processed_hardforks( a )
          {
             c( *this );
          }
 
          id_type                                                              id;
 
-         bip::vector< fc::time_point_sec, allocator< fc::time_point_sec > >   processed_hardforks;
+         using t_beneficiaries = t_vector< fc::time_point_sec >;
+
+         t_beneficiaries                                                      processed_hardforks;
          uint32_t                                                             last_hardfork = 0;
          protocol::hardfork_version                                           current_hardfork_version;
          protocol::hardfork_version                                           next_hardfork;
