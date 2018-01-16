@@ -1,3 +1,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/steemit/fc.git
+[submodule "libraries/plugins/rocksdb/rocksdb"]
+	path = libraries/plugins/rocksdb/rocksdb
+	url = https://github.com/vogel76/rocksdb.git
