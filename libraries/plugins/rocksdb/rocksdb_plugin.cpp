@@ -490,4 +490,16 @@ void rocksdb_plugin::plugin_shutdown()
    _my->shutdownDb();
 }
 
+bool rocksdb_plugin::find_account_history_data(const protocol::account_name_type& name,
+   steem::chain::account_history_object* data) const
+{
+   return false;
+}
+
+bool rocksdb_plugin::find_operation_object(size_t opId,
+   steem::chain::operation_object* data) const
+{
+   return false;
+}
+
 } } }
