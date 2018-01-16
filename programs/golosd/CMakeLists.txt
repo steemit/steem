@@ -27,6 +27,7 @@ target_link_libraries(
         golos::test_api_plugin
         golos::market_history_plugin        
         golos::tolstoy_api_plugin
+        golos::account_history
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}

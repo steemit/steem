@@ -13,6 +13,9 @@
 #include <golos/plugins/market_history/market_history_plugin.hpp>
 #include <golos/plugins/test_api/test_api_plugin.hpp>
 #include <golos/plugins/tolstoy_api/tolstoy_api_plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
+#include <golos/plugins/blockchain_statistics/plugin.hpp>
+
 
 
 #include <fc/interprocess/signals.hpp>
@@ -91,6 +94,9 @@ int main( int argc, char** argv ) {
         appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
         appbase::app().register_plugin<golos::plugins::tolstoy_api::tolstoy_api_plugin>();
         appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
+        appbase::app().register_plugin<golos::plugins::account_history::plugin>();
+        appbase::app().register_plugin<golos::plugins::blockchain_statistics::plugin>();
+
 ///plugins
         appbase::app().set_version_string( version_string() );
 
