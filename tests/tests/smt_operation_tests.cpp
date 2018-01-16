@@ -924,5 +924,94 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
+{
+   try
+   {
+      claim_reward_balance2_operation op;
+      op.account = "alice";
+
+      ACTORS( (alice) )
+
+      generate_block();
+
+      // Create SMT(s) and continue.
+      auto smts = create_smt_3("alice", alice_private_key);
+      const auto& smt1 = smts[0];
+      const auto& smt2 = smts[1];
+      const auto& smt3 = smts[2];
+
+      BOOST_TEST_MESSAGE( "Testing empty rewards" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "Testing ineffective rewards" );
+      op.add_reward_token( ASSET( "0.000 TESTS" ) );
+      op.add_reward_token( ASSET( "0.000 TBD" ) );
+      op.add_reward_token( ASSET( "0.000000 VESTS" ) );
+      op.add_reward_token( asset( 0, smt1 ) );
+      op.add_reward_token( asset( 0, smt2 ) );
+      op.add_reward_token( asset( 0, smt3 ) );
+
+      BOOST_TEST_MESSAGE( "Testing single reward claims" );
+      op.add_reward_token( ASSET( "1.000 TESTS" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.add_reward_token( ASSET( "1.000 TBD" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.add_reward_token( ASSET( "1.000000 VESTS" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.add_reward_token( asset( 1, smt1 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.add_reward_token( asset( 1, smt2 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.add_reward_token( asset( 1, smt3 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "Testing invalid rewards" );
+      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000 TESTS" ) ), fc::assert_exception );
+      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000 TBD" ) ), fc::assert_exception );
+      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000000 VESTS" ) ), fc::assert_exception );
+      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt1 ) ), fc::assert_exception );
+      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt2 ) ), fc::assert_exception );
+      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt3 ) ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_reward_balance2_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_authorities" );
+
+      claim_reward_balance2_operation op;
+      op.account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

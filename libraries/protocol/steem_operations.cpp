@@ -631,6 +631,28 @@ namespace steem { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
+#ifdef STEEM_ENABLE_SMT
+   void claim_reward_balance2_operation::add_reward_token( const asset& reward_token )
+   {
+      if( reward_token.amount <= 0 )
+      {
+         // Negative amount is invalid.
+         FC_ASSERT( reward_token.amount == 0, "Cannot claim a negative amount" );
+         // Zero amount is ineffective.
+         return;
+      }
+
+      auto insert_info = reward_tokens.insert( std::pair<asset_symbol_type, asset>(reward_token.symbol, reward_token) );
+      FC_ASSERT( insert_info.second, "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", reward_token.symbol) );
+   }
+
+   void claim_reward_balance2_operation::validate()const
+   {
+      validate_account_name( account );
+      FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
+   }
+#endif
+
    void delegate_vesting_shares_operation::validate()const
    {
       validate_account_name( delegator );

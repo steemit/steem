@@ -998,6 +998,27 @@ namespace steem { namespace protocol {
       void validate() const;
    };
 
+#ifdef STEEM_ENABLE_SMT
+   /** Differs with original operation with extensions field and a container of tokens that will
+    *  be rewarded to an account. See discussion in issue #1859
+    */
+   struct claim_reward_balance2_operation : public base_operation
+   {
+      account_name_type account;
+      extensions_type   extensions;
+
+      /** \warning Use dedicated add_reward_token method (below) to insert
+       *  reward tokens here, or you risk data inconsistency.
+       */
+      flat_map< asset_symbol_type, asset > reward_tokens;
+
+      void add_reward_token( const asset& reward_token );
+
+      void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
+      void validate() const;
+   };
+#endif
+
    /**
     * Delegate vesting shares from one account to the other. The vesting shares are still owned
     * by the original account, but content voting rights and bandwidth allocation are transferred
@@ -1115,4 +1136,7 @@ FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new
 FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
 FC_REFLECT( steem::protocol::decline_voting_rights_operation, (account)(decline) );
 FC_REFLECT( steem::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::protocol::claim_reward_balance2_operation, (account)(extensions)(reward_tokens) )
+#endif
 FC_REFLECT( steem::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );
