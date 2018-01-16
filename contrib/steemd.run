@@ -80,7 +80,7 @@ if [[ ! -d $HOME/blockchain ]]; then
         chown -R steemd:steemd $HOME/blockchain
     fi
 else
-   ARGS+=" --tags-skip-startup-update=true"
+   ARGS+=" --tags-skip-startup-update"
 fi
 
 # without --data-dir it uses cwd as datadir(!)
