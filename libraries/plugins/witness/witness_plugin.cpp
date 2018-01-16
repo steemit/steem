@@ -86,19 +86,24 @@ namespace detail {
 
       const comment_object& _c;
       const database& _db;
+      std::bitset<2> _visited_flags = 0;
 
 #ifdef STEEM_ENABLE_SMT
-      void operator()( const allowed_vote_assets& va) const
+      void operator()( const allowed_vote_assets& va)
       {
+         FC_ASSERT(_visited_flags.test(0) == false, "Duplicate allowed_vote_asset object found in extensions");
+         _visited_flags.set(0);
          FC_TODO("To be implemented  suppport for allowed_vote_assets");
       }
 #endif
 
-      void operator()( const comment_payout_beneficiaries& cpb )const
+      void operator()( const comment_payout_beneficiaries& cpb )
       {
          STEEM_ASSERT( cpb.beneficiaries.size() <= 8,
             plugin_exception,
             "Cannot specify more than 8 beneficiaries." );
+         FC_ASSERT(_visited_flags.test(1) == false, "Duplicate comment_payout_beneficiaries object found in extensions");
+         _visited_flags.set(1);
       }
    };
 

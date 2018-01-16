@@ -500,18 +500,23 @@ struct comment_options_extension_visitor
 
    const comment_object& _c;
    database& _db;
+   std::bitset<2> _visited_flags = 0;
 
 #ifdef STEEM_ENABLE_SMT
-   void operator()( const allowed_vote_assets& va) const
+   void operator()( const allowed_vote_assets& va)
    {
+      FC_ASSERT(_visited_flags.test(0) == false, "Duplicate allowed_vote_asset object found in extensions");
+      _visited_flags.set(0);
       FC_TODO("To be implemented  suppport for allowed_vote_assets");
    }
 #endif
 
-   void operator()( const comment_payout_beneficiaries& cpb ) const
+   void operator()( const comment_payout_beneficiaries& cpb )
    {
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries." );
+      FC_ASSERT(_visited_flags.test(1) == false, "Duplicate comment_payout_beneficiaries object found in extensions");
+      _visited_flags.set(1);
 
       _db.modify( _c, [&]( comment_object& c )
       {
@@ -543,9 +548,10 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
        c.allow_curation_rewards = o.allow_curation_rewards;
    });
 
+   comment_options_extension_visitor extension_validator( comment, _db );
    for( auto& e : o.extensions )
    {
-      e.visit( comment_options_extension_visitor( comment, _db ) );
+      e.visit( extension_validator );
    }
 }
 
