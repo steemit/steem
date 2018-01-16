@@ -112,6 +112,9 @@ if [[ $? -ne 0 ]]; then
   fi
 fi
 
+# for appbase tags plugin loading
+ARGS+=" --tags-skip-startup-update"
+
 cd $HOME
 
 if [[ "$SYNC_TO_S3" ]]; then
