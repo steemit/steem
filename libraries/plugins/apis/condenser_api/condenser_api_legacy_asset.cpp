@@ -2,11 +2,6 @@
 
 namespace steem { namespace plugins { namespace condenser_api {
 
-uint8_t legacy_asset::decimals()const
-{
-   return symbol.decimals();
-}
-
 int64_t legacy_asset::precision()const
 {
    static int64_t table[] = {
@@ -16,7 +11,7 @@ int64_t legacy_asset::precision()const
                      100000000000ll, 1000000000000ll,
                      10000000000000ll, 100000000000000ll
                      };
-   uint8_t d = decimals();
+   uint8_t d = symbol.decimals();
    return table[ d ];
 }
 

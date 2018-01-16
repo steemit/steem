@@ -26,7 +26,6 @@ struct legacy_asset
          return leg;
       }
 
-      uint8_t     decimals()const;
       int64_t     precision()const;
 
       string to_string()const;
