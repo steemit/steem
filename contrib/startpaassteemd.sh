@@ -59,6 +59,8 @@ if [[ "$IS_BROADCAST_NODE" ]]; then
   cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
 elif [[ "$IS_AH_NODE" ]]; then
   cp /etc/steemd/config-for-ahnode.ini $HOME/config.ini
+elif [[ "$IS_OPSWHITELIST_NODE" ]]; then
+  cp /etc/steemd/fullnode.opswhitelist.config.ini $HOME/config.ini
 else
   cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 fi
@@ -109,6 +111,9 @@ if [[ $? -ne 0 ]]; then
     touch /tmp/isnewsync
   fi
 fi
+
+# for appbase tags plugin loading
+ARGS+=" --tags-skip-startup-update"
 
 cd $HOME
 
