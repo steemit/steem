@@ -2,6 +2,7 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
+#include <steem/chain/util/impacted.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
@@ -53,16 +54,39 @@ private:
    T _value;
 };
 
-template <typename T>
-class PrimitiveTypeComparatorImpl final : public Comparator
+/** Helper base class to cover all common functionality across defined comparators.
+ * 
+ */
+class AComparator : public Comparator
 {
 public:
-   virtual const char* Name() const override
+   virtual const char* Name() const override final
    {
       static const std::string name = boost::core::demangle(typeid(this).name());
       return name.c_str();
    }
 
+  virtual void FindShortestSeparator(std::string* start, const Slice& limit) const override final
+  {
+     /// Nothing to do.
+  }
+
+  virtual void FindShortSuccessor(std::string* key) const override final
+  {
+     /// Nothing to do.
+  }
+
+protected:
+   AComparator() = default;
+};
+
+/// Pairs account_name storage type and the ID to make possible nonunique index definition over names. 
+typedef std::pair<steem::chain::account_name_type::Storage, size_t> account_name_storage_id_pair;
+
+template <typename T>
+class PrimitiveTypeComparatorImpl final : public AComparator
+{
+public:
   virtual int Compare(const Slice& a, const Slice& b) const override
   {
       auto id1 = retrieveKey(a);
@@ -84,16 +108,6 @@ public:
       return id1 == id2;
   }
 
-  virtual void FindShortestSeparator(std::string* start, const Slice& limit) const override
-  {
-     /// Nothing to do.
-  }
-
-  virtual void FindShortSuccessor(std::string* key) const override
-  {
-     /// Nothing to do.
-  }
-
 private:
    const T& retrieveKey(const Slice& slice) const
    {
@@ -101,6 +115,46 @@ private:
       const char* rawData = slice.data();
       return *reinterpret_cast<const T*>(rawData);
    }
+};
+
+class account_name_id_ComparatorImpl final : public AComparator
+{
+public:
+  virtual int Compare(const Slice& a, const Slice& b) const override
+  {
+      auto id1 = retrieveKey(a);
+      auto id2 = retrieveKey(b);
+
+      if(id1 < id2)
+         return -1;
+
+      if(id1 > id2)
+         return 1;
+
+      return 0; 
+  }
+
+  virtual bool Equal(const Slice& a, const Slice& b) const override
+  {
+      auto id1 = retrieveKey(a);
+      auto id2 = retrieveKey(b);
+      return id1 == id2;
+  }
+
+private:
+   //typedef std::pair<steem::chain::account_name_type, size_t> source_data;
+   const account_name_storage_id_pair& retrieveKey(const Slice& slice) const
+   {
+      assert(sizeof(account_name_storage_id_pair) == slice.size());
+      const char* rawData = slice.data();
+      const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
+      return *data;
+      // source_data retVal;
+      // retVal.first.data = data->first;
+      // retVal.second = data->second;
+      // return retVal;
+   }
+  
 };
 
 typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
@@ -120,6 +174,12 @@ Comparator* by_id_Comparator()
 Comparator* by_location_Comparator()
 {
    static by_location_ComparatorImpl c;
+   return &c;
+}
+
+Comparator* by_account_name_storage_id_pair_Comparator()
+{
+   static account_name_id_ComparatorImpl c;
    return &c;
 }
 
@@ -283,6 +343,10 @@ rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefin
    auto& byLocationColumn = columnDefs.back();
    byLocationColumn.options.comparator = by_location_Comparator();
 
+   columnDefs.emplace_back("account_name2operation", ColumnFamilyOptions());
+   auto& byAccountNameColumn = columnDefs.back();
+   byAccountNameColumn.options.comparator = by_account_name_storage_id_pair_Comparator();
+
    return columnDefs;
 }
 
@@ -363,6 +427,18 @@ void rocksdb_plugin::impl::importOperation(const signed_block& block, const sign
    FC_ASSERT(s.ok(), "Data write failed");
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
    FC_ASSERT(s.ok(), "Data write failed");
+
+   flat_set<steem::chain::account_name_type> impacted;
+   steem::app::operation_get_impacted_accounts(op, impacted);
+
+   for(const auto& name : impacted)
+   {
+      account_name_storage_id_pair nameIdPair(name.data, obj.id._id);
+      PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
+      s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
+      FC_ASSERT(s.ok(), "Data write failed");
+   }
+
    if(++this->_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
       flushWriteBuffer();
 }
