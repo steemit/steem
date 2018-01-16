@@ -7,3 +7,6 @@
 [submodule "libraries/fc/vendor/websocketpp"]
 	path = libraries/fc/vendor/websocketpp
 	url = https://github.com/zaphoyd/websocketpp.git
+[submodule "libraries/plugins/rocksdb/rocksdb"]
+	path = libraries/plugins/rocksdb/rocksdb
+	url = https://github.com/vogel76/rocksdb.git
