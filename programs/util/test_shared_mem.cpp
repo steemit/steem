@@ -179,7 +179,7 @@ int main(int argc, char** argv, char** envp)
    pbc->emplace( [&]( book& b ) {
                  b.name = "emplace name";
                  b.pages = pbc->size();
-                }, book::allocator_type( seg.get_segment_manager() ) );
+                }, allocator<book>( seg.get_segment_manager() ) );
 #else
    pbc->emplace( [&]( book& b ) {
                  b.name = "emplace name";
@@ -187,7 +187,7 @@ int main(int argc, char** argv, char** envp)
                 }, allocator<book>() );
 #endif
 
-#if ENABLE_STD_ALLOCATOR == 0
+#ifndef ENABLE_STD_ALLOCATOR
    t_deque< book > * deq = seg.find_or_construct<chainbase::t_deque<book>>("book deque")(allocator<book>(seg.get_segment_manager()));
 #else
    t_deque< book > * deq = new chainbase::t_deque<book>( allocator<book>() );
