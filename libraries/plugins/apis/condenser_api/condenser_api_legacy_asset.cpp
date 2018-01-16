@@ -7,27 +7,6 @@ uint8_t legacy_asset::decimals()const
    return symbol.decimals();
 }
 
-std::string legacy_asset::symbol_name()const
-{
-   uint64_t symbol_u64 = 0;
-
-   switch( symbol.asset_num )
-   {
-      case STEEM_ASSET_NUM_STEEM:
-         symbol_u64 = STEEM_SYMBOL_U64;
-         break;
-      case STEEM_ASSET_NUM_SBD:
-         symbol_u64 = SBD_SYMBOL_U64;
-         break;
-      case STEEM_ASSET_NUM_VESTS:
-         symbol_u64 = VESTS_SYMBOL_U64;
-         break;
-      default:
-         FC_ASSERT( false, "Cannot determine symbol name" );
-   }
-   return (char*) &symbol_u64;
-}
-
 int64_t legacy_asset::precision()const
 {
    static int64_t table[] = {
@@ -54,7 +33,7 @@ string legacy_asset::to_string()const
       // leading 1.
       result += "." + fc::to_string(prec + fract).erase(0,1);
    }
-   return result + " " + symbol_name();
+   return result + " " + symbol.to_string();
 }
 
 legacy_asset legacy_asset::from_string( const string& from )
