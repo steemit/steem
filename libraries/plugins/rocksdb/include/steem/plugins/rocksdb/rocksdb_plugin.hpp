@@ -6,7 +6,15 @@
 
 #include <memory>
 
-namespace steem { namespace plugins { namespace rocksdb {
+namespace steem {
+   
+namespace chain
+{
+class account_history_object;
+class operation_object;
+} /// namespace chain
+
+namespace plugins { namespace rocksdb {
 
 namespace bfs = boost::filesystem;
 
@@ -28,6 +36,9 @@ public:
    virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
+
+   bool find_account_history_data(const protocol::account_name_type& name, steem::chain::account_history_object* data) const;
+   bool find_operation_object(size_t opId, steem::chain::operation_object* data) const;
 
 private:
    class impl;
