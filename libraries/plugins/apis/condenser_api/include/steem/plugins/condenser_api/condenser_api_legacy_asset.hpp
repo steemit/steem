@@ -27,7 +27,6 @@ struct legacy_asset
       }
 
       uint8_t     decimals()const;
-      void        set_decimals(uint8_t d);
       std::string symbol_name()const;
       int64_t     precision()const;
 

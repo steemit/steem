@@ -7,12 +7,6 @@ uint8_t legacy_asset::decimals()const
    return symbol.decimals();
 }
 
-void legacy_asset::set_decimals(uint8_t d)
-{
-   FC_ASSERT( d < 15 );
-   symbol.asset_num = (symbol.asset_num & 0x0F) | d;
-}
-
 std::string legacy_asset::symbol_name()const
 {
    uint64_t symbol_u64 = 0;
