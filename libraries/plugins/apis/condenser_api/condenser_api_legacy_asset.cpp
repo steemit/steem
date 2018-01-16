@@ -2,7 +2,7 @@
 
 namespace steem { namespace plugins { namespace condenser_api {
 
-int64_t legacy_asset::precision()const
+int64_t precision( const asset_symbol_type& symbol )
 {
    static int64_t table[] = {
                      1, 10, 100, 1000, 10000,
@@ -17,7 +17,7 @@ int64_t legacy_asset::precision()const
 
 string legacy_asset::to_string()const
 {
-   int64_t prec = precision();
+   int64_t prec = precision(symbol);
    string result = fc::to_string(amount.value / prec);
    if( prec > 1 )
    {
@@ -44,6 +44,9 @@ legacy_asset legacy_asset::from_string( const string& from )
       legacy_asset result;
       uint8_t decimals = 0;
 
+      string str_symbol = s.substr( space_pos + 1 );
+      result.symbol = asset_symbol_type::from_string( str_symbol.c_str(), decimals );
+
       if( dot_pos != std::string::npos )
       {
          FC_ASSERT( space_pos > dot_pos );
@@ -52,18 +55,18 @@ legacy_asset legacy_asset::from_string( const string& from )
          auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
          decimals = uint8_t( fractpart.size() - 1 );
 
+         int64_t prec = precision( result.symbol );
+
          result.amount = fc::to_int64( intpart );
-         result.amount.value *= result.precision();
+         result.amount.value *= prec;
          result.amount.value += fc::to_int64( fractpart );
-         result.amount.value -= result.precision();
+         result.amount.value -= prec;
       }
       else
       {
          auto intpart = s.substr( 0, space_pos );
          result.amount = fc::to_int64( intpart );
       }
-      string str_symbol = s.substr( space_pos + 1 );
-      result.symbol = asset_symbol_type::from_string( str_symbol.c_str(), decimals );
       return result;
    }
    FC_CAPTURE_AND_RETHROW( (from) )

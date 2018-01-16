@@ -26,8 +26,6 @@ struct legacy_asset
          return leg;
       }
 
-      int64_t     precision()const;
-
       string to_string()const;
       static legacy_asset from_string( const string& from );
 
