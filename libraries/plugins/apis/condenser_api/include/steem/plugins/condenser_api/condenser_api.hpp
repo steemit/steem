@@ -685,7 +685,7 @@ struct api_tag_object
 {
    api_tag_object( const tags::api_tag_object& o ) :
       name( o.name ),
-      total_payouts( protocol::legacy_asset::from_asset( o.total_payouts ) ),
+      total_payouts( legacy_asset::from_asset( o.total_payouts ) ),
       net_votes( o.net_votes ),
       top_posts( o.top_posts ),
       comments( o.comments ),

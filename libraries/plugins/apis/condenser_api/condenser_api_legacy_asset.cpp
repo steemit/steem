@@ -1,27 +1,37 @@
-#include <steem/protocol/legacy_asset.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 
-namespace steem { namespace protocol {
+namespace steem { namespace plugins { namespace condenser_api {
 
 uint8_t legacy_asset::decimals()const
 {
-   auto a = (const char*)&symbol.ser;
-   uint8_t result = uint8_t( a[0] );
-   FC_ASSERT( result < 15 );
-   return result;
+   return symbol.decimals();
 }
 
 void legacy_asset::set_decimals(uint8_t d)
 {
    FC_ASSERT( d < 15 );
-   auto a = (char*)&symbol;
-   a[0] = d;
+   symbol.asset_num = (symbol.asset_num & 0x0F) | d;
 }
 
 std::string legacy_asset::symbol_name()const
 {
-   auto a = (const char*)&symbol;
-   FC_ASSERT( a[7] == 0 );
-   return &a[1];
+   uint64_t symbol_u64 = 0;
+
+   switch( symbol.asset_num )
+   {
+      case STEEM_ASSET_NUM_STEEM:
+         symbol_u64 = STEEM_SYMBOL_U64;
+         break;
+      case STEEM_ASSET_NUM_SBD:
+         symbol_u64 = SBD_SYMBOL_U64;
+         break;
+      case STEEM_ASSET_NUM_VESTS:
+         symbol_u64 = VESTS_SYMBOL_U64;
+         break;
+      default:
+         FC_ASSERT( false, "Cannot determine symbol name" );
+   }
+   return (char*) &symbol_u64;
 }
 
 int64_t legacy_asset::precision()const
@@ -64,8 +74,7 @@ legacy_asset legacy_asset::from_string( const string& from )
       FC_ASSERT( space_pos != std::string::npos );
 
       legacy_asset result;
-      result.symbol.ser = uint64_t(0);
-      auto sy = (char*)&result.symbol.ser;
+      uint8_t decimals = 0;
 
       if( dot_pos != std::string::npos )
       {
@@ -73,7 +82,7 @@ legacy_asset legacy_asset::from_string( const string& from )
 
          auto intpart = s.substr( 0, dot_pos );
          auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
-         result.set_decimals( fractpart.size() - 1 );
+         decimals = uint8_t( fractpart.size() - 1 );
 
          result.amount = fc::to_int64( intpart );
          result.amount.value *= result.precision();
@@ -84,20 +93,12 @@ legacy_asset legacy_asset::from_string( const string& from )
       {
          auto intpart = s.substr( 0, space_pos );
          result.amount = fc::to_int64( intpart );
-         result.set_decimals( 0 );
       }
-      auto symbol = s.substr( space_pos + 1 );
-      size_t symbol_size = symbol.size();
-
-      if( symbol_size > 0 )
-      {
-         FC_ASSERT( symbol_size <= 6 );
-         memcpy( sy+1, symbol.c_str(), symbol_size );
-      }
-
+      string str_symbol = s.substr( space_pos + 1 );
+      result.symbol = asset_symbol_type::from_string( str_symbol.c_str(), decimals );
       return result;
    }
    FC_CAPTURE_AND_RETHROW( (from) )
 }
 
-} } // steem::protocol
+} } }
