@@ -119,13 +119,13 @@ class wallet_api
        * @param block_num Block height of specified block
        * @param only_virtual Whether to only return virtual operations
        */
-      vector< account_history::api_operation_object > get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+      vector< condenser_api::api_operation_object > get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
       /** Return the current price feed history
        *
        * @returns Price feed history data on the blockchain
        */
-      database_api::api_feed_history_object get_feed_history()const;
+      condenser_api::api_feed_history_object get_feed_history()const;
 
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
@@ -148,7 +148,7 @@ class wallet_api
       /**
        *  Gets the account information for all accounts for which this wallet has a private key
        */
-      vector< database_api::api_account_object > list_my_accounts();
+      vector< condenser_api::api_account_object > list_my_accounts();
 
       /** Lists all accounts registered in the blockchain.
        * This returns a list of all account names and their account ids, sorted by account name.
@@ -170,14 +170,14 @@ class wallet_api
        * @see \c get_global_properties() for less-frequently changing properties
        * @returns the dynamic global properties
        */
-      database_api::api_dynamic_global_property_object get_dynamic_global_properties() const;
+      condenser_api::extended_dynamic_global_properties get_dynamic_global_properties() const;
 
       /** Returns information about the given account.
        *
        * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
-      database_api::api_account_object get_account( string account_name ) const;
+      condenser_api::api_account_object get_account( string account_name ) const;
 
       /** Returns the current wallet filename.
        *
@@ -533,7 +533,7 @@ class wallet_api
        * @param owner_account the name or id of the witness account owner, or the id of the witness
        * @returns the information about the witness stored in the block chain
        */
-      optional< database_api::api_witness_object > get_witness(string owner_account);
+      optional< condenser_api::api_witness_object > get_witness(string owner_account);
 
       /** Returns conversion requests by an account
        *
@@ -541,7 +541,7 @@ class wallet_api
        *
        * @returns All pending conversion requests by account
        */
-      vector< database_api::api_convert_request_object > get_conversion_requests( string owner );
+      vector< condenser_api::api_convert_request_object > get_conversion_requests( string owner );
 
 
       /**
@@ -812,7 +812,7 @@ class wallet_api
        *
        * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
        */
-      market_history::get_order_book_return get_order_book( uint32_t limit = 1000 );
+      condenser_api::get_order_book_return get_order_book( uint32_t limit = 1000 );
       vector< condenser_api::extended_limit_order > get_open_orders( string accountname );
 
       /**
@@ -912,7 +912,7 @@ class wallet_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map< uint32_t, account_history::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
+      map< uint32_t, condenser_api::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
 
 
       FC_TODO(Supplement API argument description)
@@ -936,7 +936,7 @@ class wallet_api
       /**
        * Checks memos against private keys on account and imported in wallet
        */
-      void check_memo( const string& memo, const database_api::api_account_object& account )const;
+      void check_memo( const string& memo, const condenser_api::api_account_object& account )const;
 
       /**
        *  Returns the encrypted memo if memo starts with '#' otherwise returns memo

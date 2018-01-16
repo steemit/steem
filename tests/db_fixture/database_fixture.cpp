@@ -609,7 +609,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
       FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
       const asset_symbol_type& new_nai = available_nais[0];
       // Note that token's precision is needed now, when creating actual symbol.
-      op.symbol = asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
+      op.symbol.from_nai( new_nai.to_nai(), token_decimal_places );
       op.precision = op.symbol.decimals();
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = account_name;
@@ -642,7 +642,7 @@ void set_create_op(smt_create_operation* op, account_name_type control_account, 
 
 void set_create_op(smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places)
 {
-   op->symbol = asset_symbol_type::from_nai(token_nai, token_decimal_places);
+   op->symbol.from_nai(token_nai, token_decimal_places);
    sub_set_create_op(op, control_account);
 }
 

@@ -26,6 +26,7 @@ add_library( steem_protocol
              transaction.cpp
              block.cpp
              asset.cpp
+             legacy_asset.cpp
              version.cpp
              get_config.cpp
 
