@@ -505,7 +505,8 @@ struct comment_options_extension_visitor
 #ifdef STEEM_ENABLE_SMT
    void operator()( const allowed_vote_assets& va)
    {
-      FC_ASSERT(_visited_flags.test(0) == false, "Duplicate allowed_vote_asset object found in extensions");
+      FC_ASSERT(_db.has_hardfork( STEEM_HARDFORK_0_20__1815 ) == false || _visited_flags.test(0) == false,
+                "Duplicate allowed_vote_asset object found in extensions");
       _visited_flags.set(0);
       FC_TODO("To be implemented  suppport for allowed_vote_assets");
    }
@@ -515,7 +516,8 @@ struct comment_options_extension_visitor
    {
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries." );
-      FC_ASSERT(_visited_flags.test(1) == false, "Duplicate comment_payout_beneficiaries object found in extensions");
+      FC_ASSERT(_db.has_hardfork( STEEM_HARDFORK_0_20__1815 ) == false || _visited_flags.test(1) == false,
+                "Duplicate comment_payout_beneficiaries object found in extensions");
       _visited_flags.set(1);
 
       _db.modify( _c, [&]( comment_object& c )

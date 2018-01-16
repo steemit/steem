@@ -5,7 +5,6 @@
 #include <fc/macros.hpp>
 
 #include <locale>
-#include <bitset>
 
 namespace steem { namespace protocol {
 
@@ -82,23 +81,21 @@ namespace steem { namespace protocol {
       }
    }
 
+   /** Note that duplicated extension objects of same type are detected in separate visitor
+    *  during evaluation because it needs to be guarded by HF checks unavailable here.
+    */
    struct comment_options_extension_validate_visitor
    {
       typedef void result_type;
-      std::bitset<2> _visited_flags = 0;
 
 #ifdef STEEM_ENABLE_SMT
-      void operator()( const allowed_vote_assets& va)
+      void operator()( const allowed_vote_assets& va) const
       {
-         FC_ASSERT(_visited_flags.test(0) == false, "Duplicate allowed_vote_asset object found in extensions");
-         _visited_flags.set(0);
          va.validate();
       }
 #endif
-      void operator()( const comment_payout_beneficiaries& cpb )
+      void operator()( const comment_payout_beneficiaries& cpb ) const
       {
-         FC_ASSERT(_visited_flags.test(1) == false, "Duplicate comment_payout_beneficiaries object found in extensions");
-         _visited_flags.set(1);
          cpb.validate();
       }
    };
@@ -132,9 +129,8 @@ namespace steem { namespace protocol {
       FC_ASSERT( max_accepted_payout.symbol == SBD_SYMBOL, "Max accepted payout must be in SBD" );
       FC_ASSERT( max_accepted_payout.amount.value >= 0, "Cannot accept less than 0 payout" );
       validate_permlink( permlink );
-      comment_options_extension_validate_visitor validator;
       for( auto& e : extensions )
-         e.visit( validator );
+         e.visit( comment_options_extension_validate_visitor() );
    }
 
    void delete_comment_operation::validate()const
