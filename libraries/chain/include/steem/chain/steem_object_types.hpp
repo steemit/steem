@@ -13,7 +13,6 @@
 
 namespace steem { namespace chain {
 
-namespace bip = chainbase::bip;
 using namespace boost::multi_index;
 
 using boost::multi_index_container;
