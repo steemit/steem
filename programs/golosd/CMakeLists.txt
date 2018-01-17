@@ -28,6 +28,7 @@ target_link_libraries(
         golos::tolstoy_api_plugin
         golos::blockchain_statistics
         golos::account_by_key_plugin
+        golos::account_history
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}
