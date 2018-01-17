@@ -2,6 +2,7 @@ set(CURRENT_TARGET market_history_plugin)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/market_history/market_history_plugin.hpp
+     include/golos/plugins/market_history/market_history_objects.hpp
      )
 
 list(APPEND CURRENT_TARGET_SOURCES
