@@ -24,7 +24,7 @@
 #include <graphene/net/peer_connection.hpp>
 #include <graphene/net/exceptions.hpp>
 #include <graphene/net/config.hpp>
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/thread/thread.hpp>
 
@@ -49,7 +49,7 @@ namespace graphene { namespace net
       {
         // patch the current time into the message.  Since this operates on the packed version of the structure,
         // it won't work for anything after a variable-length field
-        std::vector<char> packed_current_time = fc::raw::pack(fc::time_point::now());
+        std::vector<char> packed_current_time = fc::raw::pack_to_vector(fc::time_point::now());
         assert(message_send_time_field_offset + packed_current_time.size() <= message_to_send.data.size());
         memcpy(message_to_send.data.data() + message_send_time_field_offset,
                packed_current_time.data(), packed_current_time.size());
@@ -511,7 +511,7 @@ namespace graphene { namespace net
       // to give us some wiggle room)
       return inventory_peer_advertised_to_us.size() >
         GRAPHENE_NET_MAX_INVENTORY_SIZE_IN_MINUTES * GRAPHENE_NET_MAX_TRX_PER_SECOND * 60 +
-        (GRAPHENE_NET_MAX_INVENTORY_SIZE_IN_MINUTES + 1) * 60 / STEEMIT_BLOCK_INTERVAL;
+        (GRAPHENE_NET_MAX_INVENTORY_SIZE_IN_MINUTES + 1) * 60 / STEEM_BLOCK_INTERVAL;
     }
 
     bool peer_connection::performing_firewall_check() const

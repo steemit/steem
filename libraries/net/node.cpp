@@ -79,7 +79,7 @@
 #include <graphene/net/config.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -269,7 +269,8 @@ namespace graphene { namespace net {
                                    (get_block_time) \
                                    (get_head_block_id) \
                                    (estimate_last_known_fork_from_git_revision_timestamp) \
-                                   (error_encountered)
+                                   (error_encountered) \
+                                   (get_chain_id)
 
 
 #define DECLARE_ACCUMULATOR(r, data, method_name) \
@@ -350,6 +351,7 @@ namespace graphene { namespace net {
 
       fc::variant_object get_call_statistics();
 
+      steem::protocol::chain_id_type get_chain_id() const override;
       bool has_item( const net::item_id& id ) override;
       void handle_message( const message& ) override;
       bool handle_block( const graphene::net::block_message& block_message, bool sync_mode, std::vector<fc::uint160_t>& contained_transaction_message_ids ) override;
@@ -751,7 +753,7 @@ namespace graphene { namespace net {
       _suspend_fetching_sync_blocks(false),
       _items_to_fetch_updated(false),
       _items_to_fetch_sequence_counter(0),
-      _recent_block_interval_in_seconds(STEEMIT_BLOCK_INTERVAL),
+      _recent_block_interval_in_seconds(STEEM_BLOCK_INTERVAL),
       _user_agent_string(user_agent),
       _most_recent_blocks_accepted(GRAPHENE_NET_DEFAULT_MAX_CONNECTIONS),
       _total_number_of_unfetched_items(0),
@@ -1012,7 +1014,7 @@ namespace graphene { namespace net {
           } // end non-preemptable section
 
           // make all the requests we scheduled in the loop above
-          for( auto sync_item_request : sync_item_requests_to_send )
+          for( const auto& sync_item_request : sync_item_requests_to_send )
             request_sync_items_from_peer( sync_item_request.first, sync_item_request.second );
           sync_item_requests_to_send.clear();
         }
@@ -1232,7 +1234,7 @@ namespace graphene { namespace net {
                    ("count", total_items_to_send_to_this_peer)
                    ("types", items_to_advertise_by_type.size())
                    ("endpoint", peer->get_remote_endpoint()));
-            for (auto items_group : items_to_advertise_by_type)
+            for (const auto& items_group : items_to_advertise_by_type)
               inventory_messages_to_send.push_back(std::make_pair(peer, item_ids_inventory_message(items_group.first, items_group.second)));
           }
           peer->clear_old_inventory();
@@ -1317,7 +1319,7 @@ namespace graphene { namespace net {
 
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
-        fc::time_point active_ignored_request_threshold = fc::time_point::now() - active_ignored_request_timeout;
+        fc::time_point active_ignored_request_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS);
         for( const peer_connection_ptr& active_peer : _active_connections )
         {
           if( active_peer->connection_initiation_time < active_disconnect_threshold &&
@@ -1377,8 +1379,8 @@ namespace graphene { namespace net {
               wlog( "Sending a keepalive message to peer ${peer} who hasn't sent us any messages in the last ${timeout} seconds",
                     ( "peer", active_peer->get_remote_endpoint() )("timeout", active_send_keepalive_timeout ) );
               peers_to_send_keep_alive.push_back(active_peer);
-            }            
-            else if (active_peer->we_need_sync_items_from_peer && 
+            }
+            else if (active_peer->we_need_sync_items_from_peer &&
                      !active_peer->is_currently_handling_message() &&
                      !active_peer->item_ids_requested_from_peer &&
                      active_peer->ids_of_items_to_get.empty())
@@ -1405,8 +1407,7 @@ namespace graphene { namespace net {
             peers_to_disconnect_forcibly.push_back( closing_peer );
           }
 
-        uint32_t failed_terminate_timeout_seconds = 120;
-        fc::time_point failed_terminate_threshold = fc::time_point::now() - fc::seconds(failed_terminate_timeout_seconds);
+        fc::time_point failed_terminate_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_FAILED_TERMINATE_TIMEOUT_SECONDS);
         for (const peer_connection_ptr& peer : _terminating_connections )
           if (peer->get_connection_terminated_time() != fc::time_point::min() &&
               peer->get_connection_terminated_time() < failed_terminate_threshold)
@@ -1487,14 +1488,14 @@ namespace graphene { namespace net {
 
       // this has nothing to do with updating the peer list, but we need to prune this list
       // at regular intervals, this is a fine place to do it.
-      fc::time_point_sec oldest_failed_ids_to_keep(fc::time_point::now() - fc::minutes(15));
+      fc::time_point_sec oldest_failed_ids_to_keep(fc::time_point::now() - fc::minutes(GRAPHENE_NET_PRUNE_FAILED_IDS_MINUTES));
       auto oldest_failed_ids_to_keep_iter = _recently_failed_items.get<peer_connection::timestamp_index>().lower_bound(oldest_failed_ids_to_keep);
       auto begin_iter = _recently_failed_items.get<peer_connection::timestamp_index>().begin();
       _recently_failed_items.get<peer_connection::timestamp_index>().erase(begin_iter, oldest_failed_ids_to_keep_iter);
 
       if (!_node_is_shutting_down && !_fetch_updated_peer_lists_loop_done.canceled() )
          _fetch_updated_peer_lists_loop_done = fc::schedule( [this](){ fetch_updated_peer_lists_loop(); },
-                                                             fc::time_point::now() + fc::minutes(15),
+                                                             fc::time_point::now() + fc::minutes(GRAPHENE_NET_FETCH_UPDATED_PEER_LISTS_INTERVAL_MINUTES),
                                                              "fetch_updated_peer_lists_loop" );
     }
     void node_impl::update_bandwidth_data(uint32_t bytes_read_this_second, uint32_t bytes_written_this_second)
@@ -1540,7 +1541,7 @@ namespace graphene { namespace net {
 
       if (!_node_is_shutting_down && !_bandwidth_monitor_loop_done.canceled())
         _bandwidth_monitor_loop_done = fc::schedule( [=](){ bandwidth_monitor_loop(); },
-                                                     fc::time_point::now() + fc::seconds(1),
+                                                     fc::time_point::now() + fc::seconds(GRAPHENE_NET_BANDWIDTH_MONITOR_INTERVAL_SECONDS),
                                                      "bandwidth_monitor_loop" );
     }
 
@@ -1550,7 +1551,7 @@ namespace graphene { namespace net {
       dump_node_status();
       if (!_node_is_shutting_down && !_dump_node_status_task_done.canceled())
         _dump_node_status_task_done = fc::schedule([=](){ dump_node_status_task(); },
-                                                   fc::time_point::now() + fc::minutes(1),
+                                                   fc::time_point::now() + fc::minutes(GRAPHENE_NET_DUMP_NODE_STATUS_INTERVAL_MINUTES),
                                                    "dump_node_status_task");
     }
 
@@ -1819,7 +1820,7 @@ namespace graphene { namespace net {
       if (!_hard_fork_block_numbers.empty())
         user_data["last_known_fork_block_number"] = _hard_fork_block_numbers.back();
 
-      user_data["chain_id"] = STEEMIT_CHAIN_ID;
+      user_data["chain_id"] = _delegate->get_chain_id();
 
       return user_data;
     }
@@ -1844,7 +1845,7 @@ namespace graphene { namespace net {
       if (user_data.contains("last_known_fork_block_number"))
         originating_peer->last_known_fork_block_number = user_data["last_known_fork_block_number"].as<uint32_t>();
       if (user_data.contains("chain_id"))
-        originating_peer->chain_id = user_data["chain_id"].as<steemit::protocol::chain_id_type>();
+        originating_peer->chain_id = user_data["chain_id"].as<steem::protocol::chain_id_type>();
     }
 
     void node_impl::on_hello_message( peer_connection* originating_peer, const hello_message& hello_message_received )
@@ -1937,10 +1938,10 @@ namespace graphene { namespace net {
             }
           }
         }
-        if ( !originating_peer->chain_id || *originating_peer->chain_id != STEEMIT_CHAIN_ID )
+        if ( !originating_peer->chain_id || *originating_peer->chain_id != _delegate->get_chain_id() )
         {
             wlog("Received hello message from peer running a node for different blockchain.",
-               ("my_chain_id", STEEMIT_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
+               ("my_chain_id", _delegate->get_chain_id())("their_chain_id", originating_peer->chain_id) );
 
             std::ostringstream rejection_message;
             rejection_message << "Your client is running a different chain id";
@@ -2071,7 +2072,7 @@ namespace graphene { namespace net {
       originating_peer->send_message(address_request_message());
       fc::time_point now = fc::time_point::now();
       if (_is_firewalled == firewalled_state::unknown &&
-          _last_firewall_check_message_sent < now - fc::minutes(5) &&
+          _last_firewall_check_message_sent < now - fc::minutes(GRAPHENE_NET_FIREWALL_CHECK_MESSAGE_INTERVAL_MINUTES) &&
           originating_peer->core_protocol_version >= 106)
       {
         wlog("I don't know if I'm firewalled.  Sending a firewall check message to peer ${peer}",
@@ -2614,7 +2615,7 @@ namespace graphene { namespace net {
           // they must be an attacker or have a buggy client.
           fc::time_point_sec minimum_time_of_last_offered_block =
               originating_peer->last_block_time_delegate_has_seen + // timestamp of the block immediately before the first unfetched block
-              originating_peer->number_of_unfetched_item_ids * STEEMIT_BLOCK_INTERVAL;
+              originating_peer->number_of_unfetched_item_ids * STEEM_BLOCK_INTERVAL;
           if (minimum_time_of_last_offered_block > _delegate->get_blockchain_now() + GRAPHENE_NET_FUTURE_SYNC_BLOCKS_GRACE_PERIOD_SEC)
           {
             wlog("Disconnecting from peer ${peer} who offered us an implausible number of blocks, their last block would be in the future (${timestamp})",
@@ -2991,14 +2992,14 @@ namespace graphene { namespace net {
       // received yet, reschedule them to be fetched from another peer
       if (!originating_peer->sync_items_requested_from_peer.empty())
       {
-        for (auto sync_item : originating_peer->sync_items_requested_from_peer)
+        for (const auto& sync_item : originating_peer->sync_items_requested_from_peer)
           _active_sync_requests.erase(sync_item);
         trigger_fetch_sync_items_loop();
       }
 
       if (!originating_peer->items_requested_from_peer.empty())
       {
-        for (auto item_and_time : originating_peer->items_requested_from_peer)
+        for (const auto& item_and_time : originating_peer->items_requested_from_peer)
         {
           if (is_item_in_any_peers_inventory(item_and_time.first))
             _items_to_fetch.insert(prioritized_item_id(item_and_time.first, _items_to_fetch_sequence_counter++));
@@ -4570,7 +4571,7 @@ namespace graphene { namespace net {
               std::string error_message = error_message_stream.str();
               ulog(error_message);
               _delegate->error_encountered( error_message, fc::oexception() );
-              fc::usleep( fc::seconds(5 ) );
+              fc::usleep( fc::seconds(GRAPHENE_NET_PORT_WAIT_DELAY_SECONDS) );
             }
             else // don't wait, just find a random port
             {
@@ -5444,7 +5445,11 @@ namespace graphene { namespace net {
     }
 #else
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
-    if (_thread->is_current()) \
+    call_statistics_collector statistics_collector(#method_name, \
+                                                   &_ ## method_name ## _execution_accumulator, \
+                                                   &_ ## method_name ## _delay_before_accumulator, \
+                                                   &_ ## method_name ## _delay_after_accumulator); \
+    if ( _thread->is_current()) \
     { \
       call_statistics_collector statistics_collector(#method_name, \
          &_ ## method_name ## _execution_accumulator, \
@@ -5463,6 +5468,11 @@ namespace graphene { namespace net {
         return _node_delegate->method_name(__VA_ARGS__); \
       }, "invoke " BOOST_STRINGIZE(method_name)).wait()
 #endif
+
+    steem::protocol::chain_id_type statistics_gathering_node_delegate_wrapper::get_chain_id() const
+    {
+      INVOKE_AND_COLLECT_STATISTICS(get_chain_id);
+    }
 
     bool statistics_gathering_node_delegate_wrapper::has_item( const net::item_id& id )
     {

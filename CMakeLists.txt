@@ -3,6 +3,7 @@ project( Steem )
 cmake_minimum_required( VERSION 3.2 )
 
 set( BLOCKCHAIN_NAME "Steem" )
+set( CMAKE_CXX_STANDARD 14 )
 
 set( GUI_CLIENT_EXECUTABLE_NAME Steem )
 set( CUSTOM_URL_SCHEME "gcs" )
@@ -60,6 +61,16 @@ if( BUILD_STEEM_TESTNET  )
   SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_TEST_NET" )
 endif()
 
+OPTION( ENABLE_SMT_SUPPORT "Build source with SMT support (ON OR OFF)" OFF )
+MESSAGE( STATUS "ENABLE_SMT_SUPPORT: ${ENABLE_SMT_SUPPORT}" )
+if( ENABLE_SMT_SUPPORT  )
+  MESSAGE( STATUS "     " )
+  MESSAGE( STATUS "             CONFIGURING FOR SMT SUPPORT             " )
+  MESSAGE( STATUS "     " )
+  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTEEM_ENABLE_SMT" )
+  SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSTEEM_ENABLE_SMT" )
+endif()
+
 OPTION( LOW_MEMORY_NODE "Build source for low memory node (ON OR OFF)" OFF )
 MESSAGE( STATUS "LOW_MEMORY_NODE: ${LOW_MEMORY_NODE}" )
 if( LOW_MEMORY_NODE )
@@ -97,6 +108,34 @@ if( STEEM_STATIC_BUILD AND ( ( MSVC AND NOT MINGW ) OR APPLE ) )
    SET( STEEM_STATIC_BUILD OFF )
 endif()
 MESSAGE( STATUS "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" )
+
+SET( STEEM_LINT_LEVEL "OFF" CACHE STRING "Lint level during steem build (FULL, HIGH, LOW, OFF)" )
+find_program(
+   CLANG_TIDY_EXE
+   NAMES "clang-tidy"
+   DOC "Path to clain-tidy executable"
+)
+
+if( NOT CLANG_TIDY_EXE )
+   message( STATUS "clang-tidy not found" )
+elseif( VERSION LESS 3.6 )
+   messgae( STATUS "clang-tidy found but only supported with CMake version >= 3.6" )
+else()
+   message( STATUS "clany-tidy found: ${CLANG_TIDY_EXE}" )
+   if( "${STEEM_LINT_LEVEL}" STREQUAL "FULL" )
+      message( STATUS "Linting level set to: FULL" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='*'" )
+   elseif( "${STEEM_LINT_LEVEL}" STREQUAL "HIGH" )
+      message( STATUS "Linting level set to: HIGH" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='boost-use-to-string,clang-analyzer-*,cppcoreguidelines-*,llvm-*,misc-*,performance-*,readability-*'" )
+   elseif( "${STEEM_LINT_LEVEL}" STREQUAL "LOW" )
+      message( STATUS "Linting level set to: LOW" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='clang-analyzer-*'" )
+   else()
+      unset( CLANG_TIDY_EXE )
+      message( STATUS "Linting level set to: OFF" )
+   endif()
+endif( NOT CLANG_TIDY_EXE )
 
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
@@ -204,7 +243,7 @@ if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
-# external_plugins needs to be compiled first because libraries/app depends on STEEMIT_EXTERNAL_PLUGINS being fully populated
+# external_plugins needs to be compiled first because libraries/app depends on STEEM_EXTERNAL_PLUGINS being fully populated
 add_subdirectory( external_plugins )
 add_subdirectory( libraries )
 add_subdirectory( programs )
@@ -264,6 +303,12 @@ if( BUILD_STEEM_TESTNET )
   MESSAGE( STATUS "\n\n             CONFIGURED FOR TEST NETWORK             \n\n" )
 else()
   MESSAGE( STATUS "\n\n             CONFIGURED FOR STEEM NETWORK             \n\n" )
+endif()
+
+if( ENABLE_SMT_SUPPORT )
+MESSAGE( STATUS "\n\n             CONFIGURED FOR SMT SUPPORT             \n\n" )
+else()
+MESSAGE( STATUS "\n\n             CONFIGURED FOR NO SUPPORT OF SMT             \n\n" )
 endif()
 
 if( LOW_MEMORY_NODE )

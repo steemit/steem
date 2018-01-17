@@ -1,0 +1,5 @@
+{
+   "plugin_name": "debug_node_api",
+   "plugin_namespace": "debug_node",
+   "plugin_project": "debug_node_api_plugin"
+}

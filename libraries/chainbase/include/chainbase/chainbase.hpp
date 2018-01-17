@@ -318,7 +318,7 @@ namespace chainbase {
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
-            for( auto id : head.new_ids )
+            for( const auto& id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
             }
@@ -411,7 +411,7 @@ namespace chainbase {
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
-            for( auto id : state.new_ids )
+            for( const auto& id : state.new_ids )
                prev_state.new_ids.insert(id);
 
             // *+del
@@ -465,13 +465,6 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
-         }
-
-         void remove_object( int64_t id )
-         {
-            const value_type* val = find( typename value_type::id_type(id) );
-            if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
-            remove( *val );
          }
 
       private:
@@ -583,8 +576,6 @@ namespace chainbase {
          virtual void    undo_all()const = 0;
          virtual uint32_t type_id()const  = 0;
 
-         virtual void remove_object( int64_t id ) = 0;
-
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
@@ -610,7 +601,6 @@ namespace chainbase {
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
-         virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
       private:
          BaseIndex& _base;
    };
@@ -653,6 +643,13 @@ namespace chainbase {
          std::atomic< uint32_t >                                    _current_lock;
    };
 
+   struct lock_exception : public std::exception
+   {
+      explicit lock_exception() {}
+      virtual ~lock_exception() {}
+
+      virtual const char* what() const noexcept { return "Unable to acquire database lock"; }
+   };
 
    /**
     *  This class
@@ -660,12 +657,7 @@ namespace chainbase {
    class database
    {
       public:
-         enum open_flags {
-            read_only     = 0,
-            read_write    = 1
-         };
-
-         void open( const bfs::path& dir, uint32_t write = read_only, uint64_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, uint64_t shared_file_size = 0 );
          void close();
          void flush();
          void wipe( const bfs::path& dir );
@@ -676,7 +668,7 @@ namespace chainbase {
 
          void require_read_lock( const char* method, const char* tname )const
          {
-            if( BOOST_UNLIKELY( _enable_require_locking & _read_only & (_read_lock_count <= 0) ) )
+            if( BOOST_UNLIKELY( _enable_require_locking & (_read_lock_count <= 0) ) )
                require_lock_fail(method, "read", tname);
          }
 
@@ -744,7 +736,7 @@ namespace chainbase {
          void set_revision( int64_t revision )
          {
              CHAINBASE_REQUIRE_WRITE_LOCK( "set_revision", int64_t );
-             for( auto i : _index_list ) i->set_revision( revision );
+             for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
 
@@ -761,13 +753,7 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
-             if( !_read_only ) {
-                idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
-             } else {
-                idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
-                if( !idx_ptr ) BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
-             }
-
+             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
@@ -924,7 +910,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            read_lock lock( _rw_manager->current_lock(), bip::defer_lock_type() );
+            read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _read_lock_count );
@@ -937,7 +923,7 @@ namespace chainbase {
             else
             {
                if( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
-                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to acquire lock" ) );
+                  BOOST_THROW_EXCEPTION( lock_exception() );
             }
 
             return callback();
@@ -946,10 +932,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            if( _read_only )
-               BOOST_THROW_EXCEPTION( std::logic_error( "cannot acquire write lock on read-only process" ) );
-
-            write_lock lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+            write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _write_lock_count );
@@ -963,9 +946,9 @@ namespace chainbase {
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
-                  _rw_manager->next_lock();
-                  std::cerr << "Lock timeout, moving to lock " << _rw_manager->current_lock_num() << std::endl;
-                  lock = write_lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+                  _rw_manager.next_lock();
+                  std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
+                  lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
             }
 
@@ -988,10 +971,9 @@ namespace chainbase {
          }
 
       private:
+         read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
-         read_write_mutex_manager*                                   _rw_manager = nullptr;
-         bool                                                        _read_only = false;
          bip::file_lock                                              _flock;
 
          /**

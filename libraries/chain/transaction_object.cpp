@@ -1,6 +1,6 @@
-#include <steemit/chain/transaction_object.hpp>
+#include <steem/chain/transaction_object.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 const object* transaction_index::create(const std::function<void (object*)>& constructor, object_id_type)
 {
@@ -69,4 +69,4 @@ const object*transaction_index::get(object_id_type id) const
    return &*itr;
 }
 
-} } // steemit::chain
+} } // steem::chain

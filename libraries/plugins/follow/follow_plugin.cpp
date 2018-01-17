@@ -1,70 +1,50 @@
-#include <steemit/follow/follow_api.hpp>
-#include <steemit/follow/follow_objects.hpp>
-#include <steemit/follow/follow_operations.hpp>
+#include <steem/plugins/follow/follow_plugin.hpp>
+#include <steem/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/follow_operations.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/generic_custom_operation_interpreter.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
 #include <memory>
 
-namespace steemit { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
-namespace detail
-{
+using namespace steem::protocol;
 
-using namespace steemit::protocol;
+namespace detail {
 
 class follow_plugin_impl
 {
    public:
-      follow_plugin_impl( follow_plugin& _plugin ) : _self( _plugin ) {}
-
-      void plugin_initialize();
-
-      steemit::chain::database& database()
-      {
-         return _self.database();
-      }
+      follow_plugin_impl( follow_plugin& _plugin ) :
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
+         _self( _plugin ) {}
+      ~follow_plugin_impl() {}
 
       void pre_operation( const operation_notification& op_obj );
       void post_operation( const operation_notification& op_obj );
 
-      follow_plugin&                                                                         _self;
-      std::shared_ptr< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > > _custom_operation_interpreter;
+      chain::database&     _db;
+      follow_plugin&                _self;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
-
-void follow_plugin_impl::plugin_initialize()
-{
-   // Each plugin needs its own evaluator registry.
-   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > >( database() );
-
-   // Add each operation evaluator to the registry
-   _custom_operation_interpreter->register_evaluator<follow_evaluator>( &_self );
-   _custom_operation_interpreter->register_evaluator<reblog_evaluator>( &_self );
-
-   // Add the registry to the database so the database can delegate custom ops to the plugin
-   database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
-}
 
 struct pre_operation_visitor
 {
-   follow_plugin& _plugin;
+   follow_plugin_impl& _plugin;
 
-   pre_operation_visitor( follow_plugin& plugin )
+   pre_operation_visitor( follow_plugin_impl& plugin )
       : _plugin( plugin ) {}
 
    typedef void result_type;
@@ -76,7 +56,7 @@ struct pre_operation_visitor
    {
       try
       {
-         auto& db = _plugin.database();
+         auto& db = _plugin._db;
          const auto& c = db.get_comment( op.author, op.permlink );
 
          if( db.calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() ) return;
@@ -86,15 +66,31 @@ struct pre_operation_visitor
 
          if( cv != cv_idx.end() )
          {
-            const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
-            auto rep = rep_idx.find( op.author );
+            auto rep_delta = ( cv->rshares >> 6 );
 
-            if( rep != rep_idx.end() )
+            const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
+            auto voter_rep = rep_idx.find( op.voter );
+            auto author_rep = rep_idx.find( op.author );
+
+            if( author_rep != rep_idx.end() )
             {
-               db.modify( *rep, [&]( reputation_object& r )
+               // Rule #1: Must have non-negative reputation to effect another user's reputation
+               if( voter_rep != rep_idx.end() && voter_rep->reputation < 0 ) return;
+
+               // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
+               if( cv->rshares < 0 && !( voter_rep != rep_idx.end() && voter_rep->reputation > author_rep->reputation - rep_delta ) ) return;
+
+               if( rep_delta == author_rep->reputation )
                {
-                  r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
-               });
+                  db.remove( *author_rep );
+               }
+               else
+               {
+                  db.modify( *author_rep, [&]( reputation_object& r )
+                  {
+                     r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+                  });
+               }
             }
          }
       }
@@ -105,7 +101,7 @@ struct pre_operation_visitor
    {
       try
       {
-         auto& db = _plugin.database();
+         auto& db = _plugin._db;
          const auto* comment = db.find_comment( op.author, op.permlink );
 
          if( comment == nullptr ) return;
@@ -137,9 +133,9 @@ struct pre_operation_visitor
 
 struct post_operation_visitor
 {
-   follow_plugin& _plugin;
+   follow_plugin_impl& _plugin;
 
-   post_operation_visitor( follow_plugin& plugin )
+   post_operation_visitor( follow_plugin_impl& plugin )
       : _plugin( plugin ) {}
 
    typedef void result_type;
@@ -151,13 +147,13 @@ struct post_operation_visitor
    {
       try
       {
-         if( op.id == FOLLOW_PLUGIN_NAME )
+         if( op.id == STEEM_FOLLOW_PLUGIN_NAME )
          {
             custom_json_operation new_cop;
 
             new_cop.required_auths = op.required_auths;
             new_cop.required_posting_auths = op.required_posting_auths;
-            new_cop.id = _plugin.plugin_name();
+            new_cop.id = _plugin._self.name();
             follow_operation fop;
 
             try
@@ -171,7 +167,7 @@ struct post_operation_visitor
 
             auto new_fop = follow_plugin_operation( fop );
             new_cop.json = fc::json::to_string( new_fop );
-            std::shared_ptr< custom_operation_interpreter > eval = _plugin.database().get_custom_json_evaluator( op.id );
+            std::shared_ptr< custom_operation_interpreter > eval = _plugin._db.get_custom_json_evaluator( op.id );
             eval->apply( new_cop );
          }
       }
@@ -183,7 +179,7 @@ struct post_operation_visitor
       try
       {
          if( op.parent_author.size() > 0 ) return;
-         auto& db = _plugin.database();
+         auto& db = _plugin._db;
          const auto& c = db.get_comment( op.author, op.permlink );
 
          if( c.created != db.head_block_time() ) return;
@@ -194,7 +190,7 @@ struct post_operation_visitor
 
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
-         if( db.head_block_time() >= _plugin.start_feeds )
+         if( db.head_block_time() >= _plugin._self.start_feeds )
          {
             while( itr != idx.end() && itr->following == op.author )
             {
@@ -220,7 +216,7 @@ struct post_operation_visitor
                      const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
                      auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
-                     while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                     while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin._self.max_feed_size )
                      {
                         db.remove( *old_feed );
                         old_feed = old_feed_idx.lower_bound( itr->follower );
@@ -254,7 +250,7 @@ struct post_operation_visitor
             const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
             auto old_blog = old_blog_idx.lower_bound( op.author );
 
-            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
+            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin._self.max_feed_size )
             {
                db.remove( *old_blog );
                old_blog = old_blog_idx.lower_bound( op.author );
@@ -268,7 +264,7 @@ struct post_operation_visitor
    {
       try
       {
-         auto& db = _plugin.database();
+         auto& db = _plugin._db;
          const auto& comment = db.get_comment( op.author, op.permlink );
 
          if( db.calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
@@ -316,11 +312,11 @@ void follow_plugin_impl::pre_operation( const operation_notification& note )
 {
    try
    {
-      note.op.visit( pre_operation_visitor( _self ) );
+      note.op.visit( pre_operation_visitor( *this ) );
    }
    catch( const fc::assert_exception& )
    {
-      if( database().is_producing() ) throw;
+      if( _db.is_producing() ) throw;
    }
 }
 
@@ -328,29 +324,29 @@ void follow_plugin_impl::post_operation( const operation_notification& note )
 {
    try
    {
-      note.op.visit( post_operation_visitor( _self ) );
+      note.op.visit( post_operation_visitor( *this ) );
    }
    catch( fc::assert_exception )
    {
-      if( database().is_producing() ) throw;
+      if( _db.is_producing() ) throw;
    }
 }
 
-} // end namespace detail
+} // detail
 
-follow_plugin::follow_plugin( application* app )
-   : plugin( app ), my( new detail::follow_plugin_impl( *this ) ) {}
+follow_plugin::follow_plugin() {}
 
-void follow_plugin::plugin_set_program_options(
+follow_plugin::~follow_plugin() {}
+
+void follow_plugin::set_program_options(
    boost::program_options::options_description& cli,
    boost::program_options::options_description& cfg
    )
 {
-   cli.add_options()
+   cfg.add_options()
       ("follow-max-feed-size", boost::program_options::value< uint32_t >()->default_value( 500 ), "Set the maximum size of cached feed for an account" )
       ("follow-start-feeds", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating feeds" )
       ;
-   cfg.add( cli );
 }
 
 void follow_plugin::plugin_initialize( const boost::program_options::variables_map& options )
@@ -358,17 +354,28 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
-      chain::database& db = database();
-      my->plugin_initialize();
 
-      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
-      add_plugin_index< follow_index       >(db);
-      add_plugin_index< feed_index         >(db);
-      add_plugin_index< blog_index         >(db);
-      add_plugin_index< reputation_index   >(db);
-      add_plugin_index< follow_count_index >(db);
-      add_plugin_index< blog_author_stats_index >(db);
+      my = std::make_unique< detail::follow_plugin_impl >( *this );
+
+      // Each plugin needs its own evaluator registry.
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::plugins::follow::follow_plugin_operation > >( my->_db );
+
+      // Add each operation evaluator to the registry
+      _custom_operation_interpreter->register_evaluator< follow_evaluator >( this );
+      _custom_operation_interpreter->register_evaluator< reblog_evaluator >( this );
+
+      // Add the registry to the database so the database can delegate custom ops to the plugin
+      my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
+
+      my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      add_plugin_index< follow_index            >( my->_db );
+      add_plugin_index< feed_index              >( my->_db );
+      add_plugin_index< blog_index              >( my->_db );
+      add_plugin_index< reputation_index        >( my->_db );
+      add_plugin_index< follow_count_index      >( my->_db );
+      add_plugin_index< blog_author_stats_index >( my->_db );
+
 
       if( options.count( "follow-max-feed-size" ) )
       {
@@ -384,13 +391,12 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    FC_CAPTURE_AND_RETHROW()
 }
 
-void follow_plugin::plugin_startup()
+void follow_plugin::plugin_startup() {}
+
+void follow_plugin::plugin_shutdown()
 {
-   app().register_api_factory<follow_api>("follow_api");
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
-} } // steemit::follow
-
-STEEMIT_DEFINE_PLUGIN( follow, steemit::follow::follow_plugin )
-
-//DEFINE_OPERATION_TYPE( steemit::follow::follow_plugin_operation )
+} } } // steem::plugins::follow
