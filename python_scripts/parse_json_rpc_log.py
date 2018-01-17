@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Module parse json_rpc log file and create request/response.result pairs for each call.
 Additionally yaml file is generated to execute these calls with pyresttest.
