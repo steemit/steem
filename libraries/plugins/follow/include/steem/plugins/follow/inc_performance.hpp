@@ -13,35 +13,36 @@ using steem::protocol::account_name_type;
 
 class performance_impl;
 
-class dumper
+template< int NR >
+class t_dumper
 {
    private:
       
       std::ofstream f;
 
-      static std::unique_ptr< dumper > self;
+      static std::unique_ptr< t_dumper< NR > > self;
 
-      dumper() :
+      t_dumper() :
 #if ENABLE_STD_ALLOCATOR == 1
-      f( "std_dumped_objects.txt" )
+      f( std::to_string( NR ) + std::string( "_std_dumped_objects.txt" ) )
 #else
-      f( "bip_dumped_objects.txt" )
+      f( std::to_string( NR ) + std::string( "_bip_dumped_objects.txt" ) )
 #endif
       {
       }
 
    public:
 
-      ~dumper()
+      ~t_dumper()
       {
          f.flush();
          f.close();
       }
 
-      static std::unique_ptr< dumper >& instance()
+      static std::unique_ptr< t_dumper< NR > >& instance()
       {
          if( !self )
-            self = std::unique_ptr< dumper >( new dumper() );
+            self = std::unique_ptr< t_dumper< NR > >( new t_dumper< NR >() );
 
          return self;
       }
@@ -54,6 +55,9 @@ class dumper
          f.flush();
       }
 };
+
+using dumper = t_dumper< 0 >;
+using dumper_while = t_dumper< 1 >;
 
 struct performance_data
 {

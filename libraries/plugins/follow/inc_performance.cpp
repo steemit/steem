@@ -5,7 +5,8 @@
  
 namespace steem { namespace plugins{ namespace follow {
 
-std::unique_ptr< dumper > dumper::self;
+template < int NR >
+std::unique_ptr< t_dumper< NR > > t_dumper< NR >::self;
 
 class performance_impl
 {
@@ -75,6 +76,8 @@ void performance_impl::modify< performance_data::t_creation_type::full_feed >( c
 {
    pd.s.creation = false;
 
+   dumper::instance()->dump( "fake_new-f_object", std::string( start_account ), next_id );
+   dumper::instance()->dump( "modify-f_object", std::string( start_account ), obj.account_feed_id );
    db.modify( obj, [&]( feed_object& f )
    {
       f.account = start_account;
@@ -99,6 +102,8 @@ void performance_impl::modify< performance_data::t_creation_type::part_feed >( c
 {
    pd.s.creation = false;
 
+   dumper::instance()->dump( "fake_new-f_object", std::string( start_account ), next_id );
+   dumper::instance()->dump( "modify-f_object", std::string( start_account ), obj.account_feed_id );
    db.modify( obj, [&]( feed_object& f )
    {
       f.account = start_account;
@@ -116,6 +121,8 @@ void performance_impl::modify< performance_data::t_creation_type::full_blog >( c
 {
    pd.s.creation = false;
 
+   dumper::instance()->dump( "fake_new-b_object", std::string( start_account ), next_id );
+   dumper::instance()->dump( "modify-b_object", std::string( start_account ), obj.blog_feed_id );
    db.modify( obj, [&]( blog_object& b )
    {
       b.account = start_account;
@@ -167,15 +174,41 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
    if( it_l == it_u )
       return 0;
 
+   std::string dbg_start_account = std::string( start_account );
+   std::string dbg_l = it_l != old_idx.end() ? std::string( it_l->account ) : "NO!";
+   std::string dbg_u = it_u != old_idx.end() ? std::string( it_u->account ) : "NO!";
+
    uint32_t next_id = get_actual_id( *it_l ) + 1;
 
    auto r_end = old_idx.rend();
    decltype( r_end ) it( it_u );
 
+   std::string dbg_it = it != r_end ? std::string( it->account ) : "NO!";
+
    bool is_init = true;
+
+   if( it_u != old_idx.end() && it_l != old_idx.end() && ( it_u->account != start_account || it_l->account != start_account ) )
+   {
+      //idump( (start_account)(it_l->account)(it_u->account) );
+   }
+
+   bool start = true;
 
    while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
    {
+      dbg_it = it != r_end ? std::string( it->account ) : "NO!";
+
+      if( start )
+      {
+         start = false;
+         dumper_while::instance()->dump( "---", dbg_start_account.c_str(), "0" );
+      }
+      if( dbg_start_account != dbg_it )
+      {
+         dumper_while::instance()->dump( "!!!!!!!!!!!!!!!!!!!!", dbg_it.c_str(),  "0" );
+      }
+      dumper_while::instance()->dump( "         ", dbg_it.c_str(),  "0" );
+
       auto old_itr = it;
       ++it;
 

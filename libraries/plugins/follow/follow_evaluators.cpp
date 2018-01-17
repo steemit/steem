@@ -141,6 +141,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, o.account ) );
 
       FC_ASSERT( blog_itr == blog_comment_idx.end(), "Account has already reblogged this post" );
+      dumper::instance()->dump( "create-b_object", std::string( o.account ), next_blog_id );
       _db.create< blog_object >( [&]( blog_object& b )
       {
          b.account = o.account;
@@ -186,6 +187,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                {
                   if( is_empty )
                   {
+                     dumper::instance()->dump( "create-f_object", std::string( itr->follower ), next_id );
                      _db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -200,6 +202,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   {
                      if( pd.s.allow_modify )
                      {
+                        dumper::instance()->dump( "modify-f_object", std::string( itr->follower ), next_id );
                         _db.modify( *feed_itr, [&]( feed_object& f )
                         {
                            f.reblogged_by.push_back( o.account );
