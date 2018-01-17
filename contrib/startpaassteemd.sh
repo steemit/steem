@@ -49,11 +49,6 @@ if [[ ! "$DISABLE_BLOCK_API" ]]; then
    ARGS+=" --plugin=block_api"
 fi
 
-if [[ ! "$IS_BROADCAST_NODE" ]]; then
-  ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-  ARGS+=" --disable-get-block"
-fi
-
 # overwrite local config with image one
 if [[ "$IS_BROADCAST_NODE" ]]; then
   cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
