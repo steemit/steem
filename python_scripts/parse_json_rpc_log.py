@@ -1,11 +1,11 @@
-# python
+#!/usr/bin/python3
 """
 Module parse json_rpc log file and create request/response.result pairs for each call.
 Additionally yaml file is generated to execute these calls with pyresttest.
 
 json_rpc_plugin will generate log messages if you add lines like these into config.ini:
 log-file-appender = {"appender": "json_rpc", "file": "logs/json_rpc/json_rpc.log"}
-log-logger = {"name": "json_rpc", "level": "info", "appender": "json_rpc"}
+log-logger = {"name": "json_rpc", "level": "debug", "appender": "json_rpc"}
 
 Usage: parse_json_rpc_log <log_file_name> [<location>]
        <location> points where output files generated

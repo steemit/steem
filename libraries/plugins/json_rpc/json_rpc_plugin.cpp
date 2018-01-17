@@ -233,11 +233,11 @@ namespace detail
          response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
       }
 
-      idump( (request) );
+      ddump( (request) );
       if ( response.result.valid() )
-         idump( (response.result) );
+         ddump( (response.result) );
       else
-         idump( (response.error) );
+         ddump( (response.error) );
    }
 
    json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
