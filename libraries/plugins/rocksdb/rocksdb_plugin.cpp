@@ -25,6 +25,9 @@ using steem::protocol::operation;
 using steem::protocol::signed_block;
 using steem::protocol::signed_transaction;
 
+using steem::chain::account_history_object;
+using steem::chain::operation_object;
+
 using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
@@ -37,6 +40,30 @@ using ::rocksdb::ColumnFamilyHandle;
 
 namespace 
 {
+
+   template <class T>
+   steem::chain::buffer_type dump(const T& obj)
+   {
+      steem::chain::buffer_type serializedObj;
+      auto size = fc::raw::pack_size(obj);
+      serializedObj.resize(size);
+      fc::datastream<char*> ds(serializedObj.data(), size);
+      fc::raw::pack(ds, obj);
+      return serializedObj;
+   }
+
+   template <class T>
+   void load(T& obj, const char* data, size_t size)
+   {
+      fc::datastream<const char*> ds(data, size);
+      fc::raw::unpack(ds, obj);
+   }
+
+   template <class T>
+   void load(T& obj, const steem::chain::buffer_type& source)
+   {
+      load(obj, source.data(), source.size());
+   }
 
 /** Helper class to simplify construction of Slice objects holding primitive type values.
  * 
@@ -142,17 +169,13 @@ public:
   }
 
 private:
-   //typedef std::pair<steem::chain::account_name_type, size_t> source_data;
    const account_name_storage_id_pair& retrieveKey(const Slice& slice) const
    {
       assert(sizeof(account_name_storage_id_pair) == slice.size());
       const char* rawData = slice.data();
       const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
       return *data;
-      // source_data retVal;
-      // retVal.first.data = data->first;
-      // retVal.second = data->second;
-      // return retVal;
+
    }
   
 };
@@ -266,6 +289,14 @@ private:
          {
             blockNo = block.block_num();
             lastBlock = block.previous;
+
+            if(blockNo % 10000 == 0)
+            {
+               ilog( "RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
+                  ("n", blockNo)
+                  ("tx", txNo)
+                  ("op", totalOps));
+            }
          }
          
          if(lastTx != &tx)
@@ -277,14 +308,6 @@ private:
          importOperation(block, tx, txInBlock, op, opInTx, totalOps);
 
          ++totalOps;
-
-         if(blockNo % 10000 == 0)
-         {
-            ilog( "RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
-               ("n", blockNo)
-               ("tx", txNo)
-               ("op", totalOps));
-         }
 
          return true;
       }
@@ -309,7 +332,8 @@ private:
 
    void flushWriteBuffer()
    {
-      auto s = _storage->Write(::rocksdb::WriteOptions(), &_writeBuffer);
+      ::rocksdb::WriteOptions wOptions;
+      auto s = _storage->Write(wOptions, &_writeBuffer);
       FC_ASSERT(s.ok(), "Data write failed");
       _writeBuffer.Clear();
       _collectedOps = 0;
@@ -343,7 +367,7 @@ rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefin
    auto& byLocationColumn = columnDefs.back();
    byLocationColumn.options.comparator = by_location_Comparator();
 
-   columnDefs.emplace_back("account_name2operation", ColumnFamilyOptions());
+   columnDefs.emplace_back("account_history_object_by_name_id", ColumnFamilyOptions());
    auto& byAccountNameColumn = columnDefs.back();
    byAccountNameColumn.options.comparator = by_account_name_storage_id_pair_Comparator();
 
@@ -399,8 +423,8 @@ void rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
 void rocksdb_plugin::impl::importOperation(const signed_block& block, const signed_transaction& tx,
    uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
 {
-   std::allocator<steem::chain::operation_object> a;
-   steem::chain::operation_object obj([](steem::chain::operation_object&){}, a);
+   std::allocator<operation_object> a;
+   operation_object obj([](operation_object&){}, a);
    obj.id._id       = opSeqNo;
    obj.trx_id       = tx.id();
    obj.block        = block.block_num();
