@@ -25,6 +25,7 @@ target_link_libraries(
         golos::witness_plugin
         golos::database_api_plugin
         golos::test_api_plugin
+        golos::market_history_plugin        
         golos::tolstoy_api_plugin
         golos::blockchain_statistics
         golos::account_by_key_plugin
