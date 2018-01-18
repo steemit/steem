@@ -6,7 +6,7 @@
 namespace golos {
     namespace plugins {
         namespace database_api {
-
+            using golos::chain::feed_history_id_type;
             struct feed_history_api_object {
                 feed_history_api_object(const golos::chain::feed_history_object &f) :
                         id(f.id),

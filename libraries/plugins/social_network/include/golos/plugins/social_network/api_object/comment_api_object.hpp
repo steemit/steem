@@ -6,7 +6,7 @@
 
 namespace golos {
     namespace plugins {
-        namespace database_api {
+        namespace social_network {
 
             using namespace golos::chain;
 
@@ -81,7 +81,7 @@ namespace golos {
     }
 }
 
-FC_REFLECT((golos::plugins::database_api::comment_api_object),
+FC_REFLECT((golos::plugins::social_network::comment_api_object),
            (id)(author)(permlink)(category)(parent_author)(parent_permlink)(title)(body)(json_metadata)(last_update)(
                    created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
                    vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)(

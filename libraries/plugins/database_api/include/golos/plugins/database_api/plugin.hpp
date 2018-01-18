@@ -11,11 +11,11 @@
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/database_api/applied_operation.hpp>
 #include <golos/plugins/database_api/state.hpp>
-#include <golos/plugins/database_api/discussion_query.hpp>
 #include <golos/plugins/database_api/api_objects/feed_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
+#include <golos/plugins/chain/plugin.hpp>
 
 #include "forward.hpp"
 
@@ -96,14 +96,13 @@ namespace golos {
 
 
             using get_account_history_return_type = std::map<uint32_t, applied_operation>;
-            using get_tags_used_by_author_return_type=std::vector<std::pair<std::string, uint32_t>>;
+
             using chain_properties_17 = chain_properties;
             using price_17 = price;
             using asset_17 = asset;
 
 
             ///               API,                                    args,                return
-            DEFINE_API_ARGS(get_trending_tags, msg_pack, std::vector<tag_api_object>)
             DEFINE_API_ARGS(get_active_witnesses, msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_block_header, msg_pack, optional<block_header>)
             DEFINE_API_ARGS(get_block, msg_pack, optional<block_header>)
@@ -141,36 +140,10 @@ namespace golos {
             DEFINE_API_ARGS(get_potential_signatures, msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(verify_authority, msg_pack, bool)
             DEFINE_API_ARGS(verify_account_authority, msg_pack, bool)
-            DEFINE_API_ARGS(get_active_votes, msg_pack, std::vector<vote_state>)
             DEFINE_API_ARGS(get_account_votes, msg_pack, std::vector<account_vote>)
-            DEFINE_API_ARGS(get_content, msg_pack, discussion)
-            DEFINE_API_ARGS(get_content_replies, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_tags_used_by_author, msg_pack, get_tags_used_by_author_return_type)
-            DEFINE_API_ARGS(get_discussions_by_payout, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_post_discussions_by_payout, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_comment_discussions_by_payout, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_trending, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_created, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_active, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_cashout, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_votes, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_children, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_hot, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_feed, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_blog, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_comments, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_promoted, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_replies_by_last_update, msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_discussions_by_author_before_date, msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_account_history, msg_pack, get_account_history_return_type)
-            ///categories
-            DEFINE_API_ARGS(get_trending_categories, msg_pack, std::vector<category_api_object>)
-            ///
             DEFINE_API_ARGS(get_account_balances, msg_pack, std::vector<asset_17>)
-            DEFINE_API_ARGS(get_active_categories, msg_pack, std::vector<category_api_object>)
-            DEFINE_API_ARGS(get_recent_categories, msg_pack, std::vector<category_api_object>)
             DEFINE_API_ARGS(get_miner_queue, msg_pack, std::vector<account_name_type>)
-            DEFINE_API_ARGS(get_best_categories, msg_pack, std::vector<category_api_object>)
 
 
             /**
@@ -223,20 +196,14 @@ namespace golos {
                  */
                 void cancel_all_subscriptions();
 
-                DECLARE_API((get_trending_tags)
+                DECLARE_API(
 
                                     /**
                                      *  This API is a short-cut for returning all of the state required for a particular URL
                                      *  with a single query.
                                      */
 
-                                    //(get_trending_categories)
 
-                                    //(get_best_categories)
-
-                                    //(get_active_categories)
-
-                                    //(get_recent_categories)
 
                                     (get_active_witnesses)
 
@@ -432,125 +399,11 @@ namespace golos {
                                      */
                                     (verify_account_authority)
 
-                                    /**
-                                     *  if permlink is "" then it will return all votes for author
-                                     */
-                                    (get_active_votes)
+
 
                                     (get_account_votes)
 
 
-                                    (get_content)
-
-                                    (get_content_replies)
-
-                                    /**
-                                     * Used to retrieve top 1000 tags list used by an author sorted by most frequently used
-                                     * @param author select tags of this author
-                                     * @return vector of top 1000 tags used by an author sorted by most frequently used
-                                     **/
-                                    (get_tags_used_by_author)
-
-                                    /**
-                                     * Used to retrieve the list of first payout discussions sorted by rshares^2 amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of first payout mode discussions sorted by rshares^2 amount
-                                     **/
-                                    //(get_discussions_by_trending)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by created time
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by created time
-                                     **/
-                                    //(get_discussions_by_created)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by last activity time
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by last activity time
-                                     **/
-                                    ///(get_discussions_by_active)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by cashout time
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by last cashout time
-                                     **/
-                                    //(get_discussions_by_cashout)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by net rshares amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by net rshares amount
-                                     **/
-                                    //(get_discussions_by_payout)
-
-                                    //(get_post_discussions_by_payout)
-
-                                    //(get_comment_discussions_by_payout)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by direct votes amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by direct votes amount
-                                     **/
-                                    //(get_discussions_by_votes)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by children posts amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by children posts amount
-                                     **/
-                                    ///(get_discussions_by_children)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by hot amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by hot amount
-                                     **/
-                                    //(get_discussions_by_hot)
-
-                                    /**
-                                     * Used to retrieve the list of discussions from the feed of a specific author
-                                     * @param query @ref discussion_query
-                                     * @attention @ref discussion_query#select_authors must be set and must contain the @ref discussion_query#start_author param if the last one is not null
-                                     * @return vector of discussions from the feed of authors in @ref discussion_query#select_authors
-                                     **/
-                                    //(get_discussions_by_feed)
-
-                                    /**
-                                     * Used to retrieve the list of discussions from the blog of a specific author
-                                     * @param query @ref discussion_query
-                                     * @attention @ref discussion_query#select_authors must be set and must contain the @ref discussion_query#start_author param if the last one is not null
-                                     * @return vector of discussions from the blog of authors in @ref discussion_query#select_authors
-                                     **/
-                                    //(get_discussions_by_blog)
-
-                                    //(get_discussions_by_comments)
-
-                                    /**
-                                     * Used to retrieve the list of discussions sorted by promoted balance amount
-                                     * @param query @ref discussion_query
-                                     * @return vector of discussions sorted by promoted balance amount
-                                     **/
-                                    //(get_discussions_by_promoted)
-
-
-                                    /**
-                                     *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
-                                     *  pending payout means the pending payout of all children as well.
-                                     */
-                                    (get_replies_by_last_update)
-
-
-                                    /**
-                                     *  This method is used to fetch all posts/comments by start_author that occur after before_date and start_permlink with up to limit being returned.
-                                     *
-                                     *  If start_permlink is empty then only before_date will be considered. If both are specified the eariler to the two metrics will be used. This
-                                     *  should allow easy pagination.
-                                     */
-                                    (get_discussions_by_author_before_date)
 
                                     /**
                                      *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method

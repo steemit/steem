@@ -21,11 +21,10 @@ target_link_libraries(
         graphene_utilities
         golos::chain_plugin
         golos::network_broadcast_api_plugin
-        golos::tags_plugin
         golos::witness_plugin
         golos::database_api_plugin
         golos::test_api_plugin
-        golos::tolstoy_api_plugin
+        golos::social_network
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}

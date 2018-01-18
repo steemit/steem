@@ -2,27 +2,22 @@ set(CURRENT_TARGET database_api_plugin)
 
 list(APPEND ${CURRENT_TARGET}_HEADERS
      include/golos/plugins/database_api/applied_operation.hpp
-     include/golos/plugins/database_api/discussion_query.hpp
      include/golos/plugins/database_api/state.hpp
      include/golos/plugins/database_api/plugin.hpp
 
 
-     include/golos/plugins/database_api/api_objects/comment_api_object.hpp
-     include/golos/plugins/database_api/api_objects/category_api_object.hpp
      include/golos/plugins/database_api/api_objects/account_api_object.hpp
      include/golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp
      include/golos/plugins/database_api/api_objects/feed_history_api_object.hpp
      include/golos/plugins/database_api/forward.hpp
      include/golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp
      include/golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp
-     include/golos/plugins/database_api/api_objects/tag_api_object.hpp
      include/golos/plugins/database_api/api_objects/witness_api_object.hpp
 
 
      )
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
-     discussion_query.cpp
      api.cpp
      applied_operation.cpp
 )
@@ -47,7 +42,6 @@ target_link_libraries(
         golos_chain
         golos::chain_plugin
         golos_protocol
-        golos::tags_plugin
         golos::json_rpc_plugin
         graphene_utilities
         appbase

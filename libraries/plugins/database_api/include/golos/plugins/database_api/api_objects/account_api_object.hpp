@@ -3,20 +3,29 @@
 
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/database.hpp>
+#include <golos/protocol/types.hpp>
+#include <golos/chain/steem_object_types.hpp>
 
 namespace golos {
     namespace plugins {
         namespace database_api {
 
-            using golos::protocol::asset;
-            using golos::protocol::share_type;
+            using protocol::asset;
+            using protocol::share_type;
             using golos::chain::account_bandwidth_object;
             using golos::chain::by_account;
             using golos::chain::account_object;
+            using protocol::authority;
+            using protocol::account_name_type;
+            using protocol::public_key_type;
+            using golos::chain::by_account_bandwidth_type;
+            using golos::chain::account_authority_object;
+            using golos::chain::bandwidth_type;
+
 
             struct account_api_object {
                 account_api_object(const golos::chain::account_object &a, const golos::chain::database &db) : id(a.id), name(a.name),
-                        memo_key(a.memo_key), json_metadata(to_string(a.json_metadata)), proxy(a.proxy),
+                        memo_key(a.memo_key), json_metadata(golos::chain::to_string(a.json_metadata)), proxy(a.proxy),
                         last_account_update(a.last_account_update), created(a.created), mined(a.mined),
                         owner_challenged(a.owner_challenged), active_challenged(a.active_challenged),
                         last_owner_proved(a.last_owner_proved), last_active_proved(a.last_active_proved),

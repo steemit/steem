@@ -13,7 +13,7 @@
 
 namespace golos {
     namespace plugins {
-        namespace database_api {
+        namespace social_network {
             /**
              * @class discussion_query
              * @brief The discussion_query structure implements the RPC API param set.
@@ -40,7 +40,7 @@ namespace golos {
     }
 }
 
-FC_REFLECT((golos::plugins::database_api::discussion_query),
+FC_REFLECT((golos::plugins::social_network::discussion_query),
            (select_tags)(filter_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(
                    parent_permlink)(limit)(select_languages)(filter_languages));
 
