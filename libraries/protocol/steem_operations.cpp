@@ -81,6 +81,9 @@ namespace steem { namespace protocol {
       }
    }
 
+   /** Note that duplicated extension objects of same type are detected in separate visitor
+    *  during evaluation because it needs to be guarded by HF checks unavailable here.
+    */
    struct comment_options_extension_validate_visitor
    {
       typedef void result_type;
