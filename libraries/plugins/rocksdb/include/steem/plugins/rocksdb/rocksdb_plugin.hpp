@@ -4,6 +4,7 @@
 
 #include <appbase/application.hpp>
 
+#include <functional>
 #include <memory>
 
 namespace steem {
@@ -39,6 +40,8 @@ public:
 
    bool find_account_history_data(const protocol::account_name_type& name, steem::chain::account_history_object* data) const;
    bool find_operation_object(size_t opId, steem::chain::operation_object* data) const;
+   void find_operations_by_block(size_t blockNum,
+      std::function<void(const steem::chain::operation_object&)> processor) const;
 
 private:
    class impl;

@@ -1,5 +1,7 @@
 #include <steem/plugins/rocksdb/rocksdb_plugin.hpp>
 
+#include "rocksdb_api.hpp"
+
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/util/impacted.hpp>
@@ -20,6 +22,7 @@ namespace bpo = boost::program_options;
 
 namespace steem { namespace plugins { namespace rocksdb {
 
+using steem::protocol::account_name_type;
 using steem::protocol::block_id_type;
 using steem::protocol::operation;
 using steem::protocol::signed_block;
@@ -32,6 +35,7 @@ using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
 using ::rocksdb::Options;
+using ::rocksdb::ReadOptions;
 using ::rocksdb::Slice;
 using ::rocksdb::Comparator;
 using ::rocksdb::ColumnFamilyDescriptor;
@@ -77,6 +81,13 @@ public:
       data_ = reinterpret_cast<const char*>(&_value);
       size_ = sizeof(T);
    }
+
+   static const T& unpackSlice(const Slice& s)
+   {
+      assert(sizeof(T) == s.size());
+      return *reinterpret_cast<const T*>(s.data());
+   }
+
 private:
    T _value;
 };
@@ -108,7 +119,7 @@ protected:
 };
 
 /// Pairs account_name storage type and the ID to make possible nonunique index definition over names. 
-typedef std::pair<steem::chain::account_name_type::Storage, size_t> account_name_storage_id_pair;
+typedef std::pair<account_name_type::Storage, size_t> account_name_storage_id_pair;
 
 template <typename T>
 class PrimitiveTypeComparatorImpl final : public AComparator
@@ -175,7 +186,6 @@ private:
       const char* rawData = slice.data();
       const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
       return *data;
-
    }
   
 };
@@ -188,20 +198,26 @@ typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
 typedef std::pair<uint32_t, size_t> location_id_pair;
 typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
 
-Comparator* by_id_Comparator()
+const Comparator* by_id_Comparator()
 {
+   return ::rocksdb::BytewiseComparator();
+
    static by_id_ComparatorImpl c;
    return &c; 
 }
 
-Comparator* by_location_Comparator()
+const Comparator* by_location_Comparator()
 {
+   return ::rocksdb::BytewiseComparator();
+
    static by_location_ComparatorImpl c;
    return &c;
 }
 
-Comparator* by_account_name_storage_id_pair_Comparator()
+const Comparator* by_account_name_storage_id_pair_Comparator()
 {
+   return ::rocksdb::BytewiseComparator();
+
    static account_name_id_ComparatorImpl c;
    return &c;
 }
@@ -212,7 +228,8 @@ class rocksdb_plugin::impl final
 {
 public:
 
-   impl() : _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()) {}
+   impl(const rocksdb_plugin& mainPlugin) : _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
+            _api(mainPlugin) {}
    ~impl()
    {
       shutdownDb();
@@ -220,7 +237,7 @@ public:
 
    void openDb(const bfs::path& path)
    {
-      createDbSchema(path);
+      bool doDataImport = createDbSchema(path);
 
       auto columnDefs = prepareColumnDefinitions(true);
 
@@ -238,7 +255,8 @@ public:
          ilog("RocksDB opened successfully");
 
          _storage.reset(storageDb);
-         importData();
+         if(doDataImport)
+            importData();
       }
       else
       {
@@ -247,6 +265,11 @@ public:
       }
    }
 
+   bool find_account_history_data(const account_name_type& name, account_history_object* data) const;
+   bool find_operation_object(size_t opId, operation_object* data) const;
+   /// Allows to look for all operations present in given block and call `processor` for them.
+   void find_operations_by_block(size_t blockNum,
+      std::function<void(const operation_object&)> processor) const;
    void shutdownDb()
    {
       cleanupColumnHandles();
@@ -257,7 +280,8 @@ private:
    typedef std::vector<ColumnFamilyDescriptor> ColumnDefinitions;
    ColumnDefinitions prepareColumnDefinitions(bool addDefaultColumn);
 
-   void createDbSchema(const bfs::path& path);
+   /// Returns true if database will need data import.
+   bool createDbSchema(const bfs::path& path);
 
    void cleanupColumnHandles()
    {
@@ -341,17 +365,61 @@ private:
 
    enum
    {
-      WRITE_BUFFER_FLUSH_LIMIT = 100
+      WRITE_BUFFER_FLUSH_LIMIT = 1 //100
    };
 
 private:
    const chain::database&           _mainDb;
+   rocksdb_api                      _api;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    ::rocksdb::WriteBatch            _writeBuffer;
    unsigned int                     _collectedOps = 0;
 };
 
+
+bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, account_history_object* data) const
+{
+   return false;
+}
+
+bool rocksdb_plugin::impl::find_operation_object(size_t opId, operation_object* op) const
+{
+   std::string data;
+   PrimitiveTypeSlice<size_t> idSlice(opId);
+   ::rocksdb::Status s = _storage->Get(ReadOptions(), _columnHandles[1], idSlice, &data);
+
+   if(s.ok())
+   {
+      load(*op, data.data(), data.size());
+      return true;
+   }
+   
+   FC_ASSERT(s.IsNotFound());
+
+   return false;
+}
+
+void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
+   std::function<void(const operation_object&)> processor) const
+{
+   std::allocator<operation_object> a;
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[2]));
+   PrimitiveTypeSlice<uint32_t> blockNumSlice(blockNum);
+   PrimitiveTypeSlice<location_id_pair> key(location_id_pair(blockNum, 0));
+
+   for(it->Seek(key); it->Valid() && it->key().starts_with(blockNumSlice); it->Next())
+   {
+      auto valueSlice = it->value();
+      const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+
+      operation_object op([](operation_object&){}, a);
+      bool found = find_operation_object(opId, &op);
+      FC_ASSERT(found);
+
+      processor(op);
+   }
+}
 
 rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
 {
@@ -374,7 +442,7 @@ rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefin
    return columnDefs;
 }
 
-void rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
+bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
 {
    DB* db = nullptr;
 
@@ -390,7 +458,7 @@ void rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    {
       cleanupColumnHandles();
       delete db;
-      return;
+      return false; /// DB does not need data import.
    }
 
    options.create_if_missing = true;
@@ -412,11 +480,15 @@ void rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
       }
 
       delete db;
+
+      return true; /// DB needs data import
    }
    else
    {
       elog("RocksDB can not create storage at location: `${p}'.\nReturned error: ${e}",
          ("p", strPath)("e", s.ToString()));
+
+      return false;
    }
 }
 
@@ -452,7 +524,7 @@ void rocksdb_plugin::impl::importOperation(const signed_block& block, const sign
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
    FC_ASSERT(s.ok(), "Data write failed");
 
-   flat_set<steem::chain::account_name_type> impacted;
+   flat_set<account_name_type> impacted;
    steem::app::operation_get_impacted_accounts(op, impacted);
 
    for(const auto& name : impacted)
@@ -496,7 +568,7 @@ void rocksdb_plugin::plugin_startup()
 {
    ilog("Starting up rocksdb_plugin...");
 
-   _my = std::make_unique<impl>();
+   _my = std::make_unique<impl>(*this);
    if(_dbPath.is_absolute())
    {
       _my->openDb(_dbPath);
@@ -514,16 +586,20 @@ void rocksdb_plugin::plugin_shutdown()
    _my->shutdownDb();
 }
 
-bool rocksdb_plugin::find_account_history_data(const protocol::account_name_type& name,
-   steem::chain::account_history_object* data) const
+bool rocksdb_plugin::find_account_history_data(const account_name_type& name, account_history_object* data) const
 {
-   return false;
+   return _my->find_account_history_data(name, data);
 }
 
-bool rocksdb_plugin::find_operation_object(size_t opId,
-   steem::chain::operation_object* data) const
+bool rocksdb_plugin::find_operation_object(size_t opId, operation_object* data) const
 {
-   return false;
+   return _my->find_operation_object(opId, data);
+}
+
+void rocksdb_plugin::find_operations_by_block(size_t blockNum,
+   std::function<void(const operation_object&)> processor) const
+{
+   _my->find_operations_by_block(blockNum, processor);
 }
 
 } } }
