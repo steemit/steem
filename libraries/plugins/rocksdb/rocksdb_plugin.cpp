@@ -371,7 +371,7 @@ private:
 
    enum
    {
-      WRITE_BUFFER_FLUSH_LIMIT = 1 //100
+      WRITE_BUFFER_FLUSH_LIMIT = 100
    };
 
 private:
@@ -386,6 +386,12 @@ private:
 
 bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, account_history_object* data) const
 {
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
+   account_name_storage_id_pair nameIdPair(name.data, 0);
+   PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
+
+   //for(it->Seek(key); it->Valid() && it->key().starts_with(blockNumSlice); it->Next())
+   
    return false;
 }
 
@@ -506,6 +512,11 @@ void rocksdb_plugin::impl::importOperation(const signed_block& block, const sign
    obj.id._id       = opSeqNo;
    obj.trx_id       = tx.id();
    obj.block        = block.block_num();
+   if(obj.block == 1093)
+   {
+      ilog("Stop here");
+   }
+   
    obj.trx_in_block = txInBlock;
    obj.timestamp    = _mainDb.head_block_time();
    auto size = fc::raw::pack_size(op);
