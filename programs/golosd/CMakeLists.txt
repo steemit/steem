@@ -30,6 +30,7 @@ target_link_libraries(
         golos::blockchain_statistics
         golos::account_by_key_plugin
         golos::account_history
+        golos::auth_util
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}
