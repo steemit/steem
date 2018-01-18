@@ -18,6 +18,9 @@ class t_dumper
 {
    private:
       
+      uint32_t start = 19000000;
+      uint32_t nr_block = 0;
+
       std::ofstream f;
 
       static std::unique_ptr< t_dumper< NR > > self;
@@ -47,12 +50,21 @@ class t_dumper
          return self;
       }
 
+      void check( uint32_t _nr_block )
+      {
+         nr_block = _nr_block;
+      }
+
       template< typename T, typename T2 >
       void dump( const char* message, const T& data, const T2& data2 )
       {
          static uint64_t counter = 0;
-         f<<counter++<<" "<<message<<" "<<data<<" "<<data2<<"\n";
-         f.flush();
+
+         if( nr_block >= start )
+         {
+            f<<counter++<<" "<<message<<" "<<data<<" "<<data2<<"\n";
+            f.flush();
+         }
       }
 };
 

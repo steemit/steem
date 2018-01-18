@@ -171,6 +171,9 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       performance_data pd;
 
+      dumper::instance()->check( _db._current_block_num );
+      dumper_while::instance()->check( _db._current_block_num );
+
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
          while( itr != idx.end() && itr->following == o.account )
