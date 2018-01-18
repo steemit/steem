@@ -229,8 +229,7 @@ namespace golos {
             }
             //////////////////////////////////////////////////////////////////////////////
 
-            account_by_key_plugin::account_by_key_plugin()
-                    : my(new account_by_key_plugin_impl(*this)) {
+            account_by_key_plugin::account_by_key_plugin() {
             }
 
             void account_by_key_plugin::set_program_options(
@@ -241,6 +240,7 @@ namespace golos {
             void account_by_key_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
                     ilog("Initializing account_by_key plugin");
+                    my.reset(new account_by_key_plugin_impl(*this));
                     golos::chain::database &db = appbase::app().get_plugin<golos::plugins::chain::plugin>().db();
 
                     db.pre_apply_operation.connect([&](const operation_notification &o) { my->pre_operation(o); });

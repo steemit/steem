@@ -313,8 +313,7 @@ namespace golos {
                 return retval;
             }
 
-            market_history_plugin::market_history_plugin()
-                    : _my(new market_history_plugin_impl(*this)){
+            market_history_plugin::market_history_plugin() {
             }
 
             market_history_plugin::~market_history_plugin() {
@@ -337,7 +336,7 @@ namespace golos {
             void market_history_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
                     ilog("market_history: plugin_initialize() begin");
-
+                    _my.reset(new market_history_plugin_impl(*this));
                     golos::chain::database& db = _my->database();
 
                     db.post_apply_operation.connect(

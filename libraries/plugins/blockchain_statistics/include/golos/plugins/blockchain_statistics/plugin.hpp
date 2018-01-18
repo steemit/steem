@@ -48,7 +48,7 @@ public:
 
     ~plugin();
 
-    void set_program_options( options_description& cli, options_description& cfg );
+    void set_program_options( options_description& cli, options_description& cfg ) override ;
 
     void plugin_initialize(const boost::program_options::variables_map &options) override;
 
@@ -58,8 +58,7 @@ public:
 
     uint32_t get_max_history_per_bucket() const;
 
-    void plugin_shutdown() override {
-    }
+    void plugin_shutdown() override;
 
 private:
     struct plugin_impl;

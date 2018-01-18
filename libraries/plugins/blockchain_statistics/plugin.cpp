@@ -491,7 +491,7 @@ plugin::plugin() {
 }
 
 plugin::~plugin() {
-    _my->stat_sender.reset();
+    _my->stat_sender.reset();//TODO: move to plugin_shutdown
 }
 
 void plugin::set_program_options( options_description& cli, options_description& cfg ) {
@@ -576,8 +576,11 @@ uint32_t plugin::get_max_history_per_bucket() const {
     return _my->_maximum_history_per_bucket_size;
 }
 
+    void plugin::plugin_shutdown() {
+    }
 
-std::string increment_counter(std::string name) {
+
+    std::string increment_counter(std::string name) {
     std::string res = name + ":1|c";
     return res;
 }

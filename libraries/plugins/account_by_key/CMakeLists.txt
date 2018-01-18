@@ -1,6 +1,7 @@
 set(CURRENT_TARGET account_by_key_plugin)
 
 list(APPEND CURRENT_TARGET_HEADERS
+        include/golos/plugins/account_by_key/account_by_key_objects.hpp
         include/golos/plugins/account_by_key/account_by_key_plugin.hpp
         )
 
