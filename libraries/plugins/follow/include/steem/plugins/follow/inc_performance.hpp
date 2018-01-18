@@ -69,7 +69,6 @@ class t_dumper
 };
 
 using dumper = t_dumper< 0 >;
-using dumper_while = t_dumper< 1 >;
 
 struct performance_data
 {
@@ -86,6 +85,7 @@ struct performance_data
       unsigned creation : 1;
       bool is_empty     : 1;
       bool allow_modify : 1;
+      bool allow_delete : 1;
    } s;
 
    performance_data()
@@ -108,6 +108,7 @@ struct performance_data
 
       old_id = _old_id;
       s.allow_modify = true;
+      s.allow_delete = true;
    }
 
    void init( const comment_id_type& _comment, bool _is_empty )
@@ -120,6 +121,7 @@ struct performance_data
 
       old_id = 0;
       s.allow_modify = true;
+      s.allow_delete = _is_empty;
    }
    
 };

@@ -172,7 +172,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       performance_data pd;
 
       dumper::instance()->check( _db._current_block_num );
-      dumper_while::instance()->check( _db._current_block_num );
 
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
@@ -205,7 +204,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   {
                      if( pd.s.allow_modify )
                      {
-                        dumper::instance()->dump( "modify-f_object", std::string( itr->follower ), next_id );
+                        dumper::instance()->dump( "modify-f_object", std::string( itr->follower ), feed_itr->account_feed_id );
                         _db.modify( *feed_itr, [&]( feed_object& f )
                         {
                            f.reblogged_by.push_back( o.account );

@@ -139,6 +139,7 @@ void performance_impl::skip_modify( const Iterator& actual, performance_data& pd
    if( _id == pd.old_id )
    {
       pd.s.allow_modify = false;
+      dumper::instance()->dump( "fake_modify-f_object", std::string( actual->account ), _id );
    }
 }
 
@@ -154,6 +155,12 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
          auto removed = std::prev( actual );
          if( CreationType == performance_data::t_creation_type::full_feed )
             skip_modify( removed, pd );
+
+         if( CreationType == performance_data::t_creation_type::full_blog )
+            dumper::instance()->dump( "remove-b_object", std::string( removed->account ), get_actual_id( *removed ) );
+         else
+            dumper::instance()->dump( "remove-f_object", std::string( removed->account ), get_actual_id( *removed ) );
+
          db.remove( *removed );
       }
    }
@@ -161,6 +168,12 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
    {
       if( CreationType == performance_data::t_creation_type::full_feed )
          skip_modify( actual, pd );
+
+         if( CreationType == performance_data::t_creation_type::full_blog )
+            dumper::instance()->dump( "remove-b_object", std::string( actual->account ), get_actual_id( *actual ) );
+         else
+            dumper::instance()->dump( "remove-f_object", std::string( actual->account ), get_actual_id( *actual ) );
+
       db.remove( *actual );
    }
 }
@@ -174,46 +187,21 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
    if( it_l == it_u )
       return 0;
 
-   std::string dbg_start_account = std::string( start_account );
-   std::string dbg_l = it_l != old_idx.end() ? std::string( it_l->account ) : "NO!";
-   std::string dbg_u = it_u != old_idx.end() ? std::string( it_u->account ) : "NO!";
-
    uint32_t next_id = get_actual_id( *it_l ) + 1;
 
    auto r_end = old_idx.rend();
    decltype( r_end ) it( it_u );
 
-   std::string dbg_it = it != r_end ? std::string( it->account ) : "NO!";
-
    bool is_init = true;
 
-   if( it_u != old_idx.end() && it_l != old_idx.end() && ( it_u->account != start_account || it_l->account != start_account ) )
-   {
-      //idump( (start_account)(it_l->account)(it_u->account) );
-   }
-
-   bool start = true;
-
-   while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
-   {
-      dbg_it = it != r_end ? std::string( it->account ) : "NO!";
-
-      if( start )
+   if( pd.s.allow_delete )
+      while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
       {
-         start = false;
-         dumper_while::instance()->dump( "---", dbg_start_account.c_str(), "0" );
-      }
-      if( dbg_start_account != dbg_it )
-      {
-         dumper_while::instance()->dump( "!!!!!!!!!!!!!!!!!!!!", dbg_it.c_str(),  "0" );
-      }
-      dumper_while::instance()->dump( "         ", dbg_it.c_str(),  "0" );
+         auto old_itr = it;
+         ++it;
 
-      auto old_itr = it;
-      ++it;
-
-      remember_last< CreationType >( pd.s.is_empty, is_init, old_itr, pd );
-   }
+         remember_last< CreationType >( pd.s.is_empty, is_init, old_itr, pd );
+      }
 
    if( !is_init )
      modify< CreationType >( *std::prev( it ), start_account, next_id, pd );
