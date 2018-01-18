@@ -48,6 +48,7 @@ private:
 
    std::unique_ptr<impl> _my;
    bfs::path             _dbPath;
+   uint32_t              _blockLimit = 0;
 };
 
 

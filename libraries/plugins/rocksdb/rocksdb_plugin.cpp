@@ -235,7 +235,7 @@ public:
       shutdownDb();
    }
 
-   void openDb(const bfs::path& path)
+   void openDb(const bfs::path& path, uint32_t blockLimit)
    {
       bool doDataImport = createDbSchema(path);
 
@@ -256,7 +256,7 @@ public:
 
          _storage.reset(storageDb);
          if(doDataImport)
-            importData();
+            importData(blockLimit);
       }
       else
       {
@@ -293,7 +293,7 @@ private:
    void importOperation(const signed_block& block, const signed_transaction& tx, uint32_t txInBlock,
       const operation& op, uint16_t opInTx, size_t opSeqId);
 
-   void importData()
+   void importData(unsigned int blockLimit)
    {
       ilog("Starting data import...");
 
@@ -306,8 +306,8 @@ private:
       benchmark_dumper dumper;
       dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
 
-      _mainDb.foreach_operation([&blockNo, &txNo, &lastBlock, &lastTx, &totalOps, this](const signed_block& block,
-         const signed_transaction& tx, uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
+      _mainDb.foreach_operation([blockLimit, &blockNo, &txNo, &lastBlock, &lastTx, &totalOps, this](
+         const signed_block& block, const signed_transaction& tx, uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
       {
          if(lastBlock != block.previous)
          {
@@ -320,6 +320,12 @@ private:
                   ("n", blockNo)
                   ("tx", txNo)
                   ("op", totalOps));
+            }
+
+            if(blockLimit != 0 && blockNo > blockLimit)
+            {
+               ilog( "RocksDb data import stopped because of block limit reached.");
+               return false;
             }
          }
          
@@ -555,6 +561,9 @@ void rocksdb_plugin::set_program_options(
    command_line_options.add_options()
       ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
          "Allows to specify path where rocksdb store will be located.")
+      ("rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
+         "Allows to specify block number, the data import process should stop at.")
+         
    ;
 }
 
@@ -562,6 +571,9 @@ void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_m
 {
    if(options.count("rocksdb-path"))
       _dbPath = options.at("rocksdb-path").as<bfs::path>();
+
+   if(options.count("rocksdb-stop-import-at-block"))
+      _blockLimit = options.at("rocksdb-stop-import-at-block").as<uint32_t>();
 }
 
 void rocksdb_plugin::plugin_startup()
@@ -571,12 +583,13 @@ void rocksdb_plugin::plugin_startup()
    _my = std::make_unique<impl>(*this);
    if(_dbPath.is_absolute())
    {
-      _my->openDb(_dbPath);
+      _my->openDb(_dbPath, _blockLimit);
    }
    else
    {
-      auto actualPath = appbase::app().data_dir() / _dbPath;
-      _my->openDb(actualPath);
+      auto basePath = appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().state_storage_dir();
+      auto actualPath = basePath / _dbPath;
+      _my->openDb(actualPath, _blockLimit);
    }
 }
 

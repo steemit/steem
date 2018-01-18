@@ -44,6 +44,11 @@ chain_plugin::~chain_plugin(){}
 database& chain_plugin::db() { return my->db; }
 const steem::chain::database& chain_plugin::db() const { return my->db; }
 
+bfs::path chain_plugin::state_storage_dir() const
+{
+   return my->shared_memory_dir;
+}
+
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()

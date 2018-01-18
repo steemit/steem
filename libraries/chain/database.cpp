@@ -381,12 +381,24 @@ void database::foreach_block(std::function<bool(const signed_block&)> processor)
    if(!_block_log.head())
       return;
 
+   database* _this = const_cast<database*>(this);
+
    auto itr = _block_log.read_block( 0 );
    auto last_block_num = _block_log.head()->block_num();
    while( itr.first.block_num() != last_block_num )
    {
-      if(processor(itr.first) == false)
+      const signed_block& b = itr.first;
+      if(processor(b) == false)
          return;
+
+      const dynamic_global_property_object& _dgp = get_dynamic_global_properties();
+
+      _this->modify( _dgp, [&]( dynamic_global_property_object& dgp )
+      {
+         dgp.head_block_number = b.block_num();
+         dgp.head_block_id = b.id();
+         dgp.time = b.timestamp;
+      } );
 
       itr = _block_log.read_block( itr.second );
    }
