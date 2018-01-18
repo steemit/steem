@@ -719,7 +719,7 @@ struct state
    /**
     *  map from account/slug to full nested tags::discussion
     */
-   map< string, tags::discussion >                    content;
+   map< string, discussion >                          content;
    map< string, extended_account >                    accounts;
 
    map< string, database_api::api_witness_object >    witnesses;
