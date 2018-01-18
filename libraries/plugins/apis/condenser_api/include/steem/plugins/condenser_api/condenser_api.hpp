@@ -355,7 +355,7 @@ struct api_witness_object
    uint64_t                pow_worker;
    public_key_type         signing_key;
    legacy_chain_properties props;
-   price                   sbd_exchange_rate;
+   legacy_price            sbd_exchange_rate;
    time_point_sec          last_sbd_exchange_update;
    share_type              votes;
    fc::uint128_t           virtual_last_update;
@@ -719,12 +719,12 @@ struct state
    /**
     *  map from account/slug to full nested tags::discussion
     */
-   map< string, tags::discussion >                    content;
+   map< string, discussion >                          content;
    map< string, extended_account >                    accounts;
 
    map< string, database_api::api_witness_object >    witnesses;
    database_api::api_witness_schedule_object          witness_schedule;
-   price                                              feed_price;
+   legacy_price                                       feed_price;
    string                                             error;
 };
 
