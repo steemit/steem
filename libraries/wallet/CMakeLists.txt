@@ -51,10 +51,12 @@ endif()
 target_link_libraries(
         golos_${CURRENT_TARGET}
         PRIVATE
-        network
+        golos_network
         golos_chain
         golos::network_broadcast_api_plugin
         golos::database_api
+        golos::account_history
+        golos::market_history_plugin
         golos_protocol
         graphene_utilities
         fc

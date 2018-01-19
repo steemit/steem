@@ -17,17 +17,18 @@ endif()
 target_link_libraries(
         cli_wallet
         PRIVATE
-        network
+        golos_network
         golos_chain
         golos_protocol
         graphene_utilities
         golos_wallet
         golos::database_api
+        golos::market_history_plugin
         #golos_private_message
         #golos_follow
         golos::network_broadcast_api_plugin
         fc
-        readline
+        ${readline_libraries}
         ${CMAKE_DL_LIBS}
         ${PLATFORM_SPECIFIC_LIBS}
 )
