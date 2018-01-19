@@ -1,0 +1,39 @@
+- Measure: pure blockchain operation iteration:
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 131894 ms (real), 130188 ms (cpu). Memory usage: 3374592 (current), 3616016 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88856821 transactions and 96427740 operations.
+
+- Measure: operations serialized, BUT NOT imported into dedicated storage:
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 305335 ms (real), 303436 ms (cpu). Memory usage: 3499116 (current), 3640656 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88855523 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for given key).
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 766992 ms (real), 682429 ms (cpu). Memory usage: 2505148 (current), 2529812 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88859412 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+RocksDb data import - Performance report at block 14913029. Elapsed time: 497396 ms (real), 459409 ms (cpu). Memory usage: 2493344 (current), 2533348 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856369 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+           Implemented account-name => associated operations dump
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1181252 ms (real), 1112495 ms (cpu). Memory usage: 2539044 (current), 2588056 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856244 transactions and 96427740 operations.
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1100739 ms (real), 1065633 ms (cpu). Memory usage: 2515536 (current), 2597456 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856232 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+           Implemented account-name => associated operations dump
+
+           After MergeOp implemented (?)!!!!:
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 3011284 ms (real), 3438819 ms (cpu). Memory usage: 2576640 (current), 2617600 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856232 transactions and 96427740 operations.
+
+Commit: 77539d6:
+3299136ms rocksdb_plugin.cpp:325        importData           ] RocksDb data import - Performance report at block 14913029. Elapsed time: 955790 ms (real), 1171250 ms (cpu). Memory usage: 2489404 (current), 2628668 (peak) kilobytes.
+3299137ms rocksdb_plugin.cpp:330        importData           ] RocksDb data import finished. Processed blocks: 14913029, containing: 88856289 transactions and 96427740 operations.

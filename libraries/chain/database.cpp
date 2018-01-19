@@ -376,44 +376,48 @@ void database::set_chain_id( const std::string& _chain_id_name )
    steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
-void database::foreach_block(std::function<bool(const signed_block&)> processor) const
+void database::foreach_block(std::function<bool(const signed_block_header&, const signed_block&)> processor) const
 {
    if(!_block_log.head())
       return;
 
-   database* _this = const_cast<database*>(this);
-
    auto itr = _block_log.read_block( 0 );
    auto last_block_num = _block_log.head()->block_num();
+   signed_block_header previousBlockHeader = itr.first;
    while( itr.first.block_num() != last_block_num )
    {
       const signed_block& b = itr.first;
-      if(processor(b) == false)
+      if(processor(previousBlockHeader, b) == false)
          return;
 
-      const dynamic_global_property_object& _dgp = get_dynamic_global_properties();
+      /// This code introduces huge slowdown of block processing (time x2) !!! 
 
-      _this->modify( _dgp, [&]( dynamic_global_property_object& dgp )
-      {
-         dgp.head_block_number = b.block_num();
-         dgp.head_block_id = b.id();
-         dgp.time = b.timestamp;
-      } );
+      // const dynamic_global_property_object& _dgp = get_dynamic_global_properties();
 
+      //database* _this = const_cast<database*>(this);
+      // _this->modify( _dgp, [&]( dynamic_global_property_object& dgp )
+      // {
+      //    dgp.head_block_number = b.block_num();
+      //    dgp.head_block_id = b.id();
+      //    dgp.time = b.timestamp;
+      // } );
+
+      previousBlockHeader = b;
       itr = _block_log.read_block( itr.second );
    }
 
-   processor(itr.first);
+   processor(previousBlockHeader, itr.first);
 }
 
-void database::foreach_tx(std::function<bool(const signed_block&, const signed_transaction&, uint32_t)> processor) const
+void database::foreach_tx(std::function<bool(const signed_block_header&, const signed_block&,
+   const signed_transaction&, uint32_t)> processor) const
 {
-   foreach_block([&processor](const signed_block& block) -> bool
+   foreach_block([&processor](const signed_block_header& prevBlockHeader, const signed_block& block) -> bool
    {
       uint32_t txInBlock = 0;
       for( const auto& trx : block.transactions )
       {
-         if(processor(block, trx, txInBlock) == false)
+         if(processor(prevBlockHeader, block, trx, txInBlock) == false)
             return false;
          ++txInBlock;
       }
@@ -423,15 +427,16 @@ void database::foreach_tx(std::function<bool(const signed_block&, const signed_t
    );
 }
 
-void database::foreach_operation(std::function<bool(const signed_block&, const signed_transaction&, uint32_t,
-   const operation&, uint16_t)> processor) const
+void database::foreach_operation(std::function<bool(const signed_block_header&,const signed_block&,
+   const signed_transaction&, uint32_t, const operation&, uint16_t)> processor) const
 {
-   foreach_tx([&processor](const signed_block& block, const signed_transaction& tx, uint32_t txInBlock) -> bool
+   foreach_tx([&processor](const signed_block_header& prevBlockHeader, const signed_block& block,
+      const signed_transaction& tx, uint32_t txInBlock) -> bool
    {
       uint16_t opInTx = 0;
       for(const auto& op : tx.operations)
       {
-         if(processor(block, tx, txInBlock, op, opInTx) == false)
+         if(processor(prevBlockHeader, block, tx, txInBlock, op, opInTx) == false)
             return false;
          ++opInTx;
       }
