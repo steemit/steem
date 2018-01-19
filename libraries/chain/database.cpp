@@ -113,6 +113,8 @@ void database::open( const open_args& args )
             init_genesis( args.initial_supply );
          });
 
+      benchmark_dumper.set_enabled( args.benchmark_is_enabled );
+
       _block_log.open( args.data_dir / "block_log" );
 
       auto log_head = _block_log.head();
@@ -2987,7 +2989,19 @@ void database::apply_operation(const operation& op)
 {
    operation_notification note(op);
    notify_pre_apply_operation( note );
+
+   if( benchmark_dumper.is_enabled() )
+   {
+      benchmark_dumper.begin();
+   }
+
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
+   
+   if( benchmark_dumper.is_enabled() )
+   {
+      benchmark_dumper.end( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
+   }
+
    notify_post_apply_operation( note );
 }
 

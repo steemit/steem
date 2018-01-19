@@ -12,6 +12,7 @@ class evaluator
    public:
       virtual void apply(const OperationType& op) = 0;
       virtual int get_type()const = 0;
+      virtual std::string get_name( const OperationType& op ) = 0;
 };
 
 template< typename EvaluatorType, typename OperationType=steem::protocol::operation >
@@ -32,6 +33,13 @@ class evaluator_impl : public evaluator<OperationType>
       }
 
       virtual int get_type()const override { return OperationType::template tag< typename EvaluatorType::operation_type >::value; }
+
+      virtual std::string get_name( const OperationType& o ) override
+      {
+         const auto& op = o.template get< typename EvaluatorType::operation_type >();
+
+         return boost::core::demangle( typeid( op ).name() );
+      }
 
       database& db() { return _db; }
 

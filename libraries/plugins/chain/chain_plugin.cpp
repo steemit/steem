@@ -26,6 +26,7 @@ class chain_plugin_impl
       bool                             readonly = false;
       bool                             check_locks = false;
       bool                             validate_invariants = false;
+      bool                             benchmark_is_enabled =false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
@@ -58,6 +59,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
+         ("advanced-benchmark", bpo::bool_switch()->default_value(false), "Make profiling for every plugin.")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
@@ -105,6 +107,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
+   if( options.count("advanced-benchmark") )
+      my->benchmark_is_enabled = options.at( "advanced-benchmark" ).as<bool>();
+
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
       my->db.set_chain_id( options.at("chain-id").as< std::string >() );
@@ -134,6 +139,7 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_size = my->shared_memory_size;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
+   db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
 
    if(my->replay)
    {

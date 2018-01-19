@@ -13,6 +13,8 @@
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
 
+#include <steem/chain/util/advanced_benchmark_dumper.hpp>
+
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -35,6 +37,9 @@ namespace steem { namespace chain {
       struct comment_reward_context;
    }
 
+   namespace util {
+      struct advanced_benchmark_dumper;
+   }
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -81,6 +86,7 @@ namespace steem { namespace chain {
             uint64_t shared_file_size = 0;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
+            bool benchmark_is_enabled = false;
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
@@ -522,6 +528,8 @@ namespace steem { namespace chain {
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
+
+         util::advanced_benchmark_dumper     benchmark_dumper;
    };
 
 } }
