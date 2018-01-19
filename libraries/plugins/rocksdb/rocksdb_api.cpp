@@ -36,7 +36,7 @@ DEFINE_API_IMPL( api_impl, get_ops_in_block )
 {
    get_ops_in_block_return result;
    _dataSource.find_operations_by_block(args.block_num,
-      [&result, &args](const operation_object& op)
+      [&result, &args](const tmp_operation_object& op)
       {
          api_operation_object temp(op);
          if( !args.only_virtual || is_virtual_operation( temp.op ) )
@@ -51,7 +51,7 @@ DEFINE_API_IMPL( api_impl, get_account_history )
    FC_ASSERT( args.limit <= 10000, "limit of ${l} is greater than maxmimum allowed", ("l",args.limit) );
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
 
-   account_history_object data([](account_history_object&){}, std::allocator<account_history_object>());
+   tmp_account_history_object data;
    if(_dataSource.find_account_history_data(args.account, &data) == false)
       return get_account_history_return();
 
@@ -70,8 +70,8 @@ DEFINE_API_IMPL( api_impl, get_account_history )
    for(; opI != endI; ++opI)
    {
       const auto& opId = *opI;
-      operation_object op([](operation_object&){}, std::allocator<operation_object>());
-      if(_dataSource.find_operation_object(opId._id, &op))
+      tmp_operation_object op;
+      if(_dataSource.find_operation_object(opId, &op))
          result.history[sequence] = api_operation_object(op);
       else
          FC_ASSERT(false, "Missing operation");

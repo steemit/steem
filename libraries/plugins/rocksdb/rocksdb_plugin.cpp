@@ -29,8 +29,6 @@ using steem::protocol::signed_block;
 using steem::protocol::signed_block_header;
 using steem::protocol::signed_transaction;
 
-using steem::chain::account_history_object;
-using steem::chain::operation_object;
 using steem::chain::operation_notification;
 using steem::chain::transaction_id_type;
 
@@ -47,11 +45,10 @@ using ::rocksdb::ColumnFamilyHandle;
 
 namespace 
 {
-
    template <class T>
-   steem::chain::buffer_type dump(const T& obj)
+   serialize_buffer_t dump(const T& obj)
    {
-      steem::chain::buffer_type serializedObj;
+      serialize_buffer_t serializedObj;
       auto size = fc::raw::pack_size(obj);
       serializedObj.resize(size);
       fc::datastream<char*> ds(serializedObj.data(), size);
@@ -67,7 +64,7 @@ namespace
    }
 
    template <class T>
-   void load(T& obj, const steem::chain::buffer_type& source)
+   void load(T& obj, const serialize_buffer_t& source)
    {
       load(obj, source.data(), source.size());
    }
@@ -287,11 +284,11 @@ public:
    /// Allows to start immediate data import (outside replay process).
    void importData(unsigned int blockLimit);
 
-   bool find_account_history_data(const account_name_type& name, account_history_object* data) const;
-   bool find_operation_object(size_t opId, operation_object* data) const;
+   bool find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const;
+   bool find_operation_object(size_t opId, tmp_operation_object* data) const;
    /// Allows to look for all operations present in given block and call `processor` for them.
    void find_operations_by_block(size_t blockNum,
-      std::function<void(const operation_object&)> processor) const;
+      std::function<void(const tmp_operation_object&)> processor) const;
    void shutdownDb()
    {
       chain::util::disconnect_signal(_pre_apply_connection);
@@ -349,18 +346,23 @@ private:
 };
 
 
-bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, account_history_object* data) const
+bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
    account_name_storage_id_pair nameIdPair(name.data, 0);
-   PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
-
-   //for(it->Seek(key); it->Valid() && it->key().starts_with(blockNumSlice); it->Next())
+   PrimitiveTypeSlice<account_name_storage_id_pair> key(nameIdPair);
+   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+   for(it->Seek(key); it->Valid() && it->key().starts_with(nameSlice); it->Next())
+   {
+      auto valueSlice = it->value();
+      const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+      data->store_operation_id(opId);
+   }
    
    return false;
 }
 
-bool rocksdb_plugin::impl::find_operation_object(size_t opId, operation_object* op) const
+bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_object* op) const
 {
    std::string data;
    PrimitiveTypeSlice<size_t> idSlice(opId);
@@ -378,9 +380,8 @@ bool rocksdb_plugin::impl::find_operation_object(size_t opId, operation_object* 
 }
 
 void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
-   std::function<void(const operation_object&)> processor) const
+   std::function<void(const tmp_operation_object&)> processor) const
 {
-   std::allocator<operation_object> a;
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[2]));
    PrimitiveTypeSlice<uint32_t> blockNumSlice(blockNum);
    PrimitiveTypeSlice<location_id_pair> key(location_id_pair(blockNum, 0));
@@ -390,7 +391,7 @@ void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
       auto valueSlice = it->value();
       const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
 
-      operation_object op([](operation_object&){}, a);
+      tmp_operation_object op;
       bool found = find_operation_object(opId, &op);
       FC_ASSERT(found);
 
@@ -486,9 +487,8 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
          ("op", _totalOps));
    }
 
-   std::allocator<operation_object> a;
-   operation_object obj([](operation_object&){}, a);
-   obj.id._id       = opSeqNo;
+   tmp_operation_object obj;
+   obj.id           = opSeqNo;
    obj.trx_id       = txId;
    obj.block        = blockNum;
    obj.trx_in_block = txInBlock;
@@ -500,7 +500,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
       fc::raw::pack(ds, op);
    }
 
-   steem::chain::buffer_type serializedObj;
+   serialize_buffer_t serializedObj;
    size = fc::raw::pack_size(obj);
    serializedObj.resize(size);
    {
@@ -508,8 +508,8 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
       fc::raw::pack(ds, obj);
    }
 
-   PrimitiveTypeSlice<size_t> idSlice(obj.id._id);
-   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(obj.block, obj.id._id));
+   PrimitiveTypeSlice<size_t> idSlice(obj.id);
+   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(obj.block, obj.id));
    auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
    checkStatus(s);
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
@@ -520,7 +520,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
 
    for(const auto& name : impacted)
    {
-      account_name_storage_id_pair nameIdPair(name.data, obj.id._id);
+      account_name_storage_id_pair nameIdPair(name.data, obj.id);
       PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
       s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
       checkStatus(s);
@@ -633,8 +633,7 @@ void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_m
    if(options.count("rocksdb-stop-import-at-block"))
       _blockLimit = options.at("rocksdb-stop-import-at-block").as<uint32_t>();
 
-   if(options.count("rocksdb-immediate-import"))
-      _doImmediateImport = true;
+   _doImmediateImport = options.at("rocksdb-immediate-import").as<bool>();
 
    if(_dbPath.is_absolute())
    {
@@ -664,18 +663,18 @@ void rocksdb_plugin::plugin_shutdown()
    _my->shutdownDb();
 }
 
-bool rocksdb_plugin::find_account_history_data(const account_name_type& name, account_history_object* data) const
+bool rocksdb_plugin::find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const
 {
    return _my->find_account_history_data(name, data);
 }
 
-bool rocksdb_plugin::find_operation_object(size_t opId, operation_object* data) const
+bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* data) const
 {
    return _my->find_operation_object(opId, data);
 }
 
 void rocksdb_plugin::find_operations_by_block(size_t blockNum,
-   std::function<void(const operation_object&)> processor) const
+   std::function<void(const tmp_operation_object&)> processor) const
 {
    _my->find_operations_by_block(blockNum, processor);
 }
