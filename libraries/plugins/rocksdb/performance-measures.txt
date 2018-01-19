@@ -35,5 +35,9 @@ RocksDb data import - Performance report at block 14913029. Elapsed time: 301128
 RocksDb data import finished. Processed blocks: 14913029, containing: 88856232 transactions and 96427740 operations.
 
 Commit: 77539d6:
-3299136ms rocksdb_plugin.cpp:325        importData           ] RocksDb data import - Performance report at block 14913029. Elapsed time: 955790 ms (real), 1171250 ms (cpu). Memory usage: 2489404 (current), 2628668 (peak) kilobytes.
-3299137ms rocksdb_plugin.cpp:330        importData           ] RocksDb data import finished. Processed blocks: 14913029, containing: 88856289 transactions and 96427740 operations.
+RocksDb data import - Performance report at block 14913029. Elapsed time: 955790 ms (real), 1171250 ms (cpu). Memory usage: 2489404 (current), 2628668 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856289 transactions and 96427740 operations.
+
+Commit: 79269aff120821447c4ed430c90c55d1004f2092
+RocksDb data import - Performance report at block 14913029. Elapsed time: 953982 ms (real), 1176162 ms (cpu). Memory usage: 2507180 (current), 2638252 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
