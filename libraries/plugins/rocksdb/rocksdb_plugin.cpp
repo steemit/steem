@@ -224,6 +224,8 @@ const Comparator* by_account_name_storage_id_pair_Comparator()
    return &c;
 }
 
+#define checkStatus(s) FC_ASSERT((s).ok(), "Data write failed: ${m}", ("m", (s).ToString()))
+
 } /// anonymous
 
 class rocksdb_plugin::impl final
@@ -357,7 +359,7 @@ private:
    {
       ::rocksdb::WriteOptions wOptions;
       auto s = _storage->Write(wOptions, &_writeBuffer);
-      FC_ASSERT(s.ok(), "Data write failed");
+      checkStatus(s);
       _writeBuffer.Clear();
       _collectedOps = 0;
    }
@@ -547,9 +549,9 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_
    PrimitiveTypeSlice<size_t> idSlice(obj.id._id);
    PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(obj.block, obj.id._id));
    auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
-   FC_ASSERT(s.ok(), "Data write failed");
+   checkStatus(s);
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
-   FC_ASSERT(s.ok(), "Data write failed");
+   checkStatus(s);
 
    flat_set<account_name_type> impacted;
    steem::app::operation_get_impacted_accounts(op, impacted);
@@ -559,7 +561,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_
       account_name_storage_id_pair nameIdPair(name.data, obj.id._id);
       PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
       s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
-      FC_ASSERT(s.ok(), "Data write failed");
+      checkStatus(s);
    }
 
    if(++this->_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
