@@ -240,9 +240,9 @@ class rocksdb_plugin::impl final
 {
 public:
 
-   impl(const rocksdb_plugin& mainPlugin) :
+   explicit impl(const rocksdb_plugin& mainPlugin) :
       _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
-      _api(mainPlugin)
+      _mainPlugin(mainPlugin)
       {
       _pre_apply_connection = _mainDb.pre_apply_operation.connect( [&]( const operation_notification& note ){ on_operation(note); } );
       }
@@ -252,9 +252,14 @@ public:
       shutdownDb();
    }
 
-   void openDb(const bfs::path& path, uint32_t blockLimit)
+   void installApi()
    {
-      bool doDataImport = createDbSchema(path);
+      _api = std::make_unique<rocksdb_api>(_mainPlugin);
+   }
+
+   void openDb(const bfs::path& path)
+   {
+      createDbSchema(path);
 
       auto columnDefs = prepareColumnDefinitions(true);
 
@@ -270,10 +275,7 @@ public:
       if(status.ok())
       {
          ilog("RocksDB opened successfully");
-
          _storage.reset(storageDb);
-         if(doDataImport)
-            importData(blockLimit);
       }
       else
       {
@@ -281,6 +283,9 @@ public:
             ("p", strPath)("e", status.ToString()));
       }
    }
+
+   /// Allows to start immediate data import (outside replay process).
+   void importData(unsigned int blockLimit);
 
    bool find_account_history_data(const account_name_type& name, account_history_object* data) const;
    bool find_operation_object(size_t opId, operation_object* data) const;
@@ -311,59 +316,6 @@ private:
    void importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime, const transaction_id_type& txId,
       uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqId);
 
-   void importData(unsigned int blockLimit)
-   {
-      ilog("Starting data import...");
-
-      block_id_type lastBlock;
-      size_t blockNo = 0;
-
-      _lastTx = transaction_id_type();
-      _txNo = 0;
-      _totalOps = 0;
-
-      benchmark_dumper dumper;
-      dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
-
-      _mainDb.foreach_operation([blockLimit, &blockNo, &lastBlock, this](
-         const signed_block_header& prevBlockHeader, const signed_block& block, const signed_transaction& tx,
-         uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
-      {
-         if(lastBlock != block.previous)
-         {
-            blockNo = block.block_num();
-            lastBlock = block.previous;
-
-            if(blockLimit != 0 && blockNo > blockLimit)
-            {
-               ilog( "RocksDb data import stopped because of block limit reached.");
-               return false;
-            }
-         }
-
-         importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx, _totalOps);
-
-         return true;
-      }
-      );
-
-      if(this->_collectedOps != 0)
-         flushWriteBuffer();
-
-      const auto& measure = dumper.measure(blockNo, [](benchmark_dumper::index_memory_details_cntr_t&, bool) {});
-      ilog( "RocksDb data import - Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
-         ("n", blockNo)
-         ("rt", measure.real_ms)
-         ("ct", measure.cpu_ms)
-         ("cm", measure.current_mem)
-         ("pm", measure.peak_mem) );
-
-      ilog( "RocksDb data import finished. Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
-         ("n", blockNo)
-         ("tx", _txNo)
-         ("op", _totalOps));
-   }
-
    void flushWriteBuffer()
    {
       ::rocksdb::WriteOptions wOptions;
@@ -382,7 +334,8 @@ private:
 
 private:
    chain::database&                 _mainDb;
-   rocksdb_api                      _api;
+   const rocksdb_plugin&            _mainPlugin;
+   std::unique_ptr<rocksdb_api>     _api;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    ::rocksdb::WriteBatch            _writeBuffer;
@@ -579,10 +532,72 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
    ++_totalOps;
 }
 
+void rocksdb_plugin::impl::importData(unsigned int blockLimit)
+{
+   if(_storage == nullptr)
+   {
+      ilog("RocksDB has no opened storage. Skipping data import...");
+      return;
+   }
+
+   ilog("Starting data import...");
+
+   block_id_type lastBlock;
+   size_t blockNo = 0;
+
+   _lastTx = transaction_id_type();
+   _txNo = 0;
+   _totalOps = 0;
+
+   benchmark_dumper dumper;
+   dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
+
+   _mainDb.foreach_operation([blockLimit, &blockNo, &lastBlock, this](
+      const signed_block_header& prevBlockHeader, const signed_block& block, const signed_transaction& tx,
+      uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
+   {
+      if(lastBlock != block.previous)
+      {
+         blockNo = block.block_num();
+         lastBlock = block.previous;
+
+         if(blockLimit != 0 && blockNo > blockLimit)
+         {
+            ilog( "RocksDb data import stopped because of block limit reached.");
+            return false;
+         }
+      }
+
+      importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx, _totalOps);
+
+      return true;
+   }
+   );
+
+   if(this->_collectedOps != 0)
+      flushWriteBuffer();
+
+   const auto& measure = dumper.measure(blockNo, [](benchmark_dumper::index_memory_details_cntr_t&, bool) {});
+   ilog( "RocksDb data import - Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+      ("n", blockNo)
+      ("rt", measure.real_ms)
+      ("ct", measure.cpu_ms)
+      ("cm", measure.current_mem)
+      ("pm", measure.peak_mem) );
+
+   ilog( "RocksDb data import finished. Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
+      ("n", blockNo)
+      ("tx", _txNo)
+      ("op", _totalOps));
+}
+
 void rocksdb_plugin::impl::on_operation(const operation_notification& n)
 {
-   auto blockTime = _mainDb.head_block_time();
-   importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
+   if(_storage != nullptr)
+   {
+      auto blockTime = _mainDb.head_block_time();
+      importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
+   }
 }
 
 rocksdb_plugin::rocksdb_plugin()
@@ -601,36 +616,46 @@ void rocksdb_plugin::set_program_options(
    command_line_options.add_options()
       ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
          "Allows to specify path where rocksdb store will be located.")
+      ("rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
+         "Allows to force immediate data import at plugin startup. By default storage is supplied during reindex process.")
       ("rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
          "Allows to specify block number, the data import process should stop at.")
-         
    ;
 }
 
 void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
+   _my = std::make_unique<impl>(*this);
+
    if(options.count("rocksdb-path"))
       _dbPath = options.at("rocksdb-path").as<bfs::path>();
 
    if(options.count("rocksdb-stop-import-at-block"))
       _blockLimit = options.at("rocksdb-stop-import-at-block").as<uint32_t>();
+
+   if(options.count("rocksdb-immediate-import"))
+      _doImmediateImport = true;
+
+   if(_dbPath.is_absolute())
+   {
+      _my->openDb(_dbPath);
+   }
+   else
+   {
+      auto basePath = appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().state_storage_dir();
+      auto actualPath = basePath / _dbPath;
+      _my->openDb(actualPath);
+   }
 }
 
 void rocksdb_plugin::plugin_startup()
 {
    ilog("Starting up rocksdb_plugin...");
 
-   _my = std::make_unique<impl>(*this);
-   if(_dbPath.is_absolute())
-   {
-      _my->openDb(_dbPath, _blockLimit);
-   }
-   else
-   {
-      auto basePath = appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().state_storage_dir();
-      auto actualPath = basePath / _dbPath;
-      _my->openDb(actualPath, _blockLimit);
-   }
+   if(_doImmediateImport)
+      _my->importData(_blockLimit);
+
+   _my->installApi();
 }
 
 void rocksdb_plugin::plugin_shutdown()

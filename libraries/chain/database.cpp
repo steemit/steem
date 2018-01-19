@@ -403,18 +403,6 @@ void database::foreach_block(std::function<bool(const signed_block_header&, cons
       if(processor(previousBlockHeader, b) == false)
          return;
 
-      /// This code introduces huge slowdown of block processing (time x2) !!! 
-
-      // const dynamic_global_property_object& _dgp = get_dynamic_global_properties();
-
-      //database* _this = const_cast<database*>(this);
-      // _this->modify( _dgp, [&]( dynamic_global_property_object& dgp )
-      // {
-      //    dgp.head_block_number = b.block_num();
-      //    dgp.head_block_id = b.id();
-      //    dgp.time = b.timestamp;
-      // } );
-
       previousBlockHeader = b;
       itr = _block_log.read_block( itr.second );
    }
