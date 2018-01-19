@@ -130,8 +130,11 @@ class PrimitiveTypeComparatorImpl final : public AComparator
 public:
   virtual int Compare(const Slice& a, const Slice& b) const override
   {
-      auto id1 = retrieveKey(a);
-      auto id2 = retrieveKey(b);
+      if(a.size() != sizeof(T) || b.size() != sizeof(T))
+         return a.compare(b);
+
+      const T& id1 = retrieveKey(a);
+      const T& id2 = retrieveKey(b);
 
       if(id1 < id2)
          return -1;
@@ -144,8 +147,12 @@ public:
 
   virtual bool Equal(const Slice& a, const Slice& b) const override
   {
-      auto id1 = retrieveKey(a);
-      auto id2 = retrieveKey(b);
+      if(a.size() != sizeof(T) || b.size() != sizeof(T))
+         return a == b;
+
+      const auto& id1 = retrieveKey(a);
+      const auto& id2 = retrieveKey(b);
+
       return id1 == id2;
   }
 
@@ -163,8 +170,11 @@ class account_name_id_ComparatorImpl final : public AComparator
 public:
   virtual int Compare(const Slice& a, const Slice& b) const override
   {
-      auto id1 = retrieveKey(a);
-      auto id2 = retrieveKey(b);
+      if(a.size() != sizeof(account_name_storage_id_pair) || b.size() != sizeof(account_name_storage_id_pair))
+         return a.compare(b);
+
+      const auto& id1 = retrieveKey(a);
+      const auto& id2 = retrieveKey(b);
 
       if(id1 < id2)
          return -1;
@@ -177,8 +187,11 @@ public:
 
   virtual bool Equal(const Slice& a, const Slice& b) const override
   {
-      auto id1 = retrieveKey(a);
-      auto id2 = retrieveKey(b);
+      if(a.size() != sizeof(account_name_storage_id_pair) || b.size() != sizeof(account_name_storage_id_pair))
+         return a == b;
+
+      const auto& id1 = retrieveKey(a);
+      const auto& id2 = retrieveKey(b);
       return id1 == id2;
   }
 
@@ -203,24 +216,18 @@ typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl
 
 const Comparator* by_id_Comparator()
 {
-   return ::rocksdb::BytewiseComparator();
-
    static by_id_ComparatorImpl c;
    return &c; 
 }
 
 const Comparator* by_location_Comparator()
 {
-   return ::rocksdb::BytewiseComparator();
-
    static by_location_ComparatorImpl c;
    return &c;
 }
 
 const Comparator* by_account_name_storage_id_pair_Comparator()
 {
-   return ::rocksdb::BytewiseComparator();
-
    static account_name_id_ComparatorImpl c;
    return &c;
 }
