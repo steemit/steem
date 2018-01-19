@@ -1,8 +1,14 @@
 #pragma once
 
 #include <golos/plugins/database_api/plugin.hpp>
+#include <golos/plugins/database_api/forward.hpp>
+#include <golos/plugins/database_api/state.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
+#include <golos/plugins/database_api/api_objects/tag_api_object.hpp>
+#include <golos/plugins/market_history/market_history_objects.hpp>
+
 
 namespace golos { namespace wallet {
 
@@ -12,23 +18,23 @@ using fc::optional;
 
 using namespace chain;
 using namespace plugins;
-/*using namespace plugins::condenser_api;
+//using namespace plugins::condenser_api;
 using namespace plugins::database_api;
 using namespace plugins::account_history;
-using namespace plugins::follow;
+//using namespace plugins::follow;
 using namespace plugins::market_history;
-using namespace plugins::witness;*/
+//using namespace plugins::witness_plugin;
 
 /**
  * This is a dummy API so that the wallet can create properly formatted API calls
  */
 struct remote_node_api {
    //database_api::get_version_return get_version();
-   //vector< tags::api_tag_object > get_trending_tags( string, uint32_t );
+   vector< tag_api_object > get_trending_tags( string, uint32_t );
    vector< account_name_type > get_active_witnesses();
    optional< block_header > get_block_header( uint32_t );
    optional< database_api::signed_block > get_block( uint32_t );
-   //vector< account_history::api_operation_object > get_ops_in_block( uint32_t, bool only_virtual = true );
+   vector< operation_api_object > get_ops_in_block( uint32_t, bool only_virtual = true );
    fc::variant_object get_config();
    database_api::dynamic_global_property_object get_dynamic_global_properties();
    chain_properties get_chain_properties();
@@ -37,6 +43,7 @@ struct remote_node_api {
    database_api::witness_schedule_api_object get_witness_schedule();
    hardfork_version get_hardfork_version();
    database_api::scheduled_hardfork get_next_scheduled_hardfork();
+    // TODO This method is from tolstoy_api
    //database_api::reward_fund_apit_object get_reward_fund( string );
    vector< vector< account_name_type > > get_key_references( vector< public_key_type > );
    vector< database_api::extended_account > get_accounts( vector< account_name_type > );
@@ -48,7 +55,7 @@ struct remote_node_api {
    optional< database_api::account_recovery_request_api_object > get_recovery_request( account_name_type );
    optional< database_api::escrow_api_object > get_escrow( account_name_type, uint32_t );
    vector< database_api::withdraw_vesting_route_api_object > get_withdraw_routes( account_name_type, database_api::withdraw_route_type );
-   //optional< witness::api_account_bandwidth_object > get_account_bandwidth( account_name_type, witness::bandwidth_type );
+   optional< account_bandwidth_api_object > get_account_bandwidth( account_name_type, bandwidth_type);
    vector< database_api::savings_withdraw_api_object > get_savings_withdraw_from( account_name_type );
    vector< database_api::savings_withdraw_api_object > get_savings_withdraw_to( account_name_type );
    vector< optional< database_api::witness_api_object > > get_witnesses( vector< witness_id_type > );
@@ -67,12 +74,14 @@ struct remote_node_api {
    void broadcast_transaction( signed_transaction );
    plugins::network_broadcast_api::broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
    void broadcast_block( signed_block );
-    /*
-   vector< tags::vote_state > get_active_votes( account_name_type, string );
-   vector< database_api::account_vote > get_account_votes( account_name_type );
+
+   vector< vote_state > get_active_votes( account_name_type, string );
+   vector< account_vote > get_account_votes( account_name_type );
+
+   vector< tag_count_object > get_tags_used_by_author( account_name_type );/*
    tags::discussion get_content( account_name_type, string );
    vector< tags::discussion > get_content_replies( account_name_type, string );
-   vector< tags::tag_count_object > get_tags_used_by_author( account_name_type );
+
    vector< tags::discussion > get_discussions_by_payout( tags::discussion_query );
    vector< tags::discussion > get_post_discussions_by_payout( tags::discussion_query );
    vector< tags::discussion > get_comment_discussions_by_payout( tags::discussion_query );
@@ -89,9 +98,6 @@ struct remote_node_api {
    vector< tags::discussion > get_discussions_by_promoted( tags::discussion_query );
    vector< tags::discussion > get_replies_by_last_update( tags::discussion_query );
    vector< tags::discussion > get_discussions_by_author_before_date( tags::discussion_query );
-
-   map< uint32_t, account_history::api_operation_object > get_account_history( account_name_type, uint64_t, uint32_t );
-
    vector< follow::api_follow_object > get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t );
    vector< follow::api_follow_object > get_following( account_name_type, account_name_type, follow::follow_type, uint32_t );
    follow::get_follow_count_return get_follow_count( account_name_type );
@@ -101,27 +107,28 @@ struct remote_node_api {
    vector< follow::comment_blog_entry > get_blog( account_name_type, uint32_t, uint32_t );
    vector< follow::account_reputation > get_account_reputations( account_name_type, uint32_t );
    vector< account_name_type > get_reblogged_by( account_name_type, string );
-   vector< follow::reblog_count > get_blog_authors( account_name_type );
-   market_history::get_ticker_return get_ticker();
-   market_history::get_volume_return get_volume();
-   market_history::get_order_book_return get_order_book( uint32_t );
-   vector< market_history::market_trade > get_trade_history( time_point_sec, time_point_sec, uint32_t );
-   vector< market_history::market_trade > get_recent_trades( uint32_t );
-   vector< market_history::bucket_object > get_market_history( uint32_t, time_point_sec, time_point_sec );
-   flat_set< uint32_t > get_market_history_buckets();
-     */
+   vector< follow::reblog_count > get_blog_authors( account_name_type );*/
+   market_ticker_r get_ticker();
+   market_volume_r get_volume();
+   order_book_r get_order_book( order_book_a );
+   trade_history_r get_trade_history( trade_history_a );
+   recent_trades_r get_recent_trades( recent_trades_a );
+   market_history_r get_market_history( market_history_a );
+   market_history_buckets_r get_market_history_buckets();
+
+   map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
 };
 
 } }
 
 FC_API( golos::wallet::remote_node_api,
         //(get_version)
-        //(get_trending_tags)
+        (get_trending_tags)
         (get_active_witnesses)
         (get_block_header)
         (get_block)
-        //(get_ops_in_block)
-        //(get_config)
+        (get_ops_in_block)
+        (get_config)
         (get_dynamic_global_properties)
         (get_chain_properties)
         (get_current_median_history_price)
@@ -140,7 +147,7 @@ FC_API( golos::wallet::remote_node_api,
         (get_recovery_request)
         (get_escrow)
         (get_withdraw_routes)
-       // (get_account_bandwidth)
+        (get_account_bandwidth)
         (get_savings_withdraw_from)
         (get_savings_withdraw_to)
         (get_witnesses)
@@ -158,12 +165,12 @@ FC_API( golos::wallet::remote_node_api,
         (verify_account_authority)
         (broadcast_transaction)
         (broadcast_transaction_synchronous)
-                /*
+        (get_tags_used_by_author)
         (get_active_votes)
-        (get_account_votes)
+        (get_account_votes)/*
         (get_content)
         (get_content_replies)
-        (get_tags_used_by_author)
+
         (get_discussions_by_payout)
         (get_post_discussions_by_payout)
         (get_comment_discussions_by_payout)
@@ -180,7 +187,9 @@ FC_API( golos::wallet::remote_node_api,
         (get_discussions_by_promoted)
         (get_replies_by_last_update)
         (get_discussions_by_author_before_date)
-        (get_account_history)
+
+        */
+        (get_account_history)/*
         (broadcast_block)
         (get_followers)
         (get_following)
@@ -191,7 +200,7 @@ FC_API( golos::wallet::remote_node_api,
         (get_blog)
         (get_account_reputations)
         (get_reblogged_by)
-        (get_blog_authors)
+        (get_blog_authors)*/
         (get_ticker)
         (get_volume)
         (get_order_book)
@@ -199,5 +208,5 @@ FC_API( golos::wallet::remote_node_api,
         (get_recent_trades)
         (get_market_history)
         (get_market_history_buckets)
-                 */
+
       )

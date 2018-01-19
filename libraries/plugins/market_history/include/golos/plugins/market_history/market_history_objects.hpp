@@ -119,6 +119,9 @@ namespace golos {
                     c(*this);
                 }
 
+                bucket_object() {
+                }
+
                 id_type id;
 
                 fc::time_point_sec open;
@@ -207,3 +210,28 @@ FC_REFLECT((golos::plugins::market_history::recent_trades_a), (limit))
 FC_REFLECT((golos::plugins::market_history::market_history_r), (history))
 FC_REFLECT((golos::plugins::market_history::market_history_a), (bucket_seconds)(start)(end))
 FC_REFLECT((golos::plugins::market_history::market_history_buckets_r), (buckets))
+
+FC_REFLECT((golos::plugins::market_history::market_ticker),
+           (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume));
+FC_REFLECT((golos::plugins::market_history::market_volume),
+           (steem_volume)(sbd_volume));
+FC_REFLECT((golos::plugins::market_history::order),
+           (price)(steem)(sbd));
+FC_REFLECT((golos::plugins::market_history::order_book),
+           (bids)(asks));
+FC_REFLECT((golos::plugins::market_history::market_trade),
+           (date)(current_pays)(open_pays));
+
+
+FC_REFLECT((golos::plugins::market_history::bucket_object),
+           (id)
+                   (open)(seconds)
+                   (high_steem)(high_sbd)
+                   (low_steem)(low_sbd)
+                   (open_steem)(open_sbd)
+                   (close_steem)(close_sbd)
+                   (steem_volume)(sbd_volume))
+CHAINBASE_SET_INDEX_TYPE(golos::plugins::market_history::bucket_object, golos::plugins::market_history::bucket_index)
+
+FC_REFLECT((golos::plugins::market_history::order_history_object),(id)(time)(op))
+CHAINBASE_SET_INDEX_TYPE(golos::plugins::market_history::order_history_object, golos::plugins::market_history::order_history_index)

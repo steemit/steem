@@ -8,9 +8,9 @@ namespace golos { namespace wallet{
 //   FC_ASSERT( false );
 //}
 
-//vector< tags::api_tag_object > remote_node_api::get_trending_tags( string, uint32_t ) {
-//   FC_ASSERT( false );
-//}
+vector< tag_api_object > remote_node_api::get_trending_tags( string, uint32_t ) {
+   FC_ASSERT( false );
+}
 
 vector< account_name_type > remote_node_api::get_active_witnesses() {
    FC_ASSERT( false );
@@ -24,9 +24,9 @@ optional< database_api::signed_block > remote_node_api::get_block( uint32_t ) {
    FC_ASSERT( false );
 }
 
-//vector< account_history::api_operation_object > remote_node_api::get_ops_in_block( uint32_t, bool only_virtual ) {
-//   FC_ASSERT( false );
-//}
+vector< operation_api_object > remote_node_api::get_ops_in_block( uint32_t, bool only_virtual ) {
+   FC_ASSERT( false );
+}
 
 fc::variant_object remote_node_api::get_config() {
    FC_ASSERT( false );
@@ -116,9 +116,9 @@ vector< database_api::withdraw_vesting_route_api_object > remote_node_api::get_w
    FC_ASSERT( false );
 }
 
-//optional< witness::api_account_bandwidth_object > remote_node_api::get_account_bandwidth( account_name_type, witness::bandwidth_type ) {
-//   FC_ASSERT( false );
-//}
+optional<account_bandwidth_api_object> remote_node_api::get_account_bandwidth( account_name_type, bandwidth_type ) {
+   FC_ASSERT( false );
+}
 
 vector< database_api::savings_withdraw_api_object > remote_node_api::get_savings_withdraw_from( account_name_type )
 {
@@ -202,25 +202,25 @@ bool remote_node_api::verify_account_authority( string, flat_set< public_key_typ
         void remote_node_api::broadcast_block( signed_block ) {
            FC_ASSERT( false );
         }
+
+vector< vote_state > remote_node_api::get_active_votes( account_name_type, string ) {
+   FC_ASSERT( false );
+}
+
+vector< account_vote > remote_node_api::get_account_votes( account_name_type ) {
+   FC_ASSERT( false );
+}
+
+vector< tag_count_object > remote_node_api::get_tags_used_by_author( account_name_type )
+{
+    FC_ASSERT( false );
+}
 /*
-vector< tags::vote_state > remote_node_api::get_active_votes( account_name_type, string ) {
-   FC_ASSERT( false );
-}
-
-vector< database_api::account_vote > remote_node_api::get_account_votes( account_name_type ) {
-   FC_ASSERT( false );
-}
-
 tags::discussion remote_node_api::get_content( account_name_type, string ) {
    FC_ASSERT( false );
 }
 
 vector< tags::discussion > remote_node_api::get_content_replies( account_name_type, string )
-{
-   FC_ASSERT( false );
-}
-
-vector< tags::tag_count_object > remote_node_api::get_tags_used_by_author( account_name_type )
 {
    FC_ASSERT( false );
 }
@@ -304,13 +304,13 @@ vector< tags::discussion > remote_node_api::get_discussions_by_author_before_dat
 {
    FC_ASSERT( false );
 }
-
-map< uint32_t, account_history::api_operation_object > remote_node_api::get_account_history( account_name_type, uint64_t, uint32_t ) {
+*/
+map< uint32_t, golos::plugins::database_api::operation_api_object > remote_node_api::get_account_history( account_name_type, uint64_t, uint32_t ) {
    FC_ASSERT( false );
 }
 
 
-
+/*
 vector< follow::api_follow_object > remote_node_api::get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
    FC_ASSERT( false );
 }
@@ -350,33 +350,33 @@ vector< account_name_type > remote_node_api::get_reblogged_by( account_name_type
 vector< follow::reblog_count > remote_node_api::get_blog_authors( account_name_type ) {
    FC_ASSERT( false );
 }
-
-market_history::get_ticker_return remote_node_api::get_ticker() {
-   FC_ASSERT( false );
-}
-
-market_history::get_volume_return remote_node_api::get_volume() {
-   FC_ASSERT( false );
-}
-
-market_history::get_order_book_return remote_node_api::get_order_book( uint32_t ) {
-   FC_ASSERT( false );
-}
-
-vector< market_history::market_trade > remote_node_api::get_trade_history( time_point_sec, time_point_sec, uint32_t ) {
-   FC_ASSERT( false );
-}
-
-vector< market_history::market_trade > remote_node_api::get_recent_trades( uint32_t ) {
-   FC_ASSERT( false );
-}
-
-vector< market_history::bucket_object > remote_node_api::get_market_history( uint32_t, time_point_sec, time_point_sec ) {
-   FC_ASSERT( false );
-}
-
-flat_set< uint32_t > remote_node_api::get_market_history_buckets() {
-   FC_ASSERT( false );
-}
 */
+market_ticker_r remote_node_api::get_ticker() {
+   FC_ASSERT( false );
+}
+
+market_volume_r remote_node_api::get_volume() {
+   FC_ASSERT( false );
+}
+
+order_book_r remote_node_api::get_order_book( order_book_a ) {
+   FC_ASSERT( false );
+}
+
+trade_history_r remote_node_api::get_trade_history( trade_history_a ) {
+   FC_ASSERT( false );
+}
+
+recent_trades_r remote_node_api::get_recent_trades( recent_trades_a ) {
+   FC_ASSERT( false );
+}
+
+market_history_r remote_node_api::get_market_history( market_history_a ) {
+   FC_ASSERT( false );
+}
+
+market_history_buckets_r remote_node_api::get_market_history_buckets() {
+   FC_ASSERT( false );
+}
+
 } }

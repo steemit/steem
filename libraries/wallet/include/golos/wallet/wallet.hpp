@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/wallet/remote_node_api.hpp>
+#include <golos/chain/history_object.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -113,13 +114,13 @@ namespace golos { namespace wallet {
              * @param block_num Block height of specified block
              * @param only_virtual Whether to only return virtual operations
              */
-            //vector< account_history::api_operation_object > get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+            vector<operation_api_object> get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
             /** Return the current price feed history
              *
              * @returns Price feed history data on the blockchain
              */
-            //database_api::api_feed_history_object get_feed_history()const;
+            database_api::feed_history_api_object get_feed_history()const;
 
             /**
              * Returns the list of witnesses producing blocks in the current round (21 Blocks)
@@ -362,23 +363,6 @@ namespace golos { namespace wallet {
                                                                    bool broadcast )const;
 
             /**
-             *  This method will genrate new owner, active, and memo keys for the new account which
-             *  will be controlable by this wallet. There is a fee associated with account creation
-             *  that is paid by the creator. The current account creation fee can be found with the
-             *  'info' wallet command.
-             *
-             *  These accounts are created with combination of STEEM and delegated SP
-             *
-             *  @param creator The account creating the new account
-             *  @param steem_fee The amount of the fee to be paid with STEEM
-             *  @param delegated_vests The amount of the fee to be paid with delegation
-             *  @param new_account_name The name of the new account
-             *  @param json_meta JSON Metadata associated with the new account
-             *  @param broadcast true if you wish to broadcast the transaction
-             */
-           // annotated_signed_transaction create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast );
-
-            /**
              * This method is used by faucets to create new accounts for other users which must
              * provide their desired keys. The resulting account may not be controllable by this
              * wallet. There is a fee associated with account creation that is paid by the creator.
@@ -397,7 +381,7 @@ namespace golos { namespace wallet {
              * @param memo public memo key of the new account
              * @param broadcast true if you wish to broadcast the transaction
              */
-/*
+
             annotated_signed_transaction create_account_with_keys_delegated( string creator,
                                                                              asset steem_fee,
                                                                              asset delegated_vests,
@@ -408,7 +392,7 @@ namespace golos { namespace wallet {
                                                                              public_key_type posting,
                                                                              public_key_type memo,
                                                                              bool broadcast )const;
-*/
+
             /**
              * This method updates the keys of an existing account.
              *
@@ -497,7 +481,7 @@ namespace golos { namespace wallet {
              * @param vesting_shares The amount of VESTS to delegate
              * @param broadcast true if you wish to broadcast the transaction
              */
-           // annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
+            //annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
 
 
             /**
@@ -803,8 +787,8 @@ namespace golos { namespace wallet {
              *
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
-            //market_history::get_order_book_return get_order_book( uint32_t limit = 1000 );
-            //vector< database_api::extended_limit_order > get_open_orders( string accountname );
+            market_history::order_book_r get_order_book( order_book_a order );
+            vector< database_api::extended_limit_order > get_open_orders( string accountname );
 
             /**
              *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
@@ -817,7 +801,7 @@ namespace golos { namespace wallet {
              *  @param expiration the time the order should expire if it has not been filled
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            //annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
+            annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
 
             /**
              * Cancel an order created with create_order
@@ -903,7 +887,8 @@ namespace golos { namespace wallet {
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
              */
-            //map< uint32_t, account_history::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
+            map< uint32_t, golos::plugins::database_api::operation_api_object >
+                get_account_history( string account, uint32_t from, uint32_t limit );
 
 
             FC_TODO(Supplement API argument description)
@@ -940,8 +925,6 @@ namespace golos { namespace wallet {
             string decrypt_memo( string memo );
 
             annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
-
-            //annotated_signed_transaction claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast );
         };
 
         struct plain_keys {
@@ -986,24 +969,21 @@ FC_API( golos::wallet::wallet_api,
                 (get_witness)
                 (get_account)
                 (get_block)
-                //(get_ops_in_block)
-                //(get_feed_history)
+                (get_ops_in_block)
+                (get_feed_history)
                 (get_conversion_requests)
-                //(get_account_history)
+                (get_account_history)
                 (get_withdraw_routes)
 
                 /// transaction api
                 (create_account)
                 (create_account_with_keys)
-                //(create_account_delegated)
-                //(create_account_with_keys_delegated)
                 (update_account)
                 (update_account_auth_key)
                 (update_account_auth_account)
                 (update_account_auth_threshold)
                 (update_account_meta)
                 (update_account_memo_key)
-                //(delegate_vesting_shares)
                 (update_witness)
                 (set_voting_proxy)
                 (vote_for_witness)
@@ -1018,9 +998,9 @@ FC_API( golos::wallet::wallet_api,
                 (set_withdraw_vesting_route)
                 (convert_sbd)
                 (publish_feed)
-                //(get_order_book)
-                //(get_open_orders)
-                //(create_order)
+                (get_order_book)
+                (get_open_orders)
+                (create_order)
                 //(cancel_order)
                 (post_comment)
                 (vote)
@@ -1035,7 +1015,6 @@ FC_API( golos::wallet::wallet_api,
                 (get_encrypted_memo)
                 (decrypt_memo)
                 (decline_voting_rights)
-                //(claim_reward_balance)
 
                 /// helper api
                 (get_prototype_operation)

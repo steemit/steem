@@ -847,9 +847,9 @@ namespace golos { namespace wallet {
             return my->_remote_api->get_block( num );
         }
 
-        //vector< account_history::api_operation_object > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
-        //    return my->_remote_api->get_ops_in_block( block_num, only_virtual );
-        //}
+        vector< operation_api_object > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
+            return my->_remote_api->get_ops_in_block( block_num, only_virtual );
+        }
 
         vector< database_api::account_api_object > wallet_api::list_my_accounts() {
             FC_ASSERT( !is_locked(), "Wallet must be unlocked to list accounts" );
@@ -1102,7 +1102,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
         }
 
-        //database_api::feed_history_api_object wallet_api::get_feed_history()const { return my->_remote_api->get_feed_history(); }
+        database_api::feed_history_api_object wallet_api::get_feed_history()const {
+            return my->_remote_api->get_feed_history();
+        }
 
 /**
  * This method is used by faucets to create new accounts for other users which must
@@ -1473,23 +1475,6 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
  *  This method will genrate new owner, active, and memo keys for the new account which
  *  will be controlable by this wallet.
  */
-
-
-        /*
-        annotated_signed_transaction wallet_api::create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast )
-        { try {
-                FC_ASSERT( !is_locked() );
-                auto owner = suggest_brain_key();
-                auto active = suggest_brain_key();
-                auto posting = suggest_brain_key();
-                auto memo = suggest_brain_key();
-                import_key( owner.wif_priv_key );
-                import_key( active.wif_priv_key );
-                import_key( posting.wif_priv_key );
-                import_key( memo.wif_priv_key );
-                return create_account_with_keys_delegated( creator, steem_fee, delegated_vests, new_account_name, json_meta,  owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
-            } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
-*/
 
         annotated_signed_transaction wallet_api::update_witness( string witness_account_name,
                                                                  string url,
@@ -1932,8 +1917,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
-/*
-        map< uint32_t, account_history::api_operation_object > wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+
+        map< uint32_t, operation_api_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
             auto result = my->_remote_api->get_account_history( account, from, limit );
             if( !is_locked() ) {
                 for( auto& item : result ) {
@@ -1953,14 +1938,14 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             }
             return result;
         }
-*/
+
         vector< database_api::withdraw_vesting_route_api_object > wallet_api::get_withdraw_routes( string account, database_api::withdraw_route_type type )const {
             return my->_remote_api->get_withdraw_routes( account, type );
         }
-/*
-        market_history::get_order_book_return wallet_api::get_order_book( uint32_t limit ) {
-            FC_ASSERT( limit <= 1000 );
-            return my->_remote_api->get_order_book( limit );
+
+        market_history::order_book_r wallet_api::get_order_book( order_book_a order ) {
+            FC_ASSERT( order.limit <= 1000 );
+            return my->_remote_api->get_order_book( order );
         }
 
         vector< database_api::extended_limit_order > wallet_api::get_open_orders( string owner ) {
@@ -1983,7 +1968,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
-
+/*
         annotated_signed_transaction wallet_api::cancel_order( string owner, uint32_t orderid, bool broadcast ) {
             FC_ASSERT( !is_locked() );
             limit_order_cancel_operation op;
@@ -2067,8 +2052,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             trx.validate();
 
             return my->sign_transaction( trx, broadcast );
-        }
-        */
+        }*/
 
     } } // steem::wallet
 
