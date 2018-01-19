@@ -26,6 +26,7 @@ using steem::protocol::account_name_type;
 using steem::protocol::block_id_type;
 using steem::protocol::operation;
 using steem::protocol::signed_block;
+using steem::protocol::signed_block_header;
 using steem::protocol::signed_transaction;
 
 using steem::chain::account_history_object;
@@ -300,8 +301,8 @@ private:
       _columnHandles.clear();
    }
 
-   void importOperation(uint32_t blockNum, const transaction_id_type& txId, uint32_t txInBlock,
-      const operation& op, uint16_t opInTx, size_t opSeqId);
+   void importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime, const transaction_id_type& txId,
+      uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqId);
 
    void importData(unsigned int blockLimit)
    {
@@ -318,7 +319,8 @@ private:
       dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
 
       _mainDb.foreach_operation([blockLimit, &blockNo, &lastBlock, this](
-         const signed_block& block, const signed_transaction& tx, uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
+         const signed_block_header& prevBlockHeader, const signed_block& block, const signed_transaction& tx,
+         uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
       {
          if(lastBlock != block.previous)
          {
@@ -332,7 +334,7 @@ private:
             }
          }
 
-         importOperation(blockNo, tx.id(), txInBlock, op, opInTx, _totalOps);
+         importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx, _totalOps);
 
          return true;
       }
@@ -507,8 +509,8 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    }
 }
 
-void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_id_type& txId,
-   uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
+void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
+   const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
 {
    if(_lastTx != txId)
    {
@@ -530,7 +532,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_
    obj.trx_id       = txId;
    obj.block        = blockNum;
    obj.trx_in_block = txInBlock;
-   obj.timestamp    = _mainDb.head_block_time();
+   obj.timestamp    = blockTime;
    auto size = fc::raw::pack_size(op);
    obj.serialized_op.resize(size);
    {
@@ -572,7 +574,8 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_
 
 void rocksdb_plugin::impl::on_operation(const operation_notification& n)
 {
-   //importOperation(n.block, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
+   auto blockTime = _mainDb.head_block_time();
+   importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
 }
 
 rocksdb_plugin::rocksdb_plugin()
