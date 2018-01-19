@@ -30,6 +30,8 @@ using steem::protocol::signed_transaction;
 
 using steem::chain::account_history_object;
 using steem::chain::operation_object;
+using steem::chain::operation_notification;
+using steem::chain::transaction_id_type;
 
 using steem::utilities::benchmark_dumper;
 
@@ -228,8 +230,13 @@ class rocksdb_plugin::impl final
 {
 public:
 
-   impl(const rocksdb_plugin& mainPlugin) : _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
-            _api(mainPlugin) {}
+   impl(const rocksdb_plugin& mainPlugin) :
+      _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
+      _api(mainPlugin)
+      {
+      _pre_apply_connection = _mainDb.pre_apply_operation.connect( [&]( const operation_notification& note ){ on_operation(note); } );
+      }
+
    ~impl()
    {
       shutdownDb();
@@ -272,6 +279,7 @@ public:
       std::function<void(const operation_object&)> processor) const;
    void shutdownDb()
    {
+      chain::util::disconnect_signal(_pre_apply_connection);
       cleanupColumnHandles();
       _storage.reset();
    }
@@ -290,7 +298,7 @@ private:
       _columnHandles.clear();
    }
 
-   void importOperation(const signed_block& block, const signed_transaction& tx, uint32_t txInBlock,
+   void importOperation(uint32_t blockNum, const transaction_id_type& txId, uint32_t txInBlock,
       const operation& op, uint16_t opInTx, size_t opSeqId);
 
    void importData(unsigned int blockLimit)
@@ -299,14 +307,15 @@ private:
 
       block_id_type lastBlock;
       size_t blockNo = 0;
-      const signed_transaction* lastTx = nullptr;
-      size_t txNo = 0;
-      size_t totalOps = 0;
+
+      _lastTx = transaction_id_type();
+      _txNo = 0;
+      _totalOps = 0;
 
       benchmark_dumper dumper;
       dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
 
-      _mainDb.foreach_operation([blockLimit, &blockNo, &txNo, &lastBlock, &lastTx, &totalOps, this](
+      _mainDb.foreach_operation([blockLimit, &blockNo, &lastBlock, this](
          const signed_block& block, const signed_transaction& tx, uint32_t txInBlock, const operation& op, uint16_t opInTx) -> bool
       {
          if(lastBlock != block.previous)
@@ -314,30 +323,14 @@ private:
             blockNo = block.block_num();
             lastBlock = block.previous;
 
-            if(blockNo % 10000 == 0)
-            {
-               ilog( "RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
-                  ("n", blockNo)
-                  ("tx", txNo)
-                  ("op", totalOps));
-            }
-
             if(blockLimit != 0 && blockNo > blockLimit)
             {
                ilog( "RocksDb data import stopped because of block limit reached.");
                return false;
             }
          }
-         
-         if(lastTx != &tx)
-         {
-            ++txNo;
-            lastTx = &tx;
-         }
 
-         importOperation(block, tx, txInBlock, op, opInTx, totalOps);
-
-         ++totalOps;
+         importOperation(blockNo, tx.id(), txInBlock, op, opInTx, _totalOps);
 
          return true;
       }
@@ -356,8 +349,8 @@ private:
 
       ilog( "RocksDb data import finished. Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
          ("n", blockNo)
-         ("tx", txNo)
-         ("op", totalOps));
+         ("tx", _txNo)
+         ("op", _totalOps));
    }
 
    void flushWriteBuffer()
@@ -369,17 +362,25 @@ private:
       _collectedOps = 0;
    }
 
+   void on_operation(const operation_notification& opNote);
+
    enum
    {
       WRITE_BUFFER_FLUSH_LIMIT = 100
    };
 
 private:
-   const chain::database&           _mainDb;
+   chain::database&                 _mainDb;
    rocksdb_api                      _api;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    ::rocksdb::WriteBatch            _writeBuffer;
+   boost::signals2::connection      _pre_apply_connection;
+   /// Helper member to be able to detect another incomming tx and increment tx-counter.
+   transaction_id_type              _lastTx;
+   size_t                           _txNo = 0;
+   size_t                           _totalOps = 0;
+   /// Number of data-chunks for ops being stored inside _writeBuffer. To decide when to flush.
    unsigned int                     _collectedOps = 0;
 };
 
@@ -504,19 +505,28 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    }
 }
 
-void rocksdb_plugin::impl::importOperation(const signed_block& block, const signed_transaction& tx,
+void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const transaction_id_type& txId,
    uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
 {
+   if(_lastTx != txId)
+   {
+      ++_txNo;
+      _lastTx = txId;
+   }
+
+   if(blockNum % 10000 == 0 && txInBlock == 0 && opInTx == 0)
+   {
+      ilog( "RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.",
+         ("n", blockNum)
+         ("tx", _txNo)
+         ("op", _totalOps));
+   }
+
    std::allocator<operation_object> a;
    operation_object obj([](operation_object&){}, a);
    obj.id._id       = opSeqNo;
-   obj.trx_id       = tx.id();
-   obj.block        = block.block_num();
-   if(obj.block == 1093)
-   {
-      ilog("Stop here");
-   }
-   
+   obj.trx_id       = txId;
+   obj.block        = blockNum;
    obj.trx_in_block = txInBlock;
    obj.timestamp    = _mainDb.head_block_time();
    auto size = fc::raw::pack_size(op);
@@ -554,6 +564,13 @@ void rocksdb_plugin::impl::importOperation(const signed_block& block, const sign
 
    if(++this->_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
       flushWriteBuffer();
+
+   ++_totalOps;
+}
+
+void rocksdb_plugin::impl::on_operation(const operation_notification& n)
+{
+   //importOperation(n.block, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
 }
 
 rocksdb_plugin::rocksdb_plugin()
