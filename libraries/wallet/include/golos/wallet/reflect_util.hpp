@@ -15,7 +15,7 @@ namespace golos { namespace wallet {
 
             std::string clean_name( const std::string& name ) {
                 std::string result;
-                const static std::string prefix = "steem::protocol::";
+                const static std::string prefix = "golos::protocol::";
                 const static std::string suffix = "_operation";
                 // graphene::chain::.*_operation
                 if(    (name.size() >= prefix.size() + suffix.size())
