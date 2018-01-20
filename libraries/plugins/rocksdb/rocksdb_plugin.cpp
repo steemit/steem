@@ -473,6 +473,12 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
 void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
    const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
 {
+   flat_set<account_name_type> impacted;
+   steem::app::operation_get_impacted_accounts(op, impacted);
+
+   if(impacted.empty())
+      return; /// Ignore operations not impacting any account (according to original implementation)
+
    if(_lastTx != txId)
    {
       ++_txNo;
@@ -514,9 +520,6 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
    checkStatus(s);
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
    checkStatus(s);
-
-   flat_set<account_name_type> impacted;
-   steem::app::operation_get_impacted_accounts(op, impacted);
 
    for(const auto& name : impacted)
    {
