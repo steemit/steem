@@ -90,7 +90,7 @@ rocksdb_api::rocksdb_api(const rocksdb::rocksdb_plugin& dataSource) : my( new de
 
 rocksdb_api::~rocksdb_api() {}
 
-DEFINE_READ_APIS( rocksdb_api,
+DEFINE_LOCKLESS_APIS( rocksdb_api,
    (get_ops_in_block)
    (get_account_history)
 )
