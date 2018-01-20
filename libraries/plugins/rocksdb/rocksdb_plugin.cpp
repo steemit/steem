@@ -616,9 +616,13 @@ void rocksdb_plugin::set_program_options(
    boost::program_options::options_description &command_line_options,
    boost::program_options::options_description &config_file_options)
 {
+   config_file_options.add_options()
+      ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
+         "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
+   ;
    command_line_options.add_options()
       ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
-         "Allows to specify path where rocksdb store will be located.")
+         "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
       ("rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
          "Allows to force immediate data import at plugin startup. By default storage is supplied during reindex process.")
       ("rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
