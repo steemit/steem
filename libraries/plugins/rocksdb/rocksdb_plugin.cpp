@@ -88,6 +88,12 @@ public:
       return *reinterpret_cast<const T*>(s.data());
    }
 
+   static const T& unpackSlice(const std::string& s)
+   {
+      assert(sizeof(T) == s.size());
+      return *reinterpret_cast<const T*>(s.data());
+   }
+
 private:
    T _value;
 };
@@ -229,7 +235,7 @@ const Comparator* by_account_name_storage_id_pair_Comparator()
    return &c;
 }
 
-#define checkStatus(s) FC_ASSERT((s).ok(), "Data write failed: ${m}", ("m", (s).ToString()))
+#define checkStatus(s) FC_ASSERT((s).ok(), "Data access failed: ${m}", ("m", (s).ToString()))
 
 } /// anonymous
 
@@ -271,7 +277,8 @@ public:
 
       if(status.ok())
       {
-         ilog("RocksDB opened successfully");
+         ilog("RocksDB opened successfully storage at location: `${p}'.", ("p", strPath));
+         loadSeqIdentifiers(storageDb);
          _storage.reset(storageDb);
       }
       else
@@ -311,12 +318,51 @@ private:
    }
 
    void importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime, const transaction_id_type& txId,
-      uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqId);
+      uint32_t txInBlock, const operation& op, uint16_t opInTx);
 
-   void flushWriteBuffer()
+   void storeSequenceIds()
    {
+      Slice opSeqIdName("OPERATION_SEQ_ID");
+      Slice ahSeqIdName("AH_SEQ_ID");
+
+      PrimitiveTypeSlice<size_t> opId(_operationSeqId);
+      PrimitiveTypeSlice<size_t> ahId(_accountHistorySeqId);
+
+      auto s = _writeBuffer.Put(opSeqIdName, opId);
+      checkStatus(s);
+      s = _writeBuffer.Put(ahSeqIdName, ahId);
+      checkStatus(s);
+   }
+
+   void loadSeqIdentifiers(DB* storageDb)
+   {
+      Slice opSeqIdName("OPERATION_SEQ_ID");
+      Slice ahSeqIdName("AH_SEQ_ID");
+
+      ReadOptions rOptions;
+
+      std::string buffer;
+      auto s = storageDb->Get(rOptions, opSeqIdName, &buffer);
+      checkStatus(s);
+      _operationSeqId = PrimitiveTypeSlice<size_t>::unpackSlice(buffer);
+
+      s = storageDb->Get(rOptions, ahSeqIdName, &buffer);
+      checkStatus(s);
+      _accountHistorySeqId = PrimitiveTypeSlice<size_t>::unpackSlice(buffer);
+
+      ilog("Loaded OperationObject seqId: ${o}, AccountHistoryObject seqId: ${ah}.",
+         ("o", _operationSeqId)("ah", _accountHistorySeqId));
+   }
+
+   void flushWriteBuffer(DB* storage = nullptr)
+   {
+      storeSequenceIds();
+
+      if(storage == nullptr)
+         storage = _storage.get();
+
       ::rocksdb::WriteOptions wOptions;
-      auto s = _storage->Write(wOptions, &_writeBuffer);
+      auto s = storage->Write(wOptions, &_writeBuffer);
       checkStatus(s);
       _writeBuffer.Clear();
       _collectedOps = 0;
@@ -340,11 +386,16 @@ private:
    /// Helper member to be able to detect another incomming tx and increment tx-counter.
    transaction_id_type              _lastTx;
    size_t                           _txNo = 0;
+   /// Total processed ops in this session.
    size_t                           _totalOps = 0;
+
+   /// IDs to be assigned to object.id field.
+   size_t                           _operationSeqId = 0;
+   size_t                           _accountHistorySeqId = 0;
+
    /// Number of data-chunks for ops being stored inside _writeBuffer. To decide when to flush.
    unsigned int                     _collectedOps = 0;
 };
-
 
 bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const
 {
@@ -359,7 +410,7 @@ bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
       data->store_operation_id(opId);
    }
    
-   return false;
+   return data->get_ops().empty() == false;
 }
 
 bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_object* op) const
@@ -449,6 +500,8 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
       if(s.ok())
       {
          ilog("RockDB column definitions created successfully.");
+         /// Store initial values of Seq-IDs for held objects.
+         flushWriteBuffer(db);
          cleanupColumnHandles();
       }
       else
@@ -471,14 +524,8 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
 }
 
 void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
-   const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx, size_t opSeqNo)
+   const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx)
 {
-   flat_set<account_name_type> impacted;
-   steem::app::operation_get_impacted_accounts(op, impacted);
-
-   if(impacted.empty())
-      return; /// Ignore operations not impacting any account (according to original implementation)
-
    if(_lastTx != txId)
    {
       ++_txNo;
@@ -493,8 +540,14 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
          ("op", _totalOps));
    }
 
+   flat_set<account_name_type> impacted;
+   steem::app::operation_get_impacted_accounts(op, impacted);
+
+   if(impacted.empty())
+      return; /// Ignore operations not impacting any account (according to original implementation)
+
    tmp_operation_object obj;
-   obj.id           = opSeqNo;
+   obj.id           = _operationSeqId++;
    obj.trx_id       = txId;
    obj.block        = blockNum;
    obj.trx_in_block = txInBlock;
@@ -523,7 +576,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
 
    for(const auto& name : impacted)
    {
-      account_name_storage_id_pair nameIdPair(name.data, obj.id);
+      account_name_storage_id_pair nameIdPair(name.data, _accountHistorySeqId++);
       PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
       s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
       checkStatus(s);
@@ -571,7 +624,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
          }
       }
 
-      importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx, _totalOps);
+      importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx);
 
       return true;
    }
@@ -599,7 +652,7 @@ void rocksdb_plugin::impl::on_operation(const operation_notification& n)
    if(_storage != nullptr)
    {
       auto blockTime = _mainDb.head_block_time();
-      importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx, _totalOps);
+      importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx);
    }
 }
 
