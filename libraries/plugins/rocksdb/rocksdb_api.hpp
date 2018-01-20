@@ -84,7 +84,7 @@ struct api_operation_object
       virtual_op( op_obj.virtual_op() ),
       timestamp( op_obj.timestamp )
    {
-      op = fc::raw::unpack< steem::protocol::operation >( op_obj.serialized_op );
+      op = fc::raw::unpack_from_vector< steem::protocol::operation >( op_obj.serialized_op );
    }
 
    steem::protocol::transaction_id_type trx_id;
