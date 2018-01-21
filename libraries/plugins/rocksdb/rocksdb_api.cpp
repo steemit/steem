@@ -51,24 +51,14 @@ DEFINE_API_IMPL( api_impl, get_account_history )
    FC_ASSERT( args.limit <= 10000, "limit of ${l} is greater than maxmimum allowed", ("l",args.limit) );
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
 
-   tmp_account_history_object data;
-   if(_dataSource.find_account_history_data(args.account, args.start, args.limit, &data) == false)
-      return get_account_history_return();
-
    get_account_history_return result;
 
-   const auto& collectedOps = data.get_ops();
-
-   uint32_t sequence = 0;
-   for(const auto& opId : collectedOps)
-   {
-      tmp_operation_object op;
-      if(_dataSource.find_operation_object(opId, &op))
+   _dataSource.find_account_history_data(args.account, args.start, args.limit, 
+      [&result, this](unsigned int sequence, const tmp_operation_object& op)
+      {
          result.history[sequence] = api_operation_object(op);
-      else
-         FC_ASSERT(false, "Missing operation");
-      ++sequence;
-   }
+      });
+
    return result;
 }
 

@@ -98,8 +98,8 @@ struct api_operation_object
 
 struct get_ops_in_block_args
 {
-   uint32_t block_num;
-   bool     only_virtual;
+   uint32_t block_num = 1;
+   bool     only_virtual = false;
 };
 
 struct get_ops_in_block_return

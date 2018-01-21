@@ -304,8 +304,8 @@ public:
    /// Allows to start immediate data import (outside replay process).
    void importData(unsigned int blockLimit);
 
-   bool find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
-      tmp_account_history_object* data) const;
+   void find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
+      std::function<void(unsigned int, const tmp_operation_object&)> processor) const;
    bool find_operation_object(size_t opId, tmp_operation_object* data) const;
    /// Allows to look for all operations present in given block and call `processor` for them.
    void find_operations_by_block(size_t blockNum,
@@ -425,11 +425,11 @@ private:
    unsigned int                     _collectedOps = 0;
 };
 
-bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
-   uint32_t limit, tmp_account_history_object* data) const
+void rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
+   uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
-   account_name_storage_id_pair nameIdPair(name.data, (size_t)-1);
+   account_name_storage_id_pair nameIdPair(name.data, 0);
    PrimitiveTypeSlice<account_name_storage_id_pair> key(nameIdPair);
 
    std::string strName = name;
@@ -439,7 +439,7 @@ bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
 
    it->Seek(key);
    if(it->Valid() == false)
-      return false;
+      return;
 
    Slice pureKey = it->key();
    account_name_storage_id_pair keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
@@ -449,10 +449,10 @@ bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
    std::string strKey = _name;
    xxx = strKey.c_str();
 
-   size_t end = start - limit;
+   size_t toSkip = start - limit + 1;
    size_t entries = 0;
 
-   for(; it->Valid(); it->Prev())
+   for(; it->Valid(); it->Next())
    {
       pureKey = it->key();
       keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
@@ -461,21 +461,22 @@ bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
       strKey = _name;
       xxx = strKey.c_str();
 
-      if(strKey > strName)
+      if(strKey < strName)
          continue;
 
-      if(strKey < strName || entries > start)
+      if(strKey > strName || entries > start)
          break;
 
-      if(++entries < end)
+      if(++entries < toSkip)
          continue;
 
       auto valueSlice = it->value();
       const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
-      data->store_operation_id(opId);
+      tmp_operation_object oObj;
+      bool found = find_operation_object(opId, &oObj);
+      FC_ASSERT(found, "Missing operation?");
+      processor(entries-1, oObj);
    }
-   
-   return data->get_ops().empty() == false;
 }
 
 bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_object* op) const
@@ -789,10 +790,10 @@ void rocksdb_plugin::plugin_shutdown()
    _my->shutdownDb();
 }
 
-bool rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
-   tmp_account_history_object* data) const
+void rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
+   std::function<void(unsigned int, const tmp_operation_object&)> processor) const
 {
-   return _my->find_account_history_data(name, start, limit, data);
+   _my->find_account_history_data(name, start, limit, processor);
 }
 
 bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* data) const
