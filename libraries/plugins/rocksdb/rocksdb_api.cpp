@@ -52,30 +52,22 @@ DEFINE_API_IMPL( api_impl, get_account_history )
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
 
    tmp_account_history_object data;
-   if(_dataSource.find_account_history_data(args.account, &data) == false)
+   if(_dataSource.find_account_history_data(args.account, args.start, args.limit, &data) == false)
       return get_account_history_return();
 
    get_account_history_return result;
 
    const auto& collectedOps = data.get_ops();
-   auto opsCount = collectedOps.size();
-   
-   auto shift = opsCount > args.start ? opsCount - args.start : 0;
-   auto count = opsCount - shift > args.limit ? args.limit : opsCount - shift;
 
-   auto opI = std::next(collectedOps.crbegin(), shift);
-   auto endI = std::next(opI, count + 1); /// Last item selected by `count` must be included too
-
-   uint32_t sequence = opsCount - shift;
-   for(; opI != endI; ++opI)
+   uint32_t sequence = 0;
+   for(const auto& opId : collectedOps)
    {
-      const auto& opId = *opI;
       tmp_operation_object op;
       if(_dataSource.find_operation_object(opId, &op))
          result.history[sequence] = api_operation_object(op);
       else
          FC_ASSERT(false, "Missing operation");
-      --sequence;
+      ++sequence;
    }
    return result;
 }
