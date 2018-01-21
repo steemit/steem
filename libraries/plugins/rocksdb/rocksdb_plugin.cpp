@@ -206,20 +206,6 @@ private:
       const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
       return *data;
    }
-
-   // std::pair<std::string, size_t> retrieveKey(const Slice& slice) const
-   // {
-   //    assert(sizeof(account_name_storage_id_pair) == slice.size());
-   //    const char* rawData = slice.data();
-   //    const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
-   //    account_name_type _name;
-   //    _name.data = data->first;
-   //    std::string strName = _name;
-   //    const char* xx = strName.c_str();
-   //    FC_UNUSED(xx);
-   //    return std::make_pair(strName, data->second);
-   // }
-  
 };
 
 typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
@@ -429,42 +415,49 @@ void rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
    uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
-   account_name_storage_id_pair nameIdPair(name.data, 0);
+   bool backwardSearch = start == (uint64_t)-1;
+   account_name_storage_id_pair nameIdPair(name.data, backwardSearch ? (size_t)-1 : 0);
    PrimitiveTypeSlice<account_name_storage_id_pair> key(nameIdPair);
+   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
 
-   std::string strName = name;
-   const char* xxx = strName.c_str();
+   if(backwardSearch)
+      it->SeekForPrev(key);
+   else
+      it->Seek(key);
 
-   FC_UNUSED(xxx);
-
-   it->Seek(key);
    if(it->Valid() == false)
       return;
 
-   Slice pureKey = it->key();
-   account_name_storage_id_pair keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
+   if(backwardSearch)
+   {
+      unsigned int count = 0;
+      for(; it->Valid() && it->key().starts_with(nameSlice); it->Prev())
+         ++count;
 
-   account_name_type _name;
-   _name.data = keyValue.first;
-   std::string strKey = _name;
-   xxx = strKey.c_str();
+      size_t entries = count - 1;
+      
+      for(it->SeekForPrev(key); it->Valid() && it->key().starts_with(nameSlice); it->Prev(), --entries, --limit)
+      {
+         auto valueSlice = it->value();
+         const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+         tmp_operation_object oObj;
+         bool found = find_operation_object(opId, &oObj);
+         FC_ASSERT(found, "Missing operation?");
+         processor(entries, oObj);
+
+         if(limit == 0)
+            break;
+      }
+
+      return;
+   }
 
    size_t toSkip = start - limit + 1;
    size_t entries = 0;
 
-   for(; it->Valid(); it->Next())
+   for(; it->Valid() && it->key().starts_with(nameSlice); it->Next())
    {
-      pureKey = it->key();
-      keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
-
-      _name.data = keyValue.first;
-      strKey = _name;
-      xxx = strKey.c_str();
-
-      if(strKey < strName)
-         continue;
-
-      if(strKey > strName || entries > start)
+      if(entries > start)
          break;
 
       if(++entries < toSkip)
