@@ -206,6 +206,19 @@ private:
       const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
       return *data;
    }
+
+   // std::pair<std::string, size_t> retrieveKey(const Slice& slice) const
+   // {
+   //    assert(sizeof(account_name_storage_id_pair) == slice.size());
+   //    const char* rawData = slice.data();
+   //    const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
+   //    account_name_type _name;
+   //    _name.data = data->first;
+   //    std::string strName = _name;
+   //    const char* xx = strName.c_str();
+   //    FC_UNUSED(xx);
+   //    return std::make_pair(strName, data->second);
+   // }
   
 };
 
@@ -291,7 +304,8 @@ public:
    /// Allows to start immediate data import (outside replay process).
    void importData(unsigned int blockLimit);
 
-   bool find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const;
+   bool find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
+      tmp_account_history_object* data) const;
    bool find_operation_object(size_t opId, tmp_operation_object* data) const;
    /// Allows to look for all operations present in given block and call `processor` for them.
    void find_operations_by_block(size_t blockNum,
@@ -299,6 +313,20 @@ public:
    void shutdownDb()
    {
       chain::util::disconnect_signal(_pre_apply_connection);
+      FC_TODO("Flush should be done inside onReindexDone handler")
+      if(_storage != nullptr)
+      {
+         /// If there are still not yet saved changes let's do it now.
+         if(_collectedOps != 0)
+            flushWriteBuffer();
+
+         ::rocksdb::FlushOptions fOptions;
+         for(const auto& cf : _columnHandles)
+         {
+            auto s = _storage->Flush(fOptions, cf);
+            checkStatus(s);
+         }
+      }
       cleanupColumnHandles();
       _storage.reset();
    }
@@ -397,14 +425,51 @@ private:
    unsigned int                     _collectedOps = 0;
 };
 
-bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const
+bool rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
+   uint32_t limit, tmp_account_history_object* data) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
-   account_name_storage_id_pair nameIdPair(name.data, 0);
+   account_name_storage_id_pair nameIdPair(name.data, (size_t)-1);
    PrimitiveTypeSlice<account_name_storage_id_pair> key(nameIdPair);
-   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
-   for(it->Seek(key); it->Valid() && it->key().starts_with(nameSlice); it->Next())
+
+   std::string strName = name;
+   const char* xxx = strName.c_str();
+
+   FC_UNUSED(xxx);
+
+   it->Seek(key);
+   if(it->Valid() == false)
+      return false;
+
+   Slice pureKey = it->key();
+   account_name_storage_id_pair keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
+
+   account_name_type _name;
+   _name.data = keyValue.first;
+   std::string strKey = _name;
+   xxx = strKey.c_str();
+
+   size_t end = start - limit;
+   size_t entries = 0;
+
+   for(; it->Valid(); it->Prev())
    {
+      pureKey = it->key();
+      keyValue = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(pureKey);
+
+      _name.data = keyValue.first;
+      strKey = _name;
+      xxx = strKey.c_str();
+
+      if(strKey > strName)
+         continue;
+
+      if(strKey < strName || entries > start)
+         break;
+
+      if(++entries < end)
+         continue;
+
       auto valueSlice = it->value();
       const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
       data->store_operation_id(opId);
@@ -567,10 +632,11 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
       fc::raw::pack(ds, obj);
    }
 
-   PrimitiveTypeSlice<size_t> idSlice(obj.id);
-   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(obj.block, obj.id));
+   PrimitiveTypeSlice<size_t> idSlice(_operationSeqId);
    auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
    checkStatus(s);
+
+   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(blockNum, _operationSeqId));
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
    checkStatus(s);
 
@@ -582,7 +648,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
       checkStatus(s);
    }
 
-   if(++this->_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
+   if(++_collectedOps >= WRITE_BUFFER_FLUSH_LIMIT)
       flushWriteBuffer();
 
    ++_totalOps;
@@ -630,7 +696,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
    }
    );
 
-   if(this->_collectedOps != 0)
+   if(_collectedOps != 0)
       flushWriteBuffer();
 
    const auto& measure = dumper.measure(blockNo);
@@ -723,9 +789,10 @@ void rocksdb_plugin::plugin_shutdown()
    _my->shutdownDb();
 }
 
-bool rocksdb_plugin::find_account_history_data(const account_name_type& name, tmp_account_history_object* data) const
+bool rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
+   tmp_account_history_object* data) const
 {
-   return _my->find_account_history_data(name, data);
+   return _my->find_account_history_data(name, start, limit, data);
 }
 
 bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* data) const
