@@ -63,15 +63,17 @@ class feed_object : public object< feed_object_type, feed_object >
          c( *this );
       }
 
-      id_type           id;
+      typedef shared_vector<account_name_type> t_reblogged_by_container;
 
-      account_name_type                account;
-      shared_vector<account_name_type> reblogged_by;
-      account_name_type                first_reblogged_by;
-      time_point_sec                   first_reblogged_on;
-      comment_id_type                  comment;
-      uint32_t                         reblogs;
-      uint32_t                         account_feed_id = 0;
+      id_type                    id;
+
+      account_name_type          account;
+      t_reblogged_by_container   reblogged_by;
+      account_name_type          first_reblogged_by;
+      time_point_sec             first_reblogged_on;
+      comment_id_type            comment;
+      uint32_t                   reblogs;
+      uint32_t                   account_feed_id = 0;
 };
 
 typedef oid< feed_object > feed_id_type;
