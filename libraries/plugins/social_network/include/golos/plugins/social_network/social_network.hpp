@@ -12,12 +12,12 @@ namespace golos {
         namespace social_network {
             using plugins::json_rpc::msg_pack;
 
-            using get_tags_used_by_author_return_type = std::vector<std::pair<std::string, uint32_t>>;
+            using tags_used_by_author_r = std::vector<std::pair<std::string, uint32_t>>;
 
             DEFINE_API_ARGS(get_content,                           msg_pack, discussion)
             DEFINE_API_ARGS(get_trending_tags,                     msg_pack, std::vector<tag_api_object>)
             DEFINE_API_ARGS(get_content_replies,                   msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_tags_used_by_author,               msg_pack, get_tags_used_by_author_return_type)
+            DEFINE_API_ARGS(get_tags_used_by_author,               msg_pack, tags_used_by_author_r)
             DEFINE_API_ARGS(get_discussions_by_payout,             msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_post_discussions_by_payout,        msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_comment_discussions_by_payout,     msg_pack, std::vector<discussion>)
