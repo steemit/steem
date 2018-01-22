@@ -15,6 +15,7 @@
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
 
+#include <array>
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
@@ -136,7 +137,7 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
    asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
 
 #define ASSET( s ) \
-   asset::from_string( s )
+   legacy_asset::from_string( s ).to_asset< false >()
 
 namespace steem { namespace chain {
 
@@ -216,12 +217,13 @@ struct database_fixture {
 
    void fund( const string& account_name, const share_type& amount = 500000 );
    void fund( const string& account_name, const asset& amount );
-   void transfer( const string& from, const string& to, const share_type& steem );
+   void transfer( const string& from, const string& to, const asset& amount );
    void convert( const string& account_name, const asset& amount );
    void vest( const string& from, const share_type& amount );
    void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
+   void set_witness_props( const flat_map< string, vector< char > >& new_props );
    const asset& get_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 
@@ -247,42 +249,48 @@ struct live_database_fixture : public database_fixture
 };
 
 #ifdef STEEM_ENABLE_SMT
-struct smt_database_fixture : public clean_database_fixture
+template< typename T >
+struct t_smt_database_fixture : public T
 {
-   smt_database_fixture();
-   virtual ~smt_database_fixture();
+   using database_fixture::set_price_feed;
+   using database_fixture::fund;
+   using database_fixture::convert;
 
-   asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
+   t_smt_database_fixture(){}
+   virtual ~t_smt_database_fixture(){}
+
+   asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+
+   /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
+   std::array<asset_symbol_type, 3> create_smt_3(const char* control_account_name, const fc::ecc::private_key& key);
+   /// Tries to create SMTs with too big precision or invalid name.
+   void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
+   /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
+   void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 };
+
+using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;
+using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture >;
+
 #endif
 
 struct json_rpc_database_fixture : public database_fixture
 {
    private:
-
-      const uint32_t delay = 2;
-
-      std::string url;
-      std::string port;
-
-      fc::http::connection connection;
-
-      fc::thread t;
+      steem::plugins::json_rpc::json_rpc_plugin* rpc_plugin;
 
       fc::variant get_answer( std::string& request );
-      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail );
+      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail, fc::optional< fc::variant > id );
 
    public:
 
       json_rpc_database_fixture();
       virtual ~json_rpc_database_fixture();
 
-      void launch_server( int initial_argc, char** initial_argv );
       void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       fc::variant make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       void make_positive_request( std::string& request );
-      void make_positive_request_with_id_analysis( std::string& request, bool treat_id_as_string );
 };
 
 namespace test

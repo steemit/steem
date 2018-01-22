@@ -54,6 +54,7 @@ RUN \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
+    ./tests/plugin_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
@@ -76,6 +77,7 @@ RUN \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
+    ./tests/plugin_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
@@ -99,6 +101,7 @@ RUN \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
     ./tests/chain_test && \
+    ./tests/plugin_test && \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --output="/var/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
@@ -216,6 +219,9 @@ ADD doc/seednodes.txt /etc/steemd/seednodes.txt
 # the following adds lots of logging info to stdout
 ADD contrib/config-for-docker.ini /etc/steemd/config.ini
 ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
+ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
+ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
+ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh

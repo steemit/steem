@@ -7,8 +7,17 @@
 
 #include <steem/chain/util/reward.hpp>
 
+#include <fc/macros.hpp>
+
 #ifndef IS_LOW_MEM
+FC_TODO( "After we vendor fc, also vendor diff_match_patch and fix these warnings" )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include <diff_match_patch.h>
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #include <boost/locale/encoding_utf.hpp>
 
 using boost::locale::conv::utf_to_utf;
@@ -111,6 +120,112 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
 }
 
+void witness_set_properties_evaluator::do_apply( const witness_set_properties_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1620 ), "witness_set_properties_evaluator not enabled until HF 20" );
+
+   const auto& witness = _db.get< witness_object, by_name >( o.owner ); // verifies witness exists;
+
+   // Capture old properties. This allows only updating the object once.
+   chain_properties  props;
+   public_key_type   signing_key;
+   price             sbd_exchange_rate;
+   time_point_sec    last_sbd_exchange_update;
+   string            url;
+
+   bool account_creation_changed = false;
+   bool max_block_changed        = false;
+   bool sbd_interest_changed     = false;
+   bool account_subsidy_changed  = false;
+   bool key_changed              = false;
+   bool sbd_exchange_changed     = false;
+   bool url_changed              = false;
+
+   auto itr = o.props.find( "key" );
+
+   // This existence of 'key' is checked in witness_set_properties_operation::validate
+   fc::raw::unpack_from_vector( itr->second, signing_key );
+   FC_ASSERT( signing_key == witness.signing_key, "'key' does not match witness signing key.",
+      ("key", signing_key)("signing_key", witness.signing_key) );
+
+   itr = o.props.find( "account_creation_fee" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.account_creation_fee );
+      account_creation_changed = true;
+   }
+
+   itr = o.props.find( "maximum_block_size" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.maximum_block_size );
+      max_block_changed = true;
+   }
+
+   itr = o.props.find( "sbd_interest_rate" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.sbd_interest_rate );
+      sbd_interest_changed = true;
+   }
+
+   itr = o.props.find( "account_subsidy_limit" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_limit );
+      account_subsidy_changed = true;
+   }
+
+   itr = o.props.find( "new_signing_key" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, signing_key );
+      key_changed = true;
+   }
+
+   itr = o.props.find( "sbd_exchange_rate" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
+      last_sbd_exchange_update = _db.head_block_time();
+      sbd_exchange_changed = true;
+   }
+
+   itr = o.props.find( "url" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack_from_vector< std::string >( itr->second, url );
+      url_changed = true;
+   }
+
+   _db.modify( witness, [&]( witness_object& w )
+   {
+      if( account_creation_changed )
+         w.props.account_creation_fee = props.account_creation_fee;
+
+      if( max_block_changed )
+         w.props.maximum_block_size = props.maximum_block_size;
+
+      if( sbd_interest_changed )
+         w.props.sbd_interest_rate = props.sbd_interest_rate;
+
+      if( account_subsidy_changed )
+         w.props.account_subsidy_limit = props.account_subsidy_limit;
+
+      if( key_changed )
+         w.signing_key = signing_key;
+
+      if( sbd_exchange_changed )
+      {
+         w.sbd_exchange_rate = sbd_exchange_rate;
+         w.last_sbd_exchange_update = last_sbd_exchange_update;
+      }
+
+      if( url_changed )
+         from_string( w.url, url );
+   });
+}
+
 void verify_authority_accounts_exist(
    const database& db,
    const authority& auth,
@@ -193,7 +308,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
 {
-   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_17__818 ), "Account creation with delegation is not enabled until hardfork 17" );
+   FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_20__1760 ), "Account creation with delegation is deprecated as of Hardfork 20" );
 
    const auto& creator = _db.get_account( o.creator );
    const auto& props = _db.get_dynamic_global_properties();
@@ -317,12 +432,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       if( o.memo_key != public_key_type() )
             acc.memo_key = o.memo_key;
 
-      if( ( o.active || o.owner ) && acc.active_challenged )
-      {
-         acc.active_challenged = false;
-         acc.last_active_proved = _db.head_block_time();
-      }
-
       acc.last_account_update = _db.head_block_time();
 
       #ifndef IS_LOW_MEM
@@ -348,12 +457,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-   {
-      const auto& auth = _db.get_account( o.author );
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
-   }
-
    const auto& comment = _db.get_comment( o.author, o.permlink );
    FC_ASSERT( comment.children == 0, "Cannot delete a comment with replies." );
 
@@ -406,6 +509,13 @@ struct comment_options_extension_visitor
    const comment_object& _c;
    database& _db;
 
+#ifdef STEEM_ENABLE_SMT
+   void operator()( const allowed_vote_assets& va) const
+   {
+      FC_TODO("To be implemented  suppport for allowed_vote_assets");
+   }
+#endif
+
    void operator()( const comment_payout_beneficiaries& cpb ) const
    {
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
@@ -425,12 +535,6 @@ struct comment_options_extension_visitor
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-   {
-      const auto& auth = _db.get_account( o.author );
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
-   }
-
    const auto& comment = _db.get_comment( o.author, o.permlink );
    if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
       FC_ASSERT( comment.abs_rshares == 0, "One of the included comment options requires the comment to have no rshares allocated to it." );
@@ -462,9 +566,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
    const auto& auth = _db.get_account( o.author ); /// prove it exists
-
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
 
    comment_id_type id;
 
@@ -750,17 +851,15 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       if( reject_escrow )
       {
-         const auto& from_account = _db.get_account( o.from );
-         _db.adjust_balance( from_account, escrow.steem_balance );
-         _db.adjust_balance( from_account, escrow.sbd_balance );
-         _db.adjust_balance( from_account, escrow.pending_fee );
+         _db.adjust_balance( o.from, escrow.steem_balance );
+         _db.adjust_balance( o.from, escrow.sbd_balance );
+         _db.adjust_balance( o.from, escrow.pending_fee );
 
          _db.remove( escrow );
       }
       else if( escrow.to_approved && escrow.agent_approved )
       {
-         const auto& agent_account = _db.get_account( o.agent );
-         _db.adjust_balance( agent_account, escrow.pending_fee );
+         _db.adjust_balance( o.agent, escrow.pending_fee );
 
          _db.modify( escrow, [&]( escrow_object& esc )
          {
@@ -797,7 +896,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
    try
    {
       _db.get_account(o.from); // Verify from account exists
-      const auto& receiver_account = _db.get_account(o.receiver);
 
       const auto& e = _db.get_escrow( o.from, o.escrow_id );
       FC_ASSERT( e.steem_balance >= o.steem_amount, "Release amount exceeds escrow balance. Amount: ${a}, Balance: ${b}", ("a", o.steem_amount)("b", e.steem_balance) );
@@ -831,8 +929,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
 
-      _db.adjust_balance( receiver_account, o.steem_amount );
-      _db.adjust_balance( receiver_account, o.sbd_amount );
+      _db.adjust_balance( o.receiver, o.steem_amount );
+      _db.adjust_balance( o.receiver, o.sbd_amount );
 
       _db.modify( e, [&]( escrow_object& esc )
       {
@@ -850,21 +948,9 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   const auto& from_account = _db.get_account(o.from);
-   const auto& to_account = _db.get_account(o.to);
-
-   if( from_account.active_challenged )
-   {
-      _db.modify( from_account, [&]( account_object& a )
-      {
-         a.active_challenged = false;
-         a.last_active_proved = _db.head_block_time();
-      });
-   }
-
-   FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
-   _db.adjust_balance( from_account, -o.amount );
-   _db.adjust_balance( to_account, o.amount );
+   FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
+   _db.adjust_balance( o.from, -o.amount );
+   _db.adjust_balance( o.to, o.amount );
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
@@ -1112,9 +1198,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = _db.get_comment( o.author, o.permlink );
    const auto& voter   = _db.get_account( o.voter );
 
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-      FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ), "Operation cannot be processed because the account is currently challenged." );
-
    FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
 
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
@@ -1179,6 +1262,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.effective_vesting_shares().amount.value) * used_power) / (STEEM_100_PERCENT)).to_uint64();
    if( !_db.has_hardfork( STEEM_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1764 ) )
+   {
+      abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
+      abs_rshares = std::max( int64_t(0), abs_rshares );
+   }
    if( _db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
    {
       FC_ASSERT( abs_rshares > STEEM_VOTE_DUST_THRESHOLD || o.weight == 0, "Voting weight is too small, please accumulate more voting power or steem power." );
@@ -1733,19 +1821,23 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
-  const auto& witness = _db.get_witness( o.publisher );
-  _db.modify( witness, [&]( witness_object& w ){
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__409 ) )
+      FC_ASSERT( is_asset_type( o.exchange_rate.base, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ),
+            "Price feed must be a SBD/STEEM price" );
+
+   const auto& witness = _db.get_witness( o.publisher );
+   _db.modify( witness, [&]( witness_object& w )
+   {
       w.sbd_exchange_rate = o.exchange_rate;
       w.last_sbd_exchange_update = _db.head_block_time();
-  });
+   });
 }
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-  const auto& owner = _db.get_account( o.owner );
-  FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
+  FC_ASSERT( _db.get_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
-  _db.adjust_balance( owner, -o.amount );
+  _db.adjust_balance( o.owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
@@ -1768,11 +1860,9 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -1793,11 +1883,9 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   const auto& owner = _db.get_account( o.owner );
+   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
-   _db.adjust_balance( owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -1824,58 +1912,14 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
-void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
+void placeholder_a_evaluator::do_apply( const placeholder_a_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled." );
-   const auto& challenged = _db.get_account( o.challenged );
-   const auto& challenger = _db.get_account( o.challenger );
-
-   if( o.require_owner )
-   {
-      FC_ASSERT( challenged.reset_account == o.challenger, "Owner authority can only be challenged by its reset account." );
-      FC_ASSERT( challenger.balance >= STEEM_OWNER_CHALLENGE_FEE );
-      FC_ASSERT( !challenged.owner_challenged );
-      FC_ASSERT( _db.head_block_time() - challenged.last_owner_proved > STEEM_OWNER_CHALLENGE_COOLDOWN );
-
-      _db.adjust_balance( challenger, - STEEM_OWNER_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_OWNER_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.owner_challenged = true;
-      });
-  }
-  else
-  {
-      FC_ASSERT( challenger.balance >= STEEM_ACTIVE_CHALLENGE_FEE, "Account does not have sufficient funds to pay challenge fee." );
-      FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "Account is already challenged." );
-      FC_ASSERT( _db.head_block_time() - challenged.last_active_proved > STEEM_ACTIVE_CHALLENGE_COOLDOWN, "Account cannot be challenged because it was recently challenged." );
-
-      _db.adjust_balance( challenger, - STEEM_ACTIVE_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_ACTIVE_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.active_challenged = true;
-      });
-  }
+   FC_ASSERT( false, "This is not a valid op." );
 }
 
-void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
+void placeholder_b_evaluator::do_apply( const placeholder_b_operation& o )
 {
-   const auto& challenged = _db.get_account( o.challenged );
-   FC_ASSERT( challenged.owner_challenged || challenged.active_challenged, "Account is not challeneged. No need to prove authority." );
-
-   _db.modify( challenged, [&]( account_object& a )
-   {
-      a.active_challenged = false;
-      a.last_active_proved = _db.head_block_time();
-      if( o.require_owner )
-      {
-         a.owner_challenged = false;
-         a.last_owner_proved = _db.head_block_time();
-      }
-   });
+   FC_ASSERT( false, "This is not a valid op" );
 }
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )

@@ -5,6 +5,9 @@
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/macros.hpp>
+
+#include <chainbase/chainbase.hpp>
 
 namespace steem { namespace plugins { namespace json_rpc {
 
@@ -79,13 +82,15 @@ namespace detail
       JSON_RPC_REGISTER_API( "jsonrpc" );
    }
 
-   DEFINE_API( json_rpc_plugin_impl, get_methods )
+   get_methods_return json_rpc_plugin_impl::get_methods( const get_methods_args& args, bool lock )
    {
+      FC_UNUSED( lock )
       return _methods;
    }
 
-   DEFINE_API( json_rpc_plugin_impl, get_signature )
+   get_signature_return json_rpc_plugin_impl::get_signature( const get_signature_args& args, bool lock )
    {
+      FC_UNUSED( lock )
       vector< string > v;
       boost::split( v, args, boost::is_any_of( "." ) );
       FC_ASSERT( v.size() == 2, "Invalid method name" );
@@ -166,9 +171,9 @@ namespace detail
 
    void json_rpc_plugin_impl::rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response )
    {
-      if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].as_string() == "2.0" )
+      if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].is_string() && request[ "jsonrpc" ].as_string() == "2.0" )
       {
-         if( request.contains( "method" ) )
+         if( request.contains( "method" ) && request[ "method" ].is_string() )
          {
             try
             {
@@ -193,6 +198,10 @@ namespace detail
                   {
                      if( call )
                         response.result = (*call)( func_args );
+                  }
+                  catch( chainbase::lock_exception& e )
+                  {
+                     response.error = json_rpc_error( JSON_RPC_ERROR_DURING_CALL, e.what() );
                   }
                   catch( fc::assert_exception& e )
                   {
@@ -231,20 +240,41 @@ namespace detail
          const auto& request = message.get_object();
 
          rpc_id( request, response );
-         if( !response.error.valid() )
-            rpc_jsonrpc( request, response );
+
+         // This second layer try/catch is to isolate errors that occur after parsing the id so that the id is properly returned.
+         try
+         {
+            if( !response.error.valid() )
+               rpc_jsonrpc( request, response );
+         }
+         catch( fc::exception& e )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         }
+         catch( std::exception& e )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed", fc::variant( e.what() ) );
+         }
+         catch( ... )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed" );
+         }
       }
       catch( fc::parse_error_exception& e )
       {
-         response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         response.error = json_rpc_error( JSON_RPC_PARSE_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
       }
       catch( fc::bad_cast_exception& e )
       {
-         response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         response.error = json_rpc_error( JSON_RPC_PARSE_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
       }
       catch( fc::exception& e )
       {
          response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+      }
+      catch( std::exception& e )
+      {
+         response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed", fc::variant( e.what() ) );
       }
       catch( ... )
       {

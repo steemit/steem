@@ -17,7 +17,7 @@ class tags_api_impl
    public:
       tags_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (get_trending_tags)
          (get_tags_used_by_author)
          (get_discussion)
@@ -66,7 +66,7 @@ class tags_api_impl
       std::shared_ptr< steem::plugins::follow::follow_api > _follow_api;
 };
 
-DEFINE_API( tags_api_impl, get_trending_tags )
+DEFINE_API_IMPL( tags_api_impl, get_trending_tags )
 {
    FC_ASSERT( args.limit <= 1000, "Cannot retrieve more than 1000 tags at a time." );
    get_trending_tags_return result;
@@ -93,7 +93,7 @@ DEFINE_API( tags_api_impl, get_trending_tags )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_tags_used_by_author )
+DEFINE_API_IMPL( tags_api_impl, get_tags_used_by_author )
 {
    const auto* acnt = _db.find_account( args.author );
    FC_ASSERT( acnt != nullptr, "Author not found" );
@@ -112,7 +112,7 @@ DEFINE_API( tags_api_impl, get_tags_used_by_author )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_discussion )
+DEFINE_API_IMPL( tags_api_impl, get_discussion )
 {
    const auto& by_permlink_idx = _db.get_index< chain::comment_index, chain::by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( args.author, args.permlink ) );
@@ -128,7 +128,7 @@ DEFINE_API( tags_api_impl, get_discussion )
    return get_discussion_return();
 }
 
-DEFINE_API( tags_api_impl, get_content_replies )
+DEFINE_API_IMPL( tags_api_impl, get_content_replies )
 {
    const auto& by_permlink_idx = _db.get_index< chain::comment_index, chain::by_parent >();
    auto itr = by_permlink_idx.find( boost::make_tuple( args.author, args.permlink ) );
@@ -144,7 +144,7 @@ DEFINE_API( tags_api_impl, get_content_replies )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_post_discussions_by_payout )
+DEFINE_API_IMPL( tags_api_impl, get_post_discussions_by_payout )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -156,7 +156,7 @@ DEFINE_API( tags_api_impl, get_post_discussions_by_payout )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
 }
 
-DEFINE_API( tags_api_impl, get_comment_discussions_by_payout )
+DEFINE_API_IMPL( tags_api_impl, get_comment_discussions_by_payout )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -168,7 +168,7 @@ DEFINE_API( tags_api_impl, get_comment_discussions_by_payout )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_trending )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_trending )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -180,7 +180,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_trending )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ) { return c.net_rshares <= 0; } );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_created )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_created )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -192,7 +192,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_created )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_active )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_active )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -204,7 +204,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_active )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_cashout )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_cashout )
 {
    args.validate();
    vector<discussion> result;
@@ -218,7 +218,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_cashout )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ){ return c.net_rshares < 0; });
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_votes )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_votes )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -230,7 +230,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_votes )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_children )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_children )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -242,7 +242,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_children )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_hot )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_hot )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -254,7 +254,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_hot )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ) { return c.net_rshares <= 0; } );
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_feed )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_feed )
 {
    args.validate();
    FC_ASSERT( _db.has_index< follow::feed_index >(), "Node is not running the follow plugin" );
@@ -301,7 +301,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_feed )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_blog )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_blog )
 {
    args.validate();
    FC_ASSERT( _db.has_index< follow::blog_index >(), "Node is not running the follow plugin" );
@@ -370,7 +370,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_blog )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_comments )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_comments )
 {
    get_discussions_by_comments_return result;
 #ifndef IS_LOW_MEM
@@ -414,7 +414,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_comments )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_promoted )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_promoted )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
@@ -426,7 +426,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_promoted )
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, filter_default, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
 }
 
-DEFINE_API( tags_api_impl, get_replies_by_last_update )
+DEFINE_API_IMPL( tags_api_impl, get_replies_by_last_update )
 {
    get_replies_by_last_update_return result;
 
@@ -461,7 +461,7 @@ DEFINE_API( tags_api_impl, get_replies_by_last_update )
    return result;
 }
 
-DEFINE_API( tags_api_impl, get_discussions_by_author_before_date )
+DEFINE_API_IMPL( tags_api_impl, get_discussions_by_author_before_date )
 {
    try
    {
@@ -504,7 +504,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_author_before_date )
    FC_CAPTURE_AND_RETHROW( (args) )
 }
 
-DEFINE_API( tags_api_impl, get_active_votes )
+DEFINE_API_IMPL( tags_api_impl, get_active_votes )
 {
    get_active_votes_return result;
    const auto& comment = _db.get_comment( args.author, args.permlink );
@@ -714,165 +714,28 @@ tags_api::tags_api(): my( new detail::tags_api_impl() )
 
 tags_api::~tags_api() {}
 
-DEFINE_API( tags_api, get_trending_tags )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_trending_tags( args );
-   });
-}
-
-DEFINE_API( tags_api, get_tags_used_by_author )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_tags_used_by_author( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussion )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussion( args );
-   });
-}
-
-DEFINE_API( tags_api, get_content_replies )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_content_replies( args );
-   });
-}
-
-DEFINE_API( tags_api, get_post_discussions_by_payout )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_post_discussions_by_payout( args );
-   });
-}
-
-DEFINE_API( tags_api, get_comment_discussions_by_payout )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_comment_discussions_by_payout( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_trending )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_trending( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_created )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_created( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_active )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_active( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_cashout )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_cashout( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_votes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_votes( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_children )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_children( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_hot )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_hot( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_feed )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_feed( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_blog )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_blog( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_comments )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_comments( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_promoted )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_promoted( args );
-   });
-}
-
-DEFINE_API( tags_api, get_replies_by_last_update )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_replies_by_last_update( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_author_before_date )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_author_before_date( args );
-   });
-}
-
-DEFINE_API( tags_api, get_active_votes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_active_votes( args );
-   });
-}
+DEFINE_READ_APIS( tags_api,
+   (get_trending_tags)
+   (get_tags_used_by_author)
+   (get_discussion)
+   (get_content_replies)
+   (get_post_discussions_by_payout)
+   (get_comment_discussions_by_payout)
+   (get_discussions_by_trending)
+   (get_discussions_by_created)
+   (get_discussions_by_active)
+   (get_discussions_by_cashout)
+   (get_discussions_by_votes)
+   (get_discussions_by_children)
+   (get_discussions_by_hot)
+   (get_discussions_by_feed)
+   (get_discussions_by_blog)
+   (get_discussions_by_comments)
+   (get_discussions_by_promoted)
+   (get_replies_by_last_update)
+   (get_discussions_by_author_before_date)
+   (get_active_votes)
+)
 
 void tags_api::set_pending_payout( discussion& d )
 {

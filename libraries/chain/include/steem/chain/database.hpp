@@ -13,7 +13,6 @@
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -71,6 +70,23 @@ namespace steem { namespace chain {
             skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
+         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
+         typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
+
+         struct open_args
+         {
+            fc::path data_dir;
+            fc::path shared_mem_dir;
+            uint64_t initial_supply = STEEM_INIT_SUPPLY;
+            uint64_t shared_file_size = 0;
+            uint32_t chainbase_flags = 0;
+            bool do_validate_invariants = false;
+
+            // The following fields are only used on reindexing
+            uint32_t stop_replay_at = 0;
+            TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;});
+         };
+
          /**
           * @brief Open a database, creating a new one if necessary
           *
@@ -79,11 +95,8 @@ namespace steem { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-         void open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply = STEEM_INIT_SUPPLY, uint64_t shared_file_size = 0, uint32_t chainbase_flags = 0,
-                    bool do_validate_invariants = false );
+         void open( const open_args& args );
 
-         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
-         typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
          /**
           * @brief Rebuild object graph from block history and open detabase
           *
@@ -92,8 +105,7 @@ namespace steem { namespace chain {
           *
           * @return the last replayed block number.
           */
-          uint32_t reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l),
-                            uint32_t stop_replay_at = 0, TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;}) );
+         uint32_t reindex( const open_args& args );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -246,7 +258,7 @@ namespace steem { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         //fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
+         //fc::signal<void(const vector< object_id_type >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
@@ -298,6 +310,7 @@ namespace steem { namespace chain {
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
          void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
@@ -422,6 +435,18 @@ namespace steem { namespace chain {
          bool disable_low_mem_warning = true;
 #endif
 
+#ifdef STEEM_ENABLE_SMT
+         ///Smart Media Tokens related methods
+         ///@{
+         void validate_smt_invariants()const;
+         /**
+          * @return a list of available NAIs.
+         */
+         vector< asset_symbol_type > get_smt_next_identifier();
+
+         ///@}
+#endif         
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          //void pop_undo() { object_database::pop_undo(); }
@@ -458,6 +483,11 @@ namespace steem { namespace chain {
          void apply_hardfork( uint32_t hardfork );
 
          ///@}
+#ifdef STEEM_ENABLE_SMT
+         template< typename smt_balance_object_type >
+         void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account );
+#endif
+         void modify_balance( const account_object& a, const asset& delta, bool check_balance );
 
          std::unique_ptr< database_impl > _my;
 
@@ -488,6 +518,7 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
+         uint32_t                      _next_available_nai = 1;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;

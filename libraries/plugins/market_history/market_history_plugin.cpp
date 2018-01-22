@@ -63,74 +63,62 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
                b.open = open;
                b.seconds = bucket;
 
-               if( op.open_pays.symbol == STEEM_SYMBOL )
-               {
-                  b.high_steem = op.open_pays.amount;
-                  b.high_sbd = op.current_pays.amount;
-                  b.low_steem = op.open_pays.amount;
-                  b.low_sbd = op.current_pays.amount;
-                  b.open_steem = op.open_pays.amount;
-                  b.open_sbd = op.current_pays.amount;
-                  b.close_steem = op.open_pays.amount;
-                  b.close_sbd = op.current_pays.amount;
-                  b.steem_volume = op.open_pays.amount;
-                  b.sbd_volume = op.current_pays.amount;
-               }
-               else
-               {
-                  b.high_steem = op.current_pays.amount;
-                  b.high_sbd = op.open_pays.amount;
-                  b.low_steem = op.current_pays.amount;
-                  b.low_sbd = op.open_pays.amount;
-                  b.open_steem = op.current_pays.amount;
-                  b.open_sbd = op.open_pays.amount;
-                  b.close_steem = op.current_pays.amount;
-                  b.close_sbd = op.open_pays.amount;
-                  b.steem_volume = op.current_pays.amount;
-                  b.sbd_volume = op.open_pays.amount;
-               }
+               b.steem.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.open_pays.amount : op.current_pays.amount );
+#ifdef STEEM_ENABLE_SMT
+                  b.symbol = ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.symbol : op.open_pays.symbol;
+#endif
+                  b.non_steem.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.amount : op.open_pays.amount );
             });
          }
          else
          {
             _db.modify( *itr, [&]( bucket_object& b )
             {
+#ifdef STEEM_ENABLE_SMT
+               b.symbol = ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.symbol : op.open_pays.symbol;
+#endif
                if( op.open_pays.symbol == STEEM_SYMBOL )
                {
-                  b.steem_volume += op.open_pays.amount;
-                  b.sbd_volume += op.current_pays.amount;
-                  b.close_steem = op.open_pays.amount;
-                  b.close_sbd = op.current_pays.amount;
+                  b.steem.volume += op.open_pays.amount;
+                  b.steem.close = op.open_pays.amount;
+
+                  b.non_steem.volume += op.current_pays.amount;
+                  b.non_steem.close = op.current_pays.amount;
 
                   if( b.high() < price( op.current_pays, op.open_pays ) )
                   {
-                     b.high_steem = op.open_pays.amount;
-                     b.high_sbd = op.current_pays.amount;
+                     b.steem.high = op.open_pays.amount;
+
+                     b.non_steem.high = op.current_pays.amount;
                   }
 
                   if( b.low() > price( op.current_pays, op.open_pays ) )
                   {
-                     b.low_steem = op.open_pays.amount;
-                     b.low_sbd = op.current_pays.amount;
+                     b.steem.low = op.open_pays.amount;
+
+                     b.non_steem.low = op.current_pays.amount;
                   }
                }
                else
                {
-                  b.steem_volume += op.current_pays.amount;
-                  b.sbd_volume += op.open_pays.amount;
-                  b.close_steem = op.current_pays.amount;
-                  b.close_sbd = op.open_pays.amount;
+                  b.steem.volume += op.current_pays.amount;
+                  b.steem.close = op.current_pays.amount;
+
+                  b.non_steem.volume += op.open_pays.amount;
+                  b.non_steem.close = op.open_pays.amount;
 
                   if( b.high() < price( op.open_pays, op.current_pays ) )
                   {
-                     b.high_steem = op.current_pays.amount;
-                     b.high_sbd = op.open_pays.amount;
+                     b.steem.high = op.current_pays.amount;
+
+                     b.non_steem.high = op.open_pays.amount;
                   }
 
                   if( b.low() > price( op.open_pays, op.current_pays ) )
                   {
-                     b.low_steem = op.current_pays.amount;
-                     b.low_sbd = op.open_pays.amount;
+                     b.steem.low = op.current_pays.amount;
+
+                     b.non_steem.low = op.open_pays.amount;
                   }
                }
             });
@@ -177,7 +165,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
       my = std::make_unique< detail::market_history_plugin_impl >();
 
-      my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
       add_plugin_index< bucket_index        >( my->_db );
       add_plugin_index< order_history_index >( my->_db );
 

@@ -497,6 +497,7 @@ void tags_plugin::set_program_options(
 {
    cfg.add_options()
       ("tags-start-promoted", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating promoted content. Should be 1 week prior to current time." )
+      ("tags-skip-startup-update", bpo::bool_switch()->default_value(false), "Skip updating tags on startup. Can safely be skipped when starting a previously running node. Should not be skipped when reindexing.")
       ;
 }
 
@@ -505,20 +506,25 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
-   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( [this]()
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+
+   if( !options.at( "tags-skip-startup-update" ).as< bool >() )
    {
-      my->_db.with_write_lock( [this]()
+      my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( 0, [this]()
       {
-         // for each comment that has not been paid, update tags
-         const auto& comment_idx = my->_db.get_index< comment_index, by_cashout_time >();
-         for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time != fc::time_point_sec::maximum(); ++itr )
+         ilog( "Updating all tag stats on startup" );
+         my->_db.with_write_lock( [this]()
          {
-            my->update_tags( *itr, true );
-         }
+            // for each comment that has not been paid, update tags
+            const auto& comment_idx = my->_db.get_index< comment_index, by_cashout_time >();
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time != fc::time_point_sec::maximum(); ++itr )
+            {
+               my->update_tags( *itr, true );
+            }
+         });
       });
-   });
+   }
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );

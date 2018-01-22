@@ -12,6 +12,7 @@ fc::variant_object get_config()
 
 #ifdef IS_TEST_NET
    result[ "IS_TEST_NET" ] = true;
+   result["TESTNET_BLOCK_LIMIT"] = TESTNET_BLOCK_LIMIT;
 #else
    result[ "IS_TEST_NET" ] = false;
 #endif
@@ -19,6 +20,7 @@ fc::variant_object get_config()
    result[ "STEEM_ENABLE_SMT" ] = true;
    result["SMT_VESTING_WITHDRAW_INTERVAL_SECONDS"] = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
    result["SMT_UPVOTE_LOCKOUT"] = SMT_UPVOTE_LOCKOUT;
+   result["SMT_MAX_VOTABLE_ASSETS"] = SMT_MAX_VOTABLE_ASSETS;
 #else
    result[ "STEEM_ENABLE_SMT" ] = false;
 #endif

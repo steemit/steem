@@ -50,24 +50,40 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
       echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.
       exit 1
     fi
-    FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    if [[ "$IS_BROADCAST_NODE" ]]; then
+      FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    elif [[ "$IS_AH_NODE" ]]; then
+      FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    else
+      FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    fi
     echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
     aws s3 cp blockchain.tar.bz2 s3://$S3_BUCKET/$FILE_NAME
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_BUCKET
     	exit 1
     fi
-    echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
-    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read
+    echo steemdsync: replacing current version of blockchain state with $FILE_NAME
+    if [[ "$IS_BROADCAST_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2
+      aws s3api put-object-acl --bucket $S3_BUCKET --key broadcast-$VERSION-latest.tar.bz2 --acl public-read
+    elif [[ "$IS_AH_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2
+      aws s3api put-object-acl --bucket $S3_BUCKET --key ahnode-$VERSION-latest.tar.bz2 --acl public-read
+    else
+      aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
+      aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read
+    fi
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
     fi
     # upload a current block_log
     cd $HOME
-    aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
-    aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
+    if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
+      aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
+      aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
+    fi
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation
     if [[ -e /tmp/isnewsync ]]; then

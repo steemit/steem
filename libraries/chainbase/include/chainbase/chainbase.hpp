@@ -467,13 +467,6 @@ namespace chainbase {
             _revision = revision;
          }
 
-         void remove_object( int64_t id )
-         {
-            const value_type* val = find( typename value_type::id_type(id) );
-            if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
-            remove( *val );
-         }
-
       private:
          bool enabled()const { return _stack.size(); }
 
@@ -583,8 +576,6 @@ namespace chainbase {
          virtual void    undo_all()const = 0;
          virtual uint32_t type_id()const  = 0;
 
-         virtual void remove_object( int64_t id ) = 0;
-
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
@@ -610,7 +601,6 @@ namespace chainbase {
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
-         virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
       private:
          BaseIndex& _base;
    };
@@ -653,6 +643,13 @@ namespace chainbase {
          std::atomic< uint32_t >                                    _current_lock;
    };
 
+   struct lock_exception : public std::exception
+   {
+      explicit lock_exception() {}
+      virtual ~lock_exception() {}
+
+      virtual const char* what() const noexcept { return "Unable to acquire database lock"; }
+   };
 
    /**
     *  This class
@@ -926,7 +923,7 @@ namespace chainbase {
             else
             {
                if( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
-                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to acquire lock" ) );
+                  BOOST_THROW_EXCEPTION( lock_exception() );
             }
 
             return callback();

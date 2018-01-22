@@ -1,9 +1,9 @@
 
-#include <graphene/schema/schema.hpp>
+#include <steem/schema/schema.hpp>
 
 #include <set>
 
-namespace graphene { namespace schema {
+namespace steem { namespace schema {
 
 namespace detail {
 

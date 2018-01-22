@@ -20,7 +20,7 @@ class follow_api_impl
    public:
       follow_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (get_followers)
          (get_following)
          (get_follow_count)
@@ -36,7 +36,7 @@ class follow_api_impl
       chain::database& _db;
 };
 
-DEFINE_API( follow_api_impl, get_followers )
+DEFINE_API_IMPL( follow_api_impl, get_followers )
 {
    FC_ASSERT( args.limit <= 1000 );
 
@@ -62,7 +62,7 @@ DEFINE_API( follow_api_impl, get_followers )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_following )
+DEFINE_API_IMPL( follow_api_impl, get_following )
 {
    FC_ASSERT( args.limit <= 1000 );
 
@@ -88,7 +88,7 @@ DEFINE_API( follow_api_impl, get_following )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_follow_count )
+DEFINE_API_IMPL( follow_api_impl, get_follow_count )
 {
    get_follow_count_return result;
    auto itr = _db.find< follow::follow_count_object, follow::by_account >( args.account );
@@ -101,7 +101,7 @@ DEFINE_API( follow_api_impl, get_follow_count )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_feed_entries )
+DEFINE_API_IMPL( follow_api_impl, get_feed_entries )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time." );
 
@@ -138,7 +138,7 @@ DEFINE_API( follow_api_impl, get_feed_entries )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_feed )
+DEFINE_API_IMPL( follow_api_impl, get_feed )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time." );
 
@@ -174,7 +174,7 @@ DEFINE_API( follow_api_impl, get_feed )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_blog_entries )
+DEFINE_API_IMPL( follow_api_impl, get_blog_entries )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
 
@@ -203,7 +203,7 @@ DEFINE_API( follow_api_impl, get_blog_entries )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_blog )
+DEFINE_API_IMPL( follow_api_impl, get_blog )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
 
@@ -231,7 +231,7 @@ DEFINE_API( follow_api_impl, get_blog )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_account_reputations )
+DEFINE_API_IMPL( follow_api_impl, get_account_reputations )
 {
    FC_ASSERT( args.limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time." );
 
@@ -258,7 +258,7 @@ DEFINE_API( follow_api_impl, get_account_reputations )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_reblogged_by )
+DEFINE_API_IMPL( follow_api_impl, get_reblogged_by )
 {
    get_reblogged_by_return result;
 
@@ -276,7 +276,7 @@ DEFINE_API( follow_api_impl, get_reblogged_by )
    return result;
 }
 
-DEFINE_API( follow_api_impl, get_blog_authors )
+DEFINE_API_IMPL( follow_api_impl, get_blog_authors )
 {
    get_blog_authors_return result;
 
@@ -301,84 +301,17 @@ follow_api::follow_api(): my( new detail::follow_api_impl() )
 
 follow_api::~follow_api() {}
 
-DEFINE_API( follow_api, get_followers )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_followers( args );
-   });
-}
-
-DEFINE_API( follow_api, get_following )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_following( args );
-   });
-}
-
-DEFINE_API( follow_api, get_follow_count )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_follow_count( args );
-   });
-}
-
-DEFINE_API( follow_api, get_feed_entries )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_feed_entries( args );
-   });
-}
-
-DEFINE_API( follow_api, get_feed )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_feed( args );
-   });
-}
-
-DEFINE_API( follow_api, get_blog_entries )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_blog_entries( args );
-   });
-}
-
-DEFINE_API( follow_api, get_blog )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_blog( args );
-   });
-}
-
-DEFINE_API( follow_api, get_account_reputations )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_account_reputations( args );
-   });
-}
-
-DEFINE_API( follow_api, get_reblogged_by )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_reblogged_by( args );
-   });
-}
-
-DEFINE_API( follow_api, get_blog_authors )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_blog_authors( args );
-   });
-}
+DEFINE_READ_APIS( follow_api,
+   (get_followers)
+   (get_following)
+   (get_follow_count)
+   (get_feed_entries)
+   (get_feed)
+   (get_blog_entries)
+   (get_blog)
+   (get_account_reputations)
+   (get_reblogged_by)
+   (get_blog_authors)
+)
 
 } } } // steem::plugins::follow

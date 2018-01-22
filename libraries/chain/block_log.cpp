@@ -212,7 +212,7 @@ namespace steem { namespace chain {
          FC_ASSERT( static_cast<uint64_t>(my->index_stream.tellp()) == sizeof( uint64_t ) * ( b.block_num() - 1 ),
             "Append to index file occuring at wrong position.",
             ( "position", (uint64_t) my->index_stream.tellp() )( "expected",( b.block_num() - 1 ) * sizeof( uint64_t ) ) );
-         auto data = fc::raw::pack( b );
+         auto data = fc::raw::pack_to_vector( b );
          my->block_stream.write( data.data(), data.size() );
          my->block_stream.write( (char*)&pos, sizeof( pos ) );
          my->index_stream.write( (char*)&pos, sizeof( pos ) );

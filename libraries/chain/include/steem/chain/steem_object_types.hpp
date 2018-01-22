@@ -4,7 +4,6 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <chainbase/chainbase.hpp>
 
 #include <steem/protocol/types.hpp>
@@ -31,8 +30,6 @@ using steem::protocol::share_type;
 typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
-
-typedef bip::vector< char, allocator< char > > buffer_type;
 
 struct by_id;
 
@@ -69,7 +66,9 @@ enum object_type
    vesting_delegation_expiration_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
-   smt_token_object_type
+   smt_token_object_type,
+   account_regular_balance_object_type,
+   account_rewards_balance_object_type
 #endif
 };
 
@@ -105,6 +104,9 @@ class vesting_delegation_expiration_object;
 
 #ifdef STEEM_ENABLE_SMT
 class smt_token_object;
+template < enum object_type ObjectType > class account_balance_object;
+typedef account_balance_object< account_regular_balance_object_type > account_regular_balance_object;
+typedef account_balance_object< account_rewards_balance_object_type > account_rewards_balance_object;
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -139,6 +141,8 @@ typedef oid< vesting_delegation_expiration_object   > vesting_delegation_expirat
 
 #ifdef STEEM_ENABLE_SMT
 typedef oid< smt_token_object                       > smt_token_id_type;
+typedef oid< account_regular_balance_object         > account_regular_balance_id_type;
+typedef oid< account_rewards_balance_object         > account_rewards_balance_id_type;
 #endif
 
 enum bandwidth_type
@@ -187,38 +191,6 @@ namespace fc
          s.read( (char*)&id._id, sizeof(id._id));
       }
    }
-
-   namespace raw
-   {
-      namespace bip = chainbase::bip;
-      using chainbase::allocator;
-
-      template< typename T > inline void pack( steem::chain::buffer_type& raw, const T& v )
-      {
-         auto size = pack_size( v );
-         raw.resize( size );
-         datastream< char* > ds( raw.data(), size );
-         pack( ds, v );
-      }
-
-      template< typename T > inline void unpack( const steem::chain::buffer_type& raw, T& v )
-      {
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-      }
-
-      template< typename T > inline T unpack( const steem::chain::buffer_type& raw )
-      {
-         T v;
-         datastream< const char* > ds( raw.data(), raw.size() );
-         unpack( ds, v );
-         return v;
-      }
-   }
-}
-
-namespace fc {
-
 }
 
 FC_REFLECT_ENUM( steem::chain::object_type,
@@ -254,10 +226,11 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
+                 (account_regular_balance_object_type)
+                 (account_rewards_balance_object_type)
 #endif
                )
 
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
-FC_REFLECT_TYPENAME( steem::chain::buffer_type )
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

@@ -37,6 +37,9 @@
 
 #define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 
+/// Allows to limit number of total produced blocks. 
+#define TESTNET_BLOCK_LIMIT                   (3000000)
+
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 4) )
@@ -274,7 +277,9 @@
 
 #ifdef STEEM_ENABLE_SMT
 
+#define SMT_MAX_VOTABLE_ASSETS 2
 #define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
 #define SMT_UPVOTE_LOCKOUT                      (60*60*12)  /// 12 hours
 
-#endif
+#endif /// STEEM_ENABLE_SMT
+

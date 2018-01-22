@@ -77,8 +77,8 @@ BOOST_AUTO_TEST_CASE( serialization_raw_test )
       op.amount = asset(100,STEEM_SYMBOL);
 
       trx.operations.push_back( op );
-      auto packed = fc::raw::pack( trx );
-      signed_transaction unpacked = fc::raw::unpack<signed_transaction>(packed);
+      auto packed = fc::raw::pack_to_vector( trx );
+      signed_transaction unpacked = fc::raw::unpack_from_vector<signed_transaction>(packed);
       unpacked.validate();
       BOOST_CHECK( trx.digest() == unpacked.digest() );
    } catch (fc::exception& e) {
@@ -110,56 +110,129 @@ BOOST_AUTO_TEST_CASE( serialization_json_test )
    }
 }
 
-BOOST_AUTO_TEST_CASE( asset_test )
+BOOST_AUTO_TEST_CASE( legacy_asset_test )
 {
    try
    {
-      BOOST_CHECK_EQUAL( asset().symbol.decimals(), 3 );
-      BOOST_CHECK_EQUAL( asset().to_string(), "0.000 TESTS" );
+      BOOST_CHECK_EQUAL( legacy_asset().decimals(), 3 );
+      BOOST_CHECK_EQUAL( legacy_asset().to_string(), "0.000 TESTS" );
 
       BOOST_TEST_MESSAGE( "Asset Test" );
-      asset steem = asset::from_string( "123.456 TESTS" );
-      asset sbd = asset::from_string( "654.321 TBD" );
-      asset tmp = asset::from_string( "0.456 TESTS" );
+      legacy_asset steem = legacy_asset::from_string( "123.456 TESTS" );
+      legacy_asset sbd = legacy_asset::from_string( "654.321 TBD" );
+      legacy_asset tmp = legacy_asset::from_string( "0.456 TESTS" );
       BOOST_CHECK_EQUAL( tmp.amount.value, 456 );
-      tmp = asset::from_string( "0.056 TESTS" );
+      tmp = legacy_asset::from_string( "0.056 TESTS" );
       BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
 
       // BOOST_CHECK( std::abs( steem.to_real() - 123.456 ) < 0.0005 );
       BOOST_CHECK_EQUAL( steem.amount.value, 123456 );
-      BOOST_CHECK_EQUAL( steem.symbol.decimals(), 3 );
+      BOOST_CHECK_EQUAL( steem.decimals(), 3 );
       BOOST_CHECK_EQUAL( steem.to_string(), "123.456 TESTS" );
-      BOOST_CHECK( steem.symbol == STEEM_SYMBOL);
-      BOOST_CHECK_EQUAL( asset(50, STEEM_SYMBOL).to_string(), "0.050 TESTS" );
-      BOOST_CHECK_EQUAL( asset(50000, STEEM_SYMBOL).to_string(), "50.000 TESTS" );
+      BOOST_CHECK( steem.symbol.ser == STEEM_SYMBOL_SER );
+      BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset( 50, STEEM_SYMBOL ) ).to_string(), "0.050 TESTS" );
+      BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50000, STEEM_SYMBOL ) ) .to_string(), "50.000 TESTS" );
 
       // BOOST_CHECK( std::abs( sbd.to_real() - 654.321 ) < 0.0005 );
       BOOST_CHECK_EQUAL( sbd.amount.value, 654321 );
-      BOOST_CHECK_EQUAL( sbd.symbol.decimals(), 3 );
+      BOOST_CHECK_EQUAL( sbd.decimals(), 3 );
       BOOST_CHECK_EQUAL( sbd.to_string(), "654.321 TBD" );
-      BOOST_CHECK( sbd.symbol == SBD_SYMBOL);
-      BOOST_CHECK_EQUAL( asset(50, SBD_SYMBOL).to_string(), "0.050 TBD" );
-      BOOST_CHECK_EQUAL( asset(50000, SBD_SYMBOL).to_string(), "50.000 TBD" );
+      BOOST_CHECK( sbd.symbol.ser == SBD_SYMBOL_SER );
+      BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50, SBD_SYMBOL ) ).to_string(), "0.050 TBD" );
+      BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50000, SBD_SYMBOL ) ).to_string(), "50.000 TBD" );
 
-      BOOST_CHECK_THROW( asset::from_string( "1.00000000000000000000 TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1.000TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1. 333 TESTS" ), fc::exception ); // Fails because symbol is '333 TESTS', which is too long
-      BOOST_CHECK_THROW( asset::from_string( "1 .333 TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1. 333 X" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1 .333 X" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1 .333" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1 1.1" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "11111111111111111111111111111111111111111111111 TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1.1.1 TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1.abc TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( " TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1.333" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1.333 " ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( " " ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "  " ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "100 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.00000000000000000000 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.000TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 TESTS" ), fc::exception ); // Fails because symbol is '333 TESTS', which is too long
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 TESTS" ), fc::exception );
+      legacy_asset unusual = legacy_asset::from_string( "1. 333 X" ); // Passes because symbol '333 X' is short enough
+      FC_ASSERT( unusual.decimals() == 0 );
+      FC_ASSERT( unusual.symbol_name() == "333 X" );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 X" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1 1.1" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "11111111111111111111111111111111111111111111111 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.1.1 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.abc TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( " TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.333" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1.333 " ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( " " ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "  " ), fc::exception );
+      BOOST_CHECK_EQUAL( legacy_asset::from_string( "100 TESTS" ).amount.value, 100 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( asset_test )
+{
+   try
+   {
+      fc::string s;
+
+      BOOST_CHECK_EQUAL( asset().decimals(), 3 );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset() ), "[\"0\",3,2]" );
+
+      asset steem = fc::json::from_string( "[\"123456\",    3, 2]" ).as< asset >();
+      asset sbd =   fc::json::from_string( "[\"654321\",    3, 1]" ).as< asset >();
+      asset vests = fc::json::from_string( "[\"123456789\", 6, 3]" ).as< asset >();
+      asset tmp =   fc::json::from_string( "[\"456\",       3, 2]" ).as< asset >();
+      BOOST_CHECK_EQUAL( tmp.amount.value, 456 );
+      tmp = fc::json::from_string( "[\"56\", 3, 2]" ).as< asset >();
+      BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
+
+      BOOST_CHECK_EQUAL( steem.amount.value, 123456 );
+      BOOST_CHECK_EQUAL( steem.decimals(), 3 );
+      BOOST_CHECK_EQUAL( fc::json::to_string( steem ), "[\"123456\",3,2]" );
+      BOOST_CHECK( steem.symbol.asset_num == STEEM_ASSET_NUM_STEEM );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, STEEM_SYMBOL ) ), "[\"50\",3,2]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, STEEM_SYMBOL ) ), "[\"50000\",3,2]" );
+
+      BOOST_CHECK_EQUAL( sbd.amount.value, 654321 );
+      BOOST_CHECK_EQUAL( sbd.decimals(), 3 );
+      BOOST_CHECK_EQUAL( fc::json::to_string( sbd ), "[\"654321\",3,1]" );
+      BOOST_CHECK( sbd.symbol.asset_num == STEEM_ASSET_NUM_SBD );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, SBD_SYMBOL ) ), "[\"50\",3,1]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, SBD_SYMBOL ) ), "[\"50000\",3,1]" );
+
+      BOOST_CHECK_EQUAL( vests.amount.value, 123456789 );
+      BOOST_CHECK_EQUAL( vests.decimals(), 6 );
+      BOOST_CHECK_EQUAL( fc::json::to_string( vests ), "[\"123456789\",6,3]" );
+      BOOST_CHECK( vests.symbol.asset_num == STEEM_ASSET_NUM_VESTS );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, VESTS_SYMBOL ) ), "[\"50\",6,3]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, VESTS_SYMBOL ) ), "[\"50000\",6,3]" );
+
+      // amount overflow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"9223372036854775808\",3,2]" ).as< asset >(), fc::exception );
+      // amount underflow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"-1\",3,2]" ).as< asset >(), fc::exception );
+
+      // precision overflow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",256,2]" ).as< asset >(), fc::exception );
+      // precision underflow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",-1,2]" ).as< asset >(), fc::exception );
+
+      // asset num overflow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",3,4294967296]" ).as< asset >(), fc::exception );
+      // asset num underfow
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",3,-1]" ).as< asset >(), fc::exception );
+
+      // Check wrong size tuple
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"0\",3]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"0\",3,2,1]" ).as< asset >(), fc::exception );
+
+      // Check non-numeric characters in amount
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"foobar\",3,2]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10a\",3,2]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"10a00\",3,2]" ).as< asset >(), fc::exception );
+
+      // Check hex value
+      BOOST_CHECK_THROW( fc::json::from_string( "[\"0x8000\",3,2]" ).as< asset >(), fc::exception );
+
+      // Check octal value
+      BOOST_CHECK_EQUAL( fc::json::from_string( "[\"08000\",3,2]" ).as< asset >().amount.value, 8000 );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -167,7 +240,7 @@ BOOST_AUTO_TEST_CASE( asset_test )
 template< typename T >
 std::string hex_bytes( const T& obj )
 {
-   std::vector<char> data = fc::raw::pack( obj );
+   std::vector<char> data = fc::raw::pack_to_vector( obj );
    std::ostringstream ss;
    static const char hexdigits[] = "0123456789abcdef";
 
@@ -246,7 +319,7 @@ BOOST_AUTO_TEST_CASE( asset_raw_test )
 {
    try
    {
-      BOOST_CHECK( SBD_SYMBOL   < STEEM_SYMBOL );
+      BOOST_CHECK( SBD_SYMBOL < STEEM_SYMBOL );
       BOOST_CHECK( STEEM_SYMBOL < VESTS_SYMBOL );
 
       // get a bunch of random bits
@@ -283,7 +356,7 @@ BOOST_AUTO_TEST_CASE( asset_raw_test )
             asset a = asset( amount, symbol );
             vector<char> v_old;
             old_pack_asset( v_old, a );
-            vector<char> v_cur = fc::raw::pack(a);
+            vector<char> v_cur = fc::raw::pack_to_vector(a);
             // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_old )) );
             // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_cur )) );
             BOOST_CHECK( v_cur == v_old );
@@ -295,13 +368,14 @@ BOOST_AUTO_TEST_CASE( asset_raw_test )
             BOOST_CHECK( a == a2 );
 
             // check conversion to JSON works
-            std::string json_old = old_json_asset(a);
-            std::string json_cur = fc::json::to_string(a);
+            //std::string json_old = old_json_asset(a);
+            //std::string json_cur = fc::json::to_string(a);
             // ilog( "json_old: ${j}", ("j", json_old) );
             // ilog( "json_cur: ${j}", ("j", json_cur) );
-            BOOST_CHECK( json_cur == json_old );
+            //BOOST_CHECK( json_cur == json_old );
 
-            // check conversion from JSON works
+            // check JSON serialization is symmetric
+            std::string json_cur = fc::json::to_string(a);
             a2 = fc::json::from_string(json_cur).as< asset >();
             BOOST_CHECK( a == a2 );
          }

@@ -25,16 +25,23 @@ public:
       c( *this );
    }
 
+   uint32_t get_nai() const
+   {
+      return symbol.to_nai();
+   }
+
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
    asset_symbol_type symbol;
-   account_name_type control_account = "@@@@@";
+   account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
+   share_type        current_supply = 0;
+
    /// set_setup_parameters
-   bool                 allow_voting = false;
-   bool                 allow_vesting = false;
+   bool              allow_voting = false;
+   bool              allow_vesting = false;
 
    /// set_runtime_parameters
    uint32_t cashout_window_seconds = 0;
@@ -65,6 +72,7 @@ public:
 };
 
 struct by_symbol;
+struct by_nai;
 struct by_control_account;
 
 typedef multi_index_container <
@@ -74,6 +82,8 @@ typedef multi_index_container <
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
          member< smt_token_object, asset_symbol_type, &smt_token_object::symbol > >,
+      ordered_unique< tag< by_nai >,
+         const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_nai > >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,

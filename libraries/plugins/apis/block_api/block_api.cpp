@@ -13,8 +13,7 @@ class block_api_impl
       block_api_impl();
       ~block_api_impl();
 
-      DECLARE_API
-      (
+      DECLARE_API_IMPL(
          (get_block_header)
          (get_block)
       )
@@ -47,15 +46,7 @@ block_api_impl::~block_api_impl() {}
 // Blocks and transactions                                          //
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
-DEFINE_API( block_api, get_block_header )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_block_header( args );
-   });
-}
-
-DEFINE_API( block_api_impl, get_block_header )
+DEFINE_API_IMPL( block_api_impl, get_block_header )
 {
    get_block_header_return result;
    auto block = _db.fetch_block_by_number( args.block_num );
@@ -66,15 +57,7 @@ DEFINE_API( block_api_impl, get_block_header )
    return result;
 }
 
-DEFINE_API( block_api, get_block )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_block( args );
-   });
-}
-
-DEFINE_API( block_api_impl, get_block )
+DEFINE_API_IMPL( block_api_impl, get_block )
 {
    get_block_return result;
    auto block = _db.fetch_block_by_number( args.block_num );
@@ -84,5 +67,10 @@ DEFINE_API( block_api_impl, get_block )
 
    return result;
 }
+
+DEFINE_READ_APIS( block_api,
+   (get_block_header)
+   (get_block)
+)
 
 } } } // steem::plugins::block_api

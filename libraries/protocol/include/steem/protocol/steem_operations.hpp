@@ -98,8 +98,82 @@ namespace steem { namespace protocol {
       void validate()const;
    };
 
+#ifdef STEEM_ENABLE_SMT
+   struct votable_asset_info_v1
+   {
+      votable_asset_info_v1() = default;
+      votable_asset_info_v1(const share_type& max_payout, bool allow_rewards) :
+         max_accepted_payout(max_payout), allow_curation_rewards(allow_rewards) {}
+
+      share_type        max_accepted_payout    = 0;
+      bool              allow_curation_rewards = false;
+   };
+
+   typedef static_variant< votable_asset_info_v1 > votable_asset_info;
+
+   /** Allows to store all SMT tokens being allowed to use during voting process.
+    *  Maps asset symbol (SMT) to the vote info.
+    *  @see SMT spec for details: https://github.com/steemit/smt-whitepaper/blob/master/smt-manual/manual.md
+    */
+   struct allowed_vote_assets
+   {
+      /// Helper method to simplify construction of votable_asset_info.
+      void add_votable_asset(const asset_symbol_type& symbol, const share_type& max_accepted_payout,
+         bool allow_curation_rewards)
+         {
+            votable_asset_info info(votable_asset_info_v1(max_accepted_payout, allow_curation_rewards));
+            votable_assets[symbol] = std::move(info);
+         }
+
+      /** Allows to check if given symbol is allowed votable asset.
+       *  @param symbol - asset symbol to be check against votable feature
+       *  @param max_accepted_payout - optional output parameter which allows to take `max_accepted_payout`
+       *                  configured for given asset
+       *  @param allow_curation_rewards - optional output parameter which allows to take `allow_curation_rewards`
+       *                  specified for given votable asset.
+       *  @returns true if given asset is allowed votable asset for given comment.
+       */
+      bool is_allowed(const asset_symbol_type& symbol, share_type* max_accepted_payout = nullptr,
+         bool* allow_curation_rewards = nullptr) const
+         {
+            auto foundI = votable_assets.find(symbol);
+            if(foundI == votable_assets.end())
+            {
+               if(max_accepted_payout != nullptr)
+                  *max_accepted_payout = 0;
+               if(allow_curation_rewards != nullptr)
+                  *allow_curation_rewards = false;
+               return false;
+            }
+
+            if(max_accepted_payout != nullptr)
+               *max_accepted_payout = foundI->second.get<votable_asset_info_v1>().max_accepted_payout;
+            if(allow_curation_rewards != nullptr)
+               *allow_curation_rewards = foundI->second.get<votable_asset_info_v1>().allow_curation_rewards;
+            
+            return true;
+         }
+
+      /** Part of `comment_option_operation` validation process, to be called when allowed_vote_assets object
+       *  has been added as comment option extension.
+       *  @throws fc::assert_exception on failure.
+       */
+      void validate() const
+      {
+         FC_ASSERT(votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
+         FC_ASSERT(is_allowed(STEEM_SYMBOL) == false,
+            "STEEM can not be explicitly specified as one of allowed_vote_assets");
+      }
+
+      flat_map< asset_symbol_type, votable_asset_info > votable_assets;
+   };
+#endif /// STEEM_ENABLE_SMT
+
    typedef static_variant<
             comment_payout_beneficiaries
+#ifdef STEEM_ENABLE_SMT
+            ,allowed_vote_assets
+#endif /// STEEM_ENABLE_SMT
            > comment_options_extension;
 
    typedef flat_set< comment_options_extension > comment_options_extensions_type;
@@ -128,26 +202,14 @@ namespace steem { namespace protocol {
    };
 
 
-   struct challenge_authority_operation : public base_operation
+   struct placeholder_a_operation : public base_operation
    {
-      account_name_type challenger;
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(challenger); }
    };
 
-   struct prove_authority_operation : public base_operation
+   struct placeholder_b_operation : public base_operation
    {
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if( !require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<account_name_type>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
 
@@ -371,7 +433,7 @@ namespace steem { namespace protocol {
        *  fee requires all accounts to have some kind of commitment to the network that includes the
        *  ability to vote and make transactions.
        */
-      legacy_steem_asset account_creation_fee = legacy_steem_asset::from_amount( STEEM_MIN_ACCOUNT_CREATION_FEE );
+      legacy_asset account_creation_fee = legacy_asset::from_amount( STEEM_MIN_ACCOUNT_CREATION_FEE );
 
       /**
        *  This witnesses vote for the maximum_block_size which is used by the network
@@ -421,6 +483,27 @@ namespace steem { namespace protocol {
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
    };
 
+   struct witness_set_properties_operation : public base_operation
+   {
+      account_name_type                   owner;
+      flat_map< string, vector< char > >  props;
+      extensions_type                     extensions;
+
+      void validate()const;
+      void get_required_authorities( vector< authority >& a )const
+      {
+         auto key_itr = props.find( "key" );
+
+         if( key_itr != props.end() )
+         {
+            public_key_type signing_key;
+            fc::raw::unpack_from_vector( key_itr->second, signing_key );
+            a.push_back( authority( 1, signing_key, 1 ) );
+         }
+         else
+            a.push_back( authority( 1, STEEM_NULL_ACCOUNT, 1 ) ); // The null account auth is impossible to satisfy
+      }
+   };
 
    /**
     * All accounts with a VFS can vote for or against any witness.
@@ -996,6 +1079,7 @@ FC_REFLECT( steem::protocol::transfer_to_vesting_operation, (from)(to)(amount) )
 FC_REFLECT( steem::protocol::withdraw_vesting_operation, (account)(vesting_shares) )
 FC_REFLECT( steem::protocol::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
 FC_REFLECT( steem::protocol::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
+FC_REFLECT( steem::protocol::witness_set_properties_operation, (owner)(props)(extensions) )
 FC_REFLECT( steem::protocol::account_witness_vote_operation, (account)(witness)(approve) )
 FC_REFLECT( steem::protocol::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steem::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
@@ -1011,6 +1095,12 @@ FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 
 FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
+
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
+FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
+#endif
+
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
 FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
@@ -1018,8 +1108,8 @@ FC_REFLECT( steem::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(s
 FC_REFLECT( steem::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steem::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
 FC_REFLECT( steem::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
-FC_REFLECT( steem::protocol::challenge_authority_operation, (challenger)(challenged)(require_owner) );
-FC_REFLECT( steem::protocol::prove_authority_operation, (challenged)(require_owner) );
+FC_REFLECT( steem::protocol::placeholder_a_operation, );
+FC_REFLECT( steem::protocol::placeholder_b_operation, );
 FC_REFLECT( steem::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );

@@ -9,7 +9,7 @@ condenser_api::get_version_return remote_node_api::get_version()
    FC_ASSERT( false );
 }
 
-vector< tags::api_tag_object > remote_node_api::get_trending_tags( string, uint32_t )
+vector< condenser_api::api_tag_object > remote_node_api::get_trending_tags( string, uint32_t )
 {
    FC_ASSERT( false );
 }
@@ -34,7 +34,7 @@ optional< database_api::api_signed_block_object > remote_node_api::get_block( ui
    FC_ASSERT( false );
 }
 
-vector< account_history::api_operation_object > remote_node_api::get_ops_in_block( uint32_t, bool only_virtual )
+vector< condenser_api::api_operation_object > remote_node_api::get_ops_in_block( uint32_t, bool only_virtual )
 {
    FC_ASSERT( false );
 }
@@ -44,7 +44,7 @@ fc::variant_object remote_node_api::get_config()
    FC_ASSERT( false );
 }
 
-database_api::api_dynamic_global_property_object remote_node_api::get_dynamic_global_properties()
+condenser_api::extended_dynamic_global_properties remote_node_api::get_dynamic_global_properties()
 {
    FC_ASSERT( false );
 }
@@ -54,17 +54,17 @@ chain_properties remote_node_api::get_chain_properties()
    FC_ASSERT( false );
 }
 
-price remote_node_api::get_current_median_history_price()
+condenser_api::legacy_price remote_node_api::get_current_median_history_price()
 {
    FC_ASSERT( false );
 }
 
-database_api::api_feed_history_object remote_node_api::get_feed_history()
+condenser_api::api_feed_history_object remote_node_api::get_feed_history()
 {
    FC_ASSERT( false );
 }
 
-database_api::api_witness_schedule_object remote_node_api::get_witness_schedule()
+condenser_api::api_witness_schedule_object remote_node_api::get_witness_schedule()
 {
    FC_ASSERT( false );
 }
@@ -79,7 +79,7 @@ condenser_api::scheduled_hardfork remote_node_api::get_next_scheduled_hardfork()
    FC_ASSERT( false );
 }
 
-database_api::api_reward_fund_object remote_node_api::get_reward_fund( string )
+condenser_api::api_reward_fund_object remote_node_api::get_reward_fund( string )
 {
    FC_ASSERT( false );
 }
@@ -99,7 +99,7 @@ vector< account_id_type > remote_node_api::get_account_references( account_id_ty
    FC_ASSERT( false );
 }
 
-vector< optional< database_api::api_account_object > > remote_node_api::lookup_account_names( vector< account_name_type > )
+vector< optional< condenser_api::api_account_object > > remote_node_api::lookup_account_names( vector< account_name_type > )
 {
    FC_ASSERT( false );
 }
@@ -124,7 +124,7 @@ optional< database_api::api_account_recovery_request_object > remote_node_api::g
    FC_ASSERT( false );
 }
 
-optional< database_api::api_escrow_object > remote_node_api::get_escrow( account_name_type, uint32_t )
+optional< condenser_api::api_escrow_object > remote_node_api::get_escrow( account_name_type, uint32_t )
 {
    FC_ASSERT( false );
 }
@@ -139,42 +139,42 @@ optional< witness::api_account_bandwidth_object > remote_node_api::get_account_b
    FC_ASSERT( false );
 }
 
-vector< database_api::api_savings_withdraw_object > remote_node_api::get_savings_withdraw_from( account_name_type )
+vector< condenser_api::api_savings_withdraw_object > remote_node_api::get_savings_withdraw_from( account_name_type )
 {
    FC_ASSERT( false );
 }
 
-vector< database_api::api_savings_withdraw_object > remote_node_api::get_savings_withdraw_to( account_name_type )
+vector< condenser_api::api_savings_withdraw_object > remote_node_api::get_savings_withdraw_to( account_name_type )
 {
    FC_ASSERT( false );
 }
 
-vector< database_api::api_vesting_delegation_object > remote_node_api::get_vesting_delegations( account_name_type, account_name_type, uint32_t )
+vector< condenser_api::api_vesting_delegation_object > remote_node_api::get_vesting_delegations( account_name_type, account_name_type, uint32_t )
 {
    FC_ASSERT( false );
 }
 
-vector< database_api::api_vesting_delegation_expiration_object > remote_node_api::get_expiring_vesting_delegations( account_name_type, time_point_sec, uint32_t )
+vector< condenser_api::api_vesting_delegation_expiration_object > remote_node_api::get_expiring_vesting_delegations( account_name_type, time_point_sec, uint32_t )
 {
    FC_ASSERT( false );
 }
 
-vector< optional< database_api::api_witness_object > > remote_node_api::get_witnesses( vector< witness_id_type > )
+vector< optional< condenser_api::api_witness_object > > remote_node_api::get_witnesses( vector< witness_id_type > )
 {
    FC_ASSERT( false );
 }
 
-vector< database_api::api_convert_request_object > remote_node_api::get_conversion_requests( account_name_type )
+vector< condenser_api::api_convert_request_object > remote_node_api::get_conversion_requests( account_name_type )
 {
    FC_ASSERT( false );
 }
 
-optional< database_api::api_witness_object > remote_node_api::get_witness_by_account( account_name_type )
+optional< condenser_api::api_witness_object > remote_node_api::get_witness_by_account( account_name_type )
 {
    FC_ASSERT( false );
 }
 
-vector< database_api::api_witness_object > remote_node_api::get_witnesses_by_vote( account_name_type, uint32_t )
+vector< condenser_api::api_witness_object > remote_node_api::get_witnesses_by_vote( account_name_type, uint32_t )
 {
    FC_ASSERT( false );
 }
@@ -234,12 +234,12 @@ vector< condenser_api::account_vote > remote_node_api::get_account_votes( accoun
    FC_ASSERT( false );
 }
 
-tags::discussion remote_node_api::get_content( account_name_type, string )
+condenser_api::discussion remote_node_api::get_content( account_name_type, string )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_content_replies( account_name_type, string )
+vector< condenser_api::discussion > remote_node_api::get_content_replies( account_name_type, string )
 {
    FC_ASSERT( false );
 }
@@ -249,87 +249,87 @@ vector< tags::tag_count_object > remote_node_api::get_tags_used_by_author( accou
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_payout( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_payout( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_post_discussions_by_payout( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_post_discussions_by_payout( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_comment_discussions_by_payout( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_comment_discussions_by_payout( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_trending( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_trending( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_created( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_created( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_active( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_active( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_cashout( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_cashout( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_votes( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_votes( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_children( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_children( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_hot( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_hot( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_feed( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_feed( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_blog( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_blog( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_comments( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_comments( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_promoted( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_promoted( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_replies_by_last_update( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_replies_by_last_update( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_author_before_date( tags::discussion_query )
+vector< condenser_api::discussion > remote_node_api::get_discussions_by_author_before_date( tags::discussion_query )
 {
    FC_ASSERT( false );
 }
 
-map< uint32_t, account_history::api_operation_object > remote_node_api::get_account_history( account_name_type, uint64_t, uint32_t )
+map< uint32_t, condenser_api::api_operation_object > remote_node_api::get_account_history( account_name_type, uint64_t, uint32_t )
 {
    FC_ASSERT( false );
 }
@@ -399,27 +399,27 @@ vector< follow::reblog_count > remote_node_api::get_blog_authors( account_name_t
    FC_ASSERT( false );
 }
 
-market_history::get_ticker_return remote_node_api::get_ticker()
+condenser_api::get_ticker_return remote_node_api::get_ticker()
 {
    FC_ASSERT( false );
 }
 
-market_history::get_volume_return remote_node_api::get_volume()
+condenser_api::get_volume_return remote_node_api::get_volume()
 {
    FC_ASSERT( false );
 }
 
-market_history::get_order_book_return remote_node_api::get_order_book( uint32_t )
+condenser_api::get_order_book_return remote_node_api::get_order_book( uint32_t )
 {
    FC_ASSERT( false );
 }
 
-vector< market_history::market_trade > remote_node_api::get_trade_history( time_point_sec, time_point_sec, uint32_t )
+vector< condenser_api::market_trade > remote_node_api::get_trade_history( time_point_sec, time_point_sec, uint32_t )
 {
    FC_ASSERT( false );
 }
 
-vector< market_history::market_trade > remote_node_api::get_recent_trades( uint32_t )
+vector< condenser_api::market_trade > remote_node_api::get_recent_trades( uint32_t )
 {
    FC_ASSERT( false );
 }

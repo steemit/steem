@@ -9,7 +9,7 @@
 #include <steem/chain/evaluator_registry.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
 
-#include <graphene/schema/schema.hpp>
+#include <steem/schema/schema.hpp>
 
 #include <fc/variant.hpp>
 
@@ -98,11 +98,11 @@ class generic_custom_operation_interpreter
 
             try
             {
-               custom_operations = fc::raw::unpack< vector< CustomOperationType > >( outer_o.data );
+               custom_operations = fc::raw::unpack_from_vector< vector< CustomOperationType > >( outer_o.data );
             }
             catch ( fc::exception& )
             {
-               custom_operations.push_back( fc::raw::unpack< CustomOperationType >( outer_o.data ) );
+               custom_operations.push_back( fc::raw::unpack_from_vector< CustomOperationType >( outer_o.data ) );
             }
 
             apply_operations( custom_operations, operation( outer_o ) );
@@ -110,9 +110,9 @@ class generic_custom_operation_interpreter
          FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 
-      virtual std::shared_ptr< graphene::schema::abstract_schema > get_operation_schema() override
+      virtual std::shared_ptr< steem::schema::abstract_schema > get_operation_schema() override
       {
-         return graphene::schema::get_schema_for_type< CustomOperationType >();
+         return steem::schema::get_schema_for_type< CustomOperationType >();
       }
 };
 
