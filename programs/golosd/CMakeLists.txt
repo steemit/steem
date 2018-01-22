@@ -25,6 +25,12 @@ target_link_libraries(
         golos::database_api_plugin
         golos::test_api_plugin
         golos::social_network
+        golos::market_history_plugin        
+        golos::tolstoy_api_plugin
+        golos::blockchain_statistics
+        golos::account_by_key_plugin
+        golos::account_history
+        golos::auth_util
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}

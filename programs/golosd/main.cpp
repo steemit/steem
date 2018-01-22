@@ -9,8 +9,14 @@
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <golos/plugins/witness/witness.hpp>
 #include <golos/plugins/database_api/plugin.hpp>
+#include <golos/plugins/market_history/market_history_plugin.hpp>
 #include <golos/plugins/test_api/test_api_plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
+#include <golos/plugins/tolstoy_api/tolstoy_api_plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
+#include <golos/plugins/blockchain_statistics/plugin.hpp>
+#include <golos/plugins/account_by_key/account_by_key_plugin.hpp>
+#include <golos/plugins/auth_util/plugin.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <fc/log/console_appender.hpp>
@@ -87,6 +93,12 @@ int main( int argc, char** argv ) {
         golos::plugins::database_api::register_database_api();
         appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
         appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
+        appbase::app().register_plugin<golos::plugins::tolstoy_api::tolstoy_api_plugin>();
+        appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
+        appbase::app().register_plugin<golos::plugins::account_history::plugin>();
+        appbase::app().register_plugin<golos::plugins::blockchain_statistics::plugin>();
+        appbase::app().register_plugin<golos::plugins::account_by_key::account_by_key_plugin>();
+        appbase::app().register_plugin<golos::plugins::auth_util::plugin>();
 ///plugins
         appbase::app().set_version_string( version_string() );
 
