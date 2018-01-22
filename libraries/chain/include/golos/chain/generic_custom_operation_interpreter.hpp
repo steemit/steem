@@ -95,9 +95,6 @@ namespace golos {
                 FC_CAPTURE_AND_RETHROW((outer_o))
             }
 
-            virtual std::shared_ptr<graphene::schema::abstract_schema> get_operation_schema() override {
-                return graphene::schema::get_schema_for_type<CustomOperationType>();
-            }
         };
 
     }

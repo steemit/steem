@@ -1,9 +1,11 @@
 #pragma once
 
 #include <golos/chain/comment_object.hpp>
-#include <golos/chain/account_object.hpp>
+#include <golos/plugins/social_network/api_object/comment_api_object.hpp>
 #include <boost/multi_index/composite_key.hpp>
+#include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
+#include <golos/chain/account_object.hpp>
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 
@@ -13,11 +15,11 @@ namespace golos {
             namespace languages {
                 using namespace golos::chain;
                 using namespace boost::multi_index;
-                using golos::chain::account_object;
 
                 using chainbase::object;
                 using chainbase::object_id;
                 using chainbase::allocator;
+                using golos::chain::account_object;
 
                 //
                 // Plugins should #define their SPACE_ID's so plugins with
@@ -32,6 +34,8 @@ namespace golos {
 #ifndef LANGUAGES_SPACE_ID
 #define LANGUAGES_SPACE_ID 12
 #endif
+
+#define LANGUAGES_PLUGIN_NAME "languages"
 
                 typedef fc::fixed_string<fc::sha256> language_name_type;
 
@@ -366,7 +370,7 @@ namespace golos {
 
                     language_name_type language;
                     fc::uint128_t total_children_rshares2;
-                    asset total_payout = asset (0, SBD_SYMBOL);
+                    asset total_payout = asset(0, SBD_SYMBOL);
                     int32_t net_votes = 0;
                     uint32_t top_posts = 0;
                     uint32_t comments = 0;
@@ -473,7 +477,7 @@ namespace golos {
                     id_type id;
                     account_object::id_type author;
                     language_name_type language;
-                    asset total_rewards = asset (0, SBD_SYMBOL);
+                    asset total_rewards = asset(0, SBD_SYMBOL);
                     uint32_t total_posts = 0;
                 };
 
@@ -535,6 +539,20 @@ namespace golos {
                 };
 
 
+                inline std::string get_language(const comment_api_object &c) {
+                    comment_metadata meta;
+                    std::string language("");
+                    if (!c.json_metadata.empty()) {
+                        try {
+                            meta = fc::json::from_string(c.json_metadata).as<comment_metadata>();
+                            language = meta.language;
+                        } catch (...) {
+                            // Do nothing on malformed json_metadata
+                        }
+                    }
+
+                    return language;
+                }
 
 
             }
@@ -547,7 +565,8 @@ FC_REFLECT((golos::plugins::social_network::languages::comment_metadata), (langu
 FC_REFLECT((golos::plugins::social_network::languages::language_object),
            (id)(name)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(
                    children_rshares2)(author)(parent)(comment))
-CHAINBASE_SET_INDEX_TYPE(golos::plugins::social_network::languages::language_object, golos::plugins::social_network::languages::language_index)
+CHAINBASE_SET_INDEX_TYPE(golos::plugins::social_network::languages::language_object,
+                         golos::plugins::social_network::languages::language_index)
 
 FC_REFLECT((golos::plugins::social_network::languages::language_stats_object),
            (id)(language)(total_children_rshares2)(total_payout)(net_votes)(top_posts)(comments));
@@ -556,7 +575,8 @@ CHAINBASE_SET_INDEX_TYPE(golos::plugins::social_network::languages::language_sta
 
 FC_REFLECT((golos::plugins::social_network::languages::peer_stats_object),
            (id)(voter)(peer)(direct_positive_votes)(direct_votes)(indirect_positive_votes)(indirect_votes)(rank));
-CHAINBASE_SET_INDEX_TYPE(golos::plugins::social_network::languages::peer_stats_object, golos::plugins::social_network::languages::peer_stats_index)
+CHAINBASE_SET_INDEX_TYPE(golos::plugins::social_network::languages::peer_stats_object,
+                         golos::plugins::social_network::languages::peer_stats_index)
 
 FC_REFLECT((golos::plugins::social_network::languages::author_language_stats_object),
            (id)(author)(language)(total_posts)(total_rewards))

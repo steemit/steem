@@ -1,12 +1,16 @@
 #include <boost/program_options/options_description.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
 #include <golos/plugins/social_network/tag/tags_object.hpp>
+#include <golos/plugins/social_network/languages/language_object.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/plugins/social_network/api_object/discussion.hpp>
 #include <golos/plugins/social_network/api_object/discussion_query.hpp>
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/social_network/languages/language_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+#include <golos/plugins/social_network/tag/tag_visitor.hpp>
+#include <golos/plugins/social_network/languages/language_visitor.hpp>
+#include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
@@ -40,21 +44,6 @@ namespace golos {
                 return discussions;
             }
 
-            std::string get_language(const comment_api_object &c) {
-                languages::comment_metadata meta;
-                std::string language("");
-                if (!c.json_metadata.empty()) {
-                    try {
-                        meta = fc::json::from_string(c.json_metadata).as<languages::comment_metadata>();
-                        language = meta.language;
-                    } catch (...) {
-                        // Do nothing on malformed json_metadata
-                    }
-                }
-
-                return language;
-            }
-
             bool tags_filter(const discussion_query &query, const comment_api_object &c, const std::function<bool(const comment_api_object &)> &condition) {
                 if (query.select_authors.size()) {
                     if (query.select_authors.find(c.author) == query.select_authors.end()) {
@@ -83,7 +72,7 @@ namespace golos {
 
 
             bool languages_filter(const discussion_query &query, const comment_api_object &c, const std::function<bool(const comment_api_object &)> &condition) {
-                std::string language = get_language(c);
+                std::string language = languages::get_language(c);
 
                 if (query.filter_languages.size()) {
                     if (language.empty()) {
@@ -102,6 +91,18 @@ namespace golos {
             struct social_network_t::impl final {
                 impl():database_(appbase::app().get_plugin<chain::plugin>().db()){}
                 ~impl(){}
+
+                void on_operation(const operation_notification &note){
+                    try {
+                        /// plugins shouldn't ever throw
+                        note.op.visit(languages::operation_visitor(database(), cache_languages));
+                        note.op.visit(tags::operation_visitor(database()));
+                    } catch (const fc::exception &e) {
+                        edump((e.to_detail_string()));
+                    } catch (...) {
+                        elog("unhandled exception");
+                    }
+                }
 
                 golos::chain::database& database() {
                     return database_;
@@ -240,7 +241,7 @@ namespace golos {
                         const std::string &start_permlink
                 ) const;
 
-
+                std::set<std::string> cache_languages;
             private:
                 golos::chain::database& database_;
             };
@@ -270,6 +271,9 @@ namespace golos {
             void social_network_t::plugin_initialize(const boost::program_options::variables_map &options) {
                 pimpl.reset(new impl());
                 auto &db = pimpl->database();
+                pimpl->database().post_apply_operation.connect([&](const operation_notification &note) {
+                    pimpl->on_operation(note);
+                });
                 add_plugin_index<tags::tag_index>(db);
                 add_plugin_index<tags::tag_stats_index>(db);
                 add_plugin_index<tags::peer_stats_index>(db);
@@ -462,8 +466,7 @@ namespace golos {
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
                     query.validate();
-                    //TODO: BIG PROBLEM
-                    //FC_ASSERT(pimpl->_follow_api, "Node is not running the follow plugin");
+                    FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
 
                     std::string start_author = query.start_author ? *(query.start_author) : "";
@@ -554,8 +557,7 @@ namespace golos {
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
                     query.validate();
-                    //TODO: BIG PROBLEM
-                    //FC_ASSERT(pimpl->_follow_api, "Node is not running the follow plugin");
+                    FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
 
                     auto start_author = query.start_author ? *(query.start_author) : "";
@@ -864,15 +866,24 @@ namespace golos {
                             discussion,
                             tags::by_parent_trending
                     > map_result = pimpl->select<
-                            tags::tag_object, tags::tag_index, tags::by_parent_trending, tags::by_comment>(
-                            query.select_tags, query, parent, std::bind(tags_filter, query, std::placeholders::_1,
-                                                                        [&](const comment_api_object &c) -> bool {
-                                                                            return c.net_rshares <= 0;
-                                                                        }), [&](const comment_api_object &c) -> bool {
+                            tags::tag_object,
+                            tags::tag_index,
+                            tags::by_parent_trending,
+                            tags::by_comment>(
+                            query.select_tags,
+                            query, parent,
+                            std::bind(tags_filter, query, std::placeholders::_1, [&](const comment_api_object &c) -> bool {
+                                return c.net_rshares <= 0;
+                            }),
+                            [&](const comment_api_object &c) -> bool {
                                 return false;
-                            }, [&](const tags::tag_object &) -> bool {
+                            },
+                            [&](const tags::tag_object &) -> bool {
                                 return false;
-                            }, parent, std::numeric_limits<double>::max());
+                            },
+                            parent,
+                            std::numeric_limits<double>::max()
+                    );
 
                     std::multimap<
                             languages::language_object,
@@ -957,7 +968,7 @@ namespace golos {
                 });
             }
 
-            vector<discussion> social_network_t::impl::get_comment_discussions_by_payout(const discussion_query &query) const {
+            std::vector<discussion> social_network_t::impl::get_comment_discussions_by_payout(const discussion_query &query) const {
                 query.validate();
                 auto parent = comment_object::id_type(1);
                 std::multimap<

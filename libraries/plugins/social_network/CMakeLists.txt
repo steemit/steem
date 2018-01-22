@@ -14,12 +14,14 @@ list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/social_network/api_object/tag_index.hpp
         include/golos/plugins/social_network/api_object/vote_state.hpp
         include/golos/plugins/social_network/languages/language_object.hpp
+        include/golos/plugins/social_network/languages/language_visitor.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
+        discussion_query.cpp
+        language_visitor.cpp
         social_network.cpp
         tag_visitor.cpp
-        discussion_query.cpp
 )
 
 if(BUILD_SHARED_LIBRARIES)
@@ -43,6 +45,7 @@ target_link_libraries(
         golos_chain
         golos::chain_plugin
         golos::network
+        golos::follow_plugin
         appbase
 )
 

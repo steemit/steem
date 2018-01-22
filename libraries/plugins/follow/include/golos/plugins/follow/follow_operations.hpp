@@ -1,55 +1,67 @@
 #pragma once
 
 #include <golos/protocol/base.hpp>
-
-#include <golos/follow/follow_plugin.hpp>
-#include <golos/protocol/operation_util.hpp>
+#include <golos/chain/evaluator.hpp>
+#include <golos/plugins/follow/plugin.hpp>
 
 namespace golos {
-    namespace follow {
+    namespace plugins {
+        namespace follow {
+            using golos::chain::base_operation;
+            using golos::protocol::account_name_type;
+            struct follow_operation : base_operation {
+                protocol::account_name_type follower;
+                protocol::account_name_type following;
+                std::set<std::string> what; /// blog, mute
 
-        using namespace std;
-        using golos::protocol::base_operation;
+                void validate() const;
 
-        struct follow_operation : base_operation {
-            account_name_type follower;
-            account_name_type following;
-            set<string> what; /// blog, mute
+                void get_required_posting_authorities(flat_set<account_name_type> &a) const {
+                    a.insert(follower);
+                }
+            };
 
-            void validate() const;
+            struct reblog_operation : base_operation{
+                protocol::account_name_type account;
+                protocol::account_name_type author;
+                std::string permlink;
 
-            void get_required_posting_authorities(flat_set<account_name_type> &a) const {
-                a.insert(follower);
-            }
-        };
+                void validate() const;
 
-        struct reblog_operation : base_operation {
-            account_name_type account;
-            account_name_type author;
-            string permlink;
+                void get_required_posting_authorities(flat_set<account_name_type> &a) const {
+                    a.insert(account);
+                }
+            };
 
-            void validate() const;
+            typedef fc::static_variant<follow_operation, reblog_operation> follow_plugin_operation;
 
-            void get_required_posting_authorities(flat_set<account_name_type> &a) const {
-                a.insert(account);
-            }
-        };
 
-        typedef fc::static_variant<
-                follow_operation,
-                reblog_operation
-        > follow_plugin_operation;
-
-        DEFINE_PLUGIN_EVALUATOR(follow_plugin, follow_plugin_operation, follow);
-
-        DEFINE_PLUGIN_EVALUATOR(follow_plugin, follow_plugin_operation, reblog);
-
+        }
     }
 } // golos::follow
 
-FC_REFLECT(golos::follow::follow_operation, (follower)(following)(what))
-FC_REFLECT(golos::follow::reblog_operation, (account)(author)(permlink))
+FC_REFLECT((golos::plugins::follow::follow_operation), (follower)(following)(what));
+FC_REFLECT((golos::plugins::follow::reblog_operation), (account)(author)(permlink));
 
-DECLARE_OPERATION_TYPE(golos::follow::follow_plugin_operation)
+namespace fc {
 
-FC_REFLECT_TYPENAME(golos::follow::follow_plugin_operation)
+    void to_variant(const golos::plugins::follow::follow_plugin_operation &, fc::variant &);
+
+    void from_variant(const fc::variant &, golos::plugins::follow::follow_plugin_operation &);
+
+} /* fc */
+
+namespace golos {
+    namespace protocol {
+
+        void operation_validate(const plugins::follow::follow_plugin_operation &o);
+
+        void operation_get_required_authorities(const plugins::follow::follow_plugin_operation &op,
+                                                flat_set<account_name_type> &active, flat_set<account_name_type> &owner,
+                                                flat_set<account_name_type> &posting, std::vector<authority> &other);
+
+    }
+}
+
+FC_REFLECT_TYPENAME((golos::plugins::follow::follow_plugin_operation));
+

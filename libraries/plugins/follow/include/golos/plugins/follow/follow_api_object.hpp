@@ -1,9 +1,8 @@
 #ifndef GOLOS_FOLLOW_API_OBJECT_HPP
 #define GOLOS_FOLLOW_API_OBJECT_HPP
 
-#include <golos/plugins//api_objects/comment_api_object.hpp>
+#include <golos/plugins/social_network/api_object/comment_api_object.hpp>
 #include <golos/plugins/follow/follow_objects.hpp>
-#include <fc/include/fc/reflect/reflect.hpp>
 #include "follow_forward.hpp"
 namespace golos {
     namespace plugins {
@@ -19,7 +18,7 @@ namespace golos {
             };
 
             struct comment_feed_entry {
-                database_api::comment_api_object comment;
+                social_network::comment_api_object comment;
                 std::vector<account_name_type> reblog_by;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
@@ -34,7 +33,7 @@ namespace golos {
             };
 
             struct comment_blog_entry {
-                database_api::comment_api_object comment;
+                social_network::comment_api_object comment;
                 std::string blog;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;

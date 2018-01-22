@@ -29,7 +29,7 @@ namespace golos {
 
                 APPBASE_PLUGIN_REQUIRES(
                         (chain::plugin)
-                                (json_rpc::plugin)
+                        (json_rpc::plugin)
                 )
 
                 static const std::string &name() {
@@ -39,17 +39,17 @@ namespace golos {
 
                 DECLARE_API (
                         (get_followers)
-                                (get_following)
-                                (get_follow_count)
-                                (get_feed_entries)
-                                (get_feed)
-                                (get_blog_entries)
-                                (get_blog)
-                                (get_account_reputations)
+                        (get_following)
+                        (get_follow_count)
+                        (get_feed_entries)
+                        (get_feed)
+                        (get_blog_entries)
+                        (get_blog)
+                        (get_account_reputations)
                                 ///Gets list of accounts that have reblogged a particular post
-                                (get_reblogged_by)
+                        (get_reblogged_by)
                                 /// Gets a list of authors that have had their content reblogged on a given blog account
-                                (get_blog_authors))
+                        (get_blog_authors))
 
                 get_account_reputations_r get_account_reputations_native(const get_account_reputations_a &);
 

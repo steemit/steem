@@ -5,6 +5,7 @@
 #include <golos/plugins/social_network/api_object/discussion.hpp>
 #include <golos/plugins/social_network/api_object/category_api_object.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
+#include <golos/plugins/follow/plugin.hpp>
 
 namespace golos {
     namespace plugins {
@@ -41,7 +42,7 @@ namespace golos {
 
             class social_network_t final : public appbase::plugin<social_network_t> {
             public:
-                APPBASE_PLUGIN_REQUIRES((chain::plugin))
+                APPBASE_PLUGIN_REQUIRES((chain::plugin)(follow::plugin))
 
                 DECLARE_API(
                 /**
