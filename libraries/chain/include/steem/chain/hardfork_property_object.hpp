@@ -20,9 +20,9 @@ namespace steem { namespace chain {
 
          id_type                                                              id;
 
-         using t_beneficiaries = t_vector< fc::time_point_sec >;
+         using t_processed_hardforks = t_vector< fc::time_point_sec >;
 
-         t_beneficiaries                                                      processed_hardforks;
+         t_processed_hardforks                                                processed_hardforks;
          uint32_t                                                             last_hardfork = 0;
          protocol::hardfork_version                                           current_hardfork_version;
          protocol::hardfork_version                                           next_hardfork;
