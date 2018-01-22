@@ -10,8 +10,8 @@ namespace golos {
 
             void follow_evaluator::do_apply(const follow_operation &o) {
                 try {
-                    static std::map<std::string, follow_type> follow_type_map = []() {
-                        std::map<std::string, follow_type> follow_map;
+                    static map<string, follow_type> follow_type_map = []() {
+                        map<string, follow_type> follow_map;
                         follow_map["undefined"] = follow_type::undefined;
                         follow_map["blog"] = follow_type::blog;
                         follow_map["ignore"] = follow_type::ignore;
@@ -19,7 +19,7 @@ namespace golos {
                         return follow_map;
                     }();
 
-                    const auto &idx = database().get_index<follow_index>().indices().get<by_follower_following>();
+                    const auto &idx = db().get_index<follow_index>().indices().get<by_follower_following>();
                     auto itr = idx.find(boost::make_tuple(o.follower, o.following));
 
                     uint16_t what = 0;
@@ -27,12 +27,12 @@ namespace golos {
 
                     for (auto target : o.what) {
                         switch (follow_type_map[target]) {
-                            case follow_type::blog:
-                                what |= 1 << follow_type::blog;
+                            case blog:
+                                what |= 1 << blog;
                                 is_following = true;
                                 break;
-                            case follow_type::ignore:
-                                what |= 1 << follow_type::ignore;
+                            case ignore:
+                                what |= 1 << ignore;
                                 break;
                             default:
                                 //ilog( "Encountered unknown option ${o}", ("o", target) );
@@ -40,29 +40,30 @@ namespace golos {
                         }
                     }
 
-                    if (what & (1 << follow_type::ignore))
-                        FC_ASSERT(!(what & (1 << blog)), "Cannot follow blog and ignore author at the same time");
+                    if (what & (1 << ignore))
+                        FC_ASSERT(!(what & (1
+                                << blog)), "Cannot follow blog and ignore author at the same time");
 
                     bool was_followed = false;
 
                     if (itr == idx.end()) {
-                        database().create<follow_object>([&](follow_object &obj) {
+                        db().create<follow_object>([&](follow_object &obj) {
                             obj.follower = o.follower;
                             obj.following = o.following;
                             obj.what = what;
                         });
                     } else {
-                        was_followed = itr->what & 1 << follow_type::blog;
+                        was_followed = itr->what & 1 << blog;
 
-                        database().modify(*itr, [&](follow_object &obj) {
+                        db().modify(*itr, [&](follow_object &obj) {
                             obj.what = what;
                         });
                     }
 
-                    const auto &follower = database().find<follow_count_object, by_account>(o.follower);
+                    const auto &follower = db().find<follow_count_object, by_account>(o.follower);
 
                     if (follower == nullptr) {
-                        database().create<follow_count_object>([&](follow_count_object &obj) {
+                        db().create<follow_count_object>([&](follow_count_object &obj) {
                             obj.account = o.follower;
 
                             if (is_following) {
@@ -70,7 +71,7 @@ namespace golos {
                             }
                         });
                     } else {
-                        database().modify(*follower, [&](follow_count_object &obj) {
+                        db().modify(*follower, [&](follow_count_object &obj) {
                             if (was_followed) {
                                 obj.following_count--;
                             }
@@ -80,10 +81,10 @@ namespace golos {
                         });
                     }
 
-                    const auto &following = database().find<follow_count_object, by_account>(o.following);
+                    const auto &following = db().find<follow_count_object, by_account>(o.following);
 
                     if (following == nullptr) {
-                        database().create<follow_count_object>([&](follow_count_object &obj) {
+                        db().create<follow_count_object>([&](follow_count_object &obj) {
                             obj.account = o.following;
 
                             if (is_following) {
@@ -91,7 +92,7 @@ namespace golos {
                             }
                         });
                     } else {
-                        database().modify(*following, [&](follow_count_object &obj) {
+                        db().modify(*following, [&](follow_count_object &obj) {
                             if (was_followed) {
                                 obj.follower_count--;
                             }
@@ -100,7 +101,8 @@ namespace golos {
                             }
                         });
                     }
-                } FC_CAPTURE_AND_RETHROW((o))
+                }
+                FC_CAPTURE_AND_RETHROW((o))
             }
 
             void reblog_evaluator::do_apply(const reblog_operation &o) {
