@@ -174,13 +174,14 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
 
    bool is_init = true;
 
-   while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
-   {
-      auto old_itr = it;
-      ++it;
+   if( pd.s.allow_delete )
+      while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
+      {
+         auto old_itr = it;
+         ++it;
 
-      remember_last< CreationType >( pd.s.is_empty, is_init, old_itr, pd );
-   }
+         remember_last< CreationType >( pd.s.is_empty, is_init, old_itr, pd );
+      }
 
    if( !is_init )
      modify< CreationType >( *std::prev( it ), start_account, next_id, pd );
