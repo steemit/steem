@@ -23,8 +23,8 @@ pyresttest $NODE:$RPC_PORT ./basic_smoketest.yaml
 pyresttest $NODE:$RPC_PORT ./database_api/database_api_test.yaml --import_extensions='validator_ex;'$COMPARATOR
 [ $? -ne 0 ] && EXIT_CODE=-1
 
-pyresttest $NODE:$RPC_PORT ./condenser_api/tests.yaml --import_extensions='validator_ex;comparator_equal'
-[ $? -ne 0 ] && EXIT_CODE=-1
+#pyresttest $NODE:$RPC_PORT ./condenser_api/tests.yaml --import_extensions='validator_ex;comparator_equal'
+#[ $? -ne 0 ] && EXIT_CODE=-1
 
 pyresttest $NODE:$RPC_PORT ./account_history_api/account_history_api_test.yaml --import_extensions='validator_ex;'$COMPARATOR
 [ $? -ne 0 ] && EXIT_CODE=-1
