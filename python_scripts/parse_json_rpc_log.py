@@ -7,6 +7,8 @@ json_rpc_plugin will generate log messages if you add lines like these into conf
 log-file-appender = {"appender": "json_rpc", "file": "logs/json_rpc/json_rpc.log"}
 log-logger = {"name": "json_rpc", "level": "debug", "appender": "json_rpc"}
 
+In addition --jsonrpc-log-responses must be passed to steemd.
+
 Usage: parse_json_rpc_log <log_file_name> [<location>]
        <location> points where output files generated
 """

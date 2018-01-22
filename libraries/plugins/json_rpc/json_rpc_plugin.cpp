@@ -58,8 +58,7 @@ namespace detail
          void rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response );
          json_rpc_response rpc( const fc::variant& message );
 
-         void initialize( bool jsonrpc_log_responses )
-            { _jsonrpc_log_responses = jsonrpc_log_responses; }
+         void initialize( bool jsonrpc_log_responses );
 
          DECLARE_API(
             (get_methods)
@@ -84,9 +83,11 @@ namespace detail
       _methods.push_back( canonical_name.str() );
    }
 
-   void json_rpc_plugin_impl::initialize()
+   void json_rpc_plugin_impl::initialize( bool jsonrpc_log_responses )
    {
       JSON_RPC_REGISTER_API( "jsonrpc" );
+      _jsonrpc_log_responses = jsonrpc_log_responses;
+
    }
 
    get_methods_return json_rpc_plugin_impl::get_methods( const get_methods_args& args, bool lock )
@@ -308,7 +309,7 @@ json_rpc_plugin::~json_rpc_plugin() {}
 void json_rpc_plugin::set_program_options( options_description& cli, options_description& )
 {
    cli.add_options()
-      ( "jsonrpc-log-responses", "Enable jsonrpc request/response logging" )
+      ( "jsonrpc-log-responses", "Enable jsonrpc request/response logging" );
 }
 
 void json_rpc_plugin::plugin_initialize( const variables_map& options )
