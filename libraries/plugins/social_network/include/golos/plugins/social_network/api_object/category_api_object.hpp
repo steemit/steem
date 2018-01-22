@@ -5,7 +5,7 @@
 
 namespace golos {
     namespace plugins {
-        namespace database_api {
+        namespace social_network {
             using golos::protocol::asset;
             using golos::protocol::share_type;
             struct category_api_object {
@@ -32,7 +32,7 @@ namespace golos {
     }
 }
 
-FC_REFLECT((golos::plugins::database_api::category_api_object),
+FC_REFLECT((golos::plugins::social_network::category_api_object),
            (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update))
 
 #endif //GOLOS_CATEGORY_API_OBJ_HPP

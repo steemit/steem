@@ -3,7 +3,7 @@
 #include <golos/protocol/authority.hpp>
 #include <golos/protocol/steem_operations.hpp>
 
-#include <golos/chain//steem_object_types.hpp>
+#include <golos/chain/steem_object_types.hpp>
 #include <golos/chain/witness_objects.hpp>
 
 #include <boost/multi_index/composite_key.hpp>

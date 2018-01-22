@@ -1,7 +1,6 @@
 #pragma once
 
 #include <golos/protocol/operations.hpp>
-
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/chain/history_object.hpp>
 
@@ -27,5 +26,4 @@ namespace golos {
     }
 }
 
-FC_REFLECT((golos::plugins::database_api::applied_operation),
-           (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
+FC_REFLECT((golos::plugins::database_api::applied_operation), (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))

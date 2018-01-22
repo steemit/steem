@@ -1,11 +1,12 @@
 #ifndef GOLOS_TAG_API_OBJ_HPP
 #define GOLOS_TAG_API_OBJ_HPP
 
-#include <golos/plugins/tags/tags_plugin.hpp>
+#include <golos/plugins/social_network/tag/tags_object.hpp>
+#include <golos/protocol/asset.hpp>
 
 namespace golos {
     namespace plugins {
-        namespace database_api {
+        namespace social_network {
             struct tag_api_object {
                 tag_api_object(const tags::tag_stats_object &o) : name(o.tag),
                         total_children_rshares2(o.total_children_rshares2), total_payouts(o.total_payout),
@@ -27,6 +28,6 @@ namespace golos {
 }
 
 
-FC_REFLECT((golos::plugins::database_api::tag_api_object),
+FC_REFLECT((golos::plugins::social_network::tag_api_object),
            (name)(total_children_rshares2)(total_payouts)(net_votes)(top_posts)(comments))
 #endif //GOLOS_TAG_API_OBJ_HPP

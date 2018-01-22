@@ -6,7 +6,7 @@
 namespace golos {
     namespace plugins {
         namespace database_api {
-
+            using  golos::chain::account_recovery_request_object;
 
             struct account_recovery_request_api_object {
                 account_recovery_request_api_object(const golos::chain::account_recovery_request_object &o) : id(o.id),

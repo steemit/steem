@@ -1,10 +1,10 @@
 
 
-#include <golos/plugins/database_api/discussion_query.hpp>
+#include <golos/plugins/social_network/api_object/discussion_query.hpp>
 
 namespace golos {
     namespace plugins {
-        namespace database_api {
+        namespace social_network {
 
             void discussion_query::validate() const {
                 FC_ASSERT(limit <= 100);

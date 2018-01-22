@@ -6,6 +6,9 @@
 namespace golos {
     namespace plugins {
         namespace database_api {
+
+            using golos::chain::owner_authority_history_object;
+
             struct owner_authority_history_api_object {
                 owner_authority_history_api_object(const golos::chain::owner_authority_history_object &o) : id(o.id),
                         account(o.account), previous_owner_authority(authority(o.previous_owner_authority)),

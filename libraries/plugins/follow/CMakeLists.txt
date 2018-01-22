@@ -1,13 +1,18 @@
-set(CURRENT_TARGET tolstoy_api_plugin)
+set(CURRENT_TARGET follow_plugin)
 
 list(APPEND CURRENT_TARGET_HEADERS
-     include/golos/plugins/tolstoy_api/tolstoy_api.hpp
-     include/golos/plugins/tolstoy_api/tolstoy_api_plugin.hpp
-     )
+     include/golos/plugins/follow/follow_api_object.hpp
+     include/golos/plugins/follow/follow_evaluators.hpp
+     include/golos/plugins/follow/follow_objects.hpp
+     include/golos/plugins/follow/follow_operations.hpp
+     include/golos/plugins/follow/follow_forward.hpp
+     include/golos/plugins/follow/plugin.hpp
+)
 
 list(APPEND CURRENT_TARGET_SOURCES
-     tolstoy_api.cpp
-     tolstoy_api_plugin.cpp
+     follow_evaluators.cpp
+     follow_operations.cpp
+     plugin.cpp
      )
 
 if(BUILD_SHARED_LIBRARIES)
@@ -23,25 +28,20 @@ else()
 endif()
 
 add_library(golos::${CURRENT_TARGET} ALIAS golos_${CURRENT_TARGET})
-
 set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGET})
 
 target_link_libraries(
         golos_${CURRENT_TARGET}
         golos_chain
+        golos::json_rpc_plugin
         golos::chain_plugin
         golos::protocol
-        golos::json_rpc_plugin
-        graphene_utilities
+        golos::social_network
+        golos::database_api_plugin
         appbase
         fc
 )
-
-target_include_directories(
-        golos_${CURRENT_TARGET}
-        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../"
-)
+target_include_directories(golos_${CURRENT_TARGET} PUBLIC "include")
 
 install(TARGETS
         golos_${CURRENT_TARGET}

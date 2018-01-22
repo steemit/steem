@@ -2,15 +2,16 @@
 #define GOLOS_SAVINGS_WITHDRAW_API_OBJ_HPP
 
 #include <golos/chain/steem_objects.hpp>
+#include <golos/chain/steem_object_types.hpp>
 
 namespace golos {
     namespace plugins {
         namespace database_api {
-
+            using golos::chain::savings_withdraw_object;
 
             struct savings_withdraw_api_object {
                 savings_withdraw_api_object(const golos::chain::savings_withdraw_object &o) : id(o.id), from(o.from), to(o.to),
-                        memo(to_string(o.memo)), request_id(o.request_id), amount(o.amount), complete(o.complete) {
+                        memo(golos::chain::to_string(o.memo)), request_id(o.request_id), amount(o.amount), complete(o.complete) {
                 }
 
                 savings_withdraw_api_object() {

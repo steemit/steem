@@ -7,11 +7,11 @@
 #include <golos/plugins/p2p/p2p_plugin.hpp>
 #include <golos/plugins/webserver/webserver_plugin.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <golos/plugins/tags/tags_plugin.hpp>
 #include <golos/plugins/witness/witness.hpp>
 #include <golos/plugins/database_api/plugin.hpp>
 #include <golos/plugins/market_history/market_history_plugin.hpp>
 #include <golos/plugins/test_api/test_api_plugin.hpp>
+#include <golos/plugins/social_network/social_network.hpp>
 #include <golos/plugins/tolstoy_api/tolstoy_api_plugin.hpp>
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/blockchain_statistics/plugin.hpp>
@@ -91,6 +91,7 @@ int main( int argc, char** argv ) {
         appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
         appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
         golos::plugins::database_api::register_database_api();
+        appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
         appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
         appbase::app().register_plugin<golos::plugins::tolstoy_api::tolstoy_api_plugin>();
         appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
