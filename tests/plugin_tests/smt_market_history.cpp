@@ -72,7 +72,9 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       fund( "sam", ASSET( "1000.000 TESTS" ) );
 
       const account_object& alice_account = db->get_account( "alice" );
-      db->adjust_balance( alice_account, asset( 1000000, any_smt_symbol ) );
+      asset alice_smt_balance( 1000000, any_smt_symbol );
+      db->adjust_balance( alice_account, alice_smt_balance );
+      db->adjust_supply( alice_smt_balance );
 
       tx.operations.clear();
       tx.signatures.clear();

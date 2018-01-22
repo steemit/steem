@@ -205,8 +205,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );
       FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -382,8 +381,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
       }
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -445,8 +443,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
          // - check applying smt_set_setup_parameters_operation after setup completed
       }
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -601,8 +598,7 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
          PUSH_OP(op, alice_private_key);
       }
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -623,8 +619,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
       op.amount = asset(100, alice_symbol);
       op.validate();
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -667,8 +662,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
 
-      db->validate_invariants();
-      db->validate_smt_invariants();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()   
 }

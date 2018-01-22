@@ -1,6 +1,8 @@
 #include <steem/protocol/asset.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/lexical_cast.hpp>
 
 /*
 
@@ -211,6 +213,20 @@ uint8_t damm_checksum_8digit(uint32_t value)
 
 uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_places )
 {
+   // Can be replaced with some clever bitshifting
+   switch( nai )
+   {
+      case STEEM_NAI_STEEM:
+         FC_ASSERT( decimal_places == STEEM_PRECISION_STEEM );
+         return STEEM_ASSET_NUM_STEEM;
+      case STEEM_NAI_SBD:
+         FC_ASSERT( decimal_places == STEEM_PRECISION_SBD );
+         return STEEM_ASSET_NUM_SBD;
+      case STEEM_NAI_VESTS:
+         FC_ASSERT( decimal_places == STEEM_PRECISION_VESTS );
+         return STEEM_ASSET_NUM_VESTS;
+   }
+
    FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
    uint32_t nai_check_digit = nai % 10;
    uint32_t nai_data_digits = nai / 10;
@@ -221,10 +237,26 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
 
 uint32_t asset_symbol_type::to_nai()const
 {
+   // Can be replaced with some clever bitshifting
+   switch( asset_num )
+   {
+      case STEEM_ASSET_NUM_STEEM:
+         return STEEM_NAI_STEEM;
+      case STEEM_ASSET_NUM_SBD:
+         return STEEM_NAI_SBD;
+      case STEEM_ASSET_NUM_VESTS:
+         return STEEM_NAI_VESTS;
+   }
+
    FC_ASSERT( space() == smt_nai_space );
    uint32_t nai_data_digits = (asset_num >> 5);
    uint32_t nai_check_digit = damm_checksum_8digit(nai_data_digits);
    return nai_data_digits * 10 + nai_check_digit;
+}
+
+void asset_symbol_type::from_nai( uint32_t nai, uint8_t decimal_places )
+{
+   asset_num = asset_num_from_nai( nai, decimal_places );
 }
 
 asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
@@ -267,99 +299,16 @@ void asset_symbol_type::validate()const
    // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
 }
 
+uint8_t asset::decimals()const
+{
+   return symbol.decimals();
+}
+
 void asset::validate()const
 {
    symbol.validate();
    FC_ASSERT( amount.value >= 0 );
    FC_ASSERT( amount.value <= STEEM_MAX_SATOSHIS );
-}
-
-std::string asset::to_string()const
-{
-   validate();
-   static const int BEGIN_OFFSET = 21;
-   //       amount string  space   symbol string                   null terminator
-   char buf[BEGIN_OFFSET + 1     + STEEM_ASSET_SYMBOL_MAX_LENGTH + 1];
-   char* p = buf+BEGIN_OFFSET-1;
-   uint64_t v = uint64_t( amount.value );
-   int decimal_places = int(symbol.decimals());
-
-   p[1] = ' ';
-   symbol.to_string( p+2 );
-
-   for( int i=0; i<decimal_places; i++ )
-   {
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-      --p;
-   }
-
-   (*p) = '.';
-
-   do
-   {
-      --p;
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-   } while( v != 0 );
-
-   return std::string(p);
-}
-
-void asset::fill_from_string( const char* p )
-{
-   while( true )
-   {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         default:
-            break;
-      }
-      break;
-   }
-
-   int decimal_places = 0;
-   int decimal_places_inc = 0;
-   uint64_t value = 0;
-   int digits = 0;
-
-   // [0-9]+([.][0-9]*)?\s
-   while( true )
-   {
-      switch( *p )
-      {
-         case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-            value = value*10 + uint64_t((*p) - '0');
-            FC_ASSERT( value <= STEEM_MAX_SATOSHIS, "Cannot parse asset amount" );
-            ++p;
-            ++digits;
-            FC_ASSERT( digits <= 19, "Cannot parse asset amount" );
-            decimal_places += decimal_places_inc;
-            continue;
-         case '.':
-            FC_ASSERT( decimal_places_inc == 0, "Cannot parse asset amount" );
-            decimal_places_inc = 1;
-            ++p;
-            continue;
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            break;
-         default:
-            FC_ASSERT( false, "Cannot parse asset amount" );
-      }
-      break;
-   }
-
-   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Cannot parse asset amount" );
-
-   symbol = asset_symbol_type::from_string( p, uint8_t(decimal_places) );
-   amount.value = int64_t( value );
-   return;
 }
 
 #define BQ(a) \
@@ -423,3 +372,31 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 
 
 } } // steem::protocol
+
+namespace fc {
+   void to_variant( const steem::protocol::asset& var, fc::variant& vo )
+   {
+      try
+      {
+         std::vector< variant > v( 3 );
+         v[0] = boost::lexical_cast< std::string >( var.amount.value );
+         v[1] = uint64_t( var.symbol.decimals() );
+         v[2] = uint64_t( var.symbol.to_nai() );
+         vo = v;
+      } FC_CAPTURE_AND_RETHROW()
+   }
+
+   void from_variant( const fc::variant& var, steem::protocol::asset& vo )
+   {
+      try
+      {
+         auto v = var.as< std::vector< variant > >();
+         FC_ASSERT( v.size() == 3, "Expected tuple of length 3." );
+
+         // share_type is safe< int64_t >
+         vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
+         FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
+         vo.symbol.from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
+      } FC_CAPTURE_AND_RETHROW()
+   }
+}

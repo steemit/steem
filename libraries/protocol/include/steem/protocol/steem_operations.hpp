@@ -433,7 +433,7 @@ namespace steem { namespace protocol {
        *  fee requires all accounts to have some kind of commitment to the network that includes the
        *  ability to vote and make transactions.
        */
-      legacy_steem_asset account_creation_fee = legacy_steem_asset::from_amount( STEEM_MIN_ACCOUNT_CREATION_FEE );
+      legacy_asset account_creation_fee = legacy_asset::from_amount( STEEM_MIN_ACCOUNT_CREATION_FEE );
 
       /**
        *  This witnesses vote for the maximum_block_size which is used by the network

@@ -917,12 +917,14 @@ void database::notify_post_apply_operation( const operation_notification& note )
 
 inline const void database::push_virtual_operation( const operation& op, bool force )
 {
+   /*
    if( !force )
    {
       #if defined( IS_LOW_MEM ) && ! defined( IS_TEST_NET )
       return;
       #endif
    }
+   */
 
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
@@ -4343,15 +4345,25 @@ void database::validate_smt_invariants()const
       const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
       add_from_balance_index( rewards_balance_idx, theMap );
 
-      // - Total vesting 
+      // - Total vesting
 #pragma message( "TODO: Add SMT vesting support here once it is implemented." )
-         
+
       // - Market orders
-#pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
+      const auto& limit_order_idx = get_index< limit_order_index >().indices();
+      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); ++itr )
+      {
+         if( itr->sell_price.base.symbol.space() == asset_symbol_type::smt_nai_space )
+         {
+            asset a( itr->for_sale, itr->sell_price.base.symbol );
+            auto insertInfo = theMap.emplace( a.symbol, a );
+            if( insertInfo.second == false )
+               insertInfo.first->second += a;
+         }
+      }
 
       // - Reward funds
 #pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
-                  
+
       // - Escrow & savings - no support of SMT is expected.
 
       // Do the verification of total balances.
@@ -4540,7 +4552,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
-   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+   return vector< asset_symbol_type >( 1, new_symbol );
 }
 #endif
 
