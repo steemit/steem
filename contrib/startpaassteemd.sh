@@ -2,7 +2,13 @@
 
 VERSION=`cat /etc/steemdversion`
 
-STEEMD="/usr/local/steemd-full/bin/steemd"
+if [[ "$IS_BROADCAST_NODE" ]]; then
+  STEEMD="/usr/local/steemd-default/bin/steemd"
+elif [[ "$IS_AH_NODE" ]]; then
+  STEEMD="/usr/local/steemd-default/bin/steemd"
+else
+  STEEMD="/usr/local/steemd-full/bin/steemd"
+fi
 
 chown -R steemd:steemd $HOME
 
@@ -44,7 +50,15 @@ if [[ ! "$DISABLE_BLOCK_API" ]]; then
 fi
 
 # overwrite local config with image one
-cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+if [[ "$IS_BROADCAST_NODE" ]]; then
+  cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
+elif [[ "$IS_AH_NODE" ]]; then
+  cp /etc/steemd/config-for-ahnode.ini $HOME/config.ini
+elif [[ "$IS_OPSWHITELIST_NODE" ]]; then
+  cp /etc/steemd/fullnode.opswhitelist.config.ini $HOME/config.ini
+else
+  cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+fi
 
 chown steemd:steemd $HOME/config.ini
 
@@ -59,10 +73,22 @@ if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  if [[ "$IS_BROADCAST_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  elif [[ "$IS_AH_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  else
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  fi
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  if [[ "$IS_BROADCAST_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  elif [[ "$IS_AH_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  else
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  fi
 fi
 if [[ $? -ne 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
@@ -81,6 +107,9 @@ if [[ $? -ne 0 ]]; then
   fi
 fi
 
+# for appbase tags plugin loading
+ARGS+=" --tags-skip-startup-update"
+
 cd $HOME
 
 if [[ "$SYNC_TO_S3" ]]; then
@@ -90,6 +119,7 @@ fi
 
 chown -R steemd:steemd $HOME/*
 
+# let's get going
 cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
 echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
 echo } >> /etc/nginx/healthcheck.conf

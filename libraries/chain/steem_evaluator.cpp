@@ -7,8 +7,17 @@
 
 #include <steem/chain/util/reward.hpp>
 
+#include <fc/macros.hpp>
+
 #ifndef IS_LOW_MEM
+FC_TODO( "After we vendor fc, also vendor diff_match_patch and fix these warnings" )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include <diff_match_patch.h>
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #include <boost/locale/encoding_utf.hpp>
 
 using boost::locale::conv::utf_to_utf;
@@ -25,7 +34,6 @@ std::string wstring_to_utf8(const std::wstring& str)
 
 #endif
 
-#include <fc/macros.hpp>
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
