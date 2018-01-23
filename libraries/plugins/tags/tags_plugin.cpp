@@ -506,8 +506,8 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation_proxy( [&]( const operation_notification& note ){ my->pre_operation( note ); }, 0, STEEM_TAGS_PLUGIN_NAME );
+   my->post_apply_connection = my->_db.post_apply_operation_proxy( [&]( const operation_notification& note ){ my->on_operation(  note ); }, 0, STEEM_TAGS_PLUGIN_NAME );
 
    if( !options.at( "tags-skip-startup-update" ).as< bool >() )
    {

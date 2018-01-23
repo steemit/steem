@@ -349,8 +349,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       // Add the registry to the database so the database can delegate custom ops to the plugin
       my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
 
-      my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      my->pre_apply_connection = my->_db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ my->pre_operation( o ); }, 0, STEEM_FOLLOW_PLUGIN_NAME );
+      my->post_apply_connection = my->_db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->post_operation( o ); }, 0, STEEM_FOLLOW_PLUGIN_NAME );
       add_plugin_index< follow_index            >( my->_db );
       add_plugin_index< feed_index              >( my->_db );
       add_plugin_index< blog_index              >( my->_db );

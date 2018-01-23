@@ -429,8 +429,8 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       chain::database& db = database();
 
       db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
-      db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
+      db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ _my->pre_operation( o ); }, -1, STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME );
+      db.post_apply_operation_proxy( [&]( const operation_notification& o ){ _my->post_operation( o ); }, -1, STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME );
 
       add_plugin_index< bucket_index >(db);
 

@@ -41,6 +41,8 @@ class advanced_benchmark_dumper
    private:
 
       static uint32_t cnt;
+      static std::string virtual_operation_name;
+      static std::string apply_context_name;
 
       bool enabled = false;
 
@@ -58,11 +60,15 @@ class advanced_benchmark_dumper
       advanced_benchmark_dumper();
       ~advanced_benchmark_dumper();
 
+      static std::string& get_virtual_operation_name(){ return virtual_operation_name; }
+
       void set_enabled( bool val ) { enabled = val; }
       bool is_enabled() { return enabled; }
 
       void begin();
+      template< bool APPLY_CONTEXT = false >
       void end( const std::string& str );
+
       void dump();
 };
 

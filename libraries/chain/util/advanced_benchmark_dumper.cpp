@@ -5,6 +5,8 @@
 namespace steem { namespace chain { namespace util {
 
    uint32_t advanced_benchmark_dumper::cnt = 0;
+   std::string advanced_benchmark_dumper::virtual_operation_name = "virtual_operation";
+   std::string advanced_benchmark_dumper::apply_context_name = "apply_context--->";
 
    advanced_benchmark_dumper::advanced_benchmark_dumper()
    {
@@ -26,10 +28,11 @@ namespace steem { namespace chain { namespace util {
       time_begin = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
    }
 
+   template< bool APPLY_CONTEXT >
    void advanced_benchmark_dumper::end( const std::string& str )
    {
       uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count() - time_begin;
-      std::pair< std::set< item >::iterator, bool > res = items.emplace( item( str, time ) );
+      std::pair< std::set< item >::iterator, bool > res = items.emplace( item( APPLY_CONTEXT ? ( apply_context_name + str ) : str, time ) );
       if( !res.second )
          res.first->change_time( time );
 
@@ -40,6 +43,9 @@ namespace steem { namespace chain { namespace util {
          dump();
       }
    }
+
+   template void advanced_benchmark_dumper::end< true >( const std::string& str );
+   template void advanced_benchmark_dumper::end< false >( const std::string& str );
 
    void advanced_benchmark_dumper::dump()
    {

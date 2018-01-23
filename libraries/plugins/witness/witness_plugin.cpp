@@ -582,7 +582,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    }
 
    my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( 0, [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation_proxy( [&]( const operation_notification& note ){ my->pre_operation( note ); }, 0, STEEM_WITNESS_PLUGIN_NAME );
    my->applied_block_connection = my->_db.applied_block.connect( 0, [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );

@@ -2991,18 +2991,65 @@ void database::apply_operation(const operation& op)
    notify_pre_apply_operation( note );
 
    if( benchmark_dumper.is_enabled() )
-   {
       benchmark_dumper.begin();
-   }
 
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
    
    if( benchmark_dumper.is_enabled() )
-   {
-      benchmark_dumper.end( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
-   }
+      benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
 
    notify_post_apply_operation( note );
+}
+
+template< bool IS_PRE_OPERATION >
+boost::signals2::connection database::any_apply_operation_proxy_impl( const t_operation_notification& func, int32_t group, const std::string& name )
+{
+   auto complex_func = [=]( const operation_notification& o )
+   {
+      if( benchmark_dumper.is_enabled() )
+         benchmark_dumper.begin();
+
+      func( o );
+
+      if( benchmark_dumper.is_enabled() )
+      {
+         if( _my->_evaluator_registry.is_evaluator( o.op ) )
+         {
+            std::string _name = IS_PRE_OPERATION ? "pre--->" : "post--->";
+            _name += name;
+            _name += "--->";
+            _name += _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op );
+            benchmark_dumper.end( _name );
+         }
+         else
+            benchmark_dumper.end( util::advanced_benchmark_dumper::get_virtual_operation_name() );
+      }
+   };
+
+   if( IS_PRE_OPERATION )
+   {
+      if( group == -1 )
+         return pre_apply_operation.connect( complex_func );
+      else
+         return pre_apply_operation.connect( group, complex_func );
+   }
+   else
+   {
+      if( group == -1 )
+         return post_apply_operation.connect( complex_func );
+      else
+         return post_apply_operation.connect( group, complex_func );
+   }
+}
+
+boost::signals2::connection database::pre_apply_operation_proxy( const t_operation_notification& func, int32_t group, const std::string& name )
+{
+   return any_apply_operation_proxy_impl< true/*IS_PRE_OPERATION*/ >( func, group, name );
+}
+
+boost::signals2::connection database::post_apply_operation_proxy( const t_operation_notification& func, int32_t group, const std::string& name )
+{
+   return any_apply_operation_proxy_impl< false/*IS_PRE_OPERATION*/ >( func, group, name );
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const

@@ -165,7 +165,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
       my = std::make_unique< detail::market_history_plugin_impl >();
 
-      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
+      my->post_apply_connection = my->_db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->update_market_histories( o ); }, 0, STEEM_MARKET_HISTORY_PLUGIN_NAME );
       add_plugin_index< bucket_index        >( my->_db );
       add_plugin_index< order_history_index >( my->_db );
 

@@ -232,6 +232,18 @@ namespace steem { namespace chain {
          fc::signal<void(const operation_notification&)> pre_apply_operation;
          fc::signal<void(const operation_notification&)> post_apply_operation;
 
+         using t_operation_notification = std::function< void(const operation_notification&) >;
+
+      private:
+
+         template< bool IS_PRE_OPERATION >
+         boost::signals2::connection any_apply_operation_proxy_impl( const t_operation_notification& func, int32_t group, const std::string& name );
+
+      public:
+
+         boost::signals2::connection pre_apply_operation_proxy( const t_operation_notification& func, int32_t group = -1, const std::string& name = "unknown_name" );
+         boost::signals2::connection post_apply_operation_proxy( const t_operation_notification& func, int32_t group = -1, const std::string& name = "unknown_name" );
+
          /**
           *  This signal is emitted after all operations and virtual operation for a
           *  block have been applied but before the get_applied_operations() are cleared.
