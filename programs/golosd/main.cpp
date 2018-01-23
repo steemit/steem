@@ -26,14 +26,15 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
+#include <graphene/utilities/git_revision.hpp>
 
 using golos::protocol::version;
 
 
 std::string& version_string() {
     static std::string v_str =
-            "steem_blockchain_version: " + std::string( STEEMIT_BLOCKCHAIN_VERSION ) + "\n" +
-            "steem_git_revision:       " + std::string( fc::git_revision_sha )       + "\n" +
+            "golos_blockchain_version: " + std::string( STEEMIT_BLOCKCHAIN_VERSION ) + "\n" +
+            "golos_git_revision:       " + std::string( golos::utilities::git_revision_sha )       + "\n" +
             "fc_git_revision:          " + std::string( fc::git_revision_sha )       + "\n";
     return v_str;
 }
