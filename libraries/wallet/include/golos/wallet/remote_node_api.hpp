@@ -117,6 +117,8 @@ struct remote_node_api {
    market_history_buckets_r get_market_history_buckets();
 
    map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
+
+   vector< account_name_type > get_miner_queue();
 };
 
 } }
@@ -208,5 +210,5 @@ FC_API( golos::wallet::remote_node_api,
         (get_recent_trades)
         (get_market_history)
         (get_market_history_buckets)
-
+        (get_miner_queue)
       )

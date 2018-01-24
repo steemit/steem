@@ -127,6 +127,10 @@ namespace golos { namespace wallet {
              */
             vector< account_name_type > get_active_witnesses()const;
 
+            /**
+             * Returns the queue of pow miners waiting to produce blocks.
+             */
+            vector<account_name_type> get_miner_queue()const;
 
             /**
              * Returns vesting withdraw routes for an account.
@@ -810,7 +814,7 @@ namespace golos { namespace wallet {
              * @param orderid The unique identifier assigned to the order by its creator
              * @param broadcast true if you wish to broadcast the transaction
              */
-            //annotated_signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
+            annotated_signed_transaction cancel_order(string owner, uint32_t orderid, bool broadcast);
 
             /**
              *  Post or update a comment.
@@ -1001,7 +1005,7 @@ FC_API( golos::wallet::wallet_api,
                 (get_order_book)
                 (get_open_orders)
                 (create_order)
-                //(cancel_order)
+                (cancel_order)
                 (post_comment)
                 (vote)
                 (set_transaction_expiration)
@@ -1022,6 +1026,7 @@ FC_API( golos::wallet::wallet_api,
                 (sign_transaction)
 
                 (get_active_witnesses)
+                (get_miner_queue)
                 (get_transaction)
 )
 

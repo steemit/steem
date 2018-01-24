@@ -883,6 +883,10 @@ namespace golos { namespace wallet {
             return my->_remote_api->get_active_witnesses();
         }
 
+        vector<account_name_type> wallet_api::get_miner_queue()const {
+            return my->_remote_api->get_miner_queue();
+        }
+
         brain_key_info wallet_api::suggest_brain_key()const {
             brain_key_info result;
             // create a private key for secure entropy

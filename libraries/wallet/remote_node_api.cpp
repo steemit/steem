@@ -379,4 +379,8 @@ market_history_buckets_r remote_node_api::get_market_history_buckets() {
    FC_ASSERT( false );
 }
 
+vector<account_name_type> remote_node_api::get_miner_queue() {
+  FC_ASSERT( false );
+}
+
 } }
