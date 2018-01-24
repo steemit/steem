@@ -129,17 +129,17 @@ BOOST_AUTO_TEST_CASE( legacy_asset_test )
       tmp = legacy_asset::from_string( "0.056 TESTS" );
       BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
 
-      // BOOST_CHECK( std::abs( steem.to_real() - 123.456 ) < 0.0005 );
       BOOST_CHECK_EQUAL( steem.amount.value, 123456 );
       BOOST_CHECK_EQUAL( steem.symbol.decimals(), 3 );
       BOOST_CHECK_EQUAL( steem.to_string(), "123.456 TESTS" );
+      BOOST_CHECK( steem.symbol == STEEM_SYMBOL );
       BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset( 50, STEEM_SYMBOL ) ).to_string(), "0.050 TESTS" );
       BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50000, STEEM_SYMBOL ) ) .to_string(), "50.000 TESTS" );
 
-      // BOOST_CHECK( std::abs( sbd.to_real() - 654.321 ) < 0.0005 );
       BOOST_CHECK_EQUAL( sbd.amount.value, 654321 );
       BOOST_CHECK_EQUAL( sbd.symbol.decimals(), 3 );
       BOOST_CHECK_EQUAL( sbd.to_string(), "654.321 TBD" );
+      BOOST_CHECK( sbd.symbol == SBD_SYMBOL );
       BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50, SBD_SYMBOL ) ).to_string(), "0.050 TBD" );
       BOOST_CHECK_EQUAL( legacy_asset::from_asset( asset(50000, SBD_SYMBOL ) ).to_string(), "50.000 TBD" );
 
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( legacy_asset_test )
       BOOST_CHECK_THROW( legacy_asset::from_string( "1.000TESTS" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 TESTS" ), fc::exception ); // Fails because symbol is '333 TESTS', which is too long
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 X" ), fc::exception );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 X" ), fc::exception ); // Not a system asset
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 X" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 1.1" ), fc::exception );
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( legacy_asset_test )
       BOOST_CHECK_THROW( legacy_asset::from_string( "" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( " " ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "  " ), fc::exception );
-      BOOST_CHECK_EQUAL( legacy_asset::from_string( "100 TESTS" ).amount.value, 100 );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "100 TESTS" ), fc::exception ); // Does not match system asset precision
    }
    FC_LOG_AND_RETHROW()
 }

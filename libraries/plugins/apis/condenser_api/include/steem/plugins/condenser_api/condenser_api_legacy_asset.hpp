@@ -30,10 +30,24 @@ struct legacy_asset
       static legacy_asset from_string( const string& from );
 
       share_type                       amount;
-      asset_symbol_type                symbol;
+      asset_symbol_type                symbol = STEEM_SYMBOL;
 };
 
-} } }
+} } } // steem::plugins::condenser_api
+
+namespace fc {
+
+   inline void to_variant( const steem::plugins::condenser_api::legacy_asset& a, fc::variant& var )
+   {
+      var = a.to_string();
+   }
+
+   inline void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy_asset& a )
+   {
+      a = steem::plugins::condenser_api::legacy_asset::from_string( var.as_string() );
+   }
+
+} // fc
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_asset,
    (amount)
