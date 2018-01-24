@@ -1067,10 +1067,13 @@ u256 to256( const fc::uint128& t )
 
 void database_api::set_pending_payout( discussion& d )const
 {
-   const auto& cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
-   auto itr = cidx.lower_bound( d.id );
-   if( itr != cidx.end() && itr->comment == d.id )  {
-      d.promoted = asset( itr->promoted_balance, SBD_SYMBOL );
+   if( my->_db.has_index< tags::tag_index >() )
+   {
+      const auto& cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+      auto itr = cidx.lower_bound( d.id );
+      if( itr != cidx.end() && itr->comment == d.id )  {
+         d.promoted = asset( itr->promoted_balance, SBD_SYMBOL );
+      }
    }
 
    const auto& props = my->_db.get_dynamic_global_properties();
@@ -1219,6 +1222,9 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
 }
 
 vector<pair<string,uint32_t> > database_api::get_tags_used_by_author( const string& author )const {
+   if( !my->_db.has_index<tags::author_tag_stats_index>() )
+      return vector< pair< string, uint32_t > >();
+
    return my->_db.with_read_lock( [&]()
    {
       const auto* acnt = my->_db.find_account( author );
@@ -1236,6 +1242,9 @@ vector<pair<string,uint32_t> > database_api::get_tags_used_by_author( const stri
 
 vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limit )const
 {
+   if( !my->_db.has_index<tags::tag_index>() )
+      return vector< tag_api_obj >();
+
    return my->_db.with_read_lock( [&]()
    {
       limit = std::min( limit, uint32_t(1000) );
@@ -1295,6 +1304,9 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 {
    // idump((query));
    vector<discussion> result;
+
+   if( !my->_db.has_index<tags::tag_index>() )
+      return result;
 
    const auto& cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
    comment_id_type start;
@@ -1370,6 +1382,9 @@ comment_id_type database_api::get_parent( const discussion_query& query )const
 
 vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1385,6 +1400,9 @@ vector<discussion> database_api::get_discussions_by_payout( const discussion_que
 
 vector<discussion> database_api::get_post_discussions_by_payout( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1400,6 +1418,9 @@ vector<discussion> database_api::get_post_discussions_by_payout( const discussio
 
 vector<discussion> database_api::get_comment_discussions_by_payout( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1415,6 +1436,9 @@ vector<discussion> database_api::get_comment_discussions_by_payout( const discus
 
 vector<discussion> database_api::get_discussions_by_promoted( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1430,6 +1454,8 @@ vector<discussion> database_api::get_discussions_by_promoted( const discussion_q
 
 vector<discussion> database_api::get_discussions_by_trending( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
 
    return my->_db.with_read_lock( [&]()
    {
@@ -1446,6 +1472,9 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
 
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1461,6 +1490,9 @@ vector<discussion> database_api::get_discussions_by_created( const discussion_qu
 
 vector<discussion> database_api::get_discussions_by_active( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1476,6 +1508,9 @@ vector<discussion> database_api::get_discussions_by_active( const discussion_que
 
 vector<discussion> database_api::get_discussions_by_cashout( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1493,6 +1528,9 @@ vector<discussion> database_api::get_discussions_by_cashout( const discussion_qu
 
 vector<discussion> database_api::get_discussions_by_votes( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1508,6 +1546,9 @@ vector<discussion> database_api::get_discussions_by_votes( const discussion_quer
 
 vector<discussion> database_api::get_discussions_by_children( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1523,6 +1564,8 @@ vector<discussion> database_api::get_discussions_by_children( const discussion_q
 
 vector<discussion> database_api::get_discussions_by_hot( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
 
    return my->_db.with_read_lock( [&]()
    {
@@ -1539,6 +1582,9 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
 
 vector<discussion> database_api::get_discussions_by_feed( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
@@ -1589,6 +1635,9 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
 
 vector<discussion> database_api::get_discussions_by_blog( const discussion_query& query )const
 {
+   if( !my->_db.has_index< tags::tag_index >() )
+      return vector< discussion >();
+
    return my->_db.with_read_lock( [&]()
    {
       query.validate();
