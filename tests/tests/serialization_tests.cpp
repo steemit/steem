@@ -147,9 +147,7 @@ BOOST_AUTO_TEST_CASE( legacy_asset_test )
       BOOST_CHECK_THROW( legacy_asset::from_string( "1.000TESTS" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 TESTS" ), fc::exception ); // Fails because symbol is '333 TESTS', which is too long
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 TESTS" ), fc::exception );
-      legacy_asset unusual = legacy_asset::from_string( "1. 333 X" ); // Passes because symbol '333 X' is short enough
-      FC_ASSERT( unusual.symbol.decimals() == 0 );
-      FC_ASSERT( unusual.symbol.to_string() == "333 X" );
+      BOOST_CHECK_THROW( legacy_asset::from_string( "1. 333 X" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333 X" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 .333" ), fc::exception );
       BOOST_CHECK_THROW( legacy_asset::from_string( "1 1.1" ), fc::exception );
