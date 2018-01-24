@@ -29,6 +29,7 @@ target_link_libraries(
         golos::blockchain_statistics
         golos::account_by_key_plugin
         golos::account_history
+        golos::private_message_plugin
         golos::auth_util
         golos_protocol
         fc
