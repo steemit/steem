@@ -384,7 +384,7 @@ namespace fc {
          // share_type is safe< int64_t >
          vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
-         vo.symbol.from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
+         vo.symbol = steem::protocol::asset_symbol_type::from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
 }
