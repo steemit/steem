@@ -1,4 +1,7 @@
 #include <steem/protocol/asset.hpp>
+
+#include <fc/io/json.hpp>
+
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -14,43 +17,35 @@ index : field
 
 namespace steem { namespace protocol {
 
-void asset_symbol_type::to_string( char* buf )const
+std::string asset_symbol_type::to_string()const
 {
-   uint64_t* p = (uint64_t*) buf;
-   static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 7, "This code will overflow a short buffer" );
-
-   switch( asset_num )
-   {
-      case STEEM_ASSET_NUM_STEEM:
-         (*p) = STEEM_SYMBOL_U64;
-         break;
-      case STEEM_ASSET_NUM_SBD:
-         (*p) = SBD_SYMBOL_U64;
-         break;
-      case STEEM_ASSET_NUM_VESTS:
-         (*p) = VESTS_SYMBOL_U64;
-         break;
-      default:
-      {
-         static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 10, "This code will overflow a short buffer" );
-         uint32_t x = to_nai();
-         buf[11] = '\0';
-         buf[10] = ((x%10)+'0');  x /= 10;
-         buf[ 9] = ((x%10)+'0');  x /= 10;
-         buf[ 8] = ((x%10)+'0');  x /= 10;
-         buf[ 7] = ((x%10)+'0');  x /= 10;
-         buf[ 6] = ((x%10)+'0');  x /= 10;
-         buf[ 5] = ((x%10)+'0');  x /= 10;
-         buf[ 4] = ((x%10)+'0');  x /= 10;
-         buf[ 3] = ((x%10)+'0');  x /= 10;
-         buf[ 2] = ((x   )+'0');
-         buf[ 1] = '@';
-         buf[ 0] = '@';
-      }
-   }
+   return fc::json::to_string( fc::variant( *this ) );
 }
 
-asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal_places )
+asset_symbol_type asset_symbol_type::from_string( const std::string& str )
+{
+   return fc::json::from_string( str ).as< asset_symbol_type >();
+}
+
+void asset_symbol_type::to_nai_string( char* buf )const
+{
+   static_assert( STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH >= 12, "This code will overflow a short buffer" );
+   uint32_t x = to_nai();
+   buf[11] = '\0';
+   buf[10] = ((x%10)+'0');  x /= 10;
+   buf[ 9] = ((x%10)+'0');  x /= 10;
+   buf[ 8] = ((x%10)+'0');  x /= 10;
+   buf[ 7] = ((x%10)+'0');  x /= 10;
+   buf[ 6] = ((x%10)+'0');  x /= 10;
+   buf[ 5] = ((x%10)+'0');  x /= 10;
+   buf[ 4] = ((x%10)+'0');  x /= 10;
+   buf[ 3] = ((x%10)+'0');  x /= 10;
+   buf[ 2] = ((x   )+'0');
+   buf[ 1] = '@';
+   buf[ 0] = '@';
+}
+
+asset_symbol_type asset_symbol_type::from_nai_string( const char* p, uint8_t decimal_places )
 {
    // \s*
    while( true )
@@ -85,7 +80,7 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
                case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
                {
                   uint64_t new_nai = nai*10 + ((*p) - '0');
-                  FC_ASSERT( new_nai > nai, "Cannot parse asset amount" );
+                  FC_ASSERT( new_nai >= nai, "Cannot parse asset amount" ); // This is failing for system assets
                   FC_ASSERT( new_nai <= SMT_MAX_NAI, "Cannot parse asset amount" );
                   nai = new_nai;
                   ++p;
@@ -99,44 +94,6 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
          }
          FC_ASSERT( digit_count == 9 );
          asset_num = asset_num_from_nai( nai, uint8_t( decimal_places ) );
-         break;
-      }
-      case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I':
-      case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
-      case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
-      {
-         // [A-Z]{1,6}
-         int shift = 0;
-         uint64_t name_u64 = 0;
-         while( true )
-         {
-            if( ((*p) >= 'A') && ((*p) <= 'Z') )
-            {
-               FC_ASSERT( shift < 64, "Cannot parse asset symbol" );
-               name_u64 |= uint64_t(*p) << shift;
-               shift += 8;
-               ++p;
-               continue;
-            }
-            break;
-         }
-         switch( name_u64 )
-         {
-            case STEEM_SYMBOL_U64:
-               FC_ASSERT( decimal_places == 3, "Incorrect decimal places" );
-               asset_num = STEEM_ASSET_NUM_STEEM;
-               break;
-            case SBD_SYMBOL_U64:
-               FC_ASSERT( decimal_places == 3, "Incorrect decimal places" );
-               asset_num = STEEM_ASSET_NUM_SBD;
-               break;
-            case VESTS_SYMBOL_U64:
-               FC_ASSERT( decimal_places == 6, "Incorrect decimal places" );
-               asset_num = STEEM_ASSET_NUM_VESTS;
-               break;
-            default:
-               FC_ASSERT( false, "Cannot parse asset symbol" );
-         }
          break;
       }
       default:
@@ -212,7 +169,13 @@ uint8_t damm_checksum_8digit(uint32_t value)
 uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_places )
 {
    // Can be replaced with some clever bitshifting
-   switch( nai )
+   uint32_t nai_check_digit = nai % 10;
+   uint32_t nai_data_digits = nai / 10;
+
+   FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) & (nai_data_digits <= SMT_MAX_NAI), "NAI out of range" );
+   FC_ASSERT( nai_check_digit == damm_checksum_8digit(nai_data_digits), "Invalid check digit" );
+
+   switch( nai_data_digits )
    {
       case STEEM_NAI_STEEM:
          FC_ASSERT( decimal_places == STEEM_PRECISION_STEEM );
@@ -223,31 +186,33 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
       case STEEM_NAI_VESTS:
          FC_ASSERT( decimal_places == STEEM_PRECISION_VESTS );
          return STEEM_ASSET_NUM_VESTS;
+      default:
+         FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
+         return (nai_data_digits << 5) | 0x10 | decimal_places;
    }
-
-   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
-   uint32_t nai_check_digit = nai % 10;
-   uint32_t nai_data_digits = nai / 10;
-   FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) & (nai_data_digits <= SMT_MAX_NAI), "NAI out of range" );
-   FC_ASSERT( nai_check_digit == damm_checksum_8digit(nai_data_digits), "Invalid check digit" );
-   return (nai_data_digits << 5) | 0x10 | decimal_places;
 }
 
 uint32_t asset_symbol_type::to_nai()const
 {
+   uint32_t nai_data_digits = 0;
+
    // Can be replaced with some clever bitshifting
    switch( asset_num )
    {
       case STEEM_ASSET_NUM_STEEM:
-         return STEEM_NAI_STEEM;
+         nai_data_digits = STEEM_NAI_STEEM;
+         break;
       case STEEM_ASSET_NUM_SBD:
-         return STEEM_NAI_SBD;
+         nai_data_digits = STEEM_NAI_SBD;
+         break;
       case STEEM_ASSET_NUM_VESTS:
-         return STEEM_NAI_VESTS;
+         nai_data_digits = STEEM_NAI_VESTS;
+         break;
+      default:
+         FC_ASSERT( space() == smt_nai_space );
+         nai_data_digits = (asset_num >> 5);
    }
 
-   FC_ASSERT( space() == smt_nai_space );
-   uint32_t nai_data_digits = (asset_num >> 5);
    uint32_t nai_check_digit = damm_checksum_8digit(nai_data_digits);
    return nai_data_digits * 10 + nai_check_digit;
 }
@@ -369,7 +334,7 @@ namespace fc {
          std::vector< variant > v( 3 );
          v[0] = boost::lexical_cast< std::string >( var.amount.value );
          v[1] = uint64_t( var.symbol.decimals() );
-         v[2] = uint64_t( var.symbol.to_nai() );
+         v[2] = var.symbol.to_nai_string();
          vo = v;
       } FC_CAPTURE_AND_RETHROW()
    }
@@ -384,7 +349,7 @@ namespace fc {
          // share_type is safe< int64_t >
          vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
-         vo.symbol = steem::protocol::asset_symbol_type::from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
+         vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v[2].as< std::string >().c_str(), v[1].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
 }
