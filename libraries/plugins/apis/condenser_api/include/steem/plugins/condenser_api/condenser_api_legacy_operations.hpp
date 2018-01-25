@@ -1,4 +1,5 @@
 #include <steem/protocol/operations.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 
 namespace steem { namespace plugins { namespace condenser_api {
 

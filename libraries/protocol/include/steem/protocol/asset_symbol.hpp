@@ -63,6 +63,8 @@ class asset_symbol_type
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
       static uint32_t asset_num_from_nai( uint32_t nai, uint8_t decimal_places );
+      static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
+      {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
 
       void to_string( char* buf )const;
       std::string to_string()const
@@ -71,9 +73,7 @@ class asset_symbol_type
          to_string( buf );
          return std::string(buf);
       }
-
       uint32_t to_nai()const;
-      void from_nai( uint32_t nai, uint8_t decimal_places );
 
       asset_symbol_space space()const;
       uint8_t decimals()const

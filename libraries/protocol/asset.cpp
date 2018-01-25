@@ -1,8 +1,6 @@
 #include <steem/protocol/asset.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/tuple/tuple.hpp>
-#include <boost/lexical_cast.hpp>
 
 /*
 
@@ -254,11 +252,6 @@ uint32_t asset_symbol_type::to_nai()const
    return nai_data_digits * 10 + nai_check_digit;
 }
 
-void asset_symbol_type::from_nai( uint32_t nai, uint8_t decimal_places )
-{
-   asset_num = asset_num_from_nai( nai, decimal_places );
-}
-
 asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
 {
    asset_symbol_type::asset_symbol_space s = legacy_space;
@@ -297,11 +290,6 @@ void asset_symbol_type::validate()const
    }
    // this assert is duplicated by above code in all cases
    // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
-}
-
-uint8_t asset::decimals()const
-{
-   return symbol.decimals();
 }
 
 void asset::validate()const
@@ -396,7 +384,7 @@ namespace fc {
          // share_type is safe< int64_t >
          vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
-         vo.symbol.from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
+         vo.symbol = steem::protocol::asset_symbol_type::from_nai( v[2].as< uint32_t >(), v[1].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
 }
