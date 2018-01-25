@@ -46,7 +46,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset quote;
    };
 
-   struct legacy_account_create_operation
+   struct legacy_account_create_operation : public base_operation
    {
       legacy_account_create_operation() {}
       legacy_account_create_operation( const account_create_operation& op ) :
@@ -70,7 +70,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            json_metadata;
    };
 
-   struct legacy_account_create_with_delegation_operation
+   struct legacy_account_create_with_delegation_operation : public base_operation
    {
       legacy_account_create_with_delegation_operation() {}
       legacy_account_create_with_delegation_operation( const account_create_with_delegation_operation op ) :
@@ -100,7 +100,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       extensions_type   extensions;
    };
 
-   struct legacy_comment_options_operation
+   struct legacy_comment_options_operation : public base_operation
    {
       legacy_comment_options_operation() {}
       legacy_comment_options_operation( const comment_options_operation& op ) :
@@ -124,7 +124,7 @@ namespace steem { namespace plugins { namespace condenser_api {
    };
 
 
-   struct legacy_transfer_operation
+   struct legacy_transfer_operation : public base_operation
    {
       legacy_transfer_operation() {}
       legacy_transfer_operation( const transfer_operation& op ) :
@@ -140,7 +140,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            memo;
    };
 
-   struct legacy_escrow_transfer_operation
+   struct legacy_escrow_transfer_operation : public base_operation
    {
       legacy_escrow_transfer_operation() {}
       legacy_escrow_transfer_operation( const escrow_transfer_operation& op ) :
@@ -171,7 +171,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            json_meta;
    };
 
-   struct legacy_escrow_release_operation
+   struct legacy_escrow_release_operation : public base_operation
    {
       legacy_escrow_release_operation() {}
       legacy_escrow_release_operation( const escrow_release_operation& op ) :
@@ -196,7 +196,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      steem_amount;
    };
 
-   struct legacy_transfer_to_vesting_operation
+   struct legacy_transfer_to_vesting_operation : public base_operation
    {
       legacy_transfer_to_vesting_operation() {}
       legacy_transfer_to_vesting_operation( const transfer_to_vesting_operation& op ) :
@@ -210,7 +210,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      amount;
    };
 
-   struct legacy_withdraw_vesting_operation
+   struct legacy_withdraw_vesting_operation : public base_operation
    {
       legacy_withdraw_vesting_operation() {}
       legacy_withdraw_vesting_operation( const withdraw_vesting_operation& op ) :
@@ -222,7 +222,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset             vesting_shares;
    };
 
-   struct legacy_witness_update_operation
+   struct legacy_witness_update_operation : public base_operation
    {
       legacy_witness_update_operation() {}
       legacy_witness_update_operation( const witness_update_operation& op ) :
@@ -243,7 +243,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset            fee;
    };
 
-   struct legacy_feed_publish_operation
+   struct legacy_feed_publish_operation : public base_operation
    {
       legacy_feed_publish_operation() {}
       legacy_feed_publish_operation( const feed_publish_operation& op ) :
@@ -255,7 +255,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_price      exchange_rate;
    };
 
-   struct legacy_convert_operation
+   struct legacy_convert_operation : public base_operation
    {
       legacy_convert_operation() {}
       legacy_convert_operation( const convert_operation& op ) :
@@ -269,7 +269,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      amount;
    };
 
-   struct legacy_limit_order_create_operation
+   struct legacy_limit_order_create_operation : public base_operation
    {
       legacy_limit_order_create_operation() {}
       legacy_limit_order_create_operation( const limit_order_create_operation& op ) :
@@ -289,7 +289,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       time_point_sec    expiration;
    };
 
-   struct legacy_limit_order_create2_operation
+   struct legacy_limit_order_create2_operation : public base_operation
    {
       legacy_limit_order_create2_operation() {}
       legacy_limit_order_create2_operation( const limit_order_create2_operation& op ) :
@@ -309,7 +309,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       time_point_sec    expiration;
    };
 
-   struct legacy_transfer_to_savings_operation
+   struct legacy_transfer_to_savings_operation : public base_operation
    {
       legacy_transfer_to_savings_operation() {}
       legacy_transfer_to_savings_operation( const transfer_to_savings_operation& op ) :
@@ -325,7 +325,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            memo;
    };
 
-   struct legacy_transfer_from_savings_operation
+   struct legacy_transfer_from_savings_operation : public base_operation
    {
       legacy_transfer_from_savings_operation() {}
       legacy_transfer_from_savings_operation( const transfer_from_savings_operation& op ) :
@@ -343,7 +343,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            memo;
    };
 
-   struct legacy_claim_reward_balance_operation
+   struct legacy_claim_reward_balance_operation : public base_operation
    {
       legacy_claim_reward_balance_operation() {}
       legacy_claim_reward_balance_operation( const claim_reward_balance_operation& op ) :
@@ -359,7 +359,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      reward_vests;
    };
 
-   struct legacy_delegate_vesting_shares_operation
+   struct legacy_delegate_vesting_shares_operation : public base_operation
    {
       legacy_delegate_vesting_shares_operation() {}
       legacy_delegate_vesting_shares_operation( const delegate_vesting_shares_operation& op ) :
@@ -373,7 +373,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      vesting_shares;
    };
 
-   struct legacy_author_reward_operation
+   struct legacy_author_reward_operation : public base_operation
    {
       legacy_author_reward_operation() {}
       legacy_author_reward_operation( const author_reward_operation& op ) :
@@ -391,7 +391,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      vesting_payout;
    };
 
-   struct legacy_curation_reward_operation
+   struct legacy_curation_reward_operation : public base_operation
    {
       legacy_curation_reward_operation() {}
       legacy_curation_reward_operation( const curation_reward_operation& op ) :
@@ -407,7 +407,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            comment_permlink;
    };
 
-   struct legacy_comment_reward_operation
+   struct legacy_comment_reward_operation : public base_operation
    {
       legacy_comment_reward_operation() {}
       legacy_comment_reward_operation( const comment_reward_operation& op ) :
@@ -421,7 +421,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      payout;
    };
 
-   struct legacy_liquidity_reward_operation
+   struct legacy_liquidity_reward_operation : public base_operation
    {
       legacy_liquidity_reward_operation() {}
       legacy_liquidity_reward_operation( const liquidity_reward_operation& op ) :
@@ -433,7 +433,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      payout;
    };
 
-   struct legacy_interest_operation
+   struct legacy_interest_operation : public base_operation
    {
       legacy_interest_operation() {}
       legacy_interest_operation( const interest_operation& op ) :
@@ -445,7 +445,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      interest;
    };
 
-   struct legacy_fill_convert_request_operation
+   struct legacy_fill_convert_request_operation : public base_operation
    {
       legacy_fill_convert_request_operation() {}
       legacy_fill_convert_request_operation( const fill_convert_request_operation& op ) :
@@ -461,7 +461,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      amount_out;
    };
 
-   struct legacy_fill_vesting_withdraw_operation
+   struct legacy_fill_vesting_withdraw_operation : public base_operation
    {
       legacy_fill_vesting_withdraw_operation() {}
       legacy_fill_vesting_withdraw_operation( const fill_vesting_withdraw_operation& op ) :
@@ -477,7 +477,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      deposited;
    };
 
-   struct legacy_fill_order_operation
+   struct legacy_fill_order_operation : public base_operation
    {
       legacy_fill_order_operation() {}
       legacy_fill_order_operation( const fill_order_operation& op ) :
@@ -497,7 +497,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      open_pays;
    };
 
-   struct legacy_fill_transfer_from_savings_operation
+   struct legacy_fill_transfer_from_savings_operation : public base_operation
    {
       legacy_fill_transfer_from_savings_operation() {}
       legacy_fill_transfer_from_savings_operation( const fill_transfer_from_savings_operation& op ) :
@@ -515,7 +515,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       string            memo;
    };
 
-   struct legacy_return_vesting_delegation_operation
+   struct legacy_return_vesting_delegation_operation : public base_operation
    {
       legacy_return_vesting_delegation_operation() {}
       legacy_return_vesting_delegation_operation( const return_vesting_delegation_operation& op ) :
@@ -527,7 +527,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      vesting_shares;
    };
 
-   struct legacy_comment_benefactor_reward_operation
+   struct legacy_comment_benefactor_reward_operation : public base_operation
    {
       legacy_comment_benefactor_reward_operation() {}
       legacy_comment_benefactor_reward_operation( const comment_benefactor_reward_operation& op ) :
@@ -543,7 +543,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      reward;
    };
 
-   struct legacy_producer_reward_operation
+   struct legacy_producer_reward_operation : public base_operation
    {
       legacy_producer_reward_operation() {}
       legacy_producer_reward_operation( const producer_reward_operation& op ) :
@@ -887,3 +887,6 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_fill_transfer_from_savings_ope
 FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_operation, (account)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
+
+STEEM_DECLARE_OPERATION_TYPE( steem::plugins::condenser_api::legacy_operation )
+FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )
