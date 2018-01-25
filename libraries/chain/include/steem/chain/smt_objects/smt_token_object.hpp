@@ -18,6 +18,13 @@ public:
       setup_completed,
    };
 
+   struct smt_market_maker_state
+   {
+      asset    steem_balance;
+      asset    token_balance;
+      uint32_t reserve_ratio = 0;
+   };
+
 public:
    template< typename Constructor, typename Allocator >
    smt_token_object( Constructor&& c, allocator< Allocator > a )
@@ -30,6 +37,18 @@ public:
       return symbol.to_nai();
    }
 
+   // Simple accessor preventing spaghetti code.
+   const share_type& get_current_supply() const
+   {
+      return market_maker.token_balance.amount;
+   }
+
+   // Simple accessor preventing spaghetti code.
+   void set_current_supply(const share_type& new_supply)
+   {
+      market_maker.token_balance = asset(new_supply, symbol);
+   }
+
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
@@ -37,7 +56,7 @@ public:
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
-   share_type        current_supply = 0;
+   smt_market_maker_state market_maker;
 
    /// set_setup_parameters
    bool              allow_voting = false;
@@ -97,11 +116,18 @@ FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
                  (setup_completed)
 )
 
+FC_REFLECT( steem::chain::smt_token_object::smt_market_maker_state,
+   (steem_balance)
+   (token_balance)
+   (reserve_ratio)
+)
+
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
    (symbol)
    (control_account)
    (phase)
+   (market_maker)
    (allow_voting)
    (allow_vesting)
    (schedule_time)

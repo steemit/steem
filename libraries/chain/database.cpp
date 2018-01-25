@@ -3676,11 +3676,11 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       const auto& smt = get< smt_token_object, by_symbol >( delta.symbol );
-      auto smt_new_supply = smt.current_supply + delta.amount;
+      auto smt_new_supply = smt.get_current_supply() + delta.amount;
       FC_ASSERT( smt_new_supply >= 0 );
       modify( smt, [smt_new_supply]( smt_token_object& smt )
       {
-         smt.current_supply = smt_new_supply;
+         smt.set_current_supply( smt_new_supply );
       });
       return;
    }
@@ -4374,7 +4374,7 @@ void database::validate_smt_invariants()const
          const smt_token_object& smt = *itr;
          auto totalIt = theMap.find( smt.symbol );
          asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
-         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+         FC_ASSERT( smt.market_maker.token_balance == total_supply, "", ("smt current_supply",smt.get_current_supply())("total_supply",total_supply) );
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
