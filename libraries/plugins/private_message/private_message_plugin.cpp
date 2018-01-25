@@ -119,8 +119,7 @@ namespace golos {
                 }
             }
 
-            private_message_plugin::private_message_plugin()
-                    : my(new private_message_plugin::private_message_plugin_impl(*this)) {
+            private_message_plugin::private_message_plugin(){
             }
 
             private_message_plugin::~private_message_plugin() {
@@ -138,6 +137,8 @@ namespace golos {
 
             void private_message_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 ilog("Intializing private message plugin");
+                my.reset(new private_message_plugin::private_message_plugin_impl(*this));
+
                 add_plugin_index<message_index>(my->_db);
 
                 typedef pair <string, string> pairstring;
