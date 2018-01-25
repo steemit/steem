@@ -36,7 +36,12 @@ namespace detail
 
    typedef void_type             get_methods_args;
    typedef vector< string >      get_methods_return;
-   typedef string                get_signature_args;
+
+   struct get_signature_args
+   {
+      string method;
+   };
+
    typedef api_method_signature  get_signature_return;
 
    class json_rpc_plugin_impl
@@ -92,7 +97,7 @@ namespace detail
    {
       FC_UNUSED( lock )
       vector< string > v;
-      boost::split( v, args, boost::is_any_of( "." ) );
+      boost::split( v, args.method, boost::is_any_of( "." ) );
       FC_ASSERT( v.size() == 2, "Invalid method name" );
 
       auto api_itr = _method_sigs.find( v[0] );
@@ -351,3 +356,5 @@ string json_rpc_plugin::call( const string& message )
 
 FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
 FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+
+FC_REFLECT( steem::plugins::json_rpc::detail::get_signature_args, (method) )
