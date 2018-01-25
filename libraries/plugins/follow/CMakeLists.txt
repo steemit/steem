@@ -37,7 +37,6 @@ target_link_libraries(
         golos::chain_plugin
         golos::protocol
         golos::social_network
-        golos::database_api_plugin
         appbase
         fc
 )
