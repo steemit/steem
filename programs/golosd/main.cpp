@@ -116,7 +116,7 @@ int main( int argc, char** argv ) {
         auto& args = appbase::app().get_args();
 
         try {
-            fc::optional< fc::logging_config > logging_config = golos::utilities::load_logging_config( args, appbase::app().data_dir() );
+            fc::optional< fc::logging_config > logging_config = golos::utilities::load_logging_config( args, appbase::app().data_dir() / "config.ini" );
             if( logging_config )
                 fc::configure_logging( *logging_config );
         } catch( const fc::exception& ) {
@@ -179,7 +179,7 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
         bool found_logging_config = false;
 
         boost::property_tree::ptree config_ini_tree;
-        boost::property_tree::ini_parser::read_ini(pwd.string() + "/config.ini", config_ini_tree);
+        boost::property_tree::ini_parser::read_ini(pwd.string(), config_ini_tree);
         for (const auto &section : config_ini_tree) {            
             const std::string &section_name = section.first;
             const boost::property_tree::ptree &section_tree = section.second;
