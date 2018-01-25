@@ -1,4 +1,4 @@
-#include <steemit/chain/database.hpp>
+#include <golos/chain/database.hpp>
 
 int main(int argc, char **argv, char **envp) {
     try {

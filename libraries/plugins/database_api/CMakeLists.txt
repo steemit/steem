@@ -1,4 +1,4 @@
-set(CURRENT_TARGET database_api_plugin)
+set(CURRENT_TARGET database_api)
 
 list(APPEND ${CURRENT_TARGET}_HEADERS
      include/golos/plugins/database_api/applied_operation.hpp

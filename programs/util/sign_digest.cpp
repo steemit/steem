@@ -7,7 +7,7 @@
 
 #include <graphene/utilities/key_conversion.hpp>
 
-#include <steemit/protocol/types.hpp>
+#include <golos/protocol/types.hpp>
 
 struct signing_request {
     fc::sha256 dig;

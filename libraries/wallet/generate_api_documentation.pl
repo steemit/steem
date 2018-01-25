@@ -38,7 +38,7 @@ $outFile->print($fileHeader);
 
 for my $class (@{$doxydocs->{classes}})
 {
-  if ($class->{name} eq 'steemit::wallet::wallet_api')
+  if ($class->{name} eq 'golos::wallet::wallet_api')
   {
     for my $member (@{$class->{public_methods}->{members}})
     {

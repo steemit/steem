@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/wallet/*.hpp")
+set(CURRENT_TARGET wallet)
 
 find_package(Perl)
 find_package(Doxygen)
@@ -23,24 +23,60 @@ else()
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/api_documentation_standin.cpp)
 endif()
 
+list(APPEND ${CURRENT_TARGET}_HEADERS
+        include/golos/wallet/api_documentation.hpp
+        include/golos/wallet/reflect_util.hpp
+        include/golos/wallet/remote_node_api.hpp
+        include/golos/wallet/wallet.hpp
+)
+
+list(APPEND ${CURRENT_TARGET}_SOURCES
+        api_documentation_standin.cpp
+        remote_node_api.cpp
+        wallet.cpp
+        )
+
 if(BUILD_SHARED_LIBRARIES)
-    add_library(golos_wallet SHARED wallet.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS})
+    add_library(golos_${CURRENT_TARGET} SHARED
+            ${${CURRENT_TARGET}_HEADERS}
+            ${${CURRENT_TARGET}_SOURCES}
+            )
 else()
-    add_library(golos_wallet STATIC wallet.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS})
+    add_library(golos_${CURRENT_TARGET} STATIC
+            ${${CURRENT_TARGET}_HEADERS}
+            ${${CURRENT_TARGET}_SOURCES}
+            )
 endif()
 # I don't know why golos_app is required twice in the following line, I just know the linker breaks if it isn't.
-target_link_libraries(golos_wallet PRIVATE golos_app graphene_net golos_chain golos_protocol graphene_utilities fc golos_private_message golos_app golos_follow golos_account_by_key ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
-target_include_directories(golos_wallet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(
+        golos_${CURRENT_TARGET}
+        PRIVATE
+        golos_network
+        golos_chain
+        golos::network_broadcast_api_plugin
+        golos::database_api
+        golos::account_history
+        golos::market_history_plugin
+        golos_protocol
+        graphene_utilities
+        fc
+        #golos_private_message
+        #golos_follow
+        #golos_account_by_key
+        ${CMAKE_DL_LIBS}
+        ${PLATFORM_SPECIFIC_LIBS}
+)
+target_include_directories( golos_${CURRENT_TARGET} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 if(MSVC)
     set_source_files_properties(wallet.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
 endif(MSVC)
 
 install(TARGETS
-        golos_wallet
+        golos_${CURRENT_TARGET}
 
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         )
-install(FILES ${HEADERS} DESTINATION "include/steemit/wallet")
+install(FILES ${HEADERS} DESTINATION "include/golos/wallet")

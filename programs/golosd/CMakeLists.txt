@@ -22,7 +22,7 @@ target_link_libraries(
         golos::chain_plugin
         golos::network_broadcast_api_plugin
         golos::witness_plugin
-        golos::database_api_plugin
+        golos::database_api
         golos::test_api_plugin
         golos::social_network
         golos::market_history_plugin

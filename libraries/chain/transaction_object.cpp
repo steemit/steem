@@ -69,4 +69,4 @@ namespace steemit {
         }
 
     }
-} // steemit::chain
+} // golos::chain

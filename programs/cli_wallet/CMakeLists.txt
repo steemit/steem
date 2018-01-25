@@ -14,8 +14,24 @@ if(GPERFTOOLS_FOUND)
 endif()
 
 # I don't know why golos_app is required twice in the following line, I just know the linker breaks if it isn't.
-target_link_libraries(cli_wallet
-        PRIVATE golos_app graphene_net golos_chain golos_protocol graphene_utilities golos_wallet golos_private_message golos_app golos_follow fc readline ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+target_link_libraries(
+        cli_wallet
+        PRIVATE
+        golos_network
+        golos_chain
+        golos_protocol
+        graphene_utilities
+        golos_wallet
+        golos::database_api
+        golos::market_history_plugin
+        #golos_private_message
+        #golos_follow
+        golos::network_broadcast_api_plugin
+        fc
+        ${readline_libraries}
+        ${CMAKE_DL_LIBS}
+        ${PLATFORM_SPECIFIC_LIBS}
+)
 
 if(MSVC)
     set_source_files_properties(main.cpp PROPERTIES COMPILE_FLAGS "/bigobj")

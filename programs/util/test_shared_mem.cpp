@@ -7,10 +7,10 @@
 
 #include <graphene/utilities/key_conversion.hpp>
 
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/authority.hpp>
+#include <golos/protocol/types.hpp>
+#include <golos/protocol/authority.hpp>
 
-#include <steemit/chain/shared_authority.hpp>
+#include <golos/chain/shared_authority.hpp>
 
 #include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/multi_index_container.hpp>
