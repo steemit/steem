@@ -18,7 +18,7 @@ namespace golos {
 
                 std::string name;
                 fc::uint128_t total_children_rshares2;
-                asset total_payouts;
+                golos::protocol::asset total_payouts;
                 int32_t net_votes = 0;
                 uint32_t top_posts = 0;
                 uint32_t comments = 0;

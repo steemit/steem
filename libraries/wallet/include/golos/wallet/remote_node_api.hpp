@@ -6,7 +6,8 @@
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
-#include <golos/plugins/database_api/api_objects/tag_api_object.hpp>
+#include <golos/plugins/social_network/api_object/tag_api_object.hpp>
+#include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/market_history/market_history_objects.hpp>
 
 
@@ -21,6 +22,7 @@ using namespace plugins;
 //using namespace plugins::condenser_api;
 using namespace plugins::database_api;
 using namespace plugins::account_history;
+using namespace plugins::social_network;
 //using namespace plugins::follow;
 using namespace plugins::market_history;
 //using namespace plugins::witness_plugin;
