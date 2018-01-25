@@ -26,24 +26,24 @@ namespace golos {
              *   by the posting key.
              *
              */
-            class private_message_plugin : public appbase::plugin<private_message_plugin> {
+            class private_message_plugin final : public appbase::plugin<private_message_plugin> {
             public:
 
                 APPBASE_PLUGIN_REQUIRES((json_rpc::plugin))
 
                 private_message_plugin();
 
-                virtual ~private_message_plugin();
+                ~private_message_plugin();
 
-                virtual void set_program_options(
+                void set_program_options(
                         boost::program_options::options_description &cli,
                         boost::program_options::options_description &cfg) override;
 
-                virtual void plugin_initialize(const boost::program_options::variables_map &options) override;
+                void plugin_initialize(const boost::program_options::variables_map &options) override;
 
-                virtual void plugin_startup() override;
+                void plugin_startup() override;
 
-                virtual void plugin_shutdown() override;
+                void plugin_shutdown() override;
 
                 flat_map <std::string, std::string> tracked_accounts() const; /// map start_range to end_range
 

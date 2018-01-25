@@ -28,7 +28,7 @@ namespace golos {
     namespace plugins {
         namespace private_message {
 
-            class private_message_plugin::private_message_plugin_impl {
+            class private_message_plugin::private_message_plugin_impl final {
             public:
                 private_message_plugin_impl(private_message_plugin &_plugin)
                         : _self(_plugin) ,
@@ -47,7 +47,7 @@ namespace golos {
                 outbox_r get_outbox(const outbox_a&) const;
 
 
-                virtual ~private_message_plugin_impl();
+                ~private_message_plugin_impl() {};
 
                 private_message_plugin &_self;
                 std::shared_ptr <generic_custom_operation_interpreter<private_message_plugin_operation>> _custom_operation_interpreter;
@@ -85,11 +85,6 @@ namespace golos {
                 }
                 return result;
             }
-
-            private_message_plugin::private_message_plugin_impl::~private_message_plugin_impl() {
-                return;
-            }
-
 
             void private_message_evaluator::do_apply(const private_message_operation &pm) {
                 database &d = db();
