@@ -1972,7 +1972,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
-/*
+
         annotated_signed_transaction wallet_api::cancel_order( string owner, uint32_t orderid, bool broadcast ) {
             FC_ASSERT( !is_locked() );
             limit_order_cancel_operation op;
@@ -1985,7 +1985,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
-*/
+
         annotated_signed_transaction wallet_api::post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast ) {
             FC_ASSERT( !is_locked() );
             comment_operation op;
