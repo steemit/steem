@@ -36,3 +36,4 @@ seed.minnowshares.net:2001      # reggaemuffin
 seed.windforce.farm:2001        # windforce
 seed.teamsteem.me:2001          # teamsteem
 steem-seed.crypto.fans:2001     # sc-steemit
+148.251.237.104:2001            # steem-bounty
