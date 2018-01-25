@@ -57,6 +57,7 @@ target_link_libraries(
         golos::database_api
         golos::account_history
         golos::market_history_plugin
+        golos::social_network
         golos_protocol
         graphene_utilities
         fc

@@ -310,12 +310,12 @@ map< uint32_t, golos::plugins::database_api::operation_api_object > remote_node_
 }
 
 
-/*
-vector< follow::api_follow_object > remote_node_api::get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
+
+vector< follow::follow_api_object > remote_node_api::get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
    FC_ASSERT( false );
 }
 
-vector< follow::api_follow_object > remote_node_api::get_following( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
+vector< follow::follow_api_object > remote_node_api::get_following( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
    FC_ASSERT( false );
 }
 
@@ -350,7 +350,7 @@ vector< account_name_type > remote_node_api::get_reblogged_by( account_name_type
 vector< follow::reblog_count > remote_node_api::get_blog_authors( account_name_type ) {
    FC_ASSERT( false );
 }
-*/
+
 market_ticker_r remote_node_api::get_ticker() {
    FC_ASSERT( false );
 }

@@ -6,8 +6,11 @@
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
-#include <golos/plugins/database_api/api_objects/tag_api_object.hpp>
+#include <golos/plugins/social_network/api_object/tag_api_object.hpp>
+#include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/market_history/market_history_objects.hpp>
+#include <golos/plugins/follow/plugin.hpp>
+#include <golos/plugins/follow/follow_api_object.hpp>
 
 
 namespace golos { namespace wallet {
@@ -21,8 +24,9 @@ using namespace plugins;
 //using namespace plugins::condenser_api;
 using namespace plugins::database_api;
 using namespace plugins::account_history;
-//using namespace plugins::follow;
+using namespace plugins::follow;
 using namespace plugins::market_history;
+using namespace plugins::social_network;
 //using namespace plugins::witness_plugin;
 
 /**
@@ -98,16 +102,20 @@ struct remote_node_api {
    vector< tags::discussion > get_discussions_by_promoted( tags::discussion_query );
    vector< tags::discussion > get_replies_by_last_update( tags::discussion_query );
    vector< tags::discussion > get_discussions_by_author_before_date( tags::discussion_query );
-   vector< follow::api_follow_object > get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t );
-   vector< follow::api_follow_object > get_following( account_name_type, account_name_type, follow::follow_type, uint32_t );
-   follow::get_follow_count_return get_follow_count( account_name_type );
-   vector< follow::feed_entry > get_feed_entries( account_name_type, uint32_t, uint32_t );
-   vector< follow::comment_feed_entry > get_feed( account_name_type, uint32_t, uint32_t );
-   vector< follow::blog_entry > get_blog_entries( account_name_type, uint32_t, uint32_t );
-   vector< follow::comment_blog_entry > get_blog( account_name_type, uint32_t, uint32_t );
-   vector< follow::account_reputation > get_account_reputations( account_name_type, uint32_t );
+   */
+    // Follow plugin
+   vector< follow_api_object > get_followers( account_name_type, account_name_type, follow_type, uint32_t );
+   vector< follow_api_object > get_following( account_name_type, account_name_type, follow_type, uint32_t );
+   get_follow_count_return get_follow_count( account_name_type );
+   vector< feed_entry > get_feed_entries( account_name_type, uint32_t, uint32_t );
+   vector< comment_feed_entry > get_feed( account_name_type, uint32_t, uint32_t );
+   vector< blog_entry > get_blog_entries( account_name_type, uint32_t, uint32_t );
+   vector< comment_blog_entry > get_blog( account_name_type, uint32_t, uint32_t );
+   vector< account_reputation > get_account_reputations( account_name_type, uint32_t );
    vector< account_name_type > get_reblogged_by( account_name_type, string );
-   vector< follow::reblog_count > get_blog_authors( account_name_type );*/
+   vector< reblog_count > get_blog_authors( account_name_type );
+
+    // Market history
    market_ticker_r get_ticker();
    market_volume_r get_volume();
    order_book_r get_order_book( order_book_a );
@@ -193,6 +201,7 @@ FC_API( golos::wallet::remote_node_api,
         */
         (get_account_history)/*
         (broadcast_block)
+        */
         (get_followers)
         (get_following)
         (get_follow_count)
@@ -202,7 +211,7 @@ FC_API( golos::wallet::remote_node_api,
         (get_blog)
         (get_account_reputations)
         (get_reblogged_by)
-        (get_blog_authors)*/
+        (get_blog_authors)
         (get_ticker)
         (get_volume)
         (get_order_book)

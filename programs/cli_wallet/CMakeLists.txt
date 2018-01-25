@@ -24,8 +24,9 @@ target_link_libraries(
         golos_wallet
         golos::database_api
         golos::market_history_plugin
+        golos::social_network
         #golos_private_message
-        #golos_follow
+        golos::follow_plugin
         golos::network_broadcast_api_plugin
         fc
         ${readline_libraries}
