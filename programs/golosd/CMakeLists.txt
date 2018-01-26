@@ -31,6 +31,7 @@ target_link_libraries(
         golos::account_history
         golos::private_message_plugin
         golos::auth_util
+        golos::block_info
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}
