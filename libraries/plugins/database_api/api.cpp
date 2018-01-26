@@ -837,34 +837,6 @@ namespace golos {
 
 
 
-            DEFINE_API(plugin, get_account_votes) {
-                CHECK_ARG_SIZE(1)
-                account_name_type voter = args.args->at(0).as<account_name_type>();
-                return my->database().with_read_lock([&]() {
-                    std::vector<account_vote> result;
-
-                    const auto &voter_acnt = my->database().get_account(voter);
-                    const auto &idx = my->database().get_index<comment_vote_index>().indices().get<by_voter_comment>();
-
-                    account_object::id_type aid(voter_acnt.id);
-                    auto itr = idx.lower_bound(aid);
-                    auto end = idx.upper_bound(aid);
-                    while (itr != end) {
-                        const auto &vo = my->database().get(itr->comment);
-                        account_vote avote;
-                        avote.authorperm = vo.author + "/" + to_string(vo.permlink);
-                        avote.weight = itr->weight;
-                        avote.rshares = itr->rshares;
-                        avote.percent = itr->vote_percent;
-                        avote.time = itr->last_update;
-                        result.emplace_back(avote);
-                        ++itr;
-                    }
-                    return result;
-                });
-            }
-
-
             std::map<uint32_t, applied_operation> plugin::api_impl::get_account_history(std::string account,
                                                                                               uint64_t from,
                                                                                               uint32_t limit) const {

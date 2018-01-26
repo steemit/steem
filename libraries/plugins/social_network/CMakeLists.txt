@@ -15,6 +15,7 @@ list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/social_network/api_object/vote_state.hpp
         include/golos/plugins/social_network/languages/language_object.hpp
         include/golos/plugins/social_network/languages/language_visitor.hpp
+        include/golos/plugins/social_network/api_object/account_vote.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES

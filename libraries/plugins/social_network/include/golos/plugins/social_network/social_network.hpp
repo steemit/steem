@@ -6,6 +6,7 @@
 #include <golos/plugins/social_network/api_object/category_api_object.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
 #include <golos/plugins/follow/plugin.hpp>
+#include <golos/plugins/social_network/api_object/account_vote.hpp>
 
 namespace golos {
     namespace plugins {
@@ -13,6 +14,10 @@ namespace golos {
             using plugins::json_rpc::msg_pack;
 
             using tags_used_by_author_r = std::vector<std::pair<std::string, uint32_t>>;
+
+            struct get_languages_r {
+                std::set<std::string> languages;
+            };
 
             DEFINE_API_ARGS(get_content,                           msg_pack, discussion)
             DEFINE_API_ARGS(get_trending_tags,                     msg_pack, std::vector<tag_api_object>)
@@ -38,7 +43,9 @@ namespace golos {
             DEFINE_API_ARGS(get_active_categories,                 msg_pack, std::vector<category_api_object>)
             DEFINE_API_ARGS(get_recent_categories,                 msg_pack, std::vector<category_api_object>)
             DEFINE_API_ARGS(get_best_categories,                   msg_pack, std::vector<category_api_object>)
-            DEFINE_API_ARGS(get_active_votes, msg_pack, std::vector<vote_state>)
+            DEFINE_API_ARGS(get_account_votes,                     msg_pack, std::vector<account_vote>)
+            DEFINE_API_ARGS(get_active_votes,                      msg_pack, std::vector<vote_state>)
+            DEFINE_API_ARGS( get_languages,                        msg_pack, get_languages_r );
 
             class social_network_t final : public appbase::plugin<social_network_t> {
             public:
@@ -143,6 +150,8 @@ namespace golos {
                  **/
                 (get_discussions_by_blog)
 
+                (get_account_votes)
+
                 (get_discussions_by_comments)
 
                                 /**
@@ -168,6 +177,7 @@ namespace golos {
                                 (get_discussions_by_author_before_date)
 
                                 (get_content)
+                                (get_languages)
                 )
 
                 social_network_t();
@@ -192,3 +202,5 @@ namespace golos {
         }
     }
 }
+
+FC_REFLECT((golos::plugins::social_network::get_languages_r), (languages))

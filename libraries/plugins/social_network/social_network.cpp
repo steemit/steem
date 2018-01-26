@@ -241,10 +241,29 @@ namespace golos {
                         const std::string &start_permlink
                 ) const;
 
+
+                get_languages_r get_languages() ;
+
                 std::set<std::string> cache_languages;
             private:
                 golos::chain::database& database_;
             };
+
+
+            get_languages_r social_network_t::impl::get_languages() {
+                get_languages_r result;
+                result.languages = cache_languages;
+                return result;
+            }
+
+            DEFINE_API ( social_network_t, get_languages ) {
+                auto &db = pimpl->database();
+                return db.with_read_lock([&]() {
+                    get_languages_r result;
+                    result = pimpl->get_languages();
+                    return result;
+                });
+            }
 
 
             void social_network_t::plugin_startup() {
@@ -1080,6 +1099,34 @@ namespace golos {
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
                     return pimpl->get_discussions_by_promoted(query);
+                });
+            }
+
+
+            DEFINE_API(social_network_t, get_account_votes) {
+                CHECK_ARG_SIZE(1)
+                account_name_type voter = args.args->at(0).as<account_name_type>();
+                return pimpl->database().with_read_lock([&]() {
+                    std::vector<account_vote> result;
+
+                    const auto &voter_acnt = pimpl->database().get_account(voter);
+                    const auto &idx = pimpl->database().get_index<comment_vote_index>().indices().get<by_voter_comment>();
+
+                    account_object::id_type aid(voter_acnt.id);
+                    auto itr = idx.lower_bound(aid);
+                    auto end = idx.upper_bound(aid);
+                    while (itr != end) {
+                        const auto &vo = pimpl->database().get(itr->comment);
+                        account_vote avote;
+                        avote.authorperm = vo.author + "/" + to_string(vo.permlink);
+                        avote.weight = itr->weight;
+                        avote.rshares = itr->rshares;
+                        avote.percent = itr->vote_percent;
+                        avote.time = itr->last_update;
+                        result.emplace_back(avote);
+                        ++itr;
+                    }
+                    return result;
                 });
             }
 

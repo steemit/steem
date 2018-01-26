@@ -196,19 +196,11 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 // construct a default json console appender config here
                 // stdout/stderr will be taken from ini file, everything else hard-coded here
                 fc::json_console_appender::j_config console_appender_config;
-                console_appender_config.level_colors.emplace_back(
-                        fc::json_console_appender::j_level_color(fc::log_level::debug,
-                                                                 fc::json_console_appender::j_color::green));
-                console_appender_config.level_colors.emplace_back(
-                        fc::json_console_appender::j_level_color(fc::log_level::warn,
-                                                                 fc::json_console_appender::j_color::brown));
-                console_appender_config.level_colors.emplace_back(
-                        fc::json_console_appender::j_level_color(fc::log_level::error,
-                                                                 fc::json_console_appender::j_color::cyan));
-                console_appender_config.stream = fc::variant(stream_name).as<
-                        fc::json_console_appender::j_stream::type>();
-                logging_config.appenders.push_back(fc::appender_config(console_appender_name, "json_console",
-                                                                       fc::variant(console_appender_config)));
+                console_appender_config.level_colors.emplace_back(fc::json_console_appender::j_level_color(fc::log_level::debug, fc::json_console_appender::j_color::green));
+                console_appender_config.level_colors.emplace_back(fc::json_console_appender::j_level_color(fc::log_level::warn, fc::json_console_appender::j_color::brown));
+                console_appender_config.level_colors.emplace_back(fc::json_console_appender::j_level_color(fc::log_level::error, fc::json_console_appender::j_color::cyan));
+                console_appender_config.stream = fc::variant(stream_name).as<fc::json_console_appender::j_stream::type>();
+                logging_config.appenders.emplace_back(console_appender_name, "json_console", fc::variant(console_appender_config));
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, console_appender_section_prefix)) {
                 std::string console_appender_name = section_name.substr(console_appender_section_prefix.length());
@@ -221,7 +213,7 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 console_appender_config.level_colors.emplace_back(fc::console_appender::level_color(fc::log_level::warn, fc::console_appender::color::brown));
                 console_appender_config.level_colors.emplace_back(fc::console_appender::level_color(fc::log_level::error, fc::console_appender::color::cyan));
                 console_appender_config.stream = fc::variant(stream_name).as<fc::console_appender::stream::type>();
-                logging_config.appenders.push_back(fc::appender_config(console_appender_name, "console", fc::variant(console_appender_config)));
+                logging_config.appenders.emplace_back(console_appender_name, "console", fc::variant(console_appender_config));
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, file_appender_section_prefix)) {
                 std::string file_appender_name = section_name.substr(file_appender_section_prefix.length());
@@ -239,7 +231,7 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 file_appender_config.rotate = true;
                 file_appender_config.rotation_interval = fc::hours(1);
                 file_appender_config.rotation_limit = fc::days(1);
-                logging_config.appenders.push_back(fc::appender_config(file_appender_name, "file", fc::variant(file_appender_config)));
+                logging_config.appenders.emplace_back(file_appender_name, "file", fc::variant(file_appender_config));
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, logger_section_prefix)) {
                 std::string logger_name = section_name.substr(logger_section_prefix.length());
