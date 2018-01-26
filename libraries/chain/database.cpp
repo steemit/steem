@@ -4374,7 +4374,7 @@ void database::validate_smt_invariants()const
          const smt_token_object& smt = *itr;
          auto totalIt = theMap.find( smt.symbol );
          asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
-         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt current_supply",smt.current_supply)("total_supply",total_supply) );
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
