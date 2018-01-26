@@ -37,18 +37,6 @@ public:
       return symbol.to_nai();
    }
 
-   // Simple accessor preventing spaghetti code.
-   const share_type& get_current_supply() const
-   {
-      return market_maker.token_balance.amount;
-   }
-
-   // Simple accessor preventing spaghetti code.
-   void set_current_supply(const share_type& new_supply)
-   {
-      market_maker.token_balance = asset(new_supply, symbol);
-   }
-
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
@@ -56,7 +44,8 @@ public:
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
-   smt_market_maker_state market_maker;
+   share_type              current_supply = 0;
+   smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
    bool              allow_voting = false;
@@ -127,6 +116,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (symbol)
    (control_account)
    (phase)
+   (current_supply)
    (market_maker)
    (allow_voting)
    (allow_vesting)
