@@ -140,6 +140,10 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ASSET( s ) \
    steem::plugins::condenser_api::legacy_asset::from_string( s ).to_asset()
 
+#define FUND( account_name, amount ) \
+   fund( account_name, amount ); \
+   generate_block();
+
 namespace steem { namespace chain {
 
 using namespace steem::protocol;

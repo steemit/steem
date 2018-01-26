@@ -383,6 +383,14 @@ void database_fixture::fund(
    {
       db_plugin->debug_update( [=]( database& db)
       {
+         if( amount.symbol.space() == asset_symbol_type::smt_nai_space )
+         {
+            db.adjust_balance(account_name, amount);
+            db.adjust_supply(amount);
+            // Note that SMT have no equivalent of SBD, hence no virtual supply, hence no need to update it.
+            return;
+         }
+
          db.modify( db.get_account( account_name ), [&]( account_object& a )
          {
             if( amount.symbol == STEEM_SYMBOL )

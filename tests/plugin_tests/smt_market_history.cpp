@@ -70,11 +70,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       fund( "alice", ASSET( "1000.000 TESTS" ) );
       fund( "bob", ASSET( "1000.000 TESTS" ) );
       fund( "sam", ASSET( "1000.000 TESTS" ) );
-
-      const account_object& alice_account = db->get_account( "alice" );
-      asset alice_smt_balance( 1000000, any_smt_symbol );
-      db->adjust_balance( alice_account, alice_smt_balance );
-      db->adjust_supply( alice_smt_balance );
+      fund( "alice", asset( 1000000, any_smt_symbol ) );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -347,6 +343,8 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       order++;
 
       BOOST_REQUIRE( order == order_hist_idx.end() );
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
