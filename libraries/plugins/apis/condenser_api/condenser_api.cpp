@@ -1998,3 +1998,5 @@ DEFINE_READ_APIS( condenser_api,
 )
 
 } } } // steem::plugins::condenser_api
+
+STEEM_DEFINE_OPERATION_TYPE( steem::plugins::condenser_api::legacy_operation )
