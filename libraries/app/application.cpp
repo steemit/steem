@@ -262,8 +262,11 @@ namespace detail {
          _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
          ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
 
-         _shared_file_full_threshold   = options.at( "shared-file-full-threshold" ).as< uint16_t >();
-         _shared_file_scale_rate       = options.at( "shared-file-scale_rate" ).as< uint16_t >();
+         if( options.count( "shared-file-full-threshold" ) )
+            _shared_file_full_threshold   = options.at( "shared-file-full-threshold" ).as< uint16_t >();
+
+         if( options.count( "shared-file-scale-rate" ) )
+            _shared_file_scale_rate       = options.at( "shared-file-scale_rate" ).as< uint16_t >();
 
          bool read_only = _options->count( "read-only" );
          register_builtin_apis();
