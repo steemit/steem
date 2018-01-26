@@ -3014,13 +3014,7 @@ boost::signals2::connection database::any_apply_operation_proxy_impl( const t_op
       if( benchmark_dumper.is_enabled() )
       {
          if( _my->_evaluator_registry.is_evaluator( o.op ) )
-         {
-            std::string _name = IS_PRE_OPERATION ? "pre--->" : "post--->";
-            _name += name;
-            _name += "--->";
-            _name += _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op );
-            benchmark_dumper.end( _name );
-         }
+            benchmark_dumper.end( benchmark_dumper.generate_desc< IS_PRE_OPERATION >( name, _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op ) ) );
          else
             benchmark_dumper.end( util::advanced_benchmark_dumper::get_virtual_operation_name() );
       }

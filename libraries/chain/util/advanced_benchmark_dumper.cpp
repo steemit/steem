@@ -32,9 +32,11 @@ namespace steem { namespace chain { namespace util {
    void advanced_benchmark_dumper::end( const std::string& str )
    {
       uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count() - time_begin;
-      std::pair< std::set< item >::iterator, bool > res = items.emplace( item( APPLY_CONTEXT ? ( apply_context_name + str ) : str, time ) );
+      std::pair< std::set< item >::iterator, bool > res = info.items.emplace( item( APPLY_CONTEXT ? ( apply_context_name + str ) : str, time ) );
       if( !res.second )
-         res.first->change_time( time );
+         res.first->inc( time );
+
+      info.inc( time );
 
       ++flush_cnt;
       if( flush_cnt >= flush_max )
@@ -47,18 +49,34 @@ namespace steem { namespace chain { namespace util {
    template void advanced_benchmark_dumper::end< true >( const std::string& str );
    template void advanced_benchmark_dumper::end< false >( const std::string& str );
 
-   void advanced_benchmark_dumper::dump()
+   template< typename COLLECTION >
+   void advanced_benchmark_dumper::dump_impl( const total_info< COLLECTION >& src, const std::string& src_file_name )
    {
-      const fc::path path( file_name.c_str() );
+      const fc::path path( src_file_name.c_str() );
       try
       {
-         fc::json::save_to_file( items, path );
+         fc::json::save_to_file( src, path );
       }
       catch ( const fc::exception& except )
       {
          elog( "error writing benchmark data to file ${filename}: ${error}",
                ( "filename", path )("error", except.to_detail_string() ) );
       }
+   }
+
+   void advanced_benchmark_dumper::dump()
+   {
+      total_info< std::multiset< ritem > > rinfo( info.total_time );
+      std::for_each
+      (
+         info.items.begin(), info.items.end(), [&]( const item& obj )
+                                    {
+                                       rinfo.items.insert( ritem( obj.op_name, obj.time ) );
+                                    }
+      );
+
+      dump_impl( info, file_name );
+      dump_impl( rinfo, "r_" + file_name );
    }
 
 } } } // steem::chain::util

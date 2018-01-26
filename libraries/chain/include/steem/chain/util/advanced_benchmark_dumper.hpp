@@ -14,28 +14,38 @@ class advanced_benchmark_dumper
 {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
    public:
 
-      class item
+      struct item
       {
-         public:
+         std::string op_name;
+         mutable uint64_t time;
 
-            std::string op_name;
-            mutable uint64_t time;
+         item( std::string _op_name, uint64_t _time ): op_name( _op_name ), time( _time ) {}
 
-            item( std::string _op_name, uint64_t _time )
-            : op_name( _op_name ), time( _time )
-            {
+         bool operator<( const item& obj ) const { return op_name < obj.op_name; }
+         void inc( uint64_t _time ) const { time += _time; }
+      };
 
-            }
+      struct ritem
+      {
+         std::string op_name;
+         uint64_t time;
 
-            bool operator<( const item& obj ) const
-            {
-               return op_name < obj.op_name;
-            }
+         ritem( std::string _op_name, uint64_t _time ): op_name( _op_name ), time( _time ){}
 
-            void change_time( uint64_t _time ) const
-            {
-               time += _time;
-            }
+         bool operator<( const ritem& obj ) const { return time > obj.time; }
+      };
+
+      template< typename COLLECTION >
+      struct total_info
+      {
+         uint64_t total_time = 0;
+
+         COLLECTION items;// dla r musi tutaj byc list nie set
+         
+         total_info(){}
+         total_info( uint64_t _total_time ): total_time( _total_time ) {}
+
+         void inc( uint64_t _time ) { total_time += _time; }
       };
 
    private:
@@ -47,13 +57,16 @@ class advanced_benchmark_dumper
       bool enabled = false;
 
       uint32_t flush_cnt = 0;
-      uint32_t flush_max = 50000;
+      uint32_t flush_max = 500000;
 
       uint64_t time_begin = 0;
 
       std::string file_name;
 
-      std::set< item > items;
+      total_info< std::set< item > > info;
+
+      template< typename COLLECTION >
+      void dump_impl( const total_info< COLLECTION >& src, const std::string& src_file_name );
 
    public:
 
@@ -61,6 +74,15 @@ class advanced_benchmark_dumper
       ~advanced_benchmark_dumper();
 
       static std::string& get_virtual_operation_name(){ return virtual_operation_name; }
+
+      template< bool IS_PRE_OPERATION >
+      std::string generate_desc( const std::string& desc1, const std::string& desc2 )
+      {
+         std::stringstream s;
+         s << ( IS_PRE_OPERATION ? "pre--->" : "post--->" ) << desc1 << "--->" << desc2;
+
+         return s.str();
+      }
 
       void set_enabled( bool val ) { enabled = val; }
       bool is_enabled() { return enabled; }
@@ -75,3 +97,8 @@ class advanced_benchmark_dumper
 } } } // steem::chain::util
 
 FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::item, (op_name)(time) )
+FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::ritem, (op_name)(time) )
+
+FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::total_info< std::set< steem::chain::util::advanced_benchmark_dumper::item > >, (total_time)(items) )
+FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::total_info< std::multiset< steem::chain::util::advanced_benchmark_dumper::ritem > >, (total_time)(items) )
+
