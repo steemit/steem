@@ -2578,9 +2578,9 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
-   if( BOOST_UNLIKELY( _shared_file_full_threshold != 0 && _shared_file_scale_rate != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - _shared_file_full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
+   if( BOOST_UNLIKELY( _shared_file_full_threshold != 0 && _shared_file_scale_rate != 0 && free_mem < ( ( uint128_t( STEEMIT_100_PERCENT - _shared_file_full_threshold ) * max_mem ) / STEEMIT_100_PERCENT ).to_uint64() ) )
    {
-      uint64_t new_max = ( uint128_t( max_mem * _shared_file_scale_rate ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
+      uint64_t new_max = ( uint128_t( max_mem * _shared_file_scale_rate ) / STEEMIT_100_PERCENT ).to_uint64() + max_mem;
 
       wlog( "Memory is almost full, increasing to ${mem}M", ("mem", new_max / (1024*1024)) );
 

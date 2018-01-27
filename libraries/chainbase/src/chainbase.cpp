@@ -141,7 +141,7 @@ namespace chainbase {
       _segment.reset();
       _meta.reset();
 
-      open( _data_dir, 0, new_shared_file_size );
+      open( _data_dir, database::read_write, new_shared_file_size );
 
       _index_list.clear();
       _index_map.clear();
