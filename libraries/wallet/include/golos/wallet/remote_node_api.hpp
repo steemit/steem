@@ -5,7 +5,7 @@
 #include <golos/plugins/database_api/state.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
 
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
 #include <golos/plugins/social_network/api_object/discussion.hpp>
