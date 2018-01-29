@@ -8,6 +8,8 @@
 #include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
+#include <golos/plugins/social_network/api_object/discussion.hpp>
+#include <golos/plugins/social_network/api_object/discussion_query.hpp>
 #include <golos/plugins/market_history/market_history_objects.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
@@ -82,27 +84,27 @@ struct remote_node_api {
    vector< vote_state > get_active_votes( account_name_type, string );
    vector< account_vote > get_account_votes( account_name_type );
 
-   vector< tag_count_object > get_tags_used_by_author( account_name_type );/*
-   tags::discussion get_content( account_name_type, string );
-   vector< tags::discussion > get_content_replies( account_name_type, string );
+   vector< tag_count_object > get_tags_used_by_author( account_name_type );
+   discussion get_content( account_name_type, string );
+   vector< discussion > get_content_replies( account_name_type, string );
 
-   vector< tags::discussion > get_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_post_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_comment_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_trending( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_created( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_active( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_cashout( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_votes( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_children( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_hot( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_feed( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_blog( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_comments( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_promoted( tags::discussion_query );
-   vector< tags::discussion > get_replies_by_last_update( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_author_before_date( tags::discussion_query );
-   */
+   vector< discussion > get_discussions_by_payout( discussion_query );
+   vector< discussion > get_post_discussions_by_payout( discussion_query );
+   vector< discussion > get_comment_discussions_by_payout( discussion_query );
+   vector< discussion > get_discussions_by_trending( discussion_query );
+   vector< discussion > get_discussions_by_created( discussion_query );
+   vector< discussion > get_discussions_by_active( discussion_query );
+   vector< discussion > get_discussions_by_cashout( discussion_query );
+   vector< discussion > get_discussions_by_votes( discussion_query );
+   vector< discussion > get_discussions_by_children( discussion_query );
+   vector< discussion > get_discussions_by_hot( discussion_query );
+   vector< discussion > get_discussions_by_feed( discussion_query );
+   vector< discussion > get_discussions_by_blog( discussion_query );
+   vector< discussion > get_discussions_by_comments( discussion_query );
+   vector< discussion > get_discussions_by_promoted( discussion_query );
+   vector< discussion > get_replies_by_last_update( discussion_query );
+   vector< discussion > get_discussions_by_author_before_date( discussion_query );
+
     // Follow plugin
    vector< follow_api_object > get_followers( account_name_type, account_name_type, follow_type, uint32_t );
    vector< follow_api_object > get_following( account_name_type, account_name_type, follow_type, uint32_t );
@@ -177,7 +179,7 @@ FC_API( golos::wallet::remote_node_api,
         (broadcast_transaction_synchronous)
         (get_tags_used_by_author)
         (get_active_votes)
-        (get_account_votes)/*
+        (get_account_votes)
         (get_content)
         (get_content_replies)
 
@@ -198,7 +200,7 @@ FC_API( golos::wallet::remote_node_api,
         (get_replies_by_last_update)
         (get_discussions_by_author_before_date)
 
-        */
+
         (get_account_history)/*
         (broadcast_block)
         */

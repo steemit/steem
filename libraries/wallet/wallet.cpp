@@ -2036,21 +2036,21 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 const string& following,
                 const set<string>& what,
                 const bool broadcast) {
-            string followingstr = following;
+            string _following = following;
 
             auto follwer_account     = get_account( follower );
-            FC_ASSERT( followingstr.size() );
-            if( followingstr[0] != '@' || followingstr[0] != '#' ) {
-                followingstr = '@' + followingstr;
+            FC_ASSERT( _following.size() );
+            if( _following[0] != '@' || _following[0] != '#' ) {
+                _following = '@' + _following;
             }
-            if( followingstr[0] == '@' ) {
-                get_account( followingstr.substr(1) );
+            if( _following[0] == '@' ) {
+                get_account( _following.substr(1) );
             }
-            FC_ASSERT( followingstr.size() > 1 );
+            FC_ASSERT( _following.size() > 1 );
 
             follow::follow_operation fop;
             fop.follower = follower;
-            fop.following = followingstr;
+            fop.following = _following;
             fop.what = what;
             follow::follow_plugin_operation op = fop;
 
