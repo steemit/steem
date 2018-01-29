@@ -27,11 +27,11 @@ target_link_libraries(
         graphene_utilities
         golos_wallet
         golos::database_api
-        golos::market_history_plugin
+        golos::market_history
         golos::social_network
-        #golos_private_message
-        #golos_follow
-        golos::network_broadcast_api_plugin
+        golos::private_message
+        golos::follow
+        golos::network_broadcast_api
         fc
         ${readline_libraries}
         ${CMAKE_DL_LIBS}

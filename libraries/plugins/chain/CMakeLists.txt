@@ -29,7 +29,7 @@ target_link_libraries(
         golos_protocol
         fc
         appbase
-        golos_json_rpc_plugin
+        golos::json_rpc
 )
 target_include_directories(golos_${CURRENT_TARGET}
                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../../")

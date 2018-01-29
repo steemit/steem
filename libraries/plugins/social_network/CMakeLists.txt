@@ -46,7 +46,7 @@ target_link_libraries(
         golos_chain
         golos::chain_plugin
         golos::network
-        golos::follow_plugin
+        golos::follow
         appbase
 )
 

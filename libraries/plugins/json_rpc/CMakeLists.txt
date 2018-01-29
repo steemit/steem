@@ -1,4 +1,4 @@
-set(CURRENT_TARGET json_rpc_plugin)
+set(CURRENT_TARGET json_rpc)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/json_rpc/plugin.hpp

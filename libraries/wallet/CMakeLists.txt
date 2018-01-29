@@ -53,17 +53,17 @@ target_link_libraries(
         PRIVATE
         golos_network
         golos_chain
-        golos::network_broadcast_api_plugin
+        golos::network_broadcast_api
         golos::database_api
         golos::account_history
-        golos::market_history_plugin
+        golos::market_history
         golos::social_network
+        golos::private_message
+        golos::follow
+        golos::account_by_key
         golos_protocol
         graphene_utilities
         fc
-        #golos_private_message
-        #golos_follow
-        #golos_account_by_key
         ${CMAKE_DL_LIBS}
         ${PLATFORM_SPECIFIC_LIBS}
 )
