@@ -1,5 +1,3 @@
-#pragma once
-
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/protocol/operation_util_impl.hpp>
 
