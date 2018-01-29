@@ -1,4 +1,4 @@
-set(CURRENT_TARGET follow_plugin)
+set(CURRENT_TARGET follow)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/follow/follow_api_object.hpp
@@ -33,7 +33,7 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 target_link_libraries(
         golos_${CURRENT_TARGET}
         golos_chain
-        golos::json_rpc_plugin
+        golos::json_rpc
         golos::chain_plugin
         golos::protocol
         golos::social_network

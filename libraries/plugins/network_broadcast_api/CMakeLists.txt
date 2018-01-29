@@ -1,4 +1,4 @@
-set(CURRENT_TARGET network_broadcast_api_plugin)
+set(CURRENT_TARGET network_broadcast_api)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp
@@ -27,8 +27,8 @@ target_link_libraries(
         golos_${CURRENT_TARGET}
         golos_chain
         golos::chain_plugin
-        golos::json_rpc_plugin
-        golos::p2p_plugin
+        golos::json_rpc
+        golos::p2p
         appbase
 )
 

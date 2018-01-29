@@ -87,6 +87,13 @@ namespace detail_ns {
         };
     };
 
+    template<>
+    struct js_name<fc::fixed_string<> > {
+        static std::string name() {
+            return "string";
+        }
+    };
+
     template<size_t N>
     struct js_name<fc::array<uint8_t, N>> {
         static std::string name() {
@@ -169,13 +176,6 @@ namespace detail_ns {
     struct js_name<fc::signed_int> {
         static std::string name() {
             return "varint32";
-        }
-    };
-
-    template<>
-    struct js_name<fc::fixed_string<>> {
-        static std::string name() {
-            return "fixed_string";
         }
     };
 

@@ -25,7 +25,7 @@ add_library(golos::${CURRENT_TARGET} ALIAS golos_${CURRENT_TARGET})
 set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGET})
 target_link_libraries(
         golos_${CURRENT_TARGET}
-        golos::json_rpc_plugin
+        golos::json_rpc
         golos_chain
         golos::chain_plugin
         appbase

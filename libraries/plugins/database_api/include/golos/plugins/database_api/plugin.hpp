@@ -140,7 +140,6 @@ namespace golos {
             DEFINE_API_ARGS(get_potential_signatures, msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(verify_authority, msg_pack, bool)
             DEFINE_API_ARGS(verify_account_authority, msg_pack, bool)
-            DEFINE_API_ARGS(get_account_votes, msg_pack, std::vector<account_vote>)
             DEFINE_API_ARGS(get_account_history, msg_pack, get_account_history_return_type)
             DEFINE_API_ARGS(get_account_balances, msg_pack, std::vector<asset_17>)
             DEFINE_API_ARGS(get_miner_queue, msg_pack, std::vector<account_name_type>)
@@ -398,11 +397,6 @@ namespace golos {
                                      * @return true if the signers have enough authority to authorize an account
                                      */
                                     (verify_account_authority)
-
-
-
-                                    (get_account_votes)
-
 
 
                                     /**

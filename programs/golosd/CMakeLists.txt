@@ -17,18 +17,19 @@ target_link_libraries(
         ${CURRENT_TARGET} PRIVATE
         appbase
         golos::webserver_plugin
-        golos::p2p_plugin
+        golos::p2p
         graphene_utilities
         golos::chain_plugin
-        golos::network_broadcast_api_plugin
-        golos::witness_plugin
+        golos::network_broadcast_api
+        golos::witness
         golos::database_api
         golos::test_api_plugin
         golos::social_network
-        golos::market_history_plugin
+        golos::market_history
         golos::blockchain_statistics
-        golos::account_by_key_plugin
+        golos::account_by_key
         golos::account_history
+        golos::private_message
         golos::auth_util
         golos_protocol
         fc

@@ -13,6 +13,10 @@ if(GPERFTOOLS_FOUND)
     list(APPEND PLATFORM_SPECIFIC_LIBS tcmalloc)
 endif()
 
+FIND_PACKAGE(Boost  REQUIRED COMPONENTS
+    regex
+)
+
 # I don't know why golos_app is required twice in the following line, I just know the linker breaks if it isn't.
 target_link_libraries(
         cli_wallet
@@ -23,15 +27,16 @@ target_link_libraries(
         graphene_utilities
         golos_wallet
         golos::database_api
-        golos::market_history_plugin
+        golos::market_history
         golos::social_network
-        #golos_private_message
-        golos::follow_plugin
-        golos::network_broadcast_api_plugin
+        golos::private_message
+        golos::follow
+        golos::network_broadcast_api
         fc
         ${readline_libraries}
         ${CMAKE_DL_LIBS}
         ${PLATFORM_SPECIFIC_LIBS}
+        ${Boost_LIBRARIES}
 )
 
 if(MSVC)

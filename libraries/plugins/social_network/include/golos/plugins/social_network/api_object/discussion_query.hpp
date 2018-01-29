@@ -24,17 +24,17 @@ namespace golos {
             public:
                 void validate() const;
 
-                uint32_t limit = 0; ///< the discussions return amount top limit
-                std::set<std::string> select_authors; ///< list of authors to select
-                std::set<std::string> select_tags; ///< list of tags to include, posts without these tags are filtered
-                std::set<std::string> filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
-                uint32_t truncate_body = 0; ///< the amount of bytes of the post body to return, 0 for all
+                uint32_t                  limit = 0; ///< the discussions return amount top limit
+                std::set<std::string>     select_authors; ///< list of authors to select
+                std::set<std::string>     select_tags; ///< list of tags to include, posts without these tags are filtered
+                std::set<std::string>     filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
+                uint32_t                  truncate_body = 0; ///< the amount of bytes of the post body to return, 0 for all
                 fc::optional<std::string> start_author; ///< the author of discussion to start searching from
                 fc::optional<std::string> start_permlink; ///< the permlink of discussion to start searching from
                 fc::optional<std::string> parent_author; ///< the author of parent discussion
                 fc::optional<std::string> parent_permlink; ///< the permlink of parent discussion
-                std::set<std::string> select_languages; ///< list of language to select
-                std::set<std::string> filter_languages; ///< list of language to filter
+                std::set<std::string>     select_languages; ///< list of language to select
+                std::set<std::string>     filter_languages; ///< list of language to filter
             };
         }
     }

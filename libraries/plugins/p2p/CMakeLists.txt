@@ -1,4 +1,4 @@
-set(CURRENT_TARGET p2p_plugin)
+set(CURRENT_TARGET p2p)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/p2p/p2p_plugin.hpp

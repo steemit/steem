@@ -6,10 +6,13 @@
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
+
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
-#include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/social_network/api_object/discussion.hpp>
 #include <golos/plugins/social_network/api_object/discussion_query.hpp>
+#include <golos/plugins/social_network/api_object/account_vote.hpp>
+#include <golos/plugins/social_network/api_object/vote_state.hpp>
+
 #include <golos/plugins/market_history/market_history_objects.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
@@ -27,6 +30,7 @@ using namespace plugins;
 using namespace plugins::database_api;
 using namespace plugins::account_history;
 using namespace plugins::follow;
+using namespace plugins::social_network;
 using namespace plugins::market_history;
 using namespace plugins::social_network;
 //using namespace plugins::witness_plugin;
@@ -82,7 +86,7 @@ struct remote_node_api {
    void broadcast_block( signed_block );
 
    vector< vote_state > get_active_votes( account_name_type, string );
-   vector< account_vote > get_account_votes( account_name_type );
+   vector< social_network::account_vote > get_account_votes( account_name_type );
 
    vector< tag_count_object > get_tags_used_by_author( account_name_type );
    discussion get_content( account_name_type, string );

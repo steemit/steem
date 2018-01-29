@@ -1,23 +1,26 @@
-set(CURRENT_TARGET witness)
+set(CURRENT_TARGET private_message)
 
 list(APPEND CURRENT_TARGET_HEADERS
-     include/golos/plugins/witness/witness.hpp
-     )
+        include/golos/plugins/private_message/private_message_plugin.hpp
+        include/golos/plugins/private_message/private_message_objects.hpp
+        include/golos/plugins/private_message/private_message_evaluators.hpp
+        )
 
 list(APPEND CURRENT_TARGET_SOURCES
-     witness.cpp
-     )
+        private_message_plugin.cpp
+        private_message_objects.cpp
+        )
 
 if(BUILD_SHARED_LIBRARIES)
     add_library(golos_${CURRENT_TARGET} SHARED
-                ${CURRENT_TARGET_HEADERS}
-                ${CURRENT_TARGET_SOURCES}
-                )
+            ${CURRENT_TARGET_HEADERS}
+            ${CURRENT_TARGET_SOURCES}
+            )
 else()
     add_library(golos_${CURRENT_TARGET} STATIC
-                ${CURRENT_TARGET_HEADERS}
-                ${CURRENT_TARGET_SOURCES}
-                )
+            ${CURRENT_TARGET_HEADERS}
+            ${CURRENT_TARGET_SOURCES}
+            )
 endif()
 
 add_library(golos::${CURRENT_TARGET} ALIAS golos_${CURRENT_TARGET})
@@ -34,7 +37,7 @@ target_link_libraries(
         appbase
 )
 target_include_directories(golos_${CURRENT_TARGET}
-                           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 install(TARGETS
         golos_${CURRENT_TARGET}
