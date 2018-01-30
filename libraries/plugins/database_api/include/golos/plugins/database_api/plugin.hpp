@@ -99,7 +99,6 @@ namespace golos {
 
             using chain_properties_17 = chain_properties;
             using price_17 = price;
-            using asset_17 = asset;
 
 
             ///               API,                                    args,                return
@@ -141,7 +140,6 @@ namespace golos {
             DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
             DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
             DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
-            DEFINE_API_ARGS(get_account_balances,             msg_pack, std::vector<asset_17>)
             DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
 
 
@@ -295,7 +293,7 @@ namespace golos {
                                      * @param assets names of the assets to get balances of; if empty, get all assets account has a balance in
                                      * @return Balances of the account
                                      */
-                                    //(get_account_balances)
+
 
                                     /**
                                      * @brief Get the total number of accounts registered with the blockchain

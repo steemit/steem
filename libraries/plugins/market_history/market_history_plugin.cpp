@@ -356,6 +356,7 @@ namespace golos {
                     wlog("history-per-size ${h}", ("h", _my->_maximum_history_per_bucket_size));
 
                     ilog("market_history: plugin_initialize() end");
+                    JSON_RPC_REGISTER_API ( name() ) ;
                 } FC_CAPTURE_AND_RETHROW()
             }
 

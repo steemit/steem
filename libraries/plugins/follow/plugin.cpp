@@ -350,7 +350,6 @@ namespace golos {
                 try {
                     ilog("Intializing follow plugin");
                     pimpl.reset(new impl());
-                    JSON_RPC_REGISTER_API(plugin_name);
                     auto &db = pimpl->database();
                     pimpl->plugin_initialize(*this);
 
@@ -371,6 +370,8 @@ namespace golos {
                         uint32_t feed_size = options["follow-max-feed-size"].as<uint32_t>();
                         pimpl->max_feed_size_ = feed_size;
                     }
+
+                    JSON_RPC_REGISTER_API ( name() ) ;
                 } FC_CAPTURE_AND_RETHROW()
             }
 
