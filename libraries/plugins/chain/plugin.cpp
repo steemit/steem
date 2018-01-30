@@ -45,9 +45,6 @@ namespace chain {
         void check_time_in_block(const protocol::signed_block &block);
         bool accept_block(const protocol::signed_block &block, bool currently_syncing, uint32_t skip);
         void accept_transaction(const protocol::signed_transaction &trx);
-        // API ::
-        push_block_r push_block (const push_block_a & args) ;
-        push_transaction_r push_transaction (const push_transaction_a & args) ;
 
 
         golos::chain::database db;
@@ -74,60 +71,6 @@ namespace chain {
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
         db.push_transaction(trx);
-    }
-
-    push_block_r plugin::plugin_impl::push_block(const push_block_a & args) {
-        push_block_r result;
-
-        result.success = false;
-
-        try {
-            accept_block(args.block, args.currently_syncing, golos::chain::database::skip_nothing);
-            result.success = true;
-        } catch (const fc::exception &e) {
-            result.error = e.to_detail_string();
-        } catch (const std::exception &e) {
-            result.error = e.what();
-        } catch (...) {
-            result.error = "uknown error";
-        }
-
-        return result;
-    }
-
-    push_transaction_r plugin::plugin_impl::push_transaction (const push_transaction_a & args) {
-        push_transaction_r result;
-
-        result.success = false;
-
-        try {
-            accept_transaction(args);
-            result.success = true;
-        } catch (const fc::exception &e) {
-            result.error = e.to_detail_string();
-        } catch (const std::exception &e) {
-            result.error = e.what();
-        } catch (...) {
-            result.error = "uknown error";
-        }
-
-        return result; 
-    }
-
-    DEFINE_API(plugin, push_block) {
-        auto tmp = args.args->at(0).as<push_block_a>();
-        auto &db = my->database();
-        return db.with_read_lock([&]() {
-            return my->push_block(tmp);
-        });
-    }
-
-    DEFINE_API(plugin, push_transaction) {
-        auto tmp = args.args->at(0).as<push_transaction_a>();
-        auto &db = my->database();
-        return db.with_read_lock([&]() {
-            return my->push_transaction(tmp);
-        });
     }
 
     plugin::plugin() {
@@ -199,8 +142,6 @@ namespace chain {
                 my->loaded_checkpoints[item.first] = item.second;
             }
         }
-
-        JSON_RPC_REGISTER_API(my->name());
     }
 
     void plugin::plugin_startup() {
