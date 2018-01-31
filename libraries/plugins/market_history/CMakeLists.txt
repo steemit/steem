@@ -1,4 +1,4 @@
-set(CURRENT_TARGET market_history_plugin)
+set(CURRENT_TARGET market_history)
 
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/market_history/market_history_plugin.hpp
@@ -27,7 +27,7 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 target_link_libraries(
         golos_${CURRENT_TARGET}
         golos::chain_plugin
-        golos::p2p_plugin
+        golos::p2p
         golos::protocol
         golos::network
         graphene_utilities

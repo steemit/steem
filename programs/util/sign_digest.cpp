@@ -20,8 +20,8 @@ struct signing_result {
     golos::protocol::signature_type sig;
 };
 
-FC_REFLECT(signing_request, (dig)(wif))
-FC_REFLECT(signing_result, (dig)(key)(sig))
+FC_REFLECT((signing_request), (dig)(wif))
+FC_REFLECT((signing_result), (dig)(key)(sig))
 
 int main(int argc, char **argv, char **envp) {
     // hash key pairs on stdin

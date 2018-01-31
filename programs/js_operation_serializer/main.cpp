@@ -180,13 +180,6 @@ namespace detail_ns {
     };
 
     template<>
-    struct js_name<fc::fixed_string<>> {
-        static std::string name() {
-            return "fixed_string";
-        }
-    };
-
-    template<>
     struct js_name<fc::time_point_sec> {
         static std::string name() {
             return "time_point_sec";

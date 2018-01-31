@@ -1,4 +1,4 @@
-set(CURRENT_TARGET private_message_plugin)
+set(CURRENT_TARGET private_message)
 
 list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/private_message/private_message_plugin.hpp
@@ -29,7 +29,7 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 target_link_libraries(
         golos_${CURRENT_TARGET}
         golos::chain_plugin
-        golos::p2p_plugin
+        golos::p2p
         golos::protocol
         golos::network
         graphene_utilities

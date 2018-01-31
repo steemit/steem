@@ -99,51 +99,48 @@ namespace golos {
 
             using chain_properties_17 = chain_properties;
             using price_17 = price;
-            using asset_17 = asset;
 
 
             ///               API,                                    args,                return
-            DEFINE_API_ARGS(get_active_witnesses, msg_pack, std::vector<account_name_type>)
-            DEFINE_API_ARGS(get_block_header, msg_pack, optional<block_header>)
-            DEFINE_API_ARGS(get_block, msg_pack, optional<block_header>)
-            DEFINE_API_ARGS(get_ops_in_block, msg_pack, std::vector<applied_operation>)
-            DEFINE_API_ARGS(get_config, msg_pack, variant_object)
-            DEFINE_API_ARGS(get_dynamic_global_properties, msg_pack, dynamic_global_property_api_object)
-            DEFINE_API_ARGS(get_chain_properties, msg_pack, chain_properties_17)
+            DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
+            DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
+            DEFINE_API_ARGS(get_block,                        msg_pack, optional<block_header>)
+            DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
+            DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
+            DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
+            DEFINE_API_ARGS(get_chain_properties,             msg_pack, chain_properties_17)
             DEFINE_API_ARGS(get_current_median_history_price, msg_pack, price_17)
-            DEFINE_API_ARGS(get_feed_history, msg_pack, feed_history_api_object)
-            DEFINE_API_ARGS(get_witness_schedule, msg_pack, witness_schedule_api_object)
-            DEFINE_API_ARGS(get_hardfork_version, msg_pack, hardfork_version)
-            DEFINE_API_ARGS(get_next_scheduled_hardfork, msg_pack, scheduled_hardfork)
-            DEFINE_API_ARGS(get_key_references, msg_pack, std::vector<vector<account_name_type> >)
-            DEFINE_API_ARGS(get_accounts, msg_pack, std::vector<extended_account>)
-            DEFINE_API_ARGS(lookup_account_names, msg_pack, std::vector<optional<account_api_object> >)
-            DEFINE_API_ARGS(lookup_accounts, msg_pack, std::set<std::string>)
-            DEFINE_API_ARGS(get_account_count, msg_pack, uint64_t)
-            DEFINE_API_ARGS(get_owner_history, msg_pack, std::vector<owner_authority_history_api_object>)
-            DEFINE_API_ARGS(get_recovery_request, msg_pack, optional<account_recovery_request_api_object>)
-            DEFINE_API_ARGS(get_escrow, msg_pack, optional<escrow_api_object>)
-            DEFINE_API_ARGS(get_withdraw_routes, msg_pack, std::vector<withdraw_route>)
-            DEFINE_API_ARGS(get_account_bandwidth, msg_pack, optional<account_bandwidth_api_object>)
-            DEFINE_API_ARGS(get_savings_withdraw_from, msg_pack, std::vector<savings_withdraw_api_object>)
-            DEFINE_API_ARGS(get_savings_withdraw_to, msg_pack, std::vector<savings_withdraw_api_object>)
-            DEFINE_API_ARGS(get_witnesses, msg_pack, std::vector<optional<witness_api_object> >)
-            DEFINE_API_ARGS(get_conversion_requests, msg_pack, std::vector<convert_request_api_object>)
-            DEFINE_API_ARGS(get_witness_by_account, msg_pack, optional<witness_api_object>)
-            DEFINE_API_ARGS(get_witnesses_by_vote, msg_pack, std::vector<witness_api_object>)
-            DEFINE_API_ARGS(lookup_witness_accounts, msg_pack, std::set<account_name_type>)
-            DEFINE_API_ARGS(get_open_orders, msg_pack, std::vector<extended_limit_order>)
-            DEFINE_API_ARGS(get_witness_count, msg_pack, uint64_t)
-            DEFINE_API_ARGS(get_transaction_hex, msg_pack, std::string)
-            DEFINE_API_ARGS(get_transaction, msg_pack, annotated_signed_transaction)
-            DEFINE_API_ARGS(get_required_signatures, msg_pack, std::set<public_key_type>)
-            DEFINE_API_ARGS(get_potential_signatures, msg_pack, std::set<public_key_type>)
-            DEFINE_API_ARGS(verify_authority, msg_pack, bool)
-            DEFINE_API_ARGS(verify_account_authority, msg_pack, bool)
-            DEFINE_API_ARGS(get_account_votes, msg_pack, std::vector<account_vote>)
-            DEFINE_API_ARGS(get_account_history, msg_pack, get_account_history_return_type)
-            DEFINE_API_ARGS(get_account_balances, msg_pack, std::vector<asset_17>)
-            DEFINE_API_ARGS(get_miner_queue, msg_pack, std::vector<account_name_type>)
+            DEFINE_API_ARGS(get_feed_history,                 msg_pack, feed_history_api_object)
+            DEFINE_API_ARGS(get_witness_schedule,             msg_pack, witness_schedule_api_object)
+            DEFINE_API_ARGS(get_hardfork_version,             msg_pack, hardfork_version)
+            DEFINE_API_ARGS(get_next_scheduled_hardfork,      msg_pack, scheduled_hardfork)
+            DEFINE_API_ARGS(get_key_references,               msg_pack, std::vector<vector<account_name_type> >)
+            DEFINE_API_ARGS(get_accounts,                     msg_pack, std::vector<extended_account>)
+            DEFINE_API_ARGS(lookup_account_names,             msg_pack, std::vector<optional<account_api_object> >)
+            DEFINE_API_ARGS(lookup_accounts,                  msg_pack, std::set<std::string>)
+            DEFINE_API_ARGS(get_account_count,                msg_pack, uint64_t)
+            DEFINE_API_ARGS(get_owner_history,                msg_pack, std::vector<owner_authority_history_api_object>)
+            DEFINE_API_ARGS(get_recovery_request,             msg_pack, optional<account_recovery_request_api_object>)
+            DEFINE_API_ARGS(get_escrow,                       msg_pack, optional<escrow_api_object>)
+            DEFINE_API_ARGS(get_withdraw_routes,              msg_pack, std::vector<withdraw_route>)
+            DEFINE_API_ARGS(get_account_bandwidth,            msg_pack, optional<account_bandwidth_api_object>)
+            DEFINE_API_ARGS(get_savings_withdraw_from,        msg_pack, std::vector<savings_withdraw_api_object>)
+            DEFINE_API_ARGS(get_savings_withdraw_to,          msg_pack, std::vector<savings_withdraw_api_object>)
+            DEFINE_API_ARGS(get_witnesses,                    msg_pack, std::vector<optional<witness_api_object> >)
+            DEFINE_API_ARGS(get_conversion_requests,          msg_pack, std::vector<convert_request_api_object>)
+            DEFINE_API_ARGS(get_witness_by_account,           msg_pack, optional<witness_api_object>)
+            DEFINE_API_ARGS(get_witnesses_by_vote,            msg_pack, std::vector<witness_api_object>)
+            DEFINE_API_ARGS(lookup_witness_accounts,          msg_pack, std::set<account_name_type>)
+            DEFINE_API_ARGS(get_open_orders,                  msg_pack, std::vector<extended_limit_order>)
+            DEFINE_API_ARGS(get_witness_count,                msg_pack, uint64_t)
+            DEFINE_API_ARGS(get_transaction_hex,              msg_pack, std::string)
+            DEFINE_API_ARGS(get_transaction,                  msg_pack, annotated_signed_transaction)
+            DEFINE_API_ARGS(get_required_signatures,          msg_pack, std::set<public_key_type>)
+            DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
+            DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
+            DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
+            DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
+            DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
 
 
             /**
@@ -296,7 +293,7 @@ namespace golos {
                                      * @param assets names of the assets to get balances of; if empty, get all assets account has a balance in
                                      * @return Balances of the account
                                      */
-                                    //(get_account_balances)
+
 
                                     /**
                                      * @brief Get the total number of accounts registered with the blockchain
@@ -400,11 +397,6 @@ namespace golos {
                                     (verify_account_authority)
 
 
-
-                                    (get_account_votes)
-
-
-
                                     /**
                                      *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
                                      *  returns operations in the range [from-limit, from]
@@ -418,21 +410,6 @@ namespace golos {
                 )
 
             private:
-/*
-                template<typename DatabaseIndex, typename DiscussionIndex>
-                std::vector<discussion> feed(
-                        const std::set<string> &select_set, const discussion_query &query,
-                                             const std::string &start_author, const std::string &start_permlink) const;
-
-                template<typename DatabaseIndex, typename DiscussionIndex>
-                std::vector<discussion> blog(
-                        const std::set<string> &select_set,
-                        const discussion_query &query,
-                        const std::string &start_author,
-                        const std::string &start_permlink
-                ) const;
-
-*/
                 struct api_impl;
                 std::shared_ptr<api_impl> my;
             };

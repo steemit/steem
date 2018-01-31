@@ -7,6 +7,7 @@
 #include <golos/plugins/database_api/api_objects/account_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/witness_api_object.hpp>
 #include "forward.hpp"
+#include <golos/plugins/database_api/applied_operation.hpp>
 
 namespace golos {
     namespace plugins {
@@ -26,13 +27,6 @@ namespace golos {
                 bool rewarded = false;
             };
 
-            struct account_vote {
-                string authorperm;
-                uint64_t weight = 0;
-                int64_t rshares = 0;
-                int16_t percent = 0;
-                time_point_sec time;
-            };
 
 
 
@@ -98,45 +92,6 @@ namespace golos {
                 vector<candle_stick> price_history;
             };
 
-             //  This struct is designed
-            /*
-            struct state {
-                string current_route;
-
-                dynamic_global_property_api_object props;
-
-
-                 //  Tracks the top categories by name, any category in this index
-                 //  will have its full status stored in the categories map.
-                category_index category_idx;
-
-                tag_index tag_idx;
-
-
-                 // is the global discussion index, otherwise the indicies are ranked by category
-
-                map<string, discussion_index> discussion_idx;
-
-                map<string, category_api_object> categories;
-                map<string, tag_api_object> tags;
-
-
-                //  map from account/slug to full nested discussion
-
-                map<string, discussion> content;
-                map<string, extended_account> accounts;
-
-
-                // The list of miners who are queued to produce work
-
-                vector<account_name_type> pow_queue;
-                map<string, witness_api_object> witnesses;
-                witness_schedule_api_object witness_schedule;
-                price feed_price;
-                string error;
-                optional<market> market_data;
-            };
-            */
 
         }
     }
@@ -148,7 +103,7 @@ FC_REFLECT_DERIVED((golos::plugins::database_api::extended_account),
                            (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(blog_category)(recommended))
 
 
-FC_REFLECT((golos::plugins::database_api::account_vote), (authorperm)(weight)(rshares)(percent)(time));
+
 //FC_REFLECT((golos::plugins::database_api::state), (current_route)(props)(category_idx)(tag_idx)(categories)(tags)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data))
 
 FC_REFLECT_DERIVED((golos::plugins::database_api::extended_limit_order), ((golos::plugins::database_api::limit_order_api_object)), (real_price)(rewarded))

@@ -8,6 +8,8 @@
 #include <golos/wallet/reflect_util.hpp>
 #include <golos/wallet/remote_node_api.hpp>
 #include <golos/protocol/config.hpp>
+#include <golos/plugins/follow/follow_operations.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
@@ -2028,21 +2030,27 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
             return my->_remote_api->get_transaction( id );
         }
-/*
-        annotated_signed_transaction wallet_api::follow( string follower, string following, set<string> what, bool broadcast ) {
+
+        annotated_signed_transaction wallet_api::follow(
+                const string& follower,
+                const string& following,
+                const set<string>& what,
+                const bool broadcast) {
+            string _following = following;
+
             auto follwer_account     = get_account( follower );
-            FC_ASSERT( following.size() );
-            if( following[0] != '@' || following[0] != '#' ) {
-                following = '@' + following;
+            FC_ASSERT( _following.size() );
+            if( _following[0] != '@' || _following[0] != '#' ) {
+                _following = '@' + _following;
             }
-            if( following[0] == '@' ) {
-                get_account( following.substr(1) );
+            if( _following[0] == '@' ) {
+                get_account( _following.substr(1) );
             }
-            FC_ASSERT( following.size() > 1 );
+            FC_ASSERT( _following.size() > 1 );
 
             follow::follow_operation fop;
             fop.follower = follower;
-            fop.following = following;
+            fop.following = _following;
             fop.what = what;
             follow::follow_plugin_operation op = fop;
 
@@ -2056,7 +2064,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             trx.validate();
 
             return my->sign_transaction( trx, broadcast );
-        }*/
+        }
 
     } } // steem::wallet
 
