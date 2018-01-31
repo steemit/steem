@@ -548,5 +548,50 @@ BOOST_AUTO_TEST_CASE( legacy_signed_transaction )
    BOOST_REQUIRE( tx.id() == tx2.id() );
 }
 
+BOOST_AUTO_TEST_CASE( static_variant_json_test )
+{
+   try
+   {
+      typedef static_variant<
+                  transfer_operation,
+                  comment_operation
+               > test_operation;
+
+      test_operation op;
+      op = transfer_operation();
+
+      auto json_str = fc::json::to_string( op );
+      BOOST_CHECK_EQUAL( json_str, "[\"transfer_operation\",{\"from\":\"\",\"to\":\"\",\"amount\":[\"0\",3,\"@@000000021\"],\"memo\":\"\"}]" );
+
+      json_str = "[\"transfer_operation\",{\"from\":\"foo\",\"to\":\"bar\",\"amount\":[\"1000\",3,\"@@000000021\"],\"memo\":\"\"}]";
+      from_variant( fc::json::from_string( json_str ), op );
+      BOOST_CHECK_EQUAL( op.which(), 0 );
+
+      transfer_operation t = op.get< transfer_operation >();
+      BOOST_CHECK( t.from == "foo" );
+      BOOST_CHECK( t.to == "bar" );
+      BOOST_CHECK( t.amount == asset( 1000, STEEM_SYMBOL ) );
+      BOOST_CHECK( t.memo == "" );
+
+      json_str = "[1,{\"parent_author\":\"foo\",\"parent_permlink\":\"bar\",\"author\":\"foo1\",\"permlink\":\"bar1\",\"title\":\"\",\"body\":\"\",\"json_metadata\":\"\"}]";
+
+      from_variant( fc::json::from_string( json_str ), op );
+      BOOST_CHECK_EQUAL( op.which(), 1 );
+
+      comment_operation c = op.get< comment_operation >();
+      BOOST_CHECK( c.parent_author == "foo" );
+      BOOST_CHECK( c.parent_permlink == "bar" );
+      BOOST_CHECK( c.author == "foo1" );
+      BOOST_CHECK( c.permlink == "bar1" );
+      BOOST_CHECK( c.title == "" );
+      BOOST_CHECK( c.body == "" );
+      BOOST_CHECK( c.json_metadata == "" );
+
+      json_str = "[\"not_a_type\",{\"from\":\"foo\",\"to\":\"bar\",\"amount\":[\"1000\",3,\"@@000000021\"],\"memo\":\"\"}]";
+      STEEM_REQUIRE_THROW( from_variant( fc::json::from_string( json_str ), op ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
