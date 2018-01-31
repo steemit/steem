@@ -162,19 +162,15 @@ namespace chain {
         } else {
             try {
                 ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
-                my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size,
-                            chainbase::database::read_write/*, my->validate_invariants*/ );
+                my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
             } catch (const fc::exception &e) {
                 wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
 
                 try {
-                    my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir,
-                                   my->shared_memory_size);
+                    my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size);
                 } catch (golos::chain::block_log &) {
                     wlog("Error opening block log. Having to resync from network...");
-                    my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, 0,
-                                my->shared_memory_size,
-                                chainbase::database::read_write/*, my->validate_invariants*/ );
+                    my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
                 }
             }
         }
