@@ -5,8 +5,6 @@
 #include <golos/plugins/database_api/state.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <golos/plugins/account_history/plugin.hpp>
-
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
 #include <golos/plugins/social_network/api_object/discussion.hpp>
 #include <golos/plugins/social_network/api_object/discussion_query.hpp>
@@ -28,7 +26,6 @@ using namespace chain;
 using namespace plugins;
 //using namespace plugins::condenser_api;
 using namespace plugins::database_api;
-using namespace plugins::account_history;
 using namespace plugins::follow;
 using namespace plugins::social_network;
 using namespace plugins::market_history;
@@ -204,10 +201,8 @@ FC_API( golos::wallet::remote_node_api,
         (get_replies_by_last_update)
         (get_discussions_by_author_before_date)
 
-
-        (get_account_history)/*
+        (get_account_history)
         (broadcast_block)
-        */
         (get_followers)
         (get_following)
         (get_follow_count)

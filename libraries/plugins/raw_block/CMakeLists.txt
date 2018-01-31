@@ -1,8 +1,7 @@
-set(CURRENT_TARGET block_info)
+set(CURRENT_TARGET raw_block)
 
 list(APPEND CURRENT_TARGET_HEADERS
-    include/golos/plugins/block_info/plugin.hpp
-    include/golos/plugins/block_info/block_info.hpp
+    include/golos/plugins/raw_block/plugin.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
@@ -26,25 +25,25 @@ add_library(golos::${CURRENT_TARGET} ALIAS golos_${CURRENT_TARGET})
 set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGET})
 
 target_link_libraries(
-        golos_${CURRENT_TARGET}
-        golos_chain
-        golos_protocol
-        appbase
-        golos_chain_plugin
-        golos::json_rpc
-        fc
+    golos_${CURRENT_TARGET}
+    golos_chain
+    golos_chain_plugin
+    golos_protocol
+    appbase
+    golos::json_rpc
+    fc
 )
 
 target_include_directories(
-        golos_${CURRENT_TARGET}
-        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../"
+    golos_${CURRENT_TARGET}
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../"
 )
 
 install(TARGETS
-        golos_${CURRENT_TARGET}
+    golos_${CURRENT_TARGET}
 
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
 )
