@@ -70,7 +70,7 @@ namespace steem { namespace chain {
             skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
-         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
+         typedef std::function<void(uint32_t, const abstract_index_cntr_t&)> TBenchmarkMidReport;
          typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
 
          struct open_args
@@ -84,7 +84,7 @@ namespace steem { namespace chain {
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
-            TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;});
+            TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 
          /**
