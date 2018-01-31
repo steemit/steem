@@ -899,7 +899,7 @@ DEFINE_API_ARGS( lookup_witness_accounts,                vector< variant >,   ve
 DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< api_limit_order_object > )
 DEFINE_API_ARGS( get_witness_count,                      vector< variant >,   uint64_t )
 DEFINE_API_ARGS( get_transaction_hex,                    vector< variant >,   string )
-DEFINE_API_ARGS( get_transaction,                        vector< variant >,   annotated_signed_transaction )
+DEFINE_API_ARGS( get_transaction,                        vector< variant >,   legacy_signed_transaction )
 DEFINE_API_ARGS( get_required_signatures,                vector< variant >,   set< public_key_type > )
 DEFINE_API_ARGS( get_potential_signatures,               vector< variant >,   set< public_key_type > )
 DEFINE_API_ARGS( verify_authority,                       vector< variant >,   bool )
