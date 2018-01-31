@@ -5,6 +5,14 @@
 
 namespace steem { namespace plugins { namespace condenser_api {
 
+typedef static_variant<
+         void_t,
+         version,
+         hardfork_version_vote
+      > legacy_block_header_extensions;
+
+typedef vector< legacy_block_header_extensions > legacy_block_header_extensions_type;
+
 struct legacy_signed_transaction
 {
    legacy_signed_transaction() {}
@@ -70,7 +78,12 @@ struct legacy_signed_block
       block_id( b.block_id ),
       signing_key( b.signing_key )
    {
-      extensions.insert( b.extensions.begin(), b.extensions.end() );
+      for( const auto& e : b.extensions )
+      {
+         legacy_block_header_extensions ext;
+         e.visit( convert_to_legacy_static_variant< legacy_block_header_extensions >( ext ) );
+         extensions.push_back( ext );
+      }
 
       for( const auto& t : b.transactions )
       {
@@ -102,7 +115,7 @@ struct legacy_signed_block
    fc::time_point_sec                  timestamp;
    string                              witness;
    checksum_type                       transaction_merkle_root;
-   block_header_extensions_type        extensions;
+   legacy_block_header_extensions_type extensions;
    signature_type                      witness_signature;
    vector< legacy_signed_transaction > transactions;
    block_id_type                       block_id;
@@ -111,6 +124,13 @@ struct legacy_signed_block
 };
 
 } } } // steem::plugins::condenser_api
+
+namespace fc {
+
+void to_variant( const steem::plugins::condenser_api::legacy_block_header_extensions&, fc::variant& );
+void from_variant( const fc::variant&, steem::plugins::condenser_api::legacy_block_header_extensions& );
+
+}
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_signed_transaction,
             (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions)(signatures)(transaction_id)(block_num)(transaction_num) )

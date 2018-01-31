@@ -1219,7 +1219,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
 
-      return _account_history_api->get_transaction( { args[0].as< transaction_id_type >() } );
+      return legacy_signed_transaction( _account_history_api->get_transaction( { args[0].as< transaction_id_type >() } ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_required_signatures )
