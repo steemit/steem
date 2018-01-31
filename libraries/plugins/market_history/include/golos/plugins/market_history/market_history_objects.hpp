@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/steem_object_types.hpp>
+#include <golos/chain/steem_objects.hpp>
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
@@ -29,6 +30,7 @@ namespace golos {
             using namespace golos::protocol;
             using namespace boost::multi_index;
             using namespace chainbase;
+            using namespace golos::plugins;
 
             enum market_history_object_types {
                 bucket_object_type = (MARKET_HISTORY_SPACE_ID << 8),
@@ -110,6 +112,27 @@ namespace golos {
 
             struct market_history_buckets_r {
                 flat_set <uint32_t> buckets;
+            };
+
+            typedef golos::chain::limit_order_object limit_order_api_object;
+
+            struct limit_order : public limit_order_api_object {
+                limit_order() {
+                }
+
+                limit_order(const limit_order_object &o)
+                        : limit_order_api_object(o) {
+                }
+
+                double real_price = 0;
+                bool rewarded = false;
+            };
+
+            struct open_orders_r {
+                std::vector<limit_order> orders;
+            };
+            struct open_orders_a {
+                std::string owner;
             };
 
             struct bucket_object
@@ -210,6 +233,8 @@ FC_REFLECT((golos::plugins::market_history::recent_trades_a), (limit))
 FC_REFLECT((golos::plugins::market_history::market_history_r), (history))
 FC_REFLECT((golos::plugins::market_history::market_history_a), (bucket_seconds)(start)(end))
 FC_REFLECT((golos::plugins::market_history::market_history_buckets_r), (buckets))
+FC_REFLECT((golos::plugins::market_history::open_orders_a), (owner))
+FC_REFLECT((golos::plugins::market_history::open_orders_r), (orders))
 
 FC_REFLECT((golos::plugins::market_history::market_ticker),
            (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume));
@@ -221,6 +246,9 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (date)(current_pays)(open_pays));
+FC_REFLECT((golos::plugins::market_history::limit_order),
+           (real_price)(rewarded));
+
 
 
 FC_REFLECT((golos::plugins::market_history::bucket_object),

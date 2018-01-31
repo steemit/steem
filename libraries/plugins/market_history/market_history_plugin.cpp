@@ -2,6 +2,9 @@
 
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/chain/steem_objects.hpp>
+#include <golos/chain/account_object.hpp>
+
 
 namespace golos {
     namespace plugins {
@@ -26,6 +29,8 @@ namespace golos {
                 recent_trades_r get_recent_trades(const recent_trades_a &args) const;
                 market_history_r get_market_history(const market_history_a &args) const;
                 market_history_buckets_r get_market_history_buckets() const;
+                open_orders_r get_open_orders(const open_orders_a&) const;
+
 
                 void update_market_histories(const golos::chain::operation_notification &o);
 
@@ -313,6 +318,26 @@ namespace golos {
                 return retval;
             }
 
+            open_orders_r market_history_plugin::market_history_plugin_impl::get_open_orders(
+                    const open_orders_a& owner) const {
+                return _db.with_read_lock([&]() {
+                    open_orders_r result;
+                    const auto &idx = _db.get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_account>();
+                    auto itr = idx.lower_bound(owner.owner);
+                    while (itr != idx.end() && itr->seller == owner.owner) {
+                        result.orders.push_back(*itr);
+
+                        if (itr->sell_price.base.symbol == STEEM_SYMBOL) {
+                            result.orders.back().real_price = (~result.orders.back().sell_price).to_real();
+                        } else {
+                            result.orders.back().real_price = (result.orders.back().sell_price).to_real();
+                        }
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
+
             market_history_plugin::market_history_plugin() {
             }
 
@@ -444,6 +469,15 @@ namespace golos {
                 return db.with_read_lock([&]() {
                     market_history_buckets_r result;
                     return _my->get_market_history_buckets();
+                });
+            }
+
+            DEFINE_API(market_history_plugin, get_open_orders) {
+                auto tmp = args.args->at(0).as<open_orders_a>();
+                auto &db = _my->database();
+                return db.with_read_lock([&]() {
+                    open_orders_r result;
+                    return _my->get_open_orders(tmp);
                 });
             }
 

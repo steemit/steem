@@ -19,9 +19,6 @@
 #include <golos/plugins/chain/plugin.hpp>
 #include <chainbase/chainbase.hpp>
 
-#include <fc/api.hpp>
-
-
 
 namespace golos {
     namespace plugins {
@@ -39,6 +36,7 @@ namespace golos {
             DEFINE_API_ARGS(get_recent_trades,          json_rpc::msg_pack, recent_trades_r)
             DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, market_history_r)
             DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, market_history_buckets_r)
+            DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, open_orders_r)
 
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
@@ -70,7 +68,8 @@ namespace golos {
                                 (get_trade_history)
                                 (get_recent_trades)
                                 (get_market_history)
-                                (get_market_history_buckets))
+                                (get_market_history_buckets)
+                                (get_open_orders))
 
                 constexpr const static char *plugin_name = "market_history";
 
