@@ -17,6 +17,7 @@
 #include <golos/plugins/account_by_key/account_by_key_plugin.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/auth_util/plugin.hpp>
+#include <golos/plugins/block_info/plugin.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <fc/log/console_appender.hpp>
@@ -100,6 +101,7 @@ int main( int argc, char** argv ) {
         appbase::app().register_plugin<golos::plugins::account_by_key::account_by_key_plugin>();
         appbase::app().register_plugin<golos::plugins::private_message::private_message_plugin>();
         appbase::app().register_plugin<golos::plugins::auth_util::plugin>();
+        appbase::app().register_plugin<golos::plugins::block_info::plugin>();
 ///plugins
         appbase::app().set_version_string( version_string() );
 
