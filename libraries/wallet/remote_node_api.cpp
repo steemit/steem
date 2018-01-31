@@ -215,107 +215,107 @@ vector< tag_count_object > remote_node_api::get_tags_used_by_author( account_nam
 {
     FC_ASSERT( false );
 }
-/*
-tags::discussion remote_node_api::get_content( account_name_type, string ) {
+
+discussion remote_node_api::get_content( account_name_type, string ) {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_content_replies( account_name_type, string )
+vector< discussion > remote_node_api::get_content_replies( account_name_type, string )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_payout( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_payout( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_post_discussions_by_payout( tags::discussion_query )
+vector< discussion > remote_node_api::get_post_discussions_by_payout( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_comment_discussions_by_payout( tags::discussion_query )
+vector< discussion > remote_node_api::get_comment_discussions_by_payout( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_trending( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_trending( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_created( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_created( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_active( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_active( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_cashout( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_cashout( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_votes( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_votes( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_children( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_children( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_hot( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_hot( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_feed( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_feed( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_blog( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_blog( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_comments( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_comments( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_promoted( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_promoted( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_replies_by_last_update( tags::discussion_query )
+vector< discussion > remote_node_api::get_replies_by_last_update( discussion_query )
 {
    FC_ASSERT( false );
 }
 
-vector< tags::discussion > remote_node_api::get_discussions_by_author_before_date( tags::discussion_query )
+vector< discussion > remote_node_api::get_discussions_by_author_before_date( discussion_query )
 {
    FC_ASSERT( false );
 }
-*/
+
 map< uint32_t, golos::plugins::database_api::operation_api_object > remote_node_api::get_account_history( account_name_type, uint64_t, uint32_t ) {
    FC_ASSERT( false );
 }
 
 
-/*
-vector< follow::api_follow_object > remote_node_api::get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
+
+vector< follow::follow_api_object > remote_node_api::get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
    FC_ASSERT( false );
 }
 
-vector< follow::api_follow_object > remote_node_api::get_following( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
+vector< follow::follow_api_object > remote_node_api::get_following( account_name_type, account_name_type, follow::follow_type, uint32_t ) {
    FC_ASSERT( false );
 }
 
@@ -350,7 +350,7 @@ vector< account_name_type > remote_node_api::get_reblogged_by( account_name_type
 vector< follow::reblog_count > remote_node_api::get_blog_authors( account_name_type ) {
    FC_ASSERT( false );
 }
-*/
+
 market_ticker_r remote_node_api::get_ticker() {
    FC_ASSERT( false );
 }

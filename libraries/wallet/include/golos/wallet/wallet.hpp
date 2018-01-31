@@ -904,7 +904,11 @@ namespace golos { namespace wallet {
              *  @param what - a set of things to follow: posts, comments, votes, ignore
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            //annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
+            annotated_signed_transaction follow(
+                    const string& follower,
+                    const string& following,
+                    const set<string>& what,
+                    const bool broadcast);
 
 
             std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;

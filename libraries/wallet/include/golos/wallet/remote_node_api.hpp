@@ -5,11 +5,17 @@
 #include <golos/plugins/database_api/state.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <plugins/account_history/include/golos/plugins/account_history/plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
+
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
+#include <golos/plugins/social_network/api_object/discussion.hpp>
+#include <golos/plugins/social_network/api_object/discussion_query.hpp>
 #include <golos/plugins/social_network/api_object/account_vote.hpp>
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
+
 #include <golos/plugins/market_history/market_history_objects.hpp>
+#include <golos/plugins/follow/plugin.hpp>
+#include <golos/plugins/follow/follow_api_object.hpp>
 
 
 namespace golos { namespace wallet {
@@ -23,9 +29,10 @@ using namespace plugins;
 //using namespace plugins::condenser_api;
 using namespace plugins::database_api;
 using namespace plugins::account_history;
+using namespace plugins::follow;
 using namespace plugins::social_network;
-//using namespace plugins::follow;
 using namespace plugins::market_history;
+using namespace plugins::social_network;
 //using namespace plugins::witness_plugin;
 
 /**
@@ -81,36 +88,40 @@ struct remote_node_api {
    vector< vote_state > get_active_votes( account_name_type, string );
    vector< social_network::account_vote > get_account_votes( account_name_type );
 
-   vector< tag_count_object > get_tags_used_by_author( account_name_type );/*
-   tags::discussion get_content( account_name_type, string );
-   vector< tags::discussion > get_content_replies( account_name_type, string );
+   vector< tag_count_object > get_tags_used_by_author( account_name_type );
+   discussion get_content( account_name_type, string );
+   vector< discussion > get_content_replies( account_name_type, string );
 
-   vector< tags::discussion > get_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_post_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_comment_discussions_by_payout( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_trending( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_created( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_active( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_cashout( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_votes( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_children( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_hot( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_feed( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_blog( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_comments( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_promoted( tags::discussion_query );
-   vector< tags::discussion > get_replies_by_last_update( tags::discussion_query );
-   vector< tags::discussion > get_discussions_by_author_before_date( tags::discussion_query );
-   vector< follow::api_follow_object > get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t );
-   vector< follow::api_follow_object > get_following( account_name_type, account_name_type, follow::follow_type, uint32_t );
-   follow::get_follow_count_return get_follow_count( account_name_type );
-   vector< follow::feed_entry > get_feed_entries( account_name_type, uint32_t, uint32_t );
-   vector< follow::comment_feed_entry > get_feed( account_name_type, uint32_t, uint32_t );
-   vector< follow::blog_entry > get_blog_entries( account_name_type, uint32_t, uint32_t );
-   vector< follow::comment_blog_entry > get_blog( account_name_type, uint32_t, uint32_t );
-   vector< follow::account_reputation > get_account_reputations( account_name_type, uint32_t );
+   vector< discussion > get_discussions_by_payout( discussion_query );
+   vector< discussion > get_post_discussions_by_payout( discussion_query );
+   vector< discussion > get_comment_discussions_by_payout( discussion_query );
+   vector< discussion > get_discussions_by_trending( discussion_query );
+   vector< discussion > get_discussions_by_created( discussion_query );
+   vector< discussion > get_discussions_by_active( discussion_query );
+   vector< discussion > get_discussions_by_cashout( discussion_query );
+   vector< discussion > get_discussions_by_votes( discussion_query );
+   vector< discussion > get_discussions_by_children( discussion_query );
+   vector< discussion > get_discussions_by_hot( discussion_query );
+   vector< discussion > get_discussions_by_feed( discussion_query );
+   vector< discussion > get_discussions_by_blog( discussion_query );
+   vector< discussion > get_discussions_by_comments( discussion_query );
+   vector< discussion > get_discussions_by_promoted( discussion_query );
+   vector< discussion > get_replies_by_last_update( discussion_query );
+   vector< discussion > get_discussions_by_author_before_date( discussion_query );
+
+    // Follow plugin
+   vector< follow_api_object > get_followers( account_name_type, account_name_type, follow_type, uint32_t );
+   vector< follow_api_object > get_following( account_name_type, account_name_type, follow_type, uint32_t );
+   get_follow_count_return get_follow_count( account_name_type );
+   vector< feed_entry > get_feed_entries( account_name_type, uint32_t, uint32_t );
+   vector< comment_feed_entry > get_feed( account_name_type, uint32_t, uint32_t );
+   vector< blog_entry > get_blog_entries( account_name_type, uint32_t, uint32_t );
+   vector< comment_blog_entry > get_blog( account_name_type, uint32_t, uint32_t );
+   vector< account_reputation > get_account_reputations( account_name_type, uint32_t );
    vector< account_name_type > get_reblogged_by( account_name_type, string );
-   vector< follow::reblog_count > get_blog_authors( account_name_type );*/
+   vector< reblog_count > get_blog_authors( account_name_type );
+
+    // Market history
    market_ticker_r get_ticker();
    market_volume_r get_volume();
    order_book_r get_order_book( order_book_a );
@@ -172,7 +183,7 @@ FC_API( golos::wallet::remote_node_api,
         (broadcast_transaction_synchronous)
         (get_tags_used_by_author)
         (get_active_votes)
-        (get_account_votes)/*
+        (get_account_votes)
         (get_content)
         (get_content_replies)
 
@@ -193,9 +204,10 @@ FC_API( golos::wallet::remote_node_api,
         (get_replies_by_last_update)
         (get_discussions_by_author_before_date)
 
-        */
+
         (get_account_history)/*
         (broadcast_block)
+        */
         (get_followers)
         (get_following)
         (get_follow_count)
@@ -205,7 +217,7 @@ FC_API( golos::wallet::remote_node_api,
         (get_blog)
         (get_account_reputations)
         (get_reblogged_by)
-        (get_blog_authors)*/
+        (get_blog_authors)
         (get_ticker)
         (get_volume)
         (get_order_book)
