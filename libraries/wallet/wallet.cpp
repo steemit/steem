@@ -205,9 +205,13 @@ namespace golos { namespace wallet {
 
             public:
                 wallet_api& self;
-                wallet_api_impl( wallet_api& s, const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi )
-                        : self( s ),
-                          _remote_api( rapi )
+                wallet_api_impl( wallet_api& s, const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api_connection& con ):
+                    self( s ),
+                    _remote_database_api( con.get_remote_api< golos::wallet::remote_database_api >( 0, "database_api" ) ),
+                    _remote_social_network( con.get_remote_api< golos::wallet::remote_social_network >( 0, "social_network" ) ),
+                    _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
+                    _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
+                    _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) )
                 {
                     init_prototype_ops();
 
@@ -261,17 +265,17 @@ namespace golos { namespace wallet {
                 }
 
                 variant info() const {
-                    //auto dynamic_props = _remote_api->get_dynamic_global_properties();
+                    //auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
                     //fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
                     fc::mutable_variant_object result;
-                    //result["witness_majority_version"] = std::string( _remote_api->get_witness_schedule().majority_version );
-                    //result["hardfork_version"] = std::string( _remote_api->get_hardfork_version() );
+                    //result["witness_majority_version"] = std::string( _remote_database_api->get_witness_schedule().majority_version );
+                    //result["hardfork_version"] = std::string( _remote_database_api->get_hardfork_version() );
                     //result["head_block_num"] = dynamic_props.head_block_number;
                     //result["head_block_id"] = dynamic_props.head_block_id;
                     //result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time, time_point_sec(time_point::now()), " old");
                     //result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
-                    //result["median_sbd_price"] = _remote_api->get_current_median_history_price();
-                    //result["account_creation_fee"] = _remote_api->get_chain_properties().account_creation_fee;
+                    //result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
+                    //result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
                     //result["post_reward_fund"] = fc::variant(_remote_api->get_reward_fund( STEEM_POST_REWARD_FUND_NAME )).get_object();
                     return result;
                 }
@@ -318,7 +322,7 @@ namespace golos { namespace wallet {
                 }
 
                 database_api::account_api_object get_account( string account_name ) const {
-                    auto accounts = _remote_api->get_accounts( { account_name } );
+                    auto accounts = _remote_database_api->get_accounts( { account_name } );
                     FC_ASSERT( !accounts.empty(), "Unknown account" );
                     return accounts.front();
                 }
@@ -456,7 +460,7 @@ namespace golos { namespace wallet {
 
                         account_create_op.creator = creator_account_name;
                         account_create_op.new_account_name = account_name;
-                        account_create_op.fee = _remote_api->get_chain_properties().account_creation_fee;
+                        account_create_op.fee = _remote_database_api->get_chain_properties().account_creation_fee;
                         account_create_op.owner = authority(1, owner_pubkey, 1);
                         account_create_op.active = authority(1, active_pubkey, 1);
                         account_create_op.memo_key = memo_pubkey;
@@ -469,8 +473,8 @@ namespace golos { namespace wallet {
                         if( save_wallet )
                             save_wallet_file();
                         if( broadcast ) {
-                            //_remote_api->broadcast_transaction( tx );
-                            auto result = _remote_api->broadcast_transaction_synchronous( tx );
+                            //_remote_network_broadcast_api->broadcast_transaction( tx );
+                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( tx );
                             FC_UNUSED(result);
                         }
                         return tx;
@@ -490,7 +494,7 @@ namespace golos { namespace wallet {
                     } FC_CAPTURE_AND_RETHROW( (account_to_modify)(proxy)(broadcast) ) }
 
                 optional< database_api::witness_api_object > get_witness( string owner_account ) {
-                    return _remote_api->get_witness_by_account( owner_account );
+                    return _remote_database_api->get_witness_by_account( owner_account );
                 }
 
                 void set_transaction_expiration( uint32_t tx_expiration_seconds ) {
@@ -524,7 +528,7 @@ namespace golos { namespace wallet {
 
                     /// TODO: fetch the accounts specified via other_auths as well.
 
-                    auto approving_account_objects = _remote_api->get_accounts( v_approving_account_names );
+                    auto approving_account_objects = _remote_database_api->get_accounts( v_approving_account_names );
 
                     /// TODO: recursively check one layer deeper in the authority tree for keys
 
@@ -594,7 +598,7 @@ namespace golos { namespace wallet {
                         }
                     }
 
-                    auto dyn_props = _remote_api->get_dynamic_global_properties();
+                    auto dyn_props = _remote_database_api->get_dynamic_global_properties();
                     tx.set_reference_block( dyn_props.head_block_id );
                     tx.set_expiration( dyn_props.time + fc::seconds(_tx_expiration_seconds) );
                     tx.signatures.clear();
@@ -634,7 +638,7 @@ namespace golos { namespace wallet {
 
                     if( broadcast ) {
                         try {
-                            auto result = _remote_api->broadcast_transaction_synchronous( tx );
+                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( tx );
                             annotated_signed_transaction rtrx(tx);
                             rtrx.block_num = result.block_num;
                             rtrx.transaction_num = result.trx_num;
@@ -815,7 +819,11 @@ namespace golos { namespace wallet {
 
                 map<public_key_type,string>             _keys;
                 fc::sha512                              _checksum;
-                fc::api< remote_node_api >              _remote_api;
+                fc::api< remote_database_api >          _remote_database_api;
+                fc::api< remote_social_network >        _remote_social_network;
+                fc::api< remote_network_broadcast_api>  _remote_network_broadcast_api;
+                fc::api< remote_follow >                _remote_follow;
+                fc::api< remote_market_history >        _remote_market_history;
                 uint32_t                                _tx_expiration_seconds = 30;
 
                 flat_map<string, operation>             _prototype_ops;
@@ -828,14 +836,14 @@ namespace golos { namespace wallet {
                 const string _wallet_filename_extension = ".wallet";
             };
 
-        } } } // steem::wallet::detail
+        } } } // golos::wallet::detail
 
 
 
 namespace golos { namespace wallet {
 
-        wallet_api::wallet_api(const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi)
-                : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, rapi))
+        wallet_api::wallet_api(const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api_connection& con)
+                : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, con))
         {}
 
         wallet_api::~wallet_api(){}
@@ -846,11 +854,11 @@ namespace golos { namespace wallet {
         }
 
         optional< database_api::signed_block> wallet_api::get_block(uint32_t num) {
-            return my->_remote_api->get_block( num );
+            return my->_remote_database_api->get_block( num );
         }
 
         vector< operation_api_object > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
-            return my->_remote_api->get_ops_in_block( block_num, only_virtual );
+            return my->_remote_database_api->get_ops_in_block( block_num, only_virtual );
         }
 
         vector< database_api::account_api_object > wallet_api::list_my_accounts() {
@@ -863,7 +871,7 @@ namespace golos { namespace wallet {
             for( const auto& item : my->_keys )
                 pub_keys.push_back(item.first);
 
-            auto refs = my->_remote_api->get_key_references( pub_keys );
+            auto refs = my->_remote_database_api->get_key_references( pub_keys );
             set<string> names;
             for( const auto& item : refs )
                 for( const auto& name : item )
@@ -878,15 +886,15 @@ namespace golos { namespace wallet {
         }
 
         vector< account_name_type > wallet_api::list_accounts(const string& lowerbound, uint32_t limit) {
-            return my->_remote_api->lookup_accounts( lowerbound, limit );
+            return my->_remote_database_api->lookup_accounts( lowerbound, limit );
         }
 
         vector< account_name_type > wallet_api::get_active_witnesses()const {
-            return my->_remote_api->get_active_witnesses();
+            return my->_remote_database_api->get_active_witnesses();
         }
 
         vector<account_name_type> wallet_api::get_miner_queue()const {
-            return my->_remote_api->get_miner_queue();
+            return my->_remote_database_api->get_miner_queue();
         }
 
         brain_key_info wallet_api::suggest_brain_key()const {
@@ -973,7 +981,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
         vector< account_name_type > wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
         {
-            return my->_remote_api->lookup_witness_accounts( lowerbound, limit );
+            return my->_remote_database_api->lookup_witness_accounts( lowerbound, limit );
         }
 
         optional< database_api::witness_api_object > wallet_api::get_witness(string owner_account)
@@ -1109,7 +1117,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         database_api::feed_history_api_object wallet_api::get_feed_history()const {
-            return my->_remote_api->get_feed_history();
+            return my->_remote_database_api->get_feed_history();
         }
 
 /**
@@ -1135,7 +1143,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 op.posting = authority( 1, posting, 1 );
                 op.memo_key = memo;
                 op.json_metadata = json_meta;
-                op.fee = my->_remote_api->get_chain_properties().account_creation_fee;
+                op.fee = my->_remote_database_api->get_chain_properties().account_creation_fee;
 
                 signed_transaction tx;
                 tx.operations.push_back(op);
@@ -1194,7 +1202,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         vector< database_api::owner_authority_history_api_object > wallet_api::get_owner_history( string account )const {
-            return my->_remote_api->get_owner_history( account );
+            return my->_remote_database_api->get_owner_history( account );
         }
 
         annotated_signed_transaction wallet_api::update_account(
@@ -1231,7 +1239,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         {
             FC_ASSERT( !is_locked() );
 
-            auto accounts = my->_remote_api->get_accounts( { account_name } );
+            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
             FC_ASSERT( accounts.size() == 1, "Account does not exist" );
             FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
 
@@ -1295,7 +1303,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         {
             FC_ASSERT( !is_locked() );
 
-            auto accounts = my->_remote_api->get_accounts( { account_name } );
+            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
             FC_ASSERT( accounts.size() == 1, "Account does not exist" );
             FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
 
@@ -1362,7 +1370,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         {
             FC_ASSERT( !is_locked() );
 
-            auto accounts = my->_remote_api->get_accounts( { account_name } );
+            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
             FC_ASSERT( accounts.size() == 1, "Account does not exist" );
             FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
             FC_ASSERT( threshold != 0, "Authority is implicitly satisfied" );
@@ -1423,7 +1431,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         {
             FC_ASSERT( !is_locked() );
 
-            auto accounts = my->_remote_api->get_accounts( { account_name } );
+            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
             FC_ASSERT( accounts.size() == 1, "Account does not exist" );
             FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
 
@@ -1443,7 +1451,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         {
             FC_ASSERT( !is_locked() );
 
-            auto accounts = my->_remote_api->get_accounts( { account_name } );
+            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
             FC_ASSERT( accounts.size() == 1, "Account does not exist" );
             FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
 
@@ -1492,7 +1500,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             witness_update_operation op;
 
-            optional< database_api::witness_api_object > wit = my->_remote_api->get_witness_by_account( witness_account_name );
+            optional< database_api::witness_api_object > wit = my->_remote_database_api->get_witness_by_account( witness_account_name );
             if( !wit.valid() ) {
                 op.url = url;
             } else {
@@ -1875,7 +1883,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         vector< database_api::convert_request_api_object > wallet_api::get_conversion_requests( string owner_account ) {
-            return my->_remote_api->get_conversion_requests( owner_account );
+            return my->_remote_database_api->get_conversion_requests( owner_account );
         }
 
         string wallet_api::decrypt_memo( string encrypted_memo ) {
@@ -1925,7 +1933,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         map< uint32_t, operation_api_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
-            auto result = my->_remote_api->get_account_history( account, from, limit );
+            auto result = my->_remote_database_api->get_account_history( account, from, limit );
             if( !is_locked() ) {
                 for( auto& item : result ) {
                     if( item.second.op.which() == operation::tag<transfer_operation>::value ) {
@@ -1946,16 +1954,16 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         vector< database_api::withdraw_vesting_route_api_object > wallet_api::get_withdraw_routes( string account, database_api::withdraw_route_type type )const {
-            return my->_remote_api->get_withdraw_routes( account, type );
+            return my->_remote_database_api->get_withdraw_routes( account, type );
         }
 
-        market_history::order_book_r wallet_api::get_order_book( order_book_a order ) {
-            FC_ASSERT( order.limit <= 1000 );
-            return my->_remote_api->get_order_book( order );
+        market_history::order_book wallet_api::get_order_book( uint32_t limit ) {
+            FC_ASSERT( limit <= 1000 );
+            return my->_remote_market_history->get_order_book( limit );
         }
 
         vector< database_api::extended_limit_order > wallet_api::get_open_orders( string owner ) {
-            return my->_remote_api->get_open_orders( owner );
+            return my->_remote_database_api->get_open_orders( owner );
         }
 
         annotated_signed_transaction wallet_api::create_order(  string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast ) {
@@ -2028,7 +2036,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
-            return my->_remote_api->get_transaction( id );
+            return my->_remote_database_api->get_transaction( id );
         }
 
         annotated_signed_transaction wallet_api::follow(

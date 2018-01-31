@@ -76,7 +76,7 @@ namespace golos { namespace wallet {
  */
         class wallet_api {
         public:
-            wallet_api( const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi );
+            wallet_api( const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api_connection& con );
             virtual ~wallet_api();
 
             bool copy_wallet_file( string destination_filename );
@@ -791,7 +791,7 @@ namespace golos { namespace wallet {
              *
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
-            market_history::order_book_r get_order_book( order_book_a order );
+            market_history::order_book get_order_book( uint32_t limit );
             vector< database_api::extended_limit_order > get_open_orders( string accountname );
 
             /**
