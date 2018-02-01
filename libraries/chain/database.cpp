@@ -211,11 +211,8 @@ uint32_t database::reindex( const open_args& args )
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
 
-            if(    (args.benchmark.first > 0)
-                && (cur_block_num % args.benchmark.first == 0) )
-            {
-               args.benchmark.second( cur_block_num, false /*is_initial_call*/ );
-            }
+            if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
+               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
             itr = _block_log.read_block( itr.second );
          }
 
