@@ -9,16 +9,25 @@
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <appbase/application.hpp>
-
-#include <string>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
 
+#include <boost/type.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/container/flat_set.hpp>
+
+#include <string>
+#include <typeindex>
+
 namespace bpo = boost::program_options;
+
+#define STEEM_NAMESPACE_PREFIX "steem::protocol::"
+
 
 namespace steem { namespace plugins { namespace rocksdb {
 
@@ -384,12 +393,30 @@ private:
 
    void on_operation(const operation_notification& opNote);
 
+private:
+   void collectOptions(const boost::program_options::variables_map& options);
+
+   /** Returns true if given account is tracked.
+    *  Depends on `"account-history-whitelist-ops"`, `account-history-blacklist-ops` option usage.
+    *  Only some accounts can be chosen for tracking operation history.
+    */
+   bool isTrackedAccount(const account_name_type& name) const;
+
+   /** Returns true if given operation should be collected.
+    *  Depends on `account-history-blacklist-ops`, `account-history-whitelist-ops`.
+    */
+   bool isTrackedOperation(const operation& op) const;
+   void storeOpFilteringParameters(const std::vector<std::string>& opList,
+      flat_set<std::string>* storage) const;
+
    enum
    {
       WRITE_BUFFER_FLUSH_LIMIT = 100
    };
 
 private:
+   typedef flat_map< account_name_type, account_name_type > account_name_range_index;
+
    chain::database&                 _mainDb;
    const rocksdb_plugin&            _mainPlugin;
    std::unique_ptr<rocksdb_api>     _api;
@@ -409,7 +436,91 @@ private:
 
    /// Number of data-chunks for ops being stored inside _writeBuffer. To decide when to flush.
    unsigned int                     _collectedOps = 0;
+   bool                             _filter_content = false;
+   bool                             _blacklist = false;
+   bool                             _prune = true;
+
+   account_name_range_index         _tracked_accounts;
+   flat_set< string >               _op_list;
+   flat_set< string >               _blacklisted_op_list;
 };
+
+void rocksdb_plugin::impl::collectOptions(const boost::program_options::variables_map& options)
+{
+   typedef std::pair< account_name_type, account_name_type > pairstring;
+   STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", _tracked_accounts, pairstring);
+
+   if(options.count("track-account-range"))
+   {
+      wlog( "track-account-range is deprecated in favor of account-history-track-account-range" );
+      STEEM_LOAD_VALUE_SET( options, "track-account-range", _tracked_accounts, pairstring );
+   }
+
+   if(options.count("account-history-whitelist-ops"))
+   {
+      const auto& args = options.at("account-history-whitelist-ops").as<std::vector<std::string>>();
+      storeOpFilteringParameters(args, &_op_list);
+   }
+
+   if( options.count( "history-whitelist-ops" ) )
+   {
+      wlog( "history-whitelist-ops is deprecated in favor of account-history-whitelist-ops." );
+
+      const auto& args = options.at("history-whitelist-ops").as<std::vector<std::string>>();
+      storeOpFilteringParameters(args, &_op_list);
+   }
+
+   if(_op_list.empty() == false)
+      ilog( "Account History: whitelisting ops ${o}", ("o", _op_list) );
+
+   if(options.count("account-history-blacklist-ops"))
+   {
+      const auto& args = options.at("account-history-blacklist-ops").as<std::vector<std::string>>();
+      storeOpFilteringParameters(args, &_blacklisted_op_list);
+   }
+
+   if( options.count( "history-blacklist-ops" ) )
+   {
+      wlog( "history-blacklist-ops is deprecated in favor of account-history-blacklist-ops." );
+
+      const auto& args = options.at("history-blacklist-ops").as<std::vector<std::string>>();
+      storeOpFilteringParameters(args, &_blacklisted_op_list);
+   }
+
+   if(_blacklisted_op_list.empty() == false)
+      ilog( "Account History: blacklisting ops ${o}", ("o", _blacklisted_op_list) );
+
+   if(options.count( "history-disable-pruning"))
+      _prune = !options["history-disable-pruning"].as<bool>();
+}
+
+bool rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const
+{
+   FC_TODO("NOT IMPLEMENTED YET");
+   return true;
+}
+
+bool rocksdb_plugin::impl::isTrackedOperation(const operation& op) const
+{
+   FC_TODO("NOT IMPLEMENTED YET");
+   return true;
+}
+
+void rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::string>& opList,
+   flat_set<std::string>* storage) const
+   {
+      for(const auto& arg : opList)
+      {
+         std::vector<std::string> ops;
+         boost::split(ops, arg, boost::is_any_of(" \t,"));
+
+         for(const string& op : ops)
+         {
+            if( op.empty() == false )
+               storage->insert( STEEM_NAMESPACE_PREFIX + op );
+         }
+      }
+   }
 
 void rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
    uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
@@ -727,15 +838,21 @@ rocksdb_plugin::~rocksdb_plugin()
 
 void rocksdb_plugin::set_program_options(
    boost::program_options::options_description &command_line_options,
-   boost::program_options::options_description &config_file_options)
+   boost::program_options::options_description &cfg)
 {
-   config_file_options.add_options()
+   cfg.add_options()
       ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
          "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
+      ("account-history-track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
+      ("track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times. Deprecated in favor of account-history-track-account-range.")
+      ("account-history-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged.")
+      ("history-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged. Deprecated in favor of account-history-whitelist-ops.")
+      ("account-history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored.")
+      ("history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of account-history-blacklist-ops.")
+      ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" )
+         
    ;
    command_line_options.add_options()
-      ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
-         "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
       ("rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
          "Allows to force immediate data import at plugin startup. By default storage is supplied during reindex process.")
       ("rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
