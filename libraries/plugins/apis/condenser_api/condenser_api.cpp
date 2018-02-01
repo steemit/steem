@@ -899,7 +899,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, lookup_accounts )
    {
-      CHECK_ARG_SIZE( 1 )
+      CHECK_ARG_SIZE( 2 )
       account_name_type lower_bound_name = args[0].as< account_name_type >();
       uint32_t limit = args[1].as< uint32_t >();
 
