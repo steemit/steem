@@ -6,6 +6,7 @@
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/p2p/p2p_plugin.hpp>
+#include <memory>
 
 namespace golos {
     namespace plugins {
@@ -42,9 +43,9 @@ namespace golos {
                     return name;
                 }
 
-                witness_plugin(){};
+                witness_plugin();;
 
-                ~witness_plugin(){};
+                ~witness_plugin();;
 
 
                 void set_program_options(boost::program_options::options_description &command_line_options,
@@ -59,37 +60,9 @@ namespace golos {
                 void plugin_shutdown() override;
 
             private:
-                void on_applied_block(const signed_block &b);
+                struct impl;
+                std::unique_ptr<impl>pimpl;
 
-                void start_mining(const fc::ecc::public_key &pub, const fc::ecc::private_key &pk, const string &name,
-                                  const signed_block &b);
-
-
-                void schedule_production_loop();
-
-                block_production_condition::block_production_condition_enum block_production_loop();
-
-                block_production_condition::block_production_condition_enum maybe_produce_block(
-                        fc::mutable_variant_object &capture);
-
-                boost::program_options::variables_map _options;
-                bool _production_enabled = false;
-                uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
-                uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
-                uint32_t _mining_threads = 0;
-
-                uint64_t _head_block_num = 0;
-                block_id_type _head_block_id = block_id_type();
-                uint64_t _total_hashes = 0;
-                fc::time_point _hash_start_time;
-
-                std::vector<std::shared_ptr<fc::thread>> _thread_pool;
-
-                std::map<public_key_type, fc::ecc::private_key> _private_keys;
-                std::set<string> _witnesses;
-                std::map<string, public_key_type> _miners;
-                protocol::chain_properties _miner_prop_vote;
-                fc::future<void> _block_production_task;
             };
 
         }

@@ -44,17 +44,73 @@ T dejsonify(const string &s) {
 namespace golos {
     namespace plugins {
         namespace witness_plugin {
+
+            struct witness_plugin::impl final {
+                impl():
+                    p2p_(appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>()),
+                    database_(appbase::app().get_plugin<chain::plugin>().db()) {
+
+                }
+                ~impl(){}
+
+                golos::chain::database& database() {
+                    return database_;
+                }
+
+                golos::chain::database& database() const {
+                    return database_;
+                }
+
+                golos::plugins::p2p::p2p_plugin& p2p(){
+                    return p2p_;
+                };
+
+                golos::plugins::p2p::p2p_plugin& p2p() const {
+                    return p2p_;
+                };
+
+                golos::plugins::p2p::p2p_plugin& p2p_;
+
+                golos::chain::database& database_;
+
+                void on_applied_block(const signed_block &b);
+
+                void start_mining(const fc::ecc::public_key &pub, const fc::ecc::private_key &pk, const string &name, const signed_block &b);
+
+                void schedule_production_loop();
+
+                block_production_condition::block_production_condition_enum block_production_loop();
+
+                block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object &capture);
+
+                boost::program_options::variables_map _options;
+                bool _production_enabled = false;
+                uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
+                uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
+                uint32_t _mining_threads = 0;
+
+                uint64_t _head_block_num = 0;
+                block_id_type _head_block_id = block_id_type();
+                uint64_t _total_hashes = 0;
+                fc::time_point _hash_start_time;
+
+                std::vector<std::shared_ptr<fc::thread>> _thread_pool;
+
+                std::map<public_key_type, fc::ecc::private_key> _private_keys;
+                std::set<string> _witnesses;
+                std::map<string, public_key_type> _miners;
+                protocol::chain_properties _miner_prop_vote;
+                fc::future<void> _block_production_task;
+            };
+
             void witness_plugin::set_program_options(
                     boost::program_options::options_description &command_line_options,
                     boost::program_options::options_description &config_file_options) {
                 string witness_id_example = "initwitness";
                 command_line_options.add_options()
-                        ("enable-stale-production",
-                         bpo::bool_switch()->notifier([this](bool e) { _production_enabled = e; }),
+                        ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e) { pimpl->_production_enabled = e; }),
                          "Enable block production, even if the chain is stale.")
-                        ("required-participation", bpo::bool_switch()->notifier([this](int e) {
-                            _required_witness_participation = uint32_t(
-                                    e * STEEMIT_1_PERCENT);
+                        ("required-participation", bpo::bool_switch()->notifier([this](int e) { pimpl->_required_witness_participation = uint32_t(e * STEEMIT_1_PERCENT);
                         }), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
                         ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
                          ("name of witness controlled by this node (e.g. " +
@@ -81,9 +137,10 @@ namespace golos {
             void witness_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
                     ilog("witness plugin:  plugin_initialize() begin");
-                    _options = &options;
-                    LOAD_VALUE_SET(options, "witness", _witnesses, string)
-                    edump((_witnesses));
+                    pimpl.reset(new witness_plugin::impl);
+                    pimpl->_options = &options;
+                    LOAD_VALUE_SET(options, "witness", pimpl->_witnesses, string)
+                    edump((pimpl->_witnesses));
 
                     if (options.count("miner")) {
 
@@ -94,16 +151,16 @@ namespace golos {
 
                             fc::optional<fc::ecc::private_key> private_key = golos::utilities::wif_to_key(m.second);
                             FC_ASSERT(private_key.valid(), "unable to parse private key");
-                            _private_keys[private_key->get_public_key()] = *private_key;
-                            _miners[m.first] = private_key->get_public_key();
+                            pimpl->_private_keys[private_key->get_public_key()] = *private_key;
+                            pimpl->_miners[m.first] = private_key->get_public_key();
                         }
                     }
 
                     if (options.count("mining-threads")) {
-                        _mining_threads = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
-                        _thread_pool.resize(_mining_threads);
-                        for (uint32_t i = 0; i < _mining_threads; ++i) {
-                            _thread_pool[i] = std::make_shared<fc::thread>();
+                        pimpl->_mining_threads = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
+                        pimpl->_thread_pool.resize(pimpl->_mining_threads);
+                        for (uint32_t i = 0; i < pimpl->_mining_threads; ++i) {
+                            pimpl-> _thread_pool[i] = std::make_shared<fc::thread>();
                         }
                     }
 
@@ -112,7 +169,7 @@ namespace golos {
                         for (const std::string &wif_key : keys) {
                             fc::optional<fc::ecc::private_key> private_key = golos::utilities::wif_to_key(wif_key);
                             FC_ASSERT(private_key.valid(), "unable to parse private key");
-                            _private_keys[private_key->get_public_key()] = *private_key;
+                            pimpl->_private_keys[private_key->get_public_key()] = *private_key;
                         }
                     }
 
@@ -122,7 +179,7 @@ namespace golos {
                         if (account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE)
                             wlog("miner-account-creation-fee is below the minimum fee, using minimum instead");
                         else {
-                            _miner_prop_vote.account_creation_fee.amount = account_creation_fee;
+                            pimpl->_miner_prop_vote.account_creation_fee.amount = account_creation_fee;
                         }
                     }
 
@@ -133,14 +190,14 @@ namespace golos {
                             wlog("miner-maximum-block-size is below the minimum block size limit, using default of 128 KB instead");
                         else if (maximum_block_size > STEEMIT_MAX_BLOCK_SIZE) {
                             wlog("miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead");
-                            _miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
+                            pimpl->_miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
                         } else {
-                            _miner_prop_vote.maximum_block_size = maximum_block_size;
+                            pimpl->_miner_prop_vote.maximum_block_size = maximum_block_size;
                         }
                     }
 
                     if (options.count("miner-sbd-interest-rate")) {
-                        _miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
+                        pimpl->_miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
                     }
 
                     ilog("witness plugin:  plugin_initialize() end");
@@ -150,25 +207,25 @@ namespace golos {
             void witness_plugin::plugin_startup() {
                 try {
                     ilog("witness plugin:  plugin_startup() begin");
-                    auto &d = appbase::app().get_plugin<chain::plugin>().db();
+                    auto &d = pimpl->database();
                     //Start NTP time client
                     golos::time::now();
 
-                    if (!_witnesses.empty()) {
-                        ilog("Launching block production for ${n} witnesses.", ("n", _witnesses.size()));
-                        appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>().set_block_production(true);
-                        if (_production_enabled) {
+                    if (!pimpl->_witnesses.empty()) {
+                        ilog("Launching block production for ${n} witnesses.", ("n", pimpl->_witnesses.size()));
+                        pimpl->p2p().set_block_production(true);
+                        if (pimpl->_production_enabled) {
                             if (d.head_block_num() == 0) {
                                 new_chain_banner(d);
                             }
-                            _production_skip_flags |= golos::chain::database::skip_undo_history_check;
+                            pimpl->_production_skip_flags |= golos::chain::database::skip_undo_history_check;
                         }
-                        schedule_production_loop();
+                        pimpl->schedule_production_loop();
                     } else
                         elog("No witnesses configured! Please add witness names and private keys to configuration.");
-                    if (!_miners.empty()) {
+                    if (!pimpl->_miners.empty()) {
                         ilog("Starting mining...");
-                        d.applied_block.connect([this](const protocol::signed_block &b) { this->on_applied_block(b); });
+                        d.applied_block.connect([this](const protocol::signed_block &b) { pimpl->on_applied_block(b); });
                     } else {
                         elog("No miners configured! Please add miner names and private keys to configuration.");
                     }
@@ -178,14 +235,29 @@ namespace golos {
 
             void witness_plugin::plugin_shutdown() {
                 golos::time::shutdown_ntp_time();
-                if (!_miners.empty()) {
+                if (!pimpl->_miners.empty()) {
                     ilog("shutting downing mining threads");
-                    _thread_pool.clear();
+                    pimpl->_thread_pool.clear();
                 }
-                return;
+
+                try {
+                    if (pimpl->_block_production_task.valid()) {
+                        pimpl->_block_production_task.cancel_and_wait(__FUNCTION__);
+                    }
+                } catch (fc::canceled_exception &) {
+                    //Expected exception. Move along.
+                } catch (fc::exception &e) {
+                    edump((e.to_detail_string()));
+                }
+
+
             }
 
-            void witness_plugin::schedule_production_loop() {
+            witness_plugin::witness_plugin() {}
+
+            witness_plugin::~witness_plugin() {}
+
+            void witness_plugin::impl::schedule_production_loop() {
                 //Schedule for the next second's tick regardless of chain state
                 // If we would wait less than 50ms, wait for the whole second.
                 fc::time_point ntp_now = golos::time::now();
@@ -203,7 +275,7 @@ namespace golos {
                                                       next_wakeup, "Witness Block Production");
             }
 
-            block_production_condition::block_production_condition_enum witness_plugin::block_production_loop() {
+            block_production_condition::block_production_condition_enum witness_plugin::impl::block_production_loop() {
                 if (fc::time_point::now() < fc::time_point(STEEMIT_GENESIS_TIME)) {
                     wlog("waiting until genesis time to produce block: ${t}", ("t", STEEMIT_GENESIS_TIME));
                     schedule_production_loop();
@@ -234,13 +306,13 @@ namespace golos {
                         ilog("Generated block #${n} with timestamp ${t} at time ${c} by ${w}", (capture));
                         break;
                     case block_production_condition::not_synced:
-                        //ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
+                        ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
                         break;
                     case block_production_condition::not_my_turn:
-                        //ilog("Not producing block because it isn't my turn");
+                        ilog("Not producing block because it isn't my turn");
                         break;
                     case block_production_condition::not_time_yet:
-                        // ilog("Not producing block because slot has not yet arrived");
+                        ilog("Not producing block because slot has not yet arrived");
                         break;
                     case block_production_condition::no_private_key:
                         ilog("Not producing block for ${scheduled_witness} because I don't have the private key for ${scheduled_key}",
@@ -267,9 +339,8 @@ namespace golos {
                 return result;
             }
 
-            block_production_condition::block_production_condition_enum
-            witness_plugin::maybe_produce_block(fc::mutable_variant_object &capture) {
-                auto &db = appbase::app().get_plugin<chain::plugin>().db();
+            block_production_condition::block_production_condition_enum witness_plugin::impl::maybe_produce_block(fc::mutable_variant_object &capture) {
+                auto &db = database();
                 fc::time_point now_fine = golos::time::now();
                 fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
@@ -340,7 +411,7 @@ namespace golos {
                                 _production_skip_flags
                         );
                         capture("n", block.block_num())("t", block.timestamp)("c", now)("w", scheduled_witness);
-                        fc::async([this, block]() { appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>().broadcast_block(block); });
+                        fc::async([this, block]() { p2p().broadcast_block(block); });
 
                         return block_production_condition::produced;
                     }
@@ -369,12 +440,12 @@ namespace golos {
  * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
  * and therefore do not even attempt work that cannot be delivered on time.
  */
-            void witness_plugin::on_applied_block(const golos::protocol::signed_block &b) {
+            void witness_plugin::impl::on_applied_block(const golos::protocol::signed_block &b) {
                 try {
                     if (!_mining_threads || _miners.size() == 0) {
                         return;
                     }
-                    auto &db = appbase::app().get_plugin<chain::plugin>().db();
+                    auto &db = database();
 
                     const auto &dgp = db.get_dynamic_global_properties();
                     double hps = (_total_hashes * 1000000) /
@@ -429,14 +500,14 @@ namespace golos {
                 }
             }
 
-            void witness_plugin::start_mining(
+            void witness_plugin::impl::start_mining(
                     const fc::ecc::public_key &pub,
                     const fc::ecc::private_key &pk,
                     const string &miner,
                     const golos::protocol::signed_block &b) {
                 static uint64_t seed = fc::time_point::now().time_since_epoch().count();
                 static uint64_t start = fc::city_hash64((const char *) &seed, sizeof(seed));
-                auto &db = appbase::app().get_plugin<chain::plugin>().db();
+                auto &db = database();
                 auto head_block_num = b.block_num();
                 auto head_block_time = b.timestamp;
                 auto block_id = b.id();
@@ -492,9 +563,9 @@ namespace golos {
                                     ++this->_head_block_num;
                                     mainthread->async([this, miner, trx]() {
                                         try {
-                                            appbase::app().get_plugin<chain::plugin>().db().push_transaction(trx);
+                                            database().push_transaction(trx);
                                             ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>().broadcast_transaction(trx);
+                                            p2p().broadcast_transaction(trx);
                                         }
                                         catch (const fc::exception &e) {
                                             // wdump((e.to_detail_string()));
@@ -503,8 +574,7 @@ namespace golos {
                                     return;
                                 }
                             }
-                        } else // delete after hardfork 16
-                        {
+                        } else {// delete after hardfork 16
                             protocol::pow2_operation op;
                             protocol::pow2 work;
                             work.input.prev_block = block_id;
@@ -539,9 +609,9 @@ namespace golos {
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
                                     mainthread->async([this, miner, trx]() {
                                         try {
-                                            appbase::app().get_plugin<chain::plugin>().db().push_transaction(trx);
+                                            database().push_transaction(trx);
                                             ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>().broadcast_transaction(trx);
+                                            p2p().broadcast_transaction(trx);
                                         }
                                         catch (const fc::exception &e) {
                                             // wdump((e.to_detail_string()));
