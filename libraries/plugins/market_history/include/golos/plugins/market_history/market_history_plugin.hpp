@@ -32,13 +32,13 @@ namespace golos {
             using namespace chainbase;
             using namespace golos::protocol;
 
-            DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker_r)
-            DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume_r)
-            DEFINE_API_ARGS(get_order_book,             json_rpc::msg_pack, order_book_r)
-            DEFINE_API_ARGS(get_trade_history,          json_rpc::msg_pack, trade_history_r)
-            DEFINE_API_ARGS(get_recent_trades,          json_rpc::msg_pack, recent_trades_r)
-            DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, market_history_r)
-            DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, market_history_buckets_r)
+            DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker)
+            DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume)
+            DEFINE_API_ARGS(get_order_book,             json_rpc::msg_pack, order_book)
+            DEFINE_API_ARGS(get_trade_history,          json_rpc::msg_pack, vector<market_trade>)
+            DEFINE_API_ARGS(get_recent_trades,          json_rpc::msg_pack, vector<market_trade>)
+            DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, vector<bucket_object>)
+            DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, flat_set<uint32_t>)
 
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
