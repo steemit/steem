@@ -28,6 +28,8 @@ namespace bpo = boost::program_options;
 
 #define STEEM_NAMESPACE_PREFIX "steem::protocol::"
 
+#define DIAGNOSTIC(s)
+//#define DIAGNOSTIC(s) s
 
 namespace steem { namespace plugins { namespace rocksdb {
 
@@ -466,7 +468,8 @@ private:
    size_t                           _totalOps = 0;
    /// Total number of ops being skipped by filtering options.
    size_t                           _excludedOps = 0;
-
+   /// Total number of accounts (impacted by ops) excluded from processing because of filtering.
+   mutable size_t                   _excludedAccountCount = 0;
    /// IDs to be assigned to object.id field.
    size_t                           _operationSeqId = 0;
    size_t                           _accountHistorySeqId = 0;
@@ -569,6 +572,16 @@ inline bool rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name
    }
 
    bool inRange = itr != _tracked_accounts.end() && itr->first <= name && name <= itr->second;
+
+   _excludedAccountCount += inRange;
+
+   DIAGNOSTIC(
+      if(inRange)
+         ilog("Account: ${a} matched to defined account range: [${b},${e}]", ("a", name)("b", itr->first)("e", itr->second) );
+      else
+         ilog("Account: ${a} ignored due to defined tracking filters.", ("a", name));
+   );
+
    return inRange;
 }
 
@@ -810,12 +823,14 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
 
    if(blockNum % 10000 == 0 && txInBlock == 0 && opInTx == 0)
    {
-      ilog("RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations."
-           " ${ep} operations have been filtered out due to configured options.",
+      ilog("RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.\n"
+           " ${ep} operations have been filtered out due to configured options.\n"
+           " ${ea} accounts have been filtered out due to configured options.",
          ("n", blockNum)
          ("tx", _txNo)
          ("op", _totalOps)
          ("ep", _excludedOps)
+         ("ea", _excludedAccountCount)
          );
    }
 
@@ -928,11 +943,14 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
       ("cm", measure.current_mem)
       ("pm", measure.peak_mem) );
 
-   ilog( "RocksDb data import finished. Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations. ${ep} operations have been filtered out due to configured options.",
+   ilog("RocksDb data import finished. Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.\n"
+        "${ep} operations have been filtered out due to configured options.\n"
+        "${ea} accounts have been filtered out due to configured options.",
       ("n", blockNo)
       ("tx", _txNo)
       ("op", _totalOps)
       ("ep", _excludedOps)
+      ("ea", _excludedAccountCount)
       );
 }
 
