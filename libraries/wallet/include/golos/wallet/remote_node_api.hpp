@@ -119,13 +119,13 @@ struct remote_node_api {
    vector< reblog_count > get_blog_authors( account_name_type );
 
     // Market history
-   market_ticker_r get_ticker();
-   market_volume_r get_volume();
-   order_book_r get_order_book( order_book_a );
-   trade_history_r get_trade_history( trade_history_a );
-   recent_trades_r get_recent_trades( recent_trades_a );
-   market_history_r get_market_history( market_history_a );
-   market_history_buckets_r get_market_history_buckets();
+   market_ticker get_ticker();
+   market_volume get_volume();
+   order_book get_order_book(uint32_t limit);
+   vector<market_trade> get_trade_history(time_point_sec start, time_point_sec end, uint32_t limit);
+   vector<market_trade> get_recent_trades(uint32_t limit);
+   vector<bucket_object> get_market_history(uint32_t bucket_seconds, time_point_sec start, time_point_sec end);
+   flat_set<uint32_t> get_market_history_buckets();
 
    map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
 
