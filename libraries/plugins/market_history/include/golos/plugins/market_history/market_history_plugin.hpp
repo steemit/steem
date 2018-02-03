@@ -36,7 +36,7 @@ namespace golos {
             DEFINE_API_ARGS(get_recent_trades,          json_rpc::msg_pack, recent_trades_r)
             DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, market_history_r)
             DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, market_history_buckets_r)
-            DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, open_orders_r)
+            DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, std::vector<limit_order>)
 
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {

@@ -128,13 +128,6 @@ namespace golos {
                 bool rewarded = false;
             };
 
-            struct open_orders_r {
-                std::vector<limit_order> orders;
-            };
-            struct open_orders_a {
-                std::string owner;
-            };
-
             struct bucket_object
                     : public object<bucket_object_type, bucket_object> {
                 template<typename Constructor, typename Allocator>
@@ -233,8 +226,6 @@ FC_REFLECT((golos::plugins::market_history::recent_trades_a), (limit))
 FC_REFLECT((golos::plugins::market_history::market_history_r), (history))
 FC_REFLECT((golos::plugins::market_history::market_history_a), (bucket_seconds)(start)(end))
 FC_REFLECT((golos::plugins::market_history::market_history_buckets_r), (buckets))
-FC_REFLECT((golos::plugins::market_history::open_orders_a), (owner))
-FC_REFLECT((golos::plugins::market_history::open_orders_r), (orders))
 
 FC_REFLECT((golos::plugins::market_history::market_ticker),
            (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume));
