@@ -14,6 +14,7 @@
 #include <golos/plugins/market_history/market_history_objects.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
+#include <golos/plugins/private_message/private_message_objects.hpp>
 
 
 namespace golos { namespace wallet {
@@ -30,6 +31,7 @@ using namespace plugins::follow;
 using namespace plugins::social_network;
 using namespace plugins::market_history;
 using namespace plugins::social_network;
+using namespace plugins::private_message;
 //using namespace plugins::witness_plugin;
 
 /**
@@ -158,6 +160,15 @@ struct remote_market_history {
    flat_set<uint32_t> get_market_history_buckets();
 };
 
+/**
+ * This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
+ * Class is used by wallet to send formatted API calls to market_history plugin on remote node.
+ */
+struct remote_private_message {
+    inbox_r get_inbox(const inbox_a&) const;
+    outbox_r get_outbox(const outbox_a&) const;
+};
+
 } }
 
 /**
@@ -267,4 +278,12 @@ FC_API( golos::wallet::remote_market_history,
         (get_recent_trades)
         (get_market_history)
         (get_market_history_buckets)
+)
+
+/**
+ * Declaration of remote API formatter to private message plugin on remote node
+ */
+FC_API( golos::wallet::remote_private_message,
+        (get_inbox)
+        (get_outbox)
 )
