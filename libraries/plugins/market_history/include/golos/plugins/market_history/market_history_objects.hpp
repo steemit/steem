@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/steem_object_types.hpp>
+#include <golos/chain/steem_objects.hpp>
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
@@ -29,6 +30,7 @@ namespace golos {
             using namespace golos::protocol;
             using namespace boost::multi_index;
             using namespace chainbase;
+            using namespace golos::plugins;
 
             enum market_history_object_types {
                 bucket_object_type = (MARKET_HISTORY_SPACE_ID << 8),
@@ -67,6 +69,20 @@ namespace golos {
                 asset open_pays;
             };
 
+            typedef golos::chain::limit_order_object limit_order_api_object;
+
+            struct limit_order : public limit_order_api_object {
+                limit_order() {
+                }
+
+                limit_order(const limit_order_object &o)
+                        : limit_order_api_object(o) {
+                }
+
+                double real_price = 0;
+                bool rewarded = false;
+            };
+          
             struct bucket_object
                     : public object<bucket_object_type, bucket_object> {
                 template<typename Constructor, typename Allocator>
@@ -164,6 +180,9 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (date)(current_pays)(open_pays));
+FC_REFLECT((golos::plugins::market_history::limit_order),
+           (real_price)(rewarded));
+
 
 
 FC_REFLECT((golos::plugins::market_history::bucket_object),

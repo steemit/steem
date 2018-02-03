@@ -2,6 +2,9 @@
 
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/chain/steem_objects.hpp>
+#include <golos/chain/account_object.hpp>
+
 
 
 #define CHECK_ARG_SIZE(s) \
@@ -24,6 +27,7 @@ namespace golos {
                 ~market_history_plugin_impl() {
                 }
 
+
                 market_ticker get_ticker() const;
                 market_volume get_volume() const;
                 order_book get_order_book(uint32_t limit) const;
@@ -31,6 +35,7 @@ namespace golos {
                 vector<market_trade> get_recent_trades(uint32_t limit) const;
                 vector<bucket_object> get_market_history(uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
+                std::vector<limit_order> get_open_orders(std::string) const;
 
                 void update_market_histories(const golos::chain::operation_notification &o);
 
@@ -312,6 +317,25 @@ namespace golos {
                 return appbase::app().get_plugin<market_history_plugin>().get_tracked_buckets();;
             }
 
+            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(string owner) const {
+                return _db.with_read_lock([&]() {
+                    std::vector<limit_order> result;
+                    const auto &idx = _db.get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_account>();
+                    auto itr = idx.lower_bound(owner);
+                    while (itr != idx.end() && itr->seller == owner) {
+                        result.push_back(*itr);
+
+                        if (itr->sell_price.base.symbol == STEEM_SYMBOL) {
+                            result.back().real_price = (~result.back().sell_price).to_real();
+                        } else {
+                            result.back().real_price = (result.back().sell_price).to_real();
+                        }
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
+
             market_history_plugin::market_history_plugin() {
             }
 
@@ -440,6 +464,14 @@ namespace golos {
                 auto &db = _my->database();
                 return db.with_read_lock([&]() {
                     return _my->get_market_history_buckets();
+                });
+            }
+
+            DEFINE_API(market_history_plugin, get_open_orders) {
+                auto tmp = args.args->at(0).as<string>();
+                auto &db = _my->database();
+                return db.with_read_lock([&]() {
+                    return _my->get_open_orders(tmp);
                 });
             }
 
