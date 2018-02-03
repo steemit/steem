@@ -32,7 +32,6 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
         api_documentation_standin.cpp
-        remote_node_api.cpp
         wallet.cpp
         )
 

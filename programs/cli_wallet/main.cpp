@@ -159,9 +159,7 @@ int main( int argc, char** argv ) {
         auto con  = client.connect( wdata.ws_server );
         auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
 
-        auto remote_api = apic->get_remote_api< golos::wallet::remote_node_api >( 0, "condenser_api" );//TODO ?????
-
-        auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api );
+        auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, *apic );
         wapiptr->set_wallet_filename( wallet_file.generic_string() );
         wapiptr->load_wallet_file();
 
