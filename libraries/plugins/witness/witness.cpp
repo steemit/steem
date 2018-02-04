@@ -60,7 +60,7 @@ namespace golos {
                     p2p_(appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>()),
                     database_(appbase::app().get_plugin<chain::plugin>().db()),
                     mining_work_(mining_service_),
-                    production_timer_(production_service_) {
+                    production_timer_(appbase::app().get_io_service()) {
 
                 }
 
@@ -111,9 +111,7 @@ namespace golos {
 
                 uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
                 bool _production_enabled = false;
-                asio::io_service production_service_;
                 asio::deadline_timer production_timer_;
-                std::unique_ptr<std::thread> production_thread_;
 
                 std::map<public_key_type, fc::ecc::private_key> _private_keys;
                 std::set<string> _witnesses;
@@ -239,7 +237,6 @@ namespace golos {
                             pimpl->_production_skip_flags |= golos::chain::database::skip_undo_history_check;
                         }
                         pimpl->schedule_production_loop();
-                        pimpl->production_thread_.reset(new std::thread( [&]{ pimpl->production_service_.run(); }));
                     } else
                         elog("No witnesses configured! Please add witness names and private keys to configuration.");
                     if (!pimpl->_miners.empty()) {
@@ -264,11 +261,9 @@ namespace golos {
                     pimpl->mining_thread_pool_.clear();
                 }
 
-                if (pimpl->production_thread_) {
-                    ilog("shutting downing production thread");
-                    pimpl->production_service_.stop();
-                    pimpl->production_thread_->join();
-                    pimpl->production_thread_.reset();
+                if (!pimpl->_witnesses.empty()) {
+                    ilog("shutting downing production timer");
+                    pimpl->production_timer_.cancel();
                 }
             }
 
