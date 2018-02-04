@@ -99,10 +99,10 @@ namespace golos {
                 boost::program_options::variables_map _options;
                 uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
 
-                uint64_t _head_block_num = 0;
-                block_id_type _head_block_id = block_id_type();
-                uint64_t _total_hashes = 0;
-                fc::time_point _hash_start_time;
+                std::atomic<uint64_t> head_block_num_;
+                block_id_type head_block_id_ = block_id_type();
+                std::atomic<uint64_t> total_hashes_;
+                fc::time_point hash_start_time_;
 
                 uint32_t mining_threads_ = 0;
                 asio::io_service mining_service_;
@@ -465,8 +465,9 @@ namespace golos {
                     auto &db = database();
 
                     const auto &dgp = db.get_dynamic_global_properties();
-                    double hps = (_total_hashes * 1000000) /
-                                 (fc::time_point::now() - _hash_start_time).count();
+                    const uint64_t total_hashes = total_hashes_.load(std::memory_order_acquire);
+                    double hps = (total_hashes * 1000000) /
+                                 (fc::time_point::now() - hash_start_time_).count();
                     uint64_t i_hps = uint64_t(hps + 0.5);
 
                     uint32_t summary_target = db.get_pow_summary_target();
@@ -485,15 +486,10 @@ namespace golos {
                     fc::sha256 hash_target;
                     hash_target.set_to_inverse_approx_log_32(summary_target);
 
-                    if (_total_hashes > 0)
+                    if (total_hashes > 0)
                         ilog("hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
                              ("x", i_hps)("t", hash_target.str())("m", minutes_needed)("l", dgp.num_pow_witnesses)
                         );
-
-
-                    _head_block_num = b.block_num();
-                    _head_block_id = b.id();
-                    /// save these variables to be captured by worker lambda
 
                     for (const auto &miner : _miners) {
                         const auto *w = db.find_witness(miner.first);
@@ -523,22 +519,26 @@ namespace golos {
                     const string &miner,
                     const golos::protocol::signed_block &b
             ) {
-                static uint64_t seed = fc::time_point::now().time_since_epoch().count();
-                static uint64_t start = fc::city_hash64((const char *) &seed, sizeof(seed));
+                static const uint64_t seed = fc::time_point::now().time_since_epoch().count();
+                static const uint64_t start = fc::city_hash64((const char *) &seed, sizeof(seed));
                 auto &db = database();
-                auto head_block_num = b.block_num();
-                auto head_block_time = b.timestamp;
-                auto block_id = b.id();
+                const auto head_block_num = b.block_num();
+                const auto head_block_time = b.timestamp;
+                const auto block_id = b.id();
                 fc::thread *mainthread = &fc::thread::current();
-                _total_hashes = 0;
-                _hash_start_time = fc::time_point::now();
-                auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
+                const auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
                 uint32_t thread_num = 0;
-                uint32_t target = db.get_pow_summary_target();
+                const uint32_t target = db.get_pow_summary_target();
                 const auto &acct_idx = db.get_index<golos::chain::account_index>().indices().get<golos::chain::by_name>();
                 auto acct_it = acct_idx.find(miner);
-                bool has_account = (acct_it != acct_idx.end());
-                bool has_hardfork_16 = db.has_hardfork(STEEMIT_HARDFORK_0_16__551);
+                const bool has_account = (acct_it != acct_idx.end());
+                const bool has_hardfork_16 = db.has_hardfork(STEEMIT_HARDFORK_0_16__551);
+
+                head_block_id_ = b.id();
+                total_hashes_.store(0, std::memory_order_release);
+                head_block_num_.store(head_block_num, std::memory_order_release);
+                hash_start_time_ = fc::time_point::now();
+
                 for (uint32_t i = 0; i <= mining_threads_; ++i) {
                     thread_num++; // TODO: why it is incremented two times? second incrementation see after mining_service_.post(...)
                     mining_service_.post( [=]{
@@ -556,18 +556,18 @@ namespace golos {
                                     // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
                                     return;
                                 }
-                                if (this->_head_block_num != head_block_num) {
+                                if (head_block_num_.load(std::memory_order_acquire) != head_block_num) {
                                     // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
                                     return;
                                 }
 
-                                ++this->_total_hashes;
+                                total_hashes_.fetch_add(1, std::memory_order_relaxed); /// signal other workers to stop
                                 work.input.nonce += mining_threads_;
                                 work.create(block_id, miner, work.input.nonce);
 
                                 if (work.proof.is_valid() && work.pow_summary < target) { // hardfork_16: added `proof.is_valid()`
                                     protocol::signed_transaction trx;
-                                    work.prev_block = this->_head_block_id; // hardfork_16: added field 'prev_block'
+                                    work.prev_block = head_block_id_; // hardfork_16: added field 'prev_block'
                                     op.work = work;
                                     if (!has_account) {
                                         op.new_owner_key = pub;
@@ -577,7 +577,7 @@ namespace golos {
                                     trx.ref_block_prefix = work.input.prev_block._hash[1];
                                     trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
-                                    ++this->_head_block_num;
+                                    head_block_num_.fetch_add(1, std::memory_order_relaxed);
                                     mainthread->async([this, miner, trx]() {
                                         try {
                                             database().push_transaction(trx);
@@ -605,16 +605,16 @@ namespace golos {
                                     // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
                                     return;
                                 }
-                                if (this->_head_block_num != head_block_num) {
+                                if (head_block_num_.load(std::memory_order_acquire) != head_block_num) {
                                     // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
                                     return;
                                 }
 
-                                ++this->_total_hashes;
+                                total_hashes_.fetch_add(1, std::memory_order_relaxed);
                                 work.input.nonce += mining_threads_;
                                 work.create(block_id, miner, work.input.nonce);
                                 if (work.pow_summary < target) {
-                                    ++this->_head_block_num; /// signal other workers to stop
+                                    head_block_num_.fetch_add(1, std::memory_order_relaxed); /// signal other workers to stop
                                     protocol::signed_transaction trx;
                                     op.work = work;
                                     if (!has_account) {
