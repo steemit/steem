@@ -11,6 +11,12 @@
 
 #include <fc/smart_ref_impl.hpp>
 
+#include <memory>
+#include <thread>
+
+#include <boost/asio.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 using std::string;
 using std::vector;
 
@@ -45,12 +51,19 @@ namespace golos {
     namespace plugins {
         namespace witness_plugin {
 
+            namespace asio = boost::asio;
+            namespace posix_time = boost::posix_time;
+            namespace system = boost::system;
+
             struct witness_plugin::impl final {
                 impl():
                     p2p_(appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>()),
-                    database_(appbase::app().get_plugin<chain::plugin>().db()) {
+                    database_(appbase::app().get_plugin<chain::plugin>().db()),
+                    mining_work_(mining_service_),
+                    production_timer_(production_service_) {
 
                 }
+
                 ~impl(){}
 
                 golos::chain::database& database() {
@@ -84,23 +97,28 @@ namespace golos {
                 block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object &capture);
 
                 boost::program_options::variables_map _options;
-                bool _production_enabled = false;
                 uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
-                uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
-                uint32_t _mining_threads = 0;
 
                 uint64_t _head_block_num = 0;
                 block_id_type _head_block_id = block_id_type();
                 uint64_t _total_hashes = 0;
                 fc::time_point _hash_start_time;
 
-                std::vector<std::shared_ptr<fc::thread>> _thread_pool;
+                uint32_t mining_threads_ = 0;
+                asio::io_service mining_service_;
+                asio::io_service::work mining_work_;
+                std::vector<std::unique_ptr<std::thread>> mining_thread_pool_;
+
+                uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
+                bool _production_enabled = false;
+                asio::io_service production_service_;
+                asio::deadline_timer production_timer_;
+                std::unique_ptr<std::thread> production_thread_;
 
                 std::map<public_key_type, fc::ecc::private_key> _private_keys;
                 std::set<string> _witnesses;
                 std::map<string, public_key_type> _miners;
                 protocol::chain_properties _miner_prop_vote;
-                fc::future<void> _block_production_task;
             };
 
             void witness_plugin::set_program_options(
@@ -157,10 +175,10 @@ namespace golos {
                     }
 
                     if (options.count("mining-threads")) {
-                        pimpl->_mining_threads = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
-                        pimpl->_thread_pool.resize(pimpl->_mining_threads);
-                        for (uint32_t i = 0; i < pimpl->_mining_threads; ++i) {
-                            pimpl-> _thread_pool[i] = std::make_shared<fc::thread>();
+                        pimpl->mining_threads_ = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
+                        pimpl->mining_thread_pool_.resize(pimpl->mining_threads_);
+                        for (uint32_t i = 0; i < pimpl->mining_threads_; ++i) {
+                            pimpl-> mining_thread_pool_[i].reset(new std::thread( [&] { pimpl->mining_service_.run(); } ));
                         }
                     }
 
@@ -221,6 +239,7 @@ namespace golos {
                             pimpl->_production_skip_flags |= golos::chain::database::skip_undo_history_check;
                         }
                         pimpl->schedule_production_loop();
+                        pimpl->production_thread_.reset(new std::thread( [&]{ pimpl->production_service_.run(); }));
                     } else
                         elog("No witnesses configured! Please add witness names and private keys to configuration.");
                     if (!pimpl->_miners.empty()) {
@@ -235,22 +254,22 @@ namespace golos {
 
             void witness_plugin::plugin_shutdown() {
                 golos::time::shutdown_ntp_time();
-                if (!pimpl->_miners.empty()) {
+                if (pimpl->mining_threads_) {
                     ilog("shutting downing mining threads");
-                    pimpl->_thread_pool.clear();
-                }
-
-                try {
-                    if (pimpl->_block_production_task.valid()) {
-                        pimpl->_block_production_task.cancel_and_wait(__FUNCTION__);
+                    pimpl->mining_service_.stop();
+                    for (auto &t : pimpl->mining_thread_pool_) {
+                        t->join();
+                        t.reset();
                     }
-                } catch (fc::canceled_exception &) {
-                    //Expected exception. Move along.
-                } catch (fc::exception &e) {
-                    edump((e.to_detail_string()));
+                    pimpl->mining_thread_pool_.clear();
                 }
 
-
+                if (pimpl->production_thread_) {
+                    ilog("shutting downing production thread");
+                    pimpl->production_service_.stop();
+                    pimpl->production_thread_->join();
+                    pimpl->production_thread_.reset();
+                }
             }
 
             witness_plugin::witness_plugin() {}
@@ -260,19 +279,14 @@ namespace golos {
             void witness_plugin::impl::schedule_production_loop() {
                 //Schedule for the next second's tick regardless of chain state
                 // If we would wait less than 50ms, wait for the whole second.
-                fc::time_point ntp_now = golos::time::now();
-                fc::time_point fc_now = fc::time_point::now();
-                int64_t time_to_next_second =
-                        1000000 - (ntp_now.time_since_epoch().count() % 1000000);
-                if (time_to_next_second < 50000) {      // we must sleep for at least 50ms
-                    time_to_next_second += 1000000;
+                int64_t ntp_microseconds = golos::time::now().time_since_epoch().count();
+                int64_t next_microseconds = 1000000 - (ntp_microseconds % 1000000);
+                if (next_microseconds < 50000) { // we must sleep for at least 50ms
+                    next_microseconds += 1000000;
                 }
 
-                fc::time_point next_wakeup(fc_now + fc::microseconds(time_to_next_second));
-
-                //wdump( (now.time_since_epoch().count())(next_wakeup.time_since_epoch().count()) );
-                _block_production_task = fc::schedule([this] { block_production_loop(); },
-                                                      next_wakeup, "Witness Block Production");
+                production_timer_.expires_from_now( posix_time::microseconds(next_microseconds) );
+                production_timer_.async_wait( [this](const system::error_code &) { block_production_loop(); } );
             }
 
             block_production_condition::block_production_condition_enum witness_plugin::impl::block_production_loop() {
@@ -306,13 +320,16 @@ namespace golos {
                         ilog("Generated block #${n} with timestamp ${t} at time ${c} by ${w}", (capture));
                         break;
                     case block_production_condition::not_synced:
-                        ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
+                        // This log-record is commented, because it outputs very often
+                        // ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
                         break;
                     case block_production_condition::not_my_turn:
-                        ilog("Not producing block because it isn't my turn");
+                        // This log-record is commented, because it outputs very often
+                        // ilog("Not producing block because it isn't my turn");
                         break;
                     case block_production_condition::not_time_yet:
-                        ilog("Not producing block because slot has not yet arrived");
+                        // This log-record is commented, because it outputs very often
+                        // ilog("Not producing block because slot has not yet arrived");
                         break;
                     case block_production_condition::no_private_key:
                         ilog("Not producing block for ${scheduled_witness} because I don't have the private key for ${scheduled_key}",
@@ -411,7 +428,7 @@ namespace golos {
                                 _production_skip_flags
                         );
                         capture("n", block.block_num())("t", block.timestamp)("c", now)("w", scheduled_witness);
-                        fc::async([this, block]() { p2p().broadcast_block(block); });
+                        p2p().broadcast_block(block);
 
                         return block_production_condition::produced;
                     }
@@ -442,7 +459,7 @@ namespace golos {
  */
             void witness_plugin::impl::on_applied_block(const golos::protocol::signed_block &b) {
                 try {
-                    if (!_mining_threads || _miners.size() == 0) {
+                    if (!mining_threads_ || _miners.size() == 0) {
                         return;
                     }
                     auto &db = database();
@@ -504,7 +521,8 @@ namespace golos {
                     const fc::ecc::public_key &pub,
                     const fc::ecc::private_key &pk,
                     const string &miner,
-                    const golos::protocol::signed_block &b) {
+                    const golos::protocol::signed_block &b
+            ) {
                 static uint64_t seed = fc::time_point::now().time_since_epoch().count();
                 static uint64_t start = fc::city_hash64((const char *) &seed, sizeof(seed));
                 auto &db = database();
@@ -516,18 +534,18 @@ namespace golos {
                 _hash_start_time = fc::time_point::now();
                 auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
                 uint32_t thread_num = 0;
-                uint32_t num_threads = _mining_threads;
                 uint32_t target = db.get_pow_summary_target();
                 const auto &acct_idx = db.get_index<golos::chain::account_index>().indices().get<golos::chain::by_name>();
                 auto acct_it = acct_idx.find(miner);
                 bool has_account = (acct_it != acct_idx.end());
                 bool has_hardfork_16 = db.has_hardfork(STEEMIT_HARDFORK_0_16__551);
-                for (auto &t : _thread_pool) {
-                    thread_num++;
-                    t->async([=]() {
+                for (uint32_t i = 0; i <= mining_threads_; ++i) {
+                    thread_num++; // TODO: why it is incremented two times? second incrementation see after mining_service_.post(...)
+                    mining_service_.post( [=]{
+                        // hardfork_16: differences with previous version are commented with `hardfork_16`
                         if (has_hardfork_16) {
                             protocol::pow2_operation op;
-                            protocol::equihash_pow work;
+                            protocol::equihash_pow work; // hardfork_16: changed type of `work`
                             work.input.prev_block = block_id;
                             work.input.worker_account = miner;
                             work.input.nonce = start + thread_num;
@@ -544,12 +562,12 @@ namespace golos {
                                 }
 
                                 ++this->_total_hashes;
-                                work.input.nonce += num_threads;
+                                work.input.nonce += mining_threads_;
                                 work.create(block_id, miner, work.input.nonce);
 
-                                if (work.proof.is_valid() && work.pow_summary < target) {
+                                if (work.proof.is_valid() && work.pow_summary < target) { // hardfork_16: added `proof.is_valid()`
                                     protocol::signed_transaction trx;
-                                    work.prev_block = this->_head_block_id;
+                                    work.prev_block = this->_head_block_id; // hardfork_16: added field 'prev_block'
                                     op.work = work;
                                     if (!has_account) {
                                         op.new_owner_key = pub;
@@ -557,8 +575,7 @@ namespace golos {
                                     trx.operations.push_back(op);
                                     trx.ref_block_num = head_block_num;
                                     trx.ref_block_prefix = work.input.prev_block._hash[1];
-                                    trx.set_expiration(head_block_time +
-                                                       STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                                    trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
                                     ++this->_head_block_num;
                                     mainthread->async([this, miner, trx]() {
@@ -574,7 +591,8 @@ namespace golos {
                                     return;
                                 }
                             }
-                        } else {// delete after hardfork 16
+                        }
+                        else { // delete after hardfork 16
                             protocol::pow2_operation op;
                             protocol::pow2 work;
                             work.input.prev_block = block_id;
@@ -593,7 +611,7 @@ namespace golos {
                                 }
 
                                 ++this->_total_hashes;
-                                work.input.nonce += num_threads;
+                                work.input.nonce += mining_threads_;
                                 work.create(block_id, miner, work.input.nonce);
                                 if (work.pow_summary < target) {
                                     ++this->_head_block_num; /// signal other workers to stop
@@ -622,7 +640,7 @@ namespace golos {
                             }
                         }
                     });
-                    thread_num++;
+                    thread_num++; // TODO: second incrementation
                 }
             }
         }

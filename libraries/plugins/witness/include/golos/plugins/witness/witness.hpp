@@ -43,9 +43,9 @@ namespace golos {
                     return name;
                 }
 
-                witness_plugin();;
+                witness_plugin();
 
-                ~witness_plugin();;
+                ~witness_plugin();
 
 
                 void set_program_options(boost::program_options::options_description &command_line_options,
@@ -61,7 +61,7 @@ namespace golos {
 
             private:
                 struct impl;
-                std::unique_ptr<impl>pimpl;
+                std::unique_ptr<impl> pimpl;
 
             };
 
