@@ -2047,7 +2047,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             for( const auto& item : remote_result.inbox ) {
                 result.emplace_back( item );
                 mesage_body tmp = try_decrypt_message( item );
-                result.back().encrypted_message = tmp;
+                result.back().encrypted_message = std::move(tmp);
             }
             return result;
         }
@@ -2059,7 +2059,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             for( const auto& item : remote_result.outbox ) {
                 result.emplace_back( item );
                 mesage_body tmp = try_decrypt_message( item );
-                result.back().encrypted_message = tmp;
+                result.back().encrypted_message = std::move(tmp);
             }
             return result;
         }
