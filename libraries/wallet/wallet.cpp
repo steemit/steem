@@ -211,7 +211,8 @@ namespace golos { namespace wallet {
                     _remote_social_network( con.get_remote_api< golos::wallet::remote_social_network >( 0, "social_network" ) ),
                     _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
                     _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
-                    _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) )
+                    _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
+                    _remote_market_history( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) )
                 {
                     init_prototype_ops();
 
@@ -2037,6 +2038,72 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
         annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
             return my->_remote_database_api->get_transaction( id );
+        }
+
+        vector<extended_message_object> wallet_api::get_inbox(const inbox_a& param) {
+            FC_ASSERT( !is_locked() );
+            vector<extended_message_object> result;
+            auto remote_result = my->_remote_private_message->get_inbox(param);
+            for( const auto& item : remote_result.inbox ) {
+                result.emplace_back( item );
+                mesage_body tmp = try_decrypt_message( item );
+                result.back().encrypted_message = std::move(tmp);
+            }
+            return result;
+        }
+
+        vector<extended_message_object> wallet_api::get_outbox(const outbox_a& param) {
+            FC_ASSERT( !is_locked() );
+            vector<extended_message_object> result;
+            auto remote_result = my->_remote_private_message->get_outbox(param);
+            for( const auto& item : remote_result.outbox ) {
+                result.emplace_back( item );
+                mesage_body tmp = try_decrypt_message( item );
+                result.back().encrypted_message = std::move(tmp);
+            }
+            return result;
+        }
+
+        message_body wallet_api::try_decrypt_message( const message_api_obj& mo ) {
+            message_body result;
+
+            fc::sha512 shared_secret;
+
+            auto it = my->_keys.find(mo.from_memo_key);
+            if( it == my->_keys.end() )
+            {
+                it = my->_keys.find(mo.to_memo_key);
+                if( it == my->_keys.end() )
+                {
+                    wlog( "unable to find keys" );
+                    return result;
+                }
+                auto priv_key = wif_to_key( it->second );
+                if( !priv_key ) return result;
+                shared_secret = priv_key->get_shared_secret( mo.from_memo_key );
+            } else {
+                auto priv_key = wif_to_key( it->second );
+                if( !priv_key ) return result;
+                shared_secret = priv_key->get_shared_secret( mo.to_memo_key );
+            }
+
+
+            fc::sha512::encoder enc;
+            fc::raw::pack( enc, mo.sent_time );
+            fc::raw::pack( enc, shared_secret );
+            auto encrypt_key = enc.result();
+
+            uint32_t check = fc::sha256::hash( encrypt_key )._hash[0];
+
+            if( mo.checksum != check )
+                return result;
+
+            auto decrypt_data = fc::aes_decrypt( encrypt_key, mo.encrypted_message );
+            try {
+                return fc::raw::unpack<message_body>( decrypt_data );
+            } catch ( ... ) {
+                return result;
+            }
         }
 
         annotated_signed_transaction wallet_api::follow(
