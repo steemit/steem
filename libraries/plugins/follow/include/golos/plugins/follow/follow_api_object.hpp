@@ -54,87 +54,31 @@ namespace golos {
                 account_name_type author;
                 uint32_t count;
             };
+            struct follow_count_api_obj {
+                follow_count_api_obj() {}
+                follow_count_api_obj(const std::string& acc,
+                    uint32_t followers,
+                    uint32_t followings,
+                    uint32_t lim)
+                     : account(acc),
+                     follower_count(followers),
+                     following_count(followings),
+                     limit(lim) {
+                }
 
-            struct get_followers_a {
-                account_name_type account;
-                account_name_type start;
-                follow_type type;
+                follow_count_api_obj(const follow_count_api_obj &o) :
+                        account(o.account),
+                        follower_count(o.follower_count),
+                        following_count(o.following_count),
+                        limit(o.limit) {
+                }
+                string account;
+                uint32_t follower_count = 0;
+                uint32_t following_count = 0;
                 uint32_t limit = 1000;
             };
 
-            struct get_followers_r {
-                std::vector<follow_api_object> followers;
-            };
-
-            typedef get_followers_a get_following_a;
-
-            struct get_following_r {
-                std::vector<follow_api_object> following;
-            };
-
-            struct get_follow_count_a {
-                account_name_type account;
-            };
-
-            struct get_follow_count_r {
-                account_name_type account;
-                uint32_t follower_count;
-                uint32_t following_count;
-            };
-
-            struct get_feed_entries_a {
-                account_name_type account;
-                uint32_t start_entry_id = 0;
-                uint32_t limit = 500;
-            };
-
-            struct get_feed_entries_r {
-                std::vector<feed_entry> feed;
-            };
-
-            typedef get_feed_entries_a get_feed_a;
-
-            struct get_feed_r {
-                std::vector<comment_feed_entry> feed;
-            };
-
-            typedef get_feed_entries_a get_blog_entries_a;
-
-            struct get_blog_entries_r {
-                std::vector<blog_entry> blog;
-            };
-
-            typedef get_feed_entries_a get_blog_a;
-
-            struct get_blog_r {
-                std::vector<comment_blog_entry> blog;
-            };
-
-            struct get_account_reputations_a {
-                account_name_type account_lower_bound;
-                uint32_t limit = 1000;
-            };
-
-            struct get_account_reputations_r {
-                std::vector<account_reputation> reputations;
-            };
-
-            struct get_reblogged_by_a {
-                account_name_type author;
-                std::string permlink;
-            };
-
-            struct get_reblogged_by_r {
-                std::vector<account_name_type> accounts;
-            };
-
-            struct get_blog_authors_a {
-                account_name_type blog_account;
-            };
-
-            struct get_blog_authors_r {
-                std::vector<std::pair<account_name_type, uint32_t> > blog_authors;
-            };
+            using blog_authors_r = std::vector<std::pair<account_name_type, uint32_t>>;
         }}}
 
 FC_REFLECT((golos::plugins::follow::feed_entry), (author)(permlink)(reblog_by)(reblog_on)(entry_id));
@@ -151,36 +95,7 @@ FC_REFLECT((golos::plugins::follow::follow_api_object), (follower)(following)(wh
 
 FC_REFLECT((golos::plugins::follow::reblog_count), (author)(count));
 
-FC_REFLECT((golos::plugins::follow::get_followers_a), (account)(start)(type)(limit));
+FC_REFLECT((golos::plugins::follow::follow_count_api_obj), (account)(follower_count)(following_count)(limit));
 
-FC_REFLECT((golos::plugins::follow::get_followers_r), (followers));
-
-FC_REFLECT((golos::plugins::follow::get_following_r), (following));
-
-FC_REFLECT((golos::plugins::follow::get_follow_count_a), (account));
-
-FC_REFLECT((golos::plugins::follow::get_follow_count_r), (account)(follower_count)(following_count));
-
-FC_REFLECT((golos::plugins::follow::get_feed_entries_a), (account)(start_entry_id)(limit));
-
-FC_REFLECT((golos::plugins::follow::get_feed_entries_r), (feed));
-
-FC_REFLECT((golos::plugins::follow::get_feed_r), (feed));
-
-FC_REFLECT((golos::plugins::follow::get_blog_entries_r), (blog));
-
-FC_REFLECT((golos::plugins::follow::get_blog_r), (blog));
-
-FC_REFLECT((golos::plugins::follow::get_account_reputations_a), (account_lower_bound)(limit));
-
-FC_REFLECT((golos::plugins::follow::get_account_reputations_r), (reputations));
-
-FC_REFLECT((golos::plugins::follow::get_reblogged_by_a), (author)(permlink));
-
-FC_REFLECT((golos::plugins::follow::get_reblogged_by_r), (accounts));
-
-FC_REFLECT((golos::plugins::follow::get_blog_authors_a), (blog_account));
-
-FC_REFLECT((golos::plugins::follow::get_blog_authors_r), (blog_authors));
 
 #endif //GOLOS_FOLLOW_API_OBJECT_HPP
