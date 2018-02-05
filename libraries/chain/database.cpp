@@ -157,7 +157,7 @@ uint32_t database::reindex( const open_args& args )
    {
       uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
-      wipe( args.data_dir, args.shared_mem_dir, false );
+      wipe( args.data_dir, args.shared_mem_dir, false, args.start_replay_from == 0 );
       open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
@@ -183,8 +183,17 @@ uint32_t database::reindex( const open_args& args )
          _block_log.set_locking( false );
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
+
          if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
             last_block_num = args.stop_replay_at;
+
+         if( args.start_replay_from > 0 && args.start_replay_from < last_block_num )
+         {
+            uint64_t pos = _block_log.get_block_pos( args.start_replay_from );
+            itr = _block_log.read_block( pos );
+            skip_flags |= skip_replay_from_block;
+         }
+
          if( args.benchmark.first > 0 )
          {
             args.benchmark.second( 0, get_abstract_index_cntr() );
@@ -223,10 +232,13 @@ uint32_t database::reindex( const open_args& args )
 
 }
 
-void database::wipe( const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks)
+void database::wipe( const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks, bool remove_memory_file )
 {
    close();
-   chainbase::database::wipe( shared_mem_dir );
+
+   if( remove_memory_file )
+      chainbase::database::wipe( shared_mem_dir );
+
    if( include_blocks )
    {
       fc::remove_all( data_dir / "block_log" );
@@ -2996,7 +3008,10 @@ void database::apply_operation(const operation& op)
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 { try {
-   FC_ASSERT( head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous) );
+
+   if( !( skip & skip_replay_from_block ) )
+      FC_ASSERT( head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous) );
+
    FC_ASSERT( head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    const witness_object& witness = get_witness( next_block.witness );
 

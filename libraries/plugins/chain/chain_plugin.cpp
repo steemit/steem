@@ -28,6 +28,7 @@ class chain_plugin_impl
       bool                             validate_invariants = false;
       bool                             dump_memory_details = false;
       uint32_t                         stop_replay_at = 0;
+      uint32_t                         start_replay_from = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
@@ -60,6 +61,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
+         ("start-replay-from-block", bpo::value<uint32_t>(), "Start from given block number")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
@@ -88,6 +90,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->resync              = options.at( "resync-blockchain").as<bool>();
    my->stop_replay_at      =
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
+   my->start_replay_from      =
+      options.count( "start-replay-from-block" ) ? options.at( "start-replay-from-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
@@ -124,7 +128,7 @@ void chain_plugin::plugin_startup()
    if(my->resync)
    {
       wlog("resync requested: deleting block log and shared memory");
-      my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true );
+      my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true, true );
    }
 
    my->db.set_flush_interval( my->flush_interval );
@@ -158,6 +162,7 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_size = my->shared_memory_size;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
+   db_open_args.start_replay_from = my->start_replay_from;
  
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

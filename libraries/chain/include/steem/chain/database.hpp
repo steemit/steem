@@ -67,7 +67,8 @@ namespace steem { namespace chain {
             skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
             skip_validate_invariants    = 1 << 11, ///< used to skip database invariant check on block application
             skip_undo_block             = 1 << 12, ///< used to skip undo db on reindex
-            skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
+            skip_block_log              = 1 << 13, ///< used to skip block logging on reindex
+            skip_replay_from_block      = 1 << 14  ///< used while reindexing
          };
 
          typedef std::function<void(uint32_t, const abstract_index_cntr_t&)> TBenchmarkMidReport;
@@ -84,6 +85,7 @@ namespace steem { namespace chain {
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
+            uint32_t start_replay_from = 0;
             TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 
@@ -113,7 +115,7 @@ namespace steem { namespace chain {
           *
           * Will close the database before wiping. Database will be closed when this function returns.
           */
-         void wipe(const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks);
+         void wipe(const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks, bool remove_memory_file );
          void close(bool rewind = true);
 
          //////////////////// db_block.cpp ////////////////////

@@ -100,7 +100,7 @@ clean_database_fixture::~clean_database_fixture()
    }
 
    if( data_dir )
-      db->wipe( data_dir->path(), data_dir->path(), true );
+      db->wipe( data_dir->path(), data_dir->path(), true, true );
    return;
 } FC_CAPTURE_AND_LOG( () )
    exit(1);
@@ -108,7 +108,7 @@ clean_database_fixture::~clean_database_fixture()
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
 {
-   db->wipe( data_dir->path(), data_dir->path(), true );
+   db->wipe( data_dir->path(), data_dir->path(), true, true );
    int argc = boost::unit_test::framework::master_test_suite().argc;
    char** argv = boost::unit_test::framework::master_test_suite().argv;
    for( int i=1; i<argc; i++ )
@@ -811,7 +811,7 @@ json_rpc_database_fixture::~json_rpc_database_fixture()
    }
 
    if( data_dir )
-      db->wipe( data_dir->path(), data_dir->path(), true );
+      db->wipe( data_dir->path(), data_dir->path(), true, true );
    return;
 } FC_CAPTURE_AND_RETHROW() }
 
