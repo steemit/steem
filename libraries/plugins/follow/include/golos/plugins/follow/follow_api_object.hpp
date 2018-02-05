@@ -78,7 +78,7 @@ namespace golos {
                 uint32_t limit = 1000;
             };
 
-            typedef std::vector<std::pair<account_name_type, uint32_t>> blog_authors_r;
+            using blog_authors_r = std::vector<std::pair<account_name_type, uint32_t>>;
         }}}
 
 FC_REFLECT((golos::plugins::follow::feed_entry), (author)(permlink)(reblog_by)(reblog_on)(entry_id));
