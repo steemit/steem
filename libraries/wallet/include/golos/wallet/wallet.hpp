@@ -1,7 +1,7 @@
 #pragma once
 
 #include <golos/wallet/remote_node_api.hpp>
-#include <golos/plugins/private_message/private_message_objects.hpp>
+#include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/chain/history_object.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>

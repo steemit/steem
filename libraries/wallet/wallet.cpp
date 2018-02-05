@@ -212,7 +212,7 @@ namespace golos { namespace wallet {
                     _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
                     _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
                     _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
-                    _remote_market_history( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) )
+                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) )
                 {
                     init_prototype_ops();
 
@@ -825,6 +825,7 @@ namespace golos { namespace wallet {
                 fc::api< remote_network_broadcast_api>  _remote_network_broadcast_api;
                 fc::api< remote_follow >                _remote_follow;
                 fc::api< remote_market_history >        _remote_market_history;
+                fc::api< remote_private_message >       _remote_private_message;
                 uint32_t                                _tx_expiration_seconds = 30;
 
                 flat_map<string, operation>             _prototype_ops;
@@ -2046,8 +2047,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             auto remote_result = my->_remote_private_message->get_inbox(param);
             for( const auto& item : remote_result.inbox ) {
                 result.emplace_back( item );
-                mesage_body tmp = try_decrypt_message( item );
-                result.back().encrypted_message = std::move(tmp);
+                message_body tmp = try_decrypt_message( item );
+                result.back().message = std::move(tmp);
             }
             return result;
         }
@@ -2058,8 +2059,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             auto remote_result = my->_remote_private_message->get_outbox(param);
             for( const auto& item : remote_result.outbox ) {
                 result.emplace_back( item );
-                mesage_body tmp = try_decrypt_message( item );
-                result.back().encrypted_message = std::move(tmp);
+                message_body tmp = try_decrypt_message( item );
+                result.back().message = std::move(tmp);
             }
             return result;
         }
