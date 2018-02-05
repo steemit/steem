@@ -3,6 +3,7 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
+#include <thread>
 namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
@@ -12,6 +13,60 @@ using chainbase::shared_vector;
 #ifndef STEEM_FOLLOW_SPACE_ID
 #define STEEM_FOLLOW_SPACE_ID 8
 #endif
+
+class dumper
+{
+   private:
+      
+      uint min_block = 19000000;
+      uint block = 0;
+
+      std::ofstream f;
+
+      static std::unique_ptr< dumper > self;
+
+      dumper() :
+#if ENABLE_STD_ALLOCATOR == 1
+      f( "std_dumped_objects.txt", std::ofstream::out | std::ofstream::app )
+#else
+      f( "bip_dumped_objects.txt", std::ofstream::out | std::ofstream::app )
+#endif
+      {
+      }
+
+   public:
+
+      ~dumper()
+      {
+         f.flush();
+         f.close();
+      }
+
+      static std::unique_ptr< dumper >& instance()
+      {
+         if( !self )
+            self = std::unique_ptr< dumper >( new dumper() );
+
+         return self;
+      }
+
+      void check_block( uint32_t _block )
+      {
+         block = _block;
+      }
+
+      template< typename T, typename T2 >
+      void dump( const char* message, const T& data, const T2& data2 )
+      {
+         static uint64_t counter = 0;
+
+         if( block >= min_block )
+         {
+            f<<counter++<<" "<<message<<" "<<data<<" "<<data2<<"\n";
+            f.flush();
+         }
+      }
+};
 
 enum follow_plugin_object_type
 {

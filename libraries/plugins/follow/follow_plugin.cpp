@@ -114,6 +114,7 @@ struct pre_operation_visitor
          {
             const auto& old_feed = *itr;
             ++itr;
+            dumper::instance()->dump( "remove-f_object", std::string( old_feed.account ), old_feed.account_feed_id );
             db.remove( old_feed );
          }
 
@@ -124,6 +125,7 @@ struct pre_operation_visitor
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
+            dumper::instance()->dump( "remove-b_object", std::string( old_blog.account ), old_blog.blog_feed_id );
             db.remove( old_blog );
          }
       }
@@ -190,6 +192,7 @@ struct post_operation_visitor
 
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
+         dumper::instance()->check_block( db.head_block_num() );
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
             while( itr != idx.end() && itr->following == op.author )
@@ -206,6 +209,7 @@ struct post_operation_visitor
 
                   if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
+                     dumper::instance()->dump( "create-f_object", std::string( itr->follower ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -218,6 +222,7 @@ struct post_operation_visitor
 
                      while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin._self.max_feed_size )
                      {
+                        dumper::instance()->dump( "remove-f_object", std::string( old_feed->account ), old_feed->account_feed_id );
                         db.remove( *old_feed );
                         old_feed = old_feed_idx.lower_bound( itr->follower );
                      }
@@ -240,6 +245,7 @@ struct post_operation_visitor
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
+            dumper::instance()->dump( "create-b_object", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
             {
                b.account = op.author;
@@ -252,6 +258,7 @@ struct post_operation_visitor
 
             while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin._self.max_feed_size )
             {
+               dumper::instance()->dump( "remove-b_object", std::string( old_blog->account ), old_blog->blog_feed_id );
                db.remove( *old_blog );
                old_blog = old_blog_idx.lower_bound( op.author );
             }

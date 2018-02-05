@@ -7,6 +7,8 @@
 
 namespace steem { namespace plugins { namespace follow {
 
+std::unique_ptr< dumper > dumper::self;
+
 void follow_evaluator::do_apply( const follow_operation& o )
 {
    try
@@ -138,6 +140,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, o.account ) );
 
       FC_ASSERT( blog_itr == blog_comment_idx.end(), "Account has already reblogged this post" );
+      dumper::instance()->check_block( _db.head_block_num() );
+      dumper::instance()->dump( "create-b_object", std::string( o.account ), next_blog_id );
       _db.create< blog_object >( [&]( blog_object& b )
       {
          b.account = o.account;
@@ -184,6 +188,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
                if( feed_itr == comment_idx.end() )
                {
+                  dumper::instance()->dump( "create-f_object", std::string( itr->follower ), next_id );
                   _db.create< feed_object >( [&]( feed_object& f )
                   {
                      f.account = itr->follower;
@@ -197,6 +202,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                }
                else
                {
+                  dumper::instance()->dump( "modify-f_object", std::string( itr->follower ), feed_itr->account_feed_id );
                   _db.modify( *feed_itr, [&]( feed_object& f )
                   {
                      f.reblogged_by.push_back( o.account );
@@ -209,6 +215,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
                while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
                {
+                  dumper::instance()->dump( "remove-f_object", std::string( old_feed->account ), old_feed->account_feed_id );
                   _db.remove( *old_feed );
                   old_feed = old_feed_idx.lower_bound( itr->follower );
                };
