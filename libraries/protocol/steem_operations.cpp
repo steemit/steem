@@ -652,6 +652,8 @@ namespace steem { namespace protocol {
    {
       validate_account_name( account );
       FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
+      FC_ASSERT( std::is_sorted( reward_tokens.begin(), reward_tokens.end(), nai_less() ), 
+                 "reward_tokens integrity error (most likely a reward token was added not using add_reward_token method)" );
    }
 #endif
 
