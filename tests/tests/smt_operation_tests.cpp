@@ -984,6 +984,22 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt1 ) ), fc::assert_exception );
       STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt2 ) ), fc::assert_exception );
       STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt3 ) ), fc::assert_exception );
+      
+      BOOST_TEST_MESSAGE( "Testing inconsistencies of manually inserted reward tokens." );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( -1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      op.reward_tokens.push_back( asset( -1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }

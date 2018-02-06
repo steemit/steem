@@ -652,8 +652,15 @@ namespace steem { namespace protocol {
    {
       validate_account_name( account );
       FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
-      FC_ASSERT( std::is_sorted( reward_tokens.begin(), reward_tokens.end(), nai_less() ), 
-                 "reward_tokens integrity error (most likely a reward token was added not using add_reward_token method)" );
+      FC_ASSERT( reward_tokens.begin()->amount >= 0, "Cannot claim a negative amount" );
+      for( auto itl = reward_tokens.begin(), itr = ++itl; itr != reward_tokens.end(); ++itl, ++itr )
+      {
+         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(), 
+                    "Reward tokens have not been inserted in ascending order." );
+         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(), 
+                    "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
+         FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
+      }
    }
 #endif
 
