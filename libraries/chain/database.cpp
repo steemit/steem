@@ -30,6 +30,8 @@
 
 #include <fc/io/fstream.hpp>
 
+#include <boost/scope_exit.hpp>
+
 #include <cstdint>
 #include <deque>
 #include <fstream>
@@ -153,9 +155,17 @@ void database::open( const open_args& args )
 
 uint32_t database::reindex( const open_args& args )
 {
+   bool reindex_success = false;
+   uint32_t last_block_number = 0; // result
+
+   BOOST_SCOPE_EXIT(this_,&reindex_success,&last_block_number) {
+      STEEM_TRY_NOTIFY(this_->_on_reindex_done, reindex_success, last_block_number);
+   } BOOST_SCOPE_EXIT_END
+
    try
    {
-      uint32_t last_block_number = 0; // result
+      STEEM_TRY_NOTIFY(_on_reindex_start);
+
       ilog( "Reindexing Blockchain" );
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
@@ -216,6 +226,8 @@ uint32_t database::reindex( const open_args& args )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      reindex_success = true;
 
       return last_block_number;
    }
