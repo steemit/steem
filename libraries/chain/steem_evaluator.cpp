@@ -2197,9 +2197,8 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 {
    const account_object* a = nullptr; // Lazily initialized below because it may turn out unnecessary.
 
-   for( const auto& token_entry : op.reward_tokens )
+   for( const asset& token : op.reward_tokens )
    {
-      const asset& token = token_entry.second;
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          _db.adjust_reward_balance( op.account, -token );

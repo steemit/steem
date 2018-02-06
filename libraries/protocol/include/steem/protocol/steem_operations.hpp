@@ -1010,7 +1010,7 @@ namespace steem { namespace protocol {
       /** \warning Use dedicated add_reward_token method (below) to insert
        *  reward tokens here, or you risk data inconsistency.
        */
-      flat_map< asset_symbol_type, asset > reward_tokens;
+      vector< asset > reward_tokens;
 
       void add_reward_token( const asset& reward_token );
 

@@ -642,8 +642,10 @@ namespace steem { namespace protocol {
          return;
       }
 
-      auto insert_info = reward_tokens.insert( std::pair<asset_symbol_type, asset>(reward_token.symbol, reward_token) );
-      FC_ASSERT( insert_info.second, "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", reward_token.symbol) );
+      auto insert_it = lower_bound(reward_tokens.begin(), reward_tokens.end(), reward_token, nai_less());
+      FC_ASSERT( insert_it == reward_tokens.end() || insert_it->symbol.to_nai() != reward_token.symbol.to_nai(),
+                 "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", reward_token.symbol) );
+      reward_tokens.insert( insert_it, reward_token );
    }
 
    void claim_reward_balance2_operation::validate()const
