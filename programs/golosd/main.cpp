@@ -18,7 +18,8 @@
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/auth_util/plugin.hpp>
 #include <golos/plugins/debug_node/plugin.hpp>
-
+#include <golos/plugins/raw_block/plugin.hpp>
+#include <golos/plugins/block_info/plugin.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <fc/log/console_appender.hpp>
@@ -50,14 +51,34 @@ namespace golos {
     }
 
     namespace plugins {
-        void register_plugins();
+        void register_plugins(){
+            ///plugins
+            appbase::app().register_plugin<golos::plugins::chain::plugin>();
+            appbase::app().register_plugin<golos::plugins::p2p::p2p_plugin>();
+            appbase::app().register_plugin<golos::plugins::webserver::webserver_plugin>();
+            appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
+            appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
+            golos::plugins::database_api::register_database_api();
+            appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
+            appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
+            appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
+            appbase::app().register_plugin<golos::plugins::account_history::plugin>();
+            appbase::app().register_plugin<golos::plugins::blockchain_statistics::plugin>();
+            appbase::app().register_plugin<golos::plugins::account_by_key::account_by_key_plugin>();
+            appbase::app().register_plugin<golos::plugins::private_message::private_message_plugin>();
+            appbase::app().register_plugin<golos::plugins::auth_util::plugin>();
+            appbase::app().register_plugin<golos::plugins::raw_block::plugin>();
+            appbase::app().register_plugin<golos::plugins::block_info::plugin>();
+            appbase::app().register_plugin<golos::plugins::debug_node::plugin>();
+            ///plugins
+        };
     }
 
 }
 
 void logo(){
 
-#ifdef BUILD_GOLOS_TESTNET
+#ifdef STEEMIT_BUILD_TESTNET
     std::cerr << "------------------------------------------------------\n\n";
         std::cerr << "            STARTING TEST NETWORK\n\n";
         std::cerr << "------------------------------------------------------\n";
@@ -87,23 +108,7 @@ int main( int argc, char** argv ) {
 
         golos::utilities::set_logging_program_options( options );
         appbase::app().add_program_options( boost::program_options::options_description(), options );
-///plugins
-        appbase::app().register_plugin<golos::plugins::chain::plugin>();
-        appbase::app().register_plugin<golos::plugins::p2p::p2p_plugin>();
-        appbase::app().register_plugin<golos::plugins::webserver::webserver_plugin>();
-        appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
-        appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
-        golos::plugins::database_api::register_database_api();
-        appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
-        appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
-        appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
-        appbase::app().register_plugin<golos::plugins::account_history::plugin>();
-        appbase::app().register_plugin<golos::plugins::blockchain_statistics::plugin>();
-        appbase::app().register_plugin<golos::plugins::account_by_key::account_by_key_plugin>();
-        appbase::app().register_plugin<golos::plugins::private_message::private_message_plugin>();
-        appbase::app().register_plugin<golos::plugins::auth_util::plugin>();
-        appbase::app().register_plugin<golos::plugins::debug_node::plugin>();
-///plugins
+        golos::plugins::register_plugins();
         appbase::app().set_version_string( version_string() );
 
         bool initialized = appbase::app().initialize<

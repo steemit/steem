@@ -143,6 +143,7 @@ namespace golos {
 
                 typedef pair <string, string> pairstring;
                 LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
+                JSON_RPC_REGISTER_API(name())
             }
 
             void private_message_plugin::plugin_startup() {

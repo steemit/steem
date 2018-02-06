@@ -24,8 +24,6 @@ namespace golos {
             DEFINE_API_ARGS(get_content_replies,                   msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_tags_used_by_author,               msg_pack, tags_used_by_author_r)
             DEFINE_API_ARGS(get_discussions_by_payout,             msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_post_discussions_by_payout,        msg_pack, std::vector<discussion>)
-            DEFINE_API_ARGS(get_comment_discussions_by_payout,     msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_discussions_by_trending,           msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_discussions_by_created,            msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_discussions_by_active,             msg_pack, std::vector<discussion>)
@@ -102,16 +100,10 @@ namespace golos {
                  **/
                 (get_discussions_by_payout)
 
-                (get_post_discussions_by_payout)
-
-                (get_comment_discussions_by_payout)
-
                                 /**
                                      *  if permlink is "" then it will return all votes for author
                                      */
                                 (get_active_votes)
-
-                                //(get_account_votes)
 
                 /**
                  * Used to retrieve the list of discussions sorted by direct votes amount

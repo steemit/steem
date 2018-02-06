@@ -11,16 +11,16 @@ namespace golos {
             using json_rpc::msg_pack;
 
             ///               API,                          args,       return
-            DEFINE_API_ARGS(get_followers,           msg_pack, get_followers_r)
-            DEFINE_API_ARGS(get_following,           msg_pack, get_following_r)
-            DEFINE_API_ARGS(get_follow_count,        msg_pack, get_follow_count_r)
-            DEFINE_API_ARGS(get_feed_entries,        msg_pack, get_feed_entries_r)
-            DEFINE_API_ARGS(get_feed,                msg_pack, get_feed_r)
-            DEFINE_API_ARGS(get_blog_entries,        msg_pack, get_blog_entries_r)
-            DEFINE_API_ARGS(get_blog,                msg_pack, get_blog_r)
-            DEFINE_API_ARGS(get_account_reputations, msg_pack, get_account_reputations_r)
-            DEFINE_API_ARGS(get_reblogged_by,        msg_pack, get_reblogged_by_r)
-            DEFINE_API_ARGS(get_blog_authors,        msg_pack, get_blog_authors_r)
+            DEFINE_API_ARGS(get_followers,           msg_pack, std::vector<follow_api_object>)
+            DEFINE_API_ARGS(get_following,           msg_pack, std::vector<follow_api_object>)
+            DEFINE_API_ARGS(get_follow_count,        msg_pack, follow_count_api_obj)
+            DEFINE_API_ARGS(get_feed_entries,        msg_pack, std::vector<feed_entry>)
+            DEFINE_API_ARGS(get_feed,                msg_pack, std::vector<comment_feed_entry>)
+            DEFINE_API_ARGS(get_blog_entries,        msg_pack, std::vector<blog_entry>)
+            DEFINE_API_ARGS(get_blog,                msg_pack, std::vector<comment_blog_entry>)
+            DEFINE_API_ARGS(get_account_reputations, msg_pack, std::vector<account_reputation>)
+            DEFINE_API_ARGS(get_reblogged_by,        msg_pack, std::vector<account_name_type>)
+            DEFINE_API_ARGS(get_blog_authors,        msg_pack, blog_authors_r)
 
             class plugin final : public appbase::plugin<plugin> {
             public:
@@ -51,7 +51,9 @@ namespace golos {
                                 /// Gets a list of authors that have had their content reblogged on a given blog account
                         (get_blog_authors))
 
-                get_account_reputations_r get_account_reputations_native(const get_account_reputations_a &);
+                std::vector<account_reputation> get_account_reputations_native(
+                        account_name_type account_lower_bound,
+                        uint32_t limit);
 
                 plugin();
 

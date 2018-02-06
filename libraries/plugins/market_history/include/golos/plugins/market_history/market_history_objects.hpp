@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/steem_object_types.hpp>
+#include <golos/chain/steem_objects.hpp>
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
@@ -29,6 +30,7 @@ namespace golos {
             using namespace golos::protocol;
             using namespace boost::multi_index;
             using namespace chainbase;
+            using namespace golos::plugins;
 
             enum market_history_object_types {
                 bucket_object_type = (MARKET_HISTORY_SPACE_ID << 8),
@@ -67,51 +69,20 @@ namespace golos {
                 asset open_pays;
             };
 
-            struct market_ticker_r {
-                market_ticker ticker;
-            };
+            typedef golos::chain::limit_order_object limit_order_api_object;
 
-            struct market_volume_r {
-                market_volume volume;
-            };
+            struct limit_order : public limit_order_api_object {
+                limit_order() {
+                }
 
-            struct order_book_r {
-                order_book orders;
-            };
-            struct order_book_a {
-                uint32_t limit;
-            };
+                limit_order(const limit_order_object &o)
+                        : limit_order_api_object(o) {
+                }
 
-            struct trade_history_r {
-                vector <market_trade> history;
+                double real_price = 0;
+                bool rewarded = false;
             };
-            struct trade_history_a {
-                time_point_sec start;
-                time_point_sec end;
-                uint32_t limit;
-            };
-
-            struct recent_trades_r {
-                vector <market_trade> trades;
-            };
-            struct recent_trades_a {
-                uint32_t limit;
-            };
-
-            struct bucket_object;
-            struct market_history_r {
-                vector <bucket_object> history;
-            };
-            struct market_history_a {
-                uint32_t bucket_seconds;
-                time_point_sec start;
-                time_point_sec end;
-            };
-
-            struct market_history_buckets_r {
-                flat_set <uint32_t> buckets;
-            };
-
+          
             struct bucket_object
                     : public object<bucket_object_type, bucket_object> {
                 template<typename Constructor, typename Allocator>
@@ -199,18 +170,6 @@ namespace golos {
     }
 } // golos::plugins::market_history
 
-FC_REFLECT((golos::plugins::market_history::market_ticker_r), (ticker))
-FC_REFLECT((golos::plugins::market_history::market_volume_r), (volume))
-FC_REFLECT((golos::plugins::market_history::order_book_r), (orders))
-FC_REFLECT((golos::plugins::market_history::order_book_a), (limit))
-FC_REFLECT((golos::plugins::market_history::trade_history_r), (history))
-FC_REFLECT((golos::plugins::market_history::trade_history_a), (start)(end)(limit))
-FC_REFLECT((golos::plugins::market_history::recent_trades_r), (trades))
-FC_REFLECT((golos::plugins::market_history::recent_trades_a), (limit))
-FC_REFLECT((golos::plugins::market_history::market_history_r), (history))
-FC_REFLECT((golos::plugins::market_history::market_history_a), (bucket_seconds)(start)(end))
-FC_REFLECT((golos::plugins::market_history::market_history_buckets_r), (buckets))
-
 FC_REFLECT((golos::plugins::market_history::market_ticker),
            (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume));
 FC_REFLECT((golos::plugins::market_history::market_volume),
@@ -221,6 +180,9 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (date)(current_pays)(open_pays));
+FC_REFLECT((golos::plugins::market_history::limit_order),
+           (real_price)(rewarded));
+
 
 
 FC_REFLECT((golos::plugins::market_history::bucket_object),

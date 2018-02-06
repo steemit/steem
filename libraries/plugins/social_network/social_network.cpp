@@ -196,10 +196,6 @@ namespace golos {
 
                 discussion get_content(std::string author, std::string permlink) const;
 
-                vector<discussion> get_comment_discussions_by_payout(const discussion_query &query) const;
-
-                vector<discussion> get_post_discussions_by_payout(const discussion_query &query) const;
-
                 std::vector<discussion> get_discussions_by_promoted(const discussion_query &query) const;
 
                 std::vector<discussion> get_discussions_by_created(const discussion_query &query) const;
@@ -938,111 +934,6 @@ namespace golos {
                     std::vector<discussion> return_result = merge(map_result, map_result_);
 
                     return return_result;
-                });
-            }
-
-            vector<discussion> social_network_t::impl::get_post_discussions_by_payout(
-                    const discussion_query &query) const {
-                query.validate();
-                auto parent = comment_object::id_type();
-
-                std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result = select <
-                        tags::tag_object, tags::tag_index, tags::by_parent_promoted, tags::by_comment >
-                        (query.select_tags, query, parent, std::bind(
-                                tags_filter, query,
-                                std::placeholders::_1,
-                                [&](const comment_api_object &c) -> bool {
-                                    return c.net_rshares <= 0;
-                                }), [&](
-                                const comment_api_object &c) -> bool {
-                            return false;
-                        }, [&](const tags::tag_object &t) {
-                            return false;
-                        }, true);
-
-                std::multimap<languages::language_object, discussion,
-                        languages::by_parent_promoted> map_result_language =
-                        select < languages::language_object, languages::language_index, languages::by_parent_promoted,
-                                languages::by_comment >
-                                (query.select_tags, query, parent, std::bind(languages_filter, query, std::placeholders::_1,
-                                                                             [&](const comment_api_object &c) -> bool {
-                                                                                 return c.net_rshares <= 0;
-                                                                             }), [&](const comment_api_object &c) -> bool {
-                                    return false;
-                                }, [&](const languages::language_object &t) {
-                                    return false;
-                                }, true);
-
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
-                return return_result;
-            }
-
-
-            DEFINE_API(social_network_t, get_post_discussions_by_payout) {
-                CHECK_ARG_SIZE(1)
-                auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_post_discussions_by_payout(query);
-                });
-            }
-
-            std::vector<discussion> social_network_t::impl::get_comment_discussions_by_payout(const discussion_query &query) const {
-                query.validate();
-                auto parent = comment_object::id_type(1);
-                std::multimap<
-                        tags::tag_object,
-                        discussion,
-                        tags::by_reward_fund_net_rshares> map_result = select <
-                        tags::tag_object, tags::tag_index, tags::by_reward_fund_net_rshares, tags::by_comment >
-                        (query.select_tags, query, parent, std::bind(
-                                tags_filter, query,
-                                std::placeholders::_1,
-                                [&](const comment_api_object &c) -> bool {
-                                    return c.net_rshares <=
-                                           0;
-                                }), [&](
-                                const comment_api_object &c) -> bool {
-                            return false;
-                        }, [&](const tags::tag_object &t) {
-                            return false;
-                        }, false);
-
-                std::multimap<languages::language_object, discussion,
-                        languages::by_reward_fund_net_rshares> map_result_language = select <
-                        languages::language_object,
-                        languages::language_index,
-                        languages::by_reward_fund_net_rshares,
-                        languages::by_comment
-                        > (
-                                                          query.select_tags,
-                                                          query,
-                                                          parent,
-                                                          std::bind(languages_filter, query, std::placeholders::_1, [&](const comment_api_object &c) -> bool {
-                                                                         return c.net_rshares <= 0;
-                                                                     }
-                                                          ),
-                                                                  [&](const comment_api_object &c) -> bool {
-                                                                      return false;
-                        },
-                                                                  [&](const languages::language_object &t) {
-                                                                      return false; },
-                                                                  false
-                                                  );
-
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
-
-                return return_result;
-
-            }
-
-
-            DEFINE_API(social_network_t, get_comment_discussions_by_payout) {
-                CHECK_ARG_SIZE(1)
-                auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_comment_discussions_by_payout(query);
                 });
             }
 

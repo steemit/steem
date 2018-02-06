@@ -10,6 +10,10 @@
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/index.hpp>
+
+#define CHECK_ARG_SIZE(s) \
+   FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+
 namespace golos {
     namespace plugins {
         namespace follow {
@@ -307,25 +311,49 @@ namespace golos {
                     }
                 }
 
-                get_followers_r get_followers(const get_followers_a &);
+                std::vector<follow_api_object> get_followers(
+                        account_name_type account,
+                        account_name_type start,
+                        follow_type type,
+                        uint32_t limit = 1000);
 
-                get_following_r get_following(const get_following_a &);
+                std::vector<follow_api_object> get_following(
+                        account_name_type account,
+                        account_name_type start,
+                        follow_type type,
+                        uint32_t limit = 1000);
 
-                get_feed_entries_r get_feed_entries(const get_feed_entries_a &);
+                std::vector<feed_entry> get_feed_entries(
+                        account_name_type account,
+                        uint32_t start_entry_id = 0,
+                        uint32_t limit = 500);
 
-                get_feed_r get_feed(const get_feed_a &);
+                std::vector<blog_entry> get_blog_entries(
+                        account_name_type account,
+                        uint32_t start_entry_id = 0,
+                        uint32_t limit = 500);
 
-                get_blog_entries_r get_blog_entries(const get_blog_entries_a &);
+                std::vector<comment_feed_entry> get_feed(
+                        account_name_type account,
+                        uint32_t start_entry_id = 0,
+                        uint32_t limit = 500);
 
-                get_blog_r get_blog(const get_blog_a &);
+                std::vector<comment_blog_entry> get_blog(
+                        account_name_type account,
+                        uint32_t start_entry_id = 0,
+                        uint32_t limit = 500);
 
-                get_account_reputations_r get_account_reputations(const get_account_reputations_a &);
+                std::vector<account_reputation> get_account_reputations(
+                        account_name_type account_lower_bound,
+                        uint32_t limit = 1000);
 
-                get_follow_count_r get_follow_count(const get_follow_count_a &);
+                follow_count_api_obj get_follow_count(account_name_type start);
 
-                get_reblogged_by_r get_reblogged_by(const get_reblogged_by_a &);
+                std::vector<account_name_type> get_reblogged_by(
+                        account_name_type author,
+                        std::string permlink);
 
-                get_blog_authors_r get_blog_authors(const get_blog_authors_a &);
+                blog_authors_r get_blog_authors(account_name_type );
 
                 golos::chain::database &database_;
 
@@ -350,7 +378,6 @@ namespace golos {
                 try {
                     ilog("Intializing follow plugin");
                     pimpl.reset(new impl());
-                    JSON_RPC_REGISTER_API(plugin_name);
                     auto &db = pimpl->database();
                     pimpl->plugin_initialize(*this);
 
@@ -371,6 +398,8 @@ namespace golos {
                         uint32_t feed_size = options["follow-max-feed-size"].as<uint32_t>();
                         pimpl->max_feed_size_ = feed_size;
                     }
+
+                    JSON_RPC_REGISTER_API ( name() ) ;
                 } FC_CAPTURE_AND_RETHROW()
             }
 
@@ -386,22 +415,25 @@ namespace golos {
             }
 
 
+            std::vector<follow_api_object> plugin::impl::get_followers(
+                    account_name_type account,
+                    account_name_type start,
+                    follow_type type,
+                    uint32_t limit) {
 
-            get_followers_r plugin::impl::get_followers(const get_followers_a &args) {
-
-                FC_ASSERT(args.limit <= 1000);
-                get_followers_r result;
-                result.followers.reserve(args.limit);
+                FC_ASSERT(limit <= 1000);
+                std::vector<follow_api_object> result;
+                result.reserve(limit);
 
                 const auto &idx = database().get_index<follow_index>().indices().get<by_following_follower>();
-                auto itr = idx.lower_bound(std::make_tuple(args.account, args.start));
-                while (itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account) {
-                    if (args.type == undefined || itr->what & (1 << args.type)) {
+                auto itr = idx.lower_bound(std::make_tuple(account, start));
+                while (itr != idx.end() && result.size() < limit && itr->following == account) {
+                    if (type == undefined || itr->what & (1 << type)) {
                         follow_api_object entry;
                         entry.follower = itr->follower;
                         entry.following = itr->following;
                         set_what(entry.what, itr->what);
-                        result.followers.push_back(entry);
+                        result.push_back(entry);
                     }
 
                     ++itr;
@@ -410,18 +442,22 @@ namespace golos {
                 return result;
             }
 
-            get_following_r plugin::impl::get_following(const get_following_a &args) {
-                FC_ASSERT(args.limit <= 100);
-                get_following_r result;
+            std::vector<follow_api_object> plugin::impl::get_following(
+                    account_name_type account,
+                    account_name_type start,
+                    follow_type type,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 100);
+                std::vector<follow_api_object> result;
                 const auto &idx = database().get_index<follow_index>().indices().get<by_follower_following>();
-                auto itr = idx.lower_bound(std::make_tuple(args.account, args.start));
-                while (itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account) {
-                    if (args.type == undefined || itr->what & (1 << args.type)) {
+                auto itr = idx.lower_bound(std::make_tuple(account, start));
+                while (itr != idx.end() && result.size() < limit && itr->follower == account) {
+                    if (type == undefined || itr->what & (1 << type)) {
                         follow_api_object entry;
                         entry.follower = itr->follower;
                         entry.following = itr->following;
                         set_what(entry.what, itr->what);
-                        result.following.push_back(entry);
+                        result.push_back(entry);
                     }
 
                     ++itr;
@@ -430,32 +466,35 @@ namespace golos {
                 return result;
             }
 
-            get_follow_count_r plugin::impl::get_follow_count(const get_follow_count_a &args) {
-                get_follow_count_r result;
-                auto itr = database().find<follow_count_object, by_account>(args.account);
+            follow_count_api_obj plugin::impl::get_follow_count(account_name_type acct) {
+                follow_count_api_obj result;
+                auto itr = database().find<follow_count_object, by_account>(acct);
 
                 if (itr != nullptr) {
-                    result = get_follow_count_r{itr->account, itr->follower_count, itr->following_count};
+                    result = follow_count_api_obj(itr->account, itr->follower_count, itr->following_count, 1000);
                 } else {
-                    result.account = args.account;
+                    result.account = acct;
                 }
 
                 return result;
             }
 
-            get_feed_entries_r plugin::impl::get_feed_entries(const get_feed_entries_a &args) {
-                FC_ASSERT(args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
+            std::vector<feed_entry> plugin::impl::get_feed_entries(
+                    account_name_type account,
+                    uint32_t start_entry_id,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
 
-                auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
 
-                get_feed_entries_r result;
-                result.feed.reserve(args.limit);
+                std::vector<feed_entry> result;
+                result.reserve(limit);
 
                 const auto &db = database();
                 const auto &feed_idx = db.get_index<feed_index>().indices().get<by_feed>();
-                auto itr = feed_idx.lower_bound(boost::make_tuple(args.account, entry_id));
+                auto itr = feed_idx.lower_bound(boost::make_tuple(account, entry_id));
 
-                while (itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit) {
+                while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     feed_entry entry;
                     entry.author = comment.author;
@@ -469,7 +508,7 @@ namespace golos {
                         //entry.reblog_by = itr->first_reblogged_by;
                         entry.reblog_on = itr->first_reblogged_on;
                     }
-                    result.feed.push_back(entry);
+                    result.push_back(entry);
 
                     ++itr;
                 }
@@ -477,19 +516,22 @@ namespace golos {
                 return result;
             }
 
-            get_feed_r plugin::impl::get_feed(const get_feed_a &args) {
-                FC_ASSERT(args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
+            std::vector<comment_feed_entry> plugin::impl::get_feed(
+                    account_name_type account,
+                    uint32_t start_entry_id,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
 
-                auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
 
-                get_feed_r result;
-                result.feed.reserve(args.limit);
+                std::vector<comment_feed_entry> result;
+                result.reserve(limit);
 
                 const auto &db = database();
                 const auto &feed_idx = db.get_index<feed_index>().indices().get<by_feed>();
-                auto itr = feed_idx.lower_bound(boost::make_tuple(args.account, entry_id));
+                auto itr = feed_idx.lower_bound(boost::make_tuple(account, entry_id));
 
-                while (itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit) {
+                while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_feed_entry entry;
                     entry.comment = comment;
@@ -502,7 +544,7 @@ namespace golos {
                         }
                         entry.reblog_on = itr->first_reblogged_on;
                     }
-                    result.feed.push_back(entry);
+                    result.push_back(entry);
 
                     ++itr;
                 }
@@ -510,28 +552,31 @@ namespace golos {
                 return result;
             }
 
-            get_blog_entries_r plugin::impl::get_blog_entries(const get_blog_entries_a &args) {
-                FC_ASSERT(args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
+            std::vector<blog_entry> plugin::impl::get_blog_entries(
+                    account_name_type account,
+                    uint32_t start_entry_id,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
 
-                auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
 
-                get_blog_entries_r result;
-                result.blog.reserve(args.limit);
+                std::vector<blog_entry> result;
+                result.reserve(limit);
 
                 const auto &db = database();
                 const auto &blog_idx = db.get_index<blog_index>().indices().get<by_blog>();
-                auto itr = blog_idx.lower_bound(boost::make_tuple(args.account, entry_id));
+                auto itr = blog_idx.lower_bound(boost::make_tuple(account, entry_id));
 
-                while (itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit) {
+                while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     blog_entry entry;
                     entry.author = comment.author;
                     entry.permlink = to_string(comment.permlink);
-                    entry.blog = args.account;
+                    entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;
 
-                    result.blog.push_back(entry);
+                    result.push_back(entry);
 
                     ++itr;
                 }
@@ -539,27 +584,30 @@ namespace golos {
                 return result;
             }
 
-            get_blog_r plugin::impl::get_blog(const get_blog_a &args) {
-                FC_ASSERT(args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
+            std::vector<comment_blog_entry> plugin::impl::get_blog(
+                    account_name_type account,
+                    uint32_t start_entry_id,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
 
-                auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
 
-                get_blog_r result;
-                result.blog.reserve(args.limit);
+                std::vector<comment_blog_entry> result;
+                result.reserve(limit);
 
                 const auto &db = database();
                 const auto &blog_idx = db.get_index<blog_index>().indices().get<by_blog>();
-                auto itr = blog_idx.lower_bound(boost::make_tuple(args.account, entry_id));
+                auto itr = blog_idx.lower_bound(boost::make_tuple(account, entry_id));
 
-                while (itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit) {
+                while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_blog_entry entry;
                     entry.comment = comment;
-                    entry.blog = args.account;
+                    entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;
 
-                    result.blog.push_back(entry);
+                    result.push_back(entry);
 
                     ++itr;
                 }
@@ -567,26 +615,27 @@ namespace golos {
                 return result;
             }
 
-            get_account_reputations_r plugin::impl::get_account_reputations(
-                    const get_account_reputations_a &args) {
-                FC_ASSERT(args.limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time.");
+            std::vector<account_reputation> plugin::impl::get_account_reputations(
+                    account_name_type account_lower_bound,
+                    uint32_t limit) {
+                FC_ASSERT(limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time.");
 
                 const auto &acc_idx = database().get_index<account_index>().indices().get<by_name>();
                 const auto &rep_idx = database().get_index<reputation_index>().indices().get<by_account>();
 
-                auto acc_itr = acc_idx.lower_bound(args.account_lower_bound);
+                auto acc_itr = acc_idx.lower_bound(account_lower_bound);
 
-                get_account_reputations_r result;
-                result.reputations.reserve(args.limit);
+                std::vector<account_reputation> result;
+                result.reserve(limit);
 
-                while (acc_itr != acc_idx.end() && result.reputations.size() < args.limit) {
+                while (acc_itr != acc_idx.end() && result.size() < limit) {
                     auto itr = rep_idx.find(acc_itr->name);
                     account_reputation rep;
 
                     rep.account = acc_itr->name;
                     rep.reputation = itr != rep_idx.end() ? itr->reputation : 0;
 
-                    result.reputations.push_back(rep);
+                    result.push_back(rep);
 
                     ++acc_itr;
                 }
@@ -594,107 +643,133 @@ namespace golos {
                 return result;
             }
 
-            get_reblogged_by_r plugin::impl::get_reblogged_by(const get_reblogged_by_a &args) {
+            std::vector<account_name_type> plugin::impl::get_reblogged_by(
+                    account_name_type author,
+                    std::string permlink) {
                 auto &db = database();
-                get_reblogged_by_r result;
-                const auto &post = db.get_comment(args.author, args.permlink);
+                std::vector<account_name_type> result;
+                const auto &post = db.get_comment(author, permlink);
                 const auto &blog_idx = db.get_index<blog_index, by_comment>();
                 auto itr = blog_idx.lower_bound(post.id);
-                while (itr != blog_idx.end() && itr->comment == post.id && result.accounts.size() < 2000) {
-                    result.accounts.push_back(itr->account);
+                while (itr != blog_idx.end() && itr->comment == post.id && result.size() < 2000) {
+                    result.push_back(itr->account);
                     ++itr;
                 }
                 return result;
             }
 
-            get_blog_authors_r plugin::impl::get_blog_authors(const get_blog_authors_a &args) {
+            blog_authors_r plugin::impl::get_blog_authors(account_name_type blog_account) {
                 auto &db = database();
-                get_blog_authors_r result;
+                blog_authors_r result;
                 const auto &stats_idx = db.get_index<blog_author_stats_index, by_blogger_guest_count>();
-                auto itr = stats_idx.lower_bound(boost::make_tuple(args.blog_account));
-                while (itr != stats_idx.end() && itr->blogger == args.blog_account && result.blog_authors.size()) {
-                    result.blog_authors.emplace_back(itr->guest, itr->count);
+                auto itr = stats_idx.lower_bound(boost::make_tuple(blog_account));
+                while (itr != stats_idx.end() && itr->blogger == blog_account && result.size()) {
+                    result.emplace_back(itr->guest, itr->count);
                     ++itr;
                 }
                 return result;
             }
-
-
 
 
             DEFINE_API(plugin, get_followers) {
-                auto tmp = args.args->at(0).as<get_followers_a>();
+                CHECK_ARG_SIZE(4)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<account_name_type>();
+                auto arg2 = args.args->at(2).as<follow_type>();
+                auto arg3 = args.args->at(3).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_followers(tmp);
+                    return pimpl->get_followers(arg0, arg1, arg2, arg3);
                 });
             }
 
             DEFINE_API(plugin, get_following) {
-                auto tmp = args.args->at(0).as<get_following_a>();
+                CHECK_ARG_SIZE(4)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<account_name_type>();
+                auto arg2 = args.args->at(2).as<follow_type>();
+                auto arg3 = args.args->at(3).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_following(tmp);
+                    return pimpl->get_followers(arg0, arg1, arg2, arg3);
                 });
             }
 
             DEFINE_API(plugin, get_follow_count) {
-                auto tmp = args.args->at(0).as<get_follow_count_a>();
+                auto tmp = args.args->at(0).as<account_name_type>();
                 return pimpl->database().with_read_lock([&]() {
                     return pimpl->get_follow_count(tmp);
                 });
             }
 
-            DEFINE_API(plugin, get_feed_entries) {
-                auto tmp = args.args->at(0).as<get_feed_entries_a>();
+            DEFINE_API(plugin, get_feed_entries){
+                CHECK_ARG_SIZE(3)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<uint32_t>();
+                auto arg2 = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_feed_entries(tmp);
+                    return pimpl->get_feed_entries(arg0, arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_feed) {
-                auto tmp = args.args->at(0).as<get_feed_a>();
+                CHECK_ARG_SIZE(3)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<uint32_t>();
+                auto arg2 = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_feed(tmp);
+                    return pimpl->get_feed(arg0, arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_blog_entries) {
-                auto tmp = args.args->at(0).as<get_blog_entries_a>();
+                CHECK_ARG_SIZE(3)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<uint32_t>();
+                auto arg2 = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_blog_entries(tmp);
+                    return pimpl->get_blog_entries(arg0, arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_blog) {
-                auto tmp = args.args->at(0).as<get_blog_a>();
+                CHECK_ARG_SIZE(3)
+                auto arg0 = args.args->at(0).as<account_name_type>();
+                auto arg1 = args.args->at(1).as<uint32_t>();
+                auto arg2 = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_blog(tmp);
+                    return pimpl->get_blog(arg0, arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_account_reputations) {
-                auto tmp = args.args->at(0).as<get_account_reputations_a>();
+                CHECK_ARG_SIZE(2)
+                auto arg1 = args.args->at(0).as<account_name_type>();
+                auto arg2 = args.args->at(1).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_account_reputations(tmp);
+                    return pimpl->get_account_reputations(arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_reblogged_by) {
-                auto tmp = args.args->at(0).as<get_reblogged_by_a>();
+                CHECK_ARG_SIZE(2)
+                auto arg1 = args.args->at(0).as<account_name_type>();
+                auto arg2 = args.args->at(1).as<std::string>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_reblogged_by(tmp);
+                    return pimpl->get_reblogged_by(arg1, arg2);
                 });
             }
 
             DEFINE_API(plugin, get_blog_authors) {
-                auto tmp = args.args->at(0).as<get_blog_authors_a>();
+                auto tmp = args.args->at(0).as<account_name_type>();
                 return pimpl->database().with_read_lock([&]() {
                     return pimpl->get_blog_authors(tmp);
                 });
             }
 
-            get_account_reputations_r plugin::get_account_reputations_native(const get_account_reputations_a &args) {
+            std::vector<account_reputation> plugin::get_account_reputations_native(
+                    account_name_type account_lower_bound,
+                    uint32_t limit) {
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_account_reputations(args);
+                    return pimpl->get_account_reputations(account_lower_bound, limit);
                 });
             }
 

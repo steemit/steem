@@ -205,8 +205,7 @@ namespace golos {
                 note.op.visit(detail::post_operation_visitor(_self));
             }
 
-            key_references_r account_by_key_plugin::account_by_key_plugin_impl::get_key_references(
-                    const key_references_a& val) const {
+            key_references_r account_by_key_plugin::account_by_key_plugin_impl::get_key_references(const key_references_a& val) const {
                 key_references_r final_result;
                 final_result.references.reserve(val.keys.size());
 
@@ -216,8 +215,7 @@ namespace golos {
                     vector<account_name_type> result;
                     auto lookup_itr = key_idx.lower_bound(key);
 
-                    while (lookup_itr != key_idx.end() &&
-                           lookup_itr->key == key) {
+                    while (lookup_itr != key_idx.end() && lookup_itr->key == key) {
                         result.push_back(lookup_itr->account);
                         ++lookup_itr;
                     }
@@ -247,6 +245,7 @@ namespace golos {
                     db.post_apply_operation.connect([&](const operation_notification &o) { my->post_operation(o); });
 
                     add_plugin_index<key_lookup_index>(db);
+                    JSON_RPC_REGISTER_API ( name() ) ;
                 }
                 FC_CAPTURE_AND_RETHROW()
             }

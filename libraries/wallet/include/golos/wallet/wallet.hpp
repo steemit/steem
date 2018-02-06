@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/wallet/remote_node_api.hpp>
+#include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/chain/history_object.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -16,6 +17,7 @@ namespace golos { namespace wallet {
 
         using namespace golos::utilities;
         using namespace golos::protocol;
+        using namespace golos::plugins::private_message;
 
         typedef uint16_t transaction_handle_type;
 
@@ -76,7 +78,7 @@ namespace golos { namespace wallet {
  */
         class wallet_api {
         public:
-            wallet_api( const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi );
+            wallet_api( const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api_connection& con );
             virtual ~wallet_api();
 
             bool copy_wallet_file( string destination_filename );
@@ -791,7 +793,7 @@ namespace golos { namespace wallet {
              *
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
-            market_history::order_book_r get_order_book( order_book_a order );
+            market_history::order_book get_order_book( uint32_t limit );
             vector< database_api::extended_limit_order > get_open_orders( string accountname );
 
             /**
@@ -904,7 +906,11 @@ namespace golos { namespace wallet {
              *  @param what - a set of things to follow: posts, comments, votes, ignore
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            //annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
+            annotated_signed_transaction follow(
+                    const string& follower,
+                    const string& following,
+                    const set<string>& what,
+                    const bool broadcast);
 
 
             std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
@@ -929,6 +935,12 @@ namespace golos { namespace wallet {
             string decrypt_memo( string memo );
 
             annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
+
+            // Private message
+            vector<extended_message_object> get_inbox(const inbox_a&);
+            vector<extended_message_object> get_outbox(const outbox_a&);
+
+            message_body try_decrypt_message( const message_api_obj& mo );
         };
 
         struct plain_keys {
@@ -1028,6 +1040,8 @@ FC_API( golos::wallet::wallet_api,
                 (get_active_witnesses)
                 (get_miner_queue)
                 (get_transaction)
+                (get_inbox)
+                (get_outbox)
 )
 
 FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )
