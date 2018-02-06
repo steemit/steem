@@ -140,6 +140,13 @@ void database::open( const open_args& args )
       {
          init_hardforks(); // Writes to local state, but reads from db
       });
+
+      if (args.benchmark.first)
+      {
+         args.benchmark.second(0, get_abstract_index_cntr());
+         auto last_block_num = _block_log.head()->block_num();
+         args.benchmark.second(last_block_num, get_abstract_index_cntr());
+      }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
@@ -180,7 +187,7 @@ uint32_t database::reindex( const open_args& args )
             last_block_num = args.stop_replay_at;
          if( args.benchmark.first > 0 )
          {
-            args.benchmark.second( 0, true /*is_initial_call*/ );
+            args.benchmark.second( 0, get_abstract_index_cntr() );
          }
 
          while( itr.first.block_num() != last_block_num )
@@ -190,22 +197,16 @@ uint32_t database::reindex( const open_args& args )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
-            if(    (args.benchmark.first > 0)
-                && (cur_block_num % args.benchmark.first == 0) )
-            {
-               args.benchmark.second( cur_block_num, false /*is_initial_call*/ );
-            }
+            if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
+               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
             itr = _block_log.read_block( itr.second );
          }
 
          apply_block( itr.first, skip_flags );
          last_block_number = itr.first.block_num();
 
-         if(    (args.benchmark.first > 0)
-             && (last_block_number % args.benchmark.first == 0) )
-         {
-            args.benchmark.second( last_block_number, false /*is_initial_call*/ );
-         }
+         if( (args.benchmark.first > 0) && (last_block_number % args.benchmark.first == 0) )
+            args.benchmark.second( last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
       });
@@ -4381,7 +4382,7 @@ void database::validate_smt_invariants()const
          const smt_token_object& smt = *itr;
          auto totalIt = theMap.find( smt.symbol );
          asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
-         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt current_supply",smt.current_supply)("total_supply",total_supply) );
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
@@ -4559,7 +4560,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
-   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+   return vector< asset_symbol_type >( 1, new_symbol );
 }
 #endif
 

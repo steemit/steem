@@ -61,6 +61,8 @@
 
 namespace steem { namespace wallet {
 
+using steem::plugins::condenser_api::legacy_asset;
+
 namespace detail {
 
 template<class T>
@@ -727,9 +729,9 @@ public:
          asset total_vest(0, VESTS_SYMBOL );
          asset total_sbd(0, SBD_SYMBOL );
          for( const auto& a : accounts ) {
-            total_steem += a.balance.to_asset< false >();
-            total_vest  += a.vesting_shares.to_asset< false >();
-            total_sbd  += a.sbd_balance.to_asset< false >();
+            total_steem += a.balance.to_asset();
+            total_vest  += a.vesting_shares.to_asset();
+            total_sbd  += a.sbd_balance.to_asset();
             out << std::left << std::setw( 17 ) << std::string(a.name)
                 << std::right << std::setw(18) << fc::variant(a.balance).as_string() <<" "
                 << std::right << std::setw(26) << fc::variant(a.vesting_shares).as_string() <<" "

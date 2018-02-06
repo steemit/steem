@@ -6,8 +6,11 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/macros.hpp>
+#include <fc/io/fstream.hpp>
 
 #include <chainbase/chainbase.hpp>
+
+#define ENABLE_JSON_RPC_LOG
 
 namespace steem { namespace plugins { namespace json_rpc {
 
@@ -36,9 +39,92 @@ namespace detail
 
    typedef void_type             get_methods_args;
    typedef vector< string >      get_methods_return;
-   typedef string                get_signature_args;
+
+   struct get_signature_args
+   {
+      string method;
+   };
+
    typedef api_method_signature  get_signature_return;
 
+   class json_rpc_logger
+   {
+   public:
+      json_rpc_logger(const string& _dir_name) : dir_name(_dir_name) {}
+
+      ~json_rpc_logger()
+      {
+         if (counter == 0)
+            return; // nothing to flush
+
+         // flush tests.yaml file with all passed responses
+         fc::path file(dir_name);
+         file /= "tests.yaml";
+
+         const char* head =
+         "---\n"
+         "- config:\n"
+         "  - testset: \"API Tests\"\n"
+         "  - generators:\n"
+         "    - test_id: {type: 'number_sequence', start: 1}\n"
+         "\n"
+         "- base_test: &base_test\n"
+         "  - generator_binds:\n"
+         "    - test_id: test_id\n"
+         "  - url: \"/rpc\"\n"
+         "  - method: \"POST\"\n"
+         "  - validators:\n"
+         "    - extract_test: {jsonpath_mini: \"error\", test: \"not_exists\"}\n"
+         "    - extract_test: {jsonpath_mini: \"result\", test: \"exists\"}\n";
+         
+         fc::ofstream o(file);
+         o << head;
+         o << "    - json_file_validator: {jsonpath_mini: \"result\", comparator: \"json_compare\", expected: {template: '" << dir_name << "/$test_id'}}\n\n";
+
+         for (uint32_t i = 1; i <= counter; ++i)
+         {
+            o << "- test:\n";
+            o << "  - body: {file: \"" << i << ".json\"}\n";
+            o << "  - name: \"test" << i << "\"\n";
+            o << "  - <<: *base_test\n";
+            o << "\n";
+         }
+
+         o.close();
+      }
+
+      void log(const fc::variant_object& request, json_rpc_response& response)
+      {
+         fc::path file(dir_name);
+         bool error = response.error.valid();
+         std::string counter_str;
+         
+         if (error)
+            counter_str = std::to_string(++errors) + "_error";
+         else
+            counter_str = std::to_string(++counter);
+
+         file /= counter_str + ".json";
+
+         fc::json::save_to_file(request, file);
+
+         file.replace_extension("json.pat");
+
+         if (error)
+            fc::json::save_to_file(response.error, file);
+         else
+            fc::json::save_to_file(response.result, file);
+      }
+
+   private:
+      string   dir_name;
+      /** they are used as 1-based, because of problem with start pyresttest number_sequence generator from 0
+       *  (it means first test is '1' also as first error)
+       */
+      uint32_t counter = 0;
+      uint32_t errors = 0;
+   };
+      
    class json_rpc_plugin_impl
    {
       public:
@@ -55,6 +141,12 @@ namespace detail
 
          void initialize();
 
+         void log(const fc::variant_object& request, json_rpc_response& response)
+         {
+            if (_logger)
+               _logger->log(request, response);
+         }
+            
          DECLARE_API(
             (get_methods)
             (get_signature) )
@@ -62,6 +154,7 @@ namespace detail
          map< string, api_description >                     _registered_apis;
          vector< string >                                   _methods;
          map< string, map< string, api_method_signature > > _method_sigs;
+         std::unique_ptr< json_rpc_logger >                 _logger;
    };
 
    json_rpc_plugin_impl::json_rpc_plugin_impl() {}
@@ -92,7 +185,7 @@ namespace detail
    {
       FC_UNUSED( lock )
       vector< string > v;
-      boost::split( v, args, boost::is_any_of( "." ) );
+      boost::split( v, args.method, boost::is_any_of( "." ) );
       FC_ASSERT( v.size() == 2, "Invalid method name" );
 
       auto api_itr = _method_sigs.find( v[0] );
@@ -227,6 +320,8 @@ namespace detail
       {
          response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
       }
+
+   log(request, response);
    }
 
    json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
@@ -287,11 +382,34 @@ namespace detail
 
 using detail::json_rpc_error;
 using detail::json_rpc_response;
+using detail::json_rpc_logger;
 
 json_rpc_plugin::json_rpc_plugin() : my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
-void json_rpc_plugin::plugin_initialize( const variables_map& options ) { my->initialize(); }
+void json_rpc_plugin::set_program_options( options_description& , options_description& cfg)
+{
+   cfg.add_options()
+      ("log-json-rpc", bpo::value< string >(), "json-rpc log directory name.")
+      ;
+}
+
+void json_rpc_plugin::plugin_initialize( const variables_map& options )
+{
+   my->initialize();
+
+   if( options.count( "log-json-rpc" ) )
+   {
+      auto dir_name = options.at( "log-json-rpc" ).as< string >();
+      FC_ASSERT(dir_name.empty() == false, "Invalid directory name (empty).");
+
+      fc::path p(dir_name);
+      if (fc::exists(p))
+         fc::remove_all(p);
+      fc::create_directories(p);
+      my->_logger.reset(new json_rpc_logger(dir_name));
+   }   
+}
 
 void json_rpc_plugin::plugin_startup()
 {
@@ -351,3 +469,5 @@ string json_rpc_plugin::call( const string& message )
 
 FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
 FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+
+FC_REFLECT( steem::plugins::json_rpc::detail::get_signature_args, (method) )

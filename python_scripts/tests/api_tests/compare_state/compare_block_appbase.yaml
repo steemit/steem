@@ -1,0 +1,27 @@
+---
+- config:
+  - testset: "Compare State Test"
+  - api: &api "account_history_api"
+  - variable_binds:
+    - api: *api
+  - generators:
+    - test_id: {type: 'number_sequence', start: 1}
+
+- base_test: &base_test
+  - generator_binds:
+    - test_id: test_id
+  - group: *api
+  - url: "/rpc"
+  - method: "POST"
+  - body: {template: {file: "compare_block_appbase.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_validator: {jsonpath_mini: "result", comparator: "json_compare", expected: {template: 'compare_state/$method'}}
+
+- test:
+  - name: "get_ops_in_block"
+  - variable_binds:
+    - method: "get_ops_in_block"
+  - <<: *base_test

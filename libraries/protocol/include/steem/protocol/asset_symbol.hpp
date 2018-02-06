@@ -3,10 +3,11 @@
 #include <fc/io/raw.hpp>
 #include <steem/protocol/types_fwd.hpp>
 
-#define STEEM_ASSET_SYMBOL_PRECISION_BITS 4
-#define SMT_MAX_NAI                       99999999
-#define SMT_MIN_NAI                       1
-#define STEEM_ASSET_SYMBOL_MAX_LENGTH     10
+#define STEEM_ASSET_SYMBOL_PRECISION_BITS    4
+#define SMT_MAX_NAI                          99999999
+#define SMT_MIN_NAI                          1
+#define STEEM_ASSET_SYMBOL_NAI_LENGTH        10
+#define STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH ( STEEM_ASSET_SYMBOL_NAI_LENGTH + 2 )
 
 #define STEEM_PRECISION_SBD   (3)
 #define STEEM_PRECISION_STEEM (3)
@@ -59,21 +60,25 @@ class asset_symbol_type
       asset_symbol_type() {}
 
       // buf must have space for STEEM_ASSET_SYMBOL_MAX_LENGTH+1
-      static asset_symbol_type from_string( const char* buf, uint8_t decimal_places );
+      static asset_symbol_type from_string( const std::string& str );
+      static asset_symbol_type from_nai_string( const char* buf, uint8_t decimal_places );
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
       static uint32_t asset_num_from_nai( uint32_t nai, uint8_t decimal_places );
+      static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
+      {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
 
-      void to_string( char* buf )const;
-      std::string to_string()const
+      std::string to_string()const;
+
+      void to_nai_string( char* buf )const;
+      std::string to_nai_string()const
       {
-         char buf[ STEEM_ASSET_SYMBOL_MAX_LENGTH+1 ];
-         to_string( buf );
-         return std::string(buf);
+         char buf[ STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH ];
+         to_nai_string( buf );
+         return std::string( buf );
       }
 
       uint32_t to_nai()const;
-      void from_nai( uint32_t nai, uint8_t decimal_places );
 
       asset_symbol_space space()const;
       uint8_t decimals()const
@@ -176,9 +181,25 @@ inline void unpack( Stream& s, steem::protocol::asset_symbol_type& sym )
 
 } // fc::raw
 
-inline void to_variant( const steem::protocol::asset_symbol_type& sym, fc::variant& v )
+inline void to_variant( const steem::protocol::asset_symbol_type& sym, fc::variant& var )
 {
-   v = sym.to_string();
+   try
+   {
+      std::vector< variant > v( 2 );
+      v[0] = sym.decimals();
+      v[1] = sym.to_nai_string();
+   } FC_CAPTURE_AND_RETHROW()
+}
+
+inline void from_variant( const fc::variant& var, steem::protocol::asset_symbol_type& sym )
+{
+   try
+   {
+      auto v = var.as< std::vector< variant > >();
+      FC_ASSERT( v.size() == 2, "Expected tuple of length 2." );
+
+      sym = steem::protocol::asset_symbol_type::from_nai_string( v[1].as< std::string >().c_str(), v[0].as< uint8_t >() );
+   } FC_CAPTURE_AND_RETHROW()
 }
 
 } // fc

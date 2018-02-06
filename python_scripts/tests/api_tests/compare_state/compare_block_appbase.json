@@ -1,0 +1,6 @@
+{
+    "jsonrpc": "2.0",
+    "id": $test_id,
+    "method": "$api.$method",
+    "params": { "block_num": $BLOCK_NUMBER, "only_virtual": false }
+}

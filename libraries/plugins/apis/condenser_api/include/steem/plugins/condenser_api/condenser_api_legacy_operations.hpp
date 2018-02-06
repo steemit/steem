@@ -1,4 +1,5 @@
 #include <steem/protocol/operations.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 
 namespace steem { namespace plugins { namespace condenser_api {
 
@@ -836,6 +837,13 @@ namespace steem { namespace plugins { namespace condenser_api {
 
 } } } // steem::plugins::condenser_api
 
+namespace fc {
+
+void to_variant( const steem::plugins::condenser_api::legacy_operation&, fc::variant& );
+void from_variant( const fc::variant&, steem::plugins::condenser_api::legacy_operation& );
+
+}
+
 FC_REFLECT( steem::plugins::condenser_api::legacy_price, (base)(quote) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_transfer_to_savings_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
@@ -887,3 +895,5 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_fill_transfer_from_savings_ope
 FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_operation, (account)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
+
+FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )

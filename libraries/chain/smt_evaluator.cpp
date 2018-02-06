@@ -112,6 +112,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    {
       token.symbol = o.symbol;
       token.control_account = o.control_account;
+      token.market_maker.token_balance = asset( 0, token.symbol );
    });
 }
 

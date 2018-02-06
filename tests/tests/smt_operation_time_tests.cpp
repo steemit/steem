@@ -55,15 +55,13 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
       auto exchange_rate = price( ASSET( "1.250 TESTS" ), asset( 1000, any_smt_symbol ) );
 
       const account_object& alice_account = db->get_account( "alice" );
-      db->adjust_balance( alice_account, asset( 25522, any_smt_symbol ) );
+      FUND( "alice", asset( 25522, any_smt_symbol ) );
       asset alice_smt = db->get_balance( alice_account, any_smt_symbol );
 
-      generate_block();
-
-      fund( "alice", alice_smt.amount );
-      fund( "bob", alice_smt.amount );
-      fund( "sam", alice_smt.amount );
-      fund( "dave", alice_smt.amount );
+      FUND( "alice", alice_smt.amount );
+      FUND( "bob", alice_smt.amount );
+      FUND( "sam", alice_smt.amount );
+      FUND( "dave", alice_smt.amount );
 
       int64_t alice_smt_volume = 0;
       int64_t alice_steem_volume = 0;
@@ -653,6 +651,8 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
       BOOST_REQUIRE( reward->sbd_volume == sam_smt_volume );
       BOOST_REQUIRE( reward->steem_volume == sam_steem_volume );
       BOOST_CHECK( reward->last_update == sam_reward_last_update );*/
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW();
 }

@@ -56,11 +56,6 @@ if [[ ! "$DISABLE_BLOCK_API" ]]; then
    ARGS+=" --plugin=block_api"
 fi
 
-if [[ ! "$IS_BROADCAST_NODE" ]]; then
-  ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-  ARGS+=" --disable-get-block"
-fi
-
 # overwrite local config with image one
 if [[ "$IS_BROADCAST_NODE" ]]; then
   cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
@@ -90,7 +85,7 @@ if [[ "$USE_RAMDISK" ]]; then
   elif [[ "$IS_AH_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   else
-    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   fi
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
@@ -99,7 +94,7 @@ else
   elif [[ "$IS_AH_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
   else
-    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
   fi
 fi
 if [[ $? -ne 0 ]]; then

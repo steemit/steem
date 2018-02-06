@@ -70,7 +70,7 @@ namespace steem { namespace chain {
             skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
-         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
+         typedef std::function<void(uint32_t, const abstract_index_cntr_t&)> TBenchmarkMidReport;
          typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
 
          struct open_args
@@ -84,7 +84,7 @@ namespace steem { namespace chain {
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
-            TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;});
+            TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 
          /**
@@ -445,7 +445,7 @@ namespace steem { namespace chain {
          vector< asset_symbol_type > get_smt_next_identifier();
 
          ///@}
-#endif         
+#endif
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
@@ -517,7 +517,7 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
-         uint32_t                      _next_available_nai = 1;
+         uint32_t                      _next_available_nai = 4;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;

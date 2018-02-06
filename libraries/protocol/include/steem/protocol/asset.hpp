@@ -15,7 +15,6 @@ namespace steem { namespace protocol {
       share_type        amount;
       asset_symbol_type symbol;
 
-      uint8_t     decimals()const;
       void validate()const;
 
       asset& operator += ( const asset& o )

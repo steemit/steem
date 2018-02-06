@@ -13,6 +13,9 @@
 
 #include <steem/utilities/git_revision.hpp>
 
+#include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/uint256.hpp>
+
 #include <fc/git_revision.hpp>
 
 #include <boost/range/iterator_range.hpp>
@@ -119,6 +122,8 @@ namespace detail
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
+
+         void set_pending_payout( discussion& d );
 
          chain::database& _db;
 
@@ -308,8 +313,7 @@ namespace detail
                      eacnt.comments->push_back( link );
                      _state.content[ link ] = tags::discussion( *itr, _db );
 
-                     if( _tags_api )
-                        _tags_api->set_pending_payout( _state.content[ link ] );
+                     set_pending_payout( _state.content[ link ] );
 
                      ++count;
                   }
@@ -332,8 +336,7 @@ namespace detail
                      eacnt.blog->push_back( link );
                      _state.content[ link ] = tags::discussion( _db.get_comment( b.author, b.permlink ), _db );
 
-                     if( _tags_api )
-                        _tags_api->set_pending_payout( _state.content[ link ] );
+                     set_pending_payout( _state.content[ link ] );
 
                      if( b.reblog_on > time_point_sec() )
                      {
@@ -356,8 +359,7 @@ namespace detail
                      eacnt.feed->push_back( link );
                      _state.content[ link ] = tags::discussion( _db.get_comment( f.author, f.permlink ), _db );
 
-                     if( _tags_api )
-                        _tags_api->set_pending_payout( _state.content[ link ] );
+                     set_pending_payout( _state.content[ link ] );
 
                      if( f.reblog_by.empty() == false)
                      {
@@ -897,7 +899,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, lookup_accounts )
    {
-      CHECK_ARG_SIZE( 1 )
+      CHECK_ARG_SIZE( 2 )
       account_name_type lower_bound_name = args[0].as< account_name_type >();
       uint32_t limit = args[1].as< uint32_t >();
 
@@ -1787,6 +1789,72 @@ namespace detail
          }
       }
       FC_CAPTURE_AND_RETHROW( (root.author)(root.permlink) )
+   }
+
+   void condenser_api_impl::set_pending_payout( discussion& d )
+   {
+      if( !_tags_api )
+         return;
+
+      const auto& cidx = _db.get_index< tags::tag_index, tags::by_comment>();
+      auto itr = cidx.lower_bound( d.id );
+      if( itr != cidx.end() && itr->comment == d.id )  {
+         d.promoted = legacy_asset::from_asset( asset( itr->promoted_balance, SBD_SYMBOL ) );
+      }
+
+      const auto& props = _db.get_dynamic_global_properties();
+      const auto& hist  = _db.get_feed_history();
+
+      asset pot;
+      if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+         pot = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).reward_balance;
+      else
+         pot = props.total_reward_fund_steem;
+
+      if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
+
+      u256 total_r2 = 0;
+      if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+         total_r2 = chain::util::to256( _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).recent_claims );
+      else
+         total_r2 = chain::util::to256( props.total_reward_shares2 );
+
+      if( total_r2 > 0 )
+      {
+         uint128_t vshares;
+         if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+         {
+            const auto& rf = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) );
+            vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
+         }
+         else
+            vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value ) : 0;
+
+         u256 r2 = chain::util::to256( vshares ); //to256(abs_net_rshares);
+         r2 *= pot.amount.value;
+         r2 /= total_r2;
+
+         d.pending_payout_value = legacy_asset::from_asset( asset( static_cast<uint64_t>(r2), pot.symbol ) );
+
+         if( _follow_api )
+         {
+            d.author_reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { d.author, 1} ) ).reputations[0].reputation;
+         }
+      }
+
+      if( d.parent_author != STEEM_ROOT_POST_PARENT )
+         d.cashout_time = _db.calculate_discussion_payout_time( _db.get< chain::comment_object >( d.id ) );
+
+      if( d.body.size() > 1024*128 )
+         d.body = "body pruned due to size";
+      if( d.parent_author.size() > 0 && d.body.size() > 1024*16 )
+         d.body = "comment pruned due to size";
+
+      const database_api::api_comment_object root( _db.get_comment( d.root_author, d.root_permlink ), _db );
+      d.url = "/" + root.category + "/@" + root.author + "/" + root.permlink;
+      d.root_title = root.title;
+      if( root.id != d.id )
+         d.url += "#@" + d.author + "/" + d.permlink;
    }
 
 } // detail
