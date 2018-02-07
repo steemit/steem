@@ -20,35 +20,23 @@ namespace detail {class api_impl;}
 
 typedef std::vector<char> serialize_buffer_t;
 
-/** Dedicated definition is needed because of conflict of BIP allocator
- *  against usage of this class as temporary object. 
- *  The conflict appears in original associated_ops container type definition,
- *  which in BIP version needs an allocator during constructor call.
+/** Represents an AH entry in mapped to account name.
+ *  Holds additional informations, which are needed to simplify pruning process.
+ *  All operations specific to given account, are next mapped to ID of given object.
  */
-class tmp_account_history_object
+class account_history_info
 {
 public:
-   typedef std::vector<size_t> operation_container;
+   uint32_t       id = 0;
+   uint32_t       oldestEntryId = 0;
+   uint32_t       newestEntryId = 0;
+   /// Timestamp of oldest operation, just to quickly decide if start detail prune checking at all. 
+   time_point_sec oldestEntryTimestamp;
 
-   steem::protocol::account_name_type account;
-
-   const operation_container& get_ops() const
+   uint32_t getAssociatedOpCount() const
    {
-      return associated_ops;
+      return newestEntryId - oldestEntryId + 1;
    }
-
-   void store_operation_id(size_t opId)
-   {
-      associated_ops.push_back(opId);
-   }
-
-private:
-   /** Holds IDs of operations somehow involving given accout.
-    *  List head points to oldest operation, tail to newest one.
-    *  Container order is determined by operation processing.
-    */
-   operation_container associated_ops;
-   template <class T> friend struct fc::reflector;
 };
 
 /** Dedicated definition is needed because of conflict of BIP allocator
@@ -59,7 +47,7 @@ private:
 class tmp_operation_object
 {
 public:
-   size_t               id = 0;
+   uint32_t             id = 0;
 
    chain::transaction_id_type  trx_id;
    uint32_t             block = 0;
@@ -138,7 +126,7 @@ class rocksdb_api final
 
 FC_REFLECT( steem::plugins::rocksdb::tmp_operation_object, (id)(trx_id)(block)(trx_in_block)(timestamp)(serialized_op) )
 
-FC_REFLECT( steem::plugins::rocksdb::tmp_account_history_object, (account)(associated_ops) )
+FC_REFLECT( steem::plugins::rocksdb::account_history_info, (id)(oldestEntryId)(newestEntryId)(oldestEntryTimestamp))
 
 FC_REFLECT( steem::plugins::rocksdb::api_operation_object,
    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )

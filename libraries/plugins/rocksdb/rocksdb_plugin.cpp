@@ -49,12 +49,14 @@ using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
 using ::rocksdb::Options;
+using ::rocksdb::PinnableSlice;
 using ::rocksdb::ReadOptions;
 using ::rocksdb::Slice;
 using ::rocksdb::Comparator;
 using ::rocksdb::ColumnFamilyDescriptor;
 using ::rocksdb::ColumnFamilyOptions;
 using ::rocksdb::ColumnFamilyHandle;
+using ::rocksdb::WriteBatch;
 
 namespace 
 {
@@ -181,53 +183,19 @@ private:
    }
 };
 
-class account_name_id_ComparatorImpl final : public AComparator
-{
-public:
-  virtual int Compare(const Slice& a, const Slice& b) const override
-  {
-      if(a.size() != sizeof(account_name_storage_id_pair) || b.size() != sizeof(account_name_storage_id_pair))
-         return a.compare(b);
+typedef PrimitiveTypeComparatorImpl<uint32_t> by_id_ComparatorImpl;
 
-      const auto& id1 = retrieveKey(a);
-      const auto& id2 = retrieveKey(b);
+typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_ComparatorImpl;
 
-      if(id1 < id2)
-         return -1;
-
-      if(id1 > id2)
-         return 1;
-
-      return 0; 
-  }
-
-  virtual bool Equal(const Slice& a, const Slice& b) const override
-  {
-      if(a.size() != sizeof(account_name_storage_id_pair) || b.size() != sizeof(account_name_storage_id_pair))
-         return a == b;
-
-      const auto& id1 = retrieveKey(a);
-      const auto& id2 = retrieveKey(b);
-      return id1 == id2;
-  }
-
-private:
-   const account_name_storage_id_pair& retrieveKey(const Slice& slice) const
-   {
-      assert(sizeof(account_name_storage_id_pair) == slice.size());
-      const char* rawData = slice.data();
-      const account_name_storage_id_pair* data = reinterpret_cast<const account_name_storage_id_pair*>(rawData);
-      return *data;
-   }
-};
-
-typedef PrimitiveTypeComparatorImpl<size_t> by_id_ComparatorImpl;
 /** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended 
  *  by some unique part (ie ID).
  * 
  */
-typedef std::pair<uint32_t, size_t> location_id_pair;
+typedef std::pair<uint32_t, uint32_t> location_id_pair;
 typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
+
+/// Compares account_history_info::id and tmp_operation_object::id pair
+typedef PrimitiveTypeComparatorImpl<std::pair<uint32_t, uint32_t>> by_ah_info_operation_ComparatorImpl;
 
 const Comparator* by_id_Comparator()
 {
@@ -241,9 +209,15 @@ const Comparator* by_location_Comparator()
    return &c;
 }
 
-const Comparator* by_account_name_storage_id_pair_Comparator()
+const Comparator* by_account_name_Comparator()
 {
-   static account_name_id_ComparatorImpl c;
+   static by_account_name_ComparatorImpl c;
+   return &c;
+}
+
+const Comparator* by_ah_info_operation_Comparator()
+{
+   static by_ah_info_operation_ComparatorImpl c;
    return &c;
 }
 
@@ -275,6 +249,56 @@ private:
    mutable std::string _name;
 };
 
+class CachableWriteBatch : public WriteBatch
+{
+public:
+   CachableWriteBatch(const std::unique_ptr<DB>& storage, const std::vector<ColumnFamilyHandle*>& columnHandles) :
+      _storage(storage), _columnHandles(columnHandles) {}
+
+   bool getAHInfo(const account_name_type& name, account_history_info* ahInfo) const
+   {
+      auto fi = _ahInfoCache.find(name);
+      if(fi != _ahInfoCache.end())
+      {
+         *ahInfo = fi->second;
+         return true;
+      }
+
+      PrimitiveTypeSlice<account_name_type::Storage> key(name.data);
+      PinnableSlice buffer;
+      auto s = _storage->Get(ReadOptions(), _columnHandles[3], key, &buffer);
+      if(s.ok())
+      {
+         load(*ahInfo, buffer.data(), buffer.size());
+         return true;
+      }
+
+      FC_ASSERT(s.IsNotFound());
+      return false;
+   }
+
+   void putAHInfo(const account_name_type& name, const account_history_info& ahInfo)
+   {
+      _ahInfoCache[name] = ahInfo;
+      auto serializeBuf = dump(ahInfo);
+      PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+      auto s = Put(_columnHandles[3], nameSlice, Slice(serializeBuf.data(), serializeBuf.size()));
+      checkStatus(s);
+   }
+
+   void Clear()
+   {
+      _ahInfoCache.clear();
+      WriteBatch::Clear();
+   }
+
+private:
+   const std::unique_ptr<DB>&                        _storage;
+   const std::vector<ColumnFamilyHandle*>&           _columnHandles;
+   std::map<account_name_type, account_history_info> _ahInfoCache;
+};
+
+
 } /// anonymous
 
 class rocksdb_plugin::impl final
@@ -283,7 +307,8 @@ public:
 
    impl(const rocksdb_plugin& mainPlugin, const bpo::variables_map& options) :
       _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
-      _mainPlugin(mainPlugin)
+      _mainPlugin(mainPlugin),
+      _writeBuffer(_storage, _columnHandles)
       {
       collectOptions(options);
       _pre_apply_connection = _mainDb.pre_apply_operation.connect( [&]( const operation_notification& note ){ on_operation(note); } );
@@ -332,7 +357,7 @@ public:
 
    void find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
       std::function<void(unsigned int, const tmp_operation_object&)> processor) const;
-   bool find_operation_object(size_t opId, tmp_operation_object* data) const;
+   bool find_operation_object(size_t opId, tmp_operation_object* op) const;
    /// Allows to look for all operations present in given block and call `processor` for them.
    void find_operations_by_block(size_t blockNum,
       std::function<void(const tmp_operation_object&)> processor) const;
@@ -375,8 +400,8 @@ private:
       uint32_t txInBlock, const operation& op, uint16_t opInTx);
    void buildAccountHistoryRecord(const account_name_type& name, const tmp_operation_object& obj, const operation& op,
       const fc::time_point_sec& blockTime);
-   bool prunePotentiallyTooOldItems(::rocksdb::WBWIIterator* dataItr, const account_name_type& name,
-      size_t lastFoundNo, const fc::time_point_sec& now);
+   void prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
+      const fc::time_point_sec& now);
 
    void storeSequenceIds()
    {
@@ -453,8 +478,9 @@ private:
 
    enum
    {
-      WRITE_BUFFER_FLUSH_LIMIT = 100,
-      ACCOUNT_HISTORY_LENGTH_LIMIT = 30
+      WRITE_BUFFER_FLUSH_LIMIT     = 100,
+      ACCOUNT_HISTORY_LENGTH_LIMIT = 30,
+      ACCOUNT_HISTORY_TIME_LIMIT   = 30,
    };
 
 /// Class attributes:
@@ -466,7 +492,7 @@ private:
    std::unique_ptr<rocksdb_api>     _api;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
-   ::rocksdb::WriteBatchWithIndex   _writeBuffer;
+   CachableWriteBatch               _writeBuffer;
    boost::signals2::connection      _pre_apply_connection;
    /// Helper member to be able to detect another incomming tx and increment tx-counter.
    transaction_id_type              _lastTx;
@@ -651,68 +677,68 @@ void rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::str
 void rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
    uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
 {
-   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[3]));
-   bool backwardSearch = start == (uint64_t)-1;
-   account_name_storage_id_pair nameIdPair(name.data, backwardSearch ? (size_t)-1 : 0);
-   PrimitiveTypeSlice<account_name_storage_id_pair> key(nameIdPair);
+   ReadOptions rOptions;
+   
    PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+   PinnableSlice buffer;
+   auto s = _storage->Get(rOptions, _columnHandles[3], nameSlice, &buffer);
 
-   if(backwardSearch)
-      it->SeekForPrev(key);
-   else
-      it->Seek(key);
+   if(s.IsNotFound())
+      return;
+
+   checkStatus(s);
+
+   account_history_info ahInfo;
+   load(ahInfo, buffer.data(), buffer.size());
+
+   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> lowerBoundSlice(std::make_pair(ahInfo.id, ahInfo.oldestEntryId));
+   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> upperBoundSlice(std::make_pair(ahInfo.id, ahInfo.newestEntryId+1));
+
+   rOptions.iterate_lower_bound = &lowerBoundSlice;
+   rOptions.iterate_upper_bound = &upperBoundSlice;
+
+   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> key(std::make_pair(ahInfo.id, start));
+   PrimitiveTypeSlice<uint32_t> ahIdSlice(ahInfo.id);
+
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[4]));
+
+   it->SeekForPrev(key);
 
    if(it->Valid() == false)
       return;
 
-   if(backwardSearch)
+   auto keySlice = it->key();
+   auto keyValue = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(keySlice);
+
+   auto lowerBound = keyValue.second > limit ? keyValue.second - limit : 0;
+
+   for(; it->Valid(); it->Prev())
    {
-      unsigned int count = 0;
-      for(; it->Valid() && it->key().starts_with(nameSlice); it->Prev())
-         ++count;
-
-      size_t entries = count - 1;
-      
-      for(it->SeekForPrev(key); it->Valid() && it->key().starts_with(nameSlice); it->Prev(), --entries, --limit)
-      {
-         auto valueSlice = it->value();
-         const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
-         tmp_operation_object oObj;
-         bool found = find_operation_object(opId, &oObj);
-         FC_ASSERT(found, "Missing operation?");
-         processor(entries, oObj);
-
-         if(limit == 0)
-            break;
-      }
-
-      return;
-   }
-
-   size_t toSkip = start - limit + 1;
-   size_t entries = 0;
-
-   for(; it->Valid() && it->key().starts_with(nameSlice); it->Next())
-   {
-      if(entries > start)
+      auto keySlice = it->key();
+      if(keySlice.starts_with(ahIdSlice) == false)
          break;
 
-      if(++entries < toSkip)
-         continue;
+      keyValue = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(keySlice);
 
       auto valueSlice = it->value();
-      const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+      const auto& opId = PrimitiveTypeSlice<uint32_t>::unpackSlice(valueSlice);
       tmp_operation_object oObj;
       bool found = find_operation_object(opId, &oObj);
       FC_ASSERT(found, "Missing operation?");
-      processor(entries-1, oObj);
+
+//      ilog("AH-info-id: ${a}, Entry: ${e}, OperationId: ${oid}", ("a", keyValue.first)("e", keyValue.second)("oid", oObj.id));
+
+      processor(keyValue.second, oObj);
+
+      if(keyValue.second <= lowerBound)
+        break;
    }
 }
 
 bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_object* op) const
 {
    std::string data;
-   PrimitiveTypeSlice<size_t> idSlice(opId);
+   PrimitiveTypeSlice<uint32_t> idSlice(opId);
    ::rocksdb::Status s = _storage->Get(ReadOptions(), _columnHandles[1], idSlice, &data);
 
    if(s.ok())
@@ -760,9 +786,13 @@ rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefin
    auto& byLocationColumn = columnDefs.back();
    byLocationColumn.options.comparator = by_location_Comparator();
 
-   columnDefs.emplace_back("account_history_object_by_name_id", ColumnFamilyOptions());
+   columnDefs.emplace_back("account_history_info_by_name", ColumnFamilyOptions());
    auto& byAccountNameColumn = columnDefs.back();
-   byAccountNameColumn.options.comparator = by_account_name_storage_id_pair_Comparator();
+   byAccountNameColumn.options.comparator = by_account_name_Comparator();
+
+   columnDefs.emplace_back("ah_info_operation_by_ids", ColumnFamilyOptions());
+   auto& byAHInfoColumn = columnDefs.back();
+   byAHInfoColumn.options.comparator = by_ah_info_operation_Comparator();
 
    return columnDefs;
 }
@@ -867,11 +897,11 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
       fc::raw::pack(ds, obj);
    }
 
-   PrimitiveTypeSlice<size_t> idSlice(_operationSeqId);
+   PrimitiveTypeSlice<uint32_t> idSlice(obj.id);
    auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
    checkStatus(s);
 
-   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(blockNum, _operationSeqId));
+   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(blockNum, obj.id));
    s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
    checkStatus(s);
 
@@ -894,48 +924,145 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
 void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const tmp_operation_object& obj,
    const operation& op, const fc::time_point_sec& blockTime)
 {
-   std::unique_ptr<::rocksdb::WBWIIterator> latestEntryItr(_writeBuffer.NewIterator(_columnHandles[3]));
-   account_name_storage_id_pair maxIdPair(name.data, std::numeric_limits<size_t>::max());
-   PrimitiveTypeSlice<account_name_storage_id_pair> maxIdSlice(maxIdPair);
-   latestEntryItr->SeekForPrev(maxIdSlice);
-   size_t lastNo = 0;
-   if(latestEntryItr->Valid())
-   {
-      /// Some last ID has been found.
-      auto e = latestEntryItr->Entry();
-      auto foundEntry = PrimitiveTypeSlice<account_name_storage_id_pair>::unpackSlice(e.key);
-      lastNo = foundEntry.second;
-      // account_name_type foundAccount;
-      // foundAccount.data = foundEntry.first;
-      // std::string strAccount = foundAccount;
-      // ilog("Found last entry no: ${e} for account: `${n}'", ("e", lastNo)("n", strAccount));
-   }
+   std::string strName = name;
 
-   auto nextSeqId = lastNo + 1;
-   account_name_storage_id_pair nameIdPair(name.data, nextSeqId);
-   PrimitiveTypeSlice<account_name_storage_id_pair> nameIdPairSlice(nameIdPair);
-   PrimitiveTypeSlice<size_t> idSlice(obj.id);
-   
-   if(_prune && lastNo >= ACCOUNT_HISTORY_LENGTH_LIMIT)
+   ReadOptions rOptions;
+   //rOptions.tailing = true;
+
+   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+
+   account_history_info ahInfo;
+   bool found = _writeBuffer.getAHInfo(name, &ahInfo);
+
+   if(found)
    {
-      if(prunePotentiallyTooOldItems(latestEntryItr.get(), name, lastNo, blockTime))
-      {
-         auto s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
-         checkStatus(s);
-      }
+      auto count = ahInfo.getAssociatedOpCount();
+
+      if(_prune && count > ACCOUNT_HISTORY_LENGTH_LIMIT &&
+         ((blockTime - ahInfo.oldestEntryTimestamp) > fc::days(ACCOUNT_HISTORY_TIME_LIMIT)))
+         {
+            prunePotentiallyTooOldItems(&ahInfo, name, blockTime);
+         }
+
+      auto nextEntryId = ++ahInfo.newestEntryId;
+       _writeBuffer.putAHInfo(name, ahInfo);
+
+      PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> ahInfoOpSlice(std::make_pair(ahInfo.id, nextEntryId));
+      PrimitiveTypeSlice<uint32_t> valueSlice(obj.id);
+      auto s = _writeBuffer.Put(_columnHandles[4], ahInfoOpSlice, valueSlice);
+      checkStatus(s);
+
+   // if(strName == "blocktrades")
+   // {
+   //    ilog("Block: ${b}: Storing another AH entry ${e} for account: `${a}' (${ahID}). Operation block: ${ob}, Operation id: ${oid}",
+   //       ("b", _mainDb.head_block_num())
+   //       ("e", nextEntryId)
+   //       ("a", strName)
+   //       ("ahID", ahInfo.id)
+   //       ("ob", obj.block)
+   //       ("oid", obj.id)
+   //    );
+   // }
+      
    }
    else
    {
-      auto s = _writeBuffer.Put(_columnHandles[3], nameIdPairSlice, idSlice);
+      /// New entry must be created - there is first operation recorded.
+      ahInfo.id = _accountHistorySeqId++;
+      ahInfo.newestEntryId = ahInfo.oldestEntryId = 0;
+      ahInfo.oldestEntryTimestamp = obj.timestamp;
+
+      _writeBuffer.putAHInfo(name, ahInfo);
+
+      PrimitiveTypeSlice<std::pair<unsigned int, unsigned int>> ahInfoOpSlice(std::make_pair(ahInfo.id, 0));
+      PrimitiveTypeSlice<unsigned int> valueSlice(obj.id);
+      auto s = _writeBuffer.Put(_columnHandles[4], ahInfoOpSlice, valueSlice);
       checkStatus(s);
+
+   // if(strName == "blocktrades")
+   // {
+   //    blocktrades_id = ahInfo.id;
+   //    ilog("Block: ${b}: Storing FIRST AH entry ${e} for account: `${a}' (${ahID}). Operation block: ${ob}, OPeration id: ${oid}",
+   //       ("b", _mainDb.head_block_num())
+   //       ("e", 0)
+   //       ("a", strName)
+   //       ("ahID", ahInfo.id)
+   //       ("ob", obj.block)
+   //       ("oid", obj.id)
+   //    );
+   // }
+      
    }
 }
 
-bool rocksdb_plugin::impl::prunePotentiallyTooOldItems(::rocksdb::WBWIIterator* dataItr, const account_name_type& name,
-   size_t lastFoundNo, const fc::time_point_sec& now)
+void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
+   const fc::time_point_sec& now)
 {
-   FC_TODO("NOT IMPLEMENTED YET");
-   return true;
+   std::string strName = name;
+
+   auto ageLimit =  fc::days(ACCOUNT_HISTORY_TIME_LIMIT);
+
+   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> oldestEntrySlice(
+      std::make_pair(ahInfo->id, ahInfo->oldestEntryId));
+   auto lookupUpperBound = std::make_pair(ahInfo->id + 1,
+      ahInfo->newestEntryId - ACCOUNT_HISTORY_LENGTH_LIMIT + 1);
+
+   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> newestEntrySlice(lookupUpperBound);
+
+   ReadOptions rOptions;
+   //rOptions.tailing = true;
+   rOptions.iterate_lower_bound = &oldestEntrySlice;
+   rOptions.iterate_upper_bound = &newestEntrySlice;
+
+   auto s = _writeBuffer.SingleDelete(_columnHandles[4], oldestEntrySlice);
+   checkStatus(s);
+
+   std::unique_ptr<::rocksdb::Iterator> dataItr(_storage->NewIterator(rOptions, _columnHandles[4]));
+
+   /** To clean outdated records we have to iterate over all AH records having subsequent number greater than limit 
+    *  and additionally verify date of operation, to clean up only these exceeding a date limit.
+    *  So just operations having a list position > ACCOUNT_HISTORY_LENGTH_LIMIT and older that ACCOUNT_HISTORY_TIME_LIMIT
+    *  shall be removed. 
+    */
+   dataItr->Seek(oldestEntrySlice);
+
+   /// Boundaries of keys to be removed
+   //uint32_t leftBoundary = ahInfo->oldestEntryId;
+   uint32_t rightBoundary = ahInfo->oldestEntryId;
+
+   for(; dataItr->Valid(); dataItr->Next())
+   {
+      auto key = dataItr->key();
+      auto foundEntry = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(key);
+
+      if(foundEntry.first != ahInfo->id || foundEntry.second >= lookupUpperBound.second)
+         break;
+
+      auto value = dataItr->value();
+
+      auto pointedOpId = PrimitiveTypeSlice<uint32_t>::unpackSlice(value);
+      tmp_operation_object op;
+      find_operation_object(pointedOpId, &op);
+
+      auto age = now - op.timestamp;
+
+      if(age > ageLimit)
+      {
+         rightBoundary = foundEntry.second;
+         PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> rightBoundarySlice(
+            std::make_pair(ahInfo->id, rightBoundary));
+         s = _writeBuffer.SingleDelete(_columnHandles[4], rightBoundarySlice);
+         checkStatus(s);
+      }
+      else
+      {
+         ahInfo->oldestEntryId = foundEntry.second;
+         ahInfo->oldestEntryTimestamp = op.timestamp;
+         FC_ASSERT(ahInfo->oldestEntryId <= ahInfo->newestEntryId);
+         
+         break;
+      }
+   }
 }
 
 void rocksdb_plugin::impl::importData(unsigned int blockLimit)
@@ -1091,9 +1218,9 @@ void rocksdb_plugin::find_account_history_data(const account_name_type& name, ui
    _my->find_account_history_data(name, start, limit, processor);
 }
 
-bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* data) const
+bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* op) const
 {
-   return _my->find_operation_object(opId, data);
+   return _my->find_operation_object(opId, op);
 }
 
 void rocksdb_plugin::find_operations_by_block(size_t blockNum,
