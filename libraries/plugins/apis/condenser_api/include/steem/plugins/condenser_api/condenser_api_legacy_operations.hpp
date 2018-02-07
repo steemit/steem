@@ -1142,7 +1142,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       // Should only be SMT ops
       template< typename T >
-      bool operator()( const T& ) { return false; }
+      bool operator()( const T& )const { return false; }
 };
 
 struct convert_from_legacy_operation_visitor
