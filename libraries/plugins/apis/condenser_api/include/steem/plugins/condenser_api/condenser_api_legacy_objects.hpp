@@ -26,7 +26,7 @@ struct legacy_signed_transaction
       // Signed transaction extensions field exists, but must be empty
       // Don't worry about copying them.
 
-      signatures.insert( t.signatures.begin(), t.signatures.end() );
+      signatures.insert( signatures.end(), t.signatures.begin(), t.signatures.end() );
    }
 
    operator signed_transaction()const
@@ -42,7 +42,9 @@ struct legacy_signed_transaction
          tx.operations.push_back( o.visit( v ) );
       }
 
-      tx.signatures.insert( signatures.begin(), signatures.end() );
+      tx.signatures.insert( tx.signatures.end(), signatures.begin(), signatures.end() );
+
+      return tx;
    }
 
    uint16_t                   ref_block_num    = 0;
@@ -56,7 +58,62 @@ struct legacy_signed_transaction
    uint32_t                   transaction_num = 0;
 };
 
+struct legacy_signed_block
+{
+   legacy_signed_block() {}
+   legacy_signed_block( const block_api::api_signed_block_object& b ) :
+      previous( b.previous ),
+      timestamp( b.timestamp ),
+      witness( b.witness ),
+      transaction_merkle_root( b.transaction_merkle_root ),
+      witness_signature( b.witness_signature ),
+      block_id( b.block_id ),
+      signing_key( b.signing_key )
+   {
+      extensions.insert( b.extensions.begin(), b.extensions.end() );
+
+      for( const auto& t : b.transactions )
+      {
+         transactions.push_back( legacy_signed_transaction( t ) );
+      }
+
+      transaction_ids.insert( transaction_ids.end(), b.transaction_ids.begin(), b.transaction_ids.end() );
+   }
+
+   operator signed_block()const
+   {
+      signed_block b;
+      b.previous = previous;
+      b.timestamp = timestamp;
+      b.witness = witness;
+      b.transaction_merkle_root = transaction_merkle_root;
+      b.extensions.insert( extensions.begin(), extensions.end() );
+      b.witness_signature = witness_signature;
+
+      for( const auto& t : transactions )
+      {
+         b.transactions.push_back( signed_transaction( t ) );
+      }
+
+      return b;
+   }
+
+   block_id_type                       previous;
+   fc::time_point_sec                  timestamp;
+   string                              witness;
+   checksum_type                       transaction_merkle_root;
+   block_header_extensions_type        extensions;
+   signature_type                      witness_signature;
+   vector< legacy_signed_transaction > transactions;
+   block_id_type                       block_id;
+   public_key_type                     signing_key;
+   vector< transaction_id_type >       transaction_ids;
+};
+
 } } } // steem::plugins::condenser_api
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_signed_transaction,
             (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions)(signatures)(transaction_id)(block_num)(transaction_num) )
+
+FC_REFLECT( steem::plugins::condenser_api::legacy_signed_block,
+            (previous)(timestamp)(witness)(transaction_merkle_root)(extensions)(witness_signature)(transactions) )

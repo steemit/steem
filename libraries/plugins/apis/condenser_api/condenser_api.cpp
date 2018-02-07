@@ -1604,7 +1604,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
 
-      return _network_broadcast_api->broadcast_block( { args[0].as< signed_block >() } );
+      return _network_broadcast_api->broadcast_block( { signed_block( args[0].as< legacy_signed_block >() ) } );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_followers )
