@@ -49,12 +49,12 @@ namespace helpers
       std::string _value_type_name;
       size_t      _item_count = 0;
       size_t      _item_sizeof = 0;
-      /// Additional (ie dynamic container) allocations held in stored items 
+      /// Additional (ie dynamic container) allocations held in stored items
       size_t      _item_additional_allocation = 0;
       /// Additional memory used for container internal structures (like tree nodes).
       size_t      _additional_container_allocation = 0;
    };
-   
+
    template <class IndexType>
    void gather_index_static_data(const IndexType& index, index_statistic_info* info)
    {
@@ -820,9 +820,13 @@ namespace chainbase {
 #endif
          unsigned long long get_total_system_memory() const
          {
+#if !defined( __APPLE__ ) // OS X does not support _SC_AVPHYS_PAGES
             long pages = sysconf(_SC_AVPHYS_PAGES);
             long page_size = sysconf(_SC_PAGE_SIZE);
             return pages * page_size;
+#else
+            return 0;
+#endif
          }
 
          size_t get_free_memory()const
@@ -1037,7 +1041,7 @@ namespace chainbase {
          }
 
          typedef vector<abstract_index*> abstract_index_cntr_t;
-         
+
          const abstract_index_cntr_t& get_abstract_index_cntr() const
             { return _index_list; }
 
