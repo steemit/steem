@@ -18,6 +18,7 @@ namespace golos {
 
             using golos::protocol::signed_block;
             using golos::protocol::transaction_id_type;
+            using golos::protocol::signed_transaction;
 
             struct broadcast_transaction_synchronous_t {
                 broadcast_transaction_synchronous_t() {
@@ -31,6 +32,15 @@ namespace golos {
                 int32_t block_num = 0;
                 int32_t trx_num = 0;
                 bool expired = false;
+            };
+
+            struct broadcast_transaction_t {
+                signed_transaction trx;
+                int32_t max_block_age = -1;
+            };
+
+            struct broadcast_block_t {
+                signed_block block;
             };
 
 
@@ -85,3 +95,7 @@ namespace golos {
 
 FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_transaction_synchronous_t),
            (id)(block_num)(trx_num)(expired))
+
+FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_transaction_t), (trx)(max_block_age))
+
+FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_block_t), (block))

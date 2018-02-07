@@ -43,7 +43,6 @@ using namespace golos::utilities;
 using namespace golos::chain;
 using namespace golos::wallet;
 using namespace std;
-namespace bpo = boost::program_options;
 
 void daemon_mode();
 

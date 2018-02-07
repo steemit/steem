@@ -14,17 +14,7 @@ namespace golos {
             using std::vector;
             using fc::variant;
             using fc::optional;
-            using golos::protocol::signed_transaction;
 
-
-            struct broadcast_transaction_t {
-                signed_transaction trx;
-                int32_t max_block_age = -1;
-            };
-
-            struct broadcast_block_t {
-                signed_block block;
-            };
 
             using confirmation_callback = std::function<void(const broadcast_transaction_synchronous_return &)>;
 
@@ -165,8 +155,3 @@ namespace golos {
         }
     }
 } // steem::plugins::network_broadcast_api
-
-
-FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_transaction_t), (trx)(max_block_age))
-
-FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_block_t), (block))

@@ -475,7 +475,9 @@ namespace golos { namespace wallet {
                             save_wallet_file();
                         if( broadcast ) {
                             //_remote_network_broadcast_api->broadcast_transaction( tx );
-                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( tx );
+                            broadcast_transaction_t btrx;
+                            btrx.trx = tx;
+                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( btrx );
                             FC_UNUSED(result);
                         }
                         return tx;
@@ -639,7 +641,9 @@ namespace golos { namespace wallet {
 
                     if( broadcast ) {
                         try {
-                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( tx );
+                            broadcast_transaction_t btrx;
+                            btrx.trx = tx;
+                            auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( btrx );
                             annotated_signed_transaction rtrx(tx);
                             rtrx.block_num = result.block_num;
                             rtrx.transaction_num = result.trx_num;

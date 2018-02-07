@@ -31,6 +31,7 @@ using namespace plugins::follow;
 using namespace plugins::social_network;
 using namespace plugins::market_history;
 using namespace plugins::social_network;
+using namespace plugins::network_broadcast_api;
 using namespace plugins::private_message;
 //using namespace plugins::witness_plugin;
 
@@ -118,9 +119,9 @@ struct remote_social_network {
  * Class is used by wallet to send formatted API calls to network_broadcast_api plugin on remote node.
  */
 struct remote_network_broadcast_api {
-    void broadcast_transaction( signed_transaction );
-    plugins::network_broadcast_api::broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
-    void broadcast_block( signed_block );
+    void broadcast_transaction( broadcast_transaction_t );
+    broadcast_transaction_synchronous_return broadcast_transaction_synchronous( broadcast_transaction_t );
+    void broadcast_block( broadcast_block_t );
 };
 
 /**
