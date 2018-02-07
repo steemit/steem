@@ -1588,7 +1588,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
 
-      return _network_broadcast_api->broadcast_transaction( { args[0].as< signed_transaction >() } );
+      return _network_broadcast_api->broadcast_transaction( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, broadcast_transaction_synchronous )
@@ -1596,7 +1596,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
 
-      return _network_broadcast_api->broadcast_transaction_synchronous( { args[0].as< signed_transaction >() } );
+      return _network_broadcast_api->broadcast_transaction_synchronous( { signed_transaction( args[0].as< signed_transaction >() ) } );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, broadcast_block )
