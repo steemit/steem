@@ -1007,12 +1007,10 @@ namespace steem { namespace protocol {
       account_name_type account;
       extensions_type   extensions;
 
-      /** \warning Use dedicated add_reward_token method (below) to insert
-       *  reward tokens here, or you risk data inconsistency.
+      /** \warning The contents of this container is required to be unique and sorted
+       *  (both by asset symbol) in ascending order. Otherwise operation validation will fail.
        */
       vector< asset > reward_tokens;
-
-      void add_reward_token( const asset& reward_token );
 
       void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
       void validate() const;

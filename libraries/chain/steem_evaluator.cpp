@@ -2213,7 +2213,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
             FC_ASSERT( a != nullptr, "Could NOT find account ${a}", ("a", op.account) );
          }
 
-         if( is_asset_type( token, VESTS_SYMBOL) ) // VESTS here
+         if( token.symbol == VESTS_SYMBOL)
          {
             FC_ASSERT( token <= a->reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
                ("c", token)("a", a->reward_vesting_balance) );   
@@ -2243,7 +2243,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 
             _db.adjust_proxied_witness_votes( *a, token.amount );
          }
-         else // STEEM & SBD here
+         else if( token.symbol == STEEM_SYMBOL || token.symbol == SBD_SYMBOL )
          {
             FC_ASSERT( is_asset_type( token, STEEM_SYMBOL ) == false || token <= a->reward_steem_balance,
                        "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
@@ -2252,6 +2252,8 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
             _db.adjust_reward_balance( *a, -token );
             _db.adjust_balance( *a, token );
          }
+         else
+            FC_ASSERT( false, "Unknown asset symbol" );
       } // non-SMT token
    } // for( const auto& token : op.reward_tokens )
 }

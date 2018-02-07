@@ -632,22 +632,6 @@ namespace steem { namespace protocol {
    }
 
 #ifdef STEEM_ENABLE_SMT
-   void claim_reward_balance2_operation::add_reward_token( const asset& reward_token )
-   {
-      if( reward_token.amount <= 0 )
-      {
-         // Negative amount is invalid.
-         FC_ASSERT( reward_token.amount == 0, "Cannot claim a negative amount" );
-         // Zero amount is ineffective.
-         return;
-      }
-
-      auto insert_it = lower_bound(reward_tokens.begin(), reward_tokens.end(), reward_token, nai_less());
-      FC_ASSERT( insert_it == reward_tokens.end() || insert_it->symbol.to_nai() != reward_token.symbol.to_nai(),
-                 "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", reward_token.symbol) );
-      reward_tokens.insert( insert_it, reward_token );
-   }
-
    void claim_reward_balance2_operation::validate()const
    {
       validate_account_name( account );

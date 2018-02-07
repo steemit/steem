@@ -85,22 +85,6 @@ namespace steem { namespace protocol {
       }
    };
 
-   /** Helper comparator facilitating asset (or asset_symbol_type)
-    *  storage sorted by symbol's nai.
-    */
-   struct nai_less
-   {
-      bool operator()( const asset& a, const asset& b )const
-      {
-         return a.symbol.to_nai() < b.symbol.to_nai();
-      }
-
-      bool operator()( const asset_symbol_type& a, const asset_symbol_type& b )const
-      {
-         return a.to_nai() < b.to_nai();
-      }
-   };
-
    /** Represents quotation of the relative value of asset against another asset.
        Similar to 'currency pair' used to determine value of currencies.
 

@@ -945,16 +945,8 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "Testing ineffective rewards" );
-      // Using add_reward_token.
-      op.add_reward_token( ASSET( "0.000 TESTS" ) );
-      op.add_reward_token( ASSET( "0.000 TBD" ) );
-      op.add_reward_token( ASSET( "0.000000 VESTS" ) );
-      op.add_reward_token( asset( 0, smt1 ) );
-      op.add_reward_token( asset( 0, smt2 ) );
-      op.add_reward_token( asset( 0, smt3 ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       // Manually inserted.
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( ASSET( "0.000 TESTS" ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
@@ -972,59 +964,34 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( 0, smt3 ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing single reward claims" );
-      op.add_reward_token( ASSET( "1.000 TESTS" ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
       op.validate();
       op.reward_tokens.clear();
 
-      op.add_reward_token( ASSET( "1.000 TBD" ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( ASSET( "1.000 TBD" ) );
       op.validate();
       op.reward_tokens.clear();
 
-      op.add_reward_token( ASSET( "1.000000 VESTS" ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( ASSET( "1.000000 VESTS" ) );
       op.validate();
       op.reward_tokens.clear();
 
-      op.add_reward_token( asset( 1, smt1 ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( 1, smt1 ) );
       op.validate();
       op.reward_tokens.clear();
 
-      op.add_reward_token( asset( 1, smt2 ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( 1, smt2 ) );
       op.validate();
       op.reward_tokens.clear();
 
-      op.add_reward_token( asset( 1, smt3 ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.validate();
       op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing multiple rewards" );
-      op.add_reward_token( ASSET( "1.000 TESTS" ) );
-      op.add_reward_token( ASSET( "1.000 TBD" ) );
-      op.add_reward_token( ASSET( "1.000000 VESTS" ) );
-      op.add_reward_token( asset( 1, smt1 ) );
-      op.add_reward_token( asset( 1, smt2 ) );
-      op.add_reward_token( asset( 1, smt3 ) );
-      op.validate();
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( ASSET( "1.000 TBD" ) );
       op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
       op.reward_tokens.push_back( ASSET( "1.000000 VESTS" ) );
@@ -1035,12 +1002,6 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing invalid rewards" );
-      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000 TESTS" ) ), fc::assert_exception );
-      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000 TBD" ) ), fc::assert_exception );
-      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "-1.000000 VESTS" ) ), fc::assert_exception );
-      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt1 ) ), fc::assert_exception );
-      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt2 ) ), fc::assert_exception );
-      STEEM_REQUIRE_THROW( op.add_reward_token( asset( -1, smt3 ) ), fc::assert_exception );
       op.reward_tokens.push_back( ASSET( "-1.000 TESTS" ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
@@ -1061,9 +1022,6 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.clear();
       
       BOOST_TEST_MESSAGE( "Testing duplicated reward tokens." );
-      op.add_reward_token( ASSET( "1.000 TESTS" ) );
-      STEEM_REQUIRE_THROW( op.add_reward_token( ASSET( "2.000 TESTS" ) ), fc::assert_exception );
-      op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
