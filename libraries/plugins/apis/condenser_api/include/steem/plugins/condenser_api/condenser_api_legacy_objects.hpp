@@ -116,4 +116,4 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_signed_transaction,
             (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions)(signatures)(transaction_id)(block_num)(transaction_num) )
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_signed_block,
-            (previous)(timestamp)(witness)(transaction_merkle_root)(extensions)(witness_signature)(transactions) )
+            (previous)(timestamp)(witness)(transaction_merkle_root)(extensions)(witness_signature)(transactions)(block_id)(signing_key)(transaction_ids) )
