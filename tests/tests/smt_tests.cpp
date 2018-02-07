@@ -755,5 +755,42 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+
+      asset_symbol_type Steem = STEEM_SYMBOL;
+      FC_ASSERT( Steem.is_vesting() == false );
+      FC_ASSERT( Steem.get_paired_symbol() == VESTS_SYMBOL );
+
+      asset_symbol_type Vests = VESTS_SYMBOL;
+      FC_ASSERT( Vests.is_vesting() );
+      FC_ASSERT( Vests.get_paired_symbol() == STEEM_SYMBOL );
+
+      asset_symbol_type Sbd = SBD_SYMBOL;
+      FC_ASSERT( Sbd.is_vesting() == false );
+      FC_ASSERT( Sbd.get_paired_symbol() == SBD_SYMBOL );
+
+      ACTORS( (alice) )
+      generate_block();
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
+         for( const asset_symbol_type& liquid_smt : smts )
+         {
+// Assertion blocked until SMT NAIs are correctly generated.
+//            FC_ASSERT( liquid_smt.is_vesting() == false );
+            auto vesting_smt = liquid_smt.get_paired_symbol();
+            FC_ASSERT( vesting_smt != liquid_smt );
+// Assertion blocked until SMT NAIs are correctly generated.
+//            FC_ASSERT( vesting_smt.is_vesting() );
+            FC_ASSERT( vesting_smt.get_paired_symbol() == liquid_smt );
+         }
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

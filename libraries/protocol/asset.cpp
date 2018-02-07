@@ -217,6 +217,62 @@ uint32_t asset_symbol_type::to_nai()const
    return nai_data_digits * 10 + nai_check_digit;
 }
 
+bool asset_symbol_type::is_vesting() const
+{
+   switch( space() )
+   {
+      case legacy_space:
+      {
+         switch( asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+               return false;
+            case STEEM_ASSET_NUM_SBD:
+               // SBD is certainly liquid.
+               return false;
+            case STEEM_ASSET_NUM_VESTS:
+               return true;
+            default:
+               FC_ASSERT( false, "Unknown asset symbol" );
+         }
+      }
+      case smt_nai_space:
+         // 5th bit of asset_num is used as vesting/liquid variant indicator.
+         return asset_num & 0x00000010;
+      default:
+         FC_ASSERT( false, "Unknown asset symbol" );
+   }
+}
+
+asset_symbol_type asset_symbol_type::get_paired_symbol() const
+{
+   switch( space() )
+   {
+      case legacy_space:
+      {
+         switch( asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+               return from_asset_num( STEEM_ASSET_NUM_VESTS );
+            case STEEM_ASSET_NUM_SBD:
+               return *this;
+            case STEEM_ASSET_NUM_VESTS:
+               return from_asset_num( STEEM_ASSET_NUM_STEEM );
+            default:
+               FC_ASSERT( false, "Unknown asset symbol" );
+         }
+      }
+      case smt_nai_space:
+         {
+         // Toggle 5th bit of this asset_num.
+         auto paired_asset_num = asset_num ^ ( 0x1 << 5 );
+         return from_asset_num( paired_asset_num );
+         }
+      default:
+         FC_ASSERT( false, "Unknown asset symbol" );
+   }
+}
+
 asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
 {
    asset_symbol_type::asset_symbol_space s = legacy_space;
