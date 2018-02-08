@@ -43,7 +43,6 @@ using namespace golos::utilities;
 using namespace golos::chain;
 using namespace golos::wallet;
 using namespace std;
-namespace bpo = boost::program_options;
 
 void daemon_mode();
 
@@ -104,12 +103,7 @@ int main( int argc, char** argv ) {
             wdump((allowed_ips));
         }
 
-        golos::protocol::chain_id_type _steem_chain_id;
-
-#ifdef IS_TEST_NET
-        if( options.count("chain-id") )
-            _steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
-#endif
+        golos::protocol::chain_id_type _steem_chain_id = STEEMIT_CHAIN_ID;
 
         fc::path data_dir;
         fc::logging_config cfg;

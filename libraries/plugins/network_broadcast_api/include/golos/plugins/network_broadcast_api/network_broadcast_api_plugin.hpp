@@ -18,6 +18,7 @@ namespace golos {
 
             using golos::protocol::signed_block;
             using golos::protocol::transaction_id_type;
+            using golos::protocol::signed_transaction;
 
             struct broadcast_transaction_synchronous_t {
                 broadcast_transaction_synchronous_t() {
@@ -32,7 +33,6 @@ namespace golos {
                 int32_t trx_num = 0;
                 bool expired = false;
             };
-
 
             ///               API,                                    args,                return
             DEFINE_API_ARGS(broadcast_transaction, msg_pack, void_type)
