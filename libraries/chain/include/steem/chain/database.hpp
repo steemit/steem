@@ -464,9 +464,9 @@ namespace steem { namespace chain {
          typedef void on_reindex_start_t();
          typedef void on_reindex_done_t(bool,uint32_t);
 
-         void on_reindex_start_connect(on_reindex_start_t functor)
+         void on_reindex_start_connect(std::function<on_reindex_start_t> functor)
             { _on_reindex_start.connect(functor); }
-         void on_reindex_done_connect(on_reindex_done_t functor)
+         void on_reindex_done_connect(std::function<on_reindex_done_t> functor)
             { _on_reindex_done.connect(functor); }
 
    protected:
