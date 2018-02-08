@@ -34,16 +34,6 @@ namespace golos {
                 bool expired = false;
             };
 
-            struct broadcast_transaction_t {
-                signed_transaction trx;
-                int32_t max_block_age = -1;
-            };
-
-            struct broadcast_block_t {
-                signed_block block;
-            };
-
-
             ///               API,                                    args,                return
             DEFINE_API_ARGS(broadcast_transaction, msg_pack, void_type)
             DEFINE_API_ARGS(broadcast_transaction_synchronous, msg_pack, broadcast_transaction_synchronous_t)
@@ -95,7 +85,3 @@ namespace golos {
 
 FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_transaction_synchronous_t),
            (id)(block_num)(trx_num)(expired))
-
-FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_transaction_t), (trx)(max_block_age))
-
-FC_REFLECT((golos::plugins::network_broadcast_api::broadcast_block_t), (block))

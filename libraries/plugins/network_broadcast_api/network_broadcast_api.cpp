@@ -39,48 +39,48 @@ namespace golos {
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_transaction) {
-                //auto tmp = args.args->at(0).as<broadcast_transaction_t>();
                 auto n_args = args.args->size();
-                FC_ASSERT(args.args->size() >= 1, "Expected at least 1 argument, got 0");
-                broadcast_transaction_t tmp;
-                tmp.trx = args.args->at(0).as<signed_transaction>();
-                if (n_args > 1)
-                    tmp.max_block_age = args.args->at(1).as<uint32_t>();
-                FC_ASSERT(!check_max_block_age(tmp.max_block_age));
-                pimpl->_chain.db().push_transaction(tmp.trx);
-                pimpl->_p2p.broadcast_transaction(tmp.trx);
+                FC_ASSERT(n_args == 1, "Expected at least 1 argument, got 0");
+                auto trx = args.args->at(0).as<signed_transaction>();
+                if (n_args > 1) {
+                    const auto max_block_age = args.args->at(1).as<uint32_t>();
+                    FC_ASSERT(!check_max_block_age(max_block_age));
+                }
+                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_p2p.broadcast_transaction(trx);
 
                 return broadcast_transaction_return();
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_transaction_synchronous) {
-                //auto tmp = args.args->at(0).as<broadcast_transaction_t>();
-                auto n_args = args.args->size();
-                FC_ASSERT(args.args->size() >= 1, "Expected at least 1 argument, got 0");
-                broadcast_transaction_t tmp;
-                tmp.trx = args.args->at(0).as<signed_transaction>();
-                if (n_args > 1)
-                    tmp.max_block_age = args.args->at(1).as<uint32_t>();
-                FC_ASSERT(!check_max_block_age(tmp.max_block_age));
+                const auto n_args = args.args->size();
+                FC_ASSERT(n_args >= 1, "Expected at least 1 argument, got 0");
+                auto trx = args.args->at(0).as<signed_transaction>();
+                if (n_args > 1) {
+                    const auto max_block_age = args.args->at(1).as<uint32_t>();
+                    FC_ASSERT(!check_max_block_age(max_block_age));
+                }
                 boost::promise<broadcast_transaction_synchronous_return> p;
                 {
                     boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
-                    pimpl->_callbacks[tmp.trx.id()] = [&p](const broadcast_transaction_synchronous_return &r) {
+                    pimpl->_callbacks[trx.id()] = [&p](const broadcast_transaction_synchronous_return &r) {
                         p.set_value(r);
                     };
-                    pimpl->_callback_expirations[tmp.trx.expiration].push_back(tmp.trx.id());
+                    pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
 
-                pimpl->_chain.db().push_transaction(tmp.trx);
-                pimpl->_p2p.broadcast_transaction(tmp.trx);
+                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_p2p.broadcast_transaction(trx);
 
                 return p.get_future().get();
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_block) {
-                auto tmp = args.args->at(0).as<broadcast_block_t>();
-                pimpl->_chain.db().push_block(tmp.block);
-                pimpl->_p2p.broadcast_block(tmp.block);
+                const auto n_args = args.args->size();
+                FC_ASSERT(n_args == 1, "Expected 1 argument, got 0");
+                auto block = args.args->at(0).as<signed_block>();
+                pimpl->_chain.db().push_block(block);
+                pimpl->_p2p.broadcast_block(block);
                 return broadcast_block_return();
             }
 
