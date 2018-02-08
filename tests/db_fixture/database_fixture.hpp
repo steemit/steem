@@ -139,6 +139,40 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ASSET( s ) \
    legacy_asset::from_string( s ).to_asset< false >()
 
+// To be incorporated into fund() method if deemed appropriate.
+// 'SMT' would be dropped from the name then.
+#define FUND_SMT_REWARDS( account_name, amount ) \
+   db->adjust_reward_balance( account_name, amount ); \
+   db->adjust_supply( amount ); \
+   generate_block();
+
+#define OP2TX(OP,TX,KEY) \
+TX.operations.push_back( OP ); \
+TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
+TX.sign( KEY, db->get_chain_id() );
+
+#define PUSH_OP(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+}
+
+#define PUSH_OP_TWICE(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
+}
+
+#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
+}
+
 namespace steem { namespace chain {
 
 using namespace steem::protocol;

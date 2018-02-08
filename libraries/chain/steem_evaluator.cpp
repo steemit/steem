@@ -2199,6 +2199,9 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 
    for( const asset& token : op.reward_tokens )
    {
+      if( token.amount == 0 )
+         continue;
+         
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          _db.adjust_reward_balance( op.account, -token );
