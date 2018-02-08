@@ -60,11 +60,11 @@ namespace golos {
                     const auto max_block_age = args.args->at(1).as<uint32_t>();
                     FC_ASSERT(!check_max_block_age(max_block_age));
                 }
-                boost::promise<broadcast_transaction_synchronous_return> p;
+                auto p = std::make_shared<boost::promise<broadcast_transaction_synchronous_return>>();
                 {
                     boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
-                    pimpl->_callbacks[trx.id()] = [&p](const broadcast_transaction_synchronous_return &r) {
-                        p.set_value(r);
+                    pimpl->_callbacks[trx.id()] = [p](const broadcast_transaction_synchronous_return &r) {
+                        p->set_value(r);
                     };
                     pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
@@ -72,7 +72,7 @@ namespace golos {
                 pimpl->_chain.db().push_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
 
-                return p.get_future().get();
+                return p->get_future().get();
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_block) {
