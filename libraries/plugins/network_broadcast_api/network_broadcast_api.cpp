@@ -49,7 +49,13 @@ namespace golos {
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_transaction) {
-                auto tmp = args.args->at(0).as<broadcast_transaction_t>();
+                //auto tmp = args.args->at(0).as<broadcast_transaction_t>();
+                auto n_args = args.args->size();
+                FC_ASSERT(args.args->size() >= 1, "Expected at least 1 argument, got 0");
+                broadcast_transaction_t tmp;
+                tmp.trx = args.args->at(0).as<signed_transaction>();
+                if (n_args > 1)
+                    tmp.max_block_age = args.args->at(1).as<uint32_t>();
                 FC_ASSERT(!check_max_block_age(tmp.max_block_age));
                 pimpl->_chain.db().push_transaction(tmp.trx);
                 pimpl->_p2p.broadcast_transaction(tmp.trx);
@@ -58,7 +64,13 @@ namespace golos {
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_transaction_synchronous) {
-                auto tmp = args.args->at(0).as<broadcast_transaction_t>();
+                //auto tmp = args.args->at(0).as<broadcast_transaction_t>();
+                auto n_args = args.args->size();
+                FC_ASSERT(args.args->size() >= 1, "Expected at least 1 argument, got 0");
+                broadcast_transaction_t tmp;
+                tmp.trx = args.args->at(0).as<signed_transaction>();
+                if (n_args > 1)
+                    tmp.max_block_age = args.args->at(1).as<uint32_t>();
                 FC_ASSERT(!check_max_block_age(tmp.max_block_age));
                 boost::promise<broadcast_transaction_synchronous_return> p;
                 {
