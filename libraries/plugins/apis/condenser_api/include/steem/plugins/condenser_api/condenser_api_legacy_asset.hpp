@@ -18,6 +18,8 @@ struct legacy_asset
          return asset( amount, symbol );
       }
 
+      operator asset()const { return to_asset(); }
+
       static legacy_asset from_asset( const asset& a )
       {
          legacy_asset leg;
