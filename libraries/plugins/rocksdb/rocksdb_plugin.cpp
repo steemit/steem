@@ -1084,7 +1084,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
    _excludedOps = 0;
 
    benchmark_dumper dumper;
-   dumper.initialize();
+   dumper.initialize([](benchmark_dumper::database_object_sizeof_cntr_t&){}, "rocksdb_data_import.json");
 
    _mainDb.foreach_operation([blockLimit, &blockNo, &lastBlock, this](
       const signed_block_header& prevBlockHeader, const signed_block& block, const signed_transaction& tx,
@@ -1111,7 +1111,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
    if(_collectedOps != 0)
       flushWriteBuffer();
 
-   const auto& measure = dumper.measure(blockNo);
+   const auto& measure = dumper.measure(blockNo, [](benchmark_dumper::index_memory_details_cntr_t&, bool){});
    ilog( "RocksDb data import - Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
       ("n", blockNo)
       ("rt", measure.real_ms)
