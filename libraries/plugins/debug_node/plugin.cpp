@@ -6,6 +6,8 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 
+#include <fc/time.hpp>
+
 #include <fc/thread/future.hpp>
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
@@ -15,6 +17,9 @@
 
 #include <sstream>
 #include <string>
+
+// #define CHECK_ARG_SIZE(s) \
+//    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
 
 namespace golos { namespace plugins { namespace debug_node {
 
@@ -95,22 +100,24 @@ void plugin::set_program_options (
 }
 
 void plugin::plugin_initialize( const boost::program_options::variables_map& options ) {
-   my.reset(new plugin_impl);
+    my.reset(new plugin_impl);
 
-   if( options.count( "debug-node-edit-script" ) > 0 )
-   {
-      _edit_scripts = options.at( "debug-node-edit-script" ).as< std::vector< std::string > >();
-   }
+    if( options.count( "debug-node-edit-script" ) > 0 ) {
+        _edit_scripts = options.at( "debug-node-edit-script" ).as< std::vector< std::string > >();
+    }
 
-   if( options.count("edit-script") > 0 )
-   {
-      wlog( "edit-scripts is deprecated in favor of debug-node-edit-script" );
-      auto scripts = options.at( "edit-script" ).as< std::vector< std::string > >();
-      _edit_scripts.insert( _edit_scripts.end(), scripts.begin(), scripts.end() );
-   }
+    if( options.count("edit-script") > 0 ) {
+        wlog( "edit-scripts is deprecated in favor of debug-node-edit-script" );
+        auto scripts = options.at( "edit-script" ).as< std::vector< std::string > >();
+        _edit_scripts.insert( _edit_scripts.end(), scripts.begin(), scripts.end() );
+    }
 
-   // connect needed signals
-   my->applied_block_connection = my->database().applied_block.connect( 0, [this](const golos::chain::signed_block& b){ on_applied_block(b); });
+    // connect needed signals
+    my->applied_block_connection = my->database().applied_block.connect( [this](const golos::chain::signed_block& b){
+        on_applied_block(b);
+    });
+
+    JSON_RPC_REGISTER_API ( name() );
 }
 
 void plugin::plugin_startup() {
@@ -356,27 +363,100 @@ debug_has_hardfork_r plugin::plugin_impl::debug_has_hardfork(debug_has_hardfork_
     return { db.get( golos::chain::hardfork_property_id_type() ).last_hardfork >= args.hardfork_id };
 }
 
+
+// If you look at debug_generate_blocks_a struct, you will see that there are fields, which have default value
+// So may be for some of the field default parameters will be used
+// To prevent casting errors there are some arg count checks and manualy filling structure fields
+
+// If you like to test this API, you can just use curl. Smth like that:
+// ```
+// curl --data '{"jsonrpc": "2.0", "method": "call", "params": ["debug_node","debug_generate_blocks",["5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3",5, 0]] }' 'content-type: text/plain;' http://localhost:8090 | json_reformat
+// ```
+// You can pass from 1 to 5 params as you wish.
+// Just don't forget that it work for testnet only and you have to write this in ur config.ini:
+// 
+// witness = "cyberfounder"
+// private-key = 5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS
+// enable-stale-production = true
+// required-participation = 0
+// 
+// 
+
 DEFINE_API ( plugin, debug_generate_blocks ) {
-    auto tmp = args.args->at(0).as<debug_generate_blocks_a>();
+    debug_generate_blocks_a tmp;
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+
+    auto args_count = args.args->size() ;
+
+    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
+    auto args_vector = *(args.args);
+    tmp.debug_key = args_vector[0].as_string();
+    if (args_count > 1) {
+        tmp.count = args_vector[1].as_int64();        
+    }
+    if (args_count > 2) {
+        tmp.skip = args_vector[2].as_int64();
+    }
+    if (args_count > 3) {
+        tmp.miss_blocks = args_vector[3].as_int64();
+    }
+    if (args_count > 4) {
+        tmp.edit_if_needed = args_vector[4].as_bool();
+    }
+
+    // This causes a casting error  |
+    //                              V
+    // auto tmp = args.args->at(0).as<debug_generate_blocks_a>();
+    // 
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_generate_blocks(tmp);
     });
 }
 
-DEFINE_API ( plugin, debug_generate_blocks_until ) {
-    auto tmp = args.args->at(0).as<debug_generate_blocks_until_a>();
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_generate_blocks_until(tmp);
-    });
-}
-
 DEFINE_API ( plugin, debug_push_blocks ) {
-    auto tmp = args.args->at(0).as<debug_push_blocks_a>();
+    debug_push_blocks_a tmp;
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+
+    auto args_count = args.args->size() ;
+
+    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
+    auto args_vector = *(args.args);
+
+    tmp.src_filename = args_vector[0].as_string();
+    tmp.count = args_vector[1].as_int64();        
+    if (args_count > 2) {
+        tmp.skip_validate_invariants = args_vector[3].as_bool();
+    }
+    // auto tmp = args.args->at(0).as<debug_push_blocks_a>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_push_blocks(tmp);
+    });
+}
+
+DEFINE_API ( plugin, debug_generate_blocks_until ) {
+    debug_generate_blocks_until_a tmp;
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+
+    auto args_count = args.args->size() ;
+
+    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
+    auto args_vector = *(args.args);
+
+    tmp.debug_key = args_vector[0].as_string();
+    tmp.head_block_time = fc::time_point_sec::from_iso_string( args_vector[1].as_string() );      
+
+    if (args_count > 2) {
+        tmp.generate_sparsely = args_vector[3].as_bool();
+    }
+    // auto tmp = args.args->at(0).as<debug_generate_blocks_until_a>();
+    auto &db = my->database();
+    return db.with_read_lock([&]() {
+        return my->debug_generate_blocks_until(tmp);
     });
 }
 
