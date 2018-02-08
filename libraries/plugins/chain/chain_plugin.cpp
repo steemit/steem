@@ -6,6 +6,12 @@
 
 #include <fc/string.hpp>
 
+#include <boost/asio.hpp>
+#include <boost/optional.hpp>
+#include <boost/bind.hpp>
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/thread/future.hpp>
+
 #include <iostream>
 
 namespace steem { namespace plugins { namespace chain {
@@ -13,12 +19,21 @@ namespace steem { namespace plugins { namespace chain {
 using namespace steem;
 using fc::flat_map;
 using steem::chain::block_id_type;
+namespace asio = boost::asio;
+
+#define NUM_THREADS 1
 
 namespace detail {
 
 class chain_plugin_impl
 {
    public:
+      chain_plugin_impl() :
+         thread_pool_work( thread_pool_ios )
+      {
+         thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
+      }
+
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
@@ -33,6 +48,10 @@ class chain_plugin_impl
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
       uint32_t allow_future_time = 5;
+
+      boost::thread_group              thread_pool;
+      asio::io_service                 thread_pool_ios;
+      asio::io_service::work           thread_pool_work;
 
       database  db;
 };
@@ -158,7 +177,7 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_size = my->shared_memory_size;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
- 
+
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
    {
@@ -170,7 +189,7 @@ void chain_plugin::plugin_startup()
          {
             if (dump_memory_details == false)
                return;
-            
+
             for (auto idx : abstract_index_cntr)
             {
                auto info = idx->get_statistics(true);
@@ -220,7 +239,7 @@ void chain_plugin::plugin_startup()
    else
    {
       db_open_args.benchmark = steem::chain::database::TBenchmark(dump_memory_details, benchmark_lambda);
-     
+
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
@@ -268,12 +287,60 @@ bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool c
 
    check_time_in_block( block );
 
-   return db().push_block(block, skip);
+   fc::optional< fc::exception > exc;
+   boost::promise< bool > prom;
+
+   my->thread_pool_ios.post( [&block, skip, &exc, &prom, this]()
+   {
+      try
+      {
+         prom.set_value( db().push_block(block, skip) );
+      }
+      catch( fc::exception& e )
+      {
+         exc = e;
+         prom.set_value( false );
+      }
+      catch( ... )
+      {
+         prom.set_value( false );
+      }
+   });
+
+   bool result = prom.get_future().get();
+
+   if( exc ) throw *exc;
+
+   return result;
 }
 
 void chain_plugin::accept_transaction( const steem::chain::signed_transaction& trx )
 {
-   db().push_transaction(trx);
+   fc::optional< fc::exception > exc;
+   boost::promise< bool > prom;
+
+   my->thread_pool_ios.post( [&trx, &exc, &prom, this]()
+   {
+      try
+      {
+         db().push_transaction( trx );
+         prom.set_value( true );
+      }
+      catch( fc::exception& e )
+      {
+         exc = e;
+         prom.set_value( false );
+      }
+      catch( ... )
+      {
+         // Just in case a non fc exception is thrown, we don't want to block indenfinitely
+         prom.set_value( false );
+      }
+   });
+
+   prom.get_future().get();
+
+   if( exc ) throw *exc;
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )
