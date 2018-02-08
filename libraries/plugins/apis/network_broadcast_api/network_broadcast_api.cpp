@@ -79,11 +79,11 @@ namespace detail
 
    bool network_broadcast_api_impl::check_max_block_age( int32_t max_block_age ) const
    {
+      if( max_block_age < 0 )
+         return false;
+
       return _chain.db().with_read_lock( [&]()
       {
-         if( max_block_age < 0 )
-            return false;
-
          fc::time_point_sec now = fc::time_point::now();
          const auto& dgpo = _chain.db().get_dynamic_global_properties();
 
