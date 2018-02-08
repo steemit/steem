@@ -454,6 +454,13 @@ namespace steem { namespace chain {
 
          ///@}
 #endif
+         typedef void on_reindex_start_t();
+         typedef void on_reindex_done_t(bool,uint32_t);
+
+         void on_reindex_start_connect(std::function<on_reindex_start_t> functor)
+            { _on_reindex_start.connect(functor); }
+         void on_reindex_done_connect(std::function<on_reindex_done_t> functor)
+            { _on_reindex_done.connect(functor); }
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
