@@ -79,7 +79,7 @@ int main( int argc, char** argv ) {
 #ifdef IS_TEST_NET
             ("chain-id", bpo::value< std::string >()->implicit_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
 #endif
-                ("commands,c", boost::program_options::value<string>(), "Enable non-interactive mode")
+                ("commands,C", boost::program_options::value<string>(), "Enable non-interactive mode")
                 ;
         vector<string> allowed_ips;
 
