@@ -4556,8 +4556,6 @@ void database::retally_witness_vote_counts( bool force )
 // 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
 //    of liquid/vesting *pairs* of reserved/available NAIs.
 // 6. 45 milions of SMT await for their creators.
-#define LOWEST_AVAILABLE_NAI 10000000
-#define HIGHEST_AVAILABLE_NAI 99999999
 
 vector< asset_symbol_type > database::get_smt_next_identifier()
 {
@@ -4569,8 +4567,8 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
 
    uint8_t decimal_places = 0;
 
-   FC_ASSERT( _next_available_nai >= LOWEST_AVAILABLE_NAI );
-   FC_ASSERT( _next_available_nai <= HIGHEST_AVAILABLE_NAI, "Out of available NAI numbers." );
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
+   FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
    // Assume that _next_available_nai value shows the liquid version of NAI.
    FC_ASSERT( (_next_available_nai & 0x1) == 0, "Can't start with vesting version of NAI." );
    uint32_t new_nai = _next_available_nai;

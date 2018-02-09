@@ -6,6 +6,7 @@
 #define STEEM_ASSET_SYMBOL_PRECISION_BITS    4
 #define SMT_MAX_NAI                          99999999
 #define SMT_MIN_NAI                          1
+#define SMT_MIN_NON_RESERVED_NAI             10000000
 #define STEEM_ASSET_SYMBOL_NAI_LENGTH        10
 #define STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH ( STEEM_ASSET_SYMBOL_NAI_LENGTH + 2 )
 
