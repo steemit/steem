@@ -19,7 +19,7 @@ seed.steemfeeder.com:2001      # au1nethyb1
 seed.roelandp.nl:2001          # roelandp
 steem.global:2001              # klye
 seed.esteem.ws:2001            # good-karma
-176.31.126.187:2001            # timcliff
+94.23.33.61:2001               # timcliff
 seed.thecryptodrive.com:2001   # thecryptodrive
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
