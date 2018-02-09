@@ -41,6 +41,7 @@ class chain_plugin_impl
       bool                             readonly = false;
       bool                             check_locks = false;
       bool                             validate_invariants = false;
+      bool                             dump_memory_details = false;
       bool                             benchmark_is_enabled =false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;

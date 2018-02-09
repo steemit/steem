@@ -31,8 +31,10 @@ namespace steem { namespace chain { namespace util {
    template< bool APPLY_CONTEXT >
    void advanced_benchmark_dumper::end( const std::string& str )
    {
-      uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count() - time_begin;
-      std::pair< std::set< item >::iterator, bool > res = info.items.emplace( item( APPLY_CONTEXT ? ( apply_context_name + str ) : str, time ) );
+      uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(
+         std::chrono::system_clock::now().time_since_epoch() ).count() - time_begin;
+      auto res = info.add_item( APPLY_CONTEXT ? (apply_context_name + str) : str, time );
+      //auto res = info.items.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, time );
       if( !res.second )
          res.first->inc( time );
 
@@ -44,6 +46,12 @@ namespace steem { namespace chain { namespace util {
          flush_cnt = 0;
          dump();
       }
+   }
+
+   void advanced_benchmark_dumper::end( const std::string& plugin_name, const std::string& item_name )
+   {
+      std::string str(plugin_name + "::" + item_name);
+      end<false>(str);
    }
 
    template void advanced_benchmark_dumper::end< true >( const std::string& str );
@@ -67,13 +75,11 @@ namespace steem { namespace chain { namespace util {
    void advanced_benchmark_dumper::dump()
    {
       total_info< std::multiset< ritem > > rinfo( info.total_time );
-      std::for_each
-      (
-         info.items.begin(), info.items.end(), [&]( const item& obj )
-                                    {
-                                       rinfo.items.insert( ritem( obj.op_name, obj.time ) );
-                                    }
-      );
+      std::for_each(info.items.begin(), info.items.end(), [&rinfo]( const item& obj )
+      {
+         //rinfo.items.emplace( obj.op_name, obj.time );
+         rinfo.add_item( obj.op_name, obj.time );
+      });
 
       dump_impl( info, file_name );
       dump_impl( rinfo, "r_" + file_name );

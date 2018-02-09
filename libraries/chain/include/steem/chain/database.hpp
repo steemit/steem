@@ -232,17 +232,31 @@ namespace steem { namespace chain {
          fc::signal<void(const operation_notification&)> pre_apply_operation;
          fc::signal<void(const operation_notification&)> post_apply_operation;
 
-         using t_operation_notification = std::function< void(const operation_notification&) >;
+         using operation_notification_t = std::function< void(const operation_notification&) >;
+         using transaction_notification_t = std::function< void(const signed_transaction&) >;
+         using block_notification_t = std::function< void(const signed_block&) >;
 
       private:
 
+         template <typename TSignal,
+                   typename TNotification = std::function<typename TSignal::signature_type>,
+                   typename... TArgs>
+         boost::signals2::connection connect_impl( TSignal& signal, const TNotification& func, int32_t group,
+                                                   const std::string& plugin_name = "", const std::string& item_name = "" );
+
+         template <typename TSignal, typename TNotification, typename... TArgs>
+         boost::signals2::connection on_apply_proxy_impl( TSignal& signal, const TNotification& func, int32_t group,
+                                                          const std::string& plugin_name = "", const std::string& item_name = "" );
+
          template< bool IS_PRE_OPERATION >
-         boost::signals2::connection any_apply_operation_proxy_impl( const t_operation_notification& func, int32_t group, const std::string& name );
+         boost::signals2::connection any_apply_operation_proxy_impl( const operation_notification_t& func, int32_t group, const std::string& plugin_name );
 
       public:
 
-         boost::signals2::connection pre_apply_operation_proxy( const t_operation_notification& func, int32_t group = -1, const std::string& name = "unknown_name" );
-         boost::signals2::connection post_apply_operation_proxy( const t_operation_notification& func, int32_t group = -1, const std::string& name = "unknown_name" );
+         boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
+         boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
+         boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
+         boost::signals2::connection applied_block_proxy( const block_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
