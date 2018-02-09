@@ -29,7 +29,9 @@ namespace steem { namespace chain {
 
          id_type              id;
 
-         buffer_type          packed_trx;
+         typedef buffer_type t_packed_trx;
+
+         t_packed_trx         packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
    };
@@ -50,3 +52,31 @@ namespace steem { namespace chain {
 
 FC_REFLECT( steem::chain::transaction_object, (id)(packed_trx)(trx_id)(expiration) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::transaction_object, steem::chain::transaction_index )
+
+namespace helpers
+{
+   template <>
+   class index_statistic_provider<steem::chain::transaction_index>
+   {
+   public:
+      typedef steem::chain::transaction_index IndexType;
+      typedef typename steem::chain::transaction_object::t_packed_trx t_packed_trx;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         gather_index_static_data(index, &info);
+
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+            {
+               info._item_additional_allocation += o.packed_trx.capacity()*sizeof(t_packed_trx::value_type);
+            }
+         }
+
+         return info;
+      }
+   };
+
+} /// namespace helpers

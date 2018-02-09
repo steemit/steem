@@ -6,6 +6,12 @@
 
 #include <fc/string.hpp>
 
+#include <boost/asio.hpp>
+#include <boost/optional.hpp>
+#include <boost/bind.hpp>
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/thread/future.hpp>
+
 #include <iostream>
 
 namespace steem { namespace plugins { namespace chain {
@@ -13,12 +19,21 @@ namespace steem { namespace plugins { namespace chain {
 using namespace steem;
 using fc::flat_map;
 using steem::chain::block_id_type;
+namespace asio = boost::asio;
+
+#define NUM_THREADS 1
 
 namespace detail {
 
 class chain_plugin_impl
 {
    public:
+      chain_plugin_impl() :
+         thread_pool_work( thread_pool_ios )
+      {
+         thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
+      }
+
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
@@ -34,10 +49,15 @@ class chain_plugin_impl
 
       uint32_t allow_future_time = 5;
 
+      boost::thread_group              thread_pool;
+      asio::io_service                 thread_pool_ios;
+      asio::io_service::work           thread_pool_work;
+
       database  db;
 };
 
 } // detail
+
 
 chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
@@ -61,6 +81,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("advanced-benchmark", bpo::bool_switch()->default_value(false), "Make profiling for every plugin.")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
+         ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef IS_TEST_NET
@@ -91,6 +112,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
+   my->dump_memory_details = options.at( "dump-memory-details" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
       my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
    else
@@ -132,6 +154,26 @@ void chain_plugin::plugin_startup()
    my->db.add_checkpoints( my->loaded_checkpoints );
    my->db.set_require_locking( my->check_locks );
 
+   bool dump_memory_details = my->dump_memory_details;
+   steem::utilities::benchmark_dumper dumper;
+
+   const auto& abstract_index_cntr = my->db.get_abstract_index_cntr();
+
+   typedef steem::utilities::benchmark_dumper::index_memory_details_cntr_t index_memory_details_cntr_t;
+   auto get_indexes_memory_details = [dump_memory_details, &abstract_index_cntr]
+      (index_memory_details_cntr_t& index_memory_details_cntr, bool onlyStaticInfo)
+   {
+      if (dump_memory_details == false)
+         return;
+
+      for (auto idx : abstract_index_cntr)
+      {
+         auto info = idx->get_statistics(onlyStaticInfo);
+         index_memory_details_cntr.emplace_back(std::move(info._value_type_name), info._item_count,
+            info._item_sizeof, info._item_additional_allocation, info._additional_container_allocation);
+      }
+   };
+
    database::open_args db_open_args;
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
@@ -141,35 +183,49 @@ void chain_plugin::plugin_startup()
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
 
+   auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
+      const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
+   {
+      if( current_block_number == 0 ) // initial call
+      {
+         typedef steem::utilities::benchmark_dumper::database_object_sizeof_cntr_t database_object_sizeof_cntr_t;
+         auto get_database_objects_sizeofs = [dump_memory_details, &abstract_index_cntr]
+            (database_object_sizeof_cntr_t& database_object_sizeof_cntr)
+         {
+            if (dump_memory_details == false)
+               return;
+
+            for (auto idx : abstract_index_cntr)
+            {
+               auto info = idx->get_statistics(true);
+               database_object_sizeof_cntr.emplace_back(std::move(info._value_type_name), info._item_sizeof);
+            }
+         };
+
+         dumper.initialize(get_database_objects_sizeofs, BENCHMARK_FILE_NAME);
+         return;
+      }
+
+      const steem::utilities::benchmark_dumper::measurement& measure =
+         dumper.measure(current_block_number, get_indexes_memory_details);
+      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+         ("n", current_block_number)
+         ("rt", measure.real_ms)
+         ("ct", measure.cpu_ms)
+         ("cm", measure.current_mem)
+         ("pm", measure.peak_mem) );
+   };
+
    if(my->replay)
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      steem::utilities::benchmark_dumper dumper;
-      auto benchmark_lambda = [&dumper]( uint32_t current_block_number, bool is_initial_call )
-      {
-         if( is_initial_call )
-         {
-            dumper.initialize();
-            return;
-         }
-
-         const steem::utilities::benchmark_dumper::measurement& measure =
-           dumper.measure(current_block_number);
-         ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
-            ("n", current_block_number)
-            ("rt", measure.real_ms)
-            ("ct", measure.cpu_ms)
-            ("cm", measure.current_mem)
-            ("pm", measure.peak_mem) );
-      };
       db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
       last_block_number = my->db.reindex( db_open_args );
 
       if( my->benchmark_interval > 0 )
       {
-         steem::utilities::benchmark_dumper::measurement total_data;
-         dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+         const steem::utilities::benchmark_dumper::measurement& total_data = dumper.dump(true, get_indexes_memory_details);
          ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
                ("b", total_data.block_number)
                ("rt", total_data.real_ms)
@@ -187,10 +243,16 @@ void chain_plugin::plugin_startup()
    }
    else
    {
+      db_open_args.benchmark = steem::chain::database::TBenchmark(dump_memory_details, benchmark_lambda);
+
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
+
          my->db.open( db_open_args );
+
+         if( dump_memory_details )
+            dumper.dump( true, get_indexes_memory_details );
       }
       catch( const fc::exception& e )
       {
@@ -230,12 +292,60 @@ bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool c
 
    check_time_in_block( block );
 
-   return db().push_block(block, skip);
+   fc::optional< fc::exception > exc;
+   boost::promise< bool > prom;
+
+   my->thread_pool_ios.post( [&block, skip, &exc, &prom, this]()
+   {
+      try
+      {
+         prom.set_value( db().push_block(block, skip) );
+      }
+      catch( fc::exception& e )
+      {
+         exc = e;
+         prom.set_value( false );
+      }
+      catch( ... )
+      {
+         prom.set_value( false );
+      }
+   });
+
+   bool result = prom.get_future().get();
+
+   if( exc ) throw *exc;
+
+   return result;
 }
 
 void chain_plugin::accept_transaction( const steem::chain::signed_transaction& trx )
 {
-   db().push_transaction(trx);
+   fc::optional< fc::exception > exc;
+   boost::promise< bool > prom;
+
+   my->thread_pool_ios.post( [&trx, &exc, &prom, this]()
+   {
+      try
+      {
+         db().push_transaction( trx );
+         prom.set_value( true );
+      }
+      catch( fc::exception& e )
+      {
+         exc = e;
+         prom.set_value( false );
+      }
+      catch( ... )
+      {
+         // Just in case a non fc exception is thrown, we don't want to block indenfinitely
+         prom.set_value( false );
+      }
+   });
+
+   prom.get_future().get();
+
+   if( exc ) throw *exc;
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )

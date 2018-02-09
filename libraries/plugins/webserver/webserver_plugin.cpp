@@ -290,8 +290,8 @@ void webserver_plugin::set_program_options( options_description&, options_descri
       ("webserver-http-endpoint", bpo::value< string >(), "Local http endpoint for webserver requests.")
       ("webserver-ws-endpoint", bpo::value< string >(), "Local websocket endpoint for webserver requests.")
       ("rpc-endpoint", bpo::value< string >(), "Local http and websocket endpoint for webserver requests. Deprecated in favor of webserver-http-endpoint and webserver-ws-endpoint" )
-      ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(256),
-       "Number of threads used to handle queries. Default: 256.")
+      ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(32),
+       "Number of threads used to handle queries. Default: 32.")
       ;
 }
 

@@ -1520,7 +1520,7 @@ BOOST_AUTO_TEST_CASE( convert_delay )
       vest( "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "25.000 TBD" ) );
 
-      set_price_feed( price( asset::from_string( "1.000 TBD" ), asset::from_string( "1.250 TESTS" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.250 TESTS" ) ) );
 
       convert_operation op;
       signed_transaction tx;
@@ -1764,7 +1764,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       vest( "alice", ASSET( "10.000 TESTS" ) );
       vest( "bob", ASSET( "10.000 TESTS" ) );
 
-      set_price_feed( price( asset::from_string( "1.000 TBD" ), asset::from_string( "1.000 TESTS" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       BOOST_TEST_MESSAGE( "Testing interest over smallest interest period" );
 

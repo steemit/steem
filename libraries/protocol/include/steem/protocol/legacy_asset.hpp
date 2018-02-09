@@ -49,16 +49,6 @@ struct legacy_steem_asset
          return from_amount( a.amount );
       }
 
-      static legacy_steem_asset from_string( const string& from )
-      {
-         return from_asset( asset::from_string( from ) );
-      }
-
-      string to_string()const
-      {
-         return to_asset<false>().to_string();
-      }
-
       share_type                       amount;
       legacy_steem_asset_symbol_type   symbol;
 };
@@ -121,12 +111,14 @@ inline void unpack( Stream& s, steem::protocol::legacy_steem_asset_symbol_type& 
 
 inline void to_variant( const steem::protocol::legacy_steem_asset& leg, fc::variant& v )
 {
-   v = leg.to_string();
+   to_variant( leg.to_asset<false>(), v );
 }
 
 inline void from_variant( const fc::variant& v, steem::protocol::legacy_steem_asset& leg )
 {
-   leg = steem::protocol::legacy_steem_asset::from_string( v.as_string() );
+   steem::protocol::asset a;
+   from_variant( v, a );
+   leg = steem::protocol::legacy_steem_asset::from_asset( a );
 }
 
 } // fc

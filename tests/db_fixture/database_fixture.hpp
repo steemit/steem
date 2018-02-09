@@ -9,8 +9,9 @@
 
 #include <steem/utilities/key_conversion.hpp>
 
-#include <steem/plugins/database_api/database_api_plugin.hpp>
 #include <steem/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
 
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
@@ -137,7 +138,11 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
    asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
 
 #define ASSET( s ) \
-   asset::from_string( s )
+   steem::plugins::condenser_api::legacy_asset::from_string( s ).to_asset()
+
+#define FUND( account_name, amount ) \
+   fund( account_name, amount ); \
+   generate_block();
 
 namespace steem { namespace chain {
 

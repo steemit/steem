@@ -30,6 +30,8 @@
 
 #include <fc/io/fstream.hpp>
 
+#include <boost/scope_exit.hpp>
+
 #include <cstdint>
 #include <deque>
 #include <fstream>
@@ -142,15 +144,30 @@ void database::open( const open_args& args )
       {
          init_hardforks(); // Writes to local state, but reads from db
       });
+
+      if (args.benchmark.first)
+      {
+         args.benchmark.second(0, get_abstract_index_cntr());
+         auto last_block_num = _block_log.head()->block_num();
+         args.benchmark.second(last_block_num, get_abstract_index_cntr());
+      }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
 uint32_t database::reindex( const open_args& args )
 {
+   bool reindex_success = false;
+   uint32_t last_block_number = 0; // result
+
+   BOOST_SCOPE_EXIT(this_,&reindex_success,&last_block_number) {
+      STEEM_TRY_NOTIFY(this_->_on_reindex_done, reindex_success, last_block_number);
+   } BOOST_SCOPE_EXIT_END
+
    try
    {
-      uint32_t last_block_number = 0; // result
+      STEEM_TRY_NOTIFY(_on_reindex_start);
+
       ilog( "Reindexing Blockchain" );
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
@@ -182,7 +199,7 @@ uint32_t database::reindex( const open_args& args )
             last_block_num = args.stop_replay_at;
          if( args.benchmark.first > 0 )
          {
-            args.benchmark.second( 0, true /*is_initial_call*/ );
+            args.benchmark.second( 0, get_abstract_index_cntr() );
          }
 
          while( itr.first.block_num() != last_block_num )
@@ -192,22 +209,16 @@ uint32_t database::reindex( const open_args& args )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
-            if(    (args.benchmark.first > 0)
-                && (cur_block_num % args.benchmark.first == 0) )
-            {
-               args.benchmark.second( cur_block_num, false /*is_initial_call*/ );
-            }
+            if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
+               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
             itr = _block_log.read_block( itr.second );
          }
 
          apply_block( itr.first, skip_flags );
          last_block_number = itr.first.block_num();
 
-         if(    (args.benchmark.first > 0)
-             && (last_block_number % args.benchmark.first == 0) )
-         {
-            args.benchmark.second( last_block_number, false /*is_initial_call*/ );
-         }
+         if( (args.benchmark.first > 0) && (last_block_number % args.benchmark.first == 0) )
+            args.benchmark.second( last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
       });
@@ -217,6 +228,8 @@ uint32_t database::reindex( const open_args& args )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      reindex_success = true;
 
       return last_block_number;
    }
@@ -919,12 +932,14 @@ void database::notify_post_apply_operation( const operation_notification& note )
 
 inline const void database::push_virtual_operation( const operation& op, bool force )
 {
+   /*
    if( !force )
    {
       #if defined( IS_LOW_MEM ) && ! defined( IS_TEST_NET )
       return;
       #endif
    }
+   */
 
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
@@ -4398,9 +4413,9 @@ void database::validate_smt_invariants()const
       const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
       add_from_balance_index( rewards_balance_idx, theMap );
 
-      // - Total vesting 
+      // - Total vesting
 #pragma message( "TODO: Add SMT vesting support here once it is implemented." )
-         
+
       // - Market orders
       const auto& limit_order_idx = get_index< limit_order_index >().indices();
       for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); ++itr )
@@ -4416,7 +4431,7 @@ void database::validate_smt_invariants()const
 
       // - Reward funds
 #pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
-                  
+
       // - Escrow & savings - no support of SMT is expected.
 
       // Do the verification of total balances.
@@ -4427,7 +4442,7 @@ void database::validate_smt_invariants()const
          const smt_token_object& smt = *itr;
          auto totalIt = theMap.find( smt.symbol );
          asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
-         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt current_supply",smt.current_supply)("total_supply",total_supply) );
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
@@ -4605,7 +4620,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
-   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+   return vector< asset_symbol_type >( 1, new_symbol );
 }
 #endif
 

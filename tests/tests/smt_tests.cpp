@@ -140,9 +140,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
 
       generate_block();
 
-      fund( "alice", 10 * 1000 * 1000 );
-      
-      generate_block();
+      FUND( "alice", 10 * 1000 * 1000 );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
@@ -159,7 +157,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.precision = op.symbol.decimals();
 
       // Fund with STEEM, and set fee with SBD.
-      fund( "alice", test_amount );
+      FUND( "alice", test_amount );
       // Declare fee in SBD/TBD though alice has none.
       op.smt_creation_fee = asset( test_amount, SBD_SYMBOL );
       // Throw due to insufficient balance of SBD/TBD.
@@ -196,7 +194,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.precision = op.symbol.decimals();
 
       // Check too low fee in STEEM.
-      fund( "bob", too_low_fee_amount );
+      FUND( "bob", too_low_fee_amount );
       op.smt_creation_fee = asset( too_low_fee_amount, STEEM_SYMBOL );
       FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
 
@@ -394,9 +392,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       
       generate_block();
 
-      fund( "dany", 5000000 );
-
-      generate_block();
+      FUND( "dany", 5000000 );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
@@ -639,12 +635,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       asset_symbol_type bob_symbol = create_smt("bob", bob_private_key, 1);
 
       // Give some SMT to creators.
-      asset alice_symbol_supply( 100, alice_symbol );
-      db->adjust_supply( alice_symbol_supply );
-      db->adjust_balance( "alice", alice_symbol_supply );
-      asset bob_symbol_supply( 110, bob_symbol );
-      db->adjust_supply( bob_symbol_supply );
-      db->adjust_balance( "bob", bob_symbol_supply );
+      FUND( "alice", asset( 100, alice_symbol ) );
+      FUND( "bob", asset( 110, bob_symbol ) );
 
       // Check pre-tranfer amounts.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
