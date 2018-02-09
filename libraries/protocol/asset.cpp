@@ -237,8 +237,8 @@ bool asset_symbol_type::is_vesting() const
          }
       }
       case smt_nai_space:
-         // 5th bit of asset_num is used as vesting/liquid variant indicator.
-         return asset_num & 0x00000010;
+         // 6th bit of asset_num is used as vesting/liquid variant indicator.
+         return asset_num & 0x00000020;
       default:
          FC_ASSERT( false, "Unknown asset symbol" );
    }

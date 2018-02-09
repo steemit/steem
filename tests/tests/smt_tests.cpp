@@ -779,12 +779,10 @@ BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
       {
          for( const asset_symbol_type& liquid_smt : smts )
          {
-// Assertion blocked until SMT NAIs are correctly generated.
-//            FC_ASSERT( liquid_smt.is_vesting() == false );
+            FC_ASSERT( liquid_smt.is_vesting() == false );
             auto vesting_smt = liquid_smt.get_paired_symbol();
             FC_ASSERT( vesting_smt != liquid_smt );
-// Assertion blocked until SMT NAIs are correctly generated.
-//            FC_ASSERT( vesting_smt.is_vesting() );
+            FC_ASSERT( vesting_smt.is_vesting() );
             FC_ASSERT( vesting_smt.get_paired_symbol() == liquid_smt );
          }
       }
