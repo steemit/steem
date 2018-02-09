@@ -525,7 +525,8 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
-         uint32_t                      _next_available_nai = 4;
+         /// For Initial value see appropriate comment where get_smt_next_identifier is implemented.
+         uint32_t                      _next_available_nai = 10000000;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;
