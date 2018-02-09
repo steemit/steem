@@ -48,7 +48,7 @@ struct legacy_signed_transaction
    }
 
    uint16_t                   ref_block_num    = 0;
-   uint16_t                   ref_block_prefix = 0;
+   uint32_t                   ref_block_prefix = 0;
    fc::time_point_sec         expiration;
    vector< legacy_operation > operations;
    extensions_type            extensions;
