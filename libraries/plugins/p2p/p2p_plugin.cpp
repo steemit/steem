@@ -34,33 +34,6 @@ namespace golos {
 
             namespace detail {
 
-                // This exists in p2p_plugin and http_plugin. It should be added to fc.
-                std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints(const std::string &endpoint_string) {
-                    try {
-                        string::size_type colon_pos = endpoint_string.find(':');
-                        if (colon_pos == std::string::npos)
-                            FC_THROW("Missing required port number in endpoint string \"${endpoint_string}\"",
-                                     ("endpoint_string", endpoint_string));
-
-                        std::string port_string = endpoint_string.substr(colon_pos + 1);
-
-                        try {
-                            uint16_t port = boost::lexical_cast<uint16_t>(port_string);
-                            std::string hostname = endpoint_string.substr(0, colon_pos);
-                            std::vector<fc::ip::endpoint> endpoints = fc::resolve(hostname, port);
-
-                            if (endpoints.empty())
-                                FC_THROW_EXCEPTION(fc::unknown_host_exception,
-                                                   "The host name can not be resolved: ${hostname}",
-                                                   ("hostname", hostname));
-
-                            return endpoints;
-                        } catch (const boost::bad_lexical_cast &) {
-                            FC_THROW("Bad port: ${port}", ("port", port_string));
-                        }
-                    } FC_CAPTURE_AND_RETHROW((endpoint_string))
-                }
-
                 class p2p_plugin_impl : public golos::network::node_delegate {
                 public:
 
@@ -504,9 +477,10 @@ namespace golos {
 
                     for (const string &endpoint_string : seeds) {
                         try {
-                            std::vector<fc::ip::endpoint> endpoints = detail::resolve_string_to_ip_endpoints(
-                                    endpoint_string);
-                            my->seeds.insert(my->seeds.end(), endpoints.begin(), endpoints.end());
+                            auto eps = appbase::app().resolve_string_to_ip_endpoints(endpoint_string);
+                            for (auto& ep: eps) {
+                                my->seeds.push_back(fc::ip::endpoint(ep.address().to_string(), ep.port()));
+                            }
                         } catch (const fc::exception &e) {
                             wlog("caught exception ${e} while adding seed node ${endpoint}",
                                  ("e", e.to_detail_string())("endpoint", endpoint_string));

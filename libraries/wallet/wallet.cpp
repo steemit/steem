@@ -474,7 +474,6 @@ namespace golos { namespace wallet {
                         if( save_wallet )
                             save_wallet_file();
                         if( broadcast ) {
-                            //_remote_network_broadcast_api->broadcast_transaction( tx );
                             auto result = _remote_network_broadcast_api->broadcast_transaction_synchronous( tx );
                             FC_UNUSED(result);
                         }

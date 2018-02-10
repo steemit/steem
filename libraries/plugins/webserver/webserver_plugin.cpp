@@ -76,30 +76,6 @@ namespace golos {
 
             using websocket_server_type = websocketpp::server<asio_with_stub_log>;
 
-            std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints(const std::string &endpoint_string) {
-                try {
-                    string::size_type colon_pos = endpoint_string.find(':');
-                    if (colon_pos == std::string::npos)
-                        FC_THROW("Missing required port number in endpoint string \"${endpoint_string}\"",
-                                 ("endpoint_string", endpoint_string));
-
-                    std::string port_string = endpoint_string.substr(colon_pos + 1);
-
-                    try {
-                        uint16_t port = boost::lexical_cast<uint16_t>(port_string);
-                        std::string hostname = endpoint_string.substr(0, colon_pos);
-                        std::vector<fc::ip::endpoint> endpoints = fc::resolve(hostname, port);
-
-                        if (endpoints.empty())
-                            FC_THROW_EXCEPTION(fc::unknown_host_exception, "The host name can not be resolved: ${hostname}", ("hostname", hostname));
-
-                        return endpoints;
-                    } catch (const boost::bad_lexical_cast &) {
-                        FC_THROW("Bad port: ${port}", ("port", port_string));
-                    }
-                } FC_CAPTURE_AND_RETHROW((endpoint_string))
-            }
-
             struct webserver_plugin::webserver_plugin_impl final {
             public:
                 boost::thread_group& thread_pool = appbase::app().scheduler();
@@ -274,43 +250,42 @@ namespace golos {
 
                 if (options.count("webserver-http-endpoint")) {
                     auto http_endpoint = options.at("webserver-http-endpoint").as<string>();
-                    auto endpoints = resolve_string_to_ip_endpoints(http_endpoint);
+                    auto endpoints = appbase::app().resolve_string_to_ip_endpoints(http_endpoint);
                     FC_ASSERT(endpoints.size(), "webserver-http-endpoint ${hostname} did not resolve",
                               ("hostname", http_endpoint));
-                    my->http_endpoint = tcp::endpoint(
-                            boost::asio::ip::address_v4::from_string((string) endpoints[0].get_address()),
-                            endpoints[0].port());
-                    ilog("configured http to listen on ${ep}", ("ep", endpoints[0]));
+                    my->http_endpoint = endpoints[0];
+                    auto tcp_endpoint = endpoints[0];
+                    auto ip_port = tcp_endpoint.address().to_string() + ":" + std::to_string(tcp_endpoint.port());
+                    ilog("configured http to listen on ${ep}", ("ep", ip_port));
                 }
 
                 if (options.count("webserver-ws-endpoint")) {
                     auto ws_endpoint = options.at("webserver-ws-endpoint").as<string>();
-                    auto endpoints = resolve_string_to_ip_endpoints(ws_endpoint);
+                    auto endpoints = appbase::app().resolve_string_to_ip_endpoints(ws_endpoint);
                     FC_ASSERT(endpoints.size(), "ws-server-endpoint ${hostname} did not resolve",
                               ("hostname", ws_endpoint));
-                    my->ws_endpoint = tcp::endpoint(
-                            boost::asio::ip::address_v4::from_string((string) endpoints[0].get_address()),
-                            endpoints[0].port());
-                    ilog("configured ws to listen on ${ep}", ("ep", endpoints[0]));
+                    my->ws_endpoint = endpoints[0];
+                    auto tcp_endpoint = endpoints[0];
+                    auto ip_port = tcp_endpoint.address().to_string() + ":" + std::to_string(tcp_endpoint.port());
+                    ilog("configured ws to listen on ${ep}", ("ep", ip_port));
                 }
 
                 if (options.count("rpc-endpoint")) {
                     auto endpoint = options.at("rpc-endpoint").as<string>();
-                    auto endpoints = resolve_string_to_ip_endpoints(endpoint);
+                    auto endpoints = appbase::app().resolve_string_to_ip_endpoints(endpoint);
                     FC_ASSERT(endpoints.size(), "rpc-endpoint ${hostname} did not resolve", ("hostname", endpoint));
 
-                    auto tcp_endpoint = tcp::endpoint(
-                            boost::asio::ip::address_v4::from_string((string) endpoints[0].get_address()),
-                            endpoints[0].port());
+                    auto tcp_endpoint = endpoints[0];
+                    auto ip_port = tcp_endpoint.address().to_string() + ":" + std::to_string(tcp_endpoint.port());
 
                     if (!my->http_endpoint) {
                         my->http_endpoint = tcp_endpoint;
-                        ilog("configured http to listen on ${ep}", ("ep", endpoints[0]));
+                        ilog("configured http to listen on ${ep}", ("ep", ip_port));
                     }
 
                     if (!my->ws_endpoint) {
                         my->ws_endpoint = tcp_endpoint;
-                        ilog("configured ws to listen on ${ep}", ("ep", endpoints[0]));
+                        ilog("configured ws to listen on ${ep}", ("ep", ip_port));
                     }
                 }
             }

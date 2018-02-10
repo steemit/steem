@@ -31,6 +31,7 @@ using namespace plugins::follow;
 using namespace plugins::social_network;
 using namespace plugins::market_history;
 using namespace plugins::social_network;
+using namespace plugins::network_broadcast_api;
 using namespace plugins::private_message;
 //using namespace plugins::witness_plugin;
 
@@ -119,7 +120,7 @@ struct remote_social_network {
  */
 struct remote_network_broadcast_api {
     void broadcast_transaction( signed_transaction );
-    plugins::network_broadcast_api::broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
+    broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
     void broadcast_block( signed_block );
 };
 
