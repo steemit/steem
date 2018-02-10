@@ -353,8 +353,7 @@ debug_set_hardfork_r plugin::plugin_impl::debug_set_hardfork(debug_set_hardfork_
     }
 
     database().set_hardfork( args.hardfork_id, false );
-    // golos::chain::database::set_hardfork( args.hardfork_id, false );
-
+    // TODO: Maybe there should be added a success result, because now it's hard to understand is everything is ok or no...
     return {};
 }
 
@@ -430,7 +429,7 @@ DEFINE_API ( plugin, debug_push_blocks ) {
     if (args_count > 2) {
         tmp.skip_validate_invariants = args_vector[3].as_bool();
     }
-    // auto tmp = args.args->at(0).as<debug_push_blocks_a>();
+
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_push_blocks(tmp);
@@ -453,7 +452,7 @@ DEFINE_API ( plugin, debug_generate_blocks_until ) {
     if (args_count > 2) {
         tmp.generate_sparsely = args_vector[3].as_bool();
     }
-    // auto tmp = args.args->at(0).as<debug_generate_blocks_until_a>();
+
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_generate_blocks_until(tmp);
@@ -461,7 +460,7 @@ DEFINE_API ( plugin, debug_generate_blocks_until ) {
 }
 
 DEFINE_API ( plugin, debug_pop_block ) {
-    auto tmp = args.args->at(0).as<debug_pop_block_a>();
+    debug_pop_block_a tmp;
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_pop_block(tmp);
@@ -469,7 +468,7 @@ DEFINE_API ( plugin, debug_pop_block ) {
 }
 
 DEFINE_API ( plugin, debug_get_witness_schedule ) {
-    auto tmp = args.args->at(0).as<debug_get_witness_schedule_a>();
+    debug_get_witness_schedule_a tmp;
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_get_witness_schedule(tmp);
@@ -485,7 +484,16 @@ DEFINE_API ( plugin, debug_get_witness_schedule ) {
 // }
 
 DEFINE_API ( plugin, debug_set_hardfork ) {
-    auto tmp = args.args->at(0).as<debug_set_hardfork_a>();
+    debug_set_hardfork_a tmp;
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+
+    auto args_count = args.args->size() ;
+
+    FC_ASSERT( args_count == 1, "Wrong parameters number, given ${n}", ("n", args_count) );
+    auto args_vector = *(args.args);
+    tmp.hardfork_id = args_vector[0].as_int64();
+
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_set_hardfork(tmp);
@@ -493,7 +501,16 @@ DEFINE_API ( plugin, debug_set_hardfork ) {
 }
 
 DEFINE_API ( plugin, debug_has_hardfork ) {
-    auto tmp = args.args->at(0).as<debug_has_hardfork_a>();
+    debug_has_hardfork_a tmp;
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+
+    auto args_count = args.args->size() ;
+
+    FC_ASSERT( args_count == 1, "Wrong parameters number, given ${n}", ("n", args_count) );
+    auto args_vector = *(args.args);
+    tmp.hardfork_id = args_vector[0].as_int64();
+
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_has_hardfork(tmp);
