@@ -12,11 +12,11 @@ namespace golos {
             namespace languages {
 
                 struct operation_visitor {
-                    operation_visitor(golos::chain::database &db_, std::set<std::string> &cache_languages_);;
+                    operation_visitor(golos::chain::database &db_, std::set<std::string> &cache_languages_);
                     typedef void result_type;
 
-                    std::set<std::string> &cache_languages_;
                     golos::chain::database &db_;
+                    std::set<std::string> &cache_languages_;
 
                     void remove_stats(const language_object &tag, const language_stats_object &stats) const;
 

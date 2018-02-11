@@ -5,11 +5,10 @@ namespace golos {
             namespace languages {
 
 
-                operation_visitor::operation_visitor(golos::chain::database &db_,
-                                                     std::set<std::string> &cache_languages_) :
+                operation_visitor::operation_visitor(golos::chain::database &db_, std::set<std::string> &cache_languages_) :
                         db_(db_),
-                        cache_languages_(cache_languages_)
-                {}
+                        cache_languages_(cache_languages_) {
+                }
 
                 void
                 operation_visitor::remove_stats(const language_object &tag, const language_stats_object &stats) const {
