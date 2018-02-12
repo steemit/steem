@@ -260,9 +260,16 @@ void smt_set_runtime_parameters_operation::validate()const
       param.visit( visitor );
 }
 
+void smt_refund_operation::validate()const
+{
+   FC_ASSERT( is_valid_account_name( executor ) );
+   FC_ASSERT( is_valid_account_name( contributor ) );
+   FC_ASSERT( smt.space() == asset_symbol_type::smt_nai_space );
+   FC_ASSERT( amount.symbol == STEEM_SYMBOL );
+}
+
 // TODO: These validators
 void smt_cap_reveal_operation::validate()const {}
-void smt_refund_operation::validate()const {}
 void smt_set_setup_parameters_operation::validate() const
 {
    FC_ASSERT( is_valid_account_name( control_account ) );
