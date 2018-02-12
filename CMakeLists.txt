@@ -199,6 +199,12 @@ else( WIN32 ) # Apple AND Linux
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring Steem on Linux" )
+
+        # Address sanitizer (temporarily for Release config)
+        string(REPLACE "-O3" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+        string(REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -g -fsanitize=address -fno-omit-frame-pointer")
+
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall" )
         set( rt_library rt )
         set( pthread_library pthread)
