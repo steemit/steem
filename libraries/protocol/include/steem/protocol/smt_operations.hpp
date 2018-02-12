@@ -104,6 +104,7 @@ struct smt_setup_operation : public base_operation
    time_point_sec          generation_begin_time;
    time_point_sec          generation_end_time;
    time_point_sec          announced_launch_time;
+   time_point_sec          launch_expiration_time;
 
    asset                   smt_creation_fee;
 
@@ -287,6 +288,7 @@ FC_REFLECT(
    (generation_begin_time)
    (generation_end_time)
    (announced_launch_time)
+   (launch_expiration_time)
    (smt_creation_fee)
    (extensions)
    )

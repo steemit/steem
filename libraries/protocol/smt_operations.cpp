@@ -210,6 +210,7 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
+   FC_ASSERT( launch_expiration_time >= announced_launch_time );
 
    // TODO:  Support using STEEM as well
    // TODO:  Move amount check to evaluator, symbol check should remain here
