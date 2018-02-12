@@ -43,16 +43,55 @@ api_name ## _return class :: api_name ( const api_name ## _args& args )
 namespace golos {
     namespace plugins {
         namespace json_rpc {
-            struct msg_pack final {
+            class msg_pack final {
+            public:
+                fc::variant id;
                 std::string plugin;
                 std::string method;
                 fc::optional<std::vector<fc::variant>> args;
+
+                // Constructor with hidden handlers types
+                template <typename Handler>
+                msg_pack(Handler &&);
+
+                // Move constructor/operator move handlers, so source msg_pack can't pass result/error to connection
+                msg_pack(msg_pack &&);
+
+                msg_pack & operator=(msg_pack &&);
+
+                bool valid() const;
+
+                // Initialize rpc request/response id
+                void rpc_id(fc::variant);
+
+                fc::optional<fc::variant> rpc_id() const;
+
+                // Pass result to remote connection
+                void result(fc::optional<fc::variant> result);
+
+                fc::optional<fc::variant> result() const;
+
+                // Pass error to remote connection
+                void error(int32_t code, std::string message, fc::optional<fc::variant> data = fc::optional<fc::variant>());
+
+                void error(std::string message, fc::optional<fc::variant> data = fc::optional<fc::variant>());
+
+                void error(int32_t code, const fc::exception &);
+
+                void error(const fc::exception &);
+
+                fc::optional<std::string> error() const;
+
+            private:
+                struct impl;
+                std::unique_ptr<impl> pimpl;
             };
+
             struct void_type {
             };
 
         }
     }
-} // steem::plugins::json_rpc
+} // golos::plugins::json_rpc
 
 FC_REFLECT((golos::plugins::json_rpc::void_type),)

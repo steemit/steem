@@ -83,6 +83,8 @@ namespace golos {
 
             class plugin final : public appbase::plugin<plugin> {
             public:
+                using response_handler_type = std::function<void (const std::string &)>;
+
                 plugin();
 
                 ~plugin();
@@ -107,14 +109,12 @@ namespace golos {
                 void add_api_method(const string &api_name, const string &method_name,
                                     const api_method &api/*, const api_method_signature& sig */);
 
-                string call(const string &body);
-
-                fc::variant call(const msg_pack &);
+                void call(const string &body, response_handler_type);
 
             private:
-                class plugin_impl;
+                class impl;
 
-                std::unique_ptr<plugin_impl> my;
+                std::unique_ptr<impl> pimpl;
             };
 
             namespace detail {
