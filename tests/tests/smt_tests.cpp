@@ -612,6 +612,64 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_refund_validate )
+{
+   try
+   {
+      ACTORS( (creator) )
+      generate_block();
+      asset_symbol_type creator_symbol = create_smt("creator", creator_private_key, 0);
+
+      smt_refund_operation op;
+      op.executor = "executor";
+      op.contributor = "contributor";
+      op.contribution_id = 0;
+      op.smt = creator_symbol;
+      op.amount = ASSET( "1.000 TESTS" );
+      op.validate();
+
+      op.executor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.executor = "executor";
+
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.contributor = "contributor";
+
+      op.smt = op.amount.symbol;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.smt = creator_symbol;
+
+      op.amount = asset( 1, creator_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "1.000 TESTS" );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_refund_authorities )
+{
+   try
+   {
+      smt_refund_operation op;
+      op.executor = "executor";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "executor" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_transfer_validate )
 {
    try
