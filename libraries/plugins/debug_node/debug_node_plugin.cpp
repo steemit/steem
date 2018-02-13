@@ -1,8 +1,6 @@
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
-#include <steemit/app/application.hpp>
-#include <steemit/app/plugin.hpp>
-#include <steemit/plugins/debug_node/debug_node_api.hpp>
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
 #include <fc/io/fstream.hpp>
@@ -12,165 +10,68 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
 
-namespace steemit { namespace plugin { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 namespace detail {
 class debug_node_plugin_impl
 {
    public:
-      debug_node_plugin_impl( debug_node_plugin* self );
+      debug_node_plugin_impl();
       virtual ~debug_node_plugin_impl();
 
-      debug_node_plugin* _self;
-
-      uint32_t                                  _mining_threads = 1;
-      std::vector<std::shared_ptr<fc::thread> > _thread_pool;
+      chain::database&                          _db;
+      boost::signals2::connection               applied_block_connection;
 };
 
-debug_node_plugin_impl::debug_node_plugin_impl( debug_node_plugin* self )
-   : _self(self)
-{ }
+debug_node_plugin_impl::debug_node_plugin_impl() :
+   _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
 debug_node_plugin_impl::~debug_node_plugin_impl() {}
+
 }
 
-private_key_storage::private_key_storage() {}
-private_key_storage::~private_key_storage() {}
-
-debug_node_plugin::debug_node_plugin( application* app ) : plugin( app )
-{
-   _my = std::make_shared< detail::debug_node_plugin_impl >( this );
-}
+debug_node_plugin::debug_node_plugin() {}
 debug_node_plugin::~debug_node_plugin() {}
 
-struct debug_mine_state
+void debug_node_plugin::set_program_options(
+   options_description& cli,
+   options_description& cfg )
 {
-   debug_mine_state();
-   virtual ~debug_mine_state();
+   cfg.add_options()
+      ("debug-node-edit-script,e",
+         boost::program_options::value< std::vector< std::string > >()->composing(),
+            "Database edits to apply on startup (may specify multiple times)")
+      ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(),
+          "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.")
+      ;
+}
 
-   std::string                    worker_account;
-   chain::block_id_type           prev_block;
-   uint32_t                       summary_target = 0;
-   fc::promise< chain::pow2 >::ptr work;
-   fc::mutex                      set_work_mutex;
-};
-
-debug_mine_state::debug_mine_state() {}
-debug_mine_state::~debug_mine_state() {}
-
-void debug_node_plugin::debug_mine_work(
-   chain::pow2& work,
-   uint32_t summary_target
-   )
+void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
-   std::shared_ptr< debug_mine_state > mine_state = std::make_shared< debug_mine_state >();
-   mine_state->worker_account = work.input.worker_account;
-   mine_state->prev_block = work.input.prev_block;
-   mine_state->summary_target = summary_target;
-   mine_state->work = fc::promise< chain::pow2 >::ptr( new fc::promise< chain::pow2 >() );
+   my = std::make_shared< detail::debug_node_plugin_impl >();
 
-   uint32_t thread_num = 0;
-   uint32_t num_threads = _my->_mining_threads;
-
-   wlog( "Mining for worker account ${a} on block ${b} with target ${t} using ${n} threads",
-      ("a", work.input.worker_account) ("b", work.input.prev_block) ("c", summary_target) ("n", num_threads) ("t", summary_target) );
-
-   uint32_t nonce_start = 0;
-
-   for( auto& t : _my->_thread_pool )
+   if( options.count( "debug-node-edit-script" ) > 0 )
    {
-      uint32_t nonce_offset = nonce_start + thread_num;
-      uint32_t nonce_stride = num_threads;
-      wlog( "Launching thread ${i}", ("i", thread_num) );
-      t->async( [mine_state,nonce_offset,nonce_stride]()
-      {
-         chain::pow2 work;
-         std::string worker_account = mine_state->worker_account;
-         chain::block_id_type prev_block = mine_state->prev_block;
-         uint32_t summary_target = mine_state->summary_target;
-         wlog( "Starting thread mining at offset ${o}", ("o", nonce_offset) );
-         work.input.prev_block = prev_block;
-         work.input.worker_account = worker_account;
-         work.input.nonce = nonce_offset;
-         while( !(mine_state->work->ready()) )
-         {
-            work.create( prev_block, worker_account, work.input.nonce );
-            if( work.pow_summary < summary_target )
-            {
-               wlog( "Found work with nonce ${n}", ("n", work.input.nonce) );
-	       fc::scoped_lock< fc::mutex > lock(mine_state->set_work_mutex);
-	       if( !mine_state->work->ready() )
-	       {
-                  mine_state->work->set_value( work );
-                  wlog( "Quitting successfully (start nonce was ${n})", ("n", nonce_offset) );
-               }
-	       else
-               {
-                  wlog( "Quitting, but other thread found nonce first (start nonce was ${n})", ("n", nonce_offset) );
-               }
-               break;
-            }
-            work.input.nonce += nonce_stride;
-         }
-         wlog( "Quitting (start nonce was ${n})", ("n", nonce_offset) );
-         return;
-      });
-      ++thread_num;
+      _edit_scripts = options.at( "debug-node-edit-script" ).as< std::vector< std::string > >();
    }
 
-   work = mine_state->work->wait();
-
-   wlog( "Finished, work=${w}", ("w", work) );
-   return;
-}
-
-std::string debug_node_plugin::plugin_name()const
-{
-   return "debug_node";
-}
-
-void debug_node_plugin::plugin_set_program_options(
-   boost::program_options::options_description& cli,
-   boost::program_options::options_description& cfg )
-{
-   cli.add_options()
-      ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
-   cfg.add(cli);
-}
-
-void debug_node_plugin::plugin_initialize( const boost::program_options::variables_map& options )
-{
    if( options.count("edit-script") > 0 )
    {
-      _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
+      wlog( "edit-scripts is deprecated in favor of debug-node-edit-script" );
+      auto scripts = options.at( "edit-script" ).as< std::vector< std::string > >();
+      _edit_scripts.insert( _edit_scripts.end(), scripts.begin(), scripts.end() );
    }
 
-   if( options.count("mining-threads") > 0 )
-   {
-      _my->_mining_threads = options.at("mining-threads").as< uint32_t >();
-   }
-
-   if( logging ) wlog( "Initializing ${n} mining threads", ("n", _my->_mining_threads) );
-   _my->_thread_pool.resize( _my->_mining_threads );
-   for( uint32_t i = 0; i < _my->_mining_threads; ++i )
-      _my->_thread_pool[i] = std::make_shared<fc::thread>();
+   // connect needed signals
+   my->applied_block_connection = my->_db.applied_block.connect( 0, [this](const chain::signed_block& b){ on_applied_block(b); });
 }
 
 void debug_node_plugin::plugin_startup()
 {
-   if( logging ) ilog("debug_node_plugin::plugin_startup() begin");
-   chain::database& db = database();
-
-   // connect needed signals
-
-   _applied_block_conn  = db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
-
-   app().register_api_factory< debug_node_api >( "debug_node_api" );
-
    /*for( const std::string& fn : _edit_scripts )
    {
       std::shared_ptr< fc::ifstream > stream = std::make_shared< fc::ifstream >( fc::path(fn) );
@@ -179,6 +80,8 @@ void debug_node_plugin::plugin_startup()
       load_debug_updates( v.get_object() );
    }*/
 }
+
+chain::database& debug_node_plugin::database() { return my->_db; }
 
 /*
 void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
@@ -273,35 +176,62 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    const std::string& debug_key,
    uint32_t count,
    uint32_t skip,
-   uint32_t miss_blocks,
-   private_key_storage* key_storage
+   uint32_t miss_blocks
 )
 {
-   if( count == 0 )
-      return 0;
+   debug_generate_blocks_args args;
+   debug_generate_blocks_return ret;
+
+   args.debug_key = debug_key;
+   args.count = count;
+   args.skip = skip;
+   args.miss_blocks = miss_blocks;
+   debug_generate_blocks( ret, args );
+   return ret.blocks;
+}
+
+void debug_node_plugin::debug_generate_blocks(
+   debug_generate_blocks_return& ret,
+   const debug_generate_blocks_args& args )
+{
+   if( args.count == 0 )
+   {
+      ret.blocks = 0;
+      return;
+   }
 
    fc::optional<fc::ecc::private_key> debug_private_key;
-   steemit::chain::public_key_type debug_public_key;
-   if( debug_key != "" )
+   chain::public_key_type debug_public_key;
+   if( args.debug_key != "" )
    {
-      debug_private_key = graphene::utilities::wif_to_key( debug_key );
+      debug_private_key = steem::utilities::wif_to_key( args.debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
-
-   steemit::chain::database& db = database();
-   uint32_t slot = miss_blocks+1, produced = 0;
-   while( produced < count )
+   else
    {
-      uint32_t new_slot = miss_blocks+1;
+      if( logging ) elog( "Skipping generation because I don't know the private key");
+      ret.blocks = 0;
+      return;
+   }
+
+   chain::database& db = database();
+   uint32_t slot = args.miss_blocks+1, produced = 0;
+   while( produced < args.count )
+   {
+      uint32_t new_slot = args.miss_blocks+1;
       std::string scheduled_witness_name = db.get_scheduled_witness( slot );
       fc::time_point_sec scheduled_time = db.get_slot_time( slot );
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
-      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-      if( debug_key != "" )
+      chain::public_key_type scheduled_key = scheduled_witness.signing_key;
+      if( logging )
       {
-         if( logging ) wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-         if( scheduled_key != debug_public_key )
+         wlog( "slot: ${sl}   time: ${t}   scheduled key is: ${sk}   dbg key is: ${dk}",
+            ("sk", scheduled_key)("dk", debug_public_key)("sl", slot)("t", scheduled_time) );
+      }
+      if( scheduled_key != debug_public_key )
+      {
+         if( args.edit_if_needed )
          {
             if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
             debug_update( [=]( chain::database& db )
@@ -310,38 +240,29 @@ uint32_t debug_node_plugin::debug_generate_blocks(
                {
                   w.signing_key = debug_public_key;
                });
-            }, skip );
+            }, args.skip );
          }
+         else
+            break;
       }
-      else
-      {
-         debug_private_key.reset();
-         if( key_storage != nullptr )
-            key_storage->maybe_get_private_key( debug_private_key, scheduled_key, scheduled_witness_name );
-         if( !debug_private_key.valid() )
-         {
-            if( logging ) elog( "Skipping ${wit} because I don't know the private key", ("wit", scheduled_witness_name) );
-            new_slot = slot+1;
-            FC_ASSERT( slot < miss_blocks+50 );
-         }
-      }
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
+
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
       ++produced;
       slot = new_slot;
    }
 
-   return count;
+   ret.blocks = produced;
+   return;
 }
 
 uint32_t debug_node_plugin::debug_generate_blocks_until(
    const std::string& debug_key,
    const fc::time_point_sec& head_block_time,
    bool generate_sparsely,
-   uint32_t skip,
-   private_key_storage* key_storage
+   uint32_t skip
 )
 {
-   steemit::chain::database& db = database();
+   chain::database& db = database();
 
    if( db.head_block_time() >= head_block_time )
       return 0;
@@ -355,7 +276,7 @@ uint32_t debug_node_plugin::debug_generate_blocks_until(
       if( slots_to_miss > 1 )
       {
          slots_to_miss--;
-         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss, key_storage );
+         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss );
       }
    }
    else
@@ -429,6 +350,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 
 void debug_node_plugin::plugin_shutdown()
 {
+   chain::util::disconnect_signal( my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();
@@ -437,6 +359,4 @@ void debug_node_plugin::plugin_shutdown()
    return;
 }
 
-} } }
-
-STEEMIT_DEFINE_PLUGIN( debug_node, steemit::plugin::debug_node::debug_node_plugin )
+} } } // steem::plugins::debug_node

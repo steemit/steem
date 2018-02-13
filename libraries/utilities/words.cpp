@@ -22,11 +22,11 @@
  * THE SOFTWARE.
  */
 #include <stdint.h>
-#include <graphene/utilities/words.hpp>
+#include <steem/utilities/words.hpp>
 
-namespace graphene { namespace words {
+namespace steem { namespace words {
 
-const const_char_ptr word_list[] = { 
+const const_char_ptr word_list[] = {
 "a",
 "aa",
 "aal",
@@ -49776,8 +49776,8 @@ const const_char_ptr word_list[] = {
 const uint32_t word_list_size = sizeof(word_list)/sizeof(word_list[0]);
 
 void hide_unused_warning() {
-  (void)word_list_size; 
-  (void)word_list; 
+  (void)word_list_size;
+  (void)word_list;
 }
 
-} } // graphene::words
+} } // steem::words

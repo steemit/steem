@@ -27,7 +27,7 @@
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steemit/protocol/protocol.hpp>
+#include <steem/protocol/protocol.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 std::vector< fc::variant_object > g_op_types;
 
@@ -43,7 +43,7 @@ template< typename T >
 uint64_t get_wire_size()
 {
    T data;
-   return fc::raw::pack( data ).size();
+   return fc::raw::pack_to_vector( data ).size();
 }
 
 struct size_check_type_visitor
@@ -68,7 +68,7 @@ int main( int argc, char** argv )
 {
    try
    {
-      steemit::protocol::operation op;
+      steem::protocol::operation op;
 
 
       std::vector<uint64_t> witnesses; witnesses.resize(50);

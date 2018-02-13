@@ -1,0 +1,5 @@
+{
+   "plugin_name": "chain_api",
+   "plugin_namespace": "chain",
+   "plugin_project": "chain_api_plugin"
+}
