@@ -405,7 +405,7 @@ void plugin::set_program_options(
 }
 
 void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
-    //ilog("Intializing account history plugin" );
+    ilog("account_history plugin: plugin_initialize() begin");
     my.reset(new plugin_impl);
     // auto & tmp_db_ref = appbase::app().get_plugin<chain::plugin>().db();
     my->database().pre_apply_operation.connect([&](const golos::chain::operation_notification &note) { my->on_operation(note); });
@@ -415,6 +415,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
     if (options.count("filter-posting-ops")) {
         my->_filter_content = true;
     }
+    ilog("account_history plugin: plugin_initialize() end");
     // init(options);
 }
 plugin::plugin ( ) {

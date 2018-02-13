@@ -520,7 +520,6 @@ namespace golos {
                 const auto head_block_num = b.block_num();
                 const auto head_block_time = b.timestamp;
                 const auto block_id = b.id();
-                fc::thread *mainthread = &fc::thread::current();
                 const auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
                 uint32_t thread_num = 0;
                 const uint32_t target = db.get_pow_summary_target();
@@ -573,16 +572,15 @@ namespace golos {
                                     trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
                                     head_block_num_.fetch_add(1, std::memory_order_relaxed);
-                                    mainthread->async([this, miner, trx]() {
-                                        try {
-                                            database().push_transaction(trx);
-                                            ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            p2p().broadcast_transaction(trx);
-                                        }
-                                        catch (const fc::exception &e) {
-                                            // wdump((e.to_detail_string()));
-                                        }
-                                    });
+
+                                    try {
+                                        database().push_transaction(trx);
+                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
+                                        p2p().broadcast_transaction(trx);
+                                    } catch (const fc::exception &e) {
+                                        // wdump((e.to_detail_string()));
+                                    }
+
                                     return;
                                 }
                             }
@@ -620,16 +618,15 @@ namespace golos {
                                     trx.ref_block_prefix = work.input.prev_block._hash[1];
                                     trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
-                                    mainthread->async([this, miner, trx]() {
-                                        try {
-                                            database().push_transaction(trx);
-                                            ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            p2p().broadcast_transaction(trx);
-                                        }
-                                        catch (const fc::exception &e) {
-                                            // wdump((e.to_detail_string()));
-                                        }
-                                    });
+
+                                    try {
+                                        database().push_transaction(trx);
+                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
+                                        p2p().broadcast_transaction(trx);
+                                    } catch (const fc::exception &e) {
+                                        // wdump((e.to_detail_string()));
+                                    }
+
                                     return;
                                 }
                             }
