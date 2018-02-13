@@ -13,7 +13,7 @@ typedef arg_type api_name ## _args;                         \
 typedef return_type api_name ## _return;
 
 #define DECLARE_API_METHOD_HELPER(r, data, method) \
-BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& );
+BOOST_PP_CAT( method, _return ) method( BOOST_PP_CAT( method, _args )& );
 
 #define FOR_EACH_API_HELPER(r, callback, method) \
 { \
@@ -38,7 +38,7 @@ BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& );
    }
 
 #define DEFINE_API(class, api_name)                                   \
-api_name ## _return class :: api_name ( const api_name ## _args& args )
+api_name ## _return class :: api_name ( api_name ## _args& args )
 
 namespace golos {
     namespace plugins {
@@ -58,6 +58,8 @@ namespace golos {
                 msg_pack(msg_pack &&);
 
                 msg_pack & operator=(msg_pack &&);
+
+                ~msg_pack();
 
                 bool valid() const;
 

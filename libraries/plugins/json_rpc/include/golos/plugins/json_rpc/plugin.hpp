@@ -65,7 +65,7 @@ namespace golos {
              *
              * Arguments: Variant object of propert arg type
              */
-            using api_method = std::function<fc::variant(const msg_pack &)>;
+            using api_method = std::function<fc::variant(msg_pack &)>;
 
             /**
              * @brief An API, containing APIs and Methods
@@ -128,7 +128,7 @@ namespace golos {
                     void operator()(Plugin &plugin, const std::string &method_name, Method method, Args *args,
                                     Ret *ret) {
                         _json_rpc_plugin.add_api_method(_api_name, method_name,
-                                                        [&plugin, method](const msg_pack &args) -> fc::variant {
+                                                        [&plugin, method](msg_pack &args) -> fc::variant {
                                                             return fc::variant((plugin.*method)(args));
                                                         });
                         /*api_method_signature{ fc::variant( Args() ), fc::variant( Ret() ) }*/ //);
