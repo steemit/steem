@@ -2192,6 +2192,76 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
 }
 
+#ifdef STEEM_ENABLE_SMT
+void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_operation& op )
+{
+   const account_object* a = nullptr; // Lazily initialized below because it may turn out unnecessary.
+
+   for( const asset& token : op.reward_tokens )
+   {
+      if( token.amount == 0 )
+         continue;
+         
+      if( token.symbol.space() == asset_symbol_type::smt_nai_space )
+      {
+         _db.adjust_reward_balance( op.account, -token );
+         _db.adjust_balance( op.account, token );
+      }
+      else
+      {
+         // Lazy init here.
+         if( a == nullptr )
+         {
+            a = _db.find_account( op.account );
+            FC_ASSERT( a != nullptr, "Could NOT find account ${a}", ("a", op.account) );
+         }
+
+         if( token.symbol == VESTS_SYMBOL)
+         {
+            FC_ASSERT( token <= a->reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
+               ("c", token)("a", a->reward_vesting_balance) );   
+
+            asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
+            if( token == a->reward_vesting_balance )
+               reward_vesting_steem_to_move = a->reward_vesting_steem;
+            else
+               reward_vesting_steem_to_move = asset( ( ( uint128_t( token.amount.value ) * uint128_t( a->reward_vesting_steem.amount.value ) )
+                  / uint128_t( a->reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
+
+            _db.modify( *a, [&]( account_object& a )
+            {
+               a.vesting_shares += token;
+               a.reward_vesting_balance -= token;
+               a.reward_vesting_steem -= reward_vesting_steem_to_move;
+            });
+
+            _db.modify( _db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.total_vesting_shares += token;
+               gpo.total_vesting_fund_steem += reward_vesting_steem_to_move;
+
+               gpo.pending_rewarded_vesting_shares -= token;
+               gpo.pending_rewarded_vesting_steem -= reward_vesting_steem_to_move;
+            });
+
+            _db.adjust_proxied_witness_votes( *a, token.amount );
+         }
+         else if( token.symbol == STEEM_SYMBOL || token.symbol == SBD_SYMBOL )
+         {
+            FC_ASSERT( is_asset_type( token, STEEM_SYMBOL ) == false || token <= a->reward_steem_balance,
+                       "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
+            FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a->reward_sbd_balance,
+                       "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
+            _db.adjust_reward_balance( *a, -token );
+            _db.adjust_balance( *a, token );
+         }
+         else
+            FC_ASSERT( false, "Unknown asset symbol" );
+      } // non-SMT token
+   } // for( const auto& token : op.reward_tokens )
+}
+#endif
+
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
    const auto& delegator = _db.get_account( op.delegator );

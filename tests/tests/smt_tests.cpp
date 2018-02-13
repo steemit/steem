@@ -105,33 +105,6 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-#define OP2TX(OP,TX,KEY) \
-TX.operations.push_back( OP ); \
-TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-TX.sign( KEY, db->get_chain_id() );
-
-#define PUSH_OP(OP,KEY) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   db->push_transaction( tx, 0 ); \
-}
-
-#define PUSH_OP_TWICE(OP,KEY) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   db->push_transaction( tx, 0 ); \
-   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
-}
-
-#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
-}
-
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try

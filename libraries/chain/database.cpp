@@ -2261,6 +2261,9 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< reset_account_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< set_reset_account_evaluator              >();
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
+#ifdef STEEM_ENABLE_SMT
+   _my->_evaluator_registry.register_evaluator< claim_reward_balance2_evaluator          >();
+#endif
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
    _my->_evaluator_registry.register_evaluator< witness_set_properties_evaluator         >();
@@ -3557,6 +3560,32 @@ void database::modify_balance( const account_object& a, const asset& delta, bool
    } );
 }
 
+void database::modify_reward_balance( const account_object& a, const asset& delta, bool check_balance )
+{
+   modify( a, [&]( account_object& acnt )
+   {
+      switch( delta.symbol.asset_num )
+      {
+         case STEEM_ASSET_NUM_STEEM:
+            acnt.reward_steem_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+            }
+            break;
+         case STEEM_ASSET_NUM_SBD:
+            acnt.reward_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
+            }
+            break;
+         default:
+            FC_ASSERT( false, "invalid symbol" );
+      }
+   });
+}
+
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
@@ -3658,30 +3687,27 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
       return;
    }
 #endif
-   modify( a, [&]( account_object& acnt )
-   {
-      switch( delta.symbol.asset_num )
-      {
-         case STEEM_ASSET_NUM_STEEM:
-            acnt.reward_steem_balance += delta;
-            if( check_balance )
-            {
-               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
-            }
-            break;
-         case STEEM_ASSET_NUM_SBD:
-            acnt.reward_sbd_balance += delta;
-            if( check_balance )
-            {
-               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
-            }
-            break;
-         default:
-            FC_ASSERT( false, "invalid symbol" );
-      }
-   });
+
+   modify_reward_balance(a, delta, check_balance);
 }
 
+void database::adjust_reward_balance( const account_name_type& name, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_rewards_balance_object >( name, delta, false/*check_account*/ );
+      return;
+   }
+#endif
+
+   const auto& a = get_account( name );
+   modify_reward_balance(a, delta, check_balance);
+}
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {

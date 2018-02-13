@@ -313,6 +313,7 @@ namespace steem { namespace chain {
          void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
+         void        adjust_reward_balance( const account_name_type& name, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
          void        update_owner_authority( const account_object& account, const authority& owner_authority );
@@ -495,6 +496,7 @@ namespace steem { namespace chain {
          void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account );
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
+         void modify_reward_balance( const account_object& a, const asset& delta, bool check_balance );
 
          std::unique_ptr< database_impl > _my;
 
