@@ -264,7 +264,7 @@ asset_symbol_type asset_symbol_type::get_paired_symbol() const
       }
       case smt_nai_space:
          {
-         // Toggle 5th bit of this asset_num.
+         // Toggle 6th bit of this asset_num.
          auto paired_asset_num = asset_num ^ ( 0x1 << 5 );
          return from_asset_num( paired_asset_num );
          }
