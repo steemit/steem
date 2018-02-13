@@ -12,25 +12,12 @@
 
 namespace steem { namespace chain { namespace util {
 
-template <typename T>
-struct is_associative_cntr : public std::false_type {};
-template <typename... TArgs>
-struct is_associative_cntr<std::set<TArgs...>> : public std::true_type {};
-template <typename... TArgs>
-struct is_associative_cntr<std::multiset<TArgs...>> : public std::true_type {};
-template <typename... TArgs>
-struct is_associative_cntr<std::map<TArgs...>> : public std::true_type {};
-template <typename... TArgs>
-struct is_associative_cntr<std::multimap<TArgs...>> : public std::true_type {};
+template <typename TCntr>
+struct emplace_ret_value
+{
+   using type = decltype(std::declval<TCntr>().emplace(std::declval<typename TCntr::value_type>()));
+};
 
-template <typename TCntr,
-   typename T = decltype(std::declval<TCntr>().emplace(std::declval<typename TCntr::value_type>()))>
-struct enable_if_associative_cntr
-   : public std::enable_if<is_associative_cntr<TCntr>::value, T> {};
-
-template <typename TCntr, typename T = typename TCntr::iterator>
-struct enable_if_not_associative_cntr
-   : public std::enable_if<!is_associative_cntr<TCntr>::value, T> {};
 
 class advanced_benchmark_dumper
 {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
@@ -62,20 +49,16 @@ class advanced_benchmark_dumper
       {
          uint64_t total_time = 0;
 
-         COLLECTION items;// dla r musi tutaj byc list nie set
+         COLLECTION items;
          
          total_info(){}
          total_info( uint64_t _total_time ): total_time( _total_time ) {}
 
          void inc( uint64_t _time ) { total_time += _time; }
 
-         template <typename... TArgs, typename TType = COLLECTION>
-         typename enable_if_associative_cntr<TType>::type add_item(TArgs&&... args)
+         template <typename... TArgs>
+         typename emplace_ret_value<COLLECTION>::type emplace(TArgs&&... args)
             { return items.emplace(std::forward<TArgs>(args)...); }
-
-         template <typename... TArgs, typename TType = COLLECTION>
-         typename enable_if_not_associative_cntr<TType>::type add_item(TArgs&&... args)
-            { return items.emplace_back(std::forward<TArgs>(args)...); }
       };
 
    private:
@@ -106,7 +89,7 @@ class advanced_benchmark_dumper
       static std::string& get_virtual_operation_name(){ return virtual_operation_name; }
 
       template< bool IS_PRE_OPERATION >
-      std::string generate_desc( const std::string& desc1, const std::string& desc2 )
+      static std::string generate_desc( const std::string& desc1, const std::string& desc2 )
       {
          std::stringstream s;
          s << ( IS_PRE_OPERATION ? "pre--->" : "post--->" ) << desc1 << "--->" << desc2;
@@ -120,7 +103,6 @@ class advanced_benchmark_dumper
       void begin();
       template< bool APPLY_CONTEXT = false >
       void end( const std::string& str );
-      void end( const std::string& plugin_name, const std::string& item_name );
 
       void dump();
 };

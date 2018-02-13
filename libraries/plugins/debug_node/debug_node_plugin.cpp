@@ -67,7 +67,9 @@ void debug_node_plugin::plugin_initialize( const variables_map& options )
    }
 
    // connect needed signals
-   my->applied_block_connection = my->_db.applied_block.connect( 0, [this](const chain::signed_block& b){ on_applied_block(b); });
+   my->applied_block_connection = my->_db.applied_block_proxy(
+      [this](const chain::signed_block& b){ on_applied_block(b); }, 0,
+      STEEM_DEBUG_NODE_PLUGIN_NAME);
 }
 
 void debug_node_plugin::plugin_startup()

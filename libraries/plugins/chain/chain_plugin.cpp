@@ -80,7 +80,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
-         ("advanced-benchmark", bpo::bool_switch()->default_value(false), "Make profiling for every plugin.")
+         ("advanced-benchmark", "Make profiling for every plugin.")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
@@ -130,8 +130,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   if( options.count("advanced-benchmark") )
-      my->benchmark_is_enabled = options.at( "advanced-benchmark" ).as<bool>();
+   my->benchmark_is_enabled = (options.count( "advanced-benchmark" ) != 0);
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )

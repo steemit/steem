@@ -63,7 +63,7 @@ class evaluator_registry
 
       bool is_evaluator( const OperationType& op )
       {
-         return get_evaluator_impl< true/*CHECK*/ >( op ) != false;
+         return get_evaluator_impl< true/*CHECK*/ >( op ).get() != nullptr;
       }
 
       evaluator<OperationType>& get_evaluator( const OperationType& op )
