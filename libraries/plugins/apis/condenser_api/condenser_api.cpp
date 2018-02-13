@@ -710,7 +710,13 @@ namespace detail
    {
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _block_api, "block_api_plugin not enabled." );
-      return _block_api->get_block( { args[0].as< uint32_t >() } ).block;
+      get_block_return result;
+      auto b = _block_api->get_block( { args[0].as< uint32_t >() } ).block;
+
+      if( b )
+         result = legacy_signed_block( *b );
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_ops_in_block )
