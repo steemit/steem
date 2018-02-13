@@ -270,7 +270,7 @@ namespace detail
                         default:
                            if( item.second.op.visit( visitor ) )
                            {
-                              eacnt.transfer_history.emplace( item.first, api_operation_object( item.second, visitor.l_op ) );
+                              eacnt.other_history.emplace( item.first, api_operation_object( item.second, visitor.l_op ) );
                            }
                      }
                   }
