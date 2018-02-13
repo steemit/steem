@@ -46,6 +46,8 @@ namespace golos {
             msg_pack::msg_pack(msg_pack &&src): pimpl(std::move(src.pimpl)) {
             }
 
+            msg_pack::~msg_pack() = default;
+
             msg_pack & msg_pack::operator=(msg_pack &&src) {
                 pimpl = std::move(src.pimpl);
                 return *this;
@@ -319,7 +321,7 @@ namespace golos {
 
             void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 ilog("json_rpc plugin: plugin_initialize() begin");
-                pimpl.reset(new impl());
+                pimpl = std::make_unique<impl>();
                 pimpl->initialize();
                 ilog("json_rpc plugin: plugin_initialize() end");
             }
