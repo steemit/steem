@@ -105,33 +105,6 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-#define OP2TX(OP,TX,KEY) \
-TX.operations.push_back( OP ); \
-TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-TX.sign( KEY, db->get_chain_id() );
-
-#define PUSH_OP(OP,KEY) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   db->push_transaction( tx, 0 ); \
-}
-
-#define PUSH_OP_TWICE(OP,KEY) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   db->push_transaction( tx, 0 ); \
-   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
-}
-
-#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
-{ \
-   signed_transaction tx; \
-   OP2TX(OP,tx,KEY) \
-   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
-}
-
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
@@ -599,6 +572,104 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_setup_validate )
+{
+   try
+   {
+      smt_setup_operation op;
+      fc::time_point_sec start_time        = fc::variant( "2021-01-01T00:00:00" ).as< fc::time_point_sec >();
+      fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
+      // Do minimal operation setup that allows successful validatation.
+      {
+         smt_capped_generation_policy gpolicy;
+         uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
+         // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
+         gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder", 100 );
+         // set token unit, total is 5 token-satoshis = 0.0005 SMT
+         gpolicy.pre_soft_cap_unit.token_unit.emplace( "$from", 5 );
+         // Note - no soft cap -> no soft cap unit
+         gpolicy.min_steem_units_commitment.fillin_nonhidden_value( 1 );
+         gpolicy.hard_cap_steem_units_commitment.fillin_nonhidden_value( max_supply );
+         gpolicy.soft_cap_percent = STEEM_100_PERCENT;
+
+         // Note that neither tested SMT nor even its creator is necessary to validate this operation.
+         op.control_account = "alice";
+         op.decimal_places = 4;
+         op.initial_generation_policy = gpolicy;
+         op.generation_begin_time = start_time;
+         op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
+         op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
+      }
+
+      op.validate();
+      // TODO put other negative scenarios here.
+
+      // Launch expiration time can't be earlier than announced launch time.
+      op.launch_expiration_time = start_time;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.launch_expiration_time = start_time_plus_1; // Restored valid value.
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_refund_validate )
+{
+   try
+   {
+      ACTORS( (creator) )
+      generate_block();
+      asset_symbol_type creator_symbol = create_smt("creator", creator_private_key, 0);
+
+      smt_refund_operation op;
+      op.executor = "executor";
+      op.contributor = "contributor";
+      op.contribution_id = 0;
+      op.smt = creator_symbol;
+      op.amount = ASSET( "1.000 TESTS" );
+      op.validate();
+
+      op.executor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.executor = "executor";
+
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.contributor = "contributor";
+
+      op.smt = op.amount.symbol;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.smt = creator_symbol;
+
+      op.amount = asset( 1, creator_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "1.000 TESTS" );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_refund_authorities )
+{
+   try
+   {
+      smt_refund_operation op;
+      op.executor = "executor";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "executor" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_transfer_validate )
 {
    try
@@ -737,6 +808,41 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
          ava.add_votable_asset(STEEM_SYMBOL, share_type(20), true);
          op.extensions.insert( ava );
          STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+
+      asset_symbol_type Steem = STEEM_SYMBOL;
+      FC_ASSERT( Steem.is_vesting() == false );
+      FC_ASSERT( Steem.get_paired_symbol() == VESTS_SYMBOL );
+
+      asset_symbol_type Vests = VESTS_SYMBOL;
+      FC_ASSERT( Vests.is_vesting() );
+      FC_ASSERT( Vests.get_paired_symbol() == STEEM_SYMBOL );
+
+      asset_symbol_type Sbd = SBD_SYMBOL;
+      FC_ASSERT( Sbd.is_vesting() == false );
+      FC_ASSERT( Sbd.get_paired_symbol() == SBD_SYMBOL );
+
+      ACTORS( (alice) )
+      generate_block();
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
+         for( const asset_symbol_type& liquid_smt : smts )
+         {
+            FC_ASSERT( liquid_smt.is_vesting() == false );
+            auto vesting_smt = liquid_smt.get_paired_symbol();
+            FC_ASSERT( vesting_smt != liquid_smt );
+            FC_ASSERT( vesting_smt.is_vesting() );
+            FC_ASSERT( vesting_smt.get_paired_symbol() == liquid_smt );
+         }
       }
    }
    FC_LOG_AND_RETHROW()

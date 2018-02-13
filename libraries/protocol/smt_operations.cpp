@@ -210,6 +210,7 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
+   FC_ASSERT( launch_expiration_time >= announced_launch_time );
 
    // TODO:  Support using STEEM as well
    // TODO:  Move amount check to evaluator, symbol check should remain here
@@ -259,9 +260,16 @@ void smt_set_runtime_parameters_operation::validate()const
       param.visit( visitor );
 }
 
+void smt_refund_operation::validate()const
+{
+   FC_ASSERT( is_valid_account_name( executor ) );
+   FC_ASSERT( is_valid_account_name( contributor ) );
+   FC_ASSERT( smt.space() == asset_symbol_type::smt_nai_space );
+   FC_ASSERT( amount.symbol == STEEM_SYMBOL );
+}
+
 // TODO: These validators
 void smt_cap_reveal_operation::validate()const {}
-void smt_refund_operation::validate()const {}
 void smt_set_setup_parameters_operation::validate() const
 {
    FC_ASSERT( is_valid_account_name( control_account ) );

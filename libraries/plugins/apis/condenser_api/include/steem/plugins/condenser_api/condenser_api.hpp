@@ -10,7 +10,7 @@
 #include <steem/plugins/market_history_api/market_history_api.hpp>
 #include <steem/plugins/witness_api/witness_api.hpp>
 
-#include <steem/plugins/condenser_api/condenser_api_legacy_operations.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
 #include <fc/optional.hpp>
 #include <fc/variant.hpp>

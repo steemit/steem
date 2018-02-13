@@ -918,5 +918,276 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
+{
+   try
+   {
+      claim_reward_balance2_operation op;
+      op.account = "alice";
+
+      ACTORS( (alice) )
+
+      generate_block();
+
+      // Create SMT(s) and continue.
+      auto smts = create_smt_3("alice", alice_private_key);
+      const auto& smt1 = smts[0];
+      const auto& smt2 = smts[1];
+      const auto& smt3 = smts[2];
+
+      BOOST_TEST_MESSAGE( "Testing empty rewards" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "Testing ineffective rewards" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      // Manually inserted.
+      op.reward_tokens.push_back( ASSET( "0.000 TESTS" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( ASSET( "0.000 TBD" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( ASSET( "0.000000 VESTS" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 0, smt1 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 0, smt2 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 0, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "Testing single reward claims" );
+      op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.reward_tokens.push_back( ASSET( "1.000 TBD" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.reward_tokens.push_back( ASSET( "1.000000 VESTS" ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.reward_tokens.push_back( asset( 1, smt2 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "Testing multiple rewards" );
+      op.reward_tokens.push_back( ASSET( "1.000 TBD" ) );
+      op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
+      op.reward_tokens.push_back( ASSET( "1.000000 VESTS" ) );
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.reward_tokens.push_back( asset( 1, smt2 ) );
+      op.validate();
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "Testing invalid rewards" );
+      op.reward_tokens.push_back( ASSET( "-1.000 TESTS" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( ASSET( "-1.000 TBD" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( ASSET( "-1.000000 VESTS" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( -1, smt1 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( -1, smt2 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( -1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      
+      BOOST_TEST_MESSAGE( "Testing duplicated reward tokens." );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "Testing inconsistencies of manually inserted reward tokens." );
+      op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
+      op.reward_tokens.push_back( ASSET( "1.000 TBD" ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_tokens.clear();
+      op.reward_tokens.push_back( asset( 1, smt1 ) );
+      op.reward_tokens.push_back( asset( -1, smt3 ) );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_reward_balance2_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_authorities" );
+
+      claim_reward_balance2_operation op;
+      op.account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: claim_reward_balance2_apply" );
+      BOOST_TEST_MESSAGE( "--- Setting up test state" );
+
+      ACTORS( (alice) )
+      generate_block();
+
+      auto smts = create_smt_3( "alice", alice_private_key );
+      const auto& smt1 = smts[0];
+      const auto& smt2 = smts[1];
+      const auto& smt3 = smts[2];
+
+      FUND_SMT_REWARDS( "alice", asset( 10*std::pow(10, smt1.decimals()), smt1 ) );
+      FUND_SMT_REWARDS( "alice", asset( 10*std::pow(10, smt2.decimals()), smt2 ) );
+      FUND_SMT_REWARDS( "alice", asset( 10*std::pow(10, smt3.decimals()), smt3 ) );
+
+      db_plugin->debug_update( []( database& db )
+      {
+         db.modify( db.get_account( "alice" ), []( account_object& a )
+         {
+            a.reward_sbd_balance = ASSET( "10.000 TBD" );
+            a.reward_steem_balance = ASSET( "10.000 TESTS" );
+            a.reward_vesting_balance = ASSET( "10.000000 VESTS" );
+            a.reward_vesting_steem = ASSET( "10.000 TESTS" );
+         });
+
+         db.modify( db.get_dynamic_global_properties(), []( dynamic_global_property_object& gpo )
+         {
+            gpo.current_sbd_supply += ASSET( "10.000 TBD" );
+            gpo.current_supply += ASSET( "20.000 TESTS" );
+            gpo.virtual_supply += ASSET( "20.000 TESTS" );
+            gpo.pending_rewarded_vesting_shares += ASSET( "10.000000 VESTS" );
+            gpo.pending_rewarded_vesting_steem += ASSET( "10.000 TESTS" );
+         });
+      });
+
+      generate_block();
+      validate_database();
+
+      auto alice_steem = db->get_account( "alice" ).balance;
+      auto alice_sbd = db->get_account( "alice" ).sbd_balance;
+      auto alice_vests = db->get_account( "alice" ).vesting_shares;
+      auto alice_smt1 = db->get_balance( "alice", smt1 );
+      auto alice_smt2 = db->get_balance( "alice", smt2 );
+      auto alice_smt3 = db->get_balance( "alice", smt3 );
+
+      claim_reward_balance2_operation op;
+      op.account = "alice";
+
+      BOOST_TEST_MESSAGE( "--- Attempting to claim more than exists in the reward balance." );
+      // Legacy symbols
+      op.reward_tokens.push_back( ASSET( "0.000 TBD" ) );
+      op.reward_tokens.push_back( ASSET( "20.000 TESTS" ) );
+      op.reward_tokens.push_back( ASSET( "0.000000 VESTS" ) );
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
+      op.reward_tokens.clear();
+      // SMTs
+      op.reward_tokens.push_back( asset( 0, smt1 ) );
+      op.reward_tokens.push_back( asset( 20*std::pow(10, smt3.decimals()), smt3 ) );
+      op.reward_tokens.push_back( asset( 0, smt2 ) );
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "--- Claiming a partial reward balance" );
+      // Legacy symbols
+      asset partial_vests = ASSET( "5.000000 VESTS" );
+      op.reward_tokens.push_back( ASSET( "0.000 TBD" ) );
+      op.reward_tokens.push_back( ASSET( "0.000 TESTS" ) );
+      op.reward_tokens.push_back( partial_vests );
+      PUSH_OP(op, alice_private_key);
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == alice_steem + ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_steem_balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == alice_sbd + ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_sbd_balance == ASSET( "10.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares == alice_vests + partial_vests );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_vesting_balance == ASSET( "5.000000 VESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_vesting_steem == ASSET( "5.000 TESTS" ) );
+      validate_database();
+      alice_vests += partial_vests;
+      op.reward_tokens.clear();
+      // SMTs
+      asset partial_smt2 = asset( 5*std::pow(10, smt2.decimals()), smt2 );
+      op.reward_tokens.push_back( asset( 0, smt1 ) );
+      op.reward_tokens.push_back( asset( 0, smt3 ) );
+      op.reward_tokens.push_back( partial_smt2 );
+      PUSH_OP(op, alice_private_key);
+      BOOST_REQUIRE( db->get_balance( "alice", smt1 ) == alice_smt1 + asset( 0, smt1 ) );
+      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + asset( 0, smt3 ) );
+      BOOST_REQUIRE( db->get_balance( "alice", smt2 ) == alice_smt2 + partial_smt2 );
+      validate_database();
+      alice_smt2 += partial_smt2;
+      op.reward_tokens.clear();
+
+      BOOST_TEST_MESSAGE( "--- Claiming the full reward balance" );
+      // Legacy symbols
+      asset full_steem = ASSET( "10.000 TESTS" );
+      asset full_sbd = ASSET( "10.000 TBD" );
+      op.reward_tokens.push_back( full_sbd );
+      op.reward_tokens.push_back( full_steem );
+      op.reward_tokens.push_back( partial_vests );
+      PUSH_OP(op, alice_private_key);
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == alice_steem + full_steem );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == alice_sbd + full_sbd );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares == alice_vests + partial_vests );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_vesting_balance == ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).reward_vesting_steem == ASSET( "0.000 TESTS" ) );
+      validate_database();
+      op.reward_tokens.clear();
+      // SMTs
+      asset full_smt1 = asset( 10*std::pow(10, smt1.decimals()), smt1 );
+      asset full_smt3 = asset( 10*std::pow(10, smt3.decimals()), smt3 );
+      op.reward_tokens.push_back( full_smt1 );
+      op.reward_tokens.push_back( full_smt3 );
+      op.reward_tokens.push_back( partial_smt2 );
+      PUSH_OP(op, alice_private_key);
+      BOOST_REQUIRE( db->get_balance( "alice", smt1 ) == alice_smt1 + full_smt1 );
+      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + full_smt3 );
+      BOOST_REQUIRE( db->get_balance( "alice", smt2 ) == alice_smt2 + partial_smt2 );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

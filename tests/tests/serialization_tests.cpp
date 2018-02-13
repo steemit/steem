@@ -28,6 +28,7 @@
 #include <steem/chain/database.hpp>
 
 #include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/elliptic.hpp>
@@ -525,6 +526,26 @@ BOOST_AUTO_TEST_CASE( min_block_size )
       b.witness += 'a';
    size_t min_size = fc::raw::pack_size( b );
    BOOST_CHECK( min_size == STEEM_MIN_BLOCK_SIZE );
+}
+
+BOOST_AUTO_TEST_CASE( legacy_signed_transaction )
+{
+   using steem::plugins::condenser_api::legacy_signed_transaction;
+
+   signed_transaction tx;
+   vote_operation op;
+   op.voter = "alice";
+   op.author = "bob";
+   op.permlink = "foobar";
+   op.weight = STEEM_100_PERCENT;
+   tx.ref_block_num = 4000;
+   tx.ref_block_prefix = 4000000000;
+   tx.expiration = fc::time_point_sec( 1514764800 );
+   tx.operations.push_back( op );
+
+   signed_transaction tx2 = signed_transaction( fc::json::from_string( "{\"ref_block_num\":4000,\"ref_block_prefix\":4000000000,\"expiration\":\"2018-01-01T00:00:00\",\"operations\":[[\"vote\",{\"voter\":\"alice\",\"author\":\"bob\",\"permlink\":\"foobar\",\"weight\":10000}]],\"extensions\":[],\"signatures\":[\"\"]}" ).as< legacy_signed_transaction >() );
+
+   BOOST_REQUIRE( tx.id() == tx2.id() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
