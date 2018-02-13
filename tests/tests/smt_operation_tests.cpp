@@ -1002,7 +1002,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( ASSET( "-1.000 TBD" ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
-      op.reward_tokens.push_back( ASSET( "-1.000 VESTS" ) );
+      op.reward_tokens.push_back( ASSET( "-1.000000 VESTS" ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
       op.reward_tokens.push_back( asset( -1, smt1 ) );

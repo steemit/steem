@@ -81,6 +81,16 @@ class asset_symbol_type
 
       uint32_t to_nai()const;
 
+      /**Returns true when symbol represents vesting variant of the token,
+       * false for liquid one.
+       */
+      bool is_vesting() const;
+      /**Returns vesting symbol when called from liquid one
+       * and liquid symbol when called from vesting one.
+       * Returns back the SBD symbol if represents SBD.
+       */
+      asset_symbol_type get_paired_symbol() const;
+
       asset_symbol_space space()const;
       uint8_t decimals()const
       {  return uint8_t( asset_num & 0x0F );    }
