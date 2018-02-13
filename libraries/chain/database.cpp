@@ -4573,6 +4573,16 @@ void database::retally_witness_vote_counts( bool force )
 }
 
 #ifdef STEEM_ENABLE_SMT
+// 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
+// 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
+// 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
+//    with [0 : 99,999,999] range.
+// 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
+//    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
+// 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
+//    of liquid/vesting *pairs* of reserved/available NAIs.
+// 6. 45 milions of SMT await for their creators.
+
 vector< asset_symbol_type > database::get_smt_next_identifier()
 {
    // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
@@ -4582,12 +4592,17 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    // For appropriate use of this method see e.g. smt_database_fixture::create_smt
 
    uint8_t decimal_places = 0;
-   FC_ASSERT( _next_available_nai >= SMT_MIN_NAI );
+
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
    FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
+   // Assume that _next_available_nai value shows the liquid version of NAI.
+   FC_ASSERT( (_next_available_nai & 0x1) == 0, "Can't start with vesting version of NAI." );
+   uint32_t new_nai = _next_available_nai;
+   // Skip vesting version of produced NAI - it differs only by least significant bit set.
+   _next_available_nai += 2;
 
-   uint32_t asset_num = (_next_available_nai++ << 5) | 0x10 | decimal_places;
-
-   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( asset_num );
+   uint32_t new_asset_num = (new_nai << 5) | 0x10 | decimal_places;
+   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( new_asset_num );
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
