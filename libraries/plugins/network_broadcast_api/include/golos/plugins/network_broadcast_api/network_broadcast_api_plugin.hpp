@@ -14,6 +14,7 @@ namespace golos {
 
 
             using json_rpc::msg_pack;
+            using json_rpc::msg_pack_transfer;
             using json_rpc::void_type;
 
             using golos::protocol::signed_block;
@@ -36,7 +37,7 @@ namespace golos {
 
             ///               API,                                    args,                return
             DEFINE_API_ARGS(broadcast_transaction, msg_pack, void_type)
-            DEFINE_API_ARGS(broadcast_transaction_synchronous, msg_pack, broadcast_transaction_synchronous_t)
+            DEFINE_API_ARGS(broadcast_transaction_synchronous, msg_pack, void_type)
             DEFINE_API_ARGS(broadcast_block, msg_pack, void_type)
 
 
