@@ -75,6 +75,7 @@ namespace golos {
 
                 pimpl->_chain.db().push_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
+                transfer.complete();
 
                 return {};
             }
