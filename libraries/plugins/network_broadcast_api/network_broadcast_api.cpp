@@ -103,11 +103,11 @@ namespace golos {
                 trx.validate();
 
                 // Delegate connection handlers to callback
-                auto msg = std::make_shared<msg_pack>(std::move(args));
+                msg_pack_transfer transfer(args);
 
                 {
                     boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
-                    pimpl->_callbacks[trx.id()] = [msg](broadcast_transaction_synchronous_t r) {
+                    pimpl->_callbacks[trx.id()] = [msg = transfer.msg()](broadcast_transaction_synchronous_t r) {
                         if (msg->valid()) {
                             msg->result(std::move(r));
                         }
@@ -115,15 +115,10 @@ namespace golos {
                     pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
 
-                try {
-                    pimpl->_chain.db().push_transaction(trx);
-                    pimpl->_p2p.broadcast_transaction(trx);
-                } catch (...) {
-                    // TODO: see TODO in the header of this function
-                    // Restore connection handlers to original
-                    args = std::move(*msg.get());
-                    throw;
-                }
+
+                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_p2p.broadcast_transaction(trx);
+                transfer.complete();
 
             }
 
