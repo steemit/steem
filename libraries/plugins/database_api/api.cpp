@@ -21,19 +21,51 @@ namespace golos {
     namespace plugins {
         namespace database_api {
 
-            template<class C, typename... Args>
-            boost::signals2::scoped_connection connect_signal(boost::signals2::signal<void(Args...)> &sig, C &c, void(C::* f)(Args...)) {
-                std::weak_ptr<C> weak_c = c.shared_from_this();
-                return sig.connect([weak_c, f](Args... args) {
-                    std::shared_ptr<C> shared_c = weak_c.lock();
-                    if (!shared_c) {
-                        return;
-                    }
-                    ((*shared_c).*f)(args...);
-                });
-            }
+            class block_applied_callback_info;
 
-            struct plugin::api_impl final: public std::enable_shared_from_this<api_impl> {
+            using block_applied_callback_info_ptr = std::shared_ptr<block_applied_callback_info>;
+
+            using block_applied_callback_list = std::list<block_applied_callback_info_ptr>;
+
+            struct block_applied_callback_info {
+
+                bool active = true;
+                block_applied_callback callback;
+                boost::signals2::connection connection;
+                block_applied_callback_list::iterator it;
+
+                void connect(
+                    block_applied_callback_info_ptr this_ptr,
+                    boost::signals2::signal<void(const signed_block &)> &sig,
+                    block_applied_callback_list &active_list,
+                    block_applied_callback_list &free_list,
+                    block_applied_callback cb
+                ) {
+                    active_list.push_back(this_ptr);
+                    it = active_list.end();
+                    --it;
+
+                    callback = cb;
+
+                    connection = sig.connect([this, &active_list, &free_list](const signed_block &block) {
+                        try {
+                            if (this->active) {
+                                this->callback(fc::variant(block));
+                            }
+                        } catch (...) {
+                            this->active = false;
+                            if (this->it != active_list.end()) {
+                                free_list.push_back(*this->it);
+                                active_list.erase(this->it);
+                                this->it = active_list.end();
+                            }
+                        }
+                    });
+                }
+            };
+
+
+            struct plugin::api_impl final {
             public:
                 api_impl();
 
@@ -44,7 +76,7 @@ namespace golos {
 
                 void set_pending_transaction_callback(std::function<void(const variant &)> cb);
 
-                void set_block_applied_callback(std::function<void(const variant &block_id)> cb);
+                void set_block_applied_callback(block_applied_callback cb);
 
                 void cancel_all_subscriptions();
 
@@ -122,13 +154,9 @@ namespace golos {
                     return _subscribe_filter.contains(i);
                 }
 
-                // signal handlers
-                void on_applied_block(const golos::protocol::signed_block &b);
-
                 mutable fc::bloom_filter _subscribe_filter;
                 std::function<void(const fc::variant &)> _subscribe_callback;
                 std::function<void(const fc::variant &)> _pending_trx_callback;
-                std::function<void(const fc::variant &)> _block_applied_callback;
 
 
                 golos::chain::database &database() const {
@@ -136,9 +164,11 @@ namespace golos {
                 }
 
 
-                boost::signals2::scoped_connection _block_applied_connection;
-
                 std::map<std::pair<asset_symbol_type, asset_symbol_type>, std::function<void(const variant &)>> _market_subscriptions;
+
+                block_applied_callback_list block_applied_callback_active_list;
+                block_applied_callback_list block_applied_callback_free_list;
+
             private:
 
                 golos::chain::database &_db;
@@ -161,8 +191,10 @@ namespace golos {
                 });
             }
 
-            void plugin::api_impl::set_subscribe_callback(std::function<void(const variant &)> cb,
-                                                                bool clear_filter) {
+            void plugin::api_impl::set_subscribe_callback(
+                std::function<void(const variant &)> cb,
+                bool clear_filter
+            ) {
                 _subscribe_callback = cb;
                 if (clear_filter || !cb) {
                     static fc::bloom_parameters param;
@@ -182,25 +214,6 @@ namespace golos {
 
             void plugin::api_impl::set_pending_transaction_callback(std::function<void(const variant &)> cb) {
                 _pending_trx_callback = cb;
-            }
-
-            void plugin::set_block_applied_callback(std::function<void(const variant &block_id)> cb) {
-                my->database().with_read_lock([&]() {
-                    my->set_block_applied_callback(cb);
-                });
-            }
-
-            void plugin::api_impl::on_applied_block(const golos::protocol::signed_block &b) {
-                try {
-                    _block_applied_callback(fc::variant(signed_block_header(b)));
-                } catch (...) {
-                    _block_applied_connection.release();
-                }
-            }
-
-            void plugin::api_impl::set_block_applied_callback(std::function<void(const variant &block_header)> cb) {
-                _block_applied_callback = cb;
-                _block_applied_connection = connect_signal(database().applied_block, *this, &api_impl::on_applied_block);
             }
 
             void plugin::cancel_all_subscriptions() {
@@ -290,6 +303,39 @@ namespace golos {
                 return result;
             }
 
+            DEFINE_API(plugin, set_block_applied_callback) {
+                CHECK_ARG_SIZE(1)
+
+                // Delegate connection handlers to callback
+                auto msg = std::make_shared<msg_pack>(std::move(args));
+
+                my->database().with_read_lock([&]{
+                    my->set_block_applied_callback([msg](const fc::variant & block_header) {
+                        msg->result(fc::variant(block_header));
+                    });
+                });
+
+                return set_block_applied_callback_return();
+            }
+
+            void plugin::api_impl::set_block_applied_callback(std::function<void(const variant &block_header)> callback) {
+                auto info_ptr = std::make_shared<block_applied_callback_info>();
+
+                info_ptr->connect(
+                    info_ptr,
+                    database().applied_block,
+                    block_applied_callback_active_list,
+                    block_applied_callback_free_list,
+                    callback
+                );
+            }
+
+            void plugin::clear_block_applied_callback() {
+                for (auto &info: my->block_applied_callback_free_list) {
+                    my->database().applied_block.disconnect(info->connection);
+                }
+                my->block_applied_callback_free_list.clear();
+            }
 
             //////////////////////////////////////////////////////////////////////
             //                                                                  //
@@ -399,7 +445,8 @@ namespace golos {
             }
 
             std::vector<optional<account_api_object>> plugin::api_impl::lookup_account_names(
-                    const std::vector<std::string> &account_names) const {
+                const std::vector<std::string> &account_names
+            ) const {
                 std::vector<optional<account_api_object>> result;
                 result.reserve(account_names.size());
 
@@ -425,8 +472,10 @@ namespace golos {
                 });
             }
 
-            std::set<std::string> plugin::api_impl::lookup_accounts(const std::string &lower_bound_name,
-                                                                          uint32_t limit) const {
+            std::set<std::string> plugin::api_impl::lookup_accounts(
+                const std::string &lower_bound_name,
+                 uint32_t limit
+            ) const {
                 FC_ASSERT(limit <= 1000);
                 const auto &accounts_by_name = database().get_index<account_index>().indices().get<by_name>();
                 std::set<std::string> result;
@@ -501,8 +550,10 @@ namespace golos {
                 });
             }
 
-            std::vector<withdraw_route> plugin::api_impl::get_withdraw_routes(std::string account,
-                                                                                    withdraw_route_type type) const {
+            std::vector<withdraw_route> plugin::api_impl::get_withdraw_routes(
+                std::string account,
+                withdraw_route_type type
+            ) const {
                 std::vector<withdraw_route> result;
 
                 const auto &acc = database().get_account(account);
@@ -526,8 +577,7 @@ namespace golos {
                 }
 
                 if (type == incoming || type == all) {
-                    const auto &by_dest = database().get_index<withdraw_vesting_route_index>().indices().get<
-                            by_destination>();
+                    const auto &by_dest = database().get_index<withdraw_vesting_route_index>().indices().get<by_destination>();
                     auto route = by_dest.lower_bound(acc.id);
 
                     while (route != by_dest.end() && route->to_account == acc.id) {
@@ -586,7 +636,8 @@ namespace golos {
             }
 
             std::vector<optional<witness_api_object>> plugin::api_impl::get_witnesses(
-                    const std::vector<witness_object::id_type> &witness_ids) const {
+                const std::vector<witness_object::id_type> &witness_ids
+            ) const {
                 std::vector<optional<witness_api_object>> result;
                 result.reserve(witness_ids.size());
                 std::transform(witness_ids.begin(), witness_ids.end(), std::back_inserter(result),
@@ -609,7 +660,8 @@ namespace golos {
 
 
             fc::optional<witness_api_object> plugin::api_impl::get_witness_by_account(
-                    std::string account_name) const {
+                std::string account_name
+            ) const {
                 const auto &idx = database().get_index<witness_index>().indices().get<by_name>();
                 auto itr = idx.find(account_name);
                 if (itr != idx.end()) {
@@ -618,8 +670,10 @@ namespace golos {
                 return {};
             }
 
-            std::vector<witness_api_object> plugin::api_impl::get_witnesses_by_vote(std::string from,
-                                                                                          uint32_t limit) const {
+            std::vector<witness_api_object> plugin::api_impl::get_witnesses_by_vote(
+                std::string from,
+                uint32_t limit
+            ) const {
                 //idump((from)(limit));
                 FC_ASSERT(limit <= 100);
 
@@ -664,7 +718,9 @@ namespace golos {
             }
 
             std::set<account_name_type> plugin::api_impl::lookup_witness_accounts(
-                    const std::string &lower_bound_name, uint32_t limit) const {
+                const std::string &lower_bound_name,
+                uint32_t limit
+            ) const {
                 FC_ASSERT(limit <= 1000);
                 const auto &witnesses_by_id = database().get_index<witness_index>().indices().get<by_id>();
 
@@ -723,20 +779,24 @@ namespace golos {
                 });
             }
 
-            std::set<public_key_type> plugin::api_impl::get_required_signatures(const signed_transaction &trx,
-                                                                                      const flat_set<
-                                                                                              public_key_type> &available_keys) const {
+            std::set<public_key_type> plugin::api_impl::get_required_signatures(
+                const signed_transaction &trx,
+                const flat_set<public_key_type> &available_keys
+            ) const {
                 //   wdump((trx)(available_keys));
-                auto result = trx.get_required_signatures(STEEMIT_CHAIN_ID, available_keys,
-                                                          [&](std::string account_name) {
-                                                              return authority(database().get<account_authority_object,
-                                                                      by_account>(account_name).active);
-                                                          }, [&](std::string account_name) {
-                            return authority(database().get<account_authority_object, by_account>(account_name).owner);
-                        }, [&](std::string account_name) {
-                            return authority(
-                                    database().get<account_authority_object, by_account>(account_name).posting);
-                        }, STEEMIT_MAX_SIG_CHECK_DEPTH);
+                auto result = trx.get_required_signatures(
+                    STEEMIT_CHAIN_ID, available_keys,
+                    [&](std::string account_name) {
+                        return authority(database().get<account_authority_object, by_account>(account_name).active);
+                    },
+                    [&](std::string account_name) {
+                        return authority(database().get<account_authority_object, by_account>(account_name).owner);
+                    },
+                    [&](std::string account_name) {
+                        return authority(database().get<account_authority_object, by_account>(account_name).posting);
+                    },
+                    STEEMIT_MAX_SIG_CHECK_DEPTH
+                );
                 //   wdump((result));
                 return result;
             }
@@ -748,32 +808,33 @@ namespace golos {
                 });
             }
 
-            std::set<public_key_type> plugin::api_impl::get_potential_signatures(
-                    const signed_transaction &trx) const {
+            std::set<public_key_type> plugin::api_impl::get_potential_signatures(const signed_transaction &trx) const {
                 //   wdump((trx));
                 std::set<public_key_type> result;
                 trx.get_required_signatures(STEEMIT_CHAIN_ID, flat_set<public_key_type>(),
-                                            [&](account_name_type account_name) {
-                                                const auto &auth = database().get<account_authority_object, by_account>(
-                                                        account_name).active;
-                                                for (const auto &k : auth.get_keys()) {
-                                                    result.insert(k);
-                                                }
-                                                return authority(auth);
-                                            }, [&](account_name_type account_name) {
-                            const auto &auth = database().get<account_authority_object, by_account>(account_name).owner;
-                            for (const auto &k : auth.get_keys()) {
-                                result.insert(k);
-                            }
-                            return authority(auth);
-                        }, [&](account_name_type account_name) {
-                            const auto &auth = database().get<account_authority_object, by_account>(
-                                    account_name).posting;
-                            for (const auto &k : auth.get_keys()) {
-                                result.insert(k);
-                            }
-                            return authority(auth);
-                        }, STEEMIT_MAX_SIG_CHECK_DEPTH);
+                    [&](account_name_type account_name) {
+                        const auto &auth = database().get<account_authority_object, by_account>(account_name).active;
+                        for (const auto &k : auth.get_keys()) {
+                            result.insert(k);
+                        }
+                        return authority(auth);
+                    },
+                    [&](account_name_type account_name) {
+                        const auto &auth = database().get<account_authority_object, by_account>(account_name).owner;
+                        for (const auto &k : auth.get_keys()) {
+                            result.insert(k);
+                        }
+                        return authority(auth);
+                    },
+                    [&](account_name_type account_name) {
+                        const auto &auth = database().get<account_authority_object, by_account>(account_name).posting;
+                        for (const auto &k : auth.get_keys()) {
+                            result.insert(k);
+                        }
+                        return authority(auth);
+                    },
+                    STEEMIT_MAX_SIG_CHECK_DEPTH
+                );
 
                 //   wdump((result));
                 return result;
@@ -805,8 +866,10 @@ namespace golos {
                 });
             }
 
-            bool plugin::api_impl::verify_account_authority(const std::string &name,
-                                                                  const flat_set<public_key_type> &keys) const {
+            bool plugin::api_impl::verify_account_authority(
+                const std::string &name,
+                const flat_set<public_key_type> &keys
+            ) const {
                 FC_ASSERT(name.size() > 0);
                 auto account = database().find<account_object, by_name>(name);
                 FC_ASSERT(account, "no such account");
@@ -837,17 +900,18 @@ namespace golos {
 
 
 
-            std::map<uint32_t, applied_operation> plugin::api_impl::get_account_history(std::string account,
-                                                                                              uint64_t from,
-                                                                                              uint32_t limit) const {
+            std::map<uint32_t, applied_operation> plugin::api_impl::get_account_history(
+                std::string account,
+                uint64_t from,
+                uint32_t limit
+            ) const {
                 FC_ASSERT(limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l", limit));
                 FC_ASSERT(from >= limit, "From must be greater than limit");
                 //   idump((account)(from)(limit));
                 const auto &idx = database().get_index<account_history_index>().indices().get<by_account>();
                 auto itr = idx.lower_bound(boost::make_tuple(account, from));
                 //   if( itr != idx.end() ) idump((*itr));
-                auto end = idx.upper_bound(
-                        boost::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
+                auto end = idx.upper_bound(boost::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
                 //   if( end != idx.end() ) idump((*end));
 
                 std::map<uint32_t, applied_operation> result;
@@ -930,8 +994,7 @@ namespace golos {
                 return my->database().with_read_lock([&]() {
                     std::vector<savings_withdraw_api_object> result;
 
-                    const auto &to_complete_idx = my->database().get_index<savings_withdraw_index>().indices().get<
-                            by_to_complete>();
+                    const auto &to_complete_idx = my->database().get_index<savings_withdraw_index>().indices().get<by_to_complete>();
                     auto itr = to_complete_idx.lower_bound(account);
                     while (itr != to_complete_idx.end() && itr->to == account) {
                         result.push_back(savings_withdraw_api_object(*itr));
@@ -962,10 +1025,15 @@ namespace golos {
 
 
             void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
-                my.reset(new api_impl());
+                ilog("database_api plugin: plugin_initialize() begin");
+                my = std::make_unique<api_impl>();
                 JSON_RPC_REGISTER_API(plugin_name)
+                my->database().applied_block.connect([this](const protocol::signed_block &) {
+                    this->clear_block_applied_callback();
+                });
+                ilog("database_api plugin: plugin_initialize() end");
             }
 
         }
     }
-} // golos::application
+} // golos::plugins::database_api

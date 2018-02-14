@@ -100,12 +100,14 @@ namespace golos {
             using chain_properties_17 = chain_properties;
             using price_17 = price;
 
+            using block_applied_callback = std::function<void(const variant &block_header)>;
 
             ///               API,                                    args,                return
             DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
             DEFINE_API_ARGS(get_block,                        msg_pack, optional<block_header>)
             DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
+            DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
             DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
             DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
             DEFINE_API_ARGS(get_chain_properties,             msg_pack, chain_properties_17)
@@ -184,14 +186,19 @@ namespace golos {
 
                 void set_pending_transaction_callback(std::function<void(const variant &)> cb);
 
-                void set_block_applied_callback(std::function<void(const variant &block_header)> cb);
-
                 /**
                  * @brief Stop receiving any notifications
                  *
                  * This unsubscribes from all subscribed markets and objects.
                  */
                 void cancel_all_subscriptions();
+
+
+                /**
+                 * @brief Clear disconnected callbacks on applied block
+                 */
+
+                void clear_block_applied_callback();
 
                 DECLARE_API(
 
@@ -232,6 +239,14 @@ namespace golos {
                                      *  @return sequence of operations included/generated within the block
                                      */
                                     (get_ops_in_block)
+
+
+
+                                    /**
+                                     * @brief Set callback which is triggered on each generated block
+                                     * @param callback function which should be called
+                                     */
+                                    (set_block_applied_callback)
 
                                     /////////////
                                     // Globals //

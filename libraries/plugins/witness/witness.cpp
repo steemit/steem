@@ -153,7 +153,9 @@ namespace golos {
             void witness_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
                     ilog("witness plugin:  plugin_initialize() begin");
-                    pimpl.reset(new witness_plugin::impl);
+                    pimpl = std::make_unique<witness_plugin::impl>();
+
+                    pimpl->total_hashes_.store(0, std::memory_order_relaxed);
                     pimpl->_options = &options;
                     LOAD_VALUE_SET(options, "witness", pimpl->_witnesses, string)
                     edump((pimpl->_witnesses));
