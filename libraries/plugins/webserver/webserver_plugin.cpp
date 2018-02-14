@@ -193,15 +193,20 @@ namespace golos {
                 }
             }
 
-            void webserver_plugin::webserver_plugin_impl::handle_ws_message(websocket_server_type *server,
-                                                                            connection_hdl hdl,
-                                                                            websocket_server_type::message_ptr msg) {
+            void webserver_plugin::webserver_plugin_impl::handle_ws_message(
+                websocket_server_type *server,
+                connection_hdl hdl,
+                websocket_server_type::message_ptr msg
+            ) {
                 auto con = server->get_con_from_hdl(hdl);
                 thread_pool_ios.post([con, msg, this]() {
                     try {
                         if (msg->get_opcode() == websocketpp::frame::opcode::text) {
                             api->call(msg->get_payload(), [con](const std::string &data){
-                                con->send(data);
+                                auto ec = con->send(data);
+                                if (ec) {
+                                    throw websocketpp::exception(ec);
+                                }
                             });
                         } else {
                             con->send("error: string payload expected");
