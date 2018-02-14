@@ -183,6 +183,11 @@ void plugin::plugin_impl::debug_update (
     db.push_block( *head_block, skip );
 }
 
+void plugin::set_logging(const bool islogging)
+{
+    my->logging = islogging;
+}
+
 void plugin::plugin_impl::apply_debug_updates() {
     // this was a method on database in Graphene
     auto & db = database();

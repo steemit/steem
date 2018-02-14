@@ -1,6 +1,7 @@
 #ifdef STEEMIT_BUILD_TESTNET
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 #include <golos/protocol/exceptions.hpp>
 
@@ -19,7 +20,7 @@
 using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
-using fc::string;
+using std::string;
 
 BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 

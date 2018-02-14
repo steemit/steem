@@ -1,9 +1,9 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <golos/protocol/exceptions.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <golos/chain/database.hpp>
+#include <golos/chain/steem_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 

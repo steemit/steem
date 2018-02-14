@@ -1,28 +1,27 @@
 #ifndef DATABASE_FIXTURE_HPP
 #define DATABASE_FIXTURE_HPP
 
-#include <steemit/app/application.hpp>
-#include <steemit/chain/database.hpp>
+#include <appbase/application.hpp>
+#include <golos/chain/database.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <golos/plugins/debug_node/plugin.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
-using namespace golos::db;
 
 extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 #define PUSH_TX \
-   steemit::chain::test::_push_transaction
+   golos::chain::test::_push_transaction
 
 #define PUSH_BLOCK \
-   steemit::chain::test::_push_block
+   golos::chain::test::_push_block
 
 // See below
 #define REQUIRE_OP_VALIDATION_SUCCESS(op, field, value) \
@@ -140,7 +139,6 @@ namespace golos {
         struct database_fixture {
             // the reason we use an app is to exercise the indexes of built-in
             //   plugins
-            golos::app::application app;
             chain::database &db;
             signed_transaction trx;
             public_key_type committee_key;
@@ -152,14 +150,15 @@ namespace golos {
             uint32_t default_skip = 0 | database::skip_undo_history_check |
                                     database::skip_authority_check;
 
-            std::shared_ptr<golos::plugin::debug_node::debug_node_plugin> db_plugin;
+            std::shared_ptr<golos::plugins::debug_node::plugin> db_plugin;
 
             optional<fc::temp_directory> data_dir;
             bool skip_key_index_test = false;
 
             uint32_t anon_acct_count;
 
-            database_fixture() : app(), db(*app.chain_database()) {
+            database_fixture() :
+                    db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
             }
 
             virtual ~database_fixture() {

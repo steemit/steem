@@ -1,12 +1,12 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <graphene/time/time.hpp>
+#include <golos/time/time.hpp>
 #include <graphene/utilities/tempdir.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/account_history/account_history_plugin.hpp>
+#include <golos/chain/steem_objects.hpp>
+#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -22,6 +22,7 @@ namespace golos {
 
         using std::cout;
         using std::cerr;
+        using namespace golos::plugins;
 
         clean_database_fixture::clean_database_fixture() {
             try {
@@ -38,16 +39,16 @@ namespace golos {
                                   << std::endl;
                     }
                 }
-                auto ahplugin = app.register_plugin<golos::account_history::account_history_plugin>();
-                db_plugin = app.register_plugin<golos::plugin::debug_node::debug_node_plugin>();
+                account_history::plugin& ahplugin = appbase::app().register_plugin<account_history::plugin>();
+                db_plugin.reset(&appbase::app().register_plugin<debug_node::plugin>());
                 init_account_pub_key = init_account_priv_key.get_public_key();
 
                 boost::program_options::variables_map options;
 
                 open_database();
 
-                db_plugin->logging = false;
-                ahplugin->plugin_initialize(options);
+                db_plugin->set_logging(false);
+                ahplugin.plugin_initialize(options);
                 db_plugin->plugin_initialize(options);
 
                 generate_block();
@@ -142,8 +143,8 @@ namespace golos {
                 _chain_dir = fc::current_path() / "test_blockchain";
                 FC_ASSERT(fc::exists(_chain_dir), "Requires blockchain to test on in ./test_blockchain");
 
-                auto ahplugin = app.register_plugin<golos::account_history::account_history_plugin>();
-                ahplugin->plugin_initialize(boost::program_options::variables_map());
+                account_history::plugin& ahplugin = appbase::app().register_plugin<account_history::plugin>();
+                ahplugin.plugin_initialize(boost::program_options::variables_map());
 
                 db.open(_chain_dir, _chain_dir);
                 golos::time::now();
@@ -194,18 +195,40 @@ namespace golos {
 
         void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key &key, int miss_blocks) {
             skip |= default_skip;
-            db_plugin->debug_generate_blocks(golos::utilities::key_to_wif(key), 1, skip, miss_blocks);
+            debug_node::debug_generate_blocks_a param;
+            param.debug_key = golos::utilities::key_to_wif(key);
+            param.count = 1;
+            param.skip = skip;
+            param.miss_blocks = miss_blocks;
+            param.edit_if_needed = true;
+
+            // TODO Wait for Anton input
+            //db_plugin->debug_generate_blocks(param);
         }
 
         void database_fixture::generate_blocks(uint32_t block_count) {
-            auto produced = db_plugin->debug_generate_blocks(debug_key, block_count, default_skip, 0);
-            BOOST_REQUIRE(produced == block_count);
+            debug_node::debug_generate_blocks_a param;
+            param.debug_key = debug_key;
+            param.count = block_count;
+            param.skip = default_skip;
+            param.miss_blocks = 0;
+            param.edit_if_needed = true;
+
+            // TODO Wait for Anton input
+            //auto produced = db_plugin->debug_generate_blocks(param);
+            //BOOST_REQUIRE(produced.blocks == block_count);
         }
 
         void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks) {
-            db_plugin->debug_generate_blocks_until(debug_key, timestamp, miss_intermediate_blocks, default_skip);
-            BOOST_REQUIRE((db.head_block_time() - timestamp).to_seconds() <
-                          STEEMIT_BLOCK_INTERVAL);
+            debug_node::debug_generate_blocks_until_a param;
+            param.debug_key = debug_key;
+            param.head_block_time = timestamp;
+            param.generate_sparsely = miss_intermediate_blocks;
+
+            // TODO Wait for Anton input
+            //db_plugin->debug_generate_blocks_until(param);
+            //BOOST_REQUIRE((db.head_block_time() - timestamp).to_seconds() <
+            //              STEEMIT_BLOCK_INTERVAL);
         }
 
         const account_object &database_fixture::account_create(

@@ -31,9 +31,9 @@
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/history_object.hpp>
 
-#include <golos/account_history/account_history_plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
 
-#include <golos/utilities/tempdir.hpp>
+#include <graphene/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -42,6 +42,7 @@
 using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
+using namespace golos::plugins;
 
 #define TEST_SHARED_MEM_SIZE (1024 * 1024 * 8)
 
@@ -541,7 +542,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             generate_block();
 
             auto rsf = [&]() -> string {
-                fc::uint128 rsf = db.get_dynamic_global_properties().recent_slots_filled;
+                fc::uint128_t rsf = db.get_dynamic_global_properties().recent_slots_filled;
                 string result = "";
                 result.reserve(128);
                 for (int i = 0; i < 128; i++) {
@@ -706,20 +707,20 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                                   << std::endl;
                     }
                 }
-                auto ahplugin = app.register_plugin<golos::account_history::account_history_plugin>();
-                db_plugin = app.register_plugin<golos::plugin::debug_node::debug_node_plugin>();
+                account_history::plugin& ahplugin = appbase::app().register_plugin<account_history::plugin>();
+                db_plugin.reset(&appbase::app().register_plugin<debug_node::plugin>());
                 init_account_pub_key = init_account_priv_key.get_public_key();
 
                 boost::program_options::variables_map options;
 
-                ahplugin->plugin_initialize(options);
+                ahplugin.plugin_initialize(options);
                 db_plugin->plugin_initialize(options);
 
                 open_database();
 
                 generate_blocks(2);
 
-                ahplugin->plugin_startup();
+                ahplugin.plugin_startup();
                 db_plugin->plugin_startup();
 
                 vest("initminer", 10000);
