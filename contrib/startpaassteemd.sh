@@ -2,19 +2,12 @@
 
 VERSION=`cat /etc/steemdversion`
 
-<<<<<<< HEAD
-if [[ ! "$IS_BROADCAST_NODE" ]]; then
-  STEEMD="/usr/local/steemd-full/bin/steemd"
-else
-  STEEMD="/usr/local/steemd-default/bin/steemd"
-=======
 if [[ "$IS_BROADCAST_NODE" ]]; then
   STEEMD="/usr/local/steemd-default/bin/steemd"
 elif [[ "$IS_AH_NODE" ]]; then
   STEEMD="/usr/local/steemd-default/bin/steemd"
 else
   STEEMD="/usr/local/steemd-full/bin/steemd"
->>>>>>> develop
 fi
 
 chown -R steemd:steemd $HOME
