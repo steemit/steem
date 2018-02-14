@@ -5012,6 +5012,9 @@ namespace graphene { namespace net {
          _node_configuration.private_key = fc::ecc::private_key::generate();
       }
 
+      // Private key could have been overridden at this point. Update public key just in case
+      _node_public_key = _node_configuration.private_key.get_public_key().serialize();
+
       if( _node_configuration.desired_number_of_connections > _node_configuration.maximum_number_of_connections )
       {
          wlog( "Reducing desired_number_of_connections from ${x0} to maximum_number_of_connections=${x1}",
