@@ -14,6 +14,7 @@ namespace golos {
 
 
             using json_rpc::msg_pack;
+            using json_rpc::msg_pack_transfer;
             using json_rpc::void_type;
 
             using golos::protocol::signed_block;

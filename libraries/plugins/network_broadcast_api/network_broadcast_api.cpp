@@ -21,7 +21,7 @@ namespace golos {
             struct network_broadcast_api_plugin::impl final {
             public:
                 impl() : _p2p(appbase::app().get_plugin<p2p::p2p_plugin>()),
-                        _chain(appbase::app().get_plugin<chain::plugin>()) {
+                         _chain(appbase::app().get_plugin<chain::plugin>()) {
                 }
 
                 p2p::p2p_plugin &_p2p;
@@ -53,7 +53,6 @@ namespace golos {
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_transaction_synchronous) {
-                // TODO: implement commit semantic for delegating connection handlers
                 const auto n_args = args.args->size();
                 FC_ASSERT(n_args >= 1, "Expected at least 1 argument, got 0");
                 auto trx = args.args->at(0).as<signed_transaction>();
@@ -63,10 +62,10 @@ namespace golos {
                 }
 
                 // Delegate connection handlers to callback
-                auto msg = std::make_shared<msg_pack>(std::move(args));
+                msg_pack_transfer transfer(args);
                 {
                     boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
-                    pimpl->_callbacks[trx.id()] = [msg](broadcast_transaction_synchronous_t r) {
+                    pimpl->_callbacks[trx.id()] = [msg = transfer.msg()](broadcast_transaction_synchronous_t r) {
                         if (msg->valid()) {
                             msg->result(std::move(r));
                         }
@@ -74,17 +73,10 @@ namespace golos {
                     pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
 
-                try {
-                    pimpl->_chain.db().push_transaction(trx);
-                    pimpl->_p2p.broadcast_transaction(trx);
-                } catch (...) {
-                    // TODO: see TODO in the header of this function
-                    // Restore connection handlers to original
-                    args = std::move(*msg.get());
-                    throw;
-                }
+                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_p2p.broadcast_transaction(trx);
 
-                return broadcast_transaction_synchronous_return();
+                return {};
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_block) {
