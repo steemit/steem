@@ -513,7 +513,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
         _my.reset(new plugin_impl());
         auto &db = _my -> database();
 
-        uint32_t statsd_default_port;
+        uint32_t statsd_default_port = 8125; //See default port statsd https://github.com/etsy/statsd
 
         if (options.count("statsd-default-port")) {
             statsd_default_port = options["statsd-default-port"].as<uint32_t>();
