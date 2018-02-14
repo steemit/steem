@@ -21,43 +21,40 @@ namespace golos {
     namespace plugins {
         namespace database_api {
 
-            class block_applied_callback_info;
-
-            using block_applied_callback_info_ptr = std::shared_ptr<block_applied_callback_info>;
-
-            using block_applied_callback_list = std::list<block_applied_callback_info_ptr>;
-
             struct block_applied_callback_info {
+
+                using ptr = std::shared_ptr<block_applied_callback_info>;
+                using cont = std::list<ptr>;
 
                 bool active = true;
                 block_applied_callback callback;
                 boost::signals2::connection connection;
-                block_applied_callback_list::iterator it;
+                cont::iterator it;
 
                 void connect(
-                    block_applied_callback_info_ptr this_ptr,
+                    ptr this_ptr,
                     boost::signals2::signal<void(const signed_block &)> &sig,
-                    block_applied_callback_list &active_list,
-                    block_applied_callback_list &free_list,
+                    cont &active_cont,
+                    cont &free_cont,
                     block_applied_callback cb
                 ) {
-                    active_list.push_back(this_ptr);
-                    it = active_list.end();
+                    active_cont.push_back(this_ptr);
+                    it = active_cont.end();
                     --it;
 
                     callback = cb;
 
-                    connection = sig.connect([this, &active_list, &free_list](const signed_block &block) {
+                    connection = sig.connect([this, &active_cont, &free_cont](const signed_block &block) {
                         try {
                             if (this->active) {
                                 this->callback(fc::variant(block));
                             }
                         } catch (...) {
                             this->active = false;
-                            if (this->it != active_list.end()) {
-                                free_list.push_back(*this->it);
-                                active_list.erase(this->it);
-                                this->it = active_list.end();
+                            if (this->it != active_cont.end()) {
+                                free_cont.push_back(*this->it);
+                                active_cont.erase(this->it);
+                                this->it = active_cont.end();
                             }
                         }
                     });
@@ -166,8 +163,8 @@ namespace golos {
 
                 std::map<std::pair<asset_symbol_type, asset_symbol_type>, std::function<void(const variant &)>> _market_subscriptions;
 
-                block_applied_callback_list block_applied_callback_active_list;
-                block_applied_callback_list block_applied_callback_free_list;
+                block_applied_callback_info::cont active_block_applied_callback;
+                block_applied_callback_info::cont free_block_applied_callback;
 
             private:
 
@@ -307,15 +304,17 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
 
                 // Delegate connection handlers to callback
-                auto msg = std::make_shared<msg_pack>(std::move(args));
+                msg_pack_transfer transfer(args);
 
                 my->database().with_read_lock([&]{
-                    my->set_block_applied_callback([msg](const fc::variant & block_header) {
+                    my->set_block_applied_callback([msg = transfer.msg()](const fc::variant & block_header) {
                         msg->result(fc::variant(block_header));
                     });
                 });
 
-                return set_block_applied_callback_return();
+                transfer.complete();
+
+                return {};
             }
 
             void plugin::api_impl::set_block_applied_callback(std::function<void(const variant &block_header)> callback) {
@@ -324,17 +323,17 @@ namespace golos {
                 info_ptr->connect(
                     info_ptr,
                     database().applied_block,
-                    block_applied_callback_active_list,
-                    block_applied_callback_free_list,
+                    active_block_applied_callback,
+                    free_block_applied_callback,
                     callback
                 );
             }
 
             void plugin::clear_block_applied_callback() {
-                for (auto &info: my->block_applied_callback_free_list) {
+                for (auto &info: my->free_block_applied_callback) {
                     my->database().applied_block.disconnect(info->connection);
                 }
-                my->block_applied_callback_free_list.clear();
+                my->free_block_applied_callback.clear();
             }
 
             //////////////////////////////////////////////////////////////////////

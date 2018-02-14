@@ -89,6 +89,38 @@ namespace golos {
                 std::unique_ptr<impl> pimpl;
             };
 
+            class msg_pack_transfer final {
+            public:
+                using ptr = std::shared_ptr<msg_pack>;
+
+                msg_pack_transfer(msg_pack &msg):
+                    orig_msg(msg),
+                    msg_(std::make_shared<msg_pack>(std::move(msg)))
+                { }
+
+                ~msg_pack_transfer() {
+                    if (nullptr != msg_.get()) {
+                        orig_msg = std::move(*msg_.get());
+                    }
+                }
+
+                ptr msg() {
+                    return msg_;
+                }
+
+                operator ptr () {
+                    return msg_;
+                }
+
+                void complete() {
+                    msg_.reset();
+                }
+
+            private:
+                msg_pack &orig_msg;
+                ptr msg_;
+            };
+
             struct void_type {
             };
 

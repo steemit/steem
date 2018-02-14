@@ -28,6 +28,7 @@ namespace golos {
             using std::vector;
             using plugins::json_rpc::void_type;
             using plugins::json_rpc::msg_pack;
+            using plugins::json_rpc::msg_pack_transfer;
 
             struct scheduled_hardfork {
                 hardfork_version hf_version;
