@@ -129,14 +129,6 @@ namespace golos {
             >
             message_index;
 
-            struct inbox_r {
-                vector <message_api_obj> inbox;
-            };
-
-            struct outbox_r {
-                vector <message_api_obj> outbox;
-            };
-
             struct private_message_operation
                     : public golos::protocol::base_operation {
                 protocol::account_name_type from;
@@ -167,10 +159,4 @@ namespace fc {
 
 } /* fc */
 
-
-FC_REFLECT((golos::plugins::private_message::inbox_r), (inbox));
-FC_REFLECT((golos::plugins::private_message::outbox_r), (outbox));
-
-
 FC_REFLECT_TYPENAME((golos::plugins::private_message::private_message_plugin_operation))
-

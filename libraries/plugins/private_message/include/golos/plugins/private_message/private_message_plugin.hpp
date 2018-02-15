@@ -17,9 +17,16 @@ namespace golos {
     namespace plugins {
         namespace private_message {
             using namespace golos::chain;
+            // struct inbox_r {
+            //     vector <message_api_obj> inbox;
+            // };
 
-            DEFINE_API_ARGS(get_inbox,  json_rpc::msg_pack, inbox_r)
-            DEFINE_API_ARGS(get_outbox, json_rpc::msg_pack, outbox_r)
+            // struct outbox_r {
+            //     vector <message_api_obj> outbox;
+            // };
+
+            DEFINE_API_ARGS(get_inbox,  json_rpc::msg_pack, vector <message_api_obj>)
+            DEFINE_API_ARGS(get_outbox, json_rpc::msg_pack, vector <message_api_obj>)
 
             /**
              *   This plugin scans the blockchain for custom operations containing a valid message and authorized

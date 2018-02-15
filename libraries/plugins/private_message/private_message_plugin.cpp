@@ -42,9 +42,9 @@ namespace golos {
                     return;
                 }
 
-                inbox_r get_inbox(const std::string& to, time_point newest, uint16_t limit) const;
+                vector <message_api_obj> get_inbox(const std::string& to, time_point newest, uint16_t limit) const;
 
-                outbox_r get_outbox(const std::string& from, time_point newest, uint16_t limit) const;
+                vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit) const;
 
 
                 ~private_message_plugin_impl() {};
@@ -56,15 +56,15 @@ namespace golos {
                 golos::chain::database &_db;
             };
 
-            inbox_r private_message_plugin::private_message_plugin_impl::get_inbox(
+            vector <message_api_obj> private_message_plugin::private_message_plugin_impl::get_inbox(
                     const std::string& to, time_point newest, uint16_t limit) const {
                 FC_ASSERT(limit <= 100);
 
-                inbox_r result;
+                vector <message_api_obj> result;
                 const auto &idx = _db.get_index<message_index>().indices().get<by_to_date>();
                 auto itr = idx.lower_bound(std::make_tuple(to, newest));
                 while (itr != idx.end() && limit && itr->to == to) {
-                    result.inbox.push_back(*itr);
+                    result.push_back(*itr);
                     ++itr;
                     --limit;
                 }
@@ -72,16 +72,16 @@ namespace golos {
                 return result;
             }
 
-            outbox_r private_message_plugin::private_message_plugin_impl::get_outbox(
+            vector <message_api_obj> private_message_plugin::private_message_plugin_impl::get_outbox(
                     const std::string& from, time_point newest, uint16_t limit) const {
                 FC_ASSERT(limit <= 100);
 
-                outbox_r result;
+                vector <message_api_obj> result;
                 const auto &idx = _db.get_index<message_index>().indices().get<by_from_date>();
 
                 auto itr = idx.lower_bound(std::make_tuple(from, newest));
                 while (itr != idx.end() && limit && itr->from == from) {
-                    result.outbox.push_back(*itr);
+                    result.push_back(*itr);
                     ++itr;
                     --limit;
                 }
@@ -168,7 +168,6 @@ namespace golos {
                 auto arg2 = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
                 return db.with_read_lock([&]() {
-                    inbox_r result;
                     return my->get_inbox(arg0, arg1, arg2);
                 });
             }
@@ -179,7 +178,6 @@ namespace golos {
                 auto arg2 = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
                 return db.with_read_lock([&]() {
-                    outbox_r result;
                     return my->get_outbox(arg0, arg1, arg2);
                 });
             }
