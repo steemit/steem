@@ -39,6 +39,8 @@ public:
    bool find_operation_object(size_t opId, tmp_operation_object* data) const;
    void find_operations_by_block(size_t blockNum,
       std::function<void(const tmp_operation_object&)> processor) const;
+   uint32_t enum_operations_from_block_range(uint32_t blockRangeBegin, uint32_t blockRangeEnd,
+      std::function<void(const tmp_operation_object&)> processor) const;
 
 private:
    class impl;

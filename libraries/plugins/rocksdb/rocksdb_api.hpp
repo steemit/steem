@@ -107,6 +107,22 @@ struct get_account_history_return
    std::map< uint32_t, api_operation_object > history;
 };
 
+/** Allows to specify range of blocks to retrieve virtual operations for.
+ *  \param block_range_begin - starting block number (inclusive) to search for virtual operations
+ *  \param block_range_end   - last block number (exclusive) to search for virtual operations
+ */
+struct enum_virtual_ops_args
+{
+   uint32_t block_range_begin = 1;
+   uint32_t block_range_end = 2;
+};
+
+struct enum_virtual_ops_return
+{
+   vector<api_operation_object> ops;
+   uint32_t                     next_block_range_begin = 0;
+};
+
 class rocksdb_api final
 {
    public:
@@ -116,6 +132,7 @@ class rocksdb_api final
       DECLARE_API(
          (get_ops_in_block)
          (get_account_history)
+         (enum_virtual_ops)
       )
 
    private:
@@ -142,3 +159,7 @@ FC_REFLECT( steem::plugins::rocksdb::get_account_history_args,
 
 FC_REFLECT( steem::plugins::rocksdb::get_account_history_return,
    (history) )
+
+FC_REFLECT(steem::plugins::rocksdb::enum_virtual_ops_args, (block_range_begin)(block_range_end))
+FC_REFLECT(steem::plugins::rocksdb::enum_virtual_ops_return, (ops)(next_block_range_begin))
+
