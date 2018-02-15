@@ -120,6 +120,8 @@ namespace golos {
                 pimpl->_p2p.broadcast_transaction(trx);
                 transfer.complete();
 
+                return {};
+
             }
 
             bool network_broadcast_api_plugin::check_max_block_age(int32_t max_block_age) const {
