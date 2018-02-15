@@ -1136,16 +1136,26 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_witnesses_by_vote )
    {
       CHECK_ARG_SIZE( 2 )
-      auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
+      account_name_type start_name = args[0].as< account_name_type >();
+      vector< fc::variant > start_key;
 
-      if( start.witnesses.size() == 0 )
-         return get_witnesses_by_vote_return();
+      if( start_name == account_name_type() )
+      {
+         start_key.push_back( fc::variant( std::numeric_limits< int64_t >::max() ) );
+         start_key.push_back( fc::variant( account_name_type() ) );
+      }
+      else
+      {
+         auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
+
+         if( start.witnesses.size() == 0 )
+            return get_witnesses_by_vote_return();
+
+         start_key.push_back( fc::variant( start.witnesses[0].votes ) );
+         start_key.push_back( fc::variant( start.witnesses[0].owner ) );
+      }
 
       auto limit = args[1].as< uint32_t >();
-      vector< fc::variant > start_key;
-      start_key.push_back( fc::variant( start.witnesses[0].votes ) );
-      start_key.push_back( fc::variant( start.witnesses[0].owner ) );
-
       auto witnesses = _database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
 
       get_witnesses_by_vote_return result;
