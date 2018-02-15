@@ -26,6 +26,7 @@ class api_impl
       DECLARE_API_IMPL(
          (get_ops_in_block)
          (get_account_history)
+         (enum_virtual_ops)
       )
 
       const rocksdb::rocksdb_plugin& _dataSource;
@@ -62,6 +63,21 @@ DEFINE_API_IMPL( api_impl, get_account_history )
    return result;
 }
 
+DEFINE_API_IMPL(api_impl, enum_virtual_ops)
+{
+   enum_virtual_ops_return result;
+
+   result.next_block_range_begin = _dataSource.enum_operations_from_block_range(args.block_range_begin,
+      args.block_range_end,
+      [&result](const tmp_operation_object& op)
+      {
+         result.ops.emplace_back(api_operation_object(op));
+      }
+   );
+
+   return result;
+}
+
 } // detail
 
 rocksdb_api::rocksdb_api(const rocksdb::rocksdb_plugin& dataSource) : my( new detail::api_impl(dataSource) )
@@ -75,6 +91,7 @@ rocksdb_api::~rocksdb_api() {}
 DEFINE_LOCKLESS_APIS( rocksdb_api,
    (get_ops_in_block)
    (get_account_history)
+   (enum_virtual_ops)
 )
 
 } } } // steem::plugins::rocksdb
