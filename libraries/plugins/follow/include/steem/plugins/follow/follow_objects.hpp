@@ -228,9 +228,10 @@ typedef multi_index_container<
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
             member< feed_object, comment_id_type, &feed_object::comment >,
-            member< feed_object, account_name_type, &feed_object::account >
+            member< feed_object, account_name_type, &feed_object::account >,
+            member< feed_object, feed_id_type, &feed_object::id >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::less< feed_id_type > >
       >
    >,
    allocator< feed_object >
@@ -252,9 +253,10 @@ typedef multi_index_container<
       ordered_unique< tag< by_comment >,
          composite_key< blog_object,
             member< blog_object, comment_id_type, &blog_object::comment >,
-            member< blog_object, account_name_type, &blog_object::account >
+            member< blog_object, account_name_type, &blog_object::account >,
+            member< blog_object, blog_id_type, &blog_object::id >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::less< blog_id_type > >
       >
    >,
    allocator< blog_object >
