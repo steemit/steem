@@ -2044,7 +2044,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             FC_ASSERT( !is_locked() );
             vector<extended_message_object> result;
             auto remote_result = my->_remote_private_message->get_inbox(to, newest, limit);
-            for( const auto& item : remote_result.inbox ) {
+            for( const auto& item : remote_result ) {
                 result.emplace_back( item );
                 message_body tmp = try_decrypt_message( item );
                 result.back().message = std::move(tmp);
@@ -2056,7 +2056,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             FC_ASSERT( !is_locked() );
             vector<extended_message_object> result;
             auto remote_result = my->_remote_private_message->get_outbox(from, newest, limit);
-            for( const auto& item : remote_result.outbox ) {
+            for( const auto& item : remote_result ) {
                 result.emplace_back( item );
                 message_body tmp = try_decrypt_message( item );
                 result.back().message = std::move(tmp);
