@@ -227,6 +227,7 @@ asset_symbol_type database_fixture::name_to_asset_symbol( const std::string& nam
    return asset_symbol_type::from_asset_num( asset_num );
 }
 
+#ifdef STEEM_ENABLE_SMT
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
@@ -236,6 +237,7 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
 }
+#endif
 
 string database_fixture::generate_anon_acct_name()
 {

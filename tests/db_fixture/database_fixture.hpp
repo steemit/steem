@@ -206,7 +206,9 @@ struct database_fixture {
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
    static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
+#ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
+#endif
    string generate_anon_acct_name();
    void open_database();
    void generate_block(uint32_t skip = 0,
