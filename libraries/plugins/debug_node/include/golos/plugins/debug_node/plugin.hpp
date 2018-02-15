@@ -38,7 +38,7 @@ DEFINE_API_ARGS ( debug_push_blocks,                  msg_pack,   uint32_t      
 DEFINE_API_ARGS ( debug_pop_block,                    msg_pack,   fc::optional< protocol::signed_block >        )
 DEFINE_API_ARGS ( debug_get_witness_schedule,         msg_pack,   witness_schedule_object                       )
 // DEFINE_API_ARGS ( debug_get_hardfork_property_object, msg_pack,   debug_get_hardfork_property_object_r  )
-DEFINE_API_ARGS ( debug_set_hardfork,                 msg_pack,   void                                         )
+DEFINE_API_ARGS ( debug_set_hardfork,                 msg_pack,   void_type                                     )
 DEFINE_API_ARGS ( debug_has_hardfork,                 msg_pack,   bool                                          );
 // 
 

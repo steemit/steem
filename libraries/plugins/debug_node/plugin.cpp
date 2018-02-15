@@ -532,7 +532,8 @@ DEFINE_API ( plugin, debug_set_hardfork ) {
 
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return my->debug_set_hardfork( hardfork_id );
+        my->debug_set_hardfork( hardfork_id );
+        return void_type() ;
     });
 }
 
