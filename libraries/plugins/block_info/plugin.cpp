@@ -18,8 +18,12 @@ public:
     }
 
     // API
-    get_block_info_r get_block_info(const get_block_info_a & args);
-    get_blocks_with_info_r get_blocks_with_info(const get_blocks_with_info_a & args);
+    std::vector<block_info> get_block_info(
+        uint32_t start_block_num = 0,
+        uint32_t count = 1000);
+    std::vector<block_with_info> get_blocks_with_info(
+        uint32_t start_block_num = 0,
+        uint32_t count = 1000);
 
     // PLUGIN_METHODS
     void on_applied_block(const protocol::signed_block &b);
@@ -36,43 +40,44 @@ private:
     golos::chain::database & db_;
 };
 
-get_block_info_r plugin::plugin_impl::get_block_info(const get_block_info_a & args) {
-    get_block_info_r result;
+std::vector<block_info> plugin::plugin_impl::get_block_info(uint32_t start_block_num, uint32_t count) {
+    std::vector<block_info> result;
 
-    FC_ASSERT(args.start_block_num > 0);
-    FC_ASSERT(args.count <= 10000);
+    FC_ASSERT(start_block_num > 0);
+    FC_ASSERT(count <= 10000);
     uint32_t n = std::min(uint32_t(block_info_.size()),
-    args.start_block_num + args.count);
+    start_block_num + count);
 
-    for (uint32_t block_num = args.start_block_num;
+    for (uint32_t block_num = start_block_num;
         block_num < n; block_num++) {
-        result.block_info_vec.emplace_back(block_info_[block_num]);
+        result.emplace_back(block_info_[block_num]);
     }
 
     return result;
 }
 
-get_blocks_with_info_r plugin::plugin_impl::get_blocks_with_info(const get_blocks_with_info_a & args) {    
-    get_blocks_with_info_r result;
+std::vector<block_with_info> plugin::plugin_impl::get_blocks_with_info(
+        uint32_t start_block_num, uint32_t count) {
+    std::vector<block_with_info> result;
     const auto & db = database();
 
-    FC_ASSERT(args.start_block_num > 0);
-    FC_ASSERT(args.count <= 10000);
-    uint32_t n = std::min( uint32_t( block_info_.size() ), args.start_block_num + args.count );
+    FC_ASSERT(start_block_num > 0);
+    FC_ASSERT(count <= 10000);
+    uint32_t n = std::min( uint32_t( block_info_.size() ), start_block_num + count );
 
     uint64_t total_size = 0;
-    for (uint32_t block_num = args.start_block_num;
+    for (uint32_t block_num = start_block_num;
          block_num < n; block_num++) {
         uint64_t new_size =
                 total_size + block_info_[block_num].block_size;
         if ((new_size > 8 * 1024 * 1024) &&
-            (block_num != args.start_block_num)) {
+            (block_num != start_block_num)) {
                 break;
         }
         total_size = new_size;
-        result.block_with_info_vec.emplace_back();
-        result.block_with_info_vec.back().block = *db.fetch_block_by_number(block_num);
-        result.block_with_info_vec.back().info = block_info_[block_num];
+        result.emplace_back();
+        result.back().block = *db.fetch_block_by_number(block_num);
+        result.back().info = block_info_[block_num];
     }
 
     return result;
@@ -98,20 +103,21 @@ void plugin::plugin_impl::on_applied_block(const protocol::signed_block &b) {
     return;
 }
 
-
 DEFINE_API ( plugin, get_block_info ) {
-    auto tmp = args.args->at(0).as<get_block_info_a>();
+    auto arg0 = args.args->at(0).as<uint32_t>();
+    auto arg1 = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return  my->get_block_info(tmp);;
+        return  my->get_block_info(arg0, arg1);
     });
 }
 
 DEFINE_API ( plugin, get_blocks_with_info ) {
-    auto tmp = args.args->at(0).as<get_blocks_with_info_a>();
+    auto arg0 = args.args->at(0).as<uint32_t>();
+    auto arg1 = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return my->get_blocks_with_info(tmp);
+        return my->get_blocks_with_info(arg0, arg1);
     });
 }
 

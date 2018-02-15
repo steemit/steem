@@ -14,10 +14,6 @@ namespace raw_block {
 
 using golos::plugins::json_rpc::msg_pack;
 
-struct get_raw_block_a {
-    uint32_t block_num = 0;
-};
-
 struct get_raw_block_r {
     golos::chain::block_id_type block_id;
     golos::chain::block_id_type previous;
@@ -69,10 +65,6 @@ private:
 };
 
 } } } // golos::plugins::raw_block
-
-FC_REFLECT((golos::plugins::raw_block::get_raw_block_a),
-    (block_num)
-)
 
 FC_REFLECT((golos::plugins::raw_block::get_raw_block_r),
     (block_id)(previous)(timestamp)(raw_block)

@@ -2040,10 +2040,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->_remote_database_api->get_transaction( id );
         }
 
-        vector<extended_message_object> wallet_api::get_inbox(const inbox_a& param) {
+        vector<extended_message_object> wallet_api::get_inbox(const std::string& to, time_point newest, uint16_t limit) {
             FC_ASSERT( !is_locked() );
             vector<extended_message_object> result;
-            auto remote_result = my->_remote_private_message->get_inbox(param);
+            auto remote_result = my->_remote_private_message->get_inbox(to, newest, limit);
             for( const auto& item : remote_result.inbox ) {
                 result.emplace_back( item );
                 message_body tmp = try_decrypt_message( item );
@@ -2052,10 +2052,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return result;
         }
 
-        vector<extended_message_object> wallet_api::get_outbox(const outbox_a& param) {
+        vector<extended_message_object> wallet_api::get_outbox(const std::string& from, time_point newest, uint16_t limit) {
             FC_ASSERT( !is_locked() );
             vector<extended_message_object> result;
-            auto remote_result = my->_remote_private_message->get_outbox(param);
+            auto remote_result = my->_remote_private_message->get_outbox(from, newest, limit);
             for( const auto& item : remote_result.outbox ) {
                 result.emplace_back( item );
                 message_body tmp = try_decrypt_message( item );

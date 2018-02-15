@@ -24,26 +24,8 @@ namespace block_info {
 
 using golos::plugins::json_rpc::msg_pack;
 
-struct get_block_info_a {
-    uint32_t start_block_num = 0;
-    uint32_t count = 1000;
-};
-
-struct get_blocks_with_info_a {
-    uint32_t start_block_num = 0;
-    uint32_t count = 1000;
-};    
-
-struct get_block_info_r {
-    std::vector<block_info> block_info_vec;
-};
-
-struct get_blocks_with_info_r {
-    std::vector<block_with_info> block_with_info_vec;
-};
-
-DEFINE_API_ARGS ( get_block_info,           msg_pack,       get_block_info_r       )
-DEFINE_API_ARGS ( get_blocks_with_info,     msg_pack,       get_blocks_with_info_r )
+DEFINE_API_ARGS ( get_block_info,           msg_pack,       std::vector<block_info>)
+DEFINE_API_ARGS ( get_blocks_with_info,     msg_pack,       std::vector<block_with_info>)
 
 
 using boost::program_options::options_description;
@@ -86,18 +68,4 @@ private:
 
 } } }
 
-FC_REFLECT((golos::plugins::block_info::get_block_info_a),
-        (start_block_num)(count)
-)
 
-FC_REFLECT((golos::plugins::block_info::get_blocks_with_info_a),
-        (start_block_num)(count)
-)
-
-FC_REFLECT((golos::plugins::block_info::get_block_info_r),
-        (block_info_vec)
-)
-
-FC_REFLECT((golos::plugins::block_info::get_blocks_with_info_r),
-        (block_with_info_vec)
-)

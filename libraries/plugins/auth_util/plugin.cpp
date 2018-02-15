@@ -14,7 +14,11 @@ public:
     plugin_impl() : db_(appbase::app().get_plugin<plugins::chain::plugin>().db()) {
     }
      // API
-    check_authority_signature_r check_authority_signature(const check_authority_signature_a & args);
+     std::vector<protocol::public_key_type> check_authority_signature(
+             const std::string& account_name,
+             const std::string& level,
+             fc::sha256 dig,
+             const std::vector<protocol::signature_type>& sigs);
 
     // HELPING METHODS
     golos::chain::database &database() {
@@ -24,26 +28,31 @@ private:
     golos::chain::database & db_;
 };
 
-check_authority_signature_r plugin::plugin_impl::check_authority_signature(const check_authority_signature_a & args) {
+    std::vector<protocol::public_key_type> plugin::plugin_impl::check_authority_signature(
+        const std::string& account_name,
+        const std::string& level,
+        fc::sha256 dig,
+        const std::vector<protocol::signature_type>& sigs) {
     auto & db = database();
-    check_authority_signature_r result;
+    std::vector<protocol::public_key_type> result;
 
-    const golos::chain::account_authority_object &acct = db.get<golos::chain::account_authority_object, golos::chain::by_account>(args.account_name);
+    const golos::chain::account_authority_object &acct =
+            db.get<golos::chain::account_authority_object, golos::chain::by_account>(account_name);
     protocol::authority auth;
-    if ((args.level == "posting") || (args.level == "p")) {
+    if ((level == "posting") || (level == "p")) {
         auth = protocol::authority(acct.posting);
-    } else if ((args.level == "active") ||
-               (args.level == "a") || (args.level == "")) {
+    } else if ((level == "active") ||
+               (level == "a") || (level == "")) {
         auth = protocol::authority(acct.active);
-    } else if ((args.level == "owner") || (args.level == "o")) {
+    } else if ((level == "owner") || (level == "o")) {
         auth = protocol::authority(acct.owner);
     } else {
         FC_ASSERT(false, "invalid level specified");
     }
     flat_set<protocol::public_key_type> signing_keys;
-    for (const protocol::signature_type &sig : args.sigs) {
-        result.keys.emplace_back(fc::ecc::public_key(sig, args.dig, true));
-        signing_keys.insert(result.keys.back());
+    for (const protocol::signature_type &sig : sigs) {
+        result.emplace_back(fc::ecc::public_key(sig, dig, true));
+        signing_keys.insert(result.back());
     }
 
     flat_set<protocol::public_key_type> avail;
@@ -58,12 +67,13 @@ check_authority_signature_r plugin::plugin_impl::check_authority_signature(const
 }
 
 DEFINE_API ( plugin, check_authority_signature ) {
-    auto tmp = args.args->at(0).as<check_authority_signature_a>();
+    auto arg0 = args.args->at(0).as<std::string>();
+    auto arg1 = args.args->at(1).as<std::string>();
+    auto arg2 = args.args->at(2).as<fc::sha256>();
+    auto arg3 = args.args->at(3).as<std::vector<protocol::signature_type>>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        check_authority_signature_r result;
-        result = my->check_authority_signature(tmp);
-        return result;
+        return my->check_authority_signature(arg0, arg1, arg2, arg3);;
     });
 }
 
