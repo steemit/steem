@@ -195,40 +195,23 @@ namespace golos {
 
         void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key &key, int miss_blocks) {
             skip |= default_skip;
-            debug_node::debug_generate_blocks_a param;
-            param.debug_key = golos::utilities::key_to_wif(key);
-            param.count = 1;
-            param.skip = skip;
-            param.miss_blocks = miss_blocks;
-            param.edit_if_needed = true;
 
-            // TODO Wait for Anton input
-            //db_plugin->debug_generate_blocks(param);
+            db_plugin->debug_generate_blocks(golos::utilities::key_to_wif(key), 1, skip, miss_blocks, true);
         }
 
         void database_fixture::generate_blocks(uint32_t block_count) {
-            debug_node::debug_generate_blocks_a param;
-            param.debug_key = debug_key;
-            param.count = block_count;
-            param.skip = default_skip;
-            param.miss_blocks = 0;
-            param.edit_if_needed = true;
 
-            // TODO Wait for Anton input
-            //auto produced = db_plugin->debug_generate_blocks(param);
-            //BOOST_REQUIRE(produced.blocks == block_count);
+
+            auto produced = db_plugin->debug_generate_blocks(debug_key, block_count, default_skip, 0, true);
+            BOOST_REQUIRE(produced.blocks == block_count);
         }
 
         void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks) {
-            debug_node::debug_generate_blocks_until_a param;
-            param.debug_key = debug_key;
-            param.head_block_time = timestamp;
-            param.generate_sparsely = miss_intermediate_blocks;
 
-            // TODO Wait for Anton input
-            //db_plugin->debug_generate_blocks_until(param);
-            //BOOST_REQUIRE((db.head_block_time() - timestamp).to_seconds() <
-            //              STEEMIT_BLOCK_INTERVAL);
+
+            db_plugin->debug_generate_blocks_until(debug_key, timestamp, miss_intermediate_blocks);
+            BOOST_REQUIRE((db.head_block_time() - timestamp).to_seconds() <
+                          STEEMIT_BLOCK_INTERVAL);
         }
 
         const account_object &database_fixture::account_create(

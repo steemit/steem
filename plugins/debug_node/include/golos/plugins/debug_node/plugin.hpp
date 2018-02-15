@@ -97,13 +97,6 @@ public:
 
     void set_logging(const bool islogging);
 
-    template< typename Lambda >
-    void debug_update( Lambda&& callback, uint32_t skip = golos::chain::database::skip_nothing )
-    {
-        // TODO Wait for Anton input in branch 373
-        return;
-    }
-
 
 private:
     struct plugin_impl;
