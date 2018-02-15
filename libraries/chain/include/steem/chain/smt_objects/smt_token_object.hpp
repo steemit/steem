@@ -7,6 +7,9 @@
 
 namespace steem { namespace chain {
 
+/**Note that the object represents both liquid and vesting variant of SMT.
+ * The same object is returned by indices when searched by liquid/vesting symbol/nai.
+ */
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
    smt_token_object() = delete;
@@ -32,15 +35,18 @@ public:
       c( *this );
    }
 
-   uint32_t get_nai() const
+   uint32_t get_liquid_nai() const
    {
-      return symbol.to_nai();
+      return liquid_symbol.to_nai();
    }
 
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
-   asset_symbol_type symbol;
+   /**The object represents both liquid and vesting variant of SMT
+    * To get vesting symbol, call liquid_symbol.get_paired_symbol()
+    */
+   asset_symbol_type liquid_symbol;
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
@@ -83,15 +89,34 @@ struct by_symbol;
 struct by_nai;
 struct by_control_account;
 
+/**Comparison operators that allow to return the same object representation
+ * for both liquid and vesting symbol/nai.
+ */
+struct vesting_liquid_less
+{
+   bool operator ()( const asset_symbol_type& lhs, const asset_symbol_type& rhs ) const
+   {
+      // Compare as if both symbols represented liquid version.
+      return ( lhs.is_vesting() ? lhs.get_paired_symbol() : lhs ) <
+             ( rhs.is_vesting() ? rhs.get_paired_symbol() : rhs );
+   }
+
+   bool operator ()( const uint32_t& lhs, const uint32_t& rhs ) const
+   {
+      // Use the other operator, adding the same precision to both NAIs.
+      return operator()( asset_symbol_type::from_nai( lhs, 0 ) , asset_symbol_type::from_nai( rhs, 0 ) );
+   }
+};
+
 typedef multi_index_container <
    smt_token_object,
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
-         member< smt_token_object, asset_symbol_type, &smt_token_object::symbol > >,
+         member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol >, vesting_liquid_less >,
       ordered_unique< tag< by_nai >,
-         const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_nai > >,
+         const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_liquid_nai >, vesting_liquid_less >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,
@@ -113,7 +138,7 @@ FC_REFLECT( steem::chain::smt_token_object::smt_market_maker_state,
 
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
-   (symbol)
+   (liquid_symbol)
    (control_account)
    (phase)
    (current_supply)

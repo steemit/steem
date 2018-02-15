@@ -990,8 +990,8 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( ASSET( "1.000 TESTS" ) );
       op.reward_tokens.push_back( ASSET( "1.000000 VESTS" ) );
       op.reward_tokens.push_back( asset( 1, smt1 ) );
-      op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.reward_tokens.push_back( asset( 1, smt2 ) );
+      op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.validate();
       op.reward_tokens.clear();
 
@@ -1122,8 +1122,8 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
       op.reward_tokens.clear();
       // SMTs
       op.reward_tokens.push_back( asset( 0, smt1 ) );
-      op.reward_tokens.push_back( asset( 20*std::pow(10, smt3.decimals()), smt3 ) );
       op.reward_tokens.push_back( asset( 0, smt2 ) );
+      op.reward_tokens.push_back( asset( 20*std::pow(10, smt3.decimals()), smt3 ) );
       FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
       op.reward_tokens.clear();
 
@@ -1147,12 +1147,12 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
       // SMTs
       asset partial_smt2 = asset( 5*std::pow(10, smt2.decimals()), smt2 );
       op.reward_tokens.push_back( asset( 0, smt1 ) );
-      op.reward_tokens.push_back( asset( 0, smt3 ) );
       op.reward_tokens.push_back( partial_smt2 );
+      op.reward_tokens.push_back( asset( 0, smt3 ) );
       PUSH_OP(op, alice_private_key);
       BOOST_REQUIRE( db->get_balance( "alice", smt1 ) == alice_smt1 + asset( 0, smt1 ) );
-      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + asset( 0, smt3 ) );
       BOOST_REQUIRE( db->get_balance( "alice", smt2 ) == alice_smt2 + partial_smt2 );
+      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + asset( 0, smt3 ) );
       validate_database();
       alice_smt2 += partial_smt2;
       op.reward_tokens.clear();
@@ -1178,12 +1178,12 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
       asset full_smt1 = asset( 10*std::pow(10, smt1.decimals()), smt1 );
       asset full_smt3 = asset( 10*std::pow(10, smt3.decimals()), smt3 );
       op.reward_tokens.push_back( full_smt1 );
-      op.reward_tokens.push_back( full_smt3 );
       op.reward_tokens.push_back( partial_smt2 );
+      op.reward_tokens.push_back( full_smt3 );
       PUSH_OP(op, alice_private_key);
       BOOST_REQUIRE( db->get_balance( "alice", smt1 ) == alice_smt1 + full_smt1 );
-      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + full_smt3 );
       BOOST_REQUIRE( db->get_balance( "alice", smt2 ) == alice_smt2 + partial_smt2 );
+      BOOST_REQUIRE( db->get_balance( "alice", smt3 ) == alice_smt3 + full_smt3 );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
