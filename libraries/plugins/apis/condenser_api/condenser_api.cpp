@@ -1042,6 +1042,7 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
 
       database_api::list_vesting_delegations_args a;
+      account_name_type account = args[0].as< account_name_type >();
       a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_delegation;
@@ -1049,9 +1050,9 @@ namespace detail
       auto delegations = _database_api->list_vesting_delegations( a ).delegations;
       get_vesting_delegations_return result;
 
-      for( auto& d : delegations )
+      for( auto itr = delegations.begin(); itr != delegations.end() && itr->delegator == account; ++itr )
       {
-         result.push_back( api_vesting_delegation_object( d ) );
+         result.push_back( api_vesting_delegation_object( *itr ) );
       }
 
       return result;
@@ -1062,16 +1063,17 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
 
       database_api::list_vesting_delegation_expirations_args a;
-      a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
+      account_name_type account = args[0].as< account_name_type >();
+      a.start = fc::variant( (vector< variant >){ args[0], args[1], fc::variant( vesting_delegation_expiration_id_type() ) } );
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_account_expiration;
 
       auto delegations = _database_api->list_vesting_delegation_expirations( a ).delegations;
       get_expiring_vesting_delegations_return result;
 
-      for( auto& d : delegations )
+      for( auto itr = delegations.begin(); itr != delegations.end() && itr->delegator == account; ++itr )
       {
-         result.push_back( api_vesting_delegation_expiration_object( d ) );
+         result.push_back( api_vesting_delegation_expiration_object( *itr ) );
       }
 
       return result;
