@@ -1,7 +1,7 @@
-Copyright (c) 2017 Golos Foundation, and contributors.
+Copyright (c) 2017 Golos Core, and contributors.
 
 The following license applies to code contained within this repository that
-is created by Golos Foundation. Other copy right holders have licensed dependencis such
+is created by Golos Core. Other copy right holders have licensed dependencis such
 as Graphene, FC, and Boost under their own individual licenses.
 
 Redistribution and use in source and binary forms, with or without
