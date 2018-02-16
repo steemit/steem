@@ -21,8 +21,10 @@ seed.esteem.ws:2001                 # good-karma
 94.23.33.61:2001                    # timcliff
 104.199.118.92:2001                 # clayop
 192.99.4.226:2001                   # dele-puppy
+seed.bhuz.info:2001                 # bhuz
 seed.steemviz.com:2001              # ausbitbank
 steem-seed.lukestokes.info:2001     # lukestokes
+seed.blackrift.net:2001             # drakos
 seed.followbtcnews.com:2001         # followbtcnews
 node.mahdiyari.info:2001            # mahdi.yari
 seed.jerrybanfield.com:2001         # jerrybanfield
