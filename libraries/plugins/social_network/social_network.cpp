@@ -600,7 +600,7 @@ namespace golos {
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
                     std::vector<discussion> result;
-#ifndef STEEMIT_BUILD_LOW_MEMORY
+#ifndef IS_LOW_MEM
                     query.validate();
                     FC_ASSERT(query.start_author, "Must get comments for a specific author");
                     auto start_author = *(query.start_author);
@@ -1482,7 +1482,7 @@ namespace golos {
                 return pimpl->database().with_read_lock([&]() {
                     try {
                         std::vector<discussion> result;
-#ifndef STEEMIT_BUILD_LOW_MEMORY
+#ifndef IS_LOW_MEM
                         FC_ASSERT(limit <= 100);
                         result.reserve(limit);
                         uint32_t count = 0;
@@ -1525,7 +1525,7 @@ namespace golos {
             ) const {
                 std::vector<discussion> result;
 
-#ifndef STEEMIT_BUILD_LOW_MEMORY
+#ifndef IS_LOW_MEM
                 FC_ASSERT(limit <= 100);
                 const auto &last_update_idx = database().get_index<comment_index>().indices().get<by_last_update>();
                 auto itr = last_update_idx.begin();
