@@ -42,3 +42,38 @@ Commit: 79269aff120821447c4ed430c90c55d1004f2092
 RocksDb data import - Performance report at block 14913029. Elapsed time: 953982 ms (real), 1176162 ms (cpu). Memory usage: 2507180 (current), 2638252 (peak) kilobytes.
 RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
 Store size 18.4 GB
+
+2066_supplement_ah_features
+RocksDb data import - Performance report at block 14913029. Elapsed time: 995820 ms (real), 1350470 ms (cpu). Memory usage: 10997572 (current), 11052188 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 20,6 GB
+
+After implementing lookup for last (max) written account-history chunk no.
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1048368 ms (real), 1090324 ms (cpu). Memory usage: 4540836 (current), 4671908 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 18.4 GB
+
+
+After redesigned data structures: AH-info holds range of stored ops and timestamp of oldest one:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1366821 ms (real), 1526248 ms (cpu). Memory usage: 4535408 (current), 4633712 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 18.8 GB
+
+Pruning enabled:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 3578533 ms (real), 3506124 ms (cpu). Memory usage: 4599196 (current), 4730268 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 17.3 GB
+
+3037635ms rocksdb_plugin.cpp:1160       importData           ] RocksDb data import - Performance report at block 14913029. Elapsed time: 3513151 ms (real), 3439952 ms (cpu). Memory usage: 4578448 (current), 4725904 (peak) kilobytes.
+3037635ms rocksdb_plugin.cpp:1170       importData           ] RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+
+
+2066_supplement_ah_features 626c777e531500d0a5ac5a35864eb2372e9d4e31
+No pruning
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1380711 ms (real), 1491123 ms (cpu). Memory usage: 3474216 (current), 3621372 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations
+Store size 18.4 GB
+
+Pruning:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 2965470 ms (real), 2858567 ms (cpu). Memory usage: 3481616 (current), 3620160 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
