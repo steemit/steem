@@ -722,8 +722,8 @@ struct state
    map< string, discussion >                          content;
    map< string, extended_account >                    accounts;
 
-   map< string, database_api::api_witness_object >    witnesses;
-   database_api::api_witness_schedule_object          witness_schedule;
+   map< string, api_witness_object >                  witnesses;
+   api_witness_schedule_object                        witness_schedule;
    legacy_price                                       feed_price;
    string                                             error;
 };

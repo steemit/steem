@@ -388,22 +388,10 @@ namespace detail
          }
          else if( part[0] == "witnesses" || part[0] == "~witnesses")
          {
-            auto start = _database_api->list_witnesses( { { "" }, 1, database_api::by_name } );
-
-            if( BOOST_LIKELY( start.witnesses.size() ) )
+            auto wits = get_witnesses_by_vote( (vector< fc::variant >){ fc::variant(""), fc::variant(50) } );
+            for( const auto& w : wits )
             {
-               vector< variant > start_key;
-               start_key.push_back( fc::variant( start.witnesses[0].votes ) );
-               start_key.push_back( fc::variant( start.witnesses[0].owner ) );
-
-               auto wits = _database_api->list_witnesses(
-                  { fc::variant( start_key ), 50, database_api::by_vote_name } ).witnesses;
-
-               //auto wits = get_witnesses_by_vote( "", 50 );
-               for( const auto& w : wits )
-               {
-                  _state.witnesses[w.owner] = w;
-               }
+               _state.witnesses[w.owner] = w;
             }
          }
          else if( part[0] == "trending"  )
@@ -682,7 +670,7 @@ namespace detail
             }
          }
 
-         _state.witness_schedule = _db.get_witness_schedule_object();
+         _state.witness_schedule = _database_api->get_witness_schedule( {} );
 
       }
       catch ( const fc::exception& e )
