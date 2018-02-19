@@ -671,25 +671,25 @@ namespace golos {
             }
 
 
-            DEFINE_API(plugin, get_followers) {
+DEFINE_API(plugin, get_followers) {
                 CHECK_ARG_SIZE(4)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<account_name_type>();
-                auto arg2 = args.args->at(2).as<follow_type>();
-                auto arg3 = args.args->at(3).as<uint32_t>();
+                auto following = args.args->at(0).as<account_name_type>();
+                auto start_follower = args.args->at(1).as<account_name_type>();
+                auto type = args.args->at(2).as<follow_type>();
+                auto limit = args.args->at(3).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_followers(arg0, arg1, arg2, arg3);
+                    return pimpl->get_followers(following, start_follower, type, limit);
                 });
             }
 
             DEFINE_API(plugin, get_following) {
                 CHECK_ARG_SIZE(4)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<account_name_type>();
-                auto arg2 = args.args->at(2).as<follow_type>();
-                auto arg3 = args.args->at(3).as<uint32_t>();
+                auto follower = args.args->at(0).as<account_name_type>();
+                auto start_following = args.args->at(1).as<account_name_type>();
+                auto type = args.args->at(2).as<follow_type>();
+                auto limit = args.args->at(3).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_followers(arg0, arg1, arg2, arg3);
+                    return pimpl->get_followers(follower, start_following, type, limit);
                 });
             }
 
@@ -702,59 +702,59 @@ namespace golos {
 
             DEFINE_API(plugin, get_feed_entries){
                 CHECK_ARG_SIZE(3)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<uint32_t>();
-                auto arg2 = args.args->at(2).as<uint32_t>();
+                auto account = args.args->at(0).as<account_name_type>();
+                auto entry_id = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_feed_entries(arg0, arg1, arg2);
+                    return pimpl->get_feed_entries(account, entry_id, limit);
                 });
             }
 
             DEFINE_API(plugin, get_feed) {
                 CHECK_ARG_SIZE(3)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<uint32_t>();
-                auto arg2 = args.args->at(2).as<uint32_t>();
+                auto account = args.args->at(0).as<account_name_type>();
+                auto entry_id = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_feed(arg0, arg1, arg2);
+                    return pimpl->get_feed(account, entry_id, limit);
                 });
             }
 
             DEFINE_API(plugin, get_blog_entries) {
                 CHECK_ARG_SIZE(3)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<uint32_t>();
-                auto arg2 = args.args->at(2).as<uint32_t>();
+                auto account = args.args->at(0).as<account_name_type>();
+                auto entry_id = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_blog_entries(arg0, arg1, arg2);
+                    return pimpl->get_blog_entries(account, entry_id, limit);
                 });
             }
 
             DEFINE_API(plugin, get_blog) {
                 CHECK_ARG_SIZE(3)
-                auto arg0 = args.args->at(0).as<account_name_type>();
-                auto arg1 = args.args->at(1).as<uint32_t>();
-                auto arg2 = args.args->at(2).as<uint32_t>();
+                auto account = args.args->at(0).as<account_name_type>();
+                auto entry_id = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_blog(arg0, arg1, arg2);
+                    return pimpl->get_blog(account, entry_id, limit);
                 });
             }
 
             DEFINE_API(plugin, get_account_reputations) {
                 CHECK_ARG_SIZE(2)
-                auto arg1 = args.args->at(0).as<account_name_type>();
-                auto arg2 = args.args->at(1).as<uint32_t>();
+                auto lower_bound_name = args.args->at(0).as<account_name_type>();
+                auto limit = args.args->at(1).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_account_reputations(arg1, arg2);
+                    return pimpl->get_account_reputations(lower_bound_name, limit);
                 });
             }
 
             DEFINE_API(plugin, get_reblogged_by) {
                 CHECK_ARG_SIZE(2)
-                auto arg1 = args.args->at(0).as<account_name_type>();
-                auto arg2 = args.args->at(1).as<std::string>();
+                auto author = args.args->at(0).as<account_name_type>();
+                auto permlink = args.args->at(1).as<std::string>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_reblogged_by(arg1, arg2);
+                    return pimpl->get_reblogged_by(author, permlink);
                 });
             }
 

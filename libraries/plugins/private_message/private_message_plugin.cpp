@@ -163,22 +163,22 @@ namespace golos {
             // Api Defines
 
             DEFINE_API(private_message_plugin, get_inbox) {
-                auto arg0 = args.args->at(0).as<std::string>();
-                auto arg1 = args.args->at(1).as<time_point>();
-                auto arg2 = args.args->at(2).as<uint16_t>();
+                auto to = args.args->at(0).as<std::string>();
+                auto newest = args.args->at(1).as<time_point>();
+                auto limit = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
                 return db.with_read_lock([&]() {
-                    return my->get_inbox(arg0, arg1, arg2);
+                    return my->get_inbox(to, newest, limit);
                 });
             }
 
             DEFINE_API(private_message_plugin, get_outbox) {
-                auto arg0 = args.args->at(0).as<std::string>();
-                auto arg1 = args.args->at(1).as<time_point>();
-                auto arg2 = args.args->at(2).as<uint16_t>();
+                auto from = args.args->at(0).as<std::string>();
+                auto newest = args.args->at(1).as<time_point>();
+                auto limit = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
                 return db.with_read_lock([&]() {
-                    return my->get_outbox(arg0, arg1, arg2);
+                    return my->get_outbox(from, newest, limit);
                 });
             }
         }

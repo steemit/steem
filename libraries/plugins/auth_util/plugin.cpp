@@ -67,13 +67,13 @@ private:
 }
 
 DEFINE_API ( plugin, check_authority_signature ) {
-    auto arg0 = args.args->at(0).as<std::string>();
-    auto arg1 = args.args->at(1).as<std::string>();
-    auto arg2 = args.args->at(2).as<fc::sha256>();
-    auto arg3 = args.args->at(3).as<std::vector<protocol::signature_type>>();
+    auto account_name = args.args->at(0).as<std::string>();
+    auto level = args.args->at(1).as<std::string>();
+    auto dig = args.args->at(2).as<fc::sha256>();
+    auto sigs = args.args->at(3).as<std::vector<protocol::signature_type>>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return my->check_authority_signature(arg0, arg1, arg2, arg3);;
+        return my->check_authority_signature(account_name, level, dig, sigs);
     });
 }
 

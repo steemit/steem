@@ -431,12 +431,12 @@ namespace golos {
 
             DEFINE_API(market_history_plugin, get_trade_history) {
                 CHECK_ARG_SIZE(3)
-                auto arg0 = args.args->at(0).as<time_point_sec>();
-                auto arg1 = args.args->at(1).as<time_point_sec>();
-                auto arg2 = args.args->at(2).as<uint32_t>();
+                auto start = args.args->at(0).as<time_point_sec>();
+                auto end = args.args->at(1).as<time_point_sec>();
+                auto limit = args.args->at(2).as<uint32_t>();
                 auto &db = _my->database();
                 return db.with_read_lock([&]() {
-                    return _my->get_trade_history(arg0, arg1, arg2);;
+                    return _my->get_trade_history(start, end, limit);
                 });
             }
 
