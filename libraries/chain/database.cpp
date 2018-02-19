@@ -3007,12 +3007,16 @@ void database::update_virtual_supply()
          auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEMIT_100_PERCENT )
             / dgp.virtual_supply.amount.value ).to_uint64() );
 
-         if( percent_sbd <= STEEMIT_SBD_START_PERCENT )
+         if( has_hardfork( STEEMIT_HARDFORK_0_19__9999 ) ) {
             dgp.sbd_print_rate = STEEMIT_100_PERCENT;
-         else if( percent_sbd >= STEEMIT_SBD_STOP_PERCENT )
-            dgp.sbd_print_rate = 0;
-         else
-            dgp.sbd_print_rate = ( ( STEEMIT_SBD_STOP_PERCENT - percent_sbd ) * STEEMIT_100_PERCENT ) / ( STEEMIT_SBD_STOP_PERCENT - STEEMIT_SBD_START_PERCENT );
+         } else {
+            if( percent_sbd <= STEEMIT_SBD_START_PERCENT )
+               dgp.sbd_print_rate = STEEMIT_100_PERCENT;
+            else if( percent_sbd >= STEEMIT_SBD_STOP_PERCENT )
+               dgp.sbd_print_rate = 0;
+            else
+               dgp.sbd_print_rate = ( ( STEEMIT_SBD_STOP_PERCENT - percent_sbd ) * STEEMIT_100_PERCENT ) / ( STEEMIT_SBD_STOP_PERCENT - STEEMIT_SBD_START_PERCENT );
+         }
       }
    });
 } FC_CAPTURE_AND_RETHROW() }
@@ -3165,7 +3169,7 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( !has_hardfork( STEEMIT_HARDFORK_0_12__178 ) &&
+   if( !has_hardfork( STEEMIT_HARDFORK_0_19__9999 ) &&
        ( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
        (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) ) ) )
    {
