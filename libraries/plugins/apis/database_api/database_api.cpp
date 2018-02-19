@@ -1232,26 +1232,29 @@ namespace last_votes_misc
    {
       if( SORTORDERTYPE == by_comment_weight_voter )
          FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, string, uint64_t, account_name_type)", ("nr_args", nr_args ) );
+      else if( SORTORDERTYPE == by_comment_voter )
+         FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, string, account_name_type)", ("nr_args", nr_args ) );
       else
          FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, ${desc}account_name_type, string)", ("nr_args", nr_args )("desc",( nr_args == 4 )?"time_point_sec, ":"" ) );
 
-      account_id_type voter_id;
-      comment_id_type comment_id;
       account_name_type voter;
       account_name_type author;
       string permlink;
 
-      if( SORTORDERTYPE == by_comment_weight_voter )
+      account_id_type voter_id;
+      comment_id_type comment_id;
+
+      if( SORTORDERTYPE == by_comment_weight_voter || SORTORDERTYPE == by_comment_voter )
       {
-         voter = key[3].as< account_name_type >();
          author = key[0].as< account_name_type >();
          permlink = key[1].as< string >();
+         voter = key[ ( SORTORDERTYPE == by_comment_weight_voter ) ? 3 : 2 ].as< account_name_type >();
       }
       else
       {
-         voter = key[0].as< account_name_type >();
          author = key[ nr_args - 2 ].as< account_name_type >();
          permlink = key[ nr_args - 1 ].as< string >();
+         voter = key[0].as< account_name_type >();
       }
 
       if( voter != account_name_type() )
@@ -1268,7 +1271,15 @@ namespace last_votes_misc
          comment_id = comment->id;
       }
 
-      if( SORTORDERTYPE == by_voter_comment )
+      if( SORTORDERTYPE == by_comment_voter )
+      {
+         _impl.iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
+         boost::make_tuple( comment_id, voter_id ),
+         c,
+         limit,
+         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+      }
+      else if( SORTORDERTYPE == by_voter_comment )
       {
          _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
          boost::make_tuple( voter_id, comment_id ),
@@ -1314,6 +1325,8 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
+   auto key = args.start.as< vector< fc::variant > >();
+
    list_votes_return result;
    result.votes.reserve( args.limit );
 
@@ -1321,54 +1334,24 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
    {
       case( by_comment_voter ):
       {
-         auto key = args.start.as< vector< fc::variant > >();
-         FC_ASSERT( key.size() == 3, "by_comment_voter start requires 3 values. (account_name_type, string, account_name_type)" );
-
-         auto author = key[0].as< account_name_type >();
-         auto permlink = key[1].as< string >();
-         comment_id_type comment_id;
-
-         if( author != account_name_type() || permlink.size() )
-         {
-            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
-            FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
-            comment_id = comment->id;
-         }
-
-         auto voter = key[2].as< account_name_type >();
-         account_id_type voter_id;
-
-         if( voter != account_name_type() )
-         {
-            auto account = _db.find< chain::account_object, chain::by_name >( voter );
-            FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
-            voter_id = account->id;
-         }
-
-         iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
-            boost::make_tuple( comment_id, voter_id ),
-            result.votes,
-            args.limit,
-            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); } );
+         static fc::time_point_sec t( -1 );
+         last_votes_misc::votes_impl< by_comment_voter >( *this, result.votes, 3/*nr_args*/, args.limit, key, t, 0 );
          break;
       }
       case( by_voter_comment ):
       {
-         auto key = args.start.as< vector< fc::variant > >();
          static fc::time_point_sec t( -1 );
          last_votes_misc::votes_impl< by_voter_comment >( *this, result.votes, 3/*nr_args*/, args.limit, key, t, 0 );
          break;
       }
       case( by_voter_last_update ):
       {
-         auto key = args.start.as< vector< fc::variant > >();
          fc::time_point_sec t = key[1].as< fc::time_point_sec >();
          last_votes_misc::votes_impl< by_voter_last_update >( *this, result.votes, 4/*nr_args*/, args.limit, key, t, 0 );
          break;
       }
       case( by_comment_weight_voter ):
       {
-         auto key = args.start.as< vector< fc::variant > >();
          static fc::time_point_sec t( -1 );
          uint64_t weight = key[2].as< uint64_t >();
          last_votes_misc::votes_impl< by_comment_weight_voter >( *this, result.votes, 4/*nr_args*/, args.limit, key, t, weight );
