@@ -105,10 +105,6 @@ public:
 
 
 private:
-    void on_applied_block( const protocol::signed_block& b );
-
-    void apply_debug_updates();
-
     struct plugin_impl;
 
     std::unique_ptr<plugin_impl> my;

@@ -122,7 +122,7 @@ void plugin::plugin_initialize( const boost::program_options::variables_map& opt
 
     // connect needed signals
     my->applied_block_connection = my->database().applied_block.connect( [this](const golos::chain::signed_block& b){
-        on_applied_block(b);
+        my->on_applied_block(b);
     });
 
     JSON_RPC_REGISTER_API ( name() );
@@ -198,10 +198,6 @@ void plugin::plugin_impl::on_applied_block( const protocol::signed_block & b ) {
         }
     }
     FC_LOG_AND_RETHROW()
-}
-
-void plugin::on_applied_block( const protocol::signed_block & b ) {
-    my->on_applied_block(b);
 }
 
 uint32_t plugin::plugin_impl::debug_generate_blocks(
