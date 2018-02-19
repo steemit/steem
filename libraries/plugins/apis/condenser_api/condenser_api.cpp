@@ -388,22 +388,10 @@ namespace detail
          }
          else if( part[0] == "witnesses" || part[0] == "~witnesses")
          {
-            auto start = _database_api->list_witnesses( { { "" }, 1, database_api::by_name } );
-
-            if( BOOST_LIKELY( start.witnesses.size() ) )
+            auto wits = get_witnesses_by_vote( (vector< fc::variant >){ fc::variant(""), fc::variant(50) } );
+            for( const auto& w : wits )
             {
-               vector< variant > start_key;
-               start_key.push_back( fc::variant( start.witnesses[0].votes ) );
-               start_key.push_back( fc::variant( start.witnesses[0].owner ) );
-
-               auto wits = _database_api->list_witnesses(
-                  { fc::variant( start_key ), 50, database_api::by_vote_name } ).witnesses;
-
-               //auto wits = get_witnesses_by_vote( "", 50 );
-               for( const auto& w : wits )
-               {
-                  _state.witnesses[w.owner] = w;
-               }
+               _state.witnesses[w.owner] = w;
             }
          }
          else if( part[0] == "trending"  )
@@ -682,7 +670,7 @@ namespace detail
             }
          }
 
-         _state.witness_schedule = _db.get_witness_schedule_object();
+         _state.witness_schedule = _database_api->get_witness_schedule( {} );
 
       }
       catch ( const fc::exception& e )
@@ -823,6 +811,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, get_accounts )
    {
+      CHECK_ARG_SIZE(1)
       vector< account_name_type > names = args[0].as< vector< account_name_type > >();
 
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
@@ -1042,6 +1031,7 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
 
       database_api::list_vesting_delegations_args a;
+      account_name_type account = args[0].as< account_name_type >();
       a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_delegation;
@@ -1049,9 +1039,9 @@ namespace detail
       auto delegations = _database_api->list_vesting_delegations( a ).delegations;
       get_vesting_delegations_return result;
 
-      for( auto& d : delegations )
+      for( auto itr = delegations.begin(); itr != delegations.end() && itr->delegator == account; ++itr )
       {
-         result.push_back( api_vesting_delegation_object( d ) );
+         result.push_back( api_vesting_delegation_object( *itr ) );
       }
 
       return result;
@@ -1062,16 +1052,17 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
 
       database_api::list_vesting_delegation_expirations_args a;
-      a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
+      account_name_type account = args[0].as< account_name_type >();
+      a.start = fc::variant( (vector< variant >){ args[0], args[1], fc::variant( vesting_delegation_expiration_id_type() ) } );
       a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
       a.order = database_api::by_account_expiration;
 
       auto delegations = _database_api->list_vesting_delegation_expirations( a ).delegations;
       get_expiring_vesting_delegations_return result;
 
-      for( auto& d : delegations )
+      for( auto itr = delegations.begin(); itr != delegations.end() && itr->delegator == account; ++itr )
       {
-         result.push_back( api_vesting_delegation_expiration_object( d ) );
+         result.push_back( api_vesting_delegation_expiration_object( *itr ) );
       }
 
       return result;
@@ -1136,16 +1127,26 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_witnesses_by_vote )
    {
       CHECK_ARG_SIZE( 2 )
-      auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
+      account_name_type start_name = args[0].as< account_name_type >();
+      vector< fc::variant > start_key;
 
-      if( start.witnesses.size() == 0 )
-         return get_witnesses_by_vote_return();
+      if( start_name == account_name_type() )
+      {
+         start_key.push_back( fc::variant( std::numeric_limits< int64_t >::max() ) );
+         start_key.push_back( fc::variant( account_name_type() ) );
+      }
+      else
+      {
+         auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
+
+         if( start.witnesses.size() == 0 )
+            return get_witnesses_by_vote_return();
+
+         start_key.push_back( fc::variant( start.witnesses[0].votes ) );
+         start_key.push_back( fc::variant( start.witnesses[0].owner ) );
+      }
 
       auto limit = args[1].as< uint32_t >();
-      vector< fc::variant > start_key;
-      start_key.push_back( fc::variant( start.witnesses[0].votes ) );
-      start_key.push_back( fc::variant( start.witnesses[0].owner ) );
-
       auto witnesses = _database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
 
       get_witnesses_by_vote_return result;
