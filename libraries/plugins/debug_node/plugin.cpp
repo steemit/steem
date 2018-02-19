@@ -376,6 +376,10 @@ witness_schedule_object plugin::plugin_impl::debug_get_witness_schedule( ) {
     return db.get( golos::chain::witness_schedule_id_type() );
 }
 
+// TODO: Figure out does debug_nod need this method or not.
+// Now it's commented because there is no api_hardfork_property_object in golos, as it is in steem.
+// The only similar thing we have: hardfork_property_object.
+
 // debug_get_hardfork_property_object_r plugin::plugin_impl::debug_get_hardfork_property_object(debug_get_hardfork_property_object_a & args) {
 //     auto & db = database();
 //     return db.get( chain::hardfork_property_id_type() );
