@@ -2750,8 +2750,13 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto alice_sbd = db.get_account( "alice" ).sbd_balance + db.get_account( "alice" ).reward_sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
       auto alice_steem = db.get_account( "alice" ).balance + db.get_account( "alice" ).reward_steem_balance ;
 
-      BOOST_TEST_MESSAGE( "Checking printing SBD has slowed" );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
+      // Keep SBD Print Rate 100% after HF 19__2135
+      BOOST_TEST_MESSAGE( "Checking printing SBD has slowed pre HF 19__2135" );
+      if( db.has_hardfork( STEEMIT_HARDFORK_0_19__2135 ) ) {
+         BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
+      } else {
+         BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
+      }
 
       BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
@@ -2761,7 +2766,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance + db.get_account( "alice" ).reward_sbd_balance == alice_sbd );
       BOOST_REQUIRE( db.get_account( "alice" ).balance + db.get_account( "alice" ).reward_steem_balance > alice_steem );
 
-      BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on" );
+      BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on pre HF 19__2135" );
 
       // Get close to 1.5% for printing SBD to start again, but not all the way
       db_plugin->debug_update( [=]( database& db )
@@ -2783,7 +2788,12 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
 
-      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
+      // Keep SBD Print Rate 100% after HF 19__2135
+      if( db.has_hardfork( STEEMIT_HARDFORK_0_19__2135 ) ) {
+         BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
+      } else {
+         BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
+      }
 
       auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
 
