@@ -30,14 +30,8 @@ namespace chainbase {
       bool                    windows = false;
    };
 
-   void database::open( const bfs::path& dir, uint32_t flags, uint64_t shared_file_size ) {
-
-      bool write = flags & database::read_write;
-
-      if( !bfs::exists( dir ) ) {
-         if( !write ) BOOST_THROW_EXCEPTION( std::runtime_error( "database file not found at " + dir.native() ) );
-      }
-
+   void database::open( const bfs::path& dir, uint32_t flags, uint64_t shared_file_size )
+   {
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
@@ -46,24 +40,16 @@ namespace chainbase {
 
       if( bfs::exists( abs_path ) )
       {
-         if( write )
+         auto existing_file_size = bfs::file_size( abs_path );
+         if( shared_file_size > existing_file_size )
          {
-            auto existing_file_size = bfs::file_size( abs_path );
-            if( shared_file_size > existing_file_size )
-            {
-               if( !bip::managed_mapped_file::grow( abs_path.generic_string().c_str(), shared_file_size - existing_file_size ) )
-                  BOOST_THROW_EXCEPTION( std::runtime_error( "could not grow database file to requested size." ) );
-            }
-
-            _segment.reset( new bip::managed_mapped_file( bip::open_only,
-                                                          abs_path.generic_string().c_str()
-                                                          ) );
-         } else {
-            _segment.reset( new bip::managed_mapped_file( bip::open_read_only,
-                                                          abs_path.generic_string().c_str()
-                                                          ) );
-            _read_only = true;
+            if( !bip::managed_mapped_file::grow( abs_path.generic_string().c_str(), shared_file_size - existing_file_size ) )
+               BOOST_THROW_EXCEPTION( std::runtime_error( "could not grow database file to requested size." ) );
          }
+
+         _segment.reset( new bip::managed_mapped_file( bip::open_only,
+                                                       abs_path.generic_string().c_str()
+                                                       ) );
 
          auto env = _segment->find< environment_check >( "environment" );
          if( !env.first || !( *env.first == environment_check()) ) {
@@ -76,33 +62,9 @@ namespace chainbase {
          _segment->find_or_construct< environment_check >( "environment" )();
       }
 
-
-      abs_path = bfs::absolute( dir / "shared_memory.meta" );
-
-      if( bfs::exists( abs_path ) )
-      {
-         _meta.reset( new bip::managed_mapped_file( bip::open_only, abs_path.generic_string().c_str()
-                                                    ) );
-
-         _rw_manager = _meta->find< read_write_mutex_manager >( "rw_manager" ).first;
-         if( !_rw_manager )
-            BOOST_THROW_EXCEPTION( std::runtime_error( "could not find read write lock manager" ) );
-      }
-      else
-      {
-         _meta.reset( new bip::managed_mapped_file( bip::create_only,
-                                                    abs_path.generic_string().c_str(), sizeof( read_write_mutex_manager ) * 2
-                                                    ) );
-
-         _rw_manager = _meta->find_or_construct< read_write_mutex_manager >( "rw_manager" )();
-      }
-
-      if( write )
-      {
-         _flock = bip::file_lock( abs_path.generic_string().c_str() );
-         if( !_flock.try_lock() )
-            BOOST_THROW_EXCEPTION( std::runtime_error( "could not gain write access to the shared memory file" ) );
-      }
+      _flock = bip::file_lock( abs_path.generic_string().c_str() );
+      if( !_flock.try_lock() )
+         BOOST_THROW_EXCEPTION( std::runtime_error( "could not gain write access to the shared memory file" ) );
    }
 
    void database::flush() {

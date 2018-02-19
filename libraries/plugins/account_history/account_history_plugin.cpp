@@ -1,54 +1,50 @@
-#include <steemit/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/history_object.hpp>
 
+#include <steem/utilities/plugin_utilities.hpp>
+
+#include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
-#include <fc/thread/thread.hpp>
 
 #include <boost/algorithm/string.hpp>
 
-#define STEEM_NAMESPACE_PREFIX "steemit::protocol::"
 
-namespace steemit { namespace account_history {
+#define STEEM_NAMESPACE_PREFIX "steem::protocol::"
 
-namespace detail
-{
+namespace steem { namespace plugins { namespace account_history {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
+
+using chain::database;
+using chain::operation_notification;
+using chain::operation_object;
+
+namespace detail {
 
 class account_history_plugin_impl
 {
    public:
-      account_history_plugin_impl(account_history_plugin& _plugin)
-         : _self( _plugin )
-      { }
-      virtual ~account_history_plugin_impl();
+      account_history_plugin_impl() :
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      steemit::chain::database& database()
-      {
-         return _self.database();
-      }
+      virtual ~account_history_plugin_impl() {}
 
       void on_operation( const operation_notification& note );
 
-      account_history_plugin& _self;
       flat_map< account_name_type, account_name_type > _tracked_accounts;
       bool                                             _filter_content = false;
       bool                                             _blacklist = false;
       flat_set< string >                               _op_list;
       bool                                             _prune = true;
+      database&                        _db;
+      boost::signals2::connection      pre_apply_connection;
 };
-
-account_history_plugin_impl::~account_history_plugin_impl()
-{
-   return;
-}
 
 struct operation_visitor
 {
@@ -66,7 +62,7 @@ struct operation_visitor
    template<typename Op>
    void operator()( Op&& )const
    {
-      const auto& hist_idx = _db.get_index<account_history_index>().indices().get<by_account>();
+      const auto& hist_idx = _db.get_index< chain::account_history_index >().indices().get< chain::by_account >();
       if( !new_obj )
       {
          new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
@@ -90,7 +86,7 @@ struct operation_visitor
       if( hist_itr != hist_idx.end() && hist_itr->account == item )
          sequence = hist_itr->sequence + 1;
 
-      _db.create<account_history_object>( [&]( account_history_object& ahist )
+      _db.create< chain::account_history_object >( [&]( chain::account_history_object& ahist )
       {
          ahist.account  = item;
          ahist.sequence = sequence;
@@ -100,9 +96,9 @@ struct operation_visitor
       if( _prune )
       {
          // Clean up accounts to last 30 days or 30 items, whichever is more.
-         const auto& seq_idx = _db.get_index< account_history_index, by_account >();
+         const auto& seq_idx = _db.get_index< chain::account_history_index, chain::by_account >();
          auto seq_itr = seq_idx.lower_bound( boost::make_tuple( item, 0 ) );
-         vector< const account_history_object* > to_remove;
+         vector< const chain::account_history_object* > to_remove;
          auto now = _db.head_block_time();
 
          if( seq_itr == seq_idx.begin() )
@@ -112,9 +108,8 @@ struct operation_visitor
 
          while( seq_itr->account == item
                && sequence - seq_itr->sequence > 30
-               && now - _db.get< operation_object >( seq_itr->op ).timestamp > fc::days(30) )
+               && now - _db.get< chain::operation_object >( seq_itr->op ).timestamp > fc::days(30) )
          {
-            ilog( "Removing ${a}:${i}", ("a", item)("i", seq_itr->sequence) );
             to_remove.push_back( &(*seq_itr) );
             --seq_itr;
          }
@@ -154,7 +149,6 @@ struct operation_visitor_filter : operation_visitor
 void account_history_plugin_impl::on_operation( const operation_notification& note )
 {
    flat_set<account_name_type> impacted;
-   steemit::chain::database& db = database();
 
    const operation_object* new_obj = nullptr;
    app::operation_get_impacted_accounts( note.op, impacted );
@@ -191,87 +185,126 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
       {
          if(_filter_content)
          {
-            note.op.visit( operation_visitor_filter( db, note, new_obj, item, _op_list, _prune, _blacklist ) );
+            note.op.visit( operation_visitor_filter( _db, note, new_obj, item, _op_list, _prune, _blacklist ) );
          }
          else
          {
-            note.op.visit( operation_visitor( db, note, new_obj, item, _prune ) );
+            note.op.visit( operation_visitor( _db, note, new_obj, item, _prune ) );
          }
       }
    }
 }
 
-} // end namespace detail
+} // detail
 
-account_history_plugin::account_history_plugin( application* app )
-   : plugin( app ), my( new detail::account_history_plugin_impl(*this) )
-{
-   //ilog("Loading account history plugin" );
-}
+account_history_plugin::account_history_plugin() {}
+account_history_plugin::~account_history_plugin() {}
 
-account_history_plugin::~account_history_plugin()
-{
-}
-
-std::string account_history_plugin::plugin_name()const
-{
-   return "account_history";
-}
-
-void account_history_plugin::plugin_set_program_options(
-   boost::program_options::options_description& cli,
-   boost::program_options::options_description& cfg
+void account_history_plugin::set_program_options(
+   options_description& cli,
+   options_description& cfg
    )
 {
-   cli.add_options()
-         ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
-         ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
-         ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
-         ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" );
+   cfg.add_options()
+         ("account-history-track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
+         ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times. Deprecated in favor of account-history-track-account-range.")
+         ("account-history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
+         ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged. Deprecated in favor of account-history-whitelist-ops.")
+         ("account-history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
+         ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of account-history-blacklist-ops.")
+         ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" )
          ;
-   cfg.add(cli);
 }
 
-void account_history_plugin::plugin_initialize(const boost::program_options::variables_map& options)
+void account_history_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   //ilog("Intializing account history plugin" );
-   database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
+   my = std::make_unique< detail::account_history_plugin_impl >();
 
-   typedef pair<account_name_type,account_name_type> pairstring;
-   LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->on_operation(note); } );
 
-   if( options.count( "history-whitelist-ops" ) )
+   typedef pair< account_name_type, account_name_type > pairstring;
+   STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
+
+   if( options.count( "track-account-range" ) )
+   {
+      wlog( "track-account-range is deprecated in favor of account-history-track-account-range" );
+      STEEM_LOAD_VALUE_SET( options, "track-account-range", my->_tracked_accounts, pairstring );
+   }
+
+
+   if( options.count( "account-history-whitelist-ops" ) || options.count( "history-whitelist-ops" ) )
    {
       my->_filter_content = true;
       my->_blacklist = false;
 
-      for( auto& arg : options.at( "history-whitelist-ops" ).as< vector< string > >() )
+      if( options.count( "account-history-whitelist-ops" ) )
       {
-         vector< string > ops;
-         boost::split( ops, arg, boost::is_any_of( " \t," ) );
-
-         for( const string& op : ops )
+         for( auto& arg : options.at( "account-history-whitelist-ops" ).as< vector< string > >() )
          {
-            if( op.size() )
-               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
+         }
+      }
+
+      if( options.count( "history-whitelist-ops" ) )
+      {
+         wlog( "history-whitelist-ops is deprecated in favor of account-history-whitelist-ops." );
+
+         for( auto& arg : options.at( "history-whitelist-ops" ).as< vector< string > >() )
+         {
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
          }
       }
 
       ilog( "Account History: whitelisting ops ${o}", ("o", my->_op_list) );
    }
-   else if( options.count( "history-blacklist-ops" ) )
+   else if( options.count( "account-history-blacklist-ops" ) || options.count( "history-blacklist-ops" ) )
    {
       my->_filter_content = true;
       my->_blacklist = true;
-      for( auto& arg : options.at( "history-blacklist-ops" ).as< vector< string > >() )
-      {
-         vector< string > ops;
-         boost::split( ops, arg, boost::is_any_of( " \t," ) );
 
-         for( const string& op : ops )
+      if( options.count( "account-history-blacklist-ops" ) )
+      {
+         for( auto& arg : options.at( "account-history-blacklist-ops" ).as< vector< string > >() )
          {
-            if( op.size() )
-               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
+         }
+      }
+
+      if( options.count( "history-blacklist-ops" ) )
+      {
+         wlog( "history-blacklist-ops is deprecated in favor of account-history-blacklist-ops." );
+
+         for( auto& arg : options.at( "history-blacklist-ops" ).as< vector< string > >() )
+         {
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
          }
       }
 
@@ -280,15 +313,15 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 
    if( options.count( "history-disable-pruning" ) )
    {
-      my->_prune = options[ "history-disable-pruning" ].as< bool >();
+      my->_prune = !options[ "history-disable-pruning" ].as< bool >();
    }
 }
 
-void account_history_plugin::plugin_startup()
-{
-   ilog( "account_history plugin: plugin_startup() begin" );
+void account_history_plugin::plugin_startup() {}
 
-   ilog( "account_history plugin: plugin_startup() end" );
+void account_history_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
 }
 
 flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const
@@ -296,6 +329,4 @@ flat_map< account_name_type, account_name_type > account_history_plugin::tracked
    return my->_tracked_accounts;
 }
 
-} }
-
-STEEMIT_DEFINE_PLUGIN( account_history, steemit::account_history::account_history_plugin )
+} } } // steem::plugins::account_history

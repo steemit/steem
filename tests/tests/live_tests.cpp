@@ -1,20 +1,20 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/hardfork.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <iostream>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 #ifndef IS_TEST_NET
 
@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       flat_map< string, share_type > account_vests;
       flat_map< string, share_type > account_vsf_votes;
-      const auto& acnt_idx = db.get_index< account_index >().indices().get< by_name >();
+      const auto& acnt_idx = db->get_index< account_index >().indices().get< by_name >();
       auto acnt_itr = acnt_idx.begin();
 
       BOOST_TEST_MESSAGE( "Saving account vesting shares" );
@@ -43,12 +43,12 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          acnt_itr++;
       }
 
-      auto old_virtual_supply = db.get_dynamic_global_properties().virtual_supply;
-      auto old_current_supply = db.get_dynamic_global_properties().current_supply;
-      auto old_vesting_fund = db.get_dynamic_global_properties().total_vesting_fund_steem;
-      auto old_vesting_shares = db.get_dynamic_global_properties().total_vesting_shares;
-      auto old_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
-      auto old_reward_fund = db.get_dynamic_global_properties().total_reward_fund_steem;
+      auto old_virtual_supply = db->get_dynamic_global_properties().virtual_supply;
+      auto old_current_supply = db->get_dynamic_global_properties().current_supply;
+      auto old_vesting_fund = db->get_dynamic_global_properties().total_vesting_fund_steem;
+      auto old_vesting_shares = db->get_dynamic_global_properties().total_vesting_shares;
+      auto old_rshares2 = db->get_dynamic_global_properties().total_reward_shares2;
+      auto old_reward_fund = db->get_dynamic_global_properties().total_reward_fund_steem;
 
       flat_map< std::tuple< account_name_type, string >, share_type > comment_net_rshares;
       flat_map< std::tuple< account_name_type, string >, share_type > comment_abs_rshares;
@@ -56,9 +56,9 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       flat_map< comment_id_type, uint64_t > orig_vote_weight;
       flat_map< comment_id_type, uint64_t > expected_reward;
       fc::uint128_t total_rshares2 = 0;
-      const auto& com_idx = db.get_index< comment_index >().indices().get< by_permlink >();
+      const auto& com_idx = db->get_index< comment_index >().indices().get< by_permlink >();
       auto com_itr = com_idx.begin();
-      auto gpo = db.get_dynamic_global_properties();
+      auto gpo = db->get_dynamic_global_properties();
 
       BOOST_TEST_MESSAGE( "Saving comment rshare values" );
 
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       BOOST_TEST_MESSAGE( "Saving category rshares" );
 
-      const auto& cat_idx = db.get_index< category_index >().indices();
+      const auto& cat_idx = db->get_index< category_index >().indices();
       flat_map< category_id_type, share_type > category_rshares;
 
       for( auto cat_itr = cat_idx.begin(); cat_itr != cat_idx.end(); cat_itr++ )
@@ -95,18 +95,18 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       BOOST_TEST_MESSAGE( "Perform split" );
       fc::time_point start = fc::time_point::now();
-      db.perform_vesting_share_split( magnitude );
+      db->perform_vesting_share_split( magnitude );
       fc::time_point end = fc::time_point::now();
       ilog( "Vesting split execution time: ${t} us", ("t",end - start) );
 
       BOOST_TEST_MESSAGE( "Verify split took place correctly" );
 
-      BOOST_REQUIRE( db.get_dynamic_global_properties().current_supply == old_current_supply );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().virtual_supply == old_virtual_supply );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_fund_steem == old_vesting_fund );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_shares.amount == old_vesting_shares.amount * magnitude );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_shares2 == total_rshares2 );
-      BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_fund_steem == old_reward_fund );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().current_supply == old_current_supply );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().virtual_supply == old_virtual_supply );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().total_vesting_fund_steem == old_vesting_fund );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().total_vesting_shares.amount == old_vesting_shares.amount * magnitude );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().total_reward_shares2 == total_rshares2 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().total_reward_fund_steem == old_reward_fund );
 
       BOOST_TEST_MESSAGE( "Check accounts were updated" );
       acnt_itr = acnt_idx.begin();
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          acnt_itr++;
       }
 
-      gpo = db.get_dynamic_global_properties();
+      gpo = db->get_dynamic_global_properties();
 
       com_itr = com_idx.begin();
       while( com_itr != com_idx.end() )
@@ -153,25 +153,25 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 {
    try
    {
-      flat_map< witness_id_type, share_type > expected_votes;
+      flat_map< account_name_type, share_type > expected_votes;
 
-      const auto& by_account_witness_idx = db.get_index< witness_vote_index >().indices();
+      const auto& by_account_witness_idx = db->get_index< witness_vote_index >().indices();
 
-      for( auto vote: by_account_witness_idx )
+      for( const auto& vote: by_account_witness_idx )
       {
          if( expected_votes.find( vote.witness ) == expected_votes.end() )
-            expected_votes[ vote.witness ] = db.get( vote.account ).witness_vote_weight();
+            expected_votes[ vote.witness ] = db->get< account_object, by_name >( vote.account ).witness_vote_weight();
          else
-            expected_votes[ vote.witness ] += db.get( vote.account ).witness_vote_weight();
+            expected_votes[ vote.witness ] += db->get< account_object, by_name >( vote.account ).witness_vote_weight();
       }
 
-      db.retally_witness_votes();
+      db->retally_witness_votes();
 
-      const auto& witness_idx = db.get_index< witness_index >().indices();
+      const auto& witness_idx = db->get_index< witness_index, by_name >();
 
-      for( auto witness: witness_idx )
+      for( const auto& witness : witness_idx )
       {
-         BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.id ].value );
+         BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.owner ].value );
       }
    }
    FC_LOG_AND_RETHROW()

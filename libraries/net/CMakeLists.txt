@@ -10,10 +10,9 @@ set(SOURCES node.cpp
 add_library( graphene_net ${SOURCES} ${HEADERS} )
 
 target_link_libraries( graphene_net
-  PUBLIC fc )
+  PUBLIC steem_protocol fc )
 target_include_directories( graphene_net
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_SOURCE_DIR}/libraries/protocol/include"
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 
 if(MSVC)
@@ -24,6 +23,13 @@ if (USE_PCH)
   set_target_properties(graphene_net PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(graphene_net)
 endif(USE_PCH)
+
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      graphene_net PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
 
 install( TARGETS
    graphene_net
