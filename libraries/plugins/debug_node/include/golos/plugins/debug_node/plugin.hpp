@@ -19,14 +19,6 @@ namespace golos { namespace protocol {
 
 namespace golos { namespace plugins { namespace debug_node {
 
-inline void disconnect_signal( boost::signals2::connection& signal )
-{
-   if( signal.connected() ) {
-      signal.disconnect();
-   }
-   FC_ASSERT( !signal.connected() );
-}
-
 using golos::plugins::json_rpc::void_type;
 using golos::plugins::json_rpc::msg_pack;
 using golos::chain::witness_schedule_object;

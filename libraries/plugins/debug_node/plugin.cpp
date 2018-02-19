@@ -62,6 +62,7 @@ public:
         uint32_t skip = golos::chain::database::skip_nothing
     );
 
+    void disconnect_signal( boost::signals2::connection& signal );
     void apply_debug_updates();
     void on_applied_block( const protocol::signed_block & b );
 
@@ -139,7 +140,7 @@ void plugin::plugin_startup() {
 }
 
 void plugin::plugin_shutdown() {
-   disconnect_signal( my->applied_block_connection );
+   my->disconnect_signal( my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();
@@ -152,6 +153,13 @@ void plugin::debug_update (
         uint32_t skip
 ) {
     my->debug_update(callback, skip);
+}
+
+inline void plugin::plugin_impl::disconnect_signal( boost::signals2::connection& signal ) {
+   if( signal.connected() ) {
+      signal.disconnect();
+   }
+   FC_ASSERT( !signal.connected() );
 }
 
 void plugin::plugin_impl::debug_update (
