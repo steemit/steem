@@ -823,6 +823,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, get_accounts )
    {
+      CHECK_ARG_SIZE(1)
       vector< account_name_type > names = args[0].as< vector< account_name_type > >();
 
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
