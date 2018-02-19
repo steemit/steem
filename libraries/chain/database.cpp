@@ -3007,7 +3007,7 @@ void database::update_virtual_supply()
          auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEMIT_100_PERCENT )
             / dgp.virtual_supply.amount.value ).to_uint64() );
 
-         if( has_hardfork( STEEMIT_HARDFORK_0_19__9999 ) ) {
+         if( has_hardfork( STEEMIT_HARDFORK_0_19__2135 ) ) {
             dgp.sbd_print_rate = STEEMIT_100_PERCENT;
          } else {
             if( percent_sbd <= STEEMIT_SBD_START_PERCENT )
