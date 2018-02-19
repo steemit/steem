@@ -1077,22 +1077,26 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
    return result;
 }
 
+//====================================================last_votes_misc====================================================
+
 namespace last_votes_misc
 {
 
-   template< typename KEY1, typename KEY2, typename KEY3 >
-   struct last_votes_processor
+   template< bool IsVoterLastUpdate, typename KEY1, typename KEY2, typename KEY3 >
+   struct votes_sorter
    {
+      using selector = std::integral_constant< bool, IsVoterLastUpdate >;
+
       const comment_vote_object* cvo = nullptr;
 
       const KEY1& val1;
       const KEY2& val2;
       const KEY3& val3;
 
-      last_votes_processor( const comment_vote_object* _cvo, const KEY1& _val1, const KEY2& _val2, const KEY3& _val3 )
+      votes_sorter( const comment_vote_object* _cvo, const KEY1& _val1, const KEY2& _val2, const KEY3& _val3 )
       : cvo( _cvo ), val1( _val1 ), val2( _val2 ), val3( _val3 ){}
 
-      bool operator<( const last_votes_processor& obj ) const
+      bool operator<( const votes_sorter& obj ) const
       {
          if( val1 == obj.val1 )
          {
@@ -1105,22 +1109,23 @@ namespace last_votes_misc
             return val1 < obj.val1;
       }
 
-      static const KEY1& get_val1( const comment_vote_object& obj );
-      static const KEY2& get_val2( const comment_vote_object& obj );
-      static const KEY3& get_val3( const comment_vote_object& obj );
+      static const KEY1& get_val1( std::true_type t, const comment_vote_object& obj ){ return obj.voter; }
+      static const KEY1& get_val1( std::false_type t, const comment_vote_object& obj ){ return obj.comment; }
+      static const KEY1& get_val1( const comment_vote_object& obj ){ return get_val1( selector(), obj ); }
+
+      static const KEY2& get_val2( std::true_type t, const comment_vote_object& obj ){ return obj.comment; }
+      static const KEY2& get_val2( std::false_type t, const comment_vote_object& obj ){ return obj.voter; }
+      static const KEY2& get_val2( const comment_vote_object& obj ){ return get_val2( selector(), obj ); }
+
+      static const KEY3& get_val3( std::true_type t, const comment_vote_object& obj ){ return obj.last_update; }
+      static const KEY3& get_val3( std::false_type t, const comment_vote_object& obj ){ return obj.weight; }
+      static const KEY3& get_val3( const comment_vote_object& obj ) { return get_val3( selector(), obj ); }
    };
 
-   using t_by_voter_last_update = last_votes_processor< account_id_type, comment_id_type, time_point_sec >;
-   using t_by_comment_weight_voter = last_votes_processor< comment_id_type, account_id_type, uint64_t >;
+   using t_by_voter_last_update = votes_sorter< true, account_id_type, comment_id_type, time_point_sec >;
+   using t_by_comment_weight_voter = votes_sorter< false, comment_id_type, account_id_type, uint64_t >;
 
-   template<> const account_id_type& last_votes_processor< account_id_type, comment_id_type, time_point_sec >::get_val1( const comment_vote_object& obj ) { return obj.voter; }
-   template<> const comment_id_type& last_votes_processor< comment_id_type, account_id_type, uint64_t >::get_val1( const comment_vote_object& obj ) { return obj.comment; }
-
-   template<> const comment_id_type& last_votes_processor< account_id_type, comment_id_type, time_point_sec >::get_val2( const comment_vote_object& obj ) { return obj.comment; }
-   template<> const account_id_type& last_votes_processor< comment_id_type, account_id_type, uint64_t >::get_val2( const comment_vote_object& obj ) { return obj.voter; }
-
-   template<> const time_point_sec& last_votes_processor< account_id_type, comment_id_type, time_point_sec >::get_val3( const comment_vote_object& obj ) { return obj.last_update; }
-   template<> const uint64_t& last_votes_processor< comment_id_type, account_id_type, uint64_t >::get_val3( const comment_vote_object& obj ) { return obj.weight; }
+   //====================================================process_result====================================================
 
    template< typename WrapperType, typename IndexType, typename OrderType, typename ValueType1, typename ValueType2, typename ValueType3, typename ResultType, typename OnPush >
    void process_result( database_api_impl& _impl, vector< ResultType >& result, uint32_t limit, ValueType1& v1, ValueType2& v2, ValueType3& v3, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
@@ -1224,6 +1229,8 @@ namespace last_votes_misc
       }
    }
 
+   //====================================================votes_impl====================================================
+
    template< template< typename... > typename Collection, typename ResultType >
    void votes_impl( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp )
    {
@@ -1272,6 +1279,8 @@ namespace last_votes_misc
       }
    }
 
+   //====================================================votes_impl2====================================================
+
    template< template< typename... > typename Collection, typename ResultType >
    void votes_impl2( database_api_impl& _impl, Collection< ResultType >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, uint64_t weight )
    {
@@ -1311,6 +1320,8 @@ namespace last_votes_misc
    }
 
 }//namespace last_votes_misc
+
+//====================================================last_votes_misc====================================================
 
 /* Votes */
 
