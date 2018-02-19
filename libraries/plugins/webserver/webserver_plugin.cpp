@@ -139,27 +139,32 @@ namespace golos {
                 }
 
                 if (http_endpoint && ((ws_endpoint && ws_endpoint != http_endpoint) || !ws_endpoint)) {
-                    http_thread = std::make_shared<std::thread>([&]() {
-                        ilog("start processing http thread");
-                        try {
-                            http_server.clear_access_channels(websocketpp::log::alevel::all);
-                            http_server.clear_error_channels(websocketpp::log::elevel::all);
-                            http_server.init_asio(&http_ios);
-                            http_server.set_reuse_addr(true);
+                    if (1) {
+                        ilog("http thread is disabled in this build!");
+                    } else {
+                        http_thread = std::make_shared<std::thread>([&]() {
+                            ilog("start processing http thread");
+                            try {
+                                http_server.clear_access_channels(websocketpp::log::alevel::all);
+                                http_server.clear_error_channels(websocketpp::log::elevel::all);
+                                http_server.init_asio(&http_ios);
+                                http_server.set_reuse_addr(true);
 
-                            http_server.set_http_handler(
-                                    boost::bind(&webserver_plugin_impl::handle_http_message, this, &http_server, _1));
+                                http_server.set_http_handler(
+                                        boost::bind(&webserver_plugin_impl::handle_http_message, this, &http_server,
+                                                    _1));
 
-                            ilog("start listening for http requests");
-                            http_server.listen(*http_endpoint);
-                            http_server.start_accept();
+                                ilog("start listening for http requests");
+                                http_server.listen(*http_endpoint);
+                                http_server.start_accept();
 
-                            http_ios.run();
-                            ilog("http io service exit");
-                        } catch (...) {
-                            elog("error thrown from http io service");
-                        }
-                    });
+                                http_ios.run();
+                                ilog("http io service exit");
+                            } catch (...) {
+                                elog("error thrown from http io service");
+                            }
+                        });
+                    }
                 }
             }
 
@@ -188,18 +193,25 @@ namespace golos {
                 }
             }
 
-            void webserver_plugin::webserver_plugin_impl::handle_ws_message(websocket_server_type *server,
-                                                                            connection_hdl hdl,
-                                                                            websocket_server_type::message_ptr msg) {
+            void webserver_plugin::webserver_plugin_impl::handle_ws_message(
+                websocket_server_type *server,
+                connection_hdl hdl,
+                websocket_server_type::message_ptr msg
+            ) {
                 auto con = server->get_con_from_hdl(hdl);
                 thread_pool_ios.post([con, msg, this]() {
                     try {
                         if (msg->get_opcode() == websocketpp::frame::opcode::text) {
-                            con->send(api->call(msg->get_payload()));
+                            api->call(msg->get_payload(), [con](const std::string &data){
+                                auto ec = con->send(data);
+                                if (ec) {
+                                    throw websocketpp::exception(ec);
+                                }
+                            });
                         } else {
                             con->send("error: string payload expected");
                         }
-                    } catch (fc::exception &e) {
+                    } catch (const fc::exception &e) {
                         con->send("error calling API " + e.to_string());
                     }
                 });
@@ -213,15 +225,23 @@ namespace golos {
                     auto body = con->get_request_body();
 
                     try {
-                        con->set_body(api->call(body));
-                        con->set_status(websocketpp::http::status_code::ok);
+                        api->call(body, [con](const std::string &data){
+                            // this lambda can be called from any thread in application
+                            //   for example, when task was delegated ( see msg_pack(msg_pack&&) )
+                            con->set_body(data);
+                            con->set_status(websocketpp::http::status_code::ok);
+                            con->send_http_response();
+                        });
                     } catch (fc::exception &e) {
+                        // this case happens if exception was thrown on parsing request
                         edump((e));
                         con->set_body("Could not call API");
                         con->set_status(websocketpp::http::status_code::not_found);
+                        // this sending response can't be merged with sending response from try-block
+                        //   because try-block can work from other thread,
+                        //   when catch-block happens in current thread on parsing request
+                        con->send_http_response();
                     }
-
-                    con->send_http_response();
                 });
             }
 

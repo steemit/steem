@@ -120,7 +120,7 @@ struct remote_social_network {
  */
 struct remote_network_broadcast_api {
     void broadcast_transaction( signed_transaction );
-    broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
+    broadcast_transaction_synchronous_t broadcast_transaction_synchronous( signed_transaction );
     void broadcast_block( signed_block );
 };
 

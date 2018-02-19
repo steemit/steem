@@ -122,27 +122,20 @@ namespace golos {
             void witness_plugin::set_program_options(
                     boost::program_options::options_description &command_line_options,
                     boost::program_options::options_description &config_file_options) {
-                string witness_id_example = "initwitness";
+                    string witness_id_example = "initwitness";
+
                 command_line_options.add_options()
-                        ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e) { pimpl->_production_enabled = e; }),
-                         "Enable block production, even if the chain is stale.")
-                        ("required-participation", bpo::bool_switch()->notifier([this](int e) { pimpl->_required_witness_participation = uint32_t(e * STEEMIT_1_PERCENT);
-                        }), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
-                        ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
-                         ("name of witness controlled by this node (e.g. " +
-                          witness_id_example + " )").c_str())
-                        ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(),
-                         "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )")
-                        ("mining-threads,t", bpo::value<uint32_t>(),
-                         "Number of threads to use for proof of work mining")
-                        ("private-key", bpo::value<vector<string>>()->composing()->multitoken(),
-                         "WIF PRIVATE KEY to be used by one or more witnesses or miners")
-                        ("miner-account-creation-fee", bpo::value<uint64_t>()->implicit_value(100000),
-                         "Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
-                        ("miner-maximum-block-size", bpo::value<uint32_t>()->implicit_value(131072),
-                         "Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB")
-                        ("miner-sbd-interest-rate", bpo::value<uint32_t>()->implicit_value(1000),
-                         "SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)");
+                        ("enable-stale-production",  bpo::value<bool>()->implicit_value(false) , "Enable block production, even if the chain is stale.")
+                        ("required-participation", bpo::value<int>()->implicit_value(uint32_t(3 * STEEMIT_1_PERCENT)), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
+                        ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(), ("name of witness controlled by this node (e.g. " + witness_id_example + " )").c_str())
+                        ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )")
+                        ("mining-threads,t", bpo::value<uint32_t>(), "Number of threads to use for proof of work mining")
+                        ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners")
+                        ("miner-account-creation-fee", bpo::value<uint64_t>()->implicit_value(100000), "Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
+                        ("miner-maximum-block-size", bpo::value<uint32_t>()->implicit_value(131072), "Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB")
+                        ("miner-sbd-interest-rate", bpo::value<uint32_t>()->implicit_value(1000), "SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
+                        ;
+
                 config_file_options.add(command_line_options);
             }
 
@@ -153,7 +146,9 @@ namespace golos {
             void witness_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
                     ilog("witness plugin:  plugin_initialize() begin");
-                    pimpl.reset(new witness_plugin::impl);
+                    pimpl = std::make_unique<witness_plugin::impl>();
+
+                    pimpl->total_hashes_.store(0, std::memory_order_relaxed);
                     pimpl->_options = &options;
                     LOAD_VALUE_SET(options, "witness", pimpl->_witnesses, string)
                     edump((pimpl->_witnesses));
@@ -171,6 +166,16 @@ namespace golos {
                             pimpl->_miners[m.first] = private_key->get_public_key();
                         }
                     }
+
+                    if(options.count("enable-stale-production")){
+                        pimpl->_production_enabled = options["enable-stale-production"].as<bool>();
+                    }
+
+                    if(options.count("required-participation")){
+                        int e = static_cast<int>(options["required-participation"].as<int>());
+                        pimpl->_required_witness_participation = uint32_t(e * STEEMIT_1_PERCENT);
+                    }
+
 
                     if (options.count("mining-threads")) {
                         pimpl->mining_threads_ = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
@@ -520,7 +525,6 @@ namespace golos {
                 const auto head_block_num = b.block_num();
                 const auto head_block_time = b.timestamp;
                 const auto block_id = b.id();
-                fc::thread *mainthread = &fc::thread::current();
                 const auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
                 uint32_t thread_num = 0;
                 const uint32_t target = db.get_pow_summary_target();
@@ -573,16 +577,15 @@ namespace golos {
                                     trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
                                     head_block_num_.fetch_add(1, std::memory_order_relaxed);
-                                    mainthread->async([this, miner, trx]() {
-                                        try {
-                                            database().push_transaction(trx);
-                                            ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            p2p().broadcast_transaction(trx);
-                                        }
-                                        catch (const fc::exception &e) {
-                                            // wdump((e.to_detail_string()));
-                                        }
-                                    });
+
+                                    try {
+                                        database().push_transaction(trx);
+                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
+                                        p2p().broadcast_transaction(trx);
+                                    } catch (const fc::exception &e) {
+                                        // wdump((e.to_detail_string()));
+                                    }
+
                                     return;
                                 }
                             }
@@ -620,16 +623,15 @@ namespace golos {
                                     trx.ref_block_prefix = work.input.prev_block._hash[1];
                                     trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
-                                    mainthread->async([this, miner, trx]() {
-                                        try {
-                                            database().push_transaction(trx);
-                                            ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                            p2p().broadcast_transaction(trx);
-                                        }
-                                        catch (const fc::exception &e) {
-                                            // wdump((e.to_detail_string()));
-                                        }
-                                    });
+
+                                    try {
+                                        database().push_transaction(trx);
+                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
+                                        p2p().broadcast_transaction(trx);
+                                    } catch (const fc::exception &e) {
+                                        // wdump((e.to_detail_string()));
+                                    }
+
                                     return;
                                 }
                             }

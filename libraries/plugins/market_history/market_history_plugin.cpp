@@ -358,7 +358,7 @@ namespace golos {
 
             void market_history_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 try {
-                    ilog("market_history: plugin_initialize() begin");
+                    ilog("market_history plugin: plugin_initialize() begin");
                     _my.reset(new market_history_plugin_impl(*this));
                     golos::chain::database& db = _my->database();
 
@@ -378,7 +378,7 @@ namespace golos {
                     wlog("bucket-size ${b}", ("b", _my->_tracked_buckets));
                     wlog("history-per-size ${h}", ("h", _my->_maximum_history_per_bucket_size));
 
-                    ilog("market_history: plugin_initialize() end");
+                    ilog("market_history plugin: plugin_initialize() end");
                     JSON_RPC_REGISTER_API ( name() ) ;
                 } FC_CAPTURE_AND_RETHROW()
             }

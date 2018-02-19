@@ -14,6 +14,7 @@ namespace golos {
 
 
             using json_rpc::msg_pack;
+            using json_rpc::msg_pack_transfer;
             using json_rpc::void_type;
 
             using golos::protocol::signed_block;
@@ -34,10 +35,11 @@ namespace golos {
                 bool expired = false;
             };
 
-            ///               API,                                    args,                return
-            DEFINE_API_ARGS(broadcast_transaction, msg_pack, void_type)
-            DEFINE_API_ARGS(broadcast_transaction_synchronous, msg_pack, broadcast_transaction_synchronous_t)
-            DEFINE_API_ARGS(broadcast_block, msg_pack, void_type)
+            ///               API,                               args,     return
+            DEFINE_API_ARGS(broadcast_transaction,               msg_pack, void_type)
+            DEFINE_API_ARGS(broadcast_transaction_synchronous,   msg_pack, void_type)
+            DEFINE_API_ARGS(broadcast_block,                     msg_pack, void_type)
+            DEFINE_API_ARGS(broadcast_transaction_with_callback, msg_pack, void_type)
 
 
             using namespace appbase;
@@ -59,6 +61,7 @@ namespace golos {
                         (broadcast_transaction)
                         (broadcast_transaction_synchronous)
                         (broadcast_block)
+                        (broadcast_transaction_with_callback)
                 )
 
                 bool check_max_block_age(int32_t max_block_age) const;

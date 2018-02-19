@@ -16,12 +16,12 @@ namespace golos {
             using fc::optional;
 
 
-            using confirmation_callback = std::function<void(const broadcast_transaction_synchronous_return &)>;
+            using confirmation_callback = std::function<void(broadcast_transaction_synchronous_t)>;
 
             struct network_broadcast_api_plugin::impl final {
             public:
                 impl() : _p2p(appbase::app().get_plugin<p2p::p2p_plugin>()),
-                        _chain(appbase::app().get_plugin<chain::plugin>()) {
+                         _chain(appbase::app().get_plugin<chain::plugin>()) {
                 }
 
                 p2p::p2p_plugin &_p2p;
@@ -60,19 +60,24 @@ namespace golos {
                     const auto max_block_age = args.args->at(1).as<uint32_t>();
                     FC_ASSERT(!check_max_block_age(max_block_age));
                 }
-                auto p = std::make_shared<boost::promise<broadcast_transaction_synchronous_return>>();
+
+                // Delegate connection handlers to callback
+                msg_pack_transfer transfer(args);
                 {
                     boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
-                    pimpl->_callbacks[trx.id()] = [p](const broadcast_transaction_synchronous_return &r) {
-                        p->set_value(r);
+                    pimpl->_callbacks[trx.id()] = [msg = transfer.msg()](broadcast_transaction_synchronous_t r) {
+                        if (msg->valid()) {
+                            msg->result(std::move(r));
+                        }
                     };
                     pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
 
                 pimpl->_chain.db().push_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
+                transfer.complete();
 
-                return p->get_future().get();
+                return {};
             }
 
             DEFINE_API(network_broadcast_api_plugin, broadcast_block) {
@@ -82,6 +87,41 @@ namespace golos {
                 pimpl->_chain.db().push_block(block);
                 pimpl->_p2p.broadcast_block(block);
                 return broadcast_block_return();
+            }
+
+
+            DEFINE_API(network_broadcast_api_plugin,broadcast_transaction_with_callback){
+                // TODO: implement commit semantic for delegating connection handlers
+                const auto n_args = args.args->size();
+                FC_ASSERT(n_args >= 1, "Expected at least 1 argument, got 0");
+                auto trx = args.args->at(0).as<signed_transaction>();
+                if (n_args > 1) {
+                    const auto max_block_age = args.args->at(1).as<uint32_t>();
+                    FC_ASSERT(!check_max_block_age(max_block_age));
+                }
+
+                trx.validate();
+
+                // Delegate connection handlers to callback
+                msg_pack_transfer transfer(args);
+
+                {
+                    boost::lock_guard<boost::mutex> guard(pimpl->_mtx);
+                    pimpl->_callbacks[trx.id()] = [msg = transfer.msg()](broadcast_transaction_synchronous_t r) {
+                        if (msg->valid()) {
+                            msg->result(std::move(r));
+                        }
+                    };
+                    pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
+                }
+
+
+                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_p2p.broadcast_transaction(trx);
+                transfer.complete();
+
+                return {};
+
             }
 
             bool network_broadcast_api_plugin::check_max_block_age(int32_t max_block_age) const {
@@ -104,8 +144,10 @@ namespace golos {
                 pimpl.reset(new impl);
                 JSON_RPC_REGISTER_API(STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME);
                 on_applied_block_connection = appbase::app().get_plugin<chain::plugin>().db().applied_block.connect(
-                        [&](const signed_block &b) { on_applied_block(b);
-                        });
+                    [&](const signed_block &b) {
+                        on_applied_block(b);
+                    }
+                );
             }
 
             void network_broadcast_api_plugin::plugin_startup() {
@@ -123,7 +165,7 @@ namespace golos {
                             auto id = trx.id();
                             auto itr = pimpl->_callbacks.find( id );
                             if( itr ==pimpl-> _callbacks.end() ) continue;
-                            itr->second( broadcast_transaction_synchronous_return( id, block_num, int32_t( trx_num ), false ) );
+                            itr->second( broadcast_transaction_synchronous_t( id, block_num, int32_t( trx_num ), false ) );
                             pimpl->_callbacks.erase( itr );
                         }
                     }
@@ -143,7 +185,7 @@ namespace golos {
 
                             confirmation_callback callback = cb_it->second;
                             transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
-                            callback( broadcast_transaction_synchronous_return( txid_byval, block_num, -1, true ) );
+                            callback( broadcast_transaction_synchronous_t( txid_byval, block_num, -1, true ) );
 
                             pimpl->_callbacks.erase( cb_it );
                         }
