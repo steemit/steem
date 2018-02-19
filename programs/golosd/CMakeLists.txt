@@ -31,6 +31,7 @@ target_link_libraries(
         golos::account_history
         golos::private_message
         golos::auth_util
+        golos::debug_node
         golos::raw_block
         golos::block_info
         golos::json_rpc

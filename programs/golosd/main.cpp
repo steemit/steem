@@ -17,6 +17,7 @@
 #include <golos/plugins/account_by_key/account_by_key_plugin.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/auth_util/plugin.hpp>
+#include <golos/plugins/debug_node/plugin.hpp>
 #include <golos/plugins/raw_block/plugin.hpp>
 #include <golos/plugins/block_info/plugin.hpp>
 
@@ -68,6 +69,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::auth_util::plugin>();
             appbase::app().register_plugin<golos::plugins::raw_block::plugin>();
             appbase::app().register_plugin<golos::plugins::block_info::plugin>();
+            appbase::app().register_plugin<golos::plugins::debug_node::plugin>();
             ///plugins
         };
     }
