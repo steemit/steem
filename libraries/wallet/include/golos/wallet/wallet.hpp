@@ -937,8 +937,10 @@ namespace golos { namespace wallet {
             annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
 
             // Private message
-            vector<extended_message_object> get_inbox(const inbox_a&);
-            vector<extended_message_object> get_outbox(const outbox_a&);
+            vector<extended_message_object> get_inbox(
+                    const std::string& to, time_point newest, uint16_t limit);
+            vector<extended_message_object> get_outbox(
+                    const std::string& from, time_point newest, uint16_t limit);
 
             message_body try_decrypt_message( const message_api_obj& mo );
         };

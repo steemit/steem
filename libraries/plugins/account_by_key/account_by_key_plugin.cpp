@@ -205,13 +205,14 @@ namespace golos {
                 note.op.visit(detail::post_operation_visitor(_self));
             }
 
-            key_references_r account_by_key_plugin::account_by_key_plugin_impl::get_key_references(const key_references_a& val) const {
-                key_references_r final_result;
-                final_result.references.reserve(val.keys.size());
+            vector<vector<account_name_type>> account_by_key_plugin::account_by_key_plugin_impl::get_key_references(
+                    vector<public_key_type>& val) const {
+                vector<vector<account_name_type>> final_result;
+                final_result.reserve(val.size());
 
                 const auto &key_idx = _db.get_index<key_lookup_index>().indices().get<by_key>();
 
-                for (auto &key : val.keys) {
+                for (auto &key : val) {
                     vector<account_name_type> result;
                     auto lookup_itr = key_idx.lower_bound(key);
 
@@ -220,7 +221,7 @@ namespace golos {
                         ++lookup_itr;
                     }
 
-                    final_result.references.emplace_back(std::move(result));
+                    final_result.emplace_back(std::move(result));
                 }
 
                 return final_result;
@@ -264,12 +265,10 @@ namespace golos {
 
             // Api Defines
             DEFINE_API(account_by_key_plugin, get_key_references) {
-                auto tmp = args.args->at(0).as<key_references_a>();
+                auto tmp = args.args->at(0).as<vector<public_key_type>>();
                 auto &db = my->database();
                 return db.with_read_lock([&]() {
-                    key_references_r result;
-                    result = my->get_key_references(tmp);
-                    return result;
+                    return my->get_key_references(tmp);
                 });
             }
         }

@@ -129,27 +129,6 @@ namespace golos {
             >
             message_index;
 
-            struct inbox_r {
-                vector <message_api_obj> inbox;
-            };
-
-            struct inbox_a {
-                std::string to;
-                time_point newest;
-                uint16_t limit;
-            };
-
-            struct outbox_r {
-                vector <message_api_obj> outbox;
-            };
-
-            struct outbox_a {
-                std::string from;
-                time_point newest;
-                uint16_t limit;
-            };
-
-
             struct private_message_operation
                     : public golos::protocol::base_operation {
                 protocol::account_name_type from;
@@ -180,12 +159,4 @@ namespace fc {
 
 } /* fc */
 
-
-FC_REFLECT((golos::plugins::private_message::inbox_r), (inbox));
-FC_REFLECT((golos::plugins::private_message::inbox_a), (to)(newest)(limit));
-FC_REFLECT((golos::plugins::private_message::outbox_r), (outbox));
-FC_REFLECT((golos::plugins::private_message::outbox_a), (from)(newest)(limit));
-
-
 FC_REFLECT_TYPENAME((golos::plugins::private_message::private_message_plugin_operation))
-

@@ -15,18 +15,8 @@ namespace auth_util {
 
 using golos::plugins::json_rpc::msg_pack; 
 
-struct check_authority_signature_a {
-    std::string account_name;
-    std::string level;
-    fc::sha256 dig;
-    std::vector<protocol::signature_type> sigs;
-};
 
-struct check_authority_signature_r {
-    std::vector<protocol::public_key_type> keys;
-};
-
-DEFINE_API_ARGS ( check_authority_signature, msg_pack, check_authority_signature_r )
+DEFINE_API_ARGS ( check_authority_signature, msg_pack, std::vector<protocol::public_key_type>)
 
 class plugin final : public appbase::plugin<plugin> {
 public:
@@ -67,13 +57,3 @@ private:
 }
 } // golos::plugins::auth_util
 
-FC_REFLECT((golos::plugins::auth_util::check_authority_signature_a),
-    (account_name)
-    (level)
-    (dig)
-    (sigs)
-)
-
-FC_REFLECT((golos::plugins::auth_util::check_authority_signature_r),
-    (keys)
-)
