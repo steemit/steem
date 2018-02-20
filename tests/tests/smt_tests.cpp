@@ -45,34 +45,45 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
    try
    {
-      SMT_SYMBOL( alice, 3 );
+      ACTORS( (alice) );
 
       smt_create_operation op;
-      op.smt_creation_fee = ASSET( "1.000 TESTS" );
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
       op.control_account = "alice";
-      op.symbol = alice_symbol;
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.symbol = get_new_smt_symbol( 3, db );
       op.precision = op.symbol.decimals();
       op.validate();
 
+      // Test invalid control account name.
+      op.control_account = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.control_account = "alice";
+
+      // Test invalid creation fee.
+      // Negative fee.
       op.smt_creation_fee.amount = -op.smt_creation_fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      // passes with MAX_SHARE_SUPPLY
+      // Valid MAX_SHARE_SUPPLY
       op.smt_creation_fee.amount = STEEM_MAX_SHARE_SUPPLY;
       op.validate();
-
-      // fails with MAX_SHARE_SUPPLY+1
+      // Invalid MAX_SHARE_SUPPLY+1
       ++op.smt_creation_fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
+      // Invalid currency
       op.smt_creation_fee = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
+      // Valid currency, but doesn't match decimals stored in symbol.
       op.smt_creation_fee = ASSET( "1.000 TESTS" );
-      // Valid, but doesn't match decimals stored in symbol.
       op.precision = 0;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.precision = op.symbol.decimals();
+
+      // Test symbol
+      // Vesting symbol used instaed of liquid one.
+      op.symbol = op.symbol.get_paired_symbol();
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      // Legacy symbol used instead of SMT.
+      op.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
@@ -122,11 +133,9 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       FC_ASSERT( required_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
       unsigned int test_amount = required_creation_fee.amount.value;
 
-      SMT_SYMBOL( alice, 3 );
-
       smt_create_operation op;
       op.control_account = "alice";
-      op.symbol = alice_symbol;
+      op.symbol = get_new_smt_symbol( 3, db );
       op.precision = op.symbol.decimals();
 
       // Fund with STEEM, and set fee with SBD.
@@ -185,7 +194,10 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
 {
    try
    {
-      SMT_SYMBOL( alice, 3 );
+      ACTORS( (alice) );
+      generate_block();
+
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
 
       uint64_t h0 = fc::sha256::hash( "alice" )._hash[0];
       uint32_t h0lo = uint32_t( h0 & 0x7FFFFFF );
@@ -817,7 +829,7 @@ BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+      BOOST_TEST_MESSAGE( "Test asset_symbol vesting methods" );
 
       asset_symbol_type Steem = STEEM_SYMBOL;
       FC_ASSERT( Steem.is_vesting() == false );
@@ -844,6 +856,37 @@ BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
             FC_ASSERT( vesting_smt.get_paired_symbol() == liquid_smt );
          }
       }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( vesting_smt_creation )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Creation of vesting SMT" );
+      
+      ACTORS((alice));
+      generate_block();
+
+      asset_symbol_type liquid_symbol = create_smt("alice", alice_private_key, 6);
+      // Use liquid symbol/NAI to confirm smt object was created.
+      auto liquid_object_by_symbol = db->find< smt_token_object, by_symbol >( liquid_symbol );
+      FC_ASSERT( ( liquid_object_by_symbol != nullptr ) );
+      auto liquid_object_by_nai = db->find< smt_token_object, by_nai >( liquid_symbol.to_nai() );
+      FC_ASSERT( ( liquid_object_by_nai != nullptr ) );
+      FC_ASSERT( ( liquid_object_by_symbol == liquid_object_by_nai ) );
+
+      asset_symbol_type vesting_symbol = liquid_symbol.get_paired_symbol();
+      // Use vesting symbol/NAI to confirm smt object was created.
+      auto vesting_object_by_symbol = db->find< smt_token_object, by_symbol >( vesting_symbol );
+      FC_ASSERT( ( vesting_object_by_symbol != nullptr ) );
+      auto vesting_object_by_nai = db->find< smt_token_object, by_nai >( vesting_symbol.to_nai() );
+      FC_ASSERT( ( vesting_object_by_nai != nullptr ) );
+      FC_ASSERT( ( vesting_object_by_symbol == vesting_object_by_nai ) );
+
+      // Check that liquid and vesting objecta are the same one.
+      FC_ASSERT( ( liquid_object_by_symbol == vesting_object_by_symbol ) );
    }
    FC_LOG_AND_RETHROW()
 }
