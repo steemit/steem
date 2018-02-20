@@ -3497,18 +3497,18 @@ namespace golos {
                     dgp.average_block_size =
                             (99 * dgp.average_block_size + block_size) / 100;
 
-                    /**
-       *  About once per minute the average network use is consulted and used to
-       *  adjust the reserve ratio. Anything above 50% usage reduces the ratio by
-       *  half which should instantly bring the network from 50% to 25% use unless
-       *  the demand comes from users who have surplus capacity. In other words,
-       *  a 50% reduction in reserve ratio does not result in a 50% reduction in usage,
-       *  it will only impact users who where attempting to use more than 50% of their
-       *  capacity.
+       /*
+       *  About once per minute the average network use is consulted and used to adjust
+       *  the reserve ratio. Anything above 25% usage (since STEEMIT_HARDFORK_0_12__179)
+       *  reduces the ratio by half which should instantly bring the network from 50% to
+       *  25% use unless the demand comes from users who have surplus capacity. In other
+       *  words, a 50% reduction in reserve ratio does not result in a 50% reduction in
+       *  usage, it will only impact users who where attempting to use more than 50% of
+       *  their capacity.
        *
-       *  When the reserve ratio is at its max (10,000) a 50% reduction will take 3 to
-       *  4 days to return back to maximum.  When it is at its minimum it will return
-       *  back to its prior level in just a few minutes.
+       *  When the reserve ratio is at its max (check STEEMIT_MAX_RESERVE_RATIO) a 50%
+       *  reduction will take 3 to 4 days to return back to maximum.  When it is at its
+       *  minimum it will return back to its prior level in just a few minutes.
        *
        *  If the network reserve ratio falls under 100 then it is probably time to
        *  increase the capacity of the network.
