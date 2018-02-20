@@ -36,6 +36,9 @@ namespace golos {
                 handler_type handler;
             };
 
+            msg_pack::msg_pack() {
+            }
+
             // Constructor with hidden handlers types
             template <typename Handler>
             msg_pack::msg_pack(Handler &&handler): pimpl(new impl) {

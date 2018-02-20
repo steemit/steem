@@ -2,7 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <golos/app/plugin.hpp>
+#include <golos/plugins/chain/plugin.hpp>
 #include <golos/chain/generic_custom_operation_interpreter.hpp>
 #include <golos/chain/account_object.hpp>
 

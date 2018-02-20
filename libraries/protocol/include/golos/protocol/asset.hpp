@@ -49,14 +49,13 @@ namespace golos {
             }
 
             friend bool operator==(const asset &a, const asset &b) {
-                return std::tie(a.symbol, a.amount) ==
-                       std::tie(b.symbol, b.amount);
+                FC_ASSERT(a.symbol == b.symbol);
+                return a.amount == b.amount;
             }
 
             friend bool operator<(const asset &a, const asset &b) {
                 FC_ASSERT(a.symbol == b.symbol);
-                return std::tie(a.amount, a.symbol) <
-                       std::tie(b.amount, b.symbol);
+                return a.amount < b.amount;
             }
 
             friend bool operator<=(const asset &a, const asset &b) {
