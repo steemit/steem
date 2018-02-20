@@ -104,20 +104,20 @@ void plugin::plugin_impl::on_applied_block(const protocol::signed_block &b) {
 }
 
 DEFINE_API ( plugin, get_block_info ) {
-    auto arguments = args.args->at(0).as<uint32_t>();
-    auto result = args.args->at(1).as<uint32_t>();
+    auto start_block_num = args.args->at(0).as<uint32_t>();
+    auto count = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return  my->get_block_info(arguments, result);
+        return  my->get_block_info(start_block_num, count);
     });
 }
 
 DEFINE_API ( plugin, get_blocks_with_info ) {
-    auto arguments = args.args->at(0).as<uint32_t>();
-    auto result = args.args->at(1).as<uint32_t>();
+    auto start_block_num = args.args->at(0).as<uint32_t>();
+    auto count = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
     return db.with_read_lock([&]() {
-        return my->get_blocks_with_info(arguments, result);
+        return my->get_blocks_with_info(start_block_num, count);
     });
 }
 
