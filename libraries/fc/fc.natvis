@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This file contains Debugger Visualizers for the FC library.  It's hard to navigate the
+	 FC objects in a debugger because the tricks used in classes like fc::fwd require manual
+	 casting to view the underlying objects in the debugger.  This file tells the Visual 
+	 Studio debugger how to see through these tricks and traverse the classes naturally.
+	 
+     To install, drop this file in your My Documents\Visual Studio 2012\Visualizers directory 
+	 
+     In addition, consider grabbing the .natvis files from the C++ Debugger Visualizers
+	 project here to improve display of boost objects:
+		https://github.com/KindDragon/CPPDebuggerVisualizers#c-debugger-visualizers-
+ -->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+<Type Name="fc::variant">
+	<Expand>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::int64_type">*(const int64_t*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::uint64_type">*(const uint64_t*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::double_type">*(const double*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::bool_type">*(const bool*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::string_type">*(const const_string_ptr*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::array_type">*(const const_variants_ptr*)(&amp;_data)</Item>
+		<Item Name="value" Condition="(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1)) == fc::variant::object_type">*(const const_variant_object_ptr*)(&amp;_data)</Item>
+		<Item Name="type">(fc::variant::type_id)(*(((char*)(&amp;_data)) + sizeof(fc::variant) - 1))</Item>
+	</Expand>
+</Type>
+
+<Type Name="fc::fwd&lt;*&gt;">
+	<DisplayString>{*($T1*)(((_store)._store)._data)}</DisplayString>
+	<Expand>
+		<ExpandedItem>($T1*)(((_store)._store)._data)</ExpandedItem>
+	</Expand>
+</Type>
+
+<Type Name="fc::string">
+	<DisplayString>{my}</DisplayString>
+	<Expand>
+		<ExpandedItem>my</ExpandedItem>
+	</Expand>
+</Type>
+
+<Type Name="fc::optional&lt;*&gt;">
+    <DisplayString Condition="!_valid">invalid</DisplayString>
+    <DisplayString>valid, value = {*(($T1*)_value)}</DisplayString>
+    <Expand>
+        <Item Name="_value">($T1*)_value</Item>
+        <Item Name="_valid">_valid</Item>
+    </Expand>
+</Type>
+
+<Type Name="fc::path">
+	<DisplayString>{_p}</DisplayString>
+	<Expand>
+		<ExpandedItem>_p</ExpandedItem>
+	</Expand>
+</Type>
+
+</AutoVisualizer>
