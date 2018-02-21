@@ -30,8 +30,8 @@ if(USE_PCH)
     include(cotire)
 endif(USE_PCH)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/GitVersionGen")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fc/CMakeModules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fc/GitVersionGen")
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA2)
 
@@ -46,7 +46,8 @@ list(APPEND BOOST_COMPONENTS thread
         chrono
         unit_test_framework
         context
-        locale)
+        locale
+)
 
 option(Boost_USE_STATIC_LIBS "Build with Boost static libraries usage" TRUE)
 
@@ -206,7 +207,9 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 # external_plugins needs to be compiled first because libraries/app depends on GOLOSIT_EXTERNAL_PLUGINS being fully populated
+add_subdirectory(thirdparty)
 add_subdirectory(libraries)
+add_subdirectory(plugins)
 add_subdirectory(programs)
 #add_subdirectory(tests)
 

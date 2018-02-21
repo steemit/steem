@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fc/include/fc/reflect/reflect.hpp>
+#include <fc/reflect/reflect.hpp>
 #include <fc/time.hpp>
 
 namespace golos {

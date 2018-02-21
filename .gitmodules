@@ -1,10 +1,10 @@
-[submodule "libraries/fc"]
-	path = libraries/fc
+[submodule "thirdparty/fc"]
+	path = thirdparty/fc
 	url = https://github.com/GolosChain/fc.git
 	branch = 16.5
-[submodule "libraries/chainbase"]
-	path = libraries/chainbase
+[submodule "thirdparty/chainbase"]
+	path = thirdparty/chainbase
 	url = https://github.com/GolosChain/chainbase.git
-[submodule "libraries/appbase"]
-	path = libraries/appbase
+[submodule "thirdparty/appbase"]
+	path = thirdparty/appbase
 	url = https://github.com/GolosChain/appbase.git
