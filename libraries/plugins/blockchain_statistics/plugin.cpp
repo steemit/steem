@@ -265,9 +265,12 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
             }).id;;
         }
         else {
-            auto zero = bucket_idx_by_id.find(bucket_id_type());
-            auto prev = bucket_idx_by_id.find(stat_sender->previous_bucket_id);
-            auto statistics_delta = calculate_buckets_delta((*zero), (*prev) ); 
+            // auto zero = bucket_idx_by_id.find(bucket_id_type());
+            auto zero = db.get(bucket_id_type()) ;
+            // auto prev = bucket_idx_by_id.find(stat_sender->previous_bucket_id);
+            auto prev = db.get(bucket_id_type(stat_sender->previous_bucket_id._id));
+            // auto statistics_delta = (*zero).calculate_buckets_delta_with( (*prev) ); 
+            auto statistics_delta = (zero).calculate_buckets_delta_with( (prev) ); 
 
             for (auto delta : statistics_delta) {
                 stat_sender->push(delta);

@@ -125,144 +125,146 @@ struct bucket_object
         result.push_back("estimated_hashpower:" + std::string(estimated_hashpower));
         return result;
     }
+
+    std::vector < std::string > calculate_buckets_delta_with (const bucket_object & b) {
+        std::vector < std::string > result;
+        if (seconds - b.seconds != 0 ) {
+            result.push_back("seconds:" + std::to_string(seconds - b.seconds) + "|c");
+        }
+        if (blocks - b.blocks != 0 ) {
+            result.push_back("blocks:" + std::to_string(blocks - b.blocks) + "|c");
+        }
+        if (bandwidth - b.bandwidth != 0 ) {
+            result.push_back("bandwidth:" + std::to_string(bandwidth - b.bandwidth) + "|c");
+        }
+        if (operations - b.operations != 0 ) {
+            result.push_back("operations:" + std::to_string(operations - b.operations) + "|c");
+        }
+        if (transactions - b.transactions != 0 ) {
+            result.push_back("transactions:" + std::to_string(transactions - b.transactions) + "|c");
+        }
+        if (transfers - b.transfers != 0 ) {
+            result.push_back("transfers:" + std::to_string(transfers - b.transfers) + "|c");
+        }
+        if (steem_transferred - b.steem_transferred != 0 ) {
+            result.push_back("steem_transferred:" + std::string(steem_transferred - b.steem_transferred) + "|c");
+        }
+        if (sbd_transferred - b.sbd_transferred != 0 ) {
+            result.push_back("sbd_transferred:" + std::string(sbd_transferred - b.sbd_transferred) + "|c");
+        }
+        if (sbd_paid_as_interest - b.sbd_paid_as_interest != 0 ) {
+            result.push_back("sbd_paid_as_interest:" + std::string(sbd_paid_as_interest - b.sbd_paid_as_interest) + "|c");
+        }
+        if (paid_accounts_created - b.paid_accounts_created != 0 ) {
+            result.push_back("paid_accounts_created:" + std::to_string(paid_accounts_created - b.paid_accounts_created) + "|c");
+        }
+        if (mined_accounts_created - b.mined_accounts_created != 0 ) {
+            result.push_back("mined_accounts_created:" + std::to_string(mined_accounts_created - b.mined_accounts_created) + "|c");
+        }
+        if (root_comments - b.root_comments != 0 ) {
+            result.push_back("root_comments:" + std::to_string(root_comments - b.root_comments) + "|c");
+        }
+        if (root_comment_edits - b.root_comment_edits != 0 ) {
+            result.push_back("root_comment_edits:" + std::to_string(root_comment_edits - b.root_comment_edits) + "|c");
+        }
+        if (root_comments_deleted - b.root_comments_deleted != 0 ) {
+            result.push_back("root_comments_deleted:" + std::to_string(root_comments_deleted - b.root_comments_deleted) + "|c");
+        }
+        if (replies - b.replies != 0 ) {
+            result.push_back("replies:" + std::to_string(replies - b.replies) + "|c");
+        }
+        if (reply_edits - b.reply_edits != 0 ) {
+            result.push_back("reply_edits:" + std::to_string(reply_edits - b.reply_edits) + "|c");
+        }
+        if (replies_deleted - b.replies_deleted != 0 ) {
+            result.push_back("replies_deleted:" + std::to_string(replies_deleted - b.replies_deleted) + "|c");
+        }
+        if (new_root_votes - b.new_root_votes != 0 ) {
+            result.push_back("new_root_votes:" + std::to_string(new_root_votes - b.new_root_votes) + "|c");
+        }
+        if (changed_root_votes - b.changed_root_votes != 0 ) {
+            result.push_back("changed_root_votes:" + std::to_string(changed_root_votes - b.changed_root_votes) + "|c");
+        }
+        if (new_reply_votes - b.new_reply_votes != 0 ) {
+            result.push_back("new_reply_votes:" + std::to_string(new_reply_votes - b.new_reply_votes) + "|c");
+        }
+        if (changed_reply_votes - b.changed_reply_votes != 0 ) {
+            result.push_back("changed_reply_votes:" + std::to_string(changed_reply_votes - b.changed_reply_votes) + "|c");
+        }
+        if (payouts - b.payouts != 0 ) {
+            result.push_back("payouts:" + std::to_string(payouts - b.payouts) + "|c");
+        }
+        if (sbd_paid_to_authors - b.sbd_paid_to_authors != 0 ) {
+            result.push_back("sbd_paid_to_authors:" + std::string(sbd_paid_to_authors - b.sbd_paid_to_authors) + "|c");
+        }
+        if (vests_paid_to_authors - b.vests_paid_to_authors != 0 ) {
+            result.push_back("vests_paid_to_authors:" + std::string(vests_paid_to_authors - b.vests_paid_to_authors) + "|c");
+        }
+        if (vests_paid_to_curators - b.vests_paid_to_curators != 0 ) {
+            result.push_back("vests_paid_to_curators:" + std::string(vests_paid_to_curators - b.vests_paid_to_curators) + "|c");
+        }
+        if (liquidity_rewards_paid - b.liquidity_rewards_paid != 0 ) {
+            result.push_back("liquidity_rewards_paid:" + std::string(liquidity_rewards_paid - b.liquidity_rewards_paid) + "|c");
+        }
+        if (transfers_to_vesting - b.transfers_to_vesting != 0 ) {
+            result.push_back("transfers_to_vesting:" + std::to_string(transfers_to_vesting - b.transfers_to_vesting) + "|c");
+        }
+        if (steem_vested - b.steem_vested != 0 ) {
+            result.push_back("steem_vested:" + std::string(steem_vested - b.steem_vested) + "|c");
+        }
+        if (new_vesting_withdrawal_requests - b.new_vesting_withdrawal_requests != 0 ) {
+            result.push_back("new_vesting_withdrawal_requests:" + std::to_string(new_vesting_withdrawal_requests - b.new_vesting_withdrawal_requests) + "|c");
+        }
+        if (modified_vesting_withdrawal_requests - b.modified_vesting_withdrawal_requests != 0 ) {
+            result.push_back("modified_vesting_withdrawal_requests:" + std::to_string(modified_vesting_withdrawal_requests - b.modified_vesting_withdrawal_requests) + "|c");
+        }
+        if (vesting_withdraw_rate_delta - b.vesting_withdraw_rate_delta != 0 ) {
+            result.push_back("vesting_withdraw_rate_delta:" + std::string(vesting_withdraw_rate_delta - b.vesting_withdraw_rate_delta) + "|c");
+        }
+        if (vesting_withdrawals_processed - b.vesting_withdrawals_processed != 0 ) {
+            result.push_back("vesting_withdrawals_processed:" + std::to_string(vesting_withdrawals_processed - b.vesting_withdrawals_processed) + "|c");
+        }
+        if (finished_vesting_withdrawals - b.finished_vesting_withdrawals != 0 ) {
+            result.push_back("finished_vesting_withdrawals:" + std::to_string(finished_vesting_withdrawals - b.finished_vesting_withdrawals) + "|c");
+        }
+        if (vests_withdrawn - b.vests_withdrawn != 0 ) {
+            result.push_back("vests_withdrawn:" + std::string(vests_withdrawn - b.vests_withdrawn) + "|c");
+        }
+        if (vests_transferred - b.vests_transferred != 0 ) {
+            result.push_back("vests_transferred:" + std::string(vests_transferred - b.vests_transferred) + "|c");
+        }
+        if (sbd_conversion_requests_created - b.sbd_conversion_requests_created != 0 ) {
+            result.push_back("sbd_conversion_requests_created:" + std::to_string(sbd_conversion_requests_created - b.sbd_conversion_requests_created) + "|c");
+        }
+        if (sbd_to_be_converted - b.sbd_to_be_converted != 0 ) {
+            result.push_back("sbd_to_be_converted:" + std::string(sbd_to_be_converted - b.sbd_to_be_converted) + "|c");
+        }
+        if (sbd_conversion_requests_filled - b.sbd_conversion_requests_filled != 0 ) {
+            result.push_back("sbd_conversion_requests_filled:" + std::to_string(sbd_conversion_requests_filled - b.sbd_conversion_requests_filled) + "|c");
+        }
+        if (steem_converted - b.steem_converted != 0 ) {
+            result.push_back("steem_converted:" + std::string(steem_converted - b.steem_converted) + "|c");
+        }
+        if (limit_orders_created - b.limit_orders_created != 0 ) {
+            result.push_back("limit_orders_created:" + std::to_string(limit_orders_created - b.limit_orders_created) + "|c");
+        }
+        if (limit_orders_filled - b.limit_orders_filled != 0 ) {
+            result.push_back("limit_orders_filled:" + std::to_string(limit_orders_filled - b.limit_orders_filled) + "|c");
+        }
+        if (limit_orders_cancelled - b.limit_orders_cancelled != 0 ) {
+            result.push_back("limit_orders_cancelled:" + std::to_string(limit_orders_cancelled - b.limit_orders_cancelled) + "|c");
+        }
+        if (total_pow - b.total_pow != 0 ) {
+            result.push_back("total_pow:" + std::to_string(total_pow - b.total_pow) + "|c");
+        }
+        if (estimated_hashpower - b.estimated_hashpower != 0 ) {
+            result.push_back("estimated_hashpower:" + std::string(estimated_hashpower - b.estimated_hashpower) + "|c");
+        }
+        return result;
+    }
 };
 
-std::vector < std::string > calculate_buckets_delta (const bucket_object & a, const bucket_object & b) {
-    std::vector < std::string > result;
-    if (a.seconds - b.seconds != 0 ) {
-        result.push_back("seconds:" + std::to_string(a.seconds - b.seconds) + "|c");
-    }
-    if (a.blocks - b.blocks != 0 ) {
-        result.push_back("blocks:" + std::to_string(a.blocks - b.blocks) + "|c");
-    }
-    if (a.bandwidth - b.bandwidth != 0 ) {
-        result.push_back("bandwidth:" + std::to_string(a.bandwidth - b.bandwidth) + "|c");
-    }
-    if (a.operations - b.operations != 0 ) {
-        result.push_back("operations:" + std::to_string(a.operations - b.operations) + "|c");
-    }
-    if (a.transactions - b.transactions != 0 ) {
-        result.push_back("transactions:" + std::to_string(a.transactions - b.transactions) + "|c");
-    }
-    if (a.transfers - b.transfers != 0 ) {
-        result.push_back("transfers:" + std::to_string(a.transfers - b.transfers) + "|c");
-    }
-    if (a.steem_transferred - b.steem_transferred != 0 ) {
-        result.push_back("steem_transferred:" + std::string(a.steem_transferred - b.steem_transferred) + "|c");
-    }
-    if (a.sbd_transferred - b.sbd_transferred != 0 ) {
-        result.push_back("sbd_transferred:" + std::string(a.sbd_transferred - b.sbd_transferred) + "|c");
-    }
-    if (a.sbd_paid_as_interest - b.sbd_paid_as_interest != 0 ) {
-        result.push_back("sbd_paid_as_interest:" + std::string(a.sbd_paid_as_interest - b.sbd_paid_as_interest) + "|c");
-    }
-    if (a.paid_accounts_created - b.paid_accounts_created != 0 ) {
-        result.push_back("paid_accounts_created:" + std::to_string(a.paid_accounts_created - b.paid_accounts_created) + "|c");
-    }
-    if (a.mined_accounts_created - b.mined_accounts_created != 0 ) {
-        result.push_back("mined_accounts_created:" + std::to_string(a.mined_accounts_created - b.mined_accounts_created) + "|c");
-    }
-    if (a.root_comments - b.root_comments != 0 ) {
-        result.push_back("root_comments:" + std::to_string(a.root_comments - b.root_comments) + "|c");
-    }
-    if (a.root_comment_edits - b.root_comment_edits != 0 ) {
-        result.push_back("root_comment_edits:" + std::to_string(a.root_comment_edits - b.root_comment_edits) + "|c");
-    }
-    if (a.root_comments_deleted - b.root_comments_deleted != 0 ) {
-        result.push_back("root_comments_deleted:" + std::to_string(a.root_comments_deleted - b.root_comments_deleted) + "|c");
-    }
-    if (a.replies - b.replies != 0 ) {
-        result.push_back("replies:" + std::to_string(a.replies - b.replies) + "|c");
-    }
-    if (a.reply_edits - b.reply_edits != 0 ) {
-        result.push_back("reply_edits:" + std::to_string(a.reply_edits - b.reply_edits) + "|c");
-    }
-    if (a.replies_deleted - b.replies_deleted != 0 ) {
-        result.push_back("replies_deleted:" + std::to_string(a.replies_deleted - b.replies_deleted) + "|c");
-    }
-    if (a.new_root_votes - b.new_root_votes != 0 ) {
-        result.push_back("new_root_votes:" + std::to_string(a.new_root_votes - b.new_root_votes) + "|c");
-    }
-    if (a.changed_root_votes - b.changed_root_votes != 0 ) {
-        result.push_back("changed_root_votes:" + std::to_string(a.changed_root_votes - b.changed_root_votes) + "|c");
-    }
-    if (a.new_reply_votes - b.new_reply_votes != 0 ) {
-        result.push_back("new_reply_votes:" + std::to_string(a.new_reply_votes - b.new_reply_votes) + "|c");
-    }
-    if (a.changed_reply_votes - b.changed_reply_votes != 0 ) {
-        result.push_back("changed_reply_votes:" + std::to_string(a.changed_reply_votes - b.changed_reply_votes) + "|c");
-    }
-    if (a.payouts - b.payouts != 0 ) {
-        result.push_back("payouts:" + std::to_string(a.payouts - b.payouts) + "|c");
-    }
-    if (a.sbd_paid_to_authors - b.sbd_paid_to_authors != 0 ) {
-        result.push_back("sbd_paid_to_authors:" + std::string(a.sbd_paid_to_authors - b.sbd_paid_to_authors) + "|c");
-    }
-    if (a.vests_paid_to_authors - b.vests_paid_to_authors != 0 ) {
-        result.push_back("vests_paid_to_authors:" + std::string(a.vests_paid_to_authors - b.vests_paid_to_authors) + "|c");
-    }
-    if (a.vests_paid_to_curators - b.vests_paid_to_curators != 0 ) {
-        result.push_back("vests_paid_to_curators:" + std::string(a.vests_paid_to_curators - b.vests_paid_to_curators) + "|c");
-    }
-    if (a.liquidity_rewards_paid - b.liquidity_rewards_paid != 0 ) {
-        result.push_back("liquidity_rewards_paid:" + std::string(a.liquidity_rewards_paid - b.liquidity_rewards_paid) + "|c");
-    }
-    if (a.transfers_to_vesting - b.transfers_to_vesting != 0 ) {
-        result.push_back("transfers_to_vesting:" + std::to_string(a.transfers_to_vesting - b.transfers_to_vesting) + "|c");
-    }
-    if (a.steem_vested - b.steem_vested != 0 ) {
-        result.push_back("steem_vested:" + std::string(a.steem_vested - b.steem_vested) + "|c");
-    }
-    if (a.new_vesting_withdrawal_requests - b.new_vesting_withdrawal_requests != 0 ) {
-        result.push_back("new_vesting_withdrawal_requests:" + std::to_string(a.new_vesting_withdrawal_requests - b.new_vesting_withdrawal_requests) + "|c");
-    }
-    if (a.modified_vesting_withdrawal_requests - b.modified_vesting_withdrawal_requests != 0 ) {
-        result.push_back("modified_vesting_withdrawal_requests:" + std::to_string(a.modified_vesting_withdrawal_requests - b.modified_vesting_withdrawal_requests) + "|c");
-    }
-    if (a.vesting_withdraw_rate_delta - b.vesting_withdraw_rate_delta != 0 ) {
-        result.push_back("vesting_withdraw_rate_delta:" + std::string(a.vesting_withdraw_rate_delta - b.vesting_withdraw_rate_delta) + "|c");
-    }
-    if (a.vesting_withdrawals_processed - b.vesting_withdrawals_processed != 0 ) {
-        result.push_back("vesting_withdrawals_processed:" + std::to_string(a.vesting_withdrawals_processed - b.vesting_withdrawals_processed) + "|c");
-    }
-    if (a.finished_vesting_withdrawals - b.finished_vesting_withdrawals != 0 ) {
-        result.push_back("finished_vesting_withdrawals:" + std::to_string(a.finished_vesting_withdrawals - b.finished_vesting_withdrawals) + "|c");
-    }
-    if (a.vests_withdrawn - b.vests_withdrawn != 0 ) {
-        result.push_back("vests_withdrawn:" + std::string(a.vests_withdrawn - b.vests_withdrawn) + "|c");
-    }
-    if (a.vests_transferred - b.vests_transferred != 0 ) {
-        result.push_back("vests_transferred:" + std::string(a.vests_transferred - b.vests_transferred) + "|c");
-    }
-    if (a.sbd_conversion_requests_created - b.sbd_conversion_requests_created != 0 ) {
-        result.push_back("sbd_conversion_requests_created:" + std::to_string(a.sbd_conversion_requests_created - b.sbd_conversion_requests_created) + "|c");
-    }
-    if (a.sbd_to_be_converted - b.sbd_to_be_converted != 0 ) {
-        result.push_back("sbd_to_be_converted:" + std::string(a.sbd_to_be_converted - b.sbd_to_be_converted) + "|c");
-    }
-    if (a.sbd_conversion_requests_filled - b.sbd_conversion_requests_filled != 0 ) {
-        result.push_back("sbd_conversion_requests_filled:" + std::to_string(a.sbd_conversion_requests_filled - b.sbd_conversion_requests_filled) + "|c");
-    }
-    if (a.steem_converted - b.steem_converted != 0 ) {
-        result.push_back("steem_converted:" + std::string(a.steem_converted - b.steem_converted) + "|c");
-    }
-    if (a.limit_orders_created - b.limit_orders_created != 0 ) {
-        result.push_back("limit_orders_created:" + std::to_string(a.limit_orders_created - b.limit_orders_created) + "|c");
-    }
-    if (a.limit_orders_filled - b.limit_orders_filled != 0 ) {
-        result.push_back("limit_orders_filled:" + std::to_string(a.limit_orders_filled - b.limit_orders_filled) + "|c");
-    }
-    if (a.limit_orders_cancelled - b.limit_orders_cancelled != 0 ) {
-        result.push_back("limit_orders_cancelled:" + std::to_string(a.limit_orders_cancelled - b.limit_orders_cancelled) + "|c");
-    }
-    if (a.total_pow - b.total_pow != 0 ) {
-        result.push_back("total_pow:" + std::to_string(a.total_pow - b.total_pow) + "|c");
-    }
-    if (a.estimated_hashpower - b.estimated_hashpower != 0 ) {
-        result.push_back("estimated_hashpower:" + std::string(a.estimated_hashpower - b.estimated_hashpower) + "|c");
-    }
-    return result;
-}
+
 
 typedef object_id<bucket_object> bucket_id_type;
 
