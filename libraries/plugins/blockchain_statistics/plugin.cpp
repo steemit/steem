@@ -75,14 +75,8 @@ struct operation_process {
 
             if (op.amount.symbol == STEEM_SYMBOL) {
                 b.steem_transferred += op.amount.amount;
-
-                std::string tmp_s = increment_counter("steem_transferred", op.amount.amount);
-                stat_sender->push(tmp_s);
             } else {
                 b.sbd_transferred += op.amount.amount;
-
-                std::string tmp_s = increment_counter("sbd_transferred", op.amount.amount);
-                stat_sender->push(tmp_s);
             }
         });
     }
@@ -90,18 +84,12 @@ struct operation_process {
     void operator()(const interest_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.sbd_paid_as_interest += op.interest.amount;
-
-            std::string tmp_s = increment_counter("sbd_paid_as_interest", op.interest.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
     void operator()(const account_create_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.paid_accounts_created++;
-
-            std::string tmp_s = increment_counter("paid_accounts_created");
-            stat_sender->push(tmp_s);
         });
     }
 
@@ -111,15 +99,9 @@ struct operation_process {
 
             if (worker.created == _db.head_block_time()) {
                 b.mined_accounts_created++;
-
-                std::string tmp_s = increment_counter("mined_accounts_created");
-                stat_sender->push(tmp_s);
             }
 
             b.total_pow++;
-
-            std::string tmp_s = increment_counter("total_pow");
-            stat_sender->push(tmp_s);
 
             uint64_t bits =
                     (_db.get_dynamic_global_properties().num_pow_witnesses /
@@ -137,9 +119,6 @@ struct operation_process {
             b.estimated_hashpower =
                     (b.estimated_hashpower * delta_t +
                      estimated_hashes) / delta_t;
-
-            tmp_s = increment_counter("estimated_hashpower", b.estimated_hashpower);
-            stat_sender->push(tmp_s);        
         });
     }
 
@@ -150,26 +129,14 @@ struct operation_process {
             if (comment.created == _db.head_block_time()) {
                 if (comment.parent_author.length()) {
                     b.replies++;
-
-                    std::string tmp_s = increment_counter("replies");
-                    stat_sender->push(tmp_s);
                 } else {
                     b.root_comments++;
-
-                    std::string tmp_s = increment_counter("root_comments");
-                    stat_sender->push(tmp_s);
                 }
             } else {
                 if (comment.parent_author.length()) {
                     b.reply_edits++;
-
-                    std::string tmp_s = increment_counter("reply_edits");
-                    stat_sender->push(tmp_s);
                 } else {
                     b.root_comment_edits++;
-
-                    std::string tmp_s = increment_counter("root_comment_edits");
-                    stat_sender->push(tmp_s);
                 }
             }
         });
@@ -185,26 +152,14 @@ struct operation_process {
             if (itr->num_changes) {
                 if (comment.parent_author.size()) {
                     b.new_reply_votes++;
-
-                    std::string tmp_s = increment_counter("new_reply_votes");
-                    stat_sender->push(tmp_s);
                 } else {
                     b.new_root_votes++;
-
-                    std::string tmp_s = increment_counter("new_root_votes");
-                    stat_sender->push(tmp_s);
                 }
             } else {
                 if (comment.parent_author.size()) {
                     b.changed_reply_votes++;
-
-                    std::string tmp_s = increment_counter("changed_reply_votes");
-                    stat_sender->push(tmp_s);
                 } else {
                     b.changed_root_votes++;
-
-                    std::string tmp_s = increment_counter("changed_root_votes");
-                    stat_sender->push(tmp_s);
                 }
             }
         });
@@ -215,33 +170,18 @@ struct operation_process {
             b.payouts++;
             b.sbd_paid_to_authors += op.sbd_payout.amount;
             b.vests_paid_to_authors += op.vesting_payout.amount;
-
-            std::string tmp_s = increment_counter("payouts");
-            stat_sender->push(tmp_s);
-
-            tmp_s = increment_counter("sbd_paid_to_authors", op.sbd_payout.amount);
-            stat_sender->push(tmp_s);
-
-            tmp_s = increment_counter("vests_paid_to_authors", op.vesting_payout.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
     void operator()(const curation_reward_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.vests_paid_to_curators += op.reward.amount;
-
-            std::string tmp_s = increment_counter("vests_paid_to_curators", op.reward.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
     void operator()(const liquidity_reward_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.liquidity_rewards_paid += op.payout.amount;
-
-            std::string tmp_s = increment_counter("liquidity_rewards_paid", op.payout.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
@@ -249,12 +189,6 @@ struct operation_process {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.transfers_to_vesting++;
             b.steem_vested += op.amount.amount;
-
-            std::string tmp_s = increment_counter("transfers_to_vesting");
-            stat_sender->push(tmp_s);
-
-            tmp_s = increment_counter("steem_vested", op.amount.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
@@ -264,26 +198,14 @@ struct operation_process {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.vesting_withdrawals_processed++;
 
-            std::string tmp_s = increment_counter("vesting_withdrawals_processed");
-            stat_sender->push(tmp_s);
-
             if (op.deposited.symbol == STEEM_SYMBOL) {
                 b.vests_withdrawn += op.withdrawn.amount;
-
-                tmp_s = increment_counter("vests_withdrawn", op.withdrawn.amount);
-                stat_sender->push(tmp_s);
             } else {
                 b.vests_transferred += op.withdrawn.amount;
-
-                tmp_s = increment_counter("vests_transferred", op.withdrawn.amount);
-                stat_sender->push(tmp_s);
             }
 
             if (account.vesting_withdraw_rate.amount == 0) {
                 b.finished_vesting_withdrawals++;
-
-                tmp_s = increment_counter("finished_vesting_withdrawals");
-                stat_sender->push(tmp_s);
             }
         });
     }
@@ -291,27 +213,18 @@ struct operation_process {
     void operator()(const limit_order_create_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.limit_orders_created++;
-
-            std::string tmp_s = increment_counter("limit_orders_created");
-            stat_sender->push(tmp_s);
         });
     }
 
     void operator()(const fill_order_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.limit_orders_filled += 2;
-
-            std::string tmp_s = increment_counter("limit_orders_filled", boost::numeric_cast<uint32_t>(2));
-            stat_sender->push(tmp_s);
         });
     }
 
     void operator()(const limit_order_cancel_operation &op) const {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.limit_orders_cancelled++;
-
-            std::string tmp_s = increment_counter("limit_orders_cancelled");
-            stat_sender->push(tmp_s);
         });
     }
 
@@ -319,12 +232,6 @@ struct operation_process {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.sbd_conversion_requests_created++;
             b.sbd_to_be_converted += op.amount.amount;
-
-            std::string tmp_s = increment_counter("sbd_conversion_requests_created");
-            stat_sender->push(tmp_s);
-
-            tmp_s = increment_counter("sbd_to_be_converted", op.amount.amount);
-            stat_sender->push(tmp_s);
         });
     }
 
@@ -332,12 +239,6 @@ struct operation_process {
         _db.modify(_bucket, [&](bucket_object &b) {
             b.sbd_conversion_requests_filled++;
             b.steem_converted += op.amount_out.amount;
-
-            std::string tmp_s = increment_counter("sbd_conversion_requests_filled");
-            stat_sender->push(tmp_s);
-
-            tmp_s = increment_counter("steem_converted", op.amount_out.amount);
-            stat_sender->push(tmp_s);
         });
     }
 };
@@ -346,43 +247,34 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
     auto &db = database();
     const auto & bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
     const auto & bucket_idx_by_id = db.get_index<bucket_index>().indices().get<by_id>();
-    // auto blocks_count;
 
     if (b.block_num() == 1) {
         db.create<bucket_object>([&](bucket_object &bo) {
             bo.open = b.timestamp;
             bo.seconds = 0;
             bo.blocks = 1;
-            // std::cout << "\t\t----------------------"<< std::endl;
-
-            // for (i : bo.get_as_string() ) {
-            //     std::cout << i << std::endl;
-            // }
-            // std::cout << "bo.id = " << bo.id._id << std::endl; 
-            // std::cout << "\t\t----------------------"<< std::endl;
         });
-        auto iter = db.create<bucket_object>([&](bucket_object &bo) {
-            // bo.open = tmp_timestamp;
-            std::cout << "bo.id = " << bo.id._id << std::endl; 
-
-        }).id;
-
     } else {
 
         db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
             bo.blocks++;
-            // blocks_count = bo.blocks;
-            // std::cout << "\t\t----------------------" << std::endl;
-            // for (i : bo.get_as_string() ) {
-            //     std::cout << i << std::endl;
-            // }
-            // std::cout << "bo.id = " << bo.id._id << std::endl; 
-            // std::cout << "\t\t----------------------" << std::endl;
         });
 
-        // if (blocks_count & 1) {
+        if (!stat_sender->is_previous_bucket_set) {
+            stat_sender->previous_bucket_id = db.create<bucket_object>([&](bucket_object &bo) {
+            }).id;;
+        }
+        else {
+            auto zero = bucket_idx_by_id.find(bucket_id_type());
+            auto prev = bucket_idx_by_id.find(stat_sender->previous_bucket_id);
+            auto statistics_delta = calculate_buckets_delta((*zero), (*prev) ); 
 
-        // }
+            for (auto delta : statistics_delta) {
+                stat_sender->push(delta);
+            }
+            // TODO: add operator= to bucket_object
+            // TODO: make prev = zero; (update previous block with current block)
+        }
     }
 
     _current_buckets.clear();
@@ -397,7 +289,6 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
     }
 
     for (auto bucket : _tracked_buckets) {
-        std::cout << "bucket = " << bucket << std::endl;
         auto open = fc::time_point_sec(
                 (db.head_block_time().sec_since_epoch() / bucket) *
                 bucket);
@@ -409,7 +300,6 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
                         bo.open = open;
                         bo.seconds = bucket;
                         bo.blocks = 1;
-                        std::cout << "bo.id = " << bo.id._id << std::endl;
                     }).id);
 
             if (_maximum_history_per_bucket_size > 0) {
@@ -436,8 +326,6 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         } else {
             db.modify(*itr, [&](bucket_object &bo) {
                 bo.blocks++;
-                std::cout << "bo.id = " << bo.id._id << std::endl; 
-
             });
 
             _current_buckets.insert(itr->id);
@@ -446,8 +334,6 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         db.modify(*itr, [&](bucket_object &bo) {
             bo.transactions += num_trx;
             bo.bandwidth += trx_size;
-            std::cout << "bo.id = " << bo.id._id << std::endl; 
-
         });
     }
 }

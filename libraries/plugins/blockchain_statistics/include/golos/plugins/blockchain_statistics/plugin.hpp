@@ -8,6 +8,7 @@
 #include <boost/program_options.hpp>
 
 #include <golos/plugins/blockchain_statistics/bucket_object.hpp>
+
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the

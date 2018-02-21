@@ -26,13 +26,14 @@ public:
 
     /// returns statistics recievers endpoints
     std::vector<std::string> get_endpoint_string_vector();
-
+// protected:
+    golos::plugins::blockchain_statistics::bucket_id_type previous_bucket_id;
+    bool is_previous_bucket_set;
 private:
     // Stat sender will send data to all endpoints from recipient_endpoint_set
     std::set<boost::asio::ip::udp::endpoint> recipient_endpoint_set;
     // DefaultPort for asio broadcasting 
     uint32_t default_port;
     void init();
-    // bucket_id_type tmp_bucket;
     boost::asio::io_service & ios;
 };

@@ -15,10 +15,15 @@
 #include <algorithm>
 
 
-statistics_sender::statistics_sender() : ios( appbase::app().get_io_service() ) {
+statistics_sender::statistics_sender() :
+    ios( appbase::app().get_io_service() ),
+    is_previous_bucket_set(false) {
 }
 
-statistics_sender::statistics_sender(uint32_t default_port) : default_port(default_port), ios( appbase::app().get_io_service() ) {
+statistics_sender::statistics_sender(uint32_t default_port) :
+    default_port(default_port),
+    ios( appbase::app().get_io_service() ),
+    is_previous_bucket_set(false) {
 }
 
 bool statistics_sender::can_start() {
@@ -26,11 +31,11 @@ bool statistics_sender::can_start() {
 }
 
 void statistics_sender::push(const std::string & str) {
-    ios.post ([&ios, recipient_endpoint_set]() {
-        boost::asio::ip::udp::socket socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
+    ios.post ([this, str]() {
+        boost::asio::ip::udp::socket socket(this->ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
         socket.set_option(boost::asio::socket_base::broadcast(true));
 
-        for (auto endpoint : recipient_endpoint_set) {
+        for (auto endpoint : this->recipient_endpoint_set) {
             socket.send_to(boost::asio::buffer(str), endpoint);
         }
  
