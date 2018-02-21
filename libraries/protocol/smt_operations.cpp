@@ -12,8 +12,9 @@ void smt_create_operation::validate()const
    FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
    FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
    FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
-   FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
    symbol.validate();
+   FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
+   FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
    FC_ASSERT( symbol.decimals() == precision, "Mismatch between redundantly provided precision ${prec1} vs ${prec2}",
       ("prec1",symbol.decimals())("prec2",precision) );
 }
@@ -188,6 +189,8 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time );
    // ^ lep_time is either later or non-important
 
+   FC_ASSERT( (lep_abs_amount.symbol.is_vesting() == false),
+              "Use liquid variant of SMT symbol to specify emission amounts" );
    FC_ASSERT( lep_abs_amount.symbol == rep_abs_amount.symbol );
    FC_ASSERT( lep_abs_amount.amount >= 0 && rep_abs_amount.amount >= 0 );
    FC_ASSERT( lep_abs_amount.amount != rep_abs_amount.amount || lep_abs_amount.amount > 0 );

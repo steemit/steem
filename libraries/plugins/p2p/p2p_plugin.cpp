@@ -101,6 +101,7 @@ public:
    uint32_t max_connections = 0;
    bool force_validate = false;
    bool block_producer = false;
+   bool running = true;
 
    std::unique_ptr<graphene::net::node> node;
 
@@ -127,59 +128,61 @@ bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
 { try {
-   uint32_t head_block_num;
-   chain.db().with_read_lock( [&]()
+   if( running )
    {
-      head_block_num = chain.db().head_block_num();
-   });
-   if (sync_mode)
-      fc_ilog(fc::logger::get("sync"),
-            "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
-            ("block_num", blk_msg.block.block_num())
-            ("block_hash", blk_msg.block_id)
-            ("head", head_block_num));
-   else
-      fc_ilog(fc::logger::get("sync"),
-            "chain pushing block #${block_num} ${block_hash}, head is ${head}",
-            ("block_num", blk_msg.block.block_num())
-            ("block_hash", blk_msg.block_id)
-            ("head", head_block_num));
-
-   try {
-      // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
-      // you can help the network code out by throwing a block_older_than_undo_history exception.
-      // when the net code sees that, it will stop trying to push blocks from that chain, but
-      // leave that peer connected so that they can get sync blocks from us
-      bool result = chain.accept_block( blk_msg.block, sync_mode, ( block_producer | force_validate ) ? chain::database::skip_nothing : chain::database::skip_transaction_signatures );
-
-      if( !sync_mode )
+      uint32_t head_block_num;
+      chain.db().with_read_lock( [&]()
       {
-         fc::microseconds latency = fc::time_point::now() - blk_msg.block.timestamp;
-         ilog( "Got ${t} transactions on block ${b} by ${w} -- latency: ${l} ms",
-            ("t", blk_msg.block.transactions.size())
-            ("b", blk_msg.block.block_num())
-            ("w", blk_msg.block.witness)
-            ("l", latency.count() / 1000) );
+         head_block_num = chain.db().head_block_num();
+      });
+      if (sync_mode)
+         fc_ilog(fc::logger::get("sync"),
+               "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
+               ("block_num", blk_msg.block.block_num())
+               ("block_hash", blk_msg.block_id)
+               ("head", head_block_num));
+      else
+         fc_ilog(fc::logger::get("sync"),
+               "chain pushing block #${block_num} ${block_hash}, head is ${head}",
+               ("block_num", blk_msg.block.block_num())
+               ("block_hash", blk_msg.block_id)
+               ("head", head_block_num));
+
+      try {
+         // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
+         // you can help the network code out by throwing a block_older_than_undo_history exception.
+         // when the net code sees that, it will stop trying to push blocks from that chain, but
+         // leave that peer connected so that they can get sync blocks from us
+         bool result = chain.accept_block( blk_msg.block, sync_mode, ( block_producer | force_validate ) ? chain::database::skip_nothing : chain::database::skip_transaction_signatures );
+
+         if( !sync_mode )
+         {
+            fc::microseconds latency = fc::time_point::now() - blk_msg.block.timestamp;
+            ilog( "Got ${t} transactions on block ${b} by ${w} -- latency: ${l} ms",
+               ("t", blk_msg.block.transactions.size())
+               ("b", blk_msg.block.block_num())
+               ("w", blk_msg.block.witness)
+               ("l", latency.count() / 1000) );
+         }
+
+         return result;
+      } catch ( const chain::unlinkable_block_exception& e ) {
+         // translate to a graphene::net exception
+         fc_elog(fc::logger::get("sync"),
+               "Error when pushing block, current head block is ${head}:\n${e}",
+               ("e", e.to_detail_string())
+               ("head", head_block_num));
+         elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+         FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+      } catch( const fc::exception& e ) {
+         fc_elog(fc::logger::get("sync"),
+               "Error when pushing block, current head block is ${head}:\n${e}",
+               ("e", e.to_detail_string())
+               ("head", head_block_num));
+         elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+         throw;
       }
-
-      return result;
-   } catch ( const chain::unlinkable_block_exception& e ) {
-      // translate to a graphene::net exception
-      fc_elog(fc::logger::get("sync"),
-            "Error when pushing block, current head block is ${head}:\n${e}",
-            ("e", e.to_detail_string())
-            ("head", head_block_num));
-      elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-      FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-   } catch( const fc::exception& e ) {
-      fc_elog(fc::logger::get("sync"),
-            "Error when pushing block, current head block is ${head}:\n${e}",
-            ("e", e.to_detail_string())
-            ("head", head_block_num));
-      elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-      throw;
    }
-
    return false;
 } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
@@ -590,6 +593,11 @@ void p2p_plugin::plugin_startup()
 
 void p2p_plugin::plugin_shutdown() {
    ilog("Shutting down P2P Plugin");
+   my->running = false;
+
+   // Wait for outstanding calls to `handle_block` to be resolved
+   boost::this_thread::sleep_for( boost::chrono::milliseconds(200) );
+
    my->node->close();
    my->p2p_thread.quit();
    my->node.reset();
