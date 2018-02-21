@@ -272,6 +272,8 @@ void chain_plugin::plugin_startup()
 void chain_plugin::plugin_shutdown()
 {
    ilog("closing chain database");
+   my->thread_pool_ios.stop();
+   my->thread_pool.join_all();
    my->db.close();
    ilog("database closed successfully");
 }
