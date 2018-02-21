@@ -4,14 +4,14 @@
 #include <boost/asio/ip/udp.hpp>
 #include <fc/uint128_t.hpp>
 #include <golos/chain/steem_object_types.hpp>
-#include <golos/plugins/blockchain_statistics/statistics_sender.hpp>
+#include <golos/plugins/blockchain_statistics/bucket_object.hpp>
 
 
 using namespace golos::chain;
 
 class statistics_sender final {
 public:
-    statistics_sender() = default;
+    statistics_sender() ;
     statistics_sender(uint32_t default_port);
 
     ~statistics_sender() = default;
@@ -33,4 +33,6 @@ private:
     // DefaultPort for asio broadcasting 
     uint32_t default_port;
     void init();
+    // bucket_id_type tmp_bucket;
+    boost::asio::io_service & ios;
 };

@@ -1,3 +1,4 @@
+#pragma once
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
@@ -75,6 +76,55 @@ struct bucket_object
     uint32_t limit_orders_cancelled = 0;                  ///< Limit orders cancelled
     uint32_t total_pow = 0;                               ///< POW submitted
     uint128_t estimated_hashpower = 0;                     ///< Estimated average hashpower over interval
+
+    std::vector < std::string > get_as_string () {
+        std::vector < std::string > result;
+        result.push_back("seconds:" + std::to_string(seconds ));
+        result.push_back("blocks:" + std::to_string(blocks ));
+        result.push_back("bandwidth:" + std::to_string(bandwidth ));
+        result.push_back("operations:" + std::to_string(operations ));
+        result.push_back("transactions:" + std::to_string(transactions ));
+        result.push_back("transfers:" + std::to_string(transfers ));
+        result.push_back("steem_transferred:" + std::string(steem_transferred ));
+        result.push_back("sbd_transferred:" + std::string(sbd_transferred ));
+        result.push_back("sbd_paid_as_interest:" + std::string(sbd_paid_as_interest ));
+        result.push_back("paid_accounts_created:" + std::to_string(paid_accounts_created ));
+        result.push_back("mined_accounts_created:" + std::to_string(mined_accounts_created ));
+        result.push_back("root_comments:" + std::to_string(root_comments ));
+        result.push_back("root_comment_edits:" + std::to_string(root_comment_edits ));
+        result.push_back("root_comments_deleted:" + std::to_string(root_comments_deleted ));
+        result.push_back("replies:" + std::to_string(replies ));
+        result.push_back("reply_edits:" + std::to_string(reply_edits ));
+        result.push_back("replies_deleted:" + std::to_string(replies_deleted));
+        result.push_back("new_root_votes:" + std::to_string(new_root_votes));
+        result.push_back("changed_root_votes:" + std::to_string(changed_root_votes));
+        result.push_back("new_reply_votes:" + std::to_string(new_reply_votes));
+        result.push_back("changed_reply_votes:" + std::to_string(changed_reply_votes));
+        result.push_back("payouts:" + std::to_string(payouts));
+        result.push_back("sbd_paid_to_authors:" + std::string(sbd_paid_to_authors));
+        result.push_back("vests_paid_to_authors:" + std::string(vests_paid_to_authors));
+        result.push_back("vests_paid_to_curators:" + std::string(vests_paid_to_curators));
+        result.push_back("liquidity_rewards_paid:" + std::string(liquidity_rewards_paid));
+        result.push_back("transfers_to_vesting:" + std::to_string(transfers_to_vesting));
+        result.push_back("steem_vested:" + std::string(steem_vested));
+        result.push_back("new_vesting_withdrawal_requests:" + std::to_string(new_vesting_withdrawal_requests));
+        result.push_back("modified_vesting_withdrawal_requests:" + std::to_string(modified_vesting_withdrawal_requests));
+        result.push_back("vesting_withdraw_rate_delta:" + std::string(vesting_withdraw_rate_delta));
+        result.push_back("vesting_withdrawals_processed:" + std::to_string(vesting_withdrawals_processed));
+        result.push_back("finished_vesting_withdrawals:" + std::to_string(finished_vesting_withdrawals));
+        result.push_back("vests_withdrawn:" + std::string(vests_withdrawn));
+        result.push_back("vests_transferred:" + std::string(vests_transferred));
+        result.push_back("sbd_conversion_requests_created:" + std::to_string(sbd_conversion_requests_created));
+        result.push_back("sbd_to_be_converted:" + std::string(sbd_to_be_converted));
+        result.push_back("sbd_conversion_requests_filled:" + std::to_string(sbd_conversion_requests_filled));
+        result.push_back("steem_converted:" + std::string(steem_converted));
+        result.push_back("limit_orders_created:" + std::to_string(limit_orders_created));
+        result.push_back("limit_orders_filled:" + std::to_string(limit_orders_filled));
+        result.push_back("limit_orders_cancelled:" + std::to_string(limit_orders_cancelled));
+        result.push_back("total_pow:" + std::to_string(total_pow));
+        result.push_back("estimated_hashpower:" + std::string(estimated_hashpower));
+        return result;
+    }
 };
 
 typedef object_id<bucket_object> bucket_id_type;

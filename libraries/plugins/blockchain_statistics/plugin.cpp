@@ -1,5 +1,7 @@
 #include <golos/plugins/blockchain_statistics/plugin.hpp>
 
+#include <appbase/application.hpp>
+
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/comment_object.hpp>
 #include <golos/chain/history_object.hpp>
@@ -342,23 +344,50 @@ struct operation_process {
 
 void plugin::plugin_impl::on_block(const signed_block &b) {
     auto &db = database();
+    const auto & bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
+    const auto & bucket_idx_by_id = db.get_index<bucket_index>().indices().get<by_id>();
+    // auto blocks_count;
 
     if (b.block_num() == 1) {
         db.create<bucket_object>([&](bucket_object &bo) {
             bo.open = b.timestamp;
             bo.seconds = 0;
             bo.blocks = 1;
+            // std::cout << "\t\t----------------------"<< std::endl;
+
+            // for (i : bo.get_as_string() ) {
+            //     std::cout << i << std::endl;
+            // }
+            // std::cout << "bo.id = " << bo.id._id << std::endl; 
+            // std::cout << "\t\t----------------------"<< std::endl;
         });
+        auto iter = db.create<bucket_object>([&](bucket_object &bo) {
+            // bo.open = tmp_timestamp;
+            std::cout << "bo.id = " << bo.id._id << std::endl; 
+
+        }).id;
+
     } else {
+
         db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
             bo.blocks++;
+            // blocks_count = bo.blocks;
+            // std::cout << "\t\t----------------------" << std::endl;
+            // for (i : bo.get_as_string() ) {
+            //     std::cout << i << std::endl;
+            // }
+            // std::cout << "bo.id = " << bo.id._id << std::endl; 
+            // std::cout << "\t\t----------------------" << std::endl;
         });
+
+        // if (blocks_count & 1) {
+
+        // }
     }
 
     _current_buckets.clear();
     _current_buckets.insert(bucket_id_type());
 
-    const auto &bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
 
     uint32_t trx_size = 0;
     uint32_t num_trx = b.transactions.size();
@@ -367,8 +396,8 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         trx_size += fc::raw::pack_size(trx);
     }
 
-
     for (auto bucket : _tracked_buckets) {
+        std::cout << "bucket = " << bucket << std::endl;
         auto open = fc::time_point_sec(
                 (db.head_block_time().sec_since_epoch() / bucket) *
                 bucket);
@@ -380,6 +409,7 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
                         bo.open = open;
                         bo.seconds = bucket;
                         bo.blocks = 1;
+                        std::cout << "bo.id = " << bo.id._id << std::endl;
                     }).id);
 
             if (_maximum_history_per_bucket_size > 0) {
@@ -406,6 +436,8 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         } else {
             db.modify(*itr, [&](bucket_object &bo) {
                 bo.blocks++;
+                std::cout << "bo.id = " << bo.id._id << std::endl; 
+
             });
 
             _current_buckets.insert(itr->id);
@@ -414,6 +446,8 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         db.modify(*itr, [&](bucket_object &bo) {
             bo.transactions += num_trx;
             bo.bandwidth += trx_size;
+            std::cout << "bo.id = " << bo.id._id << std::endl; 
+
         });
     }
 }
@@ -564,6 +598,28 @@ void plugin::plugin_startup() {
     else {
         wlog("chain_stats plugin: statitistics sender was not started: no recipient's IPs were provided");
     }
+
+    // auto &db = _my -> database();
+    // const auto &bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
+    // const auto &bucket_idx_1 = db.get_index<bucket_index>().indices().get<by_id>();
+
+    // fc::time_point_sec tmp_timestamp;
+    // db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
+    //     bo.blocks++;
+    //     std::cout << "bo.id = " << bo.id._id << std::endl; 
+    //     tmp_timestamp = bo.open + 42;
+    // });
+    // auto iter = db.create<bucket_object>([&](bucket_object &bo) {
+    //     bo.open = tmp_timestamp;
+    //     std::cout << "bo.id = " << bo.id._id << std::endl; 
+
+    // }).id;
+    // itr = bucket_idx.lower_bound(boost::make_tuple(bucket, fc::time_point_sec()));
+    // auto itr = bucket_idx.lower_bound(iter);
+
+    // std::cout << "iter" << iter._id << std::endl; 
+    // auto itr = bucket_idx.find(boost::make_tuple(bucket, open));
+    // auto itr = bucket_idx_1.find(iter);
 
     ilog("chain_stats plugin: plugin_startup() end");
 }
