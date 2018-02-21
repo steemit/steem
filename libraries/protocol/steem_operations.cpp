@@ -1,14 +1,12 @@
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/protocol/steem_operations.hpp>
+
+#include <fc/macros.hpp>
 #include <fc/io/json.hpp>
+#include <fc/macros.hpp>
 
 #include <locale>
 
-namespace steemit { namespace protocol {
-
-   bool inline is_asset_type( asset asset, asset_symbol_type symbol )
-   {
-      return asset.symbol == symbol;
-   }
+namespace steem { namespace protocol {
 
    void account_create_operation::validate() const
    {
@@ -85,10 +83,14 @@ namespace steemit { namespace protocol {
 
    struct comment_options_extension_validate_visitor
    {
-      comment_options_extension_validate_visitor() {}
-
       typedef void result_type;
 
+#ifdef STEEM_ENABLE_SMT
+      void operator()( const allowed_vote_assets& va) const
+      {
+         va.validate();
+      }
+#endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
       {
          cpb.validate();
@@ -103,16 +105,16 @@ namespace steemit { namespace protocol {
       FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
 
       validate_account_name( beneficiaries[0].account );
-      FC_ASSERT( beneficiaries[0].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+      FC_ASSERT( beneficiaries[0].weight <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
       sum += beneficiaries[0].weight;
-      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+      FC_ASSERT( sum <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
 
       for( size_t i = 1; i < beneficiaries.size(); i++ )
       {
          validate_account_name( beneficiaries[i].account );
-         FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+         FC_ASSERT( beneficiaries[i].weight <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
          sum += beneficiaries[i].weight;
-         FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+         FC_ASSERT( sum <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
          FC_ASSERT( beneficiaries[i - 1] < beneficiaries[i], "Benficiaries must be specified in sorted order (account ascending)" );
       }
    }
@@ -120,7 +122,7 @@ namespace steemit { namespace protocol {
    void comment_options_operation::validate()const
    {
       validate_account_name( author );
-      FC_ASSERT( percent_steem_dollars <= STEEMIT_100_PERCENT, "Percent cannot exceed 100%" );
+      FC_ASSERT( percent_steem_dollars <= STEEM_100_PERCENT, "Percent cannot exceed 100%" );
       FC_ASSERT( max_accepted_payout.symbol == SBD_SYMBOL, "Max accepted payout must be in SBD" );
       FC_ASSERT( max_accepted_payout.amount.value >= 0, "Cannot accept less than 0 payout" );
       validate_permlink( permlink );
@@ -134,23 +136,21 @@ namespace steemit { namespace protocol {
       validate_account_name( author );
    }
 
-   void challenge_authority_operation::validate()const
-    {
-      validate_account_name( challenger );
-      validate_account_name( challenged );
-      FC_ASSERT( challenged != challenger, "cannot challenge yourself" );
+   void placeholder_a_operation::validate()const
+   {
+      FC_ASSERT( false, "This is not a valid op" );
    }
 
-   void prove_authority_operation::validate()const
+   void placeholder_b_operation::validate()const
    {
-      validate_account_name( challenged );
+      FC_ASSERT( false, "This is not a valid op" );
    }
 
    void vote_operation::validate() const
    {
       validate_account_name( voter );
       validate_account_name( author );\
-      FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
+      FC_ASSERT( abs(weight) <= STEEM_100_PERCENT, "Weight is not a STEEMIT percentage" );
       validate_permlink( permlink );
    }
 
@@ -160,7 +160,7 @@ namespace steemit { namespace protocol {
       validate_account_name( to );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL, "transferring of Steem Power (STMP) is not allowed." );
       FC_ASSERT( amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)" );
-      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( memo.size() < STEEM_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
@@ -182,16 +182,90 @@ namespace steemit { namespace protocol {
    {
       validate_account_name( from_account );
       validate_account_name( to_account );
-      FC_ASSERT( 0 <= percent && percent <= STEEMIT_100_PERCENT, "Percent must be valid steemit percent" );
+      FC_ASSERT( 0 <= percent && percent <= STEEM_100_PERCENT, "Percent must be valid steem percent" );
    }
 
    void witness_update_operation::validate() const
    {
       validate_account_name( owner );
+
+      FC_ASSERT( url.size() <= STEEM_MAX_WITNESS_URL_LENGTH, "URL is too long" );
+
       FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
       FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Fee cannot be negative" );
-      props.validate();
+      props.validate< false >();
+   }
+
+   void witness_set_properties_operation::validate() const
+   {
+      validate_account_name( owner );
+
+      // current signing key must be present
+      FC_ASSERT( props.find( "key" ) != props.end(), "No signing key provided" );
+
+      auto itr = props.find( "account_creation_fee" );
+      if( itr != props.end() )
+      {
+         asset account_creation_fee;
+         fc::raw::unpack_from_vector( itr->second, account_creation_fee );
+         FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
+         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE , "account_creation_fee smaller than minimum account creation fee" );
+      }
+
+      itr = props.find( "maximum_block_size" );
+      if( itr != props.end() )
+      {
+         uint32_t maximum_block_size;
+         fc::raw::unpack_from_vector( itr->second, maximum_block_size );
+         FC_ASSERT( maximum_block_size >= STEEM_MIN_BLOCK_SIZE_LIMIT, "maximum_block_size smaller than minimum max block size" );
+      }
+
+      itr = props.find( "sbd_interest_rate" );
+      if( itr != props.end() )
+      {
+         uint16_t sbd_interest_rate;
+         fc::raw::unpack_from_vector( itr->second, sbd_interest_rate );
+         FC_ASSERT( sbd_interest_rate >= 0, "sbd_interest_rate must be positive" );
+         FC_ASSERT( sbd_interest_rate <= STEEM_100_PERCENT, "sbd_interest_rate must not exceed 100%" );
+      }
+
+      itr = props.find( "new_signing_key" );
+      if( itr != props.end() )
+      {
+         public_key_type signing_key;
+         fc::raw::unpack_from_vector( itr->second, signing_key );
+         FC_UNUSED( signing_key ); // This tests the deserialization of the key
+      }
+
+      itr = props.find( "sbd_exchange_rate" );
+      if( itr != props.end() )
+      {
+         price sbd_exchange_rate;
+         fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
+         FC_ASSERT( ( is_asset_type( sbd_exchange_rate.base, SBD_SYMBOL ) && is_asset_type( sbd_exchange_rate.quote, STEEM_SYMBOL ) ),
+            "Price feed must be a STEEM/SBD price" );
+         sbd_exchange_rate.validate();
+      }
+
+      itr = props.find( "url" );
+      if( itr != props.end() )
+      {
+         std::string url;
+         fc::raw::unpack_from_vector< std::string >( itr->second, url );
+
+         FC_ASSERT( url.size() <= STEEM_MAX_WITNESS_URL_LENGTH, "URL is too long" );
+         FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
+         FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
+      }
+
+      itr = props.find( "account_subsidy_limit" );
+      if( itr != props.end() )
+      {
+         uint32_t account_subsidy_limit;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_limit ); // Checks that the value can be deserialized
+         FC_UNUSED( account_subsidy_limit );
+      }
    }
 
    void account_witness_vote_operation::validate() const
@@ -236,7 +310,7 @@ namespace steemit { namespace protocol {
 
    void pow_operation::validate()const
    {
-      props.validate();
+      props.validate< true >();
       validate_account_name( worker_account );
       FC_ASSERT( work_input() == work.input, "Determninistic input does not match recorded input" );
       work.validate();
@@ -255,7 +329,7 @@ namespace steemit { namespace protocol {
 
    void pow2_operation::validate()const
    {
-      props.validate();
+      props.validate< true >();
       work.visit( pow2_operation_validate_visitor() );
    }
 
@@ -318,7 +392,7 @@ namespace steemit { namespace protocol {
       input.nonce = nonce;
 
       auto seed = fc::sha256::hash( input );
-      proof = fc::equihash::proof::hash( STEEMIT_EQUIHASH_N, STEEMIT_EQUIHASH_K, seed );
+      proof = fc::equihash::proof::hash( STEEM_EQUIHASH_N, STEEM_EQUIHASH_K, seed );
       pow_summary = fc::sha256::hash( proof.inputs ).approx_log_32();
    }
 
@@ -342,8 +416,8 @@ namespace steemit { namespace protocol {
    {
       validate_account_name( input.worker_account );
       auto seed = fc::sha256::hash( input );
-      FC_ASSERT( proof.n == STEEMIT_EQUIHASH_N, "proof of work 'n' value is incorrect" );
-      FC_ASSERT( proof.k == STEEMIT_EQUIHASH_K, "proof of work 'k' value is incorrect" );
+      FC_ASSERT( proof.n == STEEM_EQUIHASH_N, "proof of work 'n' value is incorrect" );
+      FC_ASSERT( proof.k == STEEM_EQUIHASH_K, "proof of work 'k' value is incorrect" );
       FC_ASSERT( proof.seed == seed, "proof of work seed does not match expected seed" );
       FC_ASSERT( proof.is_valid(), "proof of work is not a solution", ("block_id", input.prev_block)("worker_account", input.worker_account)("nonce", input.nonce) );
       FC_ASSERT( pow_summary == fc::sha256::hash( proof.inputs ).approx_log_32() );
@@ -361,20 +435,40 @@ namespace steemit { namespace protocol {
    void limit_order_create_operation::validate()const
    {
       validate_account_name( owner );
-      FC_ASSERT( ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( min_to_receive, SBD_SYMBOL ) )
-         || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) ),
-         "Limit order must be for the STEEM:SBD market" );
+
+      FC_ASSERT(  ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( min_to_receive, SBD_SYMBOL ) )
+               || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) )
+               || (
+                     amount_to_sell.symbol.space() == asset_symbol_type::smt_nai_space
+                     && is_asset_type( min_to_receive, STEEM_SYMBOL )
+                  )
+               || (
+                     is_asset_type( amount_to_sell, STEEM_SYMBOL )
+                     && min_to_receive.symbol.space() == asset_symbol_type::smt_nai_space
+                  ),
+               "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
+
       (amount_to_sell / min_to_receive).validate();
    }
+
    void limit_order_create2_operation::validate()const
    {
       validate_account_name( owner );
+
       FC_ASSERT( amount_to_sell.symbol == exchange_rate.base.symbol, "Sell asset must be the base of the price" );
       exchange_rate.validate();
 
-      FC_ASSERT( ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) ) ||
-                 ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) ),
-                 "Limit order must be for the STEEM:SBD market" );
+      FC_ASSERT(  ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) )
+               || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) )
+               || (
+                     amount_to_sell.symbol.space() == asset_symbol_type::smt_nai_space
+                     && is_asset_type( exchange_rate.quote, STEEM_SYMBOL )
+                  )
+               || (
+                     is_asset_type( amount_to_sell, STEEM_SYMBOL )
+                     && exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space
+                  ),
+               "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
 
       FC_ASSERT( (amount_to_sell * exchange_rate).amount > 0, "Amount to sell cannot round to 0 when traded" );
    }
@@ -487,7 +581,7 @@ namespace steemit { namespace protocol {
       validate_account_name( to );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
-      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( memo.size() < STEEM_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    }
    void transfer_from_savings_operation::validate()const {
@@ -495,7 +589,7 @@ namespace steemit { namespace protocol {
       validate_account_name( to );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
-      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( memo.size() < STEEM_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    }
    void cancel_transfer_from_savings_operation::validate()const {
@@ -537,6 +631,26 @@ namespace steemit { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
+#ifdef STEEM_ENABLE_SMT
+   void claim_reward_balance2_operation::validate()const
+   {
+      validate_account_name( account );
+      FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
+      FC_ASSERT( reward_tokens.begin()->amount >= 0, "Cannot claim a negative amount" );
+      bool is_substantial_reward = reward_tokens.begin()->amount > 0;
+      for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
+      {
+         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(), 
+                    "Reward tokens have not been inserted in ascending order." );
+         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(), 
+                    "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
+         FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
+         is_substantial_reward |= itr->amount > 0;
+      }
+      FC_ASSERT( is_substantial_reward, "Must claim something." );
+   }
+#endif
+
    void delegate_vesting_shares_operation::validate()const
    {
       validate_account_name( delegator );
@@ -546,4 +660,4 @@ namespace steemit { namespace protocol {
       FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
    }
 
-} } // steemit::protocol
+} } // steem::protocol

@@ -1,11 +1,11 @@
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/witness_objects.hpp>
-#include <steemit/chain/witness_schedule.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/witness_objects.hpp>
+#include <steem/chain/witness_schedule.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 void reset_virtual_schedule_time( database& db )
 {
@@ -22,7 +22,7 @@ void reset_virtual_schedule_time( database& db )
       {
          wobj.virtual_position = fc::uint128();
          wobj.virtual_last_update = wso.current_virtual_time;
-         wobj.virtual_scheduled_time = VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
+         wobj.virtual_scheduled_time = STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
       } );
    }
 }
@@ -59,11 +59,19 @@ void update_median_witness_props( database& db )
    } );
    uint16_t median_sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
 
+   /// sort them by account_subsidy_limit
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b )
+   {
+      return a->props.account_subsidy_limit < b->props.account_subsidy_limit;
+   } );
+   uint32_t median_account_subsidy_limit = active[active.size()/2]->props.account_subsidy_limit;
+
    db.modify( wso, [&]( witness_schedule_object& _wso )
    {
-      _wso.median_props.account_creation_fee = median_account_creation_fee;
-      _wso.median_props.maximum_block_size   = median_maximum_block_size;
-      _wso.median_props.sbd_interest_rate    = median_sbd_interest_rate;
+      _wso.median_props.account_creation_fee    = median_account_creation_fee;
+      _wso.median_props.maximum_block_size      = median_maximum_block_size;
+      _wso.median_props.sbd_interest_rate       = median_sbd_interest_rate;
+      _wso.median_props.account_subsidy_limit   = median_account_subsidy_limit;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )
@@ -77,7 +85,7 @@ void update_witness_schedule4( database& db )
 {
    const witness_schedule_object& wso = db.get_witness_schedule_object();
    vector< account_name_type > active_witnesses;
-   active_witnesses.reserve( STEEMIT_MAX_WITNESSES );
+   active_witnesses.reserve( STEEM_MAX_WITNESSES );
 
    /// Add the highest voted witnesses
    flat_set< witness_id_type > selected_voted;
@@ -88,7 +96,7 @@ void update_witness_schedule4( database& db )
         itr != widx.end() && selected_voted.size() < wso.max_voted_witnesses;
         ++itr )
    {
-      if( db.has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && (itr->signing_key == public_key_type()) )
+      if( db.has_hardfork( STEEM_HARDFORK_0_14__278 ) && (itr->signing_key == public_key_type()) )
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
@@ -109,7 +117,7 @@ void update_witness_schedule4( database& db )
       if( selected_voted.find(mitr->id) == selected_voted.end() )
       {
          // Only consider a miner who has a valid block signing key
-         if( !( db.has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && db.get_witness( mitr->owner ).signing_key == public_key_type() ) )
+         if( !( db.has_hardfork( STEEM_HARDFORK_0_14__278 ) && db.get_witness( mitr->owner ).signing_key == public_key_type() ) )
          {
             selected_miners.insert(mitr->id);
             active_witnesses.push_back(mitr->owner);
@@ -137,13 +145,13 @@ void update_witness_schedule4( database& db )
    auto sitr = schedule_idx.begin();
    vector<decltype(sitr)> processed_witnesses;
    for( auto witness_count = selected_voted.size() + selected_miners.size();
-        sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_WITNESSES;
+        sitr != schedule_idx.end() && witness_count < STEEM_MAX_WITNESSES;
         ++sitr )
    {
       new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
       processed_witnesses.push_back(sitr);
 
-      if( db.has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && sitr->signing_key == public_key_type() )
+      if( db.has_hardfork( STEEM_HARDFORK_0_14__278 ) && sitr->signing_key == public_key_type() )
          continue; /// skip witnesses without a valid block signing key
 
       if( selected_miners.find(sitr->id) == selected_miners.end()
@@ -161,7 +169,7 @@ void update_witness_schedule4( database& db )
    bool reset_virtual_time = false;
    for( auto itr = processed_witnesses.begin(); itr != processed_witnesses.end(); ++itr )
    {
-      auto new_virtual_scheduled_time = new_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
+      auto new_virtual_scheduled_time = new_virtual_time + STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
       if( new_virtual_scheduled_time < new_virtual_time )
       {
          reset_virtual_time = true; /// overflow
@@ -180,13 +188,13 @@ void update_witness_schedule4( database& db )
       reset_virtual_schedule_time(db);
    }
 
-   size_t expected_active_witnesses = std::min( size_t(STEEMIT_MAX_WITNESSES), widx.size() );
+   size_t expected_active_witnesses = std::min( size_t(STEEM_MAX_WITNESSES), widx.size() );
    FC_ASSERT( active_witnesses.size() == expected_active_witnesses, "number of active witnesses does not equal expected_active_witnesses=${expected_active_witnesses}",
-                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_WITNESSES",STEEMIT_MAX_WITNESSES) ("expected_active_witnesses", expected_active_witnesses) );
+                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEM_MAX_WITNESSES",STEEM_MAX_WITNESSES) ("expected_active_witnesses", expected_active_witnesses) );
 
    auto majority_version = wso.majority_version;
 
-   if( db.has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
+   if( db.has_hardfork( STEEM_HARDFORK_0_5__54 ) )
    {
       flat_map< version, uint32_t, std::greater< version > > witness_versions;
       flat_map< std::tuple< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
@@ -264,7 +272,7 @@ void update_witness_schedule4( database& db )
          _wso.current_shuffled_witnesses[i] = active_witnesses[i];
       }
 
-      for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+      for( size_t i = active_witnesses.size(); i < STEEM_MAX_WITNESSES; i++ )
       {
          _wso.current_shuffled_witnesses[i] = account_name_type();
       }
@@ -308,9 +316,9 @@ void update_witness_schedule4( database& db )
  */
 void update_witness_schedule(database& db)
 {
-   if( (db.head_block_num() % STEEMIT_MAX_WITNESSES) == 0 ) //wso.next_shuffle_block_num )
+   if( (db.head_block_num() % STEEM_MAX_WITNESSES) == 0 ) //wso.next_shuffle_block_num )
    {
-      if( db.has_hardfork(STEEMIT_HARDFORK_0_4) )
+      if( db.has_hardfork(STEEM_HARDFORK_0_4) )
       {
          update_witness_schedule4(db);
          return;
@@ -321,16 +329,16 @@ void update_witness_schedule(database& db)
 
 
       vector<account_name_type> active_witnesses;
-      active_witnesses.reserve( STEEMIT_MAX_WITNESSES );
+      active_witnesses.reserve( STEEM_MAX_WITNESSES );
 
       fc::uint128 new_virtual_time;
 
       /// only use vote based scheduling after the first 1M STEEM is created or if there is no POW queued
-      if( props.num_pow_witnesses == 0 || db.head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK )
+      if( props.num_pow_witnesses == 0 || db.head_block_num() > STEEM_START_MINER_VOTING_BLOCK )
       {
          const auto& widx = db.get_index<witness_index>().indices().get<by_vote_name>();
 
-         for( auto itr = widx.begin(); itr != widx.end() && (active_witnesses.size() < (STEEMIT_MAX_WITNESSES-2)); ++itr )
+         for( auto itr = widx.begin(); itr != widx.end() && (active_witnesses.size() < (STEEM_MAX_WITNESSES-2)); ++itr )
          {
             if( itr->pow_worker )
                continue;
@@ -366,10 +374,10 @@ void update_witness_schedule(database& db)
                    new_virtual_time = fc::uint128();
 
                /// this witness will produce again here
-               if( db.has_hardfork( STEEMIT_HARDFORK_0_2 ) )
-                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+               if( db.has_hardfork( STEEM_HARDFORK_0_2 ) )
+                  wo.virtual_scheduled_time += STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
                else
-                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+                  wo.virtual_scheduled_time += STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             } );
          }
       }
@@ -379,7 +387,7 @@ void update_witness_schedule(database& db)
 
       auto itr = pow_idx.upper_bound(0);
       /// if there is more than 1 POW witness, then pop the first one from the queue...
-      if( props.num_pow_witnesses > STEEMIT_MAX_WITNESSES )
+      if( props.num_pow_witnesses > STEEM_MAX_WITNESSES )
       {
          if( itr != pow_idx.end() )
          {
@@ -400,7 +408,7 @@ void update_witness_schedule(database& db)
       {
          active_witnesses.push_back( itr->owner );
 
-         if( db.head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK || active_witnesses.size() >= STEEMIT_MAX_WITNESSES )
+         if( db.head_block_num() > STEEM_START_MINER_VOTING_BLOCK || active_witnesses.size() >= STEEM_MAX_WITNESSES )
             break;
          ++itr;
       }
@@ -414,13 +422,13 @@ void update_witness_schedule(database& db)
          for( const string& w : active_witnesses )
             _wso.current_shuffled_witnesses.push_back( w );
             */
-         // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
+         // active witnesses has exactly STEEM_MAX_WITNESSES elements, asserted above
          for( size_t i = 0; i < active_witnesses.size(); i++ )
          {
             _wso.current_shuffled_witnesses[i] = active_witnesses[i];
          }
 
-         for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+         for( size_t i = active_witnesses.size(); i < STEEM_MAX_WITNESSES; i++ )
          {
             _wso.current_shuffled_witnesses[i] = account_name_type();
          }
@@ -446,7 +454,7 @@ void update_witness_schedule(database& db)
                        _wso.current_shuffled_witnesses[j] );
          }
 
-         if( props.num_pow_witnesses == 0 || db.head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK )
+         if( props.num_pow_witnesses == 0 || db.head_block_num() > STEEM_START_MINER_VOTING_BLOCK )
             _wso.current_virtual_time = new_virtual_time;
 
          _wso.next_shuffle_block_num = db.head_block_num() + _wso.num_scheduled_witnesses;

@@ -1,8 +1,8 @@
 
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 #include <fc/uint128.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
-} } // steemit::chain
+} } // steem::chain

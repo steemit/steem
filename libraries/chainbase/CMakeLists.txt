@@ -66,6 +66,13 @@ add_library( chainbase src/chainbase.cpp ${HEADERS} )
 target_link_libraries( chainbase  ${Boost_LIBRARIES} )
 target_include_directories( chainbase PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"  ${Boost_INCLUDE_DIR} )
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      chainbase PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 add_subdirectory( test )
 
 install( TARGETS

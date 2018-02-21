@@ -207,7 +207,7 @@ class DebugNode( object ):
 
       args:
          hardfork_id: The id of the hardfork to set. Hardfork IDs start at 1 (0 is genesis) and increment
-            by one for each hardfork. The maximum value is STEEMIT_NUM_HARDFORKS in chain/hardfork.d/0-preamble.hf
+            by one for each hardfork. The maximum value is STEEM_NUM_HARDFORKS in chain/hardfork.d/0-preamble.hf
       """
       if( hardfork_id < 0 ):
          raise ValueError( "hardfork_id cannot be negative" )
