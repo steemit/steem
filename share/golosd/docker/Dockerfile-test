@@ -35,11 +35,12 @@ ADD . /usr/local/src/golos
 
 RUN \
     cd /usr/local/src/golos && \
+    rm -rf build && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=Debug \
         -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCLEAR_VOTES=TRUE \
@@ -54,6 +55,7 @@ RUN \
 RUN \
     cd /usr/local/src/golos && \
     rm -rf build && \
+    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
