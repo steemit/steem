@@ -51,8 +51,7 @@ BOOST_FIXTURE_TEST_SUITE(market_history, database_fixture)
             validate_database();
 
             auto fill_order_a_time = db->head_block_time();
-            auto time_a = fc::time_point_sec(
-                    (fill_order_a_time.sec_since_epoch() / 15) * 15);
+            auto time_a = fc::time_point_sec((fill_order_a_time.sec_since_epoch() / 15) * 15);
 
             limit_order_create_operation op;
             op.owner = "alice";
@@ -261,9 +260,11 @@ BOOST_FIXTURE_TEST_SUITE(market_history, database_fixture)
             BOOST_REQUIRE(bucket->sbd_volume == ASSET("0.750 GBG").amount);
             bucket++;
 
+            // In Steem GENESIS_TIME is rounded to seconds per day, that is why STEEMIT_GENESIS_TIME is used for validatation
+            // But in Golos GENESIS_TIME isn't rounded to seconds per day
+            const auto round_genesis_time = fc::time_point_sec((STEEMIT_GENESIS_TIME.sec_since_epoch() / 86400) * 86400);
             BOOST_REQUIRE(bucket->seconds == 86400);
-            // FIXME: broken check
-            // BOOST_REQUIRE(bucket->open == STEEMIT_GENESIS_TIME);
+            BOOST_REQUIRE(bucket->open == round_genesis_time);
             BOOST_REQUIRE(bucket->high_steem == ASSET("0.450 GOLOS ").amount);
             BOOST_REQUIRE(bucket->high_sbd == ASSET("0.250 GBG").amount);
             BOOST_REQUIRE(bucket->low_steem == ASSET("1.500 GOLOS").amount);
