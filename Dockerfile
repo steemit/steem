@@ -147,7 +147,7 @@ RUN mkdir /var/cache/golosd && \
 ENV HOME /var/lib/golosd
 RUN chown golosd:golosd -R /var/lib/golosd
 
-ADD programs/golosd/snapshot5392323.json /var/lib/golosd
+ADD share/golosd/snapshot5392323.json /var/lib/golosd
 
 # rpc service:
 # http
@@ -158,11 +158,11 @@ EXPOSE 8091
 EXPOSE 2001
 
 RUN mkdir -p /etc/service/golosd
-ADD contribution/golosd.sh /etc/service/golosd/run
+ADD share/golosd/golosd.sh /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
-ADD documentation/seednodes /etc/golosd/seednodes
+ADD share/golosd/seednodes /etc/golosd/seednodes
 
 # the following adds lots of logging info to stdout
-ADD contribution/config.ini /etc/golosd/config.ini
+ADD share/golosd/config/config.ini /etc/golosd/config.ini
