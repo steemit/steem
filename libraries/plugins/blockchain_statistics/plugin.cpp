@@ -20,11 +20,6 @@ namespace golos {
 namespace plugins {
 namespace blockchain_statistics {
 
-std::string increment_counter(std::string name);
-std::string increment_counter(std::string name, uint32_t value);
-std::string increment_counter(std::string name, fc::uint128_t value);
-std::string increment_counter(std::string name, share_type value);
-
 using namespace golos::protocol;
 
 struct plugin::plugin_impl final {
@@ -258,68 +253,20 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
             bo.blocks++;
         });
-        // TODO: ADD SHARED MEM flag and int id
         if (!stat_sender->is_previous_bucket_set) {
-            stat_sender->previous_bucket_id = db.create<bucket_object>([&](bucket_object &bo) {
-            }).id;;
+            const auto & global_bucket = db.get(bucket_id_type());
+            stat_sender->previous_bucket = global_bucket;
             stat_sender->is_previous_bucket_set = true;
         }
         else {
-            auto zero = db.get(bucket_id_type()) ;
-            auto prev = db.get(bucket_id_type(stat_sender->previous_bucket_id._id));
-            auto statistics_delta = (zero).calculate_buckets_delta_with( (prev) ); 
+            auto global_bucket = db.get(bucket_id_type()) ;
+            auto statistics_delta = stat_sender->previous_bucket.calculate_delta_with( (global_bucket) ); 
 
             for (auto delta : statistics_delta) {
-                std::cout << delta << std::endl;
                 stat_sender->push(delta);
             }
 
-            db.modify(db.get(bucket_id_type(stat_sender->previous_bucket_id._id)), [&](bucket_object & b) {
-                b.seconds = zero.seconds;
-                b.blocks = zero.blocks;
-                b.bandwidth = zero.bandwidth;
-                b.operations = zero.operations;
-                b.transactions = zero.transactions;
-                b.transfers = zero.transfers;
-                b.steem_transferred = zero.steem_transferred;
-                b.sbd_transferred = zero.sbd_transferred;
-                b.sbd_paid_as_interest = zero.sbd_paid_as_interest;
-                b.paid_accounts_created = zero.paid_accounts_created;
-                b.mined_accounts_created = zero.mined_accounts_created;
-                b.root_comments = zero.root_comments;
-                b.root_comment_edits = zero.root_comment_edits;
-                b.root_comments_deleted = zero.root_comments_deleted;
-                b.replies = zero.replies;
-                b.reply_edits = zero.reply_edits;
-                b.replies_deleted = zero.replies_deleted;
-                b.new_root_votes = zero.new_root_votes;
-                b.changed_root_votes = zero.changed_root_votes;
-                b.new_reply_votes = zero.new_reply_votes;
-                b.changed_reply_votes = zero.changed_reply_votes;
-                b.payouts = zero.payouts;
-                b.sbd_paid_to_authors = zero.sbd_paid_to_authors;
-                b.vests_paid_to_authors = zero.vests_paid_to_authors;
-                b.vests_paid_to_curators = zero.vests_paid_to_curators;
-                b.liquidity_rewards_paid = zero.liquidity_rewards_paid;
-                b.transfers_to_vesting = zero.transfers_to_vesting;
-                b.steem_vested = zero.steem_vested;
-                b.new_vesting_withdrawal_requests = zero.new_vesting_withdrawal_requests;
-                b.modified_vesting_withdrawal_requests = zero.modified_vesting_withdrawal_requests;
-                b.vesting_withdraw_rate_delta = zero.vesting_withdraw_rate_delta;
-                b.vesting_withdrawals_processed = zero.vesting_withdrawals_processed;
-                b.finished_vesting_withdrawals = zero.finished_vesting_withdrawals;
-                b.vests_withdrawn = zero.vests_withdrawn;
-                b.vests_transferred = zero.vests_transferred;
-                b.sbd_conversion_requests_created = zero.sbd_conversion_requests_created;
-                b.sbd_to_be_converted = zero.sbd_to_be_converted;
-                b.sbd_conversion_requests_filled = zero.sbd_conversion_requests_filled;
-                b.steem_converted = zero.steem_converted;
-                b.limit_orders_created = zero.limit_orders_created;
-                b.limit_orders_filled = zero.limit_orders_filled;
-                b.limit_orders_cancelled = zero.limit_orders_cancelled;
-                b.total_pow = zero.total_pow;
-                b.estimated_hashpower = zero.estimated_hashpower;
-            });
+            stat_sender->previous_bucket = global_bucket;
         }
     }
 
@@ -531,28 +478,6 @@ void plugin::plugin_startup() {
         wlog("chain_stats plugin: statitistics sender was not started: no recipient's IPs were provided");
     }
 
-    // auto &db = _my -> database();
-    // const auto &bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
-    // const auto &bucket_idx_1 = db.get_index<bucket_index>().indices().get<by_id>();
-
-    // fc::time_point_sec tmp_timestamp;
-    // db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
-    //     bo.blocks++;
-    //     std::cout << "bo.id = " << bo.id._id << std::endl; 
-    //     tmp_timestamp = bo.open + 42;
-    // });
-    // auto iter = db.create<bucket_object>([&](bucket_object &bo) {
-    //     bo.open = tmp_timestamp;
-    //     std::cout << "bo.id = " << bo.id._id << std::endl; 
-
-    // }).id;
-    // itr = bucket_idx.lower_bound(boost::make_tuple(bucket, fc::time_point_sec()));
-    // auto itr = bucket_idx.lower_bound(iter);
-
-    // std::cout << "iter" << iter._id << std::endl; 
-    // auto itr = bucket_idx.find(boost::make_tuple(bucket, open));
-    // auto itr = bucket_idx_1.find(iter);
-
     ilog("chain_stats plugin: plugin_startup() end");
 }
 
@@ -564,36 +489,7 @@ uint32_t plugin::get_max_history_per_bucket() const {
     return _my->_maximum_history_per_bucket_size;
 }
 
-    void plugin::plugin_shutdown() {
-    }
-
-
-    std::string increment_counter(std::string name) {
-    std::string res = name + ":1|c";
-    return res;
+void plugin::plugin_shutdown() {
 }
 
-std::string increment_counter(std::string name, uint32_t value) {
-    std::string res = name + ":";
-    std::string num = std::to_string(value);
-    res += num + "|c";
-
-    return res;
-}
-std::string increment_counter(std::string name, fc::uint128_t value) {
-    std::string res = name + ":";
-    std::string num = std::string(value);
-    res += num + "|c";
-
-    return res;
-}
-std::string increment_counter(std::string name, share_type value) {
-    std::string res = name + ":";
-    std::string num = std::string(value);
-    if (value < 0) {
-        res += "-";    
-    }
-    res += num + "|c";
-    return res;
-}
 } } } // golos:plugin_impl:plugins::blockchain_statistics

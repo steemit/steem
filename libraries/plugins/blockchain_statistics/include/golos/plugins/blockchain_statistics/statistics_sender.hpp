@@ -5,7 +5,7 @@
 #include <fc/uint128_t.hpp>
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/plugins/blockchain_statistics/bucket_object.hpp>
-
+#include <golos/plugins/blockchain_statistics/runtime_bucket_object.hpp>
 
 using namespace golos::chain;
 
@@ -26,8 +26,8 @@ public:
 
     /// returns statistics recievers endpoints
     std::vector<std::string> get_endpoint_string_vector();
-// protected:
-    golos::plugins::blockchain_statistics::bucket_id_type previous_bucket_id;
+
+    golos::plugins::blockchain_statistics::runtime_bucket_object previous_bucket;
     bool is_previous_bucket_set;
 private:
     // Stat sender will send data to all endpoints from recipient_endpoint_set
