@@ -47,10 +47,7 @@ RUN \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
     ./tests/chain_test && \
-    ./tests/plugin_test && \
-    cd /usr/local/src/golos && \
-    doxygen && \
-    programs/build_helpers/check_reflect.py
+    ./tests/plugin_test
 
 RUN \
     cd /usr/local/src/golos && \
