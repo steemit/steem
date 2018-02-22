@@ -246,7 +246,6 @@ struct operation_process {
 void plugin::plugin_impl::on_block(const signed_block &b) {
     auto &db = database();
     const auto & bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
-    const auto & bucket_idx_by_id = db.get_index<bucket_index>().indices().get<by_id>();
 
     if (b.block_num() == 1) {
         db.create<bucket_object>([&](bucket_object &bo) {
@@ -259,24 +258,68 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         db.modify(db.get(bucket_id_type()), [&](bucket_object &bo) {
             bo.blocks++;
         });
-
+        // TODO: ADD SHARED MEM flag and int id
         if (!stat_sender->is_previous_bucket_set) {
             stat_sender->previous_bucket_id = db.create<bucket_object>([&](bucket_object &bo) {
             }).id;;
+            stat_sender->is_previous_bucket_set = true;
         }
         else {
-            // auto zero = bucket_idx_by_id.find(bucket_id_type());
             auto zero = db.get(bucket_id_type()) ;
-            // auto prev = bucket_idx_by_id.find(stat_sender->previous_bucket_id);
             auto prev = db.get(bucket_id_type(stat_sender->previous_bucket_id._id));
-            // auto statistics_delta = (*zero).calculate_buckets_delta_with( (*prev) ); 
             auto statistics_delta = (zero).calculate_buckets_delta_with( (prev) ); 
 
             for (auto delta : statistics_delta) {
+                std::cout << delta << std::endl;
                 stat_sender->push(delta);
             }
-            // TODO: add operator= to bucket_object
-            // TODO: make prev = zero; (update previous block with current block)
+
+            db.modify(db.get(bucket_id_type(stat_sender->previous_bucket_id._id)), [&](bucket_object & b) {
+                b.seconds = zero.seconds;
+                b.blocks = zero.blocks;
+                b.bandwidth = zero.bandwidth;
+                b.operations = zero.operations;
+                b.transactions = zero.transactions;
+                b.transfers = zero.transfers;
+                b.steem_transferred = zero.steem_transferred;
+                b.sbd_transferred = zero.sbd_transferred;
+                b.sbd_paid_as_interest = zero.sbd_paid_as_interest;
+                b.paid_accounts_created = zero.paid_accounts_created;
+                b.mined_accounts_created = zero.mined_accounts_created;
+                b.root_comments = zero.root_comments;
+                b.root_comment_edits = zero.root_comment_edits;
+                b.root_comments_deleted = zero.root_comments_deleted;
+                b.replies = zero.replies;
+                b.reply_edits = zero.reply_edits;
+                b.replies_deleted = zero.replies_deleted;
+                b.new_root_votes = zero.new_root_votes;
+                b.changed_root_votes = zero.changed_root_votes;
+                b.new_reply_votes = zero.new_reply_votes;
+                b.changed_reply_votes = zero.changed_reply_votes;
+                b.payouts = zero.payouts;
+                b.sbd_paid_to_authors = zero.sbd_paid_to_authors;
+                b.vests_paid_to_authors = zero.vests_paid_to_authors;
+                b.vests_paid_to_curators = zero.vests_paid_to_curators;
+                b.liquidity_rewards_paid = zero.liquidity_rewards_paid;
+                b.transfers_to_vesting = zero.transfers_to_vesting;
+                b.steem_vested = zero.steem_vested;
+                b.new_vesting_withdrawal_requests = zero.new_vesting_withdrawal_requests;
+                b.modified_vesting_withdrawal_requests = zero.modified_vesting_withdrawal_requests;
+                b.vesting_withdraw_rate_delta = zero.vesting_withdraw_rate_delta;
+                b.vesting_withdrawals_processed = zero.vesting_withdrawals_processed;
+                b.finished_vesting_withdrawals = zero.finished_vesting_withdrawals;
+                b.vests_withdrawn = zero.vests_withdrawn;
+                b.vests_transferred = zero.vests_transferred;
+                b.sbd_conversion_requests_created = zero.sbd_conversion_requests_created;
+                b.sbd_to_be_converted = zero.sbd_to_be_converted;
+                b.sbd_conversion_requests_filled = zero.sbd_conversion_requests_filled;
+                b.steem_converted = zero.steem_converted;
+                b.limit_orders_created = zero.limit_orders_created;
+                b.limit_orders_filled = zero.limit_orders_filled;
+                b.limit_orders_cancelled = zero.limit_orders_cancelled;
+                b.total_pow = zero.total_pow;
+                b.estimated_hashpower = zero.estimated_hashpower;
+            });
         }
     }
 

@@ -262,6 +262,53 @@ struct bucket_object
         }
         return result;
     }
+
+    void operator=(const bucket_object & b) {   
+        seconds = b.seconds;
+        blocks = b.blocks;
+        bandwidth = b.bandwidth;
+        operations = b.operations;
+        transactions = b.transactions;
+        transfers = b.transfers;
+        steem_transferred = b.steem_transferred;
+        sbd_transferred = b.sbd_transferred;
+        sbd_paid_as_interest = b.sbd_paid_as_interest;
+        paid_accounts_created = b.paid_accounts_created;
+        mined_accounts_created = b.mined_accounts_created;
+        root_comments = b.root_comments;
+        root_comment_edits = b.root_comment_edits;
+        root_comments_deleted = b.root_comments_deleted;
+        replies = b.replies;
+        reply_edits = b.reply_edits;
+        replies_deleted = b.replies_deleted;
+        new_root_votes = b.new_root_votes;
+        changed_root_votes = b.changed_root_votes;
+        new_reply_votes = b.new_reply_votes;
+        changed_reply_votes = b.changed_reply_votes;
+        payouts = b.payouts;
+        sbd_paid_to_authors = b.sbd_paid_to_authors;
+        vests_paid_to_authors = b.vests_paid_to_authors;
+        vests_paid_to_curators = b.vests_paid_to_curators;
+        liquidity_rewards_paid = b.liquidity_rewards_paid;
+        transfers_to_vesting = b.transfers_to_vesting;
+        steem_vested = b.steem_vested;
+        new_vesting_withdrawal_requests = b.new_vesting_withdrawal_requests;
+        modified_vesting_withdrawal_requests = b.modified_vesting_withdrawal_requests;
+        vesting_withdraw_rate_delta = b.vesting_withdraw_rate_delta;
+        vesting_withdrawals_processed = b.vesting_withdrawals_processed;
+        finished_vesting_withdrawals = b.finished_vesting_withdrawals;
+        vests_withdrawn = b.vests_withdrawn;
+        vests_transferred = b.vests_transferred;
+        sbd_conversion_requests_created = b.sbd_conversion_requests_created;
+        sbd_to_be_converted = b.sbd_to_be_converted;
+        sbd_conversion_requests_filled = b.sbd_conversion_requests_filled;
+        steem_converted = b.steem_converted;
+        limit_orders_created = b.limit_orders_created;
+        limit_orders_filled = b.limit_orders_filled;
+        limit_orders_cancelled = b.limit_orders_cancelled;
+        total_pow = b.total_pow;
+        estimated_hashpower = b.estimated_hashpower;
+    }
 };
 
 
