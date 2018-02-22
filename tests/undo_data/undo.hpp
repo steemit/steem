@@ -1,235 +1,195 @@
 #pragma once
 
 #include <steem/chain/database.hpp>
+#include <fstream>
 
 namespace steem { namespace chain {
 
-   struct u_types
+   namespace u_types
    {
-      using gen_type = uint32_t;
+      enum op_type { create, modify, remove };
    };
 
-   template< typename T >
-   class abstract_data_generator
-   {
-      public:
-
-         using p_self = std::shared_ptr< abstract_data_generator >;
-         using items = std::shared_ptr< std::vector< T > >;
-
-         virtual items get( u_types::gen_type size ) = 0;
-   };
-
-   template< typename T >
-   class data_generator: public abstract_data_generator< T >
-   {
-      public:
-
-         using items = typename abstract_data_generator< T >::items;
-
-      private:
-
-         static uint64_t cnt;
-
-         template< typename CALL >
-         items generate( u_types::gen_type size, CALL call );
-
-         items generate( std::false_type, std::false_type, u_types::gen_type size );
-         items generate( std::true_type, std::false_type, u_types::gen_type size );
-         items generate( std::false_type, std::true_type, u_types::gen_type size );
-         items generate( u_types::gen_type size );
-
-      protected:
-      public:
-
-         data_generator();
-         virtual ~data_generator();
-
-         virtual items get( u_types::gen_type size ) override;
-   };
-
-   class generators_owner
-   {
-      public:
-
-         using p_self = std::shared_ptr< generators_owner >;
-
-      private:
-
-         abstract_data_generator< uint32_t >::p_self uint32_gen;
-         abstract_data_generator< std::string >::p_self string_gen;
-
-      protected:
-      public:
-
-         generators_owner();
-         virtual ~generators_owner();
-
-         data_generator< uint32_t >::items get_uint32( u_types::gen_type size );
-         data_generator< std::string >::items get_strings( u_types::gen_type size );
-   };
-
-   class abstract_wrapper
-   {
-      public:
-
-         using p_self = std::shared_ptr< abstract_wrapper >;
-
-      protected:
-      
-         const generators_owner::p_self& gen;
-
-         virtual bool equal( const abstract_wrapper& obj ) const = 0;
-
-      public:
-
-         abstract_wrapper( const generators_owner::p_self& _gen );
-         virtual ~abstract_wrapper();
-
-         virtual void create( chain::database& db ) = 0;
-         virtual void modify( chain::database& db ) = 0;
-         virtual void remove( chain::database& db ) = 0;
-
-         bool operator==( const abstract_wrapper& obj ) const;
-   };
-
-   class account_object_wrapper: public abstract_wrapper
+   template< typename Object >
+   class undo_scenario
    {
       private:
 
-         std::string name = "";
-         std::string json_metadata = "";
-
-         uint32_t comment_count = 0;
-         uint32_t lifetime_vote_count = 0;
-
-         void fill();
-
-      protected:
-
-         virtual bool equal( const abstract_wrapper& obj ) const override;
-
-      public:
-
-         account_object_wrapper( const generators_owner::p_self& _gen );
-
-         account_object_wrapper( const generators_owner::p_self& _gen,
-                                 const std::string& _name,
-                                 const std::string& _json_metadata,
-                                 uint32_t _comment_count,
-                                 uint32_t _lifetime_vote_count );
-
-         virtual ~account_object_wrapper();
-
-         virtual void create( chain::database& db ) override;
-         virtual void modify( chain::database& db ) override;
-         virtual void remove( chain::database& db ) override;
-
-         bool operator==( const account_object_wrapper& obj ) const;
-   };
-
-   class undo_operation
-   {
-      public:
-
-         using p_self = std::shared_ptr< undo_operation >;
-
-      protected:
-
-         abstract_wrapper::p_self item;
          chain::database& db;
 
-      public:
+         std::list< Object > old_values;
 
-         undo_operation( abstract_wrapper::p_self _item, chain::database& _db );
-         virtual ~undo_operation();
-
-         void create();
-         void modify();
-         void remove();
-   };
-
-   class event
-   {
-      private:
-
-         std::string chain;
-         uint32_t idx = 0;
-
-      public:
-
-         event( const std::string& _chain ) : chain( _chain ) {}
-
-         void next() { ++idx; };
-         bool completed() const { return idx >= chain.size(); }
-
-         char get() const
+         template< typename CALL >
+         const Object* run_impl( const Object* old_obj, u_types::op_type op, CALL call )
          {
-            assert( !completed() );
-            return chain[ idx ];
+            switch( op )
+            {
+               case u_types::create:
+                  return &db.create< Object >( call );
+               break;
+
+               case u_types::modify:
+                  assert( old_obj );
+                  db.modify( *old_obj, call );
+                  return old_obj;
+               break;
+
+               case u_types::remove:
+                  assert( old_obj );
+                  db.remove( *old_obj );
+                  return nullptr;
+               break;
+
+               default:
+                  assert( 0 && "Unknown operation" );
+               break;
+            }
+            return nullptr;
          }
+
+      protected:
+      public:
+
+         undo_scenario( chain::database& _db ): db( _db )
+         {
+         }
+
+         virtual ~undo_scenario(){}
+        
+         template< typename CALL >
+         const Object& create( CALL call )
+         {
+            try
+            {
+               return *run_impl( nullptr, u_types::create, call );
+            }
+            FC_LOG_AND_RETHROW()
+         }
+
+         template< typename CALL >
+         const Object& modify( const Object& old_obj, CALL call )
+         {
+            try
+            {
+               return *run_impl( &old_obj, u_types::modify, call );
+            }
+            FC_LOG_AND_RETHROW()
+         }
+
+         const void remove( const Object& old_obj )
+         {
+            try
+            {
+               static std::function< void( Object& ) > empty;
+               run_impl( &old_obj, u_types::remove, empty );
+            }
+            FC_LOG_AND_RETHROW()
+         }
+
+         template< typename Index >
+         void remember_old_values()
+         {
+            old_values.clear();
+
+            const auto& idx = db.get_index< Index >().indices().get< by_id >();
+            auto it = idx.begin();
+
+            int32_t cnt = 0;
+            while( it != idx.end() )
+            {
+               old_values.emplace_back( *( it++ ) );
+               ++cnt;
+            }
+         }
+
+         template< typename Index >
+         uint32_t size()
+         {
+            const auto& idx = db.get_index< Index >().indices().get< by_id >();
+            return idx.size();
+         }
+
+         template< typename Index >
+         bool check()
+         {
+            try
+            {
+               const auto& idx = db.get_index< Index >().indices().get< by_id >();
+
+               uint32_t idx_size = idx.size();
+               uint32_t old_size = old_values.size();
+               if( idx_size != old_size )
+                  return false;
+
+               auto it = idx.begin();
+               auto it_end = idx.end();
+
+               auto it_old = old_values.begin();
+
+               while( it != it_end )
+               {
+                  const Object& actual = *it;
+                  const Object& old = *it_old;
+                  if( actual.id != old.id )
+                     return false;
+
+                  ++it;
+                  ++it_old;
+               }
+            }
+            FC_LOG_AND_RETHROW()
+
+            return true;
+         }
+
    };
 
-   class abstract_scenario
+   class undo_db
    {
-      protected:
-
-         enum ops : char { nothing = '.', create = 'c', modify = 'm', remove = 'r' };
-
-         using t_events = std::list< event >;
-         using t_operations = std::list< undo_operation::p_self >;
-         using t_old_values = std::list< abstract_wrapper::p_self >;
-
       private:
 
          database::session* session = nullptr;
-
-         t_events events;
-         t_operations operations;
-
-         bool undo_session();
-         bool check_input( const std::string& str );
-
-         bool before_test();
-         bool test_impl( bool& is_alive_chain );
-         bool test();
-         bool after_test();
-
-      protected:
-
-         t_old_values old_values;
-
          chain::database& db;
 
-         virtual bool remember_old_values() = 0;
-         virtual undo_operation::p_self create_operation() = 0;
-         virtual bool check_result( const t_old_values& old ) = 0;
+         void undo_session()
+         {
+            try
+            {
+               if( session )
+                  session->undo();
 
-      public:
-
-         abstract_scenario( chain::database& _db );
-         virtual ~abstract_scenario();
-
-         bool add_operations( const std::string& chain );
-         bool run();
-   };
-
-   class account_object_scenario: public abstract_scenario
-   {
-      private:
-
-         generators_owner::p_self gen;
+               if( session )
+               {
+                  delete session;
+                  session = nullptr;
+               }
+            }
+            FC_LOG_AND_RETHROW()
+         }
 
       protected:
-
-         virtual bool remember_old_values();
-         virtual undo_operation::p_self create_operation();
-         virtual bool check_result( const t_old_values& old );
-
       public:
+      
+         undo_db( chain::database& _db ): db( _db )
+         {
+         }
 
-         account_object_scenario( chain::database& _db );
-         virtual ~account_object_scenario();
+         void undo_start()
+         {
+            if( session )
+            {
+               delete session;
+               session = nullptr;
+            }
+
+            session = new database::session( db.start_undo_session( true ) );
+         }
+
+         void undo_end()
+         {
+            if( session )
+               session->undo();
+         }
    };
 
 } }
