@@ -302,6 +302,7 @@ namespace steem { namespace chain {
          void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
+         void        adjust_reward_balance( const account_name_type& name, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
          void        update_owner_authority( const account_object& account, const authority& owner_authority );
@@ -477,6 +478,7 @@ namespace steem { namespace chain {
          void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account );
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
+         void modify_reward_balance( const account_object& a, const asset& delta, bool check_balance );
 
          std::unique_ptr< database_impl > _my;
 
@@ -505,7 +507,8 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
-         uint32_t                      _next_available_nai = 4;
+         /// For Initial value see appropriate comment where get_smt_next_identifier is implemented.
+         uint32_t                      _next_available_nai = SMT_MIN_NON_RESERVED_NAI;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;

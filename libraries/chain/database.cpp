@@ -2263,6 +2263,9 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< reset_account_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< set_reset_account_evaluator              >();
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
+#ifdef STEEM_ENABLE_SMT
+   _my->_evaluator_registry.register_evaluator< claim_reward_balance2_evaluator          >();
+#endif
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
    _my->_evaluator_registry.register_evaluator< witness_set_properties_evaluator         >();
@@ -3709,6 +3712,32 @@ void database::modify_balance( const account_object& a, const asset& delta, bool
    } );
 }
 
+void database::modify_reward_balance( const account_object& a, const asset& delta, bool check_balance )
+{
+   modify( a, [&]( account_object& acnt )
+   {
+      switch( delta.symbol.asset_num )
+      {
+         case STEEM_ASSET_NUM_STEEM:
+            acnt.reward_steem_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+            }
+            break;
+         case STEEM_ASSET_NUM_SBD:
+            acnt.reward_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
+            }
+            break;
+         default:
+            FC_ASSERT( false, "invalid symbol" );
+      }
+   });
+}
+
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
@@ -3810,30 +3839,27 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
       return;
    }
 #endif
-   modify( a, [&]( account_object& acnt )
-   {
-      switch( delta.symbol.asset_num )
-      {
-         case STEEM_ASSET_NUM_STEEM:
-            acnt.reward_steem_balance += delta;
-            if( check_balance )
-            {
-               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
-            }
-            break;
-         case STEEM_ASSET_NUM_SBD:
-            acnt.reward_sbd_balance += delta;
-            if( check_balance )
-            {
-               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
-            }
-            break;
-         default:
-            FC_ASSERT( false, "invalid symbol" );
-      }
-   });
+
+   modify_reward_balance(a, delta, check_balance);
 }
 
+void database::adjust_reward_balance( const account_name_type& name, const asset& delta )
+{
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_rewards_balance_object >( name, delta, false/*check_account*/ );
+      return;
+   }
+#endif
+
+   const auto& a = get_account( name );
+   modify_reward_balance(a, delta, check_balance);
+}
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
@@ -4537,9 +4563,10 @@ void database::validate_smt_invariants()const
       for( ; itr != end; ++itr )
       {
          const smt_token_object& smt = *itr;
-         auto totalIt = theMap.find( smt.symbol );
-         asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
-         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt current_supply",smt.current_supply)("total_supply",total_supply) );
+         auto totalIt = theMap.find( smt.liquid_symbol );
+         asset total_liquid_supply = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) : totalIt->second;
+         FC_ASSERT( asset(smt.current_supply, smt.liquid_symbol) == total_liquid_supply,
+                    "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
@@ -4699,6 +4726,16 @@ void database::retally_witness_vote_counts( bool force )
 }
 
 #ifdef STEEM_ENABLE_SMT
+// 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
+// 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
+// 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
+//    with [0 : 99,999,999] range.
+// 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
+//    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
+// 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
+//    of liquid/vesting *pairs* of reserved/available NAIs.
+// 6. 45 milions of SMT await for their creators.
+
 vector< asset_symbol_type > database::get_smt_next_identifier()
 {
    // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
@@ -4708,12 +4745,17 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    // For appropriate use of this method see e.g. smt_database_fixture::create_smt
 
    uint8_t decimal_places = 0;
-   FC_ASSERT( _next_available_nai >= SMT_MIN_NAI );
+
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
    FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
+   // Assume that _next_available_nai value shows the liquid version of NAI.
+   FC_ASSERT( (_next_available_nai & 0x1) == 0, "Can't start with vesting version of NAI." );
+   uint32_t new_nai = _next_available_nai;
+   // Skip vesting version of produced NAI - it differs only by least significant bit set.
+   _next_available_nai += 2;
 
-   uint32_t asset_num = (_next_available_nai++ << 5) | 0x10 | decimal_places;
-
-   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( asset_num );
+   uint32_t new_asset_num = (new_nai << 5) | 0x10 | decimal_places;
+   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( new_asset_num );
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 

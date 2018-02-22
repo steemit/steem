@@ -54,19 +54,42 @@ namespace detail
    {
       FC_ASSERT( !check_max_block_age( args.max_block_age ) );
 
+      auto txid = args.trx.id();
       boost::promise< broadcast_transaction_synchronous_return > p;
 
       {
          boost::lock_guard< boost::mutex > guard( _mtx );
-         _callbacks[ args.trx.id() ] = [&p]( const broadcast_transaction_synchronous_return& r )
+         _callbacks[ txid ] = [&p]( const broadcast_transaction_synchronous_return& r )
          {
             p.set_value( r );
          };
-         _callback_expirations[ args.trx.expiration ].push_back( args.trx.id() );
+         _callback_expirations[ args.trx.expiration ].push_back( txid );
       }
 
-      _chain.db().push_transaction( args.trx );
-      _p2p.broadcast_transaction( args.trx );
+      try
+      {
+         /* It may look strange to call these without the lock and then lock again in the case of an exception,
+          * but it is correct and avoids deadlock. push_transaction is trained along with all other writes, including
+          * pushing blocks. Pushing blocks do not originate from this code path and will never have this lock.
+          * However, it will trigger the on_applied_block callback and then attempt to acquire the lock. In this case,
+          * this thread will be waiting on push_block so it can write and the block thread will be waiting on this
+          * thread for the lock.
+          */
+         _chain.db().push_transaction( args.trx );
+         _p2p.broadcast_transaction( args.trx );
+      }
+      catch( fc::exception& e )
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+
+         // The callback may have been cleared in the meantine, so we need to check for existence.
+         auto c_itr = _callbacks.find( txid );
+         if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
+
+         // We do not need to clean up _callback_expirations because on_applied_block handles this case.
+
+         throw e;
+      }
 
       return p.get_future().get();
    }

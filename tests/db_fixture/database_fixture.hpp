@@ -144,6 +144,40 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
    fund( account_name, amount ); \
    generate_block();
 
+// To be incorporated into fund() method if deemed appropriate.
+// 'SMT' would be dropped from the name then.
+#define FUND_SMT_REWARDS( account_name, amount ) \
+   db->adjust_reward_balance( account_name, amount ); \
+   db->adjust_supply( amount ); \
+   generate_block();
+
+#define OP2TX(OP,TX,KEY) \
+TX.operations.push_back( OP ); \
+TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
+TX.sign( KEY, db->get_chain_id() );
+
+#define PUSH_OP(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+}
+
+#define PUSH_OP_TWICE(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
+}
+
+#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
+}
+
 namespace steem { namespace chain {
 
 using namespace steem::protocol;
@@ -172,6 +206,9 @@ struct database_fixture {
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
    static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
+#ifdef STEEM_ENABLE_SMT
+   static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
+#endif
    string generate_anon_acct_name();
    void open_database();
    void generate_block(uint32_t skip = 0,

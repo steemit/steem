@@ -10,6 +10,8 @@ template< typename OperationType=steem::protocol::operation >
 class evaluator
 {
    public:
+      virtual ~evaluator() {}
+
       virtual void apply(const OperationType& op) = 0;
       virtual int get_type()const = 0;
       virtual std::string get_name( const OperationType& op ) = 0;
@@ -24,6 +26,8 @@ class evaluator_impl : public evaluator<OperationType>
 
       evaluator_impl( database& d )
          : _db(d) {}
+
+      virtual ~evaluator_impl() {}
 
       virtual void apply(const OperationType& o) final override
       {

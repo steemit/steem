@@ -35,6 +35,7 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
       time_point_sec          generation_begin_time;
       time_point_sec          generation_end_time;
       time_point_sec          announced_launch_time;
+      time_point_sec          launch_expiration_time;
 };
 
 typedef smt_token_object::id_type smt_token_id_type;
@@ -66,5 +67,6 @@ FC_REFLECT( steem::plugins::smt_test::smt_token_object,
    (generation_begin_time)
    (generation_end_time)
    (announced_launch_time)
+   (launch_expiration_time)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::smt_test::smt_token_object, steem::plugins::smt_test::smt_token_index )

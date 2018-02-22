@@ -227,6 +227,18 @@ asset_symbol_type database_fixture::name_to_asset_symbol( const std::string& nam
    return asset_symbol_type::from_asset_num( asset_num );
 }
 
+#ifdef STEEM_ENABLE_SMT
+asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
+{
+   // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
+   auto available_nais =  db->get_smt_next_identifier();
+   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
+   const asset_symbol_type& new_nai = available_nais[0];
+   // Note that token's precision is needed now, when creating actual symbol.
+   return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
+}
+#endif
+
 string database_fixture::generate_anon_acct_name()
 {
    // names of the form "anon-acct-x123" ; the "x" is necessary
@@ -599,7 +611,6 @@ void database_fixture::validate_database( void )
 
 template< typename T >
 asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
-
    uint8_t token_decimal_places )
 {
    smt_create_operation op;
@@ -612,12 +623,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
-      // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
-      auto available_nais =  this->db->get_smt_next_identifier();
-      FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
-      const asset_symbol_type& new_nai = available_nais[0];
-      // Note that token's precision is needed now, when creating actual symbol.
-      op.symbol = asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
+      op.symbol = this->get_new_smt_symbol( token_decimal_places, this->db );
       op.precision = op.symbol.decimals();
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = account_name;
@@ -642,9 +648,9 @@ void sub_set_create_op(smt_create_operation* op, account_name_type control_acoun
    op->control_account = control_acount;
 }
 
-void set_create_op(smt_create_operation* op, account_name_type control_account, std::string token_name, uint8_t token_decimal_places)
+void set_create_op(chain::database* db, smt_create_operation* op, account_name_type control_account, uint8_t token_decimal_places)
 {
-   op->symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
+   op->symbol = database_fixture::get_new_smt_symbol( token_decimal_places, db );
    sub_set_create_op(op, control_account);
 }
 
@@ -660,8 +666,6 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
    smt_create_operation op0;
    smt_create_operation op1;
    smt_create_operation op2;
-   std::string token_name(control_account_name);
-   token_name.resize(2);
 
    try
    {
@@ -671,9 +675,9 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
 
-      set_create_op(&op0, control_account_name, token_name + "0", 0);
-      set_create_op(&op1, control_account_name, token_name + "1", 1);
-      set_create_op(&op2, control_account_name, token_name + "2", 1);
+      set_create_op(this->db, &op0, control_account_name, 0);
+      set_create_op(this->db, &op1, control_account_name, 1);
+      set_create_op(this->db, &op2, control_account_name, 1);
 
       signed_transaction tx;
       tx.operations.push_back( op0 );
@@ -708,7 +712,7 @@ void t_smt_database_fixture< T >::create_invalid_smt( const char* control_accoun
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
-   STEEM_REQUIRE_THROW( set_create_op(&op_precision, control_account_name, "smt", STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
+   STEEM_REQUIRE_THROW( set_create_op(this->db, &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
 }
 
 template< typename T >

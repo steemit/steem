@@ -722,8 +722,8 @@ struct state
    map< string, discussion >                          content;
    map< string, extended_account >                    accounts;
 
-   map< string, database_api::api_witness_object >    witnesses;
-   database_api::api_witness_schedule_object          witness_schedule;
+   map< string, api_witness_object >                  witnesses;
+   api_witness_schedule_object                        witness_schedule;
    legacy_price                                       feed_price;
    string                                             error;
 };
@@ -851,7 +851,7 @@ DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
 DEFINE_API_ARGS( get_active_witnesses,                   vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_block_header,                       vector< variant >,   optional< block_header > )
-DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< block_api::api_signed_block_object > )
+DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< legacy_signed_block > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< api_operation_object > )
 DEFINE_API_ARGS( get_config,                             vector< variant >,   fc::variant_object )
 DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   extended_dynamic_global_properties )
