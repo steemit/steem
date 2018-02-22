@@ -9,6 +9,7 @@ list(APPEND CURRENT_TARGET_HEADERS
 
 list(APPEND CURRENT_TARGET_SOURCES
     plugin.cpp
+    runtime_bucket_object.cpp
     statistics_sender.cpp
 )
 
