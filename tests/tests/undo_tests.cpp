@@ -40,13 +40,13 @@ BOOST_AUTO_TEST_CASE( undo_basic )
 
       BOOST_TEST_MESSAGE( "--- No object added" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
 
-      BOOST_TEST_MESSAGE( "--- Adding 1 object" );
+      BOOST_TEST_MESSAGE( "--- 1 object( create )" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
 
       const account_object& obj0 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
       BOOST_REQUIRE( std::string( obj0.name ) == "name00" );
@@ -54,9 +54,9 @@ BOOST_AUTO_TEST_CASE( undo_basic )
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
 
-      BOOST_TEST_MESSAGE( "--- Adding 1 object and modify" );
+      BOOST_TEST_MESSAGE( "--- 1 object( create, modify )" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
 
       const account_object& obj1 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
       BOOST_REQUIRE( std::string( obj1.name ) == "name00" );
@@ -66,9 +66,9 @@ BOOST_AUTO_TEST_CASE( undo_basic )
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
 
-      BOOST_TEST_MESSAGE( "--- Adding 1 object and remove" );
+      BOOST_TEST_MESSAGE( "--- 1 object( create, remove )" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
 
       const account_object& obj3 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
       ao.remove( obj3 );
@@ -76,9 +76,43 @@ BOOST_AUTO_TEST_CASE( undo_basic )
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
 
-      BOOST_TEST_MESSAGE( "--- Adding 3 objects( create, create/modify, create/remove )" );
+      BOOST_TEST_MESSAGE( "--- 1 object( create, modify, remove )" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
+
+      const account_object& obj4 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+      ao.modify( obj4, [&]( account_object& obj ){ obj.proxy = "proxy00"; } );
+      ao.remove( obj4 );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 1 object( create, remove, create )" );
+      ao.remember_old_values< account_index >();
+      udb.undo_begin();
+
+      const account_object& obj5 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+      ao.remove( obj5 );
+      ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 1 object( create, modify, remove, create )" );
+      ao.remember_old_values< account_index >();
+      udb.undo_begin();
+
+      const account_object& obj6 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+      ao.modify( obj6, [&]( account_object& obj ){ obj.proxy = "proxy00"; } );
+      ao.remove( obj6 );
+      ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 3 objects( create, create/modify, create/remove )" );
+      ao.remember_old_values< account_index >();
+      udb.undo_begin();
 
       const account_object& obj_c = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
       BOOST_REQUIRE( std::string( obj_c.name ) == "name00" );
@@ -107,9 +141,9 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
       undo_db udb( *db );
       undo_scenario< account_object > ao( *db );
 
-      BOOST_TEST_MESSAGE( "--- Adding 1 object - twice with the same key" );
+      BOOST_TEST_MESSAGE( "--- 1 object - twice with the same key" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
 
       ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
       STEEM_REQUIRE_THROW( ao.create( [&]( account_object& obj ){ obj.name = "name00"; } ), fc::exception );
@@ -117,9 +151,9 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
 
-      BOOST_TEST_MESSAGE( "--- Adding 2 objects. Modifying 1 object - uniqueness of complex index is violated" );
+      BOOST_TEST_MESSAGE( "--- 2 objects. Modifying 1 object - uniqueness of complex index is violated" );
       ao.remember_old_values< account_index >();
-      udb.undo_start();
+      udb.undo_begin();
 
       uint32_t old_size = ao.size< account_index >();
 
@@ -131,7 +165,7 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
 
       /*
          Important!!!
-            Method 'generic_index::modify' works incorrectly - after contraint violation, element is removed(!!!).
+            Method 'generic_index::modify' works incorrectly - after 'contraint violation', element is removed.
          Solution:
             It's necessary to write fix, according to newly created issue.
       */
@@ -145,10 +179,195 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
 
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
+
+      BOOST_TEST_MESSAGE( "Version A - doesn't work without fix" );
+      BOOST_TEST_MESSAGE( "--- 2 objects. Object 'obj0' is created before 'undo' and has modified key in next step." );
+      BOOST_TEST_MESSAGE( "--- Object 'obj1' retrieves old key from object 'obj0'." );
+
+      const account_object& obj0 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+
+      ao.remember_old_values< account_index >();
+      udb.undo_begin();
+
+      old_size = ao.size< account_index >();
+
+      ao.modify( obj0, [&]( account_object& obj ){ obj.post_count = 1; } );
+      ao.modify( obj0, [&]( account_object& obj ){ obj.name = "name01"; } );
+
+      /*
+         Important!!!
+            The mechanism 'undo' works incorrectly, when a unique key is changed in object, but such object is saved in 'undo' earlier.
+            In next step another object gets identical key what first object had before.
+            In such situation, attempt of modification by 'undo', raises 'uniqueness constraint' violation.
+            Currently, simple solution used in whole project is adding unique key 'id' to save uniqueness.
+         Solution:
+            It's necessary to write another version of 'undo'.
+      */
+      //Temporary. After fix, this line should be enabled.
+      //ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+
+      //Temporary. After fix, this line should be removed.
+      ao.create( [&]( account_object& obj ){ obj.name = "nameXYZ"; } );
+
+      BOOST_REQUIRE( old_size + 1 == ao.size< account_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+
+      BOOST_TEST_MESSAGE( "Version B - work without fix, because key 'cashout_time' is combined with 'id' key." );
+      BOOST_TEST_MESSAGE( "--- 2 objects. Object 'obj0' is created before 'undo' and has modified key in next step." );
+      BOOST_TEST_MESSAGE( "--- Object 'obj1' retrieves old key from object 'obj0'." );
+
+      undo_scenario< comment_object > co( *db );
+      const comment_object& objc0 = co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 20 ); obj.author = "a1"; } );
+
+      co.remember_old_values< comment_index >();
+      udb.undo_begin();
+
+      old_size = co.size< comment_index >();
+
+      co.modify( objc0, [&]( comment_object& obj ){ obj.depth = 1; } );
+      co.modify( objc0, [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 21 ); } );
+      co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 20 ); obj.author = "a2"; } );
+
+      BOOST_REQUIRE( old_size + 1 == co.size< comment_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( co.check< comment_index >() );
    }
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( undo_different_indexes )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "--- Testing: undo_different_indexes" );
+
+      undo_db udb( *db );
+      undo_scenario< account_object > ao( *db );
+      undo_scenario< comment_object > co( *db );
+      undo_scenario< comment_content_object > cc( *db );
+
+      uint32_t old_size_ao;
+      uint32_t old_size_co;
+      uint32_t old_size_cc;
+
+      BOOST_TEST_MESSAGE( "--- 2 objects( different types )" );
+      ao.remember_old_values< account_index >();
+      co.remember_old_values< comment_index >();
+      old_size_ao = ao.size< account_index >();
+      old_size_co = co.size< comment_index >();
+      udb.undo_begin();
+
+      const account_object& obja0 = ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+      BOOST_REQUIRE( std::string( obja0.name ) == "name00" );
+      BOOST_REQUIRE( old_size_ao + 1 == ao.size< account_index >() );
+
+      const comment_object& objc0 = co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 11 ); } );
+      BOOST_REQUIRE( objc0.cashout_time.sec_since_epoch() == 11 );
+      BOOST_REQUIRE( old_size_co + 1 == co.size< comment_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+      BOOST_REQUIRE( co.check< comment_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 3 objects 'account_objects' + 2 objects 'comment_objects'." );
+      BOOST_TEST_MESSAGE( "--- 'account_objects' - ( obj A )create, ( obj B )create/modify, ( obj C )create/remove." );
+      BOOST_TEST_MESSAGE( "--- 'comment_objects' - ( obj A )create, ( obj B )create/remove." );
+      ao.remember_old_values< account_index >();
+      co.remember_old_values< comment_index >();
+      old_size_ao = ao.size< account_index >();
+      old_size_co = co.size< comment_index >();
+      udb.undo_begin();
+
+      ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
+      const account_object& obja1 = ao.create( [&]( account_object& obj ){ obj.name = "name01"; } );
+      const account_object& obja2 = ao.create( [&]( account_object& obj ){ obj.name = "name02"; } );
+      BOOST_REQUIRE( old_size_ao + 3 == ao.size< account_index >() );
+      ao.modify( obja1, [&]( account_object& obj ){ obj.proxy = "proxy01"; } );
+      ao.remove( obja2 );
+      BOOST_REQUIRE( old_size_ao + 2 == ao.size< account_index >() );
+
+      co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 11 ); obj.author = "a0"; } );
+      const comment_object& objc1 = co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 12 ); obj.author = "a1"; } );
+      co.modify( objc1, [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 13 ); } );
+      BOOST_REQUIRE( old_size_co + 2 == co.size< comment_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+      BOOST_REQUIRE( co.check< comment_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 3 objects: 'account_object' + 'comment_object' + 'comment_content_object'" );
+      BOOST_TEST_MESSAGE( "--- 'account_object' - ( obj A )create" );
+      BOOST_TEST_MESSAGE( "--- 'comment_object' - ( obj A )create/remove." );
+      BOOST_TEST_MESSAGE( "--- 'comment_content_object' - ( obj A )create/remove." );
+      ao.remember_old_values< account_index >();
+      co.remember_old_values< comment_index >();
+      cc.remember_old_values< comment_content_index >();
+      old_size_ao = ao.size< account_index >();
+      old_size_co = co.size< comment_index >();
+      old_size_cc = cc.size< comment_content_index >();
+      udb.undo_begin();
+
+      ao.create( [&]( account_object& obj ){ obj.name = "name01"; } );
+      const comment_object& objc2 = co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 12 ); obj.author = "a1"; } );
+      const comment_content_object& objcc1 = cc.create( [&]( comment_content_object& obj ){ obj.comment = 13; } );
+      BOOST_REQUIRE( old_size_ao + 1 == ao.size< account_index >() );
+      BOOST_REQUIRE( old_size_co + 1 == co.size< comment_index >() );
+      BOOST_REQUIRE( old_size_cc + 1 == cc.size< comment_content_index >() );
+
+      co.modify( objc2, [&]( comment_object& obj ){ obj.author = "a2"; } );
+      cc.remove( objcc1 );
+      BOOST_REQUIRE( old_size_ao + 1 == ao.size< account_index >() );
+      BOOST_REQUIRE( old_size_co + 1 == co.size< comment_index >() );
+      BOOST_REQUIRE( old_size_cc == cc.size< comment_content_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( ao.check< account_index >() );
+      BOOST_REQUIRE( co.check< comment_index >() );
+      BOOST_REQUIRE( cc.check< comment_content_index >() );
+
+      BOOST_TEST_MESSAGE( "--- 3 objects: 'account_object' + 'comment_object' + 'comment_content_object'" );
+      BOOST_TEST_MESSAGE( "--- Creating is before 'undo_start'." );
+      BOOST_TEST_MESSAGE( "--- 'account_object' - create/5*modify" );
+      BOOST_TEST_MESSAGE( "--- 'comment_object' - create/5*modify/remove" );
+      BOOST_TEST_MESSAGE( "--- 'comment_content_object' - create/remove" );
+
+      const comment_content_object& cc1 = cc.create( [&]( comment_content_object& obj ){ obj.comment = 0; } );
+      const comment_object& co1 = co.create( [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 12 ); obj.author = std::to_string(0); } );
+      const account_object& ao1 = ao.create( [&]( account_object& obj ){ obj.name = std::to_string(0); } );
+
+      ao.remember_old_values< account_index >();
+      co.remember_old_values< comment_index >();
+      cc.remember_old_values< comment_content_index >();
+      old_size_ao = ao.size< account_index >();
+      old_size_co = co.size< comment_index >();
+      old_size_cc = cc.size< comment_content_index >();
+      udb.undo_begin();
+
+      for( int32_t i=1; i<=5; ++i )
+      {
+         co.modify( co1, [&]( comment_object& obj ){ obj.cashout_time = time_point_sec( 12 ); obj.author = std::to_string(0); } );
+         ao.modify( ao1, [&]( account_object& obj ){ obj.name = std::to_string(0); } );
+
+         BOOST_REQUIRE( old_size_ao == ao.size< account_index >() );
+         BOOST_REQUIRE( old_size_co = co.size< comment_index >() );
+      }
+
+      cc.remove( cc1 );
+      BOOST_REQUIRE( old_size_cc - 1 == cc.size< comment_content_index >() );
+
+      udb.undo_end();
+      BOOST_REQUIRE( old_size_ao == ao.size< account_index >() );
+      BOOST_REQUIRE( old_size_co == co.size< comment_index >() );
+      BOOST_REQUIRE( old_size_cc == cc.size< comment_content_index >() );
+      BOOST_REQUIRE( ao.check< account_index >() );
+      BOOST_REQUIRE( co.check< comment_index >() );
+      BOOST_REQUIRE( cc.check< comment_content_index >() );
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

@@ -94,12 +94,8 @@ namespace steem { namespace chain {
             const auto& idx = db.get_index< Index >().indices().get< by_id >();
             auto it = idx.begin();
 
-            int32_t cnt = 0;
             while( it != idx.end() )
-            {
                old_values.emplace_back( *( it++ ) );
-               ++cnt;
-            }
          }
 
          template< typename Index >
@@ -151,22 +147,6 @@ namespace steem { namespace chain {
          database::session* session = nullptr;
          chain::database& db;
 
-         void undo_session()
-         {
-            try
-            {
-               if( session )
-                  session->undo();
-
-               if( session )
-               {
-                  delete session;
-                  session = nullptr;
-               }
-            }
-            FC_LOG_AND_RETHROW()
-         }
-
       protected:
       public:
       
@@ -174,7 +154,7 @@ namespace steem { namespace chain {
          {
          }
 
-         void undo_start()
+         void undo_begin()
          {
             if( session )
             {
