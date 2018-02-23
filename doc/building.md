@@ -179,8 +179,9 @@ Install Homebrew by following the instructions here: http://brew.sh/
         boost160 \
         libtool \
         openssl \
-        python3 \
-        python3-jinja2
+        python3 
+
+    pip3 install jinja2
 
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
 steem. Until then, this will allow you to install boost 1.60.0.
