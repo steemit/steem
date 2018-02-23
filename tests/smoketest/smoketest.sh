@@ -5,83 +5,97 @@ JOBS=1
 API_TEST_PATH=../../python_scripts/tests/api_tests
 BLOCK_SUBPATH=blockchain/block_log
 STEEMD_CONFIG=config.ini
-TEST_ADDRESS=127.0.0.1
+NODE_ADDRESS=127.0.0.1
 TEST_PORT=8090
-TEST_NODE=$TEST_ADDRESS:$TEST_PORT
+REF_PORT=8091
+TEST_NODE=$NODE_ADDRESS:$TEST_PORT
+REF_NODE=$NODE_ADDRESS:$REF_PORT
 TEST_NODE_OPT=--webserver-http-endpoint=$TEST_NODE
+REF_NODE_OPT=--webserver-http-endpoint=$REF_NODE
 
 function echo(){ builtin echo $(basename $0 .sh): "$@"; }
 pushd () { command pushd "$@" > /dev/null; }
 popd () { command popd "$@" > /dev/null; }
 
 function print_help_and_quit {
-   echo "Usage: path_to_tested_steemd path_to_blockchain_directory number_of_blocks_to_replay reference_node_address"
-   echo "Example: ~/steemit/steem/build/Release/programs/steemd/steemd ~/steemit/steem/work 5000000 https://steemd.steemit.com"
+   echo "Usage: path_to_tested_steemd path_to_reference_steemd path_to_test_blockchain_directory path_to_reference_blockchain_directory number_of_blocks_to_replay"
+   echo "Example: ~/work/steemit/steem/build/Release/programs/steemd/steemd ~/master/steemit/steem/build/Release/programs/steemd/steemd ~/steemit/steem/work1 ~/steemit/steem/work2 5000000"
    exit $EXIT_CODE
+}
+
+function check_steemd_path {
+   echo Checking $1...
+   if [ -x "$1" ] && file "$1" | grep -q "executable"
+   then
+      echo OK: $1 is executable file.
+   else
+      echo FATAL: $1 is not executable file or found! && exit -1
+   fi
+}
+
+function check_work_path {
+   echo Checking $1...
+   if [ -e "$1" ] && [ -e "$1/$BLOCK_SUBPATH" ]
+   then
+      echo OK: $1/$BLOCK_SUBPATH found.
+   else
+      echo FATAL: $1 not found or $BLOCK_SUBPATH not found in $1! && exit -1
+   fi
+}
+
+function run_replay {
+   echo Running $1 replay of $BLOCK_LIMIT blocks
+   $2 --replay --stop-replay-at-block $BLOCK_LIMIT -d $3
+   [ $? -ne 0 ] && echo FATAL: steemd failed to replay $BLOCK_LIMIT blocks. && exit -1
+}
+
+function copy_config {
+   echo Copying ./$STEEMD_CONFIG over $1/$STEEMD_CONFIG
+   cp ./$STEEMD_CONFIG $1/$STEEMD_CONFIG
+   [ $? -ne 0 ] && echo FATAL: Failed to copy ./$STEEMD_CONFIG over $1/$STEEMD_CONFIG file. && exit -1
 }
 
 function run_test_group {
    echo Running test group $1
    pushd $1
 
-   echo Copying ./$STEEMD_CONFIG over $WORK_PATH/$STEEMD_CONFIG
-   cp ./$STEEMD_CONFIG $WORK_PATH/$STEEMD_CONFIG
-   [ $? -ne 0 ] && echo FATAL: Failed to copy ./$STEEMD_CONFIG over $WORK_PATH/$STEEMD_CONFIG file. && exit -1
+   copy_config $TEST_WORK_PATH
+   copy_config $REF_WORK_PATH
 
-   echo Running replay of $BLOCK_LIMIT blocks
-   $STEEMD_PATH --replay --stop-replay-at-block $BLOCK_LIMIT -d $WORK_PATH
-   [ $? -ne 0 ] && echo FATAL: steemd failed to replay $BLOCK_LIMIT blocks. && exit -1
+   run_replay "test instance" $STEEMD_PATH $TEST_WORK_PATH
+   run_replay "reference instance" $REF_STEEMD_PATH $REF_WORK_PATH
 
-   echo Running steemd to listen
-   $STEEMD_PATH $TEST_NODE_OPT -d $WORK_PATH & STEEMD_PID=$!
-   #echo $TEST_ADDRESS $TEST_PORT 
-   REF_ADDRESS=$(echo $REF_NODE | cut -d ":" -f3 | cut -c 3-)
-   REF_PORT=$(echo $REF_NODE | grep -o ':[0-9]\{1,\}' | cut -c 2-)
-   #echo REF_ADDRESS=$REF_ADDRESS REF_PORT=$REF_PORT
+   echo Running tested steemd to listen
+   $STEEMD_PATH $TEST_NODE_OPT -d $TEST_WORK_PATH & TEST_STEEMD_PID=$!
+   echo Running reference steemd to listen
+   $REF_STEEMD_PATH $REF_NODE_OPT -d $REF_WORK_PATH & REF_STEEMD_PID=$!
 
-   echo Running ./test_group.sh $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $BLOCK_LIMIT
-   ./test_group.sh $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $BLOCK_LIMIT
+   echo Running ./test_group.sh $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
+   ./test_group.sh $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
    [ $? -ne 0 ] && echo test group $1 FAILED && EXIT_CODE=-1
 
-   kill -s SIGINT $STEEMD_PID
+   kill -s SIGINT $TEST_STEEMD_PID
+   kill -s SIGINT $REF_STEEMD_PID
    wait
    popd
 }
 
-if [ $# -ne 4 ]
+if [ $# -ne 5 ]
 then
    print_help_and_quit
 fi
 
 STEEMD_PATH=$1
-WORK_PATH=$2
-BLOCK_LIMIT=$3
-REF_NODE=$4
+REF_STEEMD_PATH=$2
+TEST_WORK_PATH=$3
+REF_WORK_PATH=$4
+BLOCK_LIMIT=$5
 
-echo Checking $STEEMD_PATH...
-if [ -x "$STEEMD_PATH" ] && file "$STEEMD_PATH" | grep -q "executable"
-then
-    echo $STEEMD_PATH is executable file.
-else
-    echo FATAL: $STEEMD_PATH is not executable file or found! && exit -1
-fi
+check_steemd_path $STEEMD_PATH
+check_steemd_path $REF_STEEMD_PATH
 
-echo Checking $WORK_PATH...
-if [ -e "$WORK_PATH" ] && [ -e "$WORK_PATH/$BLOCK_SUBPATH" ]
-then
-    echo $WORK_PATH/$BLOCK_SUBPATH found.
-else
-    echo FATAL: $WORK_PATH not found or $BLOCK_SUBPATH not found in $WORK_PATH! && exit -1
-fi
-
-: 'echo Checking $REF_NODE...
-pyresttest $REF_NODE $API_TEST_PATH/basic_smoketest.yaml
-if [ $? -eq 0 ]
-then
-   echo steemd is running at $REF_NODE.
-else
-    echo FATAL: steemd not running at $REF_NODE? && exit -1
-fi'
+check_work_path $TEST_WORK_PATH
+check_work_path $REF_WORK_PATH
 
 for dir in ./*/
 do
