@@ -369,5 +369,109 @@ BOOST_AUTO_TEST_CASE( undo_different_indexes )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( undo_generate_blocks )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "--- Testing: undo_generate_blocks" );
+
+      ACTORS( (alice)(bob)(chuck)(dan) )
+
+      struct _data
+      {
+         std::string author;
+         std::string permlink;
+         std::string parent_author;
+         std::string parent_permlink;
+         std::string title;
+         std::string body;;
+
+         _data( std::string a, std::string pl, std::string pa, std::string ppl, std::string t, std::string b )
+         : author( a ), permlink( pl ), parent_author( pa ), parent_permlink( ppl ), title( t ), body( b ){}
+
+         void fill( comment_operation& com )
+         {
+            com.author = author;
+            com.permlink = permlink;
+            com.parent_author = parent_author;
+            com.parent_permlink = parent_permlink;
+            com.title = title;
+            com.body = body;
+         }
+      };
+      _data data[4]=
+      {
+        _data( "bob", "post4", std::string(STEEM_ROOT_POST_PARENT), "pl4", "t4", "b4" ),
+        _data( "alice", "post", std::string(STEEM_ROOT_POST_PARENT), "pl", "t", "b" ),
+        _data( "dan", "post2", "bob", "post4", "t2", "b2" ),
+        _data( "chuck", "post3", "bob", "post4", "t3", "b3" )
+      };
+
+      comment_operation op;
+
+      undo_db udb( *db );
+      undo_scenario< comment_object > co( *db );
+
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- 1 objects: 'comment_object' without undo" );
+      data[0].fill( op );
+      tx.operations.push_back( op );
+
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      generate_blocks( 1 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      generate_blocks( 1 );
+
+      co.remember_old_values< comment_index >();
+
+      uint32_t old_size_co = co.size< comment_index >();
+
+      BOOST_TEST_MESSAGE( "--- 1 objects: 'comment_object' + undo" );
+      data[1].fill( op );
+      tx.operations.push_back( op );
+
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+
+      db->push_transaction( tx, 0 );
+      generate_blocks( 1 );
+      db->pop_block();
+
+      uint32_t s = co.size< comment_index >();
+      assert( old_size_co == s );
+      BOOST_REQUIRE( co.check< comment_index >() );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      generate_blocks( 1 );
+
+      BOOST_TEST_MESSAGE( "--- 2 objects: 'comment_object' + undo" );
+      data[2].fill( op );
+      tx.operations.push_back( op );
+      data[3].fill( op );
+      tx.operations.push_back( op );
+
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( dan_private_key, db->get_chain_id() );
+      tx.sign( chuck_private_key, db->get_chain_id() );
+
+      db->push_transaction( tx, 0 );
+      generate_blocks( 1 );
+      db->pop_block();
+
+      s = co.size< comment_index >();
+      assert( old_size_co == s );
+      BOOST_REQUIRE( co.check< comment_index >() );
+      tx.operations.clear();
+      tx.signatures.clear();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
