@@ -132,6 +132,11 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #define ASSET(s) \
    asset::from_string( s )
 
+
+#ifndef STEEMIT_INIT_PRIVATE_KEY
+#  define STEEMIT_INIT_PRIVATE_KEY (fc::ecc::private_key::regenerate(fc::sha256::hash(BLOCKCHAIN_NAME)))
+#endif
+
 namespace golos {
     namespace chain {
 

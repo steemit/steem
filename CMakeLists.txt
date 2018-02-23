@@ -217,11 +217,7 @@ add_subdirectory(thirdparty)
 add_subdirectory(libraries)
 add_subdirectory(plugins)
 add_subdirectory(programs)
-
-string( TOUPPER "${CMAKE_BUILD_TYPE}" TESTS_BUILD_TYPE )
-if( TESTS_BUILD_TYPE STREQUAL "DEBUG" )
-    add_subdirectory(tests)
-endif()
+add_subdirectory(tests)
 
 if(ENABLE_INSTALLER)
 
