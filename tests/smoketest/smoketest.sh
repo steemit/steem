@@ -1,14 +1,18 @@
 #!/bin/bash
 
 EXIT_CODE=0
+JOBS=1
 API_TEST_PATH=../../python_scripts/tests/api_tests
 BLOCK_SUBPATH=blockchain/block_log
+STEEMD_CONFIG=config.ini
 TEST_ADDRESS=127.0.0.1
 TEST_PORT=8090
 TEST_NODE=$TEST_ADDRESS:$TEST_PORT
 TEST_NODE_OPT=--webserver-http-endpoint=$TEST_NODE
 
 function echo(){ builtin echo $(basename $0 .sh): "$@"; }
+pushd () { command pushd "$@" > /dev/null; }
+popd () { command popd "$@" > /dev/null; }
 
 function print_help_and_quit {
    echo "Usage: path_to_tested_steemd path_to_blockchain_directory number_of_blocks_to_replay reference_node_address"
@@ -17,9 +21,12 @@ function print_help_and_quit {
 }
 
 function run_test_group {
-   echo Copying ./$1/config.ini over $WORK_PATH/config.ini
-   cp ./$1/config.ini $WORK_PATH/config.ini
-   [ $? -ne 0 ] && echo FATAL: Failed to copy ./$1/config.ini over $WORK_PATH/config.ini file. && exit -1
+   echo Running test group $1
+   pushd $1
+
+   echo Copying ./$STEEMD_CONFIG over $WORK_PATH/$STEEMD_CONFIG
+   cp ./$STEEMD_CONFIG $WORK_PATH/$STEEMD_CONFIG
+   [ $? -ne 0 ] && echo FATAL: Failed to copy ./$STEEMD_CONFIG over $WORK_PATH/$STEEMD_CONFIG file. && exit -1
 
    echo Running replay of $BLOCK_LIMIT blocks
    $STEEMD_PATH --replay --stop-replay-at-block $BLOCK_LIMIT -d $WORK_PATH
@@ -27,20 +34,18 @@ function run_test_group {
 
    echo Running steemd to listen
    $STEEMD_PATH $TEST_NODE_OPT -d $WORK_PATH & STEEMD_PID=$!
-   echo Running $1 test group
-   echo $TEST_ADDRESS $TEST_PORT 
+   #echo $TEST_ADDRESS $TEST_PORT 
    REF_ADDRESS=$(echo $REF_NODE | cut -d ":" -f3 | cut -c 3-)
    REF_PORT=$(echo $REF_NODE | grep -o ':[0-9]\{1,\}' | cut -c 2-)
-   echo REF_ADDRESS=$REF_ADDRESS REF_PORT=$REF_PORT
+   #echo REF_ADDRESS=$REF_ADDRESS REF_PORT=$REF_PORT
 
-   pushd ./$1
-   echo Running ./test.sh 1 $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
-   ./test.sh 1 $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
+   echo Running ./test_group.sh $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $BLOCK_LIMIT
+   ./test_group.sh $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $BLOCK_LIMIT
    [ $? -ne 0 ] && echo test group $1 FAILED && EXIT_CODE=-1
-   popd
 
    kill -s SIGINT $STEEMD_PID
    wait
+   popd
 }
 
 if [ $# -ne 4 ]
@@ -78,7 +83,10 @@ else
     echo FATAL: steemd not running at $REF_NODE? && exit -1
 fi'
 
-run_test_group "account_history" ./logs
-run_test_group "get_ops_in_block" $BLOCK_LIMIT
+for dir in ./*/
+do
+    dir=${dir%*/}
+    run_test_group ${dir##*/}
+done
 
 exit $EXIT_CODE
