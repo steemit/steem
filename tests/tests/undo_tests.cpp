@@ -442,8 +442,7 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
       generate_blocks( 1 );
       db->pop_block();
 
-      uint32_t s = co.size< comment_index >();
-      assert( old_size_co == s );
+      BOOST_REQUIRE( old_size_co == co.size< comment_index >() );
       BOOST_REQUIRE( co.check< comment_index >() );
       tx.operations.clear();
       tx.signatures.clear();
@@ -464,8 +463,7 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
       generate_blocks( 1 );
       db->pop_block();
 
-      s = co.size< comment_index >();
-      assert( old_size_co == s );
+      BOOST_REQUIRE( old_size_co == co.size< comment_index >() );
       BOOST_REQUIRE( co.check< comment_index >() );
       tx.operations.clear();
       tx.signatures.clear();
