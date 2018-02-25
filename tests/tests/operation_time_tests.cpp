@@ -851,13 +851,10 @@ BOOST_AUTO_TEST_CASE( nested_comments )
             asset original_vesting = vesting_shares;
             asset withdraw_rate = new_alice.vesting_withdraw_rate;
 
-            return; // FIXME: broken test
             BOOST_TEST_MESSAGE("Generating block up to first withdrawal");
-            generate_blocks(
-                    next_withdrawal - (STEEMIT_BLOCK_INTERVAL / 2), true);
+            generate_blocks(next_withdrawal - (STEEMIT_BLOCK_INTERVAL / 2), true);
 
-            BOOST_REQUIRE(db->get_account("alice").vesting_shares.amount.value ==
-                          vesting_shares.amount.value);
+            BOOST_REQUIRE(db->get_account("alice").vesting_shares.amount.value == vesting_shares.amount.value);
 
             BOOST_TEST_MESSAGE("Generating block to cause withdrawal");
             generate_block();
@@ -2391,16 +2388,12 @@ BOOST_AUTO_TEST_CASE( nested_comments )
             auto bandwidth = db->get<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple("alice", bandwidth_type::post)).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(
-                    db->get_comment("alice", string("test1")).reward_weight ==
-                    STEEMIT_100_PERCENT);
+            BOOST_REQUIRE(db->get_comment("alice", string("test1")).reward_weight == STEEMIT_100_PERCENT);
 
             tx.operations.clear();
             tx.signatures.clear();
 
-            generate_blocks(
-                    db->head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL +
-                    fc::seconds(STEEMIT_BLOCK_INTERVAL), true);
+            generate_blocks(db->head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds(STEEMIT_BLOCK_INTERVAL), true);
 
             op.permlink = "test2";
 
@@ -2688,7 +2681,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
 
 // This test is too intensive without optimizations. Disable it when we build in debug
 #ifndef DEBUG
-                                                                                                                            BOOST_AUTO_TEST_CASE( sbd_stability )
+BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
    {
@@ -2883,7 +2876,6 @@ BOOST_AUTO_TEST_CASE( nested_comments )
     }
 
     BOOST_AUTO_TEST_CASE(clear_null_account) {
-        return; // FIXME: broken test
         try {
             BOOST_TEST_MESSAGE("Testing clearing the null account's balances on block");
 
@@ -2926,49 +2918,30 @@ BOOST_AUTO_TEST_CASE( nested_comments )
             tx.operations.push_back(vest);
             tx.operations.push_back(save1);
             tx.operations.push_back(save2);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
             validate_database();
 
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).balance ==
-                          ASSET("1.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).sbd_balance ==
-                          ASSET("2.000 GBG"));
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).vesting_shares >
-                          ASSET("0.000000 GESTS"));
-            BOOST_REQUIRE(
-                    db->get_account(STEEMIT_NULL_ACCOUNT).savings_balance ==
-                    ASSET("4.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account(STEEMIT_NULL_ACCOUNT).savings_sbd_balance ==
-                    ASSET("5.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("2.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("3.000 GBG"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).balance == ASSET("1.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).sbd_balance == ASSET("2.000 GBG"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).vesting_shares > ASSET("0.000000 GESTS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).savings_balance == ASSET("4.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).savings_sbd_balance == ASSET("5.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("2.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("3.000 GBG"));
 
             BOOST_TEST_MESSAGE("--- Generating block to clear balances");
             generate_block();
             validate_database();
 
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).balance ==
-                          ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).sbd_balance ==
-                          ASSET("0.000 GBG"));
-            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).vesting_shares ==
-                          ASSET("0.000000 GESTS"));
-            BOOST_REQUIRE(
-                    db->get_account(STEEMIT_NULL_ACCOUNT).savings_balance ==
-                    ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account(STEEMIT_NULL_ACCOUNT).savings_sbd_balance ==
-                    ASSET("0.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("2.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("3.000 GBG"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).vesting_shares == ASSET("0.000000 GESTS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).savings_balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account(STEEMIT_NULL_ACCOUNT).savings_sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("2.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("3.000 GBG"));
         }
         FC_LOG_AND_RETHROW()
     }

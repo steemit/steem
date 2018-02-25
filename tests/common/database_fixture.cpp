@@ -230,7 +230,7 @@ namespace golos {
 
         void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks) {
             msg_pack msg;
-            msg.args = std::vector<fc::variant>({fc::variant(debug_key), fc::variant(timestamp), fc::variant(miss_intermediate_blocks)});
+            msg.args = std::vector<fc::variant>({fc::variant(debug_key), fc::variant(timestamp), fc::variant(miss_intermediate_blocks), fc::variant(default_skip)});
             db_plugin->debug_generate_blocks_until(msg);
             BOOST_REQUIRE((db->head_block_time() - timestamp).to_seconds() <
                           STEEMIT_BLOCK_INTERVAL);
