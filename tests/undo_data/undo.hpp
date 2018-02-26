@@ -10,6 +10,11 @@ namespace steem { namespace chain {
       enum op_type { create, modify, remove };
    };
 
+   /*
+      The class 'undo_scenario' simplifies writing tests from 'undo_tests' group.
+      a) There are implemented wrappers for 3 methods: database::create, database::modify, database::remove.
+      b) Methods 'remember_old_values' and 'check' help to compare state before and after running 'undo' mechanism.
+   */
    template< typename Object >
    class undo_scenario
    {
@@ -19,12 +24,14 @@ namespace steem { namespace chain {
 
          std::list< Object > old_values;
 
+         //Calls proper method( create, modify, remove ) for given database object.
          template< typename CALL >
          const Object* run_impl( const Object* old_obj, u_types::op_type op, CALL call )
          {
             switch( op )
             {
                case u_types::create:
+                  assert( !old_obj );
                   return &db.create< Object >( call );
                break;
 
@@ -56,6 +63,7 @@ namespace steem { namespace chain {
 
          virtual ~undo_scenario(){}
         
+         //Proxy method for `database::create`.
          template< typename CALL >
          const Object& create( CALL call )
          {
@@ -66,6 +74,7 @@ namespace steem { namespace chain {
             FC_LOG_AND_RETHROW()
          }
 
+         //Proxy method for `database::modify`.
          template< typename CALL >
          const Object& modify( const Object& old_obj, CALL call )
          {
@@ -76,6 +85,7 @@ namespace steem { namespace chain {
             FC_LOG_AND_RETHROW()
          }
 
+         //Proxy method for `database::remove`.
          const void remove( const Object& old_obj )
          {
             try
@@ -86,6 +96,8 @@ namespace steem { namespace chain {
             FC_LOG_AND_RETHROW()
          }
 
+         //Save old objects before launching 'undo' mechanism.
+         //The objects are always sorted using 'by_id' index.
          template< typename Index >
          void remember_old_values()
          {
@@ -98,6 +110,7 @@ namespace steem { namespace chain {
                old_values.emplace_back( *( it++ ) );
          }
 
+         //Get size of given index.
          template< typename Index >
          uint32_t size()
          {
@@ -105,6 +118,8 @@ namespace steem { namespace chain {
             return idx.size();
          }
 
+         //Reads current objects( for given index ) and compares with objects which has been saved before.
+         //The comparision is according to 'id' field.
          template< typename Index >
          bool check()
          {
@@ -140,6 +155,11 @@ namespace steem { namespace chain {
 
    };
 
+   /*
+      The class 'undo_scenario' simplifies writing tests from 'undo_tests' group.
+      A method 'undo_begin' allow to enable 'undo' mechanism artificially.
+      A method 'undo_end' allow to revert all changes.
+   */
    class undo_db
    {
       private:
@@ -154,6 +174,7 @@ namespace steem { namespace chain {
          {
          }
 
+         //Enable 'undo' mechanism.
          void undo_begin()
          {
             if( session )
@@ -165,6 +186,7 @@ namespace steem { namespace chain {
             session = new database::session( db.start_undo_session( true ) );
          }
 
+         //Revert all changes.
          void undo_end()
          {
             if( session )

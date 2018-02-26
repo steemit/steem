@@ -407,6 +407,8 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
         _data( "chuck", "post3", "bob", "post4", "t3", "b3" )
       };
 
+      generate_blocks( 1 );
+
       comment_operation op;
 
       undo_db udb( *db );
