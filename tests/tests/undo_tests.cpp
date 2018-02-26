@@ -132,6 +132,46 @@ BOOST_AUTO_TEST_CASE( undo_basic )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( undo_object_disapear )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "--- Testing: undo_key_collision" );
+
+      undo_db udb( *db );
+      undo_scenario< account_object > ao( *db );
+
+      uint32_t old_size = ao.size< account_index >();
+
+      ao.create( [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } );
+      BOOST_REQUIRE( old_size + 1 == ao.size< account_index >() );
+
+      const account_object& obj1 = ao.create( [&]( account_object& obj ){ obj.name = "name01"; obj.proxy = "proxy01"; } );
+      BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
+
+      ao.remember_old_values< account_index >();
+      udb.undo_begin();
+
+      /*
+         Important!!!
+            Method 'generic_index::modify' works incorrectly - after 'contraint violation', element is removed.
+         Solution:
+            It's necessary to write fix, according to issue #2154.
+      */
+      //Temporary. After fix, this line should be enabled.
+      STEEM_REQUIRE_THROW( ao.modify( obj1, [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } ), boost::exception );
+      
+      //Temporary. After fix, this line should be removed.
+      //ao.modify( obj1, [&]( account_object& obj ){ obj.name = "nameXYZ"; obj.proxy = "proxyXYZ"; } );
+
+      udb.undo_end();
+      //BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
+
+      //BOOST_REQUIRE( ao.check< account_index >() );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( undo_key_collision )
 {
    try
@@ -153,32 +193,6 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
 
       BOOST_TEST_MESSAGE( "--- 2 objects. Modifying 1 object - uniqueness of complex index is violated" );
       ao.remember_old_values< account_index >();
-      udb.undo_begin();
-
-      uint32_t old_size = ao.size< account_index >();
-
-      ao.create( [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } );
-      BOOST_REQUIRE( old_size + 1 == ao.size< account_index >() );
-
-      const account_object& obj1 = ao.create( [&]( account_object& obj ){ obj.name = "name01"; obj.proxy = "proxy01"; } );
-      BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
-
-      /*
-         Important!!!
-            Method 'generic_index::modify' works incorrectly - after 'contraint violation', element is removed.
-         Solution:
-            It's necessary to write fix, according to newly created issue.
-      */
-      //Temporary. After fix, this line should be enabled.
-      //STEEM_REQUIRE_THROW( ao.modify( obj1, [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } ), fc::exception );
-      
-      //Temporary. After fix, this line should be removed.
-      ao.modify( obj1, [&]( account_object& obj ){ obj.name = "nameXYZ"; obj.proxy = "proxyXYZ"; } );
-
-      BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
-
-      udb.undo_end();
-      BOOST_REQUIRE( ao.check< account_index >() );
 
       BOOST_TEST_MESSAGE( "Version A - doesn't work without fix" );
       BOOST_TEST_MESSAGE( "--- 2 objects. Object 'obj0' is created before 'undo' and has modified key in next step." );
@@ -189,7 +203,7 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
       ao.remember_old_values< account_index >();
       udb.undo_begin();
 
-      old_size = ao.size< account_index >();
+      uint32_t old_size = ao.size< account_index >();
 
       ao.modify( obj0, [&]( account_object& obj ){ obj.post_count = 1; } );
       ao.modify( obj0, [&]( account_object& obj ){ obj.name = "name01"; } );
@@ -201,7 +215,7 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
             In such situation, attempt of modification by 'undo', raises 'uniqueness constraint' violation.
             Currently, simple solution used in whole project is adding unique key 'id' to save uniqueness.
          Solution:
-            It's necessary to write another version of 'undo'.
+            Is necessary to write another version of 'undo'?
       */
       //Temporary. After fix, this line should be enabled.
       //ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );

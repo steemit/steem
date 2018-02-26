@@ -67,33 +67,21 @@ namespace steem { namespace chain {
          template< typename CALL >
          const Object& create( CALL call )
          {
-            try
-            {
-               return *run_impl( nullptr, u_types::create, call );
-            }
-            FC_LOG_AND_RETHROW()
+            return *run_impl( nullptr, u_types::create, call );
          }
 
          //Proxy method for `database::modify`.
          template< typename CALL >
          const Object& modify( const Object& old_obj, CALL call )
          {
-            try
-            {
-               return *run_impl( &old_obj, u_types::modify, call );
-            }
-            FC_LOG_AND_RETHROW()
+            return *run_impl( &old_obj, u_types::modify, call );
          }
 
          //Proxy method for `database::remove`.
          const void remove( const Object& old_obj )
          {
-            try
-            {
-               static std::function< void( Object& ) > empty;
-               run_impl( &old_obj, u_types::remove, empty );
-            }
-            FC_LOG_AND_RETHROW()
+            static std::function< void( Object& ) > empty;
+            run_impl( &old_obj, u_types::remove, empty );
          }
 
          //Save old objects before launching 'undo' mechanism.
