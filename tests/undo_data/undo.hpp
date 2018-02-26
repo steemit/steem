@@ -118,7 +118,7 @@ namespace steem { namespace chain {
             return idx.size();
          }
 
-         //Reads current objects( for given index ) and compares with objects which has been saved before.
+         //Reads current objects( for given index ) and compares with objects which have been saved before.
          //The comparision is according to 'id' field.
          template< typename Index >
          bool check()
@@ -157,8 +157,8 @@ namespace steem { namespace chain {
 
    /*
       The class 'undo_scenario' simplifies writing tests from 'undo_tests' group.
-      A method 'undo_begin' allow to enable 'undo' mechanism artificially.
-      A method 'undo_end' allow to revert all changes.
+      A method 'undo_begin' allows to enable 'undo' mechanism artificially.
+      A method 'undo_end' allows to revert all changes.
    */
    class undo_db
    {
