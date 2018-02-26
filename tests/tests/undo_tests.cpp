@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( undo_object_disapear )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "--- Testing: undo_key_collision" );
+      BOOST_TEST_MESSAGE( "--- 2 objects. Modifying 1 object - uniqueness of complex index is violated" );
 
       undo_db udb( *db );
       undo_scenario< account_object > ao( *db );
@@ -159,15 +159,15 @@ BOOST_AUTO_TEST_CASE( undo_object_disapear )
             It's necessary to write fix, according to issue #2154.
       */
       //Temporary. After fix, this line should be enabled.
-      STEEM_REQUIRE_THROW( ao.modify( obj1, [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } ), boost::exception );
+      //STEEM_REQUIRE_THROW( ao.modify( obj1, [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } ), boost::exception );
       
       //Temporary. After fix, this line should be removed.
-      //ao.modify( obj1, [&]( account_object& obj ){ obj.name = "nameXYZ"; obj.proxy = "proxyXYZ"; } );
+      ao.modify( obj1, [&]( account_object& obj ){ obj.name = "nameXYZ"; obj.proxy = "proxyXYZ"; } );
 
       udb.undo_end();
-      //BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
+      BOOST_REQUIRE( old_size + 2 == ao.size< account_index >() );
 
-      //BOOST_REQUIRE( ao.check< account_index >() );
+      BOOST_REQUIRE( ao.check< account_index >() );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -186,13 +186,10 @@ BOOST_AUTO_TEST_CASE( undo_key_collision )
       udb.undo_begin();
 
       ao.create( [&]( account_object& obj ){ obj.name = "name00"; } );
-      STEEM_REQUIRE_THROW( ao.create( [&]( account_object& obj ){ obj.name = "name00"; } ), fc::exception );
+      STEEM_REQUIRE_THROW( ao.create( [&]( account_object& obj ){ obj.name = "name00"; } ), boost::exception );
 
       udb.undo_end();
       BOOST_REQUIRE( ao.check< account_index >() );
-
-      BOOST_TEST_MESSAGE( "--- 2 objects. Modifying 1 object - uniqueness of complex index is violated" );
-      ao.remember_old_values< account_index >();
 
       BOOST_TEST_MESSAGE( "Version A - doesn't work without fix" );
       BOOST_TEST_MESSAGE( "--- 2 objects. Object 'obj0' is created before 'undo' and has modified key in next step." );
