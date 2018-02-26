@@ -941,8 +941,7 @@ namespace golos {
 
             // TODO:  Move this to _push_block() so session is restored.
             if (!(skip & skip_block_size_check)) {
-                FC_ASSERT(fc::raw::pack_size(pending_block) <=
-                          STEEMIT_MAX_BLOCK_SIZE);
+                FC_ASSERT(fc::raw::pack_size(pending_block) <= STEEMIT_MAX_BLOCK_SIZE);
             }
 
             push_block(pending_block, skip);
@@ -1042,8 +1041,7 @@ namespace golos {
                 return genesis_time + slot_num * interval;
             }
 
-            int64_t head_block_abs_slot =
-                    head_block_time().sec_since_epoch() / interval;
+            int64_t head_block_abs_slot = head_block_time().sec_since_epoch() / interval;
             fc::time_point_sec head_slot_time(head_block_abs_slot * interval);
 
             // "slot 0" is head_slot_time
@@ -1109,18 +1107,18 @@ namespace golos {
                 const auto &cprops = get_dynamic_global_properties();
 
                 /**
-       *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
-       *  change as the result of the user adding funds
-       *
-       *  V / C  = (V+Vn) / (C+Cn)
-       *
-       *  Simplifies to Vn = (V * Cn ) / C
-       *
-       *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
-       *  the user should receive.
-       *
-       *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
-       */
+                 *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
+                 *  change as the result of the user adding funds
+                 *
+                 *  V / C  = (V+Vn) / (C+Cn)
+                 *
+                 *  Simplifies to Vn = (V * Cn ) / C
+                 *
+                 *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
+                 *  the user should receive.
+                 *
+                 *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
+                 */
                 asset new_vesting = steem * cprops.get_vesting_share_price();
 
                 modify(to_account, [&](account_object &to) {
@@ -3143,11 +3141,11 @@ namespace golos {
 
                 for (const auto &trx : next_block.transactions) {
                     /* We do not need to push the undo state for each transaction
-       * because they either all apply and are valid or the
-       * entire block fails to apply.  We only need an "undo" state
-       * for transactions when validating broadcast transactions or
-       * when building a block.
-       */
+                     * because they either all apply and are valid or the
+                     * entire block fails to apply.  We only need an "undo" state
+                     * for transactions when validating broadcast transactions or
+                     * when building a block.
+                     */
                     apply_transaction(trx, skip);
                     ++_current_trx_in_block;
                 }

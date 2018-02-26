@@ -4253,8 +4253,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             signed_transaction tx;
             tx.operations.push_back(et_op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
             tx.operations.clear();
@@ -4300,8 +4299,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             auto &escrow = db->get_escrow(op.from, op.escrow_id);
             BOOST_REQUIRE(escrow.to == "bob");
             BOOST_REQUIRE(escrow.agent == "sam");
-            BOOST_REQUIRE(escrow.ratification_deadline ==
-                          et_op.ratification_deadline);
+            BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
             BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
             BOOST_REQUIRE(escrow.sbd_balance == ASSET("0.000 GBG"));
             BOOST_REQUIRE(escrow.steem_balance == ASSET("1.000 GOLOS"));
@@ -4320,8 +4318,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_REQUIRE(escrow.to == "bob");
             BOOST_REQUIRE(escrow.agent == "sam");
-            BOOST_REQUIRE(escrow.ratification_deadline ==
-                          et_op.ratification_deadline);
+            BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
             BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
             BOOST_REQUIRE(escrow.sbd_balance == ASSET("0.000 GBG"));
             BOOST_REQUIRE(escrow.steem_balance == ASSET("1.000 GOLOS"));
@@ -4380,8 +4377,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                     et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
 
             STEEMIT_REQUIRE_THROW(db->get_escrow(op.from, op.escrow_id), fc::exception);
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("10.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("10.000 GOLOS"));
             validate_database();
 
 
@@ -4391,8 +4387,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             et_op.ratification_deadline = db->head_block_time() + 100;
             et_op.escrow_expiration = db->head_block_time() + 200;
             tx.operations.push_back(et_op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
@@ -4408,8 +4403,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                     et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
 
             STEEMIT_REQUIRE_THROW(db->get_escrow(op.from, op.escrow_id), fc::exception);
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("10.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("10.000 GOLOS"));
             validate_database();
 
 
@@ -4419,8 +4413,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             et_op.ratification_deadline = db->head_block_time() + 100;
             et_op.escrow_expiration = db->head_block_time() + 200;
             tx.operations.push_back(et_op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
@@ -4431,12 +4424,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            generate_blocks(
-                    et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
+            generate_blocks(et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
 
             STEEMIT_REQUIRE_THROW(db->get_escrow(op.from, op.escrow_id), fc::exception);
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("10.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("10.000 GOLOS"));
             validate_database();
 
 
@@ -4446,8 +4437,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             et_op.ratification_deadline = db->head_block_time() + 100;
             et_op.escrow_expiration = db->head_block_time() + 200;
             tx.operations.push_back(et_op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
@@ -4469,10 +4459,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 const auto &escrow = db->get_escrow(op.from, op.escrow_id);
                 BOOST_REQUIRE(escrow.to == "bob");
                 BOOST_REQUIRE(escrow.agent == "sam");
-                BOOST_REQUIRE(escrow.ratification_deadline ==
-                              et_op.ratification_deadline);
-                BOOST_REQUIRE(
-                        escrow.escrow_expiration == et_op.escrow_expiration);
+                BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
+                BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
                 BOOST_REQUIRE(escrow.sbd_balance == ASSET("0.000 GBG"));
                 BOOST_REQUIRE(escrow.steem_balance == ASSET("1.000 GOLOS"));
                 BOOST_REQUIRE(escrow.pending_fee == ASSET("0.000 GOLOS"));
@@ -4487,16 +4475,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- ratification expiration does not remove an approved escrow");
 
-            generate_blocks(
-                    et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
+            generate_blocks(et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true);
             {
                 const auto &escrow = db->get_escrow(op.from, op.escrow_id);
                 BOOST_REQUIRE(escrow.to == "bob");
                 BOOST_REQUIRE(escrow.agent == "sam");
-                BOOST_REQUIRE(escrow.ratification_deadline ==
-                              et_op.ratification_deadline);
-                BOOST_REQUIRE(
-                        escrow.escrow_expiration == et_op.escrow_expiration);
+                BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
+                BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
                 BOOST_REQUIRE(escrow.sbd_balance == ASSET("0.000 GBG"));
                 BOOST_REQUIRE(escrow.steem_balance == ASSET("1.000 GOLOS"));
                 BOOST_REQUIRE(escrow.pending_fee == ASSET("0.000 GOLOS"));
@@ -4578,10 +4563,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             et_op.agent = "sam";
             et_op.steem_amount = ASSET("1.000 GOLOS");
             et_op.fee = ASSET("0.100 GOLOS");
-            et_op.ratification_deadline =
-                    db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
-            et_op.escrow_expiration =
-                    db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+            et_op.ratification_deadline = db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
+            et_op.escrow_expiration = db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
 
             escrow_approve_operation ea_b_op;
             ea_b_op.from = "alice";
@@ -4593,8 +4576,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             signed_transaction tx;
             tx.operations.push_back(et_op);
             tx.operations.push_back(ea_b_op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -4616,8 +4598,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             const auto &escrow = db->get_escrow(et_op.from, et_op.escrow_id);
             BOOST_REQUIRE(escrow.to == "bob");
             BOOST_REQUIRE(escrow.agent == "sam");
-            BOOST_REQUIRE(escrow.ratification_deadline ==
-                          et_op.ratification_deadline);
+            BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
             BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
             BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
             BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
@@ -4651,8 +4632,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_REQUIRE(escrow.to == "bob");
             BOOST_REQUIRE(escrow.agent == "sam");
-            BOOST_REQUIRE(escrow.ratification_deadline ==
-                          et_op.ratification_deadline);
+            BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
             BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
             BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
             BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
@@ -4674,8 +4654,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_REQUIRE(escrow.to == "bob");
             BOOST_REQUIRE(escrow.agent == "sam");
-            BOOST_REQUIRE(escrow.ratification_deadline ==
-                          et_op.ratification_deadline);
+            BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
             BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
             BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
             BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
@@ -4692,8 +4671,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.signatures.clear();
             op.agent = "sam";
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
 
@@ -4701,10 +4679,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 const auto &escrow = db->get_escrow(et_op.from, et_op.escrow_id);
                 BOOST_REQUIRE(escrow.to == "bob");
                 BOOST_REQUIRE(escrow.agent == "sam");
-                BOOST_REQUIRE(escrow.ratification_deadline ==
-                              et_op.ratification_deadline);
-                BOOST_REQUIRE(
-                        escrow.escrow_expiration == et_op.escrow_expiration);
+                BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
+                BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
                 BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
                 BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
                 BOOST_REQUIRE(escrow.pending_fee == ASSET("0.000 GOLOS"));
@@ -4716,10 +4692,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- success disputing escrow");
             et_op.escrow_id = 1;
-            et_op.ratification_deadline =
-                    db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
-            et_op.escrow_expiration =
-                    db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+            et_op.ratification_deadline = db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
+            et_op.escrow_expiration = db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
             ea_b_op.escrow_id = et_op.escrow_id;
             ea_s_op.escrow_id = et_op.escrow_id;
 
@@ -4744,10 +4718,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 const auto &escrow = db->get_escrow(et_op.from, et_op.escrow_id);
                 BOOST_REQUIRE(escrow.to == "bob");
                 BOOST_REQUIRE(escrow.agent == "sam");
-                BOOST_REQUIRE(escrow.ratification_deadline ==
-                              et_op.ratification_deadline);
-                BOOST_REQUIRE(
-                        escrow.escrow_expiration == et_op.escrow_expiration);
+                BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
+                BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
                 BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
                 BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
                 BOOST_REQUIRE(escrow.pending_fee == ASSET("0.000 GOLOS"));
@@ -4769,10 +4741,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 const auto &escrow = db->get_escrow(et_op.from, et_op.escrow_id);
                 BOOST_REQUIRE(escrow.to == "bob");
                 BOOST_REQUIRE(escrow.agent == "sam");
-                BOOST_REQUIRE(escrow.ratification_deadline ==
-                              et_op.ratification_deadline);
-                BOOST_REQUIRE(
-                        escrow.escrow_expiration == et_op.escrow_expiration);
+                BOOST_REQUIRE(escrow.ratification_deadline == et_op.ratification_deadline);
+                BOOST_REQUIRE(escrow.escrow_expiration == et_op.escrow_expiration);
                 BOOST_REQUIRE(escrow.sbd_balance == et_op.sbd_amount);
                 BOOST_REQUIRE(escrow.steem_balance == et_op.steem_amount);
                 BOOST_REQUIRE(escrow.pending_fee == ASSET("0.000 GOLOS"));
@@ -4880,10 +4850,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             et_op.agent = "sam";
             et_op.steem_amount = ASSET("1.000 GOLOS");
             et_op.fee = ASSET("0.100 GOLOS");
-            et_op.ratification_deadline =
-                    db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
-            et_op.escrow_expiration =
-                    db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+            et_op.ratification_deadline = db->head_block_time() + STEEMIT_BLOCK_INTERVAL;
+            et_op.escrow_expiration = db->head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
 
             signed_transaction tx;
             tx.operations.push_back(et_op);
@@ -5059,10 +5027,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(db->get_escrow(op.from, op.escrow_id).steem_balance ==
-                          ASSET("0.800 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("0.100 GOLOS"));
+            BOOST_REQUIRE(db->get_escrow(op.from, op.escrow_id).steem_balance == ASSET("0.800 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("0.100 GOLOS"));
 
 
             BOOST_TEST_MESSAGE("--- failure when releasing more sbd than available");
@@ -5142,8 +5108,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("0.200 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("0.200 GOLOS"));
             BOOST_REQUIRE(
                     db->get_escrow(et_op.from, et_op.escrow_id).steem_balance ==
                     ASSET("0.700 GOLOS"));
@@ -5157,8 +5122,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("9.100 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("9.100 GOLOS"));
             BOOST_REQUIRE(
                     db->get_escrow(et_op.from, et_op.escrow_id).steem_balance ==
                     ASSET("0.600 GOLOS"));
@@ -5194,8 +5158,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("9.200 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("9.200 GOLOS"));
             BOOST_REQUIRE(
                     db->get_escrow(et_op.from, et_op.escrow_id).steem_balance ==
                     ASSET("0.500 GOLOS"));
@@ -5208,8 +5171,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("9.700 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("9.700 GOLOS"));
             STEEMIT_REQUIRE_THROW(db->get_escrow(et_op.from, et_op.escrow_id), fc::exception);
 
 
@@ -5280,8 +5242,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("0.300 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("0.300 GOLOS"));
             BOOST_REQUIRE(
                     db->get_escrow(et_op.from, et_op.escrow_id).steem_balance ==
                     ASSET("0.900 GOLOS"));
@@ -5294,11 +5255,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("8.700 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_escrow(et_op.from, et_op.escrow_id).steem_balance ==
-                    ASSET("0.800 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("8.700 GOLOS"));
+            BOOST_REQUIRE(db->get_escrow(et_op.from, et_op.escrow_id).steem_balance == ASSET("0.800 GOLOS"));
 
 
             BOOST_TEST_MESSAGE("--- failure when 'from' attempts to release non-disputed expired escrow to 'agent'");
@@ -5446,10 +5404,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             fund("alice", ASSET("10.000 GOLOS"));
             fund("alice", ASSET("10.000 GBG"));
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("10.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("10.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("10.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("10.000 GBG"));
 
             transfer_to_savings_operation op;
             signed_transaction tx;
@@ -5460,8 +5416,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.amount = ASSET("20.000 GOLOS");
 
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
             validate_database();
@@ -5486,10 +5441,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("9.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("alice").savings_balance ==
-                          ASSET("1.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("9.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_balance == ASSET("1.000 GOLOS"));
             validate_database();
 
 
@@ -5501,10 +5454,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("9.000 GBG"));
-            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance ==
-                          ASSET("1.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("9.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance == ASSET("1.000 GBG"));
             validate_database();
 
 
@@ -5517,10 +5468,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("8.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("bob").savings_balance ==
-                          ASSET("1.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("8.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").savings_balance == ASSET("1.000 GOLOS"));
             validate_database();
 
 
@@ -5532,10 +5481,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("8.000 GBG"));
-            BOOST_REQUIRE(db->get_account("bob").savings_sbd_balance ==
-                          ASSET("1.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("8.000 GBG"));
+            BOOST_REQUIRE(db->get_account("bob").savings_sbd_balance == ASSET("1.000 GBG"));
             validate_database();
         }
         FC_LOG_AND_RETHROW()
@@ -5619,8 +5566,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(transfer_from_savings_apply) {
-        return; // FIXME: broken test
-        try {
+         try {
             BOOST_TEST_MESSAGE("Testing: transfer_from_savings_apply");
 
             ACTORS((alice)(bob));
@@ -5636,8 +5582,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             signed_transaction tx;
             tx.operations.push_back(save);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
@@ -5671,7 +5616,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
 
 
-            BOOST_TEST_MESSAGE("--- success withdrawing STEEM to self");
+            BOOST_TEST_MESSAGE("--- success withdrawing GOLOS to self");
             op.to = "alice";
 
             tx.clear();
@@ -5679,33 +5624,19 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("alice").savings_balance ==
-                          ASSET("9.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 1);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).from ==
-                    op.from);
-            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to ==
-                          op.to);
-            BOOST_REQUIRE(
-                    to_string(db->get_savings_withdraw("alice", op.request_id).memo) ==
-                    op.memo);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).request_id ==
-                    op.request_id);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).amount ==
-                    op.amount);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).complete ==
-                    db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_balance == ASSET("9.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 1);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).from == op.from);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to == op.to);
+            BOOST_REQUIRE(to_string(db->get_savings_withdraw("alice", op.request_id).memo) == op.memo);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).request_id == op.request_id);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).amount == op.amount);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).complete == db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
             validate_database();
 
 
-            BOOST_TEST_MESSAGE("--- success withdrawing SBD to self");
+            BOOST_TEST_MESSAGE("--- success withdrawing GBG to self");
             op.amount = ASSET("1.000 GBG");
             op.request_id = 1;
 
@@ -5714,29 +5645,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
-            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance ==
-                          ASSET("9.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 2);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).from ==
-                    op.from);
-            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to ==
-                          op.to);
-            BOOST_REQUIRE(
-                    to_string(db->get_savings_withdraw("alice", op.request_id).memo) ==
-                    op.memo);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).request_id ==
-                    op.request_id);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).amount ==
-                    op.amount);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).complete ==
-                    db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance == ASSET("9.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 2);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).from == op.from);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to == op.to);
+            BOOST_REQUIRE(to_string(db->get_savings_withdraw("alice", op.request_id).memo) == op.memo);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).request_id == op.request_id);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).amount == op.amount);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).complete == db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
             validate_database();
 
 
@@ -5759,29 +5676,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("alice").savings_balance ==
-                          ASSET("8.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 3);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).from ==
-                    op.from);
-            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to ==
-                          op.to);
-            BOOST_REQUIRE(
-                    to_string(db->get_savings_withdraw("alice", op.request_id).memo) ==
-                    op.memo);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).request_id ==
-                    op.request_id);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).amount ==
-                    op.amount);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).complete ==
-                    db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_balance == ASSET("8.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 3);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).from == op.from);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to == op.to);
+            BOOST_REQUIRE(to_string(db->get_savings_withdraw("alice", op.request_id).memo) == op.memo);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).request_id == op.request_id);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).amount == op.amount);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).complete == db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
             validate_database();
 
 
@@ -5794,67 +5697,40 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
-            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance ==
-                          ASSET("8.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 4);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).from ==
-                    op.from);
-            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to ==
-                          op.to);
-            BOOST_REQUIRE(
-                    to_string(db->get_savings_withdraw("alice", op.request_id).memo) ==
-                    op.memo);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).request_id ==
-                    op.request_id);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).amount ==
-                    op.amount);
-            BOOST_REQUIRE(
-                    db->get_savings_withdraw("alice", op.request_id).complete ==
-                    db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_sbd_balance == ASSET("8.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 4);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).from == op.from);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).to == op.to);
+            BOOST_REQUIRE(to_string(db->get_savings_withdraw("alice", op.request_id).memo) == op.memo);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).request_id == op.request_id);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).amount == op.amount);
+            BOOST_REQUIRE(db->get_savings_withdraw("alice", op.request_id).complete == db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME);
             validate_database();
 
 
             BOOST_TEST_MESSAGE("--- withdraw on timeout");
-            generate_blocks(
-                    db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME -
-                    fc::seconds(STEEMIT_BLOCK_INTERVAL), true);
+            generate_blocks(db->head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME - fc::seconds(STEEMIT_BLOCK_INTERVAL), true);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("bob").sbd_balance == ASSET("0.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 4);
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").sbd_balance == ASSET("0.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 4);
             validate_database();
 
             generate_block();
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("1.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").sbd_balance == ASSET("1.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("1.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("bob").sbd_balance == ASSET("1.000 GBG"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 0);
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("1.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").sbd_balance == ASSET("1.000 GBG"));
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("1.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").sbd_balance == ASSET("1.000 GBG"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 0);
             validate_database();
 
 
             BOOST_TEST_MESSAGE("--- savings withdraw request limit");
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             op.to = "alice";
             op.amount = ASSET("0.001 GOLOS");
 
@@ -5864,9 +5740,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 tx.operations.push_back(op);
                 tx.sign(alice_private_key, db->get_chain_id());
                 db->push_transaction(tx, 0);
-                BOOST_REQUIRE(
-                        db->get_account("alice").savings_withdraw_requests ==
-                        i + 1);
+                BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == i + 1);
             }
 
             op.request_id = STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT;
@@ -5874,8 +5748,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.operations.push_back(op);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
-            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests ==
-                          STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT);
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT);
             validate_database();
         }
         FC_LOG_AND_RETHROW()
@@ -5933,7 +5806,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(cancel_transfer_from_savings_apply) {
-        return; // FIXME: broken test
         try {
             BOOST_TEST_MESSAGE("Testing: cancel_transfer_from_savings_apply");
 
@@ -5954,16 +5826,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             withdraw.amount = ASSET("3.000 GOLOS");
 
             signed_transaction tx;
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(save);
             tx.operations.push_back(withdraw);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
             validate_database();
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 1);
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 1);
             BOOST_REQUIRE(db->get_account("bob").savings_withdraw_requests == 0);
 
 
@@ -5978,8 +5848,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
             validate_database();
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 1);
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 1);
             BOOST_REQUIRE(db->get_account("bob").savings_withdraw_requests == 0);
 
 
@@ -5991,16 +5860,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(
-                    db->get_account("alice").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("alice").savings_balance ==
-                          ASSET("10.000 GOLOS"));
-            BOOST_REQUIRE(
-                    db->get_account("alice").savings_withdraw_requests == 0);
-            BOOST_REQUIRE(
-                    db->get_account("bob").balance == ASSET("0.000 GOLOS"));
-            BOOST_REQUIRE(db->get_account("bob").savings_balance ==
-                          ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_balance == ASSET("10.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("alice").savings_withdraw_requests == 0);
+            BOOST_REQUIRE(db->get_account("bob").balance == ASSET("0.000 GOLOS"));
+            BOOST_REQUIRE(db->get_account("bob").savings_balance == ASSET("0.000 GOLOS"));
             BOOST_REQUIRE(db->get_account("bob").savings_withdraw_requests == 0);
             validate_database();
         }
@@ -6045,8 +5909,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             proxy.proxy = "alice";
 
             signed_transaction tx;
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(proxy);
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -6065,16 +5928,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             const auto &request_idx = db->get_index<decline_voting_rights_request_index>().indices().get<by_account>();
             auto itr = request_idx.find(db->get_account("alice").id);
             BOOST_REQUIRE(itr != request_idx.end());
-            BOOST_REQUIRE(itr->effective_date == db->head_block_time() +
-                                                 STEEMIT_OWNER_AUTH_RECOVERY_PERIOD);
+            BOOST_REQUIRE(itr->effective_date == db->head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD);
 
 
             BOOST_TEST_MESSAGE("--- failure revoking voting rights with existing request");
             generate_block();
             tx.clear();
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
 
@@ -6094,8 +5955,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_block();
             tx.clear();
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
 
@@ -6118,8 +5978,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             witness_vote.witness = "alice";
             tx.clear();
             tx.operations.push_back(witness_vote);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
@@ -6151,17 +6010,19 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_REQUIRE(itr == request_idx.end());
 
             const auto &witness_idx = db->get_index<witness_vote_index>().indices().get<by_account_witness>();
-            auto witness_itr = witness_idx.find(boost::make_tuple(db->get_account("alice").id, db->get_witness("alice").id));
+            auto witness_itr = witness_idx.find(
+                    boost::make_tuple(db->get_account("alice").id, db->get_witness("alice").id));
             BOOST_REQUIRE(witness_itr == witness_idx.end());
 
             tx.clear();
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(witness_vote);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
 
-            db->get<comment_vote_object, by_comment_voter>(boost::make_tuple(db->get_comment("alice", string("test")).id, db->get_account("alice").id));
+            db->get<comment_vote_object, by_comment_voter>(
+                boost::make_tuple(db->get_comment("alice", string("test")).id, db->get_account("alice").id)
+            );
 
             vote.weight = 0;
             tx.clear();
@@ -6204,34 +6065,33 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.amount = ASSET("1.000 GOLOS");
 
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
 
             db->push_transaction(tx, 0);
 
-            auto last_bandwidth_update = db->get<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple("alice", bandwidth_type::market)).last_bandwidth_update;
-            auto average_bandwidth = db->get<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple("alice", bandwidth_type::market)).average_bandwidth;
+            auto last_bandwidth_update = db->get<account_bandwidth_object, by_account_bandwidth_type>(
+                    boost::make_tuple("alice", bandwidth_type::market)).last_bandwidth_update;
+            auto average_bandwidth = db->get<account_bandwidth_object, by_account_bandwidth_type>(
+                    boost::make_tuple("alice", bandwidth_type::market)).average_bandwidth;
             BOOST_REQUIRE(last_bandwidth_update == db->head_block_time());
-            BOOST_REQUIRE(average_bandwidth == fc::raw::pack_size(tx) * 10 *
-                                               STEEMIT_BANDWIDTH_PRECISION);
+            BOOST_REQUIRE(average_bandwidth == fc::raw::pack_size(tx) * 10 * STEEMIT_BANDWIDTH_PRECISION);
             auto total_bandwidth = average_bandwidth;
 
             op.amount = ASSET("0.100 GOLOS");
             tx.clear();
             tx.operations.push_back(op);
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
 
             db->push_transaction(tx, 0);
 
-            last_bandwidth_update = db->get<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple("alice", bandwidth_type::market)).last_bandwidth_update;
-            average_bandwidth = db->get<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple("alice", bandwidth_type::market)).average_bandwidth;
+            last_bandwidth_update = db->get<account_bandwidth_object, by_account_bandwidth_type>(
+                    boost::make_tuple("alice", bandwidth_type::market)).last_bandwidth_update;
+            average_bandwidth = db->get<account_bandwidth_object, by_account_bandwidth_type>(
+                    boost::make_tuple("alice", bandwidth_type::market)).average_bandwidth;
             BOOST_REQUIRE(last_bandwidth_update == db->head_block_time());
-            BOOST_REQUIRE(average_bandwidth == total_bandwidth +
-                                               fc::raw::pack_size(tx) * 10 *
-                                               STEEMIT_BANDWIDTH_PRECISION);
+            BOOST_REQUIRE(average_bandwidth == total_bandwidth + fc::raw::pack_size(tx) * 10 * STEEMIT_BANDWIDTH_PRECISION);
         }
         FC_LOG_AND_RETHROW()
     }

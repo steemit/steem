@@ -141,7 +141,7 @@ void plugin::plugin_startup() {
 }
 
 void plugin::plugin_shutdown() {
-   my->disconnect_signal( my->applied_block_connection );
+   my->_debug_updates.clear();
    /*if( _json_object_stream )
    {
       _json_object_stream->close();

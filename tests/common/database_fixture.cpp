@@ -26,6 +26,11 @@ namespace golos {
 
 
         database_fixture::~database_fixture() {
+            if (db_plugin) {
+                // clear all debug updates
+                db_plugin->plugin_shutdown();
+            }
+
             close_database();
         }
 
@@ -50,7 +55,6 @@ namespace golos {
                     BOOST_CHECK(db->get_node_properties().skip_flags ==
                                 database::skip_nothing);
                 }
-                close_database();
             } FC_CAPTURE_AND_RETHROW()
         }
 
@@ -72,28 +76,6 @@ namespace golos {
             init_account_pub_key = init_account_priv_key.get_public_key();
 
             db->open(data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write);
-
-            boost::program_options::variables_map options;
-
-
-            generate_block();
-            db->set_hardfork(STEEMIT_NUM_HARDFORKS);
-            generate_block();
-
-            vest(STEEMIT_INIT_MINER_NAME, 10000);
-
-            // Fill up the rest of the required miners
-            for (int i = STEEMIT_NUM_INIT_MINERS;
-                 i < STEEMIT_MAX_WITNESSES; i++) {
-                account_create(STEEMIT_INIT_MINER_NAME +
-                               fc::to_string(i), init_account_pub_key);
-                fund(STEEMIT_INIT_MINER_NAME +
-                     fc::to_string(i), STEEMIT_MIN_PRODUCER_REWARD.amount.value);
-                witness_create(STEEMIT_INIT_MINER_NAME +
-                               fc::to_string(i), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount);
-            }
-
-            validate_database();
         }
 
         live_database_fixture::live_database_fixture() {
@@ -125,7 +107,6 @@ namespace golos {
                 }
 
                 db->pop_block();
-                close_database();
                 return;
             }
             FC_LOG_AND_RETHROW()
@@ -184,12 +165,11 @@ namespace golos {
             // Fill up the rest of the required miners
             for (int i = STEEMIT_NUM_INIT_MINERS;
                  i < STEEMIT_MAX_WITNESSES; i++) {
-                account_create(STEEMIT_INIT_MINER_NAME +
-                               fc::to_string(i), init_account_pub_key);
-                fund(STEEMIT_INIT_MINER_NAME +
-                     fc::to_string(i), STEEMIT_MIN_PRODUCER_REWARD.amount.value);
-                witness_create(STEEMIT_INIT_MINER_NAME +
-                               fc::to_string(i), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount);
+                account_create(STEEMIT_INIT_MINER_NAME + fc::to_string(i), init_account_pub_key);
+                fund(STEEMIT_INIT_MINER_NAME + fc::to_string(i), STEEMIT_MIN_PRODUCER_REWARD.amount.value);
+                witness_create(STEEMIT_INIT_MINER_NAME + fc::to_string(i),
+                               init_account_priv_key, "foo.bar", init_account_pub_key,
+                               STEEMIT_MIN_PRODUCER_REWARD.amount);
             }
 
             ah_plugin->plugin_startup();
@@ -232,8 +212,7 @@ namespace golos {
             msg_pack msg;
             msg.args = std::vector<fc::variant>({fc::variant(debug_key), fc::variant(timestamp), fc::variant(miss_intermediate_blocks), fc::variant(default_skip)});
             db_plugin->debug_generate_blocks_until(msg);
-            BOOST_REQUIRE((db->head_block_time() - timestamp).to_seconds() <
-                          STEEMIT_BLOCK_INTERVAL);
+            BOOST_REQUIRE((db->head_block_time() - timestamp).to_seconds() < STEEMIT_BLOCK_INTERVAL);
         }
 
         const account_object &database_fixture::account_create(
@@ -257,8 +236,7 @@ namespace golos {
                 op.json_metadata = json_metadata;
 
                 trx.operations.push_back(op);
-                trx.set_expiration(db->head_block_time() +
-                                   STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                 trx.sign(creator_key, db->get_chain_id());
                 trx.validate();
                 db->push_transaction(trx, 0);
@@ -311,8 +289,7 @@ namespace golos {
                 op.fee = asset(fee, STEEM_SYMBOL);
 
                 trx.operations.push_back(op);
-                trx.set_expiration(db->head_block_time() +
-                                   STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                 trx.sign(owner_key, db->get_chain_id());
                 trx.validate();
                 db->push_transaction(trx, 0);
@@ -403,8 +380,7 @@ namespace golos {
                 op.amount = amount;
 
                 trx.operations.push_back(op);
-                trx.set_expiration(db->head_block_time() +
-                                   STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                 trx.validate();
                 db->push_transaction(trx, ~0);
                 trx.operations.clear();
@@ -419,8 +395,7 @@ namespace golos {
                 op.amount = asset(amount, STEEM_SYMBOL);
 
                 trx.operations.push_back(op);
-                trx.set_expiration(db->head_block_time() +
-                                   STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                 trx.validate();
                 db->push_transaction(trx, ~0);
                 trx.operations.clear();
@@ -461,8 +436,7 @@ namespace golos {
                     op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string(i);
                     op.exchange_rate = new_price;
                     trx.operations.push_back(op);
-                    trx.set_expiration(db->head_block_time() +
-                                       STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                    trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                     db->push_transaction(trx, ~0);
                     trx.operations.clear();
                 }
