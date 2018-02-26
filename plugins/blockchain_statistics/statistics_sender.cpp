@@ -17,13 +17,15 @@
 
 statistics_sender::statistics_sender() :
     ios( appbase::app().get_io_service() ),
-    is_previous_bucket_set(false) {
+    is_previous_bucket_set(false),
+    socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0))  {
 }
 
 statistics_sender::statistics_sender(uint32_t default_port) :
     default_port(default_port),
     ios( appbase::app().get_io_service() ),
-    is_previous_bucket_set(false) {
+    is_previous_bucket_set(false), 
+    socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0)) {
 }
 
 bool statistics_sender::can_start() {
@@ -32,11 +34,10 @@ bool statistics_sender::can_start() {
 
 void statistics_sender::push(const std::string & str) {
     ios.post ([this, str]() {
-        boost::asio::ip::udp::socket socket(this->ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
-        socket.set_option(boost::asio::socket_base::broadcast(true));
+        this->socket.set_option(boost::asio::socket_base::broadcast(true));
 
         for (auto endpoint : this->recipient_endpoint_set) {
-            socket.send_to(boost::asio::buffer(str), endpoint);
+            this->socket.send_to(boost::asio::buffer(str), endpoint);
         }
  
     });

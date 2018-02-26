@@ -4,7 +4,6 @@
 #include <boost/asio/ip/udp.hpp>
 #include <fc/uint128_t.hpp>
 #include <golos/chain/steem_object_types.hpp>
-#include <golos/plugins/blockchain_statistics/bucket_object.hpp>
 #include <golos/plugins/blockchain_statistics/runtime_bucket_object.hpp>
 
 using namespace golos::chain;
@@ -28,6 +27,7 @@ public:
     std::vector<std::string> get_endpoint_string_vector();
 
     golos::plugins::blockchain_statistics::runtime_bucket_object previous_bucket;
+    golos::plugins::blockchain_statistics::runtime_bucket_object current_bucket;
     bool is_previous_bucket_set;
 private:
     // Stat sender will send data to all endpoints from recipient_endpoint_set
@@ -36,4 +36,5 @@ private:
     uint32_t default_port;
     void init();
     boost::asio::io_service & ios;
+    boost::asio::ip::udp::socket socket;
 };

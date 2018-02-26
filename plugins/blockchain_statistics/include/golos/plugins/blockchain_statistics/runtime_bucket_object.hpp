@@ -1,7 +1,6 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
-#include <golos/plugins/blockchain_statistics/bucket_object.hpp>
 #include <golos/chain/steem_object_types.hpp>
 
 
@@ -14,12 +13,13 @@ using namespace golos::chain;
 struct runtime_bucket_object {
 
     std::vector < std::string > get_as_string ();
-    std::vector < std::string > calculate_delta_with (const bucket_object & b);
+    std::vector < std::string > calculate_delta_with (const runtime_bucket_object & b);
+    void operator=(const runtime_bucket_object & b);
 
-    void operator=(const bucket_object & b);
 
     int64_t id;
 
+    fc::time_point_sec open;                                        ///< Open time of the bucket
     uint32_t seconds = 0;                                 ///< Seconds accounted for in the bucket
     uint32_t blocks = 0;                                  ///< Blocks produced
     uint32_t bandwidth = 0;                               ///< Bandwidth in bytes
@@ -65,4 +65,5 @@ struct runtime_bucket_object {
     uint32_t total_pow = 0;                               ///< POW submitted
     uint128_t estimated_hashpower = 0;                     ///< Estimated average hashpower over interval
 };
-} } }
+
+} } } // golos::plugins::blockchain_statistics
