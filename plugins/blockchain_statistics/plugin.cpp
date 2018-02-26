@@ -207,6 +207,10 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         stat_sender->current_bucket.seconds = 0;
         stat_sender->current_bucket.blocks = 1;
     } else {
+        // TODO: what should we do with if block_num != 1???
+        // stat_sender->current_bucket.open = b.timestamp;
+        // IT breaks estimated_hashpower calc in visitor...
+        // 
         stat_sender->current_bucket.blocks++;
         
         if (!stat_sender->is_previous_bucket_set) {
@@ -297,6 +301,7 @@ plugin::~plugin() {
 
 void plugin::set_program_options( options_description& cli, options_description& cfg ) {
     cli.add_options()
+            // TODO: REMOVE THIS FROM CONFIG.INI 
             // ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[60,3600,21600,86400,604800,2592000]"),
             //         "Track blockchain statistics by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
             // ("chain-stats-history-per-bucket", boost::program_options::value<uint32_t>()->default_value(100),
