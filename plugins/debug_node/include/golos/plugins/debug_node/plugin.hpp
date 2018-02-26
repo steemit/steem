@@ -95,6 +95,8 @@ public:
         uint32_t skip = golos::chain::database::skip_nothing
     );
 
+    void set_logging(const bool islogging);
+
 
 private:
     struct plugin_impl;

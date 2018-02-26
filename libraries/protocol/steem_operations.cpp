@@ -23,7 +23,7 @@ namespace golos {
 
         void account_create_operation::validate() const {
             validate_account_name(new_account_name);
-            FC_ASSERT(is_asset_type(fee, STEEM_SYMBOL), "Account creation fee must be STEEM");
+            FC_ASSERT(is_asset_type(fee, STEEM_SYMBOL), "Account creation fee must be GOLOS");
             owner.validate();
             active.validate();
 
@@ -74,7 +74,7 @@ namespace golos {
             FC_ASSERT(percent_steem_dollars <=
                       STEEMIT_100_PERCENT, "Percent cannot exceed 100%");
             FC_ASSERT(max_accepted_payout.symbol ==
-                      SBD_SYMBOL, "Max accepted payout must be in SBD");
+                      SBD_SYMBOL, "Max accepted payout must be in GBG");
             FC_ASSERT(max_accepted_payout.amount.value >=
                       0, "Cannot accept less than 0 payout");
             validate_permlink(permlink);
@@ -119,7 +119,7 @@ namespace golos {
 
         void transfer_to_vesting_operation::validate() const {
             validate_account_name(from);
-            FC_ASSERT(is_asset_type(amount, STEEM_SYMBOL), "Amount must be STEEM");
+            FC_ASSERT(is_asset_type(amount, STEEM_SYMBOL), "Amount must be GOLOS");
             if (to != account_name_type()) {
                 validate_account_name(to);
             }
@@ -129,7 +129,7 @@ namespace golos {
 
         void withdraw_vesting_operation::validate() const {
             validate_account_name(account);
-            FC_ASSERT(is_asset_type(vesting_shares, VESTS_SYMBOL), "Amount must be VESTS");
+            FC_ASSERT(is_asset_type(vesting_shares, VESTS_SYMBOL), "Amount must be GESTS");
         }
 
         void set_withdraw_vesting_route_operation::validate() const {
@@ -312,7 +312,7 @@ namespace golos {
                        is_asset_type(exchange_rate.quote, SBD_SYMBOL))
                       || (is_asset_type(exchange_rate.base, SBD_SYMBOL) &&
                           is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
-                    "Price feed must be a STEEM/SBD price");
+                    "Price feed must be a GOLOS/GBG price");
             exchange_rate.validate();
         }
 
@@ -322,7 +322,7 @@ namespace golos {
                        is_asset_type(min_to_receive, SBD_SYMBOL))
                       || (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
                           is_asset_type(min_to_receive, STEEM_SYMBOL)),
-                    "Limit order must be for the STEEM:SBD market");
+                    "Limit order must be for the GOLOS:GBG market");
             (amount_to_sell / min_to_receive).validate();
         }
 
@@ -336,7 +336,7 @@ namespace golos {
                        is_asset_type(exchange_rate.quote, SBD_SYMBOL)) ||
                       (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
                        is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
-                    "Limit order must be for the STEEM:SBD market");
+                    "Limit order must be for the GOLOS:GBG market");
 
             FC_ASSERT((amount_to_sell * exchange_rate).amount >
                       0, "Amount to sell cannot round to 0 when traded");
@@ -348,10 +348,10 @@ namespace golos {
 
         void convert_operation::validate() const {
             validate_account_name(owner);
-            /// only allow conversion from SBD to STEEM, allowing the opposite can enable traders to abuse
+            /// only allow conversion from GBG to GOLOS, allowing the opposite can enable traders to abuse
             /// market fluxuations through converting large quantities without moving the price.
-            FC_ASSERT(is_asset_type(amount, SBD_SYMBOL), "Can only convert SBD to STEEM");
-            FC_ASSERT(amount.amount > 0, "Must convert some SBD");
+            FC_ASSERT(is_asset_type(amount, SBD_SYMBOL), "Can only convert GBG to GOLOS");
+            FC_ASSERT(amount.amount > 0, "Must convert some GBG");
         }
 
         void report_over_production_operation::validate() const {
@@ -368,7 +368,7 @@ namespace golos {
             validate_account_name(to);
             validate_account_name(agent);
             FC_ASSERT(fee.amount >= 0, "fee cannot be negative");
-            FC_ASSERT(sbd_amount.amount >= 0, "sbd amount cannot be negative");
+            FC_ASSERT(sbd_amount.amount >= 0, "gbg amount cannot be negative");
             FC_ASSERT(steem_amount.amount >=
                       0, "steem amount cannot be negative");
             FC_ASSERT(sbd_amount.amount > 0 || steem_amount.amount >
@@ -376,11 +376,11 @@ namespace golos {
             FC_ASSERT(from != agent &&
                       to != agent, "agent must be a third party");
             FC_ASSERT((fee.symbol == STEEM_SYMBOL) ||
-                      (fee.symbol == SBD_SYMBOL), "fee must be STEEM or SBD");
+                      (fee.symbol == SBD_SYMBOL), "fee must be GOLOS or GBG");
             FC_ASSERT(sbd_amount.symbol ==
-                      SBD_SYMBOL, "sbd amount must contain SBD");
+                      SBD_SYMBOL, "sbd amount must contain GBG");
             FC_ASSERT(steem_amount.symbol ==
-                      STEEM_SYMBOL, "steem amount must contain STEEM");
+                      STEEM_SYMBOL, "golos amount must contain GOLOS");
             FC_ASSERT(ratification_deadline <
                       escrow_expiration, "ratification deadline must be before escrow expiration");
             if (json_meta.size() > 0) {
@@ -416,15 +416,15 @@ namespace golos {
                       who == agent, "who must be from or to or agent");
             FC_ASSERT(receiver == from ||
                       receiver == to, "receiver must be from or to");
-            FC_ASSERT(sbd_amount.amount >= 0, "sbd amount cannot be negative");
+            FC_ASSERT(sbd_amount.amount >= 0, "gbg amount cannot be negative");
             FC_ASSERT(steem_amount.amount >=
-                      0, "steem amount cannot be negative");
+                      0, "golos amount cannot be negative");
             FC_ASSERT(sbd_amount.amount > 0 || steem_amount.amount >
                                                0, "escrow must release a non-zero amount");
             FC_ASSERT(sbd_amount.symbol ==
-                      SBD_SYMBOL, "sbd amount must contain SBD");
+                      SBD_SYMBOL, "gbg amount must contain GBG");
             FC_ASSERT(steem_amount.symbol ==
-                      STEEM_SYMBOL, "steem amount must contain STEEM");
+                      STEEM_SYMBOL, "golos amount must contain GOLOS");
         }
 
         void request_account_recovery_operation::validate() const {

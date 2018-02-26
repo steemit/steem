@@ -206,12 +206,18 @@ if(ENABLE_COVERAGE_TESTING)
     set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
+set(ENABLE_TESTING FALSE CACHE BOOL "Run unit tests for Golos")
+
+if (ENABLE_TESTING)
+  enable_testing()
+endif()
+
 # external_plugins needs to be compiled first because libraries/app depends on GOLOSIT_EXTERNAL_PLUGINS being fully populated
 add_subdirectory(thirdparty)
 add_subdirectory(libraries)
 add_subdirectory(plugins)
 add_subdirectory(programs)
-#add_subdirectory(tests)
+add_subdirectory(tests)
 
 if(ENABLE_INSTALLER)
 
