@@ -2120,11 +2120,11 @@ namespace golos {
                     c.total_vote_weight = 0;
                     c.max_cashout_time = fc::time_point_sec::maximum();
 
-                    if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                        if (has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                            c.last_payout == fc::time_point_sec::min()) {
-                            c.cashout_time = head_block_time() +
-                                             STEEMIT_SECOND_CASHOUT_WINDOW;
+                    if (has_hardfork(STEEMIT_HARDFORK_0_17__431)) {
+                        c.cashout_time = fc::time_point_sec::maximum();
+                    } else if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                        if (has_hardfork(STEEMIT_HARDFORK_0_12__177) && c.last_payout == fc::time_point_sec::min()) {
+                            c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
                         } else {
                             c.cashout_time = fc::time_point_sec::maximum();
                         }
@@ -2178,17 +2178,20 @@ namespace golos {
             int count = 0;
             const auto &cidx = get_index<comment_index>().indices().get<by_cashout_time>();
             const auto &com_by_root = get_index<comment_index>().indices().get<by_root>();
+            const bool has_hardfork_0_17__431 = has_hardfork(STEEMIT_HARDFORK_0_17__431);
 
             auto current = cidx.begin();
-            while (current != cidx.end() &&
-                   current->cashout_time <= head_block_time()) {
-                auto itr = com_by_root.lower_bound(current->root_comment);
-                while (itr != com_by_root.end() &&
-                       itr->root_comment == current->root_comment) {
-                    const auto &comment = *itr;
-                    ++itr;
-                    cashout_comment_helper(comment);
-                    ++count;
+            while (current != cidx.end() && current->cashout_time <= head_block_time()) {
+                if (has_hardfork_0_17__431) {
+                    cashout_comment_helper(*current);
+                } else {
+                    auto itr = com_by_root.lower_bound(current->root_comment);
+                    while (itr != com_by_root.end() && itr->root_comment == current->root_comment) {
+                        const auto &comment = *itr;
+                        ++itr;
+                        cashout_comment_helper(comment);
+                        ++count;
+                    }
                 }
                 current = cidx.begin();
             }
@@ -4204,16 +4207,14 @@ namespace golos {
                                 itr->cashout_time ==
                                 fc::time_point_sec::maximum()) {
                                 modify(*itr, [&](comment_object &c) {
-                                    c.cashout_time = head_block_time() +
-                                                     STEEMIT_CASHOUT_WINDOW_SECONDS;
+                                    c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
                                     c.mode = first_payout;
                                 });
                             }
                                 // Has been paid out, needs to be on second cashout window
                             else if (itr->last_payout > fc::time_point_sec()) {
                                 modify(*itr, [&](comment_object &c) {
-                                    c.cashout_time = c.last_payout +
-                                                     STEEMIT_SECOND_CASHOUT_WINDOW;
+                                    c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
                                     c.mode = second_payout;
                                 });
                             }
@@ -4264,7 +4265,48 @@ namespace golos {
                         });
                     }
                     break;
-                case STEEMIT_HARDFORK_0_17:
+                case STEEMIT_HARDFORK_0_17: {
+                    /*
+                     * For all current comments we will either keep their current cashout time, or extend it to 1 week
+                     * after creation.
+                     *
+                     * We cannot do a simple iteration by cashout time because we are editting cashout time.
+                     * More specifically, we will be adding an explicit cashout time to all comments with parents.
+                     * To find all discussions that have not been paid out we fir iterate over posts by cashout time.
+                     * Before the hardfork these are all root posts. Iterate over all of their children, adding each
+                     * to a specific list. Next, update payout times for all discussions on the root post. This defines
+                     * the min cashout time for each child in the discussion. Then iterate over the children and set
+                     * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
+                     */
+                    const auto &comment_idx = get_index<comment_index, by_id>();
+                    const auto &by_time_idx = get_index<comment_index, by_cashout_time>();
+                    const auto &by_root_idx = get_index<comment_index, by_root>();
+
+                    std::vector<comment_object::id_type> root_posts;
+                    root_posts.reserve(STEEMIT_HF_17_NUM_POSTS);
+
+                    for (const auto &comment: by_time_idx) {
+                        if (comment.cashout_time == fc::time_point_sec::maximum()) {
+                            break;
+                        }
+                        root_posts.push_back(comment.id);
+                    }
+
+                    for (const auto &id: root_posts) {
+                        auto itr = comment_idx.find(id);
+                        FC_ASSERT(comment_idx.end() != itr);
+                        modify(*itr, [&](comment_object &c) {
+                            c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time);
+                        });
+
+                        auto reply_itr = by_root_idx.lower_bound(id);
+                        for (; reply_itr != by_root_idx.end() && reply_itr->root_comment == id; ++reply_itr) {
+                            modify(*reply_itr, [&](comment_object &c) {
+                                c.cashout_time = std::max(calculate_discussion_payout_time(c),
+                                                          c.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
+                            });
+                        }
+                    }}
                     break;
                 default:
                     break;
