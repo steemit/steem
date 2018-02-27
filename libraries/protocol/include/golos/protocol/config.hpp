@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 16, 5))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 17, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 #ifdef STEEMIT_BUILD_TESTNET
@@ -95,8 +95,9 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
-
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
 #define STEEMIT_MINING_REWARD                   asset( 666, STEEM_SYMBOL )
@@ -292,7 +293,9 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
