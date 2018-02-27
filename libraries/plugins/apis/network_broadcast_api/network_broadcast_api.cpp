@@ -43,7 +43,7 @@ namespace detail
    DEFINE_API_IMPL( network_broadcast_api_impl, broadcast_transaction )
    {
       FC_ASSERT( !check_max_block_age( args.max_block_age ) );
-      _chain.db().push_transaction( args.trx );
+      _chain.accept_transaction( args.trx );
       _p2p.broadcast_transaction( args.trx );
 
       return broadcast_transaction_return();
@@ -68,13 +68,13 @@ namespace detail
       try
       {
          /* It may look strange to call these without the lock and then lock again in the case of an exception,
-          * but it is correct and avoids deadlock. push_transaction is trained along with all other writes, including
+          * but it is correct and avoids deadlock. accept_transaction is trained along with all other writes, including
           * pushing blocks. Pushing blocks do not originate from this code path and will never have this lock.
           * However, it will trigger the on_applied_block callback and then attempt to acquire the lock. In this case,
-          * this thread will be waiting on push_block so it can write and the block thread will be waiting on this
+          * this thread will be waiting on accept_block so it can write and the block thread will be waiting on this
           * thread for the lock.
           */
-         _chain.db().push_transaction( args.trx );
+         _chain.accept_transaction( args.trx );
          _p2p.broadcast_transaction( args.trx );
       }
       catch( fc::exception& e )
@@ -89,13 +89,25 @@ namespace detail
 
          throw e;
       }
+      catch( ... )
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+
+         // The callback may have been cleared in the meantine, so we need to check for existence.
+         auto c_itr = _callbacks.find( txid );
+         if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
+
+         throw fc::unhandled_exception(
+            FC_LOG_MESSAGE( warn, "Unknown error occured when pushing transaction" ),
+            std::current_exception() );
+      }
 
       return p.get_future().get();
    }
 
    DEFINE_API_IMPL( network_broadcast_api_impl, broadcast_block )
    {
-      _chain.db().push_block( args.block );
+      _chain.accept_block( args.block, /*currently syncing*/ false, /*skip*/ chain::database::skip_nothing );
       _p2p.broadcast_block( args.block );
       return broadcast_block_return();
    }
