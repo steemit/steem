@@ -714,7 +714,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             BOOST_REQUIRE(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
 
             BOOST_TEST_MESSAGE("Generate a block and check hardfork is applied");
-            generate_block();
+            // hardfork time depends on genesis time, that is why we need more than 1 signed block
+            generate_blocks(2);
 
             string op_msg = "Testnet: Hardfork applied";
             auto itr = db->get_index<account_history_index>().indices().get<by_id>().end();
