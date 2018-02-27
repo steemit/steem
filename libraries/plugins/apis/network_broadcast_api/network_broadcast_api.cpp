@@ -89,6 +89,18 @@ namespace detail
 
          throw e;
       }
+      catch( ... )
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+
+         // The callback may have been cleared in the meantine, so we need to check for existence.
+         auto c_itr = _callbacks.find( txid );
+         if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
+
+         throw fc::unhandled_exception(
+            FC_LOG_MESSAGE( warn, "Unknown error occured when pushing transaction" ),
+            std::current_exception() );
+      }
 
       return p.get_future().get();
    }
