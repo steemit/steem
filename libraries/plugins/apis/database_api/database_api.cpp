@@ -1149,7 +1149,7 @@ namespace last_votes_misc
             Since second level of sorting doesn't exist, so it is necessary to gather always(!!!),
             all records for first key( variable 'val' ). Longer explanation is below.
 
-            For example( limit = 11, 2 keys, no skip ):
+            For example( limit = 11, 2 keys( for simplicity, the example has only 2 keys ), no skip ):
             a a a a a b b b b c c c c c d d d d
             p q p q r s t t p p u v p u p v q v
 
@@ -1182,7 +1182,7 @@ namespace last_votes_misc
       uint32_t skip = 0;
 
       //Gathering 'limit' data and sorting in-fly according to 'operator<' in 'WrapperType'.
-      while( size < limit && itr_u != end )
+      while( size <= limit && itr != itr_u )
       {
          while( itr != itr_u )
          {
@@ -1203,7 +1203,7 @@ namespace last_votes_misc
 
          size = s.size() - skip;
 
-         if( size < limit && itr_u != end )
+         if( size <= limit && itr_u != end )
          {
             val = WrapperType::get_val1( *itr_u );
 
