@@ -110,8 +110,8 @@ if [[ "$USE_NGINX_FRONTEND" ]]; then
     service nginx restart
     exec chpst -usteemd \
         $STEEMD \
-            --webserver-ws-endpoint=127.0.0.1:8091 \
-            --webserver-http-endpoint=127.0.0.1:8091 \
+            --webserver-ws-endpoint=0.0.0.0:8091 \
+            --webserver-http-endpoint=0.0.0.0:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
@@ -120,8 +120,8 @@ if [[ "$USE_NGINX_FRONTEND" ]]; then
 else
     exec chpst -usteemd \
         $STEEMD \
-            --webserver-ws-endpoint=127.0.0.1:8090 \
-            --webserver-http-endpoint=127.0.0.1:8090 \
+            --webserver-ws-endpoint=0.0.0.0:8090 \
+            --webserver-http-endpoint=0.0.0.0:8090 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
