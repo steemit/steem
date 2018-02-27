@@ -431,7 +431,7 @@ DEFINE_API ( plugin, debug_generate_blocks ) {
     uint32_t                                  miss_blocks = 0;
     bool                                      edit_if_needed = true;
 
-    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+    FC_ASSERT(args.args.valid(), "Invalid parameters" );
 
     auto args_count = args.args->size() ;
 
@@ -451,10 +451,6 @@ DEFINE_API ( plugin, debug_generate_blocks ) {
         edit_if_needed = args_vector[4].as_bool();
     }
 
-    // This causes a casting error  |
-    //                              V
-    // auto tmp = args.args->at(0).as<debug_generate_blocks_a>();
-    // 
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_generate_blocks( debug_key, count, skip, miss_blocks, edit_if_needed );
@@ -466,7 +462,7 @@ DEFINE_API ( plugin, debug_push_blocks ) {
     uint32_t count;
     bool skip_validate_invariants = false;
 
-    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+    FC_ASSERT(args.args.valid(), "Invalid parameters" );        // is it possible to get invalid?
 
     auto args_count = args.args->size() ;
 
@@ -476,7 +472,7 @@ DEFINE_API ( plugin, debug_push_blocks ) {
     src_filename = args_vector[0].as_string();
     count = args_vector[1].as_int64();        
     if (args_count > 2) {
-        skip_validate_invariants = args_vector[3].as_bool();
+        skip_validate_invariants = args_vector[2].as_bool();
     }
 
     auto &db = my->database();
@@ -491,18 +487,18 @@ DEFINE_API ( plugin, debug_generate_blocks_until ) {
     bool generate_sparsely = true;
     uint32_t skip = golos::chain::database::skip_nothing;
 
-    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
+    FC_ASSERT(args.args.valid(), "Invalid parameters" );
 
     auto args_count = args.args->size() ;
 
-    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
+    FC_ASSERT( args_count > 0 && args_count < 4, "Wrong parameters number, given ${n}", ("n", args_count) );
     auto args_vector = *(args.args);
 
     debug_key = args_vector[0].as_string();
     head_block_time = fc::time_point_sec::from_iso_string( args_vector[1].as_string() );      
 
     if (args_count > 2) {
-        generate_sparsely = args_vector[3].as_bool();
+        generate_sparsely = args_vector[2].as_bool();
     }
 
     if (args_count > 3) {
