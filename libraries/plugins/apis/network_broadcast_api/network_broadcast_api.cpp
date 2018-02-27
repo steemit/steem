@@ -95,7 +95,7 @@ namespace detail
 
    DEFINE_API_IMPL( network_broadcast_api_impl, broadcast_block )
    {
-      _chain.accept_block( args.block );
+      _chain.accept_block( args.block, /*currently syncing*/ false, /*skip*/ chain::database::skip_nothing );
       _p2p.broadcast_block( args.block );
       return broadcast_block_return();
    }
