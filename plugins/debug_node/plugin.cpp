@@ -491,7 +491,7 @@ DEFINE_API ( plugin, debug_generate_blocks_until ) {
 
     auto args_count = args.args->size() ;
 
-    FC_ASSERT( args_count > 0 && args_count < 4, "Wrong parameters number, given ${n}", ("n", args_count) );
+    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
     auto args_vector = *(args.args);
 
     debug_key = args_vector[0].as_string();
