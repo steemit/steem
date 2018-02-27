@@ -941,8 +941,7 @@ namespace golos {
 
             // TODO:  Move this to _push_block() so session is restored.
             if (!(skip & skip_block_size_check)) {
-                FC_ASSERT(fc::raw::pack_size(pending_block) <=
-                          STEEMIT_MAX_BLOCK_SIZE);
+                FC_ASSERT(fc::raw::pack_size(pending_block) <= STEEMIT_MAX_BLOCK_SIZE);
             }
 
             push_block(pending_block, skip);
@@ -1042,8 +1041,7 @@ namespace golos {
                 return genesis_time + slot_num * interval;
             }
 
-            int64_t head_block_abs_slot =
-                    head_block_time().sec_since_epoch() / interval;
+            int64_t head_block_abs_slot = head_block_time().sec_since_epoch() / interval;
             fc::time_point_sec head_slot_time(head_block_abs_slot * interval);
 
             // "slot 0" is head_slot_time
@@ -1109,18 +1107,18 @@ namespace golos {
                 const auto &cprops = get_dynamic_global_properties();
 
                 /**
-       *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
-       *  change as the result of the user adding funds
-       *
-       *  V / C  = (V+Vn) / (C+Cn)
-       *
-       *  Simplifies to Vn = (V * Cn ) / C
-       *
-       *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
-       *  the user should receive.
-       *
-       *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
-       */
+                 *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
+                 *  change as the result of the user adding funds
+                 *
+                 *  V / C  = (V+Vn) / (C+Cn)
+                 *
+                 *  Simplifies to Vn = (V * Cn ) / C
+                 *
+                 *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
+                 *  the user should receive.
+                 *
+                 *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
+                 */
                 asset new_vesting = steem * cprops.get_vesting_share_price();
 
                 modify(to_account, [&](account_object &to) {
@@ -3143,11 +3141,11 @@ namespace golos {
 
                 for (const auto &trx : next_block.transactions) {
                     /* We do not need to push the undo state for each transaction
-       * because they either all apply and are valid or the
-       * entire block fails to apply.  We only need an "undo" state
-       * for transactions when validating broadcast transactions or
-       * when building a block.
-       */
+                     * because they either all apply and are valid or the
+                     * entire block fails to apply.  We only need an "undo" state
+                     * for transactions when validating broadcast transactions or
+                     * when building a block.
+                     */
                     apply_transaction(trx, skip);
                     ++_current_trx_in_block;
                 }
@@ -3497,18 +3495,18 @@ namespace golos {
                     dgp.average_block_size =
                             (99 * dgp.average_block_size + block_size) / 100;
 
-                    /**
-       *  About once per minute the average network use is consulted and used to
-       *  adjust the reserve ratio. Anything above 50% usage reduces the ratio by
-       *  half which should instantly bring the network from 50% to 25% use unless
-       *  the demand comes from users who have surplus capacity. In other words,
-       *  a 50% reduction in reserve ratio does not result in a 50% reduction in usage,
-       *  it will only impact users who where attempting to use more than 50% of their
-       *  capacity.
+       /*
+       *  About once per minute the average network use is consulted and used to adjust
+       *  the reserve ratio. Anything above 25% usage (since STEEMIT_HARDFORK_0_12__179)
+       *  reduces the ratio by half which should instantly bring the network from 50% to
+       *  25% use unless the demand comes from users who have surplus capacity. In other
+       *  words, a 50% reduction in reserve ratio does not result in a 50% reduction in
+       *  usage, it will only impact users who where attempting to use more than 50% of
+       *  their capacity.
        *
-       *  When the reserve ratio is at its max (10,000) a 50% reduction will take 3 to
-       *  4 days to return back to maximum.  When it is at its minimum it will return
-       *  back to its prior level in just a few minutes.
+       *  When the reserve ratio is at its max (check STEEMIT_MAX_RESERVE_RATIO) a 50%
+       *  reduction will take 3 to 4 days to return back to maximum.  When it is at its
+       *  minimum it will return back to its prior level in just a few minutes.
        *
        *  If the network reserve ratio falls under 100 then it is probably time to
        *  increase the capacity of the network.

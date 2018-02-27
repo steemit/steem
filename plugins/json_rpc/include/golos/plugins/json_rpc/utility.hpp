@@ -50,6 +50,8 @@ namespace golos {
                 std::string method;
                 fc::optional<std::vector<fc::variant>> args;
 
+                msg_pack();
+
                 // Constructor with hidden handlers types
                 template <typename Handler>
                 msg_pack(Handler &&);
