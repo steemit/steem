@@ -84,24 +84,9 @@ struct operation_process {
            stat_sender->current_bucket.mined_accounts_created++;
         }
 
-       stat_sender->current_bucket.total_pow++;
+        stat_sender->current_bucket.total_pow++;
 
-        uint64_t bits =
-                (_db.get_dynamic_global_properties().num_pow_witnesses /
-                 4) + 4;
-        uint128_t estimated_hashes = (1 << bits);
-        uint32_t delta_t;
-
-        if (stat_sender->current_bucket.seconds == 0) {
-            delta_t = _db.head_block_time().sec_since_epoch() -
-                        stat_sender->current_bucket.open.sec_since_epoch();
-        } else {
-             delta_t = stat_sender->current_bucket.seconds;
-        }
-
-        stat_sender->current_bucket.estimated_hashpower =
-                (stat_sender->current_bucket.estimated_hashpower * delta_t +
-                 estimated_hashes) / delta_t;
+        stat_sender->current_bucket.num_pow_witnesses = _db.get_dynamic_global_properties().num_pow_witnesses;
     }
 
     void operator()(const comment_operation &op) const {
@@ -203,14 +188,9 @@ struct operation_process {
 
 void plugin::plugin_impl::on_block(const signed_block &b) {
     if (b.block_num() == 1) {
-        stat_sender->current_bucket.open = b.timestamp;
         stat_sender->current_bucket.seconds = 0;
         stat_sender->current_bucket.blocks = 1;
     } else {
-        // TODO: what should we do with if block_num != 1???
-        // stat_sender->current_bucket.open = b.timestamp;
-        // IT breaks estimated_hashpower calc in visitor...
-        // 
         stat_sender->current_bucket.blocks++;
         
         if (!stat_sender->is_previous_bucket_set) {
@@ -325,7 +305,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
             statsd_default_port = options["statsd-default-port"].as<uint32_t>();
         }
         _my->stat_sender = std::shared_ptr<statistics_sender>(new statistics_sender(statsd_default_port) );
-        
+
         db.applied_block.connect([&](const signed_block &b) {
             _my->on_block(b);
         });
@@ -410,7 +390,7 @@ std::vector < std::string > runtime_bucket_object::get_as_string () {
     result.push_back("limit_orders_filled:" + std::to_string(limit_orders_filled));
     result.push_back("limit_orders_cancelled:" + std::to_string(limit_orders_cancelled));
     result.push_back("total_pow:" + std::to_string(total_pow));
-    result.push_back("estimated_hashpower:" + std::string(estimated_hashpower));
+    result.push_back("num_pow_witnesses:" + std::to_string(num_pow_witnesses));
     return result;
 }
 
@@ -545,14 +525,13 @@ std::vector < std::string > runtime_bucket_object::calculate_delta_with (const r
     if (b.total_pow - total_pow != 0 ) {
         result.push_back("total_pow:" + std::to_string(b.total_pow - total_pow) + "|c");
     }
-    if (b.estimated_hashpower - estimated_hashpower != 0 ) {
-        result.push_back("estimated_hashpower:" + std::string(b.estimated_hashpower - estimated_hashpower) + "|c");
+    if (b.num_pow_witnesses - num_pow_witnesses != 0 ) {
+        result.push_back("num_pow_witnesses:" + std::to_string(b.num_pow_witnesses - num_pow_witnesses) + "|g");
     }
     return result;
 }
 
 void runtime_bucket_object::operator=(const runtime_bucket_object & b) {   
-    open = b.open;
     seconds = b.seconds;
     blocks = b.blocks;
     bandwidth = b.bandwidth;
@@ -596,6 +575,6 @@ void runtime_bucket_object::operator=(const runtime_bucket_object & b) {
     limit_orders_filled = b.limit_orders_filled;
     limit_orders_cancelled = b.limit_orders_cancelled;
     total_pow = b.total_pow;
-    estimated_hashpower = b.estimated_hashpower;
+    num_pow_witnesses = b.num_pow_witnesses;
 }
 } } } // golos::plugins::blockchain_statistics

@@ -16,10 +16,6 @@ struct runtime_bucket_object {
     std::vector < std::string > calculate_delta_with (const runtime_bucket_object & b);
     void operator=(const runtime_bucket_object & b);
 
-
-    int64_t id;
-
-    fc::time_point_sec open;                                        ///< Open time of the bucket
     uint32_t seconds = 0;                                 ///< Seconds accounted for in the bucket
     uint32_t blocks = 0;                                  ///< Blocks produced
     uint32_t bandwidth = 0;                               ///< Bandwidth in bytes
@@ -62,8 +58,9 @@ struct runtime_bucket_object {
     uint32_t limit_orders_created = 0;                    ///< Limit orders created
     uint32_t limit_orders_filled = 0;                     ///< Limit orders filled
     uint32_t limit_orders_cancelled = 0;                  ///< Limit orders cancelled
-    uint32_t total_pow = 0;                               ///< POW submitted
-    uint128_t estimated_hashpower = 0;                     ///< Estimated average hashpower over interval
+    uint32_t total_pow = 0;                               ///< POW submitte
+    uint32_t num_pow_witnesses = 0;                       /// < The current count of how many pending POW witnesses
+                                                          /// there are, determines the difficulty of doing pow
 };
 
 } } } // golos::plugins::blockchain_statistics
