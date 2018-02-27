@@ -42,6 +42,12 @@ public:
         bool skip_validate_invariants = false
     );
 
+    uint32_t debug_push_json_blocks(
+        std::string json_filename,
+        uint32_t count,
+        uint32_t skip_flags = golos::chain::database::skip_nothing
+    );
+
     uint32_t debug_generate_blocks_until(
         std::string debug_key,
         fc::time_point_sec head_block_time,
@@ -371,6 +377,54 @@ uint32_t plugin::plugin_impl::debug_push_blocks(
     return 0;
 }
 
+uint32_t plugin::plugin_impl::debug_push_json_blocks(
+    std::string json_filename,
+    uint32_t count,
+    uint32_t skip_flags
+) {
+    uint32_t pushed = 0;
+
+    if (count == 0)
+        return pushed;
+    fc::path src_path = fc::path(json_filename);
+    if (fc::exists(src_path) && !fc::is_directory(src_path)) {
+        ilog("Loading ${n} JSON blocks from ${f}", ("n", count)("f", json_filename));
+        idump((json_filename)(count)(skip_flags));
+
+        vector<signed_block> blocks;
+        try {
+            blocks = fc::json::from_file(src_path).as<vector<signed_block>>();
+        }
+        catch (const fc::exception &e) {
+            elog("Failed to load JSON blocks from ${f}", ("f", json_filename));
+            elog("Exception backtrace: ${bt}", ("bt", e.to_detail_string()));
+            return pushed;
+        }
+
+        uint32_t n_blocks = blocks.size();
+        for (uint32_t i = 0; i < count; i++) {
+            if (i >= n_blocks) {
+                wlog("File ${f} only contained ${i} of ${n} requested blocks",
+                    ("i", i)("n", count)("f", json_filename));
+                break;
+            }
+
+            signed_block blk = blocks[i];
+            try {
+                database().push_block(blk, skip_flags);
+                pushed++;
+            }
+            catch (const fc::exception& e) {
+                elog("Got exception pushing block ${bn} : ${bid} (${i} of ${n})",
+                    ("bn", blk.block_num())("bid", blk.id())("i", i)("n", count));
+                elog("Exception backtrace: ${bt}", ("bt", e.to_detail_string()));
+            }
+        }
+        ilog("Completed loading json blocks, pushed ${ok} of ${n}", ("ok", pushed)("n", n_blocks<count?n_blocks:count));
+    }
+    return pushed;
+}
+
 fc::optional< protocol::signed_block > plugin::plugin_impl::debug_pop_block() {
     auto & db = database();
     return db.fetch_block_by_number( db.head_block_num() );
@@ -478,6 +532,28 @@ DEFINE_API ( plugin, debug_push_blocks ) {
     auto &db = my->database();
     return db.with_read_lock([&]() {
         return my->debug_push_blocks( src_filename, count, skip_validate_invariants );
+    });
+}
+
+DEFINE_API ( plugin, debug_push_json_blocks ) {
+    std::string json_filename;
+    uint32_t count;
+    uint32_t skip_flags = golos::chain::database::skip_nothing;
+    // `skip_flags` can be set to 577 if loading mainnet blocks
+    // 577 = skip_witness_signature | skip_authority_check | skip_witness_schedule_check
+
+    FC_ASSERT(args.args.valid(), "Invalid parameters" );
+    auto args_count = args.args->size() ;
+    FC_ASSERT(args_count > 0 && args_count < 4, "Wrong parameters number, given ${n}", ("n", args_count));
+    auto args_vector = *(args.args);
+    json_filename = args_vector[0].as_string();
+    count = args_vector[1].as_int64();
+    if (args_count > 2) {
+        skip_flags = args_vector[2].as_int64();
+    }
+    auto &db = my->database();
+    return db.with_read_lock([&]() {
+        return my->debug_push_json_blocks(json_filename, count, skip_flags);
     });
 }
 

@@ -27,6 +27,7 @@ using golos::chain::witness_schedule_object;
 DEFINE_API_ARGS ( debug_generate_blocks,              msg_pack,   uint32_t                                      )
 DEFINE_API_ARGS ( debug_generate_blocks_until,        msg_pack,   uint32_t                                      )
 DEFINE_API_ARGS ( debug_push_blocks,                  msg_pack,   uint32_t                                      )
+DEFINE_API_ARGS ( debug_push_json_blocks,             msg_pack,   uint32_t                                      )
 DEFINE_API_ARGS ( debug_pop_block,                    msg_pack,   fc::optional< protocol::signed_block >        )
 DEFINE_API_ARGS ( debug_get_witness_schedule,         msg_pack,   witness_schedule_object                       )
 // DEFINE_API_ARGS ( debug_get_hardfork_property_object, msg_pack,   debug_get_hardfork_property_object_r  )
@@ -64,6 +65,9 @@ public:
         * Push blocks from existing database.
         */
         (debug_push_blocks)
+
+        /* Push blocks from json file (array of signed blocks)*/
+        (debug_push_json_blocks)
 
         /**
         * Generate blocks locally.

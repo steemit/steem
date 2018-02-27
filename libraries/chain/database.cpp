@@ -2905,14 +2905,21 @@ namespace golos {
                     p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
                 });
 
-#ifndef STEEMIT_BUILD_TESTNET
                 auto snapshot_path = string("./snapshot5392323.json");
                 auto snapshot_file = fc::path(snapshot_path);
-                FC_ASSERT(fc::exists(snapshot_file), "Snapshot file '${file}' was not found.", ("file", snapshot_file));
+                auto snapshot_exists = fc::exists(snapshot_file);
+
+#ifdef STEEMIT_BUILD_TESTNET
+                // Note: snapshot is not exist (not copied) in default TESTNET config
+                if (snapshot_exists) {
+#else
+                FC_ASSERT(snapshot_exists, "Snapshot file '${file}' was not found.", ("file", snapshot_file));
+#endif
 
                 std::cout << "Initializing state from snapshot file: "
                           << snapshot_file.generic_string() << "\n";
 
+#ifndef STEEMIT_BUILD_TESTNET
                 unsigned char digest[MD5_DIGEST_LENGTH];
                 char snapshot_checksum[] = "081b0149f0b2a570ae76b663090cfb0c";
                 char md5hash[33];
@@ -2923,6 +2930,7 @@ namespace golos {
                 }
                 FC_ASSERT(memcmp(md5hash, snapshot_checksum, 32) ==
                           0, "Checksum of snapshot [${h}] is not equal [${s}]", ("h", md5hash)("s", snapshot_checksum));
+#endif
 
                 snapshot_state snapshot = fc::json::from_file(snapshot_file).as<snapshot_state>();
                 for (account_summary &account : snapshot.accounts) {
@@ -2944,6 +2952,9 @@ namespace golos {
                 std::cout << "Imported " << snapshot.accounts.size()
                           << " accounts from " << snapshot_file.generic_string()
                           << ".\n";
+
+#ifdef STEEMIT_BUILD_TESTNET
+                }
 #endif
 
                 // Nothing to do
