@@ -1180,6 +1180,7 @@ namespace last_votes_misc
 
       uint32_t size = 0;
       uint32_t skip = 0;
+      bool allow_skip = true;
 
       //Gathering 'limit' data and sorting in-fly according to 'operator<' in 'WrapperType'.
       while( size <= limit && itr != itr_u )
@@ -1194,11 +1195,14 @@ namespace last_votes_misc
          }
 
          //Find first item, which matches to 'v1' and 'v2' and 'v3'.
-         if( size == 0 )
+         if( allow_skip )
          {
             start = s.lower_bound( start_obj );
             //Calculate what is offset between first saved data in 's' collection and first correct(!!!) data.
             skip = std::distance( s.begin(), start );
+
+            //The variable 'skip' has to calculated only once.
+            allow_skip = false;
          }
 
          size = s.size() - skip;
