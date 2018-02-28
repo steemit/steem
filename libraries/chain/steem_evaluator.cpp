@@ -340,31 +340,63 @@ namespace golos {
             _db.remove(comment);
         }
 
+        struct comment_options_extension_visitor {
+            comment_options_extension_visitor(const comment_object &c, database &db)
+                    : _c(c), _db(db) {
+            }
+
+            using result_type = void;
+
+            const comment_object &_c;
+            database &_db;
+
+            void operator()(const comment_payout_beneficiaries &cpb) const {
+                if (_db.is_producing()) {
+                    FC_ASSERT(cpb.beneficiaries.size() <= STEEMIT_MAX_COMMENT_BENEFICIARIES,
+                              "Cannot specify more than ${m} beneficiaries.", ("m", STEEMIT_MAX_COMMENT_BENEFICIARIES));
+                }
+
+                FC_ASSERT(_c.beneficiaries.size() == 0, "Comment already has beneficiaries specified.");
+                FC_ASSERT(_c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries.");
+
+                _db.modify(_c, [&](comment_object &c) {
+                    for (auto &b : cpb.beneficiaries) {
+                        auto acc = _db.find< account_object, by_name >( b.account );
+                        FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
+                        c.beneficiaries.push_back(b);
+                    }
+                });
+            }
+        };
+
         void comment_options_evaluator::do_apply(const comment_options_operation &o) {
             database &_db = db();
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_10)) {
                 const auto &auth = _db.get_account(o.author);
-                FC_ASSERT(!(auth.owner_challenged ||
-                            auth.active_challenged), "Operation cannot be processed because account is currently challenged.");
+                FC_ASSERT(!(auth.owner_challenged || auth.active_challenged),
+                          "Operation cannot be processed because account is currently challenged.");
             }
 
 
             const auto &comment = _db.get_comment(o.author, o.permlink);
-            if (!o.allow_curation_rewards || !o.allow_votes ||
-                o.max_accepted_payout < comment.max_accepted_payout)
-                FC_ASSERT(comment.abs_rshares ==
-                          0, "One of the included comment options requires the comment to have no rshares allocated to it.");
+            if (!o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout) {
+                FC_ASSERT(comment.abs_rshares == 0,
+                          "One of the included comment options requires the comment to have no rshares allocated to it.");
+            }
 
-            FC_ASSERT(o.extensions.size() ==
-                      0, "Operation extensions for the comment_options_operation are not currently supported.");
-            FC_ASSERT(comment.allow_curation_rewards >=
-                      o.allow_curation_rewards, "Curation rewards cannot be re-enabled.");
-            FC_ASSERT(comment.allow_votes >=
-                      o.allow_votes, "Voting cannot be re-enabled.");
-            FC_ASSERT(comment.max_accepted_payout >=
-                      o.max_accepted_payout, "A comment cannot accept a greater payout.");
-            FC_ASSERT(comment.percent_steem_dollars >=
-                      o.percent_steem_dollars, "A comment cannot accept a greater percent SBD.");
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__432)) {// TODO: Remove after hardfork 17
+                FC_ASSERT(o.extensions.size() == 0,
+                          "Operation extensions for the comment_options_operation are not currently supported.");
+            }
+
+            FC_ASSERT(comment.allow_curation_rewards >= o.allow_curation_rewards,
+                      "Curation rewards cannot be re-enabled.");
+            FC_ASSERT(comment.allow_votes >= o.allow_votes,
+                      "Voting cannot be re-enabled.");
+            FC_ASSERT(comment.max_accepted_payout >= o.max_accepted_payout,
+                      "A comment cannot accept a greater payout.");
+            FC_ASSERT(comment.percent_steem_dollars >= o.percent_steem_dollars,
+                      "A comment cannot accept a greater percent SBD.");
 
             _db.modify(comment, [&](comment_object &c) {
                 c.max_accepted_payout = o.max_accepted_payout;
@@ -372,6 +404,10 @@ namespace golos {
                 c.allow_votes = o.allow_votes;
                 c.allow_curation_rewards = o.allow_curation_rewards;
             });
+
+            for (auto &e : o.extensions) {
+                e.visit(comment_options_extension_visitor(comment, _db));
+            }
         }
 
         void comment_evaluator::do_apply(const comment_operation &o) {
