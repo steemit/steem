@@ -26,36 +26,23 @@ namespace golos {
                 using ptr = std::shared_ptr<block_applied_callback_info>;
                 using cont = std::list<ptr>;
 
-                bool active = true;
                 block_applied_callback callback;
                 boost::signals2::connection connection;
                 cont::iterator it;
 
                 void connect(
-                    ptr this_ptr,
                     boost::signals2::signal<void(const signed_block &)> &sig,
-                    cont &active_cont,
                     cont &free_cont,
                     block_applied_callback cb
                 ) {
-                    active_cont.push_back(this_ptr);
-                    it = active_cont.end();
-                    --it;
-
                     callback = cb;
 
-                    connection = sig.connect([this, &active_cont, &free_cont](const signed_block &block) {
+                    connection = sig.connect([this, &free_cont](const signed_block &block) {
                         try {
-                            if (this->active) {
-                                this->callback(fc::variant(block));
-                            }
+                            this->callback(fc::variant(block));
                         } catch (...) {
-                            this->active = false;
-                            if (this->it != active_cont.end()) {
-                                free_cont.push_back(*this->it);
-                                active_cont.erase(this->it);
-                                this->it = active_cont.end();
-                            }
+                            free_cont.push_back(*this->it);
+                            this->connection.disconnect();
                         }
                     });
                 }
@@ -74,6 +61,8 @@ namespace golos {
                 void set_pending_transaction_callback(std::function<void(const variant &)> cb);
 
                 void set_block_applied_callback(block_applied_callback cb);
+
+                void clear_block_applied_callback();
 
                 void cancel_all_subscriptions();
 
@@ -320,20 +309,21 @@ namespace golos {
             void plugin::api_impl::set_block_applied_callback(std::function<void(const variant &block_header)> callback) {
                 auto info_ptr = std::make_shared<block_applied_callback_info>();
 
-                info_ptr->connect(
-                    info_ptr,
-                    database().applied_block,
-                    active_block_applied_callback,
-                    free_block_applied_callback,
-                    callback
-                );
+                active_block_applied_callback.push_back(info_ptr);
+                info_ptr->it = std::prev(active_block_applied_callback.end());
+
+                info_ptr->connect(database().applied_block, free_block_applied_callback, callback);
+            }
+
+            void plugin::api_impl::clear_block_applied_callback() {
+                for (auto &info: free_block_applied_callback) {
+                    active_block_applied_callback.erase(info->it);
+                }
+                free_block_applied_callback.clear();
             }
 
             void plugin::clear_block_applied_callback() {
-                for (auto &info: my->free_block_applied_callback) {
-                    my->database().applied_block.disconnect(info->connection);
-                }
-                my->free_block_applied_callback.clear();
+                my->clear_block_applied_callback();
             }
 
             //////////////////////////////////////////////////////////////////////
