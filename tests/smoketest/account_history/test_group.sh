@@ -12,6 +12,7 @@ then
 fi
 
 SCRIPT_DIR=../../scripts
+TEST_SCRIPT=test.sh
 AH_TEST_SCRIPT=compare_account_history.sh
 EXIT_CODE=0
 JOBS=$1
@@ -23,6 +24,7 @@ BLOCK_LIMIT=$6
 
 function run_ah_test {
    echo Running test $1
+   mkdir $1
    pushd $1
    WDIR=$PWD/logs
    echo Running $SCRIPT_DIR/$AH_TEST_SCRIPT $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $WDIR
@@ -37,8 +39,8 @@ function run_test {
    echo Running test $1
    pushd $1
    
-   echo Running ./$AH_TEST_SCRIPT $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
-   ./$AH_TEST_SCRIPT 1 $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
+   echo Running ./$TEST_SCRIPT $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
+   ./$TEST_SCRIPT 1 $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
    [ $? -ne 0 ] && echo test $1 FAILED && EXIT_CODE=-1
 
    popd

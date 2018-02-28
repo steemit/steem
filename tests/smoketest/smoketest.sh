@@ -1,6 +1,9 @@
 #!/bin/bash
 
 EXIT_CODE=0
+GROUP_TOTAL=0
+GROUP_SKIPPED=0
+GROUP_FAILURE=0
 JOBS=1
 API_TEST_PATH=../../python_scripts/tests/api_tests
 BLOCK_SUBPATH=blockchain/block_log
@@ -62,6 +65,7 @@ function run_test_group {
 
    if ! [ -x "$GROUP_TEST_SCRIPT" ]; then
       echo Skipping subdirectory $1 due to missing $GROUP_TEST_SCRIPT file.
+      ((GROUP_SKIPPED++))
       popd
       return
    fi
@@ -79,7 +83,7 @@ function run_test_group {
 
    echo Running ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
    ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
-   [ $? -ne 0 ] && echo test group $1 FAILED && EXIT_CODE=-1
+   [ $? -ne 0 ] && echo test group $1 FAILED && ((GROUP_FAILURE++)) && EXIT_CODE=-1
 
    kill -s SIGINT $TEST_STEEMD_PID
    kill -s SIGINT $REF_STEEMD_PID
@@ -108,6 +112,11 @@ for dir in ./*/
 do
     dir=${dir%*/}
     run_test_group ${dir##*/}
+    ((GROUP_TOTAL++))
 done
+
+echo TOTAL test groups: $GROUP_TOTAL
+echo SKIPPED test groups: $GROUP_SKIPPED
+echo FAILED test groups: $GROUP_FAILURE
 
 exit $EXIT_CODE
