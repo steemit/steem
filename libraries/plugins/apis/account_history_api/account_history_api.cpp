@@ -5,8 +5,6 @@
 
 namespace steem { namespace plugins { namespace account_history {
 
-using boost::container::flat_set;
-
 namespace detail {
 
 class abstract_account_history_api_impl
