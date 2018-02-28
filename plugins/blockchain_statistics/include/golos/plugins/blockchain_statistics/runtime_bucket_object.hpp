@@ -12,8 +12,6 @@ using namespace golos::chain;
 
 struct runtime_bucket_object {
 
-    std::vector < std::string > get_as_string ();
-    std::vector < std::string > calculate_delta_with (const runtime_bucket_object & b);
     void operator=(const runtime_bucket_object & b);
 
     uint32_t seconds = 0;                                 ///< Seconds accounted for in the bucket
