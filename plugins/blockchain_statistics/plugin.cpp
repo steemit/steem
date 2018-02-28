@@ -8,7 +8,6 @@
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
 #include <golos/protocol/block.hpp>
-// #include <golos/version/hardfork.hpp>
 #include <golos/chain/database.hpp>
 #include <fc/io/json.hpp>
 #include <boost/program_options.hpp>
@@ -26,13 +25,13 @@ std::vector < std::string > calculate_delta_with ( const runtime_bucket_object &
 
 void increment_counter(std::vector < std::string > &result, std::string name, uint32_t value, std::string stat_type = "c") {
     if (value != 0) {
-         result.push_back(name + ":" + std::to_string(value) + "|" + stat_type);
+        result.push_back(name + ":" + std::to_string(value) + "|" + stat_type);
     }
 }
 
 void increment_counter(std::vector < std::string > &result, std::string name, share_type value, std::string stat_type = "c") {
     if (value != 0) {
-         result.push_back(name + ":" + std::string(value) + "|" + stat_type);
+        result.push_back(name + ":" + std::string(value) + "|" + stat_type);
     }
 }
 
@@ -214,7 +213,7 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
             stat_sender->is_previous_bucket_set = true;
         }
         else {
-            auto statistics_delta = calculate_delta_with( stat_sender->current_bucket, stat_sender->previous_bucket ); 
+            auto statistics_delta = calculate_delta_with( stat_sender->previous_bucket, stat_sender->current_bucket ); 
 
             for (auto delta : statistics_delta) {
                 stat_sender->push(delta);
