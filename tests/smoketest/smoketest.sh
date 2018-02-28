@@ -4,6 +4,7 @@ EXIT_CODE=0
 JOBS=1
 API_TEST_PATH=../../python_scripts/tests/api_tests
 BLOCK_SUBPATH=blockchain/block_log
+GROUP_TEST_SCRIPT=test_group.sh
 STEEMD_CONFIG=config.ini
 NODE_ADDRESS=127.0.0.1
 TEST_PORT=8090
@@ -59,6 +60,12 @@ function run_test_group {
    echo Running test group $1
    pushd $1
 
+   if ! [ -x "$GROUP_TEST_SCRIPT" ]; then
+      echo Skipping subdirectory $1 due to missing $GROUP_TEST_SCRIPT file.
+      popd
+      return
+   fi
+
    copy_config $TEST_WORK_PATH
    copy_config $REF_WORK_PATH
 
@@ -70,8 +77,8 @@ function run_test_group {
    echo Running reference steemd to listen
    $REF_STEEMD_PATH $REF_NODE_OPT -d $REF_WORK_PATH & REF_STEEMD_PID=$!
 
-   echo Running ./test_group.sh $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
-   ./test_group.sh $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
+   echo Running ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
+   ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
    [ $? -ne 0 ] && echo test group $1 FAILED && EXIT_CODE=-1
 
    kill -s SIGINT $TEST_STEEMD_PID
