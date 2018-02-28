@@ -26,7 +26,7 @@ std::vector < std::string > calculate_delta_with ( const runtime_bucket_object &
 
 void increment_counter(std::vector < std::string > &result, std::string name, uint32_t value, std::string stat_type = "c") {
     if (value != 0) {
-         result.push_back(name + std::to_string(value) + "|" + stat_type);
+         result.push_back(name + ":" + std::to_string(value) + "|" + stat_type);
     }
 }
 
