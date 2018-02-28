@@ -46,15 +46,29 @@ struct discussion_index
    vector< string > promoted;         /// pending lifetime payout
 };
 
-struct extended_limit_order : public database_api::api_limit_order_object
+struct api_limit_order_object
 {
-   extended_limit_order( const limit_order_object& o ) :
-      database_api::api_limit_order_object( o ) {}
+   api_limit_order_object( const limit_order_object& o ) :
+      id( o.id ),
+      created( o.created ),
+      expiration( o.expiration ),
+      seller( o.seller ),
+      orderid( o.orderid ),
+      for_sale( o.for_sale ),
+      sell_price( o.sell_price )
+   {}
 
-   extended_limit_order(){}
+   api_limit_order_object(){}
 
-   double real_price  = 0;
-   bool   rewarded    = false;
+   limit_order_id_type  id;
+   time_point_sec       created;
+   time_point_sec       expiration;
+   account_name_type    seller;
+   uint32_t             orderid = 0;
+   share_type           for_sale;
+   legacy_price         sell_price;
+   double               real_price = 0;
+   bool                 rewarded   = false;
 };
 
 
@@ -228,7 +242,7 @@ struct extended_account : public api_account_object
    vector< tags::tag_count_object >                         tags_usage;
    vector< follow::reblog_count >                           guest_bloggers;
 
-   optional< map< uint32_t, extended_limit_order > >        open_orders;
+   optional< map< uint32_t, api_limit_order_object > >      open_orders;
    optional< vector< string > >                             comments;         /// permlinks for this user
    optional< vector< string > >                             blog;             /// blog posts for this user
    optional< vector< string > >                             feed;             /// feed posts for this user
@@ -882,7 +896,7 @@ DEFINE_API_ARGS( get_conversion_requests,                vector< variant >,   ve
 DEFINE_API_ARGS( get_witness_by_account,                 vector< variant >,   optional< api_witness_object > )
 DEFINE_API_ARGS( get_witnesses_by_vote,                  vector< variant >,   vector< api_witness_object > )
 DEFINE_API_ARGS( lookup_witness_accounts,                vector< variant >,   vector< account_name_type > )
-DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< extended_limit_order > )
+DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< api_limit_order_object > )
 DEFINE_API_ARGS( get_witness_count,                      vector< variant >,   uint64_t )
 DEFINE_API_ARGS( get_transaction_hex,                    vector< variant >,   string )
 DEFINE_API_ARGS( get_transaction,                        vector< variant >,   annotated_signed_transaction )
@@ -1046,8 +1060,8 @@ FC_REFLECT( steem::plugins::condenser_api::api_tag_object,
 FC_REFLECT( steem::plugins::condenser_api::state,
             (current_route)(props)(tag_idx)(tags)(content)(accounts)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error) )
 
-FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_limit_order, (steem::plugins::database_api::api_limit_order_object),
-            (real_price)(rewarded) )
+FC_REFLECT( steem::plugins::condenser_api::api_limit_order_object,
+            (id)(created)(expiration)(seller)(orderid)(for_sale)(sell_price)(real_price)(rewarded) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_operation_object,
              (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
