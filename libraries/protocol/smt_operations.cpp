@@ -105,6 +105,14 @@ void smt_cap_commitment::validate()const
    }
 }
 
+void smt_revealed_cap::validate( const smt_cap_commitment& commitment )const
+{
+   FC_ASSERT( amount >= commitment.lower_bound );
+   FC_ASSERT( amount <= commitment.upper_bound );
+   fc::sha256 reveal_hash( fc::sha256::hash(*this) );
+   FC_ASSERT( reveal_hash == commitment.hash );
+}
+
 #define SMT_MAX_UNIT_COUNT                  20
 #define SMT_MAX_DECIMAL_PLACES               8
 #define SMT_MIN_HARD_CAP_STEEM_UNITS     10000
