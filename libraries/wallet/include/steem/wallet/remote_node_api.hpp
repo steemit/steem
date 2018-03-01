@@ -58,7 +58,7 @@ struct remote_node_api
    vector< condenser_api::api_witness_object > get_witnesses_by_vote( account_name_type, uint32_t );
    vector< account_name_type > lookup_witness_accounts( string, uint32_t );
    uint64_t get_witness_count();
-   vector< condenser_api::extended_limit_order > get_open_orders( account_name_type );
+   vector< condenser_api::api_limit_order_object > get_open_orders( account_name_type );
    string get_transaction_hex( signed_transaction );
    annotated_signed_transaction get_transaction( transaction_id_type );
    set< public_key_type > get_required_signatures( signed_transaction, flat_set< public_key_type > );
