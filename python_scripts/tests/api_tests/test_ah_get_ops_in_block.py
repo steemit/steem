@@ -33,6 +33,8 @@ def main():
     
   global wdir
   global errors
+  first_block = 0
+  last_block = 0
 
   jobs = int(sys.argv[1])
   if jobs <= 0:
@@ -70,8 +72,11 @@ def main():
     
   create_wdir()
 
-  blocks_per_job = (last_block - first_block + 1) // jobs
-  
+  blocks = last_block - first_block + 1
+
+  if jobs > blocks:
+    jobs = blocks
+
   print("setup:")
   print("  jobs: {}".format(jobs))
   print("  url1: {}".format(url1))
@@ -80,6 +85,8 @@ def main():
   print("  block range: {}:{}".format(first_block, last_block))
 
   if jobs > 1:
+    blocks_per_job = blocks // jobs
+
     with ProcessPoolExecutor(max_workers=jobs) as executor:
       for i in range(jobs-1):
         executor.submit(compare_results, first_block, (first_block + blocks_per_job - 1), url1, url2)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-  Usage: script_name jobs url1 url2 [working_dir [accounts_file]]
+  Usage: __name__ jobs url1 url2 [working_dir [accounts_file]]
     Example: script_name 4 http://127.0.0.1:8090 http://127.0.0.1:8091 [get_account_history [accounts]]
     set jobs to 0 if you want use all processors
     url1 is reference url for list_accounts
@@ -25,8 +25,8 @@ errors = 0
 
 def main():
   if len( sys.argv ) < 4 or len( sys.argv ) > 6:
-    print( "Usage: script_name jobs url1 url2 [working_dir [accounts_file]]" )
-    print( "  Example: script_name 4 http://127.0.0.1:8090 http://127.0.0.1:8091 [get_account_history [accounts]]" )
+    print( "Usage: __name__ jobs url1 url2 [working_dir [accounts_file]]" )
+    print( "  Example: __name__ 4 http://127.0.0.1:8090 http://127.0.0.1:8091 [get_account_history [accounts]]" )
     print( "  set jobs to 0 if you want use all processors" )
     print( "  url1 is reference url for list_accounts" )
     exit ()
@@ -47,17 +47,10 @@ def main():
     
   accounts_file = sys.argv[5] if len( sys.argv ) > 5 else ""
   
-  print( "setup:" )
-  print( "  jobs: {}".format(jobs) )
-  print( "  url1: {}".format(url1) )
-  print( "  url2: {}".format(url2) )
-  print( "  wdir: {}".format(wdir) )
-  print( "  accounts_file: {}".format(accounts_file) )
-
   if accounts_file != "":
     try:
       with open(accounts_file, "r") as file:
-        accounts = [account[:-1] for account in file]
+        accounts = [account for account in file]
     except:
       exit("Cannot open file: " + accounts_file)
   else:
@@ -71,6 +64,16 @@ def main():
   create_wdir()
 
   print( str(length) + " accounts" )
+
+  if jobs > length:
+    jobs = length
+
+  print( "setup:" )
+  print( "  jobs: {}".format(jobs) )
+  print( "  url1: {}".format(url1) )
+  print( "  url2: {}".format(url2) )
+  print( "  wdir: {}".format(wdir) )
+  print( "  accounts_file: {}".format(accounts_file) )
   
   if jobs > 1:
     first = 0
@@ -113,7 +116,7 @@ def compare_results(url1, url2, accounts, max_tries=10, timeout=0.1):
 def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
   global wdir
   START = -1
-  HARD_LIMIT = 10000
+  HARD_LIMIT = 10
   LIMIT = HARD_LIMIT
 
   while True:
@@ -155,14 +158,12 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
     
     if last == 0: break
 
-    START = last
-    
-    if START > HARD_LIMIT:
-      LIMIT = HARD_LIMIT
-    if last > HARD_LIMIT:
-      LIMIT = HARD_LIMIT
-    else:
-      LIMIT = last
+    with open("13488.json", "a") as file:
+       json.dump(history, file, indent=2, sort_keys=True)
+       file.write('\n')
+
+    START = last - 1
+    LIMIT = last if last < HARD_LIMIT else HARD_LIMIT
   # while True
   
   return True
