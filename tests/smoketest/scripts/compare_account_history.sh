@@ -96,6 +96,7 @@ get_account_history ()
       break
    fi
 
+   ((LAST--))
    START=$LAST
    if [ $LAST -gt $HARD_LIMIT ]; then
       LIMIT=$HARD_LIMIT
