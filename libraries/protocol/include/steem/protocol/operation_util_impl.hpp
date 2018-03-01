@@ -19,7 +19,7 @@ namespace fc
       template<typename T> void operator()( const T& v )const
       {
          auto name = name_from_type( fc::get_typename< T >::name() );
-         var = variant( std::make_pair( name, v ) );
+         var = mutable_variant_object( "type", name )( "value", v );
       }
    };
 
@@ -76,19 +76,16 @@ void from_variant( const fc::variant& var,  OperationType& vo )            \
       return name_map;                                                     \
    }();                                                                    \
                                                                            \
-   auto ar = var.get_array();                                              \
-   if( ar.size() < 2 ) return;                                             \
-   if( ar[0].is_uint64() )                                                 \
-      vo.set_which( ar[0].as_uint64() );                                   \
-   else                                                                    \
-   {                                                                       \
-      auto itr = to_tag.find(ar[0].as_string());                           \
-      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) ); \
-      vo.set_which( to_tag[ar[0].as_string()] );                           \
-   }                                                                       \
-      vo.visit( fc::to_static_variant( ar[1] ) );                          \
-   }                                                                       \
-}                                                                          \
+   FC_ASSERT( var.is_object(), "Operation has to treated as object." );    \
+   auto v_object = var.get_object();                                       \
+   FC_ASSERT( v_object.contains( "type" ), "Type field doesn't exist." );  \
+   FC_ASSERT( v_object.contains( "value" ), "Value field doesn't exist." );\
+                                                                           \
+   auto itr = to_tag.find( v_object[ "type" ].as_string() );               \
+   FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", v_object[ "type" ]) ); \
+   vo.set_which( to_tag[ v_object[ "type" ].as_string() ] );               \
+   vo.visit( fc::to_static_variant( v_object[ "value" ] ) );               \
+} }                                                                        \
                                                                            \
 namespace steem { namespace protocol {                                      \
                                                                            \
