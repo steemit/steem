@@ -753,7 +753,7 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_chain_properties )
    {
       CHECK_ARG_SIZE( 0 )
-      return _database_api->get_witness_schedule( {} ).median_props;
+      return legacy_chain_properties( _database_api->get_witness_schedule( {} ).median_props );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_current_median_history_price )

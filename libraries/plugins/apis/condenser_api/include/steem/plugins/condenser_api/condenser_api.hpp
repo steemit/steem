@@ -869,7 +869,7 @@ DEFINE_API_ARGS( get_block,                              vector< variant >,   op
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< api_operation_object > )
 DEFINE_API_ARGS( get_config,                             vector< variant >,   fc::variant_object )
 DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   extended_dynamic_global_properties )
-DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   chain_properties )
+DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   legacy_chain_properties )
 DEFINE_API_ARGS( get_current_median_history_price,       vector< variant >,   legacy_price )
 DEFINE_API_ARGS( get_feed_history,                       vector< variant >,   api_feed_history_object )
 DEFINE_API_ARGS( get_witness_schedule,                   vector< variant >,   api_witness_schedule_object )
