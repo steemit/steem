@@ -162,6 +162,7 @@ namespace golos {
             int32_t net_votes = 0;
 
             id_type root_comment;
+            time_point_sec root_comment_created;
 
             comment_mode mode = first_payout;
 
@@ -340,7 +341,7 @@ FC_REFLECT((golos::chain::comment_object),
                 (net_rshares)(abs_rshares)(vote_rshares)
                 (children_abs_rshares)(cashout_time)(max_cashout_time)
                 (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)
-                (author_rewards)(net_votes)(root_comment)(mode)
+                (author_rewards)(net_votes)(root_comment)(root_comment_created)(mode)
                 (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
                 (beneficiaries)
 )
