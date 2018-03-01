@@ -1933,12 +1933,12 @@ namespace golos {
             /// TODO: potentially modify author's total payout numbers as well
         }
 
-/**
- *  This method will iterate through all comment_vote_objects and give them
- *  (max_rewards * weight) / c.total_vote_weight.
- *
- *  @returns unclaimed rewards.
- */
+       /**
+        *  This method will iterate through all comment_vote_objects and give them
+        *  (max_rewards * weight) / c.total_vote_weight.
+        *
+        *  @returns unclaimed rewards.
+        */
         share_type database::pay_discussions(const comment_object &c, share_type max_rewards) {
             share_type unclaimed_rewards = max_rewards;
             std::deque<comment_id_type> child_queue;
@@ -1947,8 +1947,8 @@ namespace golos {
 
             if (c.children_rshares2 > 0) {
                 const auto &comment_by_parent = get_index<comment_index>().indices().get<by_parent>();
-                fc::uint128_t total_rshares2(c.children_rshares2 -
-                                             calculate_vshares(c.net_rshares.value));
+                fc::uint128_t total_rshares2 =
+                    c.children_rshares2 - calculate_vshares(c.net_rshares.value, c.root_comment_created);
                 child_queue.push_back(c.id);
 
                 // Pre-order traversal of the tree of child comments
@@ -1958,7 +1958,7 @@ namespace golos {
 
                     if (cur.net_rshares > 0) {
                         auto claim = static_cast< uint64_t >(
-                                (to256(calculate_vshares(cur.net_rshares.value)) *
+                                (to256(calculate_vshares(cur.net_rshares.value, c.root_comment_created)) *
                                  max_rewards.value) / to256(total_rshares2));
                         unclaimed_rewards -= claim;
 
@@ -2036,12 +2036,12 @@ namespace golos {
                 const auto &cat = get_category(comment.category);
 
                 if (comment.net_rshares > 0) {
-                    uint128_t reward_tokens =
-                            uint128_t(
-                                claim_rshare_reward(
-                                    comment.net_rshares,
-                                    comment.reward_weight,
-                                    to_steem(comment.max_accepted_payout)).value);
+                    uint128_t reward_tokens = uint128_t(
+                         claim_rshare_reward(
+                             comment.net_rshares,
+                             comment.reward_weight,
+                             to_steem(comment.max_accepted_payout),
+                             comment.root_comment_created).value);
 
                     asset total_payout;
                     if (reward_tokens > 0) {
@@ -2122,7 +2122,7 @@ namespace golos {
 
                     }
 
-                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value);
+                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value, comment.root_comment_created);
                     adjust_rshares2(comment, old_rshares2, 0);
                 }
 
@@ -2486,9 +2486,23 @@ namespace golos {
             return uint128_t(uint64_t(2000000000000ll)); // looking good for posters
         }
 
-        uint128_t database::calculate_vshares(uint128_t rshares) const {
-            auto s = get_content_constant_s();
+        inline uint128_t calculate_vshares_linear(uint128_t rshares) {
+            return rshares;
+        }
+
+        inline const uint128_t calculate_vshares_quadratic(uint128_t rshares, uint128_t s) {
             return (rshares + s) * (rshares + s) - s * s;
+        }
+
+        uint128_t database::calculate_vshares(uint128_t rshares, const fc::time_point_sec create_time) const {
+            if (create_time < fc::time_point_sec(STEEMIT_LINEAR_REWARD_CURVE_HF17_START_TIME) ||
+                create_time > fc::time_point_sec(STEEMIT_LINEAR_REWARD_CURVE_HF17_STOP_TIME) ||
+                !has_hardfork(STEEMIT_HARDFORK_0_17__433)
+            ) {
+                return calculate_vshares_quadratic(rshares, get_content_constant_s());
+            } else {
+                return calculate_vshares_linear(rshares);
+            }
         }
 
 /**
@@ -2560,8 +2574,11 @@ namespace golos {
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-        share_type database::claim_rshare_reward(share_type rshares, uint16_t reward_weight, asset max_steem) {
-            try {
+        share_type database::claim_rshare_reward(
+                share_type rshares, uint16_t reward_weight, asset max_steem,
+                fc::time_point_sec create_time
+        ) {
+        try {
                 FC_ASSERT(rshares > 0);
 
                 const auto &props = get_dynamic_global_properties();
@@ -2570,7 +2587,7 @@ namespace golos {
                 u256 rf(props.total_reward_fund_steem.amount.value);
                 u256 total_rshares2 = to256(props.total_reward_shares2);
 
-                u256 rs2 = to256(calculate_vshares(rshares.value));
+                u256 rs2 = to256(calculate_vshares(rshares.value, create_time));
                 rs2 = (rs2 * reward_weight) / STEEMIT_100_PERCENT;
 
                 u256 payout_u256 = (rf * rs2) / total_rshares2;
@@ -4456,7 +4473,7 @@ namespace golos {
                 for (auto itr = comment_idx.begin();
                      itr != comment_idx.end(); ++itr) {
                     if (itr->net_rshares.value > 0) {
-                        auto delta = calculate_vshares(itr->net_rshares.value);
+                        auto delta = calculate_vshares(itr->net_rshares.value, itr->root_comment_created);
                         total_rshares2 += delta;
                     }
                     if (itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
@@ -4531,7 +4548,7 @@ namespace golos {
 
                 for (const auto &c : comments) {
                     if (c.net_rshares.value > 0) {
-                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value));
+                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value, c.root_comment_created));
                     }
                 }
 

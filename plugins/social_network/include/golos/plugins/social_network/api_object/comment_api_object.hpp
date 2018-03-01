@@ -21,7 +21,8 @@ namespace golos {
                         cashout_time(o.cashout_time), max_cashout_time(o.max_cashout_time),
                         total_vote_weight(o.total_vote_weight), reward_weight(o.reward_weight),
                         total_payout_value(o.total_payout_value), curator_payout_value(o.curator_payout_value),
-                        author_rewards(o.author_rewards), net_votes(o.net_votes), root_comment(o.root_comment),
+                        author_rewards(o.author_rewards), net_votes(o.net_votes),
+                        root_comment(o.root_comment), root_comment_created(o.root_comment_created),
                         max_accepted_payout(o.max_accepted_payout), percent_steem_dollars(o.percent_steem_dollars),
                         allow_replies(o.allow_replies), allow_votes(o.allow_votes),
                         allow_curation_rewards(o.allow_curation_rewards) {
@@ -69,6 +70,7 @@ namespace golos {
                 int32_t net_votes;
 
                 comment_object::id_type root_comment;
+                time_point_sec root_comment_created;
 
                 protocol::asset max_accepted_payout;
                 uint16_t percent_steem_dollars;
@@ -85,6 +87,7 @@ FC_REFLECT((golos::plugins::social_network::comment_api_object),
            (id)(author)(permlink)(category)(parent_author)(parent_permlink)(title)(body)(json_metadata)(last_update)(
                    created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
                    vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)(
-                   reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(
+                   reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(
+                   root_comment)(root_comment_created)(
                    max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards))
 #endif //GOLOS_COMMENT_API_OBJ_H

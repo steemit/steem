@@ -404,7 +404,9 @@ namespace golos {
 
             void update_median_feed();
 
-            share_type claim_rshare_reward(share_type rshares, uint16_t reward_weight, asset max_steem);
+            share_type claim_rshare_reward(
+                    share_type rshares, uint16_t reward_weight, asset max_steem,
+                    fc::time_point_sec create_time);
 
             asset get_liquidity_reward() const;
 
@@ -422,7 +424,7 @@ namespace golos {
 
             uint128_t get_content_constant_s() const;
 
-            uint128_t calculate_vshares(uint128_t rshares) const;
+            uint128_t calculate_vshares(uint128_t rshares, fc::time_point_sec create_time) const;
 
             void pay_liquidity_reward();
 
