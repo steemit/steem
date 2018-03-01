@@ -12,12 +12,12 @@ list(APPEND CURRENT_TARGET_SOURCES
 )
 
 if(BUILD_SHARED_LIBRARIES)
-    add_library(golos_statsd SHARED
+    add_library( golos_${CURRENT_TARGET} SHARED
         ${CURRENT_TARGET_HEADERS}
         ${CURRENT_TARGET_SOURCES}
     )
 else()
-    add_library(golos_statsd STATIC
+    add_library( golos_${CURRENT_TARGET} STATIC
         ${CURRENT_TARGET_HEADERS}
         ${CURRENT_TARGET_SOURCES}
     )
