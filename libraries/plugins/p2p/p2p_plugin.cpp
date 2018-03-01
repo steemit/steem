@@ -190,7 +190,7 @@ void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_
 {
    try
    {
-      chain.db().push_transaction( trx_msg.trx );
+      chain.accept_transaction( trx_msg.trx );
    } FC_CAPTURE_AND_RETHROW( (trx_msg) )
 }
 
