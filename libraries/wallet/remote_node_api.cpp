@@ -189,7 +189,7 @@ uint64_t remote_node_api::get_witness_count()
    FC_ASSERT( false );
 }
 
-vector< condenser_api::extended_limit_order > remote_node_api::get_open_orders( account_name_type )
+vector< condenser_api::api_limit_order_object > remote_node_api::get_open_orders( account_name_type )
 {
    FC_ASSERT( false );
 }

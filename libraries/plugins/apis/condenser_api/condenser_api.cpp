@@ -1186,7 +1186,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       account_name_type owner = args[0].as< account_name_type >();
 
-      vector< extended_limit_order > result;
+      vector< api_limit_order_object > result;
       const auto& idx = _db.get_index< limit_order_index, by_account >();
       auto itr = idx.lower_bound( owner );
 
