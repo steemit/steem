@@ -11,7 +11,10 @@
 #include <boost/bind.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/thread/future.hpp>
+#include <boost/lockfree/queue.hpp>
 
+#include <thread>
+#include <memory>
 #include <iostream>
 
 namespace steem { namespace plugins { namespace chain {
@@ -23,16 +26,31 @@ namespace asio = boost::asio;
 
 #define NUM_THREADS 1
 
+typedef fc::static_variant< const signed_block*, const signed_transaction* > write_request_ptr;
+typedef fc::static_variant< boost::promise< void >*, fc::future< void >* > promise_ptr;
+
+struct write_context
+{
+   write_request_ptr             req_ptr;
+   uint32_t                      skip = 0;
+   bool                          success = true;
+   fc::optional< fc::exception > except;
+   promise_ptr                   prom_ptr;
+};
+
 namespace detail {
 
 class chain_plugin_impl
 {
    public:
-      chain_plugin_impl() :
+      chain_plugin_impl() {}/*:
          thread_pool_work( thread_pool_ios )
       {
          thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
-      }
+      }*/
+
+      void start_write_processing();
+      void stop_write_processing();
 
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
@@ -49,12 +67,148 @@ class chain_plugin_impl
 
       uint32_t allow_future_time = 5;
 
+      bool                             running = true;
+      std::shared_ptr< std::thread >   write_processor_thread;
+      boost::lockfree::queue< write_context* > write_queue;
+
+   /*
       boost::thread_group              thread_pool;
       asio::io_service                 thread_pool_ios;
       asio::io_service::work           thread_pool_work;
-
+   */
       database  db;
 };
+
+struct write_request_visitor
+{
+   write_request_visitor() {}
+
+   database* db;
+   uint32_t  skip = 0;
+   fc::optional< fc::exception >* except;
+
+   typedef bool result_type;
+
+   bool operator()( const signed_block* block )
+   {
+      bool result = false;
+
+      try
+      {
+         result = db->push_block( *block, skip );
+      }
+      catch( fc::exception& e )
+      {
+         *except = e;
+      }
+      catch( ... )
+      {
+         *except = fc::unhandled_exception( FC_LOG_MESSAGE( warn, "Unexpected exception while pushing block." ),
+                                           std::current_exception() );
+      }
+
+      return result;
+   }
+
+   bool operator()( const signed_transaction* trx )
+   {
+      bool result = false;
+
+      try
+      {
+         db->push_transaction( *trx );
+         result = true;
+      }
+      catch( fc::exception& e )
+      {
+         *except = e;
+      }
+      catch( ... )
+      {
+         *except = fc::unhandled_exception( FC_LOG_MESSAGE( warn, "Unexpected exception while pushing block." ),
+                                           std::current_exception() );
+      }
+
+      return result;
+   }
+};
+
+struct request_promise_visitor
+{
+   request_promise_visitor(){}
+
+   typedef void result_type;
+
+   void operator()( fc::future< void >* fut )
+   {
+      fut->set_value();
+   }
+
+   void operator()( boost::promise< void >* prom )
+   {
+      prom->set_value();
+   }
+};
+
+void chain_plugin_impl::start_write_processing()
+{
+   write_processor_thread = std::make_shared< std::thread >( [&]()
+   {
+      bool is_syncing = true;
+      write_context* cxt;
+      fc::time_point_sec start = fc::time_point::now();
+      write_request_visitor req_visitor;
+      req_visitor.db = &db;
+
+      request_promise_visitor prom_visitor;
+
+      while( running )
+      {
+         if( !is_syncing )
+            start = fc::time_point::now();
+
+         if( write_queue.pop( cxt ) )
+         {
+            db.with_write_lock( [&]()
+            {
+               while( true )
+               {
+                  req_visitor.skip = cxt->skip;
+                  req_visitor.except = &(cxt->except);
+                  cxt->success = cxt->req_ptr.visit( req_visitor );
+                  cxt->prom_ptr.visit( prom_visitor );
+
+                  if( is_syncing && start - db.head_block_time() < fc::minutes(1) )
+                  {
+                     start = fc::time_point::now();
+                     is_syncing = false;
+                  }
+
+                  if( !is_syncing && fc::time_point::now() - start > fc::milliseconds( 500 ) )
+                  {
+                     break;
+                  }
+
+                  if( !write_queue.pop( cxt ) )
+                  {
+                     break;
+                  }
+               }
+            });
+         }
+
+         if( !is_syncing )
+            boost::this_thread::sleep_for( boost::chrono::milliseconds( 10 ) );
+      }
+   });
+}
+
+void chain_plugin_impl::stop_write_processing()
+{
+   running = false;
+   write_processor_thread->join();
+   write_processor_thread.reset();
+}
 
 } // detail
 
@@ -139,6 +293,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 {
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
+
+   my->start_write_processing();
 
    if(my->resync)
    {
@@ -272,8 +428,9 @@ void chain_plugin::plugin_startup()
 void chain_plugin::plugin_shutdown()
 {
    ilog("closing chain database");
-   my->thread_pool_ios.stop();
-   my->thread_pool.join_all();
+   my->stop_write_processing();
+   //my->thread_pool_ios.stop();
+   //my->thread_pool.join_all();
    my->db.close();
    ilog("database closed successfully");
 }
@@ -289,7 +446,21 @@ bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool c
 
    check_time_in_block( block );
 
-   fc::optional< fc::exception > exc;
+   boost::promise< void > prom;
+   write_context cxt;
+   cxt.req_ptr = &block;
+   cxt.skip = skip;
+   cxt.prom_ptr = &prom;
+
+   my->write_queue.push( &cxt );
+
+   prom.get_future().get();
+
+   if( cxt.except ) throw *(cxt.except);
+
+   return cxt.success;
+
+   /*fc::optional< fc::exception > exc;
    boost::promise< bool > prom;
 
    my->thread_pool_ios.post( [&block, skip, &exc, &prom, this]()
@@ -313,12 +484,25 @@ bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool c
 
    if( exc ) throw *exc;
 
-   return result;
+   return result;*/
 }
 
 void chain_plugin::accept_transaction( const steem::chain::signed_transaction& trx )
 {
-   fc::optional< fc::exception > exc;
+   boost::promise< void > prom;
+   write_context cxt;
+   cxt.req_ptr = &trx;
+   cxt.prom_ptr = &prom;
+
+   my->write_queue.push( &cxt );
+
+   prom.get_future().get();
+
+   if( cxt.except ) throw *(cxt.except);
+
+   return;
+
+   /*fc::optional< fc::exception > exc;
    boost::promise< bool > prom;
 
    my->thread_pool_ios.post( [&trx, &exc, &prom, this]()
@@ -342,7 +526,7 @@ void chain_plugin::accept_transaction( const steem::chain::signed_transaction& t
 
    prom.get_future().get();
 
-   if( exc ) throw *exc;
+   if( exc ) throw *exc;*/
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )
