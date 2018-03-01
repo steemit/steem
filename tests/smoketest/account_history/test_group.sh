@@ -40,7 +40,7 @@ function run_test {
    pushd $1
    
    echo Running ./$TEST_SCRIPT $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
-   ./$TEST_SCRIPT 1 $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
+   ./$TEST_SCRIPT $JOBS $TEST_ADDRESS $TEST_PORT $REF_ADDRESS $REF_PORT $2
    [ $? -ne 0 ] && echo test $1 FAILED && EXIT_CODE=-1
 
    popd

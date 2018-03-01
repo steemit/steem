@@ -32,7 +32,8 @@ get_account_history ()
 
    local account=$1
    local START=-1
-   local LIMIT=10000
+   HARD_LIMIT=10000
+   local LIMIT=$HARD_LIMIT
 
    while true; do
 
@@ -91,13 +92,13 @@ get_account_history ()
              history=result["history"]; \
              print(history[0][0] if len(history) else 0)')
 
-   if [ "$LAST" -eq 0 ]; then
+   if [ $LAST -eq 0 ]; then
       break
    fi
 
    START=$LAST
-   if [ $LAST -gt 10000 ]; then
-      LIMIT=10000
+   if [ $LAST -gt $HARD_LIMIT ]; then
+      LIMIT=$HARD_LIMIT
    else
       LIMIT=$LAST
    fi

@@ -59,6 +59,30 @@ function copy_config {
    [ $? -ne 0 ] && echo FATAL: Failed to copy ./$STEEMD_CONFIG over $1/$STEEMD_CONFIG file. && exit -1
 }
 
+function check_pid_port {
+   echo Checking that steemd with pid $1 listens at $2 port.
+
+   NETSTAT_CMD="netstat -tlpn 2> /dev/null"
+   STAGE1=$(eval $NETSTAT_CMD)
+   STAGE2=$(echo $STAGE1 | grep -o ":$2 [^ ]* LISTEN $1/steemd")
+   ATTEMPT=0
+
+   while [[ -z $STAGE2 ]] && [ $ATTEMPT -lt 3 ]; do
+      sleep 1
+      STAGE1=$(eval $NETSTAT_CMD)
+      STAGE2=$(echo $STAGE1 | grep -o ":$2 [^ ]* LISTEN $1/steemd")
+      ((ATTEMPT++))
+   done
+
+   if [[ -z $STAGE2 ]]; then
+      echo FATAL: Could not find steemd with pid $1 listening at port $2 using $NETSTAT_CMD command.
+      echo FATAL: Most probably another steemd instance is running and listens at the port.
+      return 1
+   else
+      return 0
+   fi
+}
+
 function run_test_group {
    echo Running test group $1
    pushd $1
@@ -81,9 +105,13 @@ function run_test_group {
    echo Running reference steemd to listen
    $REF_STEEMD_PATH $REF_NODE_OPT -d $REF_WORK_PATH & REF_STEEMD_PID=$!
 
-   echo Running ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
-   ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
-   [ $? -ne 0 ] && echo test group $1 FAILED && ((GROUP_FAILURE++)) && EXIT_CODE=-1
+   if check_pid_port $TEST_STEEMD_PID $TEST_PORT && check_pid_port $REF_STEEMD_PID $REF_PORT; then
+      echo Running ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
+      ./$GROUP_TEST_SCRIPT $JOBS $NODE_ADDRESS $TEST_PORT $NODE_ADDRESS $REF_PORT $BLOCK_LIMIT
+      [ $? -ne 0 ] && echo test group $1 FAILED && ((GROUP_FAILURE++)) && EXIT_CODE=-1
+   else
+      ((GROUP_FAILURE++))
+   fi
 
    kill -s SIGINT $TEST_STEEMD_PID
    kill -s SIGINT $REF_STEEMD_PID
