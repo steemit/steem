@@ -1,4 +1,4 @@
-#include <golos/plugins/blockchain_statistics/statistics_sender.hpp>
+#include <golos/plugins/statsd/statistics_sender.hpp>
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/system/error_code.hpp>

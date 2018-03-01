@@ -1,4 +1,4 @@
-#include <golos/plugins/blockchain_statistics/plugin.hpp>
+#include <golos/plugins/statsd/plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -11,13 +11,13 @@
 #include <golos/chain/database.hpp>
 #include <fc/io/json.hpp>
 #include <boost/program_options.hpp>
-#include <golos/plugins/blockchain_statistics/statistics_sender.hpp>
+#include <golos/plugins/statsd/statistics_sender.hpp>
 
 
 
 namespace golos {
 namespace plugins {
-namespace blockchain_statistics {
+namespace statsd {
 
 
 std::vector < std::string > get_as_string (const runtime_bucket_object & b);
@@ -303,7 +303,7 @@ void plugin::set_program_options( options_description& cli, options_description&
 
 void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
     try {
-        ilog("chain_stats_plugin: plugin_initialize() begin");
+        ilog("statsd_plugin: plugin_initialize() begin");
 
         _my.reset(new plugin_impl());
         auto &db = _my -> database();
@@ -333,22 +333,22 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
             }
         }
 
-        ilog("chain_stats_plugin: plugin_initialize() end");
+        ilog("statsd_plugin: plugin_initialize() end");
     } FC_CAPTURE_AND_RETHROW()
 }
 
 void plugin::plugin_startup() {
-    ilog("chain_stats plugin: plugin_startup() begin");
+    ilog("statsd plugin: plugin_startup() begin");
 
     if (_my->stat_sender->can_start()) {
-        wlog("chain_stats plugin: statitistics sender was started");
+        wlog("statsd plugin: statitistics sender was started");
         wlog("StatsD endpoints: ${endpoints}", ( "endpoints", _my->stat_sender->get_endpoint_string_vector() ) );
     }
     else {
-        wlog("chain_stats plugin: statitistics sender was not started: no recipient's IPs were provided");
+        wlog("statsd plugin: statitistics sender was not started: no recipient's IPs were provided");
     }
 
-    ilog("chain_stats plugin: plugin_startup() end");
+    ilog("statsd plugin: plugin_startup() end");
 }
 
 void plugin::plugin_shutdown() {
@@ -500,4 +500,4 @@ void runtime_bucket_object::operator=(const runtime_bucket_object & b) {
     num_pow_witnesses = b.num_pow_witnesses;
 }
 
-} } } // golos::plugins::blockchain_statistics
+} } } // golos::plugins::statsd

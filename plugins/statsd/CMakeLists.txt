@@ -1,9 +1,9 @@
-set(CURRENT_TARGET blockchain_statistics)
+set(CURRENT_TARGET statsd)
 
 list(APPEND CURRENT_TARGET_HEADERS
-    include/golos/plugins/blockchain_statistics/plugin.hpp
-    include/golos/plugins/blockchain_statistics/statistics_sender.hpp
-    include/golos/plugins/blockchain_statistics/runtime_bucket_object.hpp
+    include/golos/plugins/statsd/plugin.hpp
+    include/golos/plugins/statsd/statistics_sender.hpp
+    include/golos/plugins/statsd/runtime_bucket_object.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
@@ -12,12 +12,12 @@ list(APPEND CURRENT_TARGET_SOURCES
 )
 
 if(BUILD_SHARED_LIBRARIES)
-    add_library(golos_blockchain_statistics SHARED
+    add_library(golos_statsd SHARED
         ${CURRENT_TARGET_HEADERS}
         ${CURRENT_TARGET_SOURCES}
     )
 else()
-    add_library(golos_blockchain_statistics STATIC
+    add_library(golos_statsd STATIC
         ${CURRENT_TARGET_HEADERS}
         ${CURRENT_TARGET_SOURCES}
     )

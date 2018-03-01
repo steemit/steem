@@ -6,7 +6,7 @@
 
 namespace golos {
 namespace plugins {
-namespace blockchain_statistics {
+namespace statsd {
 
 using namespace golos::chain;
 
@@ -61,4 +61,4 @@ struct runtime_bucket_object {
                                                           /// there are, determines the difficulty of doing pow
 };
 
-} } } // golos::plugins::blockchain_statistics
+} } } // golos::plugins::statsd
