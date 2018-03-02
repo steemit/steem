@@ -49,6 +49,8 @@ class chain_plugin_impl
          thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
       }*/
 
+      ~chain_plugin_impl() {stop_write_processing();}
+
       void start_write_processing();
       void stop_write_processing();
 
@@ -139,14 +141,10 @@ struct request_promise_visitor
 
    typedef void result_type;
 
-   void operator()( fc::future< void >* fut )
+   template< typename T >
+   void operator()( T* t )
    {
-      fut->set_value();
-   }
-
-   void operator()( boost::promise< void >* prom )
-   {
-      prom->set_value();
+      t->set_value();
    }
 };
 
@@ -162,6 +160,25 @@ void chain_plugin_impl::start_write_processing()
 
       request_promise_visitor prom_visitor;
 
+      /* This loop monitors the write request queue and performs writes to the database. These
+       * can be blocks or pending transactions. Because the caller needs to know the success of
+       * the write and any exceptions that are thrown, a write context is passed in the queue
+       * to the processing thread which it will use to store the results of the write. It is the
+       * caller's responsibility to ensure the pointer to the write context remains valid until
+       * the contained promise is complete.
+       *
+       * The loop has two modes, sync mode and live mode. In sync mode we want to process writes
+       * as quickly as possible with minimal overhead. The outer loop busy waits on the queue
+       * and the inner loop drains the queue as quickly as possible. We exit sync mode when the
+       * head block is within 1 minute of system time.
+       *
+       * Live mode needs to balance between processing pending writes and allowing readers access
+       * to the database. It will batch writes together as much as possible to minimize lock
+       * overhead but will willingly give up the write lock after 500ms. The thread then sleeps for
+       * 10ms. This allows time for readers to access the database as well as more writes to come
+       * in. When the node is live the rate at which writes come in is slower and busy waiting is
+       * not an optimal use of system resources when we could give CPU time to read threads.
+       */
       while( running )
       {
          if( !is_syncing )
@@ -206,7 +223,10 @@ void chain_plugin_impl::start_write_processing()
 void chain_plugin_impl::stop_write_processing()
 {
    running = false;
-   write_processor_thread->join();
+
+   if( write_processor_thread )
+      write_processor_thread->join();
+
    write_processor_thread.reset();
 }
 
