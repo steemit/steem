@@ -88,7 +88,7 @@ def main():
   else:
     compare_results(url1, url2, accounts)
     
-  return errors
+  exit( errors )
 
   
 def create_wdir():
@@ -116,7 +116,7 @@ def compare_results(url1, url2, accounts, max_tries=10, timeout=0.1):
 def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
   global wdir
   START = -1
-  HARD_LIMIT = 10
+  HARD_LIMIT = 10000
   LIMIT = HARD_LIMIT
 
   while True:
@@ -158,11 +158,8 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
     
     if last == 0: break
 
-    with open("13488.json", "a") as file:
-       json.dump(history, file, indent=2, sort_keys=True)
-       file.write('\n')
-
-    START = last - 1
+    --last
+    START = last
     LIMIT = last if last < HARD_LIMIT else HARD_LIMIT
   # while True
   

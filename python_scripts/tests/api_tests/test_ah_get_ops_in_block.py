@@ -95,7 +95,7 @@ def main():
   else:
     compare_results(first_block, last_block, url1, url2)
     
-  return errors
+  exit( errors )
 
 
 def create_wdir():
