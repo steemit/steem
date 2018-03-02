@@ -8,17 +8,20 @@
 namespace fc
 {
    std::string name_from_type( const std::string& type_name );
+   using name_from_call = std::function< std::string( const std::string& ) >;
 
    struct from_operation
    {
       variant& var;
-      from_operation( variant& dv )
-         : var( dv ) {}
+      name_from_call name_from;
+
+      from_operation( variant& dv, name_from_call _name_from )
+         : var( dv ), name_from( _name_from ) {}
 
       typedef void result_type;
       template<typename T> void operator()( const T& v )const
       {
-         auto name = name_from_type( fc::get_typename< T >::name() );
+         auto name = name_from( fc::get_typename< T >::name() );
          var = mutable_variant_object( "type", name )( "value", v );
       }
    };
@@ -26,13 +29,15 @@ namespace fc
    struct get_operation_name
    {
       string& name;
-      get_operation_name( string& dv )
-         : name( dv ) {}
+      name_from_call name_from;
+
+      get_operation_name( string& dv, name_from_call _name_from )
+         : name( dv ), name_from( _name_from ) {}
 
       typedef void result_type;
       template< typename T > void operator()( const T& v )const
       {
-         name = name_from_type( fc::get_typename< T >::name() );
+         name = name_from( fc::get_typename< T >::name() );
       }
    };
 }
@@ -48,16 +53,12 @@ struct operation_validate_visitor
 
 } } // steem::protocol
 
-//
-// Place STEEM_DEFINE_OPERATION_TYPE in a .cpp file to define
-// functions related to your operation type
-//
-#define STEEM_DEFINE_OPERATION_TYPE( OperationType )                       \
+#define STEEM_DEFINE_OPERATION_TYPE_INTERNAL( OperationType, Func )        \
 namespace fc {                                                             \
                                                                            \
 void to_variant( const OperationType& var,  fc::variant& vo )              \
 {                                                                          \
-   var.visit( from_operation( vo ) );                                      \
+   var.visit( from_operation( vo, Func ) );                                \
 }                                                                          \
                                                                            \
 void from_variant( const fc::variant& var,  OperationType& vo )            \
@@ -70,7 +71,7 @@ void from_variant( const fc::variant& var,  OperationType& vo )            \
          OperationType tmp;                                                \
          tmp.set_which(i);                                                 \
          string n;                                                         \
-         tmp.visit( get_operation_name(n) );                               \
+         tmp.visit( get_operation_name( n, Func ) );                       \
          name_map[n] = i;                                                  \
       }                                                                    \
       return name_map;                                                     \
@@ -86,12 +87,19 @@ void from_variant( const fc::variant& var,  OperationType& vo )            \
    vo.set_which( to_tag[ v_object[ "type" ].as_string() ] );               \
    vo.visit( fc::to_static_variant( v_object[ "value" ] ) );               \
 } }                                                                        \
+
+//
+// Place STEEM_DEFINE_OPERATION_TYPE in a .cpp file to define
+// functions related to your operation type
+//
+#define STEEM_DEFINE_OPERATION_TYPE( OperationType )                       \
+STEEM_DEFINE_OPERATION_TYPE_INTERNAL( OperationType, name_from_type )      \
                                                                            \
-namespace steem { namespace protocol {                                      \
+namespace steem { namespace protocol {                                     \
                                                                            \
 void operation_validate( const OperationType& op )                         \
 {                                                                          \
-   op.visit( steem::protocol::operation_validate_visitor() );               \
+   op.visit( steem::protocol::operation_validate_visitor() );              \
 }                                                                          \
                                                                            \
 void operation_get_required_authorities( const OperationType& op,          \
