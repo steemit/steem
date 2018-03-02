@@ -43,13 +43,8 @@ namespace detail {
 class chain_plugin_impl
 {
    public:
-      chain_plugin_impl() : write_queue( 64 ) {}/*:
-         thread_pool_work( thread_pool_ios )
-      {
-         thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
-      }*/
-
-      ~chain_plugin_impl() {stop_write_processing();}
+      chain_plugin_impl() : write_queue( 64 ) {}
+      ~chain_plugin_impl() { stop_write_processing(); }
 
       void start_write_processing();
       void stop_write_processing();
@@ -73,11 +68,6 @@ class chain_plugin_impl
       std::shared_ptr< std::thread >   write_processor_thread;
       boost::lockfree::queue< write_context* > write_queue;
 
-   /*
-      boost::thread_group              thread_pool;
-      asio::io_service                 thread_pool_ios;
-      asio::io_service::work           thread_pool_work;
-   */
       database  db;
 };
 
@@ -449,8 +439,6 @@ void chain_plugin::plugin_shutdown()
 {
    ilog("closing chain database");
    my->stop_write_processing();
-   //my->thread_pool_ios.stop();
-   //my->thread_pool.join_all();
    my->db.close();
    ilog("database closed successfully");
 }
@@ -479,32 +467,6 @@ bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool c
    if( cxt.except ) throw *(cxt.except);
 
    return cxt.success;
-
-   /*fc::optional< fc::exception > exc;
-   boost::promise< bool > prom;
-
-   my->thread_pool_ios.post( [&block, skip, &exc, &prom, this]()
-   {
-      try
-      {
-         prom.set_value( db().push_block(block, skip) );
-      }
-      catch( fc::exception& e )
-      {
-         exc = e;
-         prom.set_value( false );
-      }
-      catch( ... )
-      {
-         prom.set_value( false );
-      }
-   });
-
-   bool result = prom.get_future().get();
-
-   if( exc ) throw *exc;
-
-   return result;*/
 }
 
 void chain_plugin::accept_transaction( const steem::chain::signed_transaction& trx )
@@ -521,32 +483,6 @@ void chain_plugin::accept_transaction( const steem::chain::signed_transaction& t
    if( cxt.except ) throw *(cxt.except);
 
    return;
-
-   /*fc::optional< fc::exception > exc;
-   boost::promise< bool > prom;
-
-   my->thread_pool_ios.post( [&trx, &exc, &prom, this]()
-   {
-      try
-      {
-         db().push_transaction( trx );
-         prom.set_value( true );
-      }
-      catch( fc::exception& e )
-      {
-         exc = e;
-         prom.set_value( false );
-      }
-      catch( ... )
-      {
-         // Just in case a non fc exception is thrown, we don't want to block indenfinitely
-         prom.set_value( false );
-      }
-   });
-
-   prom.get_future().get();
-
-   if( exc ) throw *exc;*/
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )
