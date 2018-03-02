@@ -43,7 +43,7 @@ namespace detail {
 class chain_plugin_impl
 {
    public:
-      chain_plugin_impl() {}/*:
+      chain_plugin_impl() : write_queue( 64 ) {}/*:
          thread_pool_work( thread_pool_ios )
       {
          thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios) );
