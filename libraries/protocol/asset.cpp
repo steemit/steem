@@ -387,10 +387,10 @@ namespace fc {
    {
       try
       {
-         std::vector< variant > v( 3 );
-         v[0] = boost::lexical_cast< std::string >( var.amount.value );
-         v[1] = uint64_t( var.symbol.decimals() );
-         v[2] = var.symbol.to_nai_string();
+         variant v = mutable_variant_object( "amount", boost::lexical_cast< std::string >( var.amount.value ) )
+                                          ( "precision", uint64_t( var.symbol.decimals() ) )
+                                          ( "nai", var.symbol.to_nai_string() );
+
          vo = v;
       } FC_CAPTURE_AND_RETHROW()
    }
@@ -399,13 +399,17 @@ namespace fc {
    {
       try
       {
-         auto v = var.as< std::vector< variant > >();
-         FC_ASSERT( v.size() == 3, "Expected tuple of length 3." );
+         FC_ASSERT( var.is_object(), "Asset has to treated as object." );
 
-         // share_type is safe< int64_t >
-         vo.amount = boost::lexical_cast< int64_t >( v[0].as< std::string >() );
+         const auto& v_object = var.get_object();
+
+         FC_ASSERT( v_object.contains( "amount" ), "Amount field doesn't exist." );
+         vo.amount = boost::lexical_cast< int64_t >( v_object[ "amount" ].as< std::string >() );
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
-         vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v[2].as< std::string >().c_str(), v[1].as< uint8_t >() );
+
+         FC_ASSERT( v_object.contains( "precision" ), "Precision field doesn't exist." );
+         FC_ASSERT( v_object.contains( "nai" ), "NAI field doesn't exist." );
+         vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v_object[ "nai" ].as< std::string >().c_str(), v_object[ "precision" ].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
 }
