@@ -95,8 +95,8 @@ namespace golos {
                 const auto n_args = args.args->size();
                 FC_ASSERT(n_args >= 2, "Expected at least 1 argument, got 0");
                 auto trx = args.args->at(1).as<signed_transaction>();
-                if (n_args > 1) {
-                    const auto max_block_age = args.args->at(1).as<uint32_t>();
+                if (n_args > 2) {
+                    const auto max_block_age = args.args->at(2).as<uint32_t>();
                     FC_ASSERT(!check_max_block_age(max_block_age));
                 }
 
