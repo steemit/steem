@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-  Usage: script_name jobs url1 url2 [last_block [first_block]]
-    Example: script_name 4 http://127.0.0.1:8090 http://127.0.0.1:8091 5000000 0
+  Usage: script_name jobs url1 url2 [wdir [last_block [first_block]]]
+    Example: script_name 4 http://127.0.0.1:8090 http://127.0.0.1:8091 ./ 5000000 0
     set jobs to 0 if you want use all processors
     if last_block == 0, it is read from url1 (as reference)
 """
@@ -154,7 +154,7 @@ def compare_results(f_block, l_block, url1, url2, max_tries=10, timeout=0.1):
       
     if status1 == False or status2 == False or json1 != json2:
       print("Difference @block: {}\n".format(i))
-      ++errors
+      errors += 1
       
       filename = wdir / Path(str(f_block) + "_" + str(l_block) + ".log")
       try:    file = filename.open( "w" )
@@ -175,4 +175,4 @@ def compare_results(f_block, l_block, url1, url2, max_tries=10, timeout=0.1):
 
   
 if __name__ == "__main__":
-    main()
+  main()

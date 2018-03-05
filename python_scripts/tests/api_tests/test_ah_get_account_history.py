@@ -9,6 +9,8 @@ import sys
 import json
 import os
 import shutil
+import re
+import locale
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import Future
@@ -46,11 +48,12 @@ def main():
     wdir = Path(sys.argv[4])
     
   accounts_file = sys.argv[5] if len( sys.argv ) > 5 else ""
-  
+
   if accounts_file != "":
+    name = re.compile("[^\r^\n]*")
     try:
-      with open(accounts_file, "r") as file:
-        accounts = [account for account in file]
+      with open(accounts_file, "rt") as file:
+        accounts = [name.match(account).group(0) for account in file]
     except:
       exit("Cannot open file: " + accounts_file)
   else:
@@ -115,6 +118,7 @@ def compare_results(url1, url2, accounts, max_tries=10, timeout=0.1):
 
 def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
   global wdir
+  global errors
   START = -1
   HARD_LIMIT = 10000
   LIMIT = HARD_LIMIT
@@ -138,8 +142,9 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
     
     if status1 == False or status2 == False or json1 != json2:
       print("Comparison failed for account: {}; start: {}; limit: {}".format(account, START, LIMIT))
+      errors += 1
+
       filename = wdir / account
-      ++errors
       try:    file = filename.open("w")
       except: print("Cannot open file:", filename); return False
       
@@ -158,7 +163,7 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
     
     if last == 0: break
 
-    --last
+    last -= 1
     START = last
     LIMIT = last if last < HARD_LIMIT else HARD_LIMIT
   # while True
@@ -167,4 +172,4 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
 
 
 if __name__ == "__main__":
-    main()
+  main()

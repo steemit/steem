@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import json
 import socket
 
@@ -12,6 +13,7 @@ class JSONSocket(object):
     host in form [http[s]://]<ip_address>[:port]
     if port not in host must be spefified as argument
     """
+    self.__sock = None
     if host.find("http://") == 0 or host.find("https://") == 0:
       host = host[host.find("//")+2 : len(host)]
     _host = host
@@ -61,10 +63,13 @@ class JSONSocket(object):
 
   def __read(self):
     response = ''
+    binary = b''
     while True:
       temp = self.__sock.recv(4096)
       if not temp: break
-      response += temp.decode("utf-8")
+      binary += temp
+
+    response = binary.decode("utf-8")
 
     if response.find("HTTP") == 0:
       response = response[response.find("\r\n\r\n")+4 : len(response)]
@@ -87,18 +92,28 @@ def steemd_call(host, data=None, json=None, max_tries=10, timeout=0.1):
   host - [http[s]://<ip_address>:<port>
   data - binary form of request body, if missing json object should be provided (as python dict/array)
   """
-  try:
-    jsocket = JSONSocket(host, None, "/rpc", timeout)
-  except:
-    print("Cannot open socket for:", host)
-    return False, {}
+#  try:
+#    jsocket = JSONSocket(host, None, "/rpc", timeout)
+#  except:
+#    print("Cannot open socket for:", host)
+#    return False, {}
     
   for i in range(max_tries):
+    try:
+       jsocket = JSONSocket(host, None, "/rpc", timeout)
+    except:
+       type, value, traceback = sys.exc_info()
+       print("Error: {}:{} {} {}".format(1, type, value, traceback))
+       print("Error: Cannot open JSONSocket for:", host)
+       continue
     try:
       status, response = jsocket(data, json)
       if status:
         return status, response
     except:
-      continue
+       type, value, traceback = sys.exc_info()
+       print("Error: {}:{} {} {}".format(1, type, value, traceback))
+       print("Error: JSONSocket request failed for: {} ({})".format(host, data.decode("utf-8")))
+       continue
   else:
     return False, {}
