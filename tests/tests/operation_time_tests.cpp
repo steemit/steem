@@ -18,6 +18,9 @@
 
 #include <cmath>
 
+#include <thread>         // std::this_thread::sleep_for
+#include <chrono>         // std::chrono::seconds
+
 using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
@@ -574,7 +577,6 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       tx.operations.clear();
       tx.signatures.clear();
 
-      return; // FIXME: broken test
 
       vote_operation vote_op;
       vote_op.voter = "alice";
@@ -582,10 +584,18 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       vote_op.permlink = "test";
       vote_op.weight = STEEMIT_100_PERCENT;
       tx.operations.push_back( vote_op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      generate_blocks(db->head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC + 3);
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
       vote_op.author = "bob";
       tx.operations.push_back( vote_op );
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
+
 
       tx.operations.clear();
       tx.signatures.clear();
