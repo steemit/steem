@@ -382,8 +382,6 @@ namespace golos {
 
             void process_vesting_withdrawals();
 
-            share_type pay_discussions(const comment_object &c, share_type max_rewards);
-
             share_type pay_curators(const comment_object &c, share_type max_rewards);
 
             void cashout_comment_helper(const comment_object &comment);
@@ -404,9 +402,7 @@ namespace golos {
 
             void update_median_feed();
 
-            share_type claim_rshare_reward(
-                    share_type rshares, uint16_t reward_weight, asset max_steem,
-                    fc::time_point_sec create_time);
+            share_type claim_rshare_reward(share_type rshares, uint16_t reward_weight, asset max_steem, reward_curve);
 
             asset get_liquidity_reward() const;
 
@@ -418,13 +414,11 @@ namespace golos {
 
             asset get_pow_reward() const;
 
-            uint16_t get_discussion_rewards_percent() const;
-
             uint16_t get_curation_rewards_percent() const;
 
             uint128_t get_content_constant_s() const;
 
-            uint128_t calculate_vshares(uint128_t rshares, fc::time_point_sec create_time) const;
+            uint128_t calculate_vshares(uint128_t rshares, reward_curve curve) const;
 
             void pay_liquidity_reward();
 

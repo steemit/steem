@@ -1933,55 +1933,6 @@ namespace golos {
             /// TODO: potentially modify author's total payout numbers as well
         }
 
-       /**
-        *  This method will iterate through all comment_vote_objects and give them
-        *  (max_rewards * weight) / c.total_vote_weight.
-        *
-        *  @returns unclaimed rewards.
-        */
-        share_type database::pay_discussions(const comment_object &c, share_type max_rewards) {
-            share_type unclaimed_rewards = max_rewards;
-            std::deque<comment_id_type> child_queue;
-
-            // TODO: Optimize in future hardfork
-
-            if (c.children_rshares2 > 0) {
-                const auto &comment_by_parent = get_index<comment_index>().indices().get<by_parent>();
-                fc::uint128_t total_rshares2 =
-                    c.children_rshares2 - calculate_vshares(c.net_rshares.value, c.root_comment_created);
-                child_queue.push_back(c.id);
-
-                // Pre-order traversal of the tree of child comments
-                while (child_queue.size()) {
-                    const auto &cur = get(child_queue.front());
-                    child_queue.pop_front();
-
-                    if (cur.net_rshares > 0) {
-                        auto claim = static_cast< uint64_t >(
-                                (to256(calculate_vshares(cur.net_rshares.value, c.root_comment_created)) *
-                                 max_rewards.value) / to256(total_rshares2));
-                        unclaimed_rewards -= claim;
-
-                        if (claim > 0) {
-                            create_vesting(get_account(cur.author), asset(claim, STEEM_SYMBOL));
-                            // create discussion reward vop
-                        }
-                    }
-
-                    auto itr = comment_by_parent.lower_bound(boost::make_tuple(cur.author, cur.permlink, comment_id_type()));
-
-                    while (itr != comment_by_parent.end() &&
-                           itr->parent_author == cur.author &&
-                           itr->parent_permlink == cur.permlink) {
-                        child_queue.push_back(itr->id);
-                        ++itr;
-                    }
-                }
-            }
-
-            return unclaimed_rewards;
-        }
-
 /**
  *  This method will iterate through all comment_vote_objects and give them
  *  (max_rewards * weight) / c.total_vote_weight.
@@ -2041,29 +1992,17 @@ namespace golos {
                              comment.net_rshares,
                              comment.reward_weight,
                              to_steem(comment.max_accepted_payout),
-                             comment.root_comment_created).value);
+                             comment.curve));
 
                     asset total_payout;
                     if (reward_tokens > 0) {
-                        share_type discussion_tokens = 0;
                         share_type curation_tokens = ((reward_tokens *
                                                        get_curation_rewards_percent()) /
                                                       STEEMIT_100_PERCENT).to_uint64();
-                        if (comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                            discussion_tokens = ((reward_tokens *
-                                                  get_discussion_rewards_percent()) /
-                                                 STEEMIT_100_PERCENT).to_uint64();
-                        }
 
-                        share_type author_tokens =
-                                reward_tokens.to_uint64() - discussion_tokens -
-                                curation_tokens;
+                        share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
                         author_tokens += pay_curators(comment, curation_tokens);
-
-                        if (discussion_tokens > 0) {
-                            author_tokens += pay_discussions(comment, discussion_tokens);
-                        }
 
                         share_type total_beneficiary = 0;
 
@@ -2122,7 +2061,7 @@ namespace golos {
 
                     }
 
-                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value, comment.root_comment_created);
+                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value, comment.curve);
                     adjust_rshares2(comment, old_rshares2, 0);
                 }
 
@@ -2470,10 +2409,6 @@ namespace golos {
             }
         }
 
-        uint16_t database::get_discussion_rewards_percent() const {
-            return 0;
-        }
-
         uint16_t database::get_curation_rewards_percent() const {
             if (has_hardfork(STEEMIT_HARDFORK_0_8__116)) {
                 return STEEMIT_1_PERCENT * 25;
@@ -2494,14 +2429,14 @@ namespace golos {
             return (rshares + s) * (rshares + s) - s * s;
         }
 
-        uint128_t database::calculate_vshares(uint128_t rshares, const fc::time_point_sec create_time) const {
-            if (create_time < fc::time_point_sec(STEEMIT_LINEAR_REWARD_CURVE_HF17_START_TIME) ||
-                create_time > fc::time_point_sec(STEEMIT_LINEAR_REWARD_CURVE_HF17_STOP_TIME) ||
-                !has_hardfork(STEEMIT_HARDFORK_0_17__433)
-            ) {
-                return calculate_vshares_quadratic(rshares, get_content_constant_s());
-            } else {
-                return calculate_vshares_linear(rshares);
+        uint128_t database::calculate_vshares(uint128_t rshares, reward_curve curve) const {
+            switch (curve) {
+                case reward_curve::linear:
+                    return calculate_vshares_linear(rshares);
+
+                case reward_curve::quadratic:
+                default:
+                    return calculate_vshares_quadratic(rshares, get_content_constant_s());
             }
         }
 
@@ -2575,8 +2510,7 @@ namespace golos {
  *  redeemed.
  */
         share_type database::claim_rshare_reward(
-                share_type rshares, uint16_t reward_weight, asset max_steem,
-                fc::time_point_sec create_time
+                share_type rshares, uint16_t reward_weight, asset max_steem, reward_curve curve
         ) {
         try {
                 FC_ASSERT(rshares > 0);
@@ -2587,7 +2521,7 @@ namespace golos {
                 u256 rf(props.total_reward_fund_steem.amount.value);
                 u256 total_rshares2 = to256(props.total_reward_shares2);
 
-                u256 rs2 = to256(calculate_vshares(rshares.value, create_time));
+                u256 rs2 = to256(calculate_vshares(rshares.value, curve));
                 rs2 = (rs2 * reward_weight) / STEEMIT_100_PERCENT;
 
                 u256 payout_u256 = (rf * rs2) / total_rshares2;
@@ -4337,6 +4271,7 @@ namespace golos {
                     for (const auto &id: root_posts) {
                         auto itr = comment_idx.find(id);
                         FC_ASSERT(comment_idx.end() != itr);
+
                         modify(*itr, [&](comment_object &c) {
                             c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time);
                         });
@@ -4473,7 +4408,7 @@ namespace golos {
                 for (auto itr = comment_idx.begin();
                      itr != comment_idx.end(); ++itr) {
                     if (itr->net_rshares.value > 0) {
-                        auto delta = calculate_vshares(itr->net_rshares.value, itr->root_comment_created);
+                        auto delta = calculate_vshares(itr->net_rshares.value, itr->curve);
                         total_rshares2 += delta;
                     }
                     if (itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
@@ -4548,7 +4483,7 @@ namespace golos {
 
                 for (const auto &c : comments) {
                     if (c.net_rshares.value > 0) {
-                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value, c.root_comment_created));
+                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value, c.curve));
                     }
                 }
 

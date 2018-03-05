@@ -10,6 +10,7 @@
 
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/authority.hpp>
+#include <golos/chain/reward_curve.hpp>
 
 
 namespace golos {
