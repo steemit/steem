@@ -139,32 +139,28 @@ namespace golos {
                 }
 
                 if (http_endpoint && ((ws_endpoint && ws_endpoint != http_endpoint) || !ws_endpoint)) {
-                    if (1) {
-                        ilog("http thread is disabled in this build!");
-                    } else {
-                        http_thread = std::make_shared<std::thread>([&]() {
-                            ilog("start processing http thread");
-                            try {
-                                http_server.clear_access_channels(websocketpp::log::alevel::all);
-                                http_server.clear_error_channels(websocketpp::log::elevel::all);
-                                http_server.init_asio(&http_ios);
-                                http_server.set_reuse_addr(true);
+                    http_thread = std::make_shared<std::thread>( [&]() {
+                        ilog("start processing http thread");
+                        try {
+                            http_server.clear_access_channels(websocketpp::log::alevel::all);
+                            http_server.clear_error_channels(websocketpp::log::elevel::all);
+                            http_server.init_asio(&http_ios);
+                            http_server.set_reuse_addr(true);
 
-                                http_server.set_http_handler(
-                                        boost::bind(&webserver_plugin_impl::handle_http_message, this, &http_server,
-                                                    _1));
+                            http_server.set_http_handler([this](connection_hdl hdl) {
+                                this->handle_http_message(&this->http_server, hdl);
+                            });
 
-                                ilog("start listening for http requests");
-                                http_server.listen(*http_endpoint);
-                                http_server.start_accept();
+                            ilog("start listening for http requests");
+                            http_server.listen(*http_endpoint);
+                            http_server.start_accept();
 
-                                http_ios.run();
-                                ilog("http io service exit");
-                            } catch (...) {
-                                elog("error thrown from http io service");
-                            }
-                        });
-                    }
+                            http_ios.run();
+                            ilog("http io service exit");
+                        } catch (...) {
+                            elog("error thrown from http io service");
+                        }
+                    });
                 }
             }
 
