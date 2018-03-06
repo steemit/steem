@@ -552,12 +552,6 @@ namespace golos {
                             com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
                         }
 
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_17__433)) {
-                            com.curve = reward_curve::linear;
-                        } else {
-                            com.curve = reward_curve::quadratic;
-                        }
-
 #ifndef IS_LOW_MEM
                         from_string(com.title, o.title);
                         if (o.body.size() < 1024 * 1024 * 128) {
@@ -1305,8 +1299,8 @@ namespace golos {
                     fc::uint128_t new_rshares = std::max(comment.net_rshares.value, int64_t(0));
 
                     /// calculate rshares2 value
-                    new_rshares = _db.calculate_vshares(new_rshares, comment.curve);
-                    old_rshares = _db.calculate_vshares(old_rshares, comment.curve);
+                    new_rshares = _db.calculate_vshares(new_rshares);
+                    old_rshares = _db.calculate_vshares(old_rshares);
 
                     const auto &cat = _db.get_category(comment.category);
                     _db.modify(cat, [&](category_object &c) {
@@ -1515,8 +1509,8 @@ namespace golos {
                     fc::uint128_t new_rshares = std::max(comment.net_rshares.value, int64_t(0));
 
                     /// calculate rshares2 value
-                    new_rshares = _db.calculate_vshares(new_rshares, comment.curve);
-                    old_rshares = _db.calculate_vshares(old_rshares, comment.curve);
+                    new_rshares = _db.calculate_vshares(new_rshares);
+                    old_rshares = _db.calculate_vshares(old_rshares);
 
                     _db.modify(comment, [&](comment_object &c) {
                         c.total_vote_weight -= itr->weight;
