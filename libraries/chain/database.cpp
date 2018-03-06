@@ -2143,9 +2143,10 @@ namespace golos {
             const auto &cidx = get_index<comment_index>().indices().get<by_cashout_time>();
             const auto &com_by_root = get_index<comment_index>().indices().get<by_root>();
             const bool has_hardfork_0_17__431 = has_hardfork(STEEMIT_HARDFORK_0_17__431);
+            const auto block_time = head_block_time();
 
             auto current = cidx.begin();
-            while (current != cidx.end() && current->cashout_time <= head_block_time()) {
+            while (current != cidx.end() && current->cashout_time <= block_time) {
                 if (has_hardfork_0_17__431) {
                     cashout_comment_helper(*current);
                 } else {
@@ -4257,6 +4258,7 @@ namespace golos {
                     const auto &comment_idx = get_index<comment_index, by_id>();
                     const auto &by_time_idx = get_index<comment_index, by_cashout_time>();
                     const auto &by_root_idx = get_index<comment_index, by_root>();
+                    const auto max_cashout_time = head_block_time();
 
                     std::vector<comment_object::id_type> root_posts;
                     root_posts.reserve(STEEMIT_HF_17_NUM_POSTS);
@@ -4273,14 +4275,15 @@ namespace golos {
                         FC_ASSERT(comment_idx.end() != itr);
 
                         modify(*itr, [&](comment_object &c) {
-                            c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time);
+                            // limit second cashout window to 1 week, or a current block time
+                            c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
                         });
 
                         auto reply_itr = by_root_idx.lower_bound(id);
                         for (; reply_itr != by_root_idx.end() && reply_itr->root_comment == id; ++reply_itr) {
                             modify(*reply_itr, [&](comment_object &c) {
-                                c.cashout_time = std::max(calculate_discussion_payout_time(c),
-                                                          c.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
+                                // limit second cashout window to 1 week, or a current block time
+                                c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
                             });
                         }
                     }}
