@@ -1991,8 +1991,7 @@ namespace golos {
                          claim_rshare_reward(
                              comment.net_rshares,
                              comment.reward_weight,
-                             to_steem(comment.max_accepted_payout),
-                             comment.curve));
+                             to_steem(comment.max_accepted_payout)));
 
                     asset total_payout;
                     if (reward_tokens > 0) {
@@ -2061,7 +2060,7 @@ namespace golos {
 
                     }
 
-                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value, comment.curve);
+                    fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value);
                     adjust_rshares2(comment, old_rshares2, 0);
                 }
 
@@ -2430,14 +2429,11 @@ namespace golos {
             return (rshares + s) * (rshares + s) - s * s;
         }
 
-        uint128_t database::calculate_vshares(uint128_t rshares, reward_curve curve) const {
-            switch (curve) {
-                case reward_curve::linear:
-                    return calculate_vshares_linear(rshares);
-
-                case reward_curve::quadratic:
-                default:
-                    return calculate_vshares_quadratic(rshares, get_content_constant_s());
+        uint128_t database::calculate_vshares(uint128_t rshares) const {
+            if (has_hardfork(STEEMIT_HARDFORK_0_17__433)) {
+                return calculate_vshares_linear(rshares);
+            } else {
+                return calculate_vshares_quadratic(rshares, get_content_constant_s());
             }
         }
 
@@ -2510,9 +2506,7 @@ namespace golos {
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-        share_type database::claim_rshare_reward(
-                share_type rshares, uint16_t reward_weight, asset max_steem, reward_curve curve
-        ) {
+        share_type database::claim_rshare_reward(share_type rshares, uint16_t reward_weight, asset max_steem) {
         try {
                 FC_ASSERT(rshares > 0);
 
@@ -2522,7 +2516,7 @@ namespace golos {
                 u256 rf(props.total_reward_fund_steem.amount.value);
                 u256 total_rshares2 = to256(props.total_reward_shares2);
 
-                u256 rs2 = to256(calculate_vshares(rshares.value, curve));
+                u256 rs2 = to256(calculate_vshares(rshares.value));
                 rs2 = (rs2 * reward_weight) / STEEMIT_100_PERCENT;
 
                 u256 payout_u256 = (rf * rs2) / total_rshares2;
@@ -4260,6 +4254,15 @@ namespace golos {
                     const auto &by_root_idx = get_index<comment_index, by_root>();
                     const auto max_cashout_time = head_block_time();
 
+                    auto recalc_rshares2 = [&](const comment_object &c) {
+                        if (c.net_rshares.value > 0) {
+                            auto old_rshares2 = calculate_vshares_quadratic(
+                                    c.net_rshares.value, get_content_constant_s());
+                            auto new_rshares2 = calculate_vshares_linear(c.net_rshares.value);
+                            adjust_rshares2(c, old_rshares2, new_rshares2);
+                        }
+                    };
+
                     std::vector<comment_object::id_type> root_posts;
                     root_posts.reserve(STEEMIT_HF_17_NUM_POSTS);
 
@@ -4279,12 +4282,16 @@ namespace golos {
                             c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
                         });
 
+                        recalc_rshares2(*itr);
+
                         auto reply_itr = by_root_idx.lower_bound(id);
                         for (; reply_itr != by_root_idx.end() && reply_itr->root_comment == id; ++reply_itr) {
                             modify(*reply_itr, [&](comment_object &c) {
                                 // limit second cashout window to 1 week, or a current block time
                                 c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
                             });
+
+                            recalc_rshares2(*reply_itr);
                         }
                     }}
                     break;
@@ -4411,7 +4418,7 @@ namespace golos {
                 for (auto itr = comment_idx.begin();
                      itr != comment_idx.end(); ++itr) {
                     if (itr->net_rshares.value > 0) {
-                        auto delta = calculate_vshares(itr->net_rshares.value, itr->curve);
+                        auto delta = calculate_vshares(itr->net_rshares.value);
                         total_rshares2 += delta;
                     }
                     if (itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
@@ -4486,7 +4493,7 @@ namespace golos {
 
                 for (const auto &c : comments) {
                     if (c.net_rshares.value > 0) {
-                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value, c.curve));
+                        adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value));
                     }
                 }
 

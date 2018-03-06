@@ -529,19 +529,19 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->modify(mod_sam_comment, [&](comment_object &com) {
                 com.net_rshares = 10;
                 com.abs_rshares = 10;
-                com.children_rshares2 = db->calculate_vshares(10, com.curve);
+                com.children_rshares2 = db->calculate_vshares(10);
             });
 
             db->modify(mod_bob_comment, [&](comment_object &com) {
-                com.children_rshares2 = db->calculate_vshares(10, com.curve);
+                com.children_rshares2 = db->calculate_vshares(10);
             });
 
             db->modify(mod_alice_comment, [&](comment_object &com) {
-                com.children_rshares2 = db->calculate_vshares(10, com.curve);
+                com.children_rshares2 = db->calculate_vshares(10);
             });
 
             db->modify(db->get_dynamic_global_properties(), [&](dynamic_global_property_object &o) {
-                o.total_reward_shares2 = db->calculate_vshares(10, mod_alice_comment.curve);
+                o.total_reward_shares2 = db->calculate_vshares(10);
             });
 
             tx.signatures.clear();
