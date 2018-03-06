@@ -313,6 +313,11 @@ void asset_symbol_type::validate()const
    // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
 }
 
+uint8_t asset::decimals()const
+{
+   return symbol.decimals();
+}
+
 void asset::validate()const
 {
    symbol.validate();

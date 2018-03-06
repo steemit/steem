@@ -20,6 +20,7 @@ using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
 using boost::container::flat_set;
+using boost::container::flat_map;
 
 BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
@@ -639,7 +640,6 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
          op.initial_generation_policy = gpolicy;
          op.generation_begin_time = start_time;
          op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
-         op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
       }
 
       op.validate();
@@ -916,6 +916,260 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
 
       // Check that liquid and vesting objecta are the same one.
       FC_ASSERT( ( liquid_object_by_symbol == vesting_object_by_symbol ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_validate )
+{
+   try
+   {
+      flat_map< account_name_type, uint16_t > xx = { { "sss", 1 } };
+
+      smt_setup_operation op;
+
+      op.control_account = "";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.control_account = "&&&&&&";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.control_account = "abcd";
+      op.max_supply = -1;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.max_supply = 0;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.max_supply = STEEM_MAX_SHARE_SUPPLY + 1;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.max_supply = STEEM_MAX_SHARE_SUPPLY / 1000;
+      op.generation_begin_time = STEEM_GENESIS_TIME;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.generation_begin_time = fc::variant( "2017-11-13T00:00:00" ).as< fc::time_point_sec >();
+      op.generation_end_time = fc::variant( "2017-10-13T00:00:00" ).as< fc::time_point_sec >();
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.generation_end_time = fc::variant( "2017-11-13T00:00:00" ).as< fc::time_point_sec >();
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.announced_launch_time = fc::variant( "2017-12-12T00:00:00" ).as< fc::time_point_sec >();
+      op.generation_end_time = fc::variant( "2017-12-13T00:00:00" ).as< fc::time_point_sec >();
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.generation_end_time = op.generation_begin_time;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.generation_end_time = fc::variant( "2017-11-14T00:00:00" ).as< fc::time_point_sec >();
+      op.launch_expiration_time = fc::variant( "2017-12-12T00:00:00" ).as< fc::time_point_sec >();
+      smt_capped_generation_policy gp = fill_smt_capped_generation_policy
+      (
+         fill_smt_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
+         fill_smt_generation_unit()/*post_soft_cap_unit*/,
+         fill_smt_cap_commitment( 1 )/*min_steem_units_commitment*/,
+         fill_smt_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
+         STEEM_100_PERCENT/*soft_cap_percent*/,
+         1/*min_unit_ratio*/,
+         2/*max_unit_ratio*/
+      );
+      op.initial_generation_policy = gp;
+      op.validate();
+
+      units to_many_units;
+      for( uint32_t i = 0; i < SMT_MAX_UNIT_ROUTES + 1; ++i )
+         to_many_units.emplace( "alice" + std::to_string( i ), 1 );
+
+      gp.pre_soft_cap_unit.steem_unit = to_many_units;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "{}{}", 1 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "$fromx", 1 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "$from.vestingx", 2 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "$from.vesting", 0 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "$from", 0 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "qprst", 0 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.pre_soft_cap_unit.steem_unit = { { "bob", 2 }, { "$from.vesting", 3 }, { "$from", 4 } };
+      op.initial_generation_policy = gp;
+      op.validate();
+
+      gp.min_steem_units_commitment.lower_bound = 0;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.min_steem_units_commitment.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS - 1;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.min_steem_units_commitment.lower_bound = STEEM_MAX_SHARE_SUPPLY + 1;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.min_steem_units_commitment.lower_bound = STEEM_MAX_SHARE_SUPPLY - 1;
+      gp.min_steem_units_commitment.upper_bound = gp.min_steem_units_commitment.lower_bound - 1;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.min_steem_units_commitment.lower_bound = 1 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.min_steem_units_commitment.upper_bound = 2 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.lower_bound = 1 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.upper_bound = 2 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      op.initial_generation_policy = gp;
+      gp.validate();
+
+      gp.soft_cap_percent = 0;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.soft_cap_percent = STEEM_100_PERCENT;
+      gp.post_soft_cap_unit.steem_unit = { { "bob", 2 } };
+      gp.post_soft_cap_unit.token_unit = {};
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.soft_cap_percent = STEEM_100_PERCENT;
+      gp.post_soft_cap_unit.steem_unit = {};
+      gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.soft_cap_percent = STEEM_100_PERCENT / 2;
+      gp.post_soft_cap_unit.steem_unit = {};
+      gp.post_soft_cap_unit.token_unit = {};
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.soft_cap_percent = STEEM_100_PERCENT;
+      gp.post_soft_cap_unit.steem_unit = {};
+      gp.post_soft_cap_unit.token_unit = {};
+      op.initial_generation_policy = gp;
+      op.validate();
+
+      gp.min_steem_units_commitment.lower_bound = 10 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.min_steem_units_commitment.upper_bound = 20 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.lower_bound = 9 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.upper_bound = 20 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.hard_cap_steem_units_commitment.lower_bound = 11 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.upper_bound = 19 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.hard_cap_steem_units_commitment.lower_bound = 11 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.upper_bound = 21 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.max_unit_ratio = ( ( 11 * SMT_MIN_HARD_CAP_STEEM_UNITS ) / SMT_MIN_SATURATION_STEEM_UNITS ) * 2;
+      op.initial_generation_policy = gp;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      gp.hard_cap_steem_units_commitment.lower_bound = 11 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.hard_cap_steem_units_commitment.upper_bound = 21 * SMT_MIN_HARD_CAP_STEEM_UNITS;
+      gp.max_unit_ratio = 2;
+      op.initial_generation_policy = gp;
+      op.validate();
+
+      gp.complex_validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_authorities )
+{
+   try
+   {
+      smt_setup_operation op;
+      op.control_account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+
+      generate_block();
+
+      FUND( "alice", 10 * 1000 * 1000 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+
+      smt_setup_operation op;
+      op.control_account = "alice";
+
+      smt_capped_generation_policy gp = fill_smt_capped_generation_policy
+      (
+         fill_smt_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
+         fill_smt_generation_unit()/*post_soft_cap_unit*/,
+         fill_smt_cap_commitment( 1 )/*min_steem_units_commitment*/,
+         fill_smt_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
+         STEEM_100_PERCENT/*soft_cap_percent*/,
+         1/*min_unit_ratio*/,
+         2/*max_unit_ratio*/
+      );
+
+      fc::time_point_sec start_time        = fc::variant( "2021-01-01T00:00:00" ).as< fc::time_point_sec >();
+      fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
+
+      op.initial_generation_policy = gp;
+      op.generation_begin_time = start_time;
+      op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
+
+      signed_transaction tx;
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      //Try to elevate account
+      create_smt( "alice", alice_private_key, 3 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      //Make transaction again.
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
    }
    FC_LOG_AND_RETHROW()
 }

@@ -294,6 +294,8 @@ struct live_database_fixture : public database_fixture
 template< typename T >
 struct t_smt_database_fixture : public T
 {
+   using units = flat_map< account_name_type, uint16_t >;
+
    using database_fixture::set_price_feed;
    using database_fixture::fund;
    using database_fixture::convert;
@@ -310,6 +312,20 @@ struct t_smt_database_fixture : public T
    void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
    /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
    void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
+
+   //smt_setup_operation
+   smt_generation_unit fill_smt_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
+   smt_cap_commitment fill_smt_cap_commitment( share_type amount = 0 );
+   smt_capped_generation_policy fill_smt_capped_generation_policy
+   (
+      const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
+      const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
+      const smt_cap_commitment& min_steem_units_commitment = smt_cap_commitment(),
+      const smt_cap_commitment& hard_cap_steem_units_commitment = smt_cap_commitment(),
+      uint16_t soft_cap_percent = 0,
+      uint32_t min_unit_ratio = 0,
+      uint32_t max_unit_ratio = 0
+   );
 };
 
 using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;

@@ -729,6 +729,54 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
    push_invalid_operation (op_same_nai, key, this->db );
 }
 
+template< typename T >
+smt_generation_unit t_smt_database_fixture< T >::fill_smt_generation_unit( const units& steem_unit, const units& token_unit )
+{
+   smt_generation_unit ret;
+
+   ret.steem_unit = steem_unit;
+   ret.token_unit = token_unit;
+
+   return ret;
+}
+
+template< typename T >
+smt_cap_commitment t_smt_database_fixture< T >::fill_smt_cap_commitment( share_type amount )
+{
+   smt_cap_commitment ret;
+   ret.fillin_nonhidden_value( amount );
+
+   return ret;
+}
+
+template< typename T >
+smt_capped_generation_policy t_smt_database_fixture< T >::fill_smt_capped_generation_policy
+(
+   const smt_generation_unit& pre_soft_cap_unit,
+   const smt_generation_unit& post_soft_cap_unit,
+   const smt_cap_commitment& min_steem_units_commitment,
+   const smt_cap_commitment& hard_cap_steem_units_commitment,
+   uint16_t soft_cap_percent,
+   uint32_t min_unit_ratio,
+   uint32_t max_unit_ratio
+)
+{
+   smt_capped_generation_policy ret;
+
+   ret.pre_soft_cap_unit = pre_soft_cap_unit;
+   ret.post_soft_cap_unit = post_soft_cap_unit;
+
+   ret.min_steem_units_commitment = min_steem_units_commitment;
+   ret.hard_cap_steem_units_commitment = hard_cap_steem_units_commitment;
+
+   ret.soft_cap_percent = soft_cap_percent;
+
+   ret.min_unit_ratio = min_unit_ratio;
+   ret.max_unit_ratio = max_unit_ratio;
+
+   return ret;
+}
+
 template asset_symbol_type t_smt_database_fixture< clean_database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
 
 template asset_symbol_type t_smt_database_fixture< database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
@@ -736,6 +784,19 @@ template asset_symbol_type t_smt_database_fixture< database_fixture >::create_sm
 template void t_smt_database_fixture< clean_database_fixture >::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
 template void t_smt_database_fixture< clean_database_fixture >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
+
+template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::fill_smt_generation_unit( const units& steem_unit, const units& token_unit );
+template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::fill_smt_cap_commitment( share_type amount );
+template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::fill_smt_capped_generation_policy
+(
+   const smt_generation_unit& pre_soft_cap_unit,
+   const smt_generation_unit& post_soft_cap_unit,
+   const smt_cap_commitment& min_steem_units_commitment,
+   const smt_cap_commitment& hard_cap_steem_units_commitment,
+   uint16_t soft_cap_percent,
+   uint32_t min_unit_ratio,
+   uint32_t max_unit_ratio
+);
 
 #endif
 

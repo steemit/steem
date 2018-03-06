@@ -117,10 +117,52 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    });
 }
 
+struct smt_setup_evaluator_visitor
+{
+   const smt_token_object& _token;
+   database& _db;
+
+   smt_setup_evaluator_visitor( const smt_token_object& token, database& db ): _token( token ), _db( db ){}
+
+   typedef void result_type;
+
+   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
+   {
+      _db.modify( _token, [&]( smt_token_object& token )
+      {
+         token.capped_generation_policy = capped_generation_policy;
+      });
+   }
+};
+
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   // TODO: Check whether some impostor tries to hijack SMT operation.
+
+   const auto* _token = _db.find< smt_token_object, by_control_account >( o.control_account );
+   FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
+
+   _db.modify(  *_token, [&]( smt_token_object& token )
+   {
+      token.max_supply = o.max_supply;
+      token.generation_begin_time = o.generation_begin_time;
+      token.generation_end_time = o.generation_end_time;
+      token.announced_launch_time = o.announced_launch_time;
+
+      //We should override precisions in 'lep_abs_amount' and 'rep_abs_amount'
+      //in case when precision was changed.
+      asset_symbol_type as_type = _token->liquid_symbol.get_paired_symbol();
+      uint8_t new_precision = as_type.decimals();
+
+      if( token.lep_abs_amount.decimals() != new_precision )
+         token.lep_abs_amount = asset( token.lep_abs_amount, as_type );
+
+      if( token.rep_abs_amount.decimals() != new_precision )
+         token.rep_abs_amount = asset( token.rep_abs_amount, as_type );
+   });
+
+   smt_setup_evaluator_visitor visitor( *_token, _db );
+   o.initial_generation_policy.visit( visitor );
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )

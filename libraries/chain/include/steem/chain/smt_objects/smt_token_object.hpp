@@ -116,6 +116,14 @@ public:
    uint32_t             lep_rel_amount_numerator = 0;
    uint32_t             rep_rel_amount_numerator = 0;
    uint8_t              rel_amount_denom_bits = 0;
+
+   ///parameters for 'smt_setup_operation'
+   int64_t                       max_supply;
+   steem::protocol::
+   smt_capped_generation_policy  capped_generation_policy;
+   time_point_sec                generation_begin_time;
+   time_point_sec                generation_end_time;
+   time_point_sec                announced_launch_time;
 };
 
 struct by_symbol;
