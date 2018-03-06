@@ -609,50 +609,6 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( smt_setup_validate )
-{
-   try
-   {
-      smt_setup_operation op;
-      fc::time_point_sec start_time        = fc::variant( "2021-01-01T00:00:00" ).as< fc::time_point_sec >();
-      fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
-      // Do minimal operation setup that allows successful validatation.
-      {
-         ACTORS( (alice) )
-         generate_block();
-         asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 4);
-
-         smt_capped_generation_policy gpolicy;
-         uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
-         // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
-         gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder", 100 );
-         // set token unit, total is 5 token-satoshis = 0.0005 SMT
-         gpolicy.pre_soft_cap_unit.token_unit.emplace( "$from", 5 );
-         // Note - no soft cap -> no soft cap unit
-         gpolicy.min_steem_units_commitment.fillin_nonhidden_value( 1 );
-         gpolicy.hard_cap_steem_units_commitment.fillin_nonhidden_value( max_supply );
-         gpolicy.soft_cap_percent = STEEM_100_PERCENT;
-
-         // Note that neither tested SMT nor even its creator is necessary to validate this operation.
-         op.control_account = "alice";
-         op.symbol = alice_symbol;
-         op.decimal_places = 4;
-         op.initial_generation_policy = gpolicy;
-         op.generation_begin_time = start_time;
-         op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
-      }
-
-      op.validate();
-      // TODO put other negative scenarios here.
-
-      // Launch expiration time can't be earlier than announced launch time.
-      op.launch_expiration_time = start_time;
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.launch_expiration_time = start_time_plus_1; // Restored valid value.
-   }
-   FC_LOG_AND_RETHROW()
-}
-
 BOOST_AUTO_TEST_CASE( smt_refund_validate )
 {
    try
@@ -964,12 +920,12 @@ BOOST_AUTO_TEST_CASE( setup_validate )
 
       op.generation_end_time = fc::variant( "2017-11-14T00:00:00" ).as< fc::time_point_sec >();
       op.launch_expiration_time = fc::variant( "2017-12-12T00:00:00" ).as< fc::time_point_sec >();
-      smt_capped_generation_policy gp = fill_smt_capped_generation_policy
+      smt_capped_generation_policy gp = get_capped_generation_policy
       (
-         fill_smt_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         fill_smt_generation_unit()/*post_soft_cap_unit*/,
-         fill_smt_cap_commitment( 1 )/*min_steem_units_commitment*/,
-         fill_smt_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
+         get_generation_unit()/*post_soft_cap_unit*/,
+         get_cap_commitment( 1 )/*min_steem_units_commitment*/,
+         get_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
          STEEM_100_PERCENT/*soft_cap_percent*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/
@@ -1088,8 +1044,6 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       gp.max_unit_ratio = 2;
       op.initial_generation_policy = gp;
       op.validate();
-
-      gp.complex_validate();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1132,12 +1086,12 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       smt_setup_operation op;
       op.control_account = "alice";
 
-      smt_capped_generation_policy gp = fill_smt_capped_generation_policy
+      smt_capped_generation_policy gp = get_capped_generation_policy
       (
-         fill_smt_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         fill_smt_generation_unit()/*post_soft_cap_unit*/,
-         fill_smt_cap_commitment( 1 )/*min_steem_units_commitment*/,
-         fill_smt_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
+         get_generation_unit()/*post_soft_cap_unit*/,
+         get_cap_commitment( 1 )/*min_steem_units_commitment*/,
+         get_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 )/*hard_cap_steem_units_commitment*/,
          STEEM_100_PERCENT/*soft_cap_percent*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/

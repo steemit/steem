@@ -104,32 +104,6 @@ void smt_cap_commitment::validate()const
    }
 }
 
-void smt_capped_generation_policy::complex_validate()const
-{
-   uint64_t min_soft_cap = (uint64_t( hard_cap_steem_units_commitment.lower_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
-   uint64_t max_soft_cap = (uint64_t( hard_cap_steem_units_commitment.upper_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
-
-   // we want soft cap to be large enough we don't see quantization effects
-   FC_ASSERT( min_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
-
-   // We want to prevent the following from overflowing STEEM_MAX_SHARE_SUPPLY:
-   // max_tokens_created = (u1.tt * sc + u2.tt * (hc-sc)) * min_unit_ratio
-   // max_steem_accepted =  u1.st * sc + u2.st * (hc-sc)
-
-   // hc / max_unit_ratio is the saturation point
-
-   uint128_t sc = max_soft_cap;
-   uint128_t hc_sc = hard_cap_steem_units_commitment.upper_bound.value - max_soft_cap;
-
-   uint128_t max_tokens_created = (pre_soft_cap_unit.token_unit_sum() * sc + post_soft_cap_unit.token_unit_sum() * hc_sc) * min_unit_ratio;
-   uint128_t max_share_supply_u128 = uint128_t( STEEM_MAX_SHARE_SUPPLY );
-
-   FC_ASSERT( max_tokens_created <= max_share_supply_u128 );
-
-   uint128_t max_steem_accepted = (pre_soft_cap_unit.steem_unit_sum() * sc + post_soft_cap_unit.steem_unit_sum() * hc_sc);
-   FC_ASSERT( max_steem_accepted <= max_share_supply_u128 );
-}
-
 void smt_capped_generation_policy::validate()const
 {
    pre_soft_cap_unit.validate();
@@ -175,8 +149,28 @@ void smt_capped_generation_policy::validate()const
 
    // this static_assert checks to be sure min_soft_cap / max_soft_cap computation can't overflow uint64_t
    static_assert( uint64_t( STEEM_MAX_SHARE_SUPPLY ) < (std::numeric_limits< uint64_t >::max() / STEEM_100_PERCENT), "Overflow check failed" );
+   uint64_t min_soft_cap = (uint64_t( hard_cap_steem_units_commitment.lower_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
+   uint64_t max_soft_cap = (uint64_t( hard_cap_steem_units_commitment.upper_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
 
-   complex_validate();
+   // we want soft cap to be large enough we don't see quantization effects
+   FC_ASSERT( min_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
+
+   // We want to prevent the following from overflowing STEEM_MAX_SHARE_SUPPLY:
+   // max_tokens_created = (u1.tt * sc + u2.tt * (hc-sc)) * min_unit_ratio
+   // max_steem_accepted =  u1.st * sc + u2.st * (hc-sc)
+
+   // hc / max_unit_ratio is the saturation point
+
+   uint128_t sc = max_soft_cap;
+   uint128_t hc_sc = hard_cap_steem_units_commitment.upper_bound.value - max_soft_cap;
+
+   uint128_t max_tokens_created = (pre_soft_cap_unit.token_unit_sum() * sc + post_soft_cap_unit.token_unit_sum() * hc_sc) * min_unit_ratio;
+   uint128_t max_share_supply_u128 = uint128_t( STEEM_MAX_SHARE_SUPPLY );
+
+   FC_ASSERT( max_tokens_created <= max_share_supply_u128 );
+
+   uint128_t max_steem_accepted = (pre_soft_cap_unit.steem_unit_sum() * sc + post_soft_cap_unit.steem_unit_sum() * hc_sc);
+   FC_ASSERT( max_steem_accepted <= max_share_supply_u128 );
 }
 
 struct validate_visitor

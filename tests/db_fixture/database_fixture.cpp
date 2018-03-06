@@ -730,7 +730,7 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
 }
 
 template< typename T >
-smt_generation_unit t_smt_database_fixture< T >::fill_smt_generation_unit( const units& steem_unit, const units& token_unit )
+smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const units& steem_unit, const units& token_unit )
 {
    smt_generation_unit ret;
 
@@ -741,7 +741,7 @@ smt_generation_unit t_smt_database_fixture< T >::fill_smt_generation_unit( const
 }
 
 template< typename T >
-smt_cap_commitment t_smt_database_fixture< T >::fill_smt_cap_commitment( share_type amount )
+smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type amount )
 {
    smt_cap_commitment ret;
    ret.fillin_nonhidden_value( amount );
@@ -750,7 +750,7 @@ smt_cap_commitment t_smt_database_fixture< T >::fill_smt_cap_commitment( share_t
 }
 
 template< typename T >
-smt_capped_generation_policy t_smt_database_fixture< T >::fill_smt_capped_generation_policy
+smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
@@ -785,9 +785,9 @@ template void t_smt_database_fixture< clean_database_fixture >::create_invalid_s
 template void t_smt_database_fixture< clean_database_fixture >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
 
-template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::fill_smt_generation_unit( const units& steem_unit, const units& token_unit );
-template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::fill_smt_cap_commitment( share_type amount );
-template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::fill_smt_capped_generation_policy
+template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
+template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount );
+template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,

@@ -117,7 +117,6 @@ struct smt_capped_generation_policy
 
    extensions_type     extensions;
 
-   void complex_validate()const;
    void validate()const;
 };
 

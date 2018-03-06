@@ -314,9 +314,9 @@ struct t_smt_database_fixture : public T
    void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 
    //smt_setup_operation
-   smt_generation_unit fill_smt_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
-   smt_cap_commitment fill_smt_cap_commitment( share_type amount = 0 );
-   smt_capped_generation_policy fill_smt_capped_generation_policy
+   smt_generation_unit get_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
+   smt_cap_commitment get_cap_commitment( share_type amount = 0 );
+   smt_capped_generation_policy get_capped_generation_policy
    (
       const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
       const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
