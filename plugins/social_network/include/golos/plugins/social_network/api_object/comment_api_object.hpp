@@ -25,6 +25,10 @@ namespace golos {
                         curve(o.curve), max_accepted_payout(o.max_accepted_payout),
                         percent_steem_dollars(o.percent_steem_dollars), allow_replies(o.allow_replies),
                         allow_votes(o.allow_votes), allow_curation_rewards(o.allow_curation_rewards) {
+
+                    for (auto& route : o.beneficiaries) {
+                        beneficiaries.push_back(route);
+                    }
                 }
 
                 comment_api_object() {
@@ -77,6 +81,8 @@ namespace golos {
                 bool allow_replies;
                 bool allow_votes;
                 bool allow_curation_rewards;
+
+                vector< protocol::beneficiary_route_type > beneficiaries;
             };
 
         }
@@ -88,5 +94,6 @@ FC_REFLECT((golos::plugins::social_network::comment_api_object),
                    created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
                    vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)(
                    reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(
-                   curve)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards))
+                   curve)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(
+                   allow_curation_rewards)(beneficiaries))
 #endif //GOLOS_COMMENT_API_OBJ_H
