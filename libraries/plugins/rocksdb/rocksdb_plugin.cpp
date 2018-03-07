@@ -30,6 +30,7 @@
 namespace bpo = boost::program_options;
 
 #define STEEM_NAMESPACE_PREFIX "steem::protocol::"
+#define OPEN_FILE_LIMIT 750
 
 #define DIAGNOSTIC(s)
 //#define DIAGNOSTIC(s) s
@@ -49,6 +50,7 @@ using steem::chain::transaction_id_type;
 using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
+using ::rocksdb::DBOptions;
 using ::rocksdb::Options;
 using ::rocksdb::PinnableSlice;
 using ::rocksdb::ReadOptions;
@@ -347,7 +349,10 @@ public:
       options.IncreaseParallelism();
       options.OptimizeLevelStyleCompaction();
       
-      auto status = DB::Open(options, strPath, columnDefs, &_columnHandles, &storageDb);
+      DBOptions dbOptions(options);
+      options.max_open_files = OPEN_FILE_LIMIT;
+
+      auto status = DB::Open(dbOptions, strPath, columnDefs, &_columnHandles, &storageDb);
 
       if(status.ok())
       {
@@ -930,6 +935,7 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
    options.IncreaseParallelism();
    options.OptimizeLevelStyleCompaction();
+
    auto s = DB::OpenForReadOnly(options, strPath, columnDefs, &_columnHandles, &db);
 
    if(s.ok())
