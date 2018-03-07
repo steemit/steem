@@ -58,7 +58,8 @@ RUN \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
-    programs/build_helpers/check_reflect.py && \
+    PYTHONPATH=programs/build_helpers \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
@@ -81,7 +82,8 @@ RUN \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
-    programs/build_helpers/check_reflect.py && \
+    PYTHONPATH=programs/build_helpers \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
