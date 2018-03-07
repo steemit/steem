@@ -76,6 +76,7 @@ namespace golos {
             init_account_pub_key = init_account_priv_key.get_public_key();
 
             db->open(data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write);
+            startup();
         }
 
         live_database_fixture::live_database_fixture() {
