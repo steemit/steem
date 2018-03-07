@@ -949,6 +949,12 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.initial_generation_policy = gp;
       op.validate();
 
+      //FC_ASSERT(decimal_places <= SMT_MAX_DECIMAL_PLACES)
+      op.decimal_places = SMT_MAX_DECIMAL_PLACES + 1;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.decimal_places = 3;
+
       units to_many_units;
       for( uint32_t i = 0; i < SMT_MAX_UNIT_ROUTES + 1; ++i )
          to_many_units.emplace( "alice" + std::to_string( i ), 1 );
@@ -1201,6 +1207,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       generate_block();
 
       FUND( "alice", 10 * 1000 * 1000 );
+      FUND( "bob", 10 * 1000 * 1000 );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
@@ -1225,6 +1232,8 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.generation_begin_time = start_time;
       op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
 
+      create_smt( "bob", bob_private_key, 4 );
+
       signed_transaction tx;
 
       //SMT doesn't exist
@@ -1240,12 +1249,27 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       tx.operations.clear();
       tx.signatures.clear();
 
-      //Make transaction again.
+      //Make transaction again. Everything is correct.
+      op.decimal_places = 3;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
 
+      //Change precision.
+      op.control_account = "bob";
+      op.decimal_places = 5;
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      const steem::chain::smt_token_object* smt_token = db->find< steem::chain::smt_token_object, by_control_account >( op.control_account );
+      BOOST_REQUIRE( smt_token != nullptr );
+      uint8_t decimals = smt_token->liquid_symbol.decimals();
+      BOOST_REQUIRE( decimals == 5 );
    }
    FC_LOG_AND_RETHROW()
 }

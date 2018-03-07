@@ -144,22 +144,30 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    _db.modify(  *_token, [&]( smt_token_object& token )
    {
+      token.control_account = o.control_account;
       token.max_supply = o.max_supply;
+
       token.generation_begin_time = o.generation_begin_time;
       token.generation_end_time = o.generation_end_time;
       token.announced_launch_time = o.announced_launch_time;
       token.launch_expiration_time = o.launch_expiration_time;
 
-      //We should override precisions in 'lep_abs_amount' and 'rep_abs_amount'
-      //in case when precision was changed.
-      asset_symbol_type as_type = _token->liquid_symbol.get_paired_symbol();
-      uint8_t new_precision = as_type.decimals();
+      /*
+         We should override precision in: 'lep_abs_amount', 'rep_abs_amount', 'liquid_symbol'
+         in case when new precision differs from old.
+      */
+      asset_symbol_type old_symbol = _token->liquid_symbol;
+      uint8_t old_decimal_places = old_symbol.decimals();
 
-      if( token.lep_abs_amount.decimals() != new_precision )
-         token.lep_abs_amount = asset( token.lep_abs_amount, as_type );
+      if( old_decimal_places != o.decimal_places )
+      {
+         uint32_t nai = old_symbol.to_nai();
+         asset_symbol_type new_symbol = asset_symbol_type::from_nai( nai, o.decimal_places );
 
-      if( token.rep_abs_amount.decimals() != new_precision )
-         token.rep_abs_amount = asset( token.rep_abs_amount, as_type );
+         token.liquid_symbol = new_symbol;
+         token.lep_abs_amount = asset( token.lep_abs_amount, new_symbol );
+         token.rep_abs_amount = asset( token.rep_abs_amount, new_symbol );
+      }
    });
 
    smt_setup_evaluator_visitor visitor( *_token, _db );
