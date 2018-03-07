@@ -593,7 +593,7 @@ private:
    flat_set<std::string>            _op_list;
    flat_set<std::string>            _blacklisted_op_list;
 
-   bool                             _prune = true;
+   bool                             _prune = false;
 };
 
 void rocksdb_plugin::impl::collectOptions(const boost::program_options::variables_map& options)
@@ -643,6 +643,13 @@ void rocksdb_plugin::impl::collectOptions(const boost::program_options::variable
 
    if(options.count( "history-disable-pruning"))
       _prune = !options["history-disable-pruning"].as<bool>();
+
+   if(_prune)
+   {
+      wlog("****************************************************************************************************");
+      wlog("*                       History pruning is deprecated. Please don't enable it.                     *");
+      wlog("****************************************************************************************************");
+   }
 }
 
 inline bool rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const
