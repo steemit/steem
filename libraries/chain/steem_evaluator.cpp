@@ -723,17 +723,33 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          com.last_update   = _db.head_block_time();
          com.active        = com.last_update;
-         strcmp_equal equal;
 
-         if( !parent )
+         if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20__2203 ) )
          {
-            FC_ASSERT( com.parent_author == account_name_type(), "The parent of a comment cannot change." );
-            FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
+            if( !parent )
+            {
+               FC_ASSERT( com.parent_author == account_name_type(), "The parent of a comment cannot change." );
+               FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change." );
+            }
+            else
+            {
+               FC_ASSERT( com.parent_author == o.parent_author, "The parent of a comment cannot change." );
+               FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change." );
+            }
          }
          else
          {
-            FC_ASSERT( com.parent_author == o.parent_author, "The parent of a comment cannot change." );
-            FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
+            strcmp_equal equal;
+            if( !parent )
+            {
+               FC_ASSERT( com.parent_author == account_name_type(), "The parent of a comment cannot change." );
+               FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
+            }
+            else
+            {
+               FC_ASSERT( com.parent_author == o.parent_author, "The parent of a comment cannot change." );
+               FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
+            }
          }
       });
    #ifndef IS_LOW_MEM
