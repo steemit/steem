@@ -1946,6 +1946,75 @@ void database::process_savings_withdraws()
   }
 }
 
+void database::process_smt_objects()
+{
+  const auto& idx = get_index< smt_token_index >().indices().get< by_interval >();
+  auto itr = idx.begin();
+
+   while( itr != idx.end() )
+   {
+      if( itr->phase < smt_token_object::smt_phase::launch_expiration_time_completed )
+      {
+         switch( itr->phase )
+         {
+            case smt_token_object::smt_phase::launch_time_completed:
+            {
+               if( itr->launch_expiration_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+            }break;
+            case smt_token_object::smt_phase::contribution_end_time_completed:
+            {
+               if( itr->announced_launch_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->launch_expiration_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+            }break;
+            case smt_token_object::smt_phase::contribution_begin_time_completed:
+            {
+               if( itr->generation_end_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->announced_launch_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->launch_expiration_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+            }break;
+            default:
+            {
+               if( itr->generation_begin_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->generation_end_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->announced_launch_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+               if( itr->launch_expiration_time > head_block_time() )
+               {
+                  //push_virtual_operation()
+               }
+            }break;
+         }
+      }
+      ++itr;      
+   }
+}
+
 asset database::get_liquidity_reward()const
 {
    if( has_hardfork( STEEM_HARDFORK_0_12__178 ) )

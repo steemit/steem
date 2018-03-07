@@ -148,6 +148,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token.generation_begin_time = o.generation_begin_time;
       token.generation_end_time = o.generation_end_time;
       token.announced_launch_time = o.announced_launch_time;
+      token.launch_expiration_time = o.launch_expiration_time;
 
       //We should override precisions in 'lep_abs_amount' and 'rep_abs_amount'
       //in case when precision was changed.

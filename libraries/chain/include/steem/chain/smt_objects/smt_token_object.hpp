@@ -19,6 +19,10 @@ public:
    {
       account_elevated,
       setup_completed,
+      contribution_begin_time_completed,
+      contribution_end_time_completed,
+      launch_time_completed,
+      launch_expiration_time_completed
    };
 
    struct smt_market_maker_state
@@ -124,11 +128,13 @@ public:
    time_point_sec                generation_begin_time;
    time_point_sec                generation_end_time;
    time_point_sec                announced_launch_time;
+   time_point_sec                launch_expiration_time;
 };
 
 struct by_symbol;
 struct by_nai;
 struct by_control_account;
+struct by_interval;
 
 /**Comparison operators that allow to return the same object representation
  * for both liquid and vesting symbol/nai.
@@ -159,7 +165,16 @@ typedef multi_index_container <
       ordered_unique< tag< by_nai >,
          const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_liquid_nai >, vesting_liquid_less >,
       ordered_non_unique< tag< by_control_account >,
-         member< smt_token_object, account_name_type, &smt_token_object::control_account > >
+         member< smt_token_object, account_name_type, &smt_token_object::control_account > >,
+      ordered_non_unique< tag< by_interval >,
+         composite_key< smt_token_object,
+            member< smt_token_object, time_point_sec, &smt_token_object::launch_expiration_time >,
+            member< smt_token_object, time_point_sec, &smt_token_object::announced_launch_time >,
+            member< smt_token_object, time_point_sec, &smt_token_object::generation_end_time >,
+            member< smt_token_object, time_point_sec, &smt_token_object::generation_begin_time >
+         >,
+         composite_key_compare< std::greater< time_point_sec >, std::greater< time_point_sec >, std::greater< time_point_sec >, std::greater< time_point_sec > >
+      >
    >,
    allocator< smt_token_object >
 > smt_token_index;
@@ -167,8 +182,12 @@ typedef multi_index_container <
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
-                 (account_elevated)
-                 (setup_completed)
+                  (account_elevated)
+                  (setup_completed)
+                  (contribution_begin_time_completed)
+                  (contribution_end_time_completed)
+                  (launch_time_completed)
+                  (launch_expiration_time_completed)
 )
 
 FC_REFLECT( steem::chain::smt_token_object::smt_market_maker_state,

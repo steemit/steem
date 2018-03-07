@@ -340,6 +340,9 @@ namespace steem { namespace chain {
          void process_funds();
          void process_conversions();
          void process_savings_withdraws();
+#ifdef STEEM_ENABLE_SMT
+         void process_smt_objects();
+#endif
          void account_recovery_processing();
          void expire_escrow_ratification();
          void process_decline_voting_rights();
