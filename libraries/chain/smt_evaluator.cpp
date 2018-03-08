@@ -58,7 +58,7 @@ const smt_token_object& common_pre_setup_evaluation(
    const smt_token_object& smt = get_controlled_smt( _db, control_account, symbol );
 
    // Check whether it's not too late to setup emissions operation.
-   FC_ASSERT( smt.phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+   FC_ASSERT( smt.phase < smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
 
    return smt;
 }
@@ -172,6 +172,16 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    smt_setup_evaluator_visitor visitor( *_token, _db );
    o.initial_generation_policy.visit( visitor );
+
+   _db.create< smt_event_token_object >( [&]( smt_event_token_object& event_token )
+   {
+      event_token.parent = _token->id;
+
+      event_token.generation_begin_time = _token->generation_begin_time;
+      event_token.generation_end_time = _token->generation_end_time;
+      event_token.announced_launch_time = _token->announced_launch_time;
+      event_token.launch_expiration_time = _token->launch_expiration_time;
+   });
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )

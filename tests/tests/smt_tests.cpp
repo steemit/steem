@@ -368,10 +368,10 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          // TODO: Replace the code below with account setup operation execution once its implemented.
          const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
          FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
-         FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
+         FC_ASSERT( smt->phase < steem::chain::smt_phase::setup_completed, "Who closed setup phase?!" );
          db->modify( *smt, [&]( steem::chain::smt_token_object& token )
          {
-            token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
+            token.phase = steem::chain::smt_phase::setup_completed;
          });
          // Fail due to closed setup phase (too late).
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)

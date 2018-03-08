@@ -1948,73 +1948,34 @@ void database::process_savings_withdraws()
 
 #ifdef STEEM_ENABLE_SMT
 
+template< typename T >
+void process_smt_objects_internal( database* db, steem::chain::smt_phase phase, bool allow_remove )
+{
+   FC_ASSERT( db != nullptr );
+   const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
+   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+
+   while( itr != idx.end() && itr->phase == phase )
+   {
+      #pragma message( "TODO: Add virtual_operation." )
+
+      if( allow_remove )
+      {
+         const auto& old_itr = *itr;
+         ++itr;
+         db->remove( old_itr );
+      }
+      else
+         ++itr;
+   }
+}
+
 void database::process_smt_objects()
 {
-  const auto& idx = get_index< smt_token_index >().indices().get< by_interval >();
-  auto itr = idx.begin();
-
-   while( itr != idx.end() )
-   {
-      if( itr->phase < smt_token_object::smt_phase::launch_expiration_time_completed )
-      {
-         switch( itr->phase )
-         {
-            case smt_token_object::smt_phase::launch_time_completed:
-            {
-               if( itr->launch_expiration_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-            }break;
-            case smt_token_object::smt_phase::contribution_end_time_completed:
-            {
-               if( itr->announced_launch_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->launch_expiration_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-            }break;
-            case smt_token_object::smt_phase::contribution_begin_time_completed:
-            {
-               if( itr->generation_end_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->announced_launch_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->launch_expiration_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-            }break;
-            default:
-            {
-               if( itr->generation_begin_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->generation_end_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->announced_launch_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-               if( itr->launch_expiration_time > head_block_time() )
-               {
-                  //push_virtual_operation()
-               }
-            }break;
-         }
-      }
-      ++itr;      
-   }
+   process_smt_objects_internal< by_interval_gen_begin >( this, smt_phase::setup_completed, false );
+   process_smt_objects_internal< by_interval_gen_end >( this, smt_phase::contribution_begin_time_completed, false );
+   process_smt_objects_internal< by_interval_launch >( this, smt_phase::contribution_end_time_completed, false );
+   process_smt_objects_internal< by_interval_launch_exp >( this, smt_phase::launch_time_completed, true );
 }
 
 #endif
@@ -2426,6 +2387,7 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< smt_event_token_index                   >(*this);
    add_core_index< account_regular_balance_index           >(*this);
    add_core_index< account_rewards_balance_index           >(*this);
 #endif
