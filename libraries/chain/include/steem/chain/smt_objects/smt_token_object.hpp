@@ -137,8 +137,6 @@ class smt_event_token_object : public object< smt_event_token_object_type, smt_e
    smt_event_token_object() = delete;
 
 public:
- 
-public:
    template< typename Constructor, typename Allocator >
    smt_event_token_object( Constructor&& c, allocator< Allocator > a )
    {

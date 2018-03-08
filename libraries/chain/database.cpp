@@ -1948,8 +1948,8 @@ void database::process_savings_withdraws()
 
 #ifdef STEEM_ENABLE_SMT
 
-template< typename T >
-void process_smt_objects_internal( database* db, steem::chain::smt_phase phase, bool allow_remove )
+template< typename T, bool ALLOW_REMOVE >
+void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
 {
    FC_ASSERT( db != nullptr );
    const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
@@ -1959,23 +1959,23 @@ void process_smt_objects_internal( database* db, steem::chain::smt_phase phase, 
    {
       #pragma message( "TODO: Add virtual_operation." )
 
-      if( allow_remove )
+      if( ALLOW_REMOVE )
       {
          const auto& old_itr = *itr;
          ++itr;
          db->remove( old_itr );
       }
-      else
+      if( !ALLOW_REMOVE )
          ++itr;
    }
 }
 
 void database::process_smt_objects()
 {
-   process_smt_objects_internal< by_interval_gen_begin >( this, smt_phase::setup_completed, false );
-   process_smt_objects_internal< by_interval_gen_end >( this, smt_phase::contribution_begin_time_completed, false );
-   process_smt_objects_internal< by_interval_launch >( this, smt_phase::contribution_end_time_completed, false );
-   process_smt_objects_internal< by_interval_launch_exp >( this, smt_phase::launch_time_completed, true );
+   process_smt_objects_internal< by_interval_gen_begin, false >( this, smt_phase::setup_completed );
+   process_smt_objects_internal< by_interval_gen_end, false >( this, smt_phase::contribution_begin_time_completed );
+   process_smt_objects_internal< by_interval_launch, false >( this, smt_phase::contribution_end_time_completed );
+   process_smt_objects_internal< by_interval_launch_exp, true >( this, smt_phase::launch_time_completed );
 }
 
 #endif
