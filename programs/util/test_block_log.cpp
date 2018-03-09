@@ -1,9 +1,9 @@
-#include <steemit/chain/database.hpp>
+#include <golos/chain/database.hpp>
 
 int main(int argc, char **argv, char **envp) {
     try {
-        //steemit::chain::database db;
-        steemit::chain::block_log log;
+        //golos::chain::database db;
+        golos::chain::block_log log;
 
         fc::temp_directory temp_dir(".");
 
@@ -12,9 +12,9 @@ int main(int argc, char **argv, char **envp) {
 
         idump((log.head()));
 
-        steemit::protocol::signed_block b1;
+        golos::protocol::signed_block b1;
         b1.witness = "alice";
-        b1.previous = steemit::protocol::block_id_type();
+        b1.previous = golos::protocol::block_id_type();
 
         log.append(b1);
         log.flush();
@@ -22,7 +22,7 @@ int main(int argc, char **argv, char **envp) {
         idump((log.head()));
         idump((fc::raw::pack_size(b1)));
 
-        steemit::protocol::signed_block b2;
+        golos::protocol::signed_block b2;
         b2.witness = "bob";
         b2.previous = b1.id();
 

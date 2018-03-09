@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/graphene/time/*.hpp")
+file(GLOB HEADERS "include/golos/time/*.hpp")
 
 if(BUILD_SHARED_LIBRARIES)
     add_library(graphene_time SHARED
@@ -21,4 +21,4 @@ install(TARGETS
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         )
-install(FILES ${HEADERS} DESTINATION "include/graphene/time")
+install(FILES ${HEADERS} DESTINATION "include/golos/time")

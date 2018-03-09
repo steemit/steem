@@ -285,7 +285,7 @@ EXTENSION_MAPPING      =
 
 # If the MARKDOWN_SUPPORT tag is enabled then doxygen pre-processes all comments
 # according to the Markdown format, which allows for more readable
-# documentation. See http://daringfireball.net/projects/markdown/ for details.
+# documentation. See http://daringfireball.network/projects/markdown/ for details.
 # The output of markdown processing is further processed by doxygen, so you can
 # mix doxygen, HTML, and XML commands with Markdown formatting. Disable only in
 # case of backward compatibilities issues.
@@ -758,7 +758,7 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ${CMAKE_CURRENT_SOURCE_DIR}/include/steemit/wallet/wallet.hpp
+INPUT                  = ${CMAKE_CURRENT_SOURCE_DIR}/include/golos/wallet/wallet.hpp
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1878,7 +1878,7 @@ DOCBOOK_PROGRAMLISTING = NO
 #---------------------------------------------------------------------------
 
 # If the GENERATE_AUTOGEN_DEF tag is set to YES, doxygen will generate an
-# AutoGen Definitions (see http://autogen.sf.net) file that captures the
+# AutoGen Definitions (see http://autogen.sf.network) file that captures the
 # structure of the code including all documentation. Note that this feature is
 # still experimental and incomplete at the moment.
 # The default value is: NO.

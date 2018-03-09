@@ -30,8 +30,8 @@ if(USE_PCH)
     include(cotire)
 endif(USE_PCH)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/GitVersionGen")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fc/CMakeModules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fc/GitVersionGen")
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA2)
 
@@ -46,7 +46,8 @@ list(APPEND BOOST_COMPONENTS thread
         chrono
         unit_test_framework
         context
-        locale)
+        locale
+)
 
 option(Boost_USE_STATIC_LIBS "Build with Boost static libraries usage" TRUE)
 
@@ -100,6 +101,12 @@ if(NOT "${Boost_VERSION}" MATCHES "1.53(.*)")
     list(APPEND BOOST_COMPONENTS coroutine)
     set(Boost_LIBRARIES ${BOOST_LIBRARIES_TEMP} ${Boost_LIBRARIES})
 endif()
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
 
 if(WIN32)
 
@@ -158,11 +165,11 @@ else(WIN32) # Apple AND Linux
     if(APPLE)
         # Apple Specific Options Here
         message(STATUS "Configuring Golos on OS X")
-        set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -stdlib=libc++ -Wall -Wno-conversion -Wno-deprecated-declarations")
+        set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -stdlib=libc++ -Wall -Wno-conversion -Wno-deprecated-declarations")
     else(APPLE)
         # Linux Specific Options Here
         message(STATUS "Configuring Golos on Linux")
-        set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall")
+        set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -Wall")
         set(rt_library rt)
         set(pthread_library pthread)
         if(NOT DEFINED crypto_library)
@@ -199,11 +206,17 @@ if(ENABLE_COVERAGE_TESTING)
     set(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
-# external_plugins needs to be compiled first because libraries/app depends on GOLOSIT_EXTERNAL_PLUGINS being fully populated
-add_subdirectory(external_plugins)
-add_subdirectory(libraries)
-add_subdirectory(programs)
+set(ENABLE_TESTING FALSE CACHE BOOL "Run unit tests for Golos")
 
+if (ENABLE_TESTING)
+  enable_testing()
+endif()
+
+# external_plugins needs to be compiled first because libraries/app depends on GOLOSIT_EXTERNAL_PLUGINS being fully populated
+add_subdirectory(thirdparty)
+add_subdirectory(libraries)
+add_subdirectory(plugins)
+add_subdirectory(programs)
 add_subdirectory(tests)
 
 if(ENABLE_INSTALLER)

@@ -4,7 +4,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 target_link_libraries(js_operation_serializer
-        PRIVATE golos_app graphene_net golos_chain golos_protocol graphene_utilities golos_wallet fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE  golos_chain golos_protocol graphene_utilities  fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 install(TARGETS
         js_operation_serializer

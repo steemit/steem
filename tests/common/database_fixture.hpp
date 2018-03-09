@@ -1,28 +1,28 @@
 #ifndef DATABASE_FIXTURE_HPP
 #define DATABASE_FIXTURE_HPP
 
-#include <steemit/app/application.hpp>
-#include <steemit/chain/database.hpp>
+#include <appbase/application.hpp>
+#include <golos/chain/database.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <golos/plugins/debug_node/plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
-using namespace graphene::db;
 
 extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 #define PUSH_TX \
-   steemit::chain::test::_push_transaction
+   golos::chain::test::_push_transaction
 
 #define PUSH_BLOCK \
-   steemit::chain::test::_push_block
+   golos::chain::test::_push_block
 
 // See below
 #define REQUIRE_OP_VALIDATION_SUCCESS(op, field, value) \
@@ -132,48 +132,53 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #define ASSET(s) \
    asset::from_string( s )
 
-namespace steemit {
+
+#ifndef STEEMIT_INIT_PRIVATE_KEY
+#  define STEEMIT_INIT_PRIVATE_KEY (fc::ecc::private_key::regenerate(fc::sha256::hash(BLOCKCHAIN_NAME)))
+#endif
+
+namespace golos {
     namespace chain {
 
-        using namespace steemit::protocol;
+        using namespace golos::protocol;
 
         struct database_fixture {
             // the reason we use an app is to exercise the indexes of built-in
             //   plugins
-            steemit::app::application app;
-            chain::database &db;
+            chain::database *db;
             signed_transaction trx;
-            public_key_type committee_key;
-            account_id_type committee_account;
-            fc::ecc::private_key private_key = fc::ecc::private_key::generate();
-            fc::ecc::private_key init_account_priv_key;
-            string debug_key = graphene::utilities::key_to_wif(init_account_priv_key);
+            fc::ecc::private_key init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
+            string debug_key = golos::utilities::key_to_wif(init_account_priv_key);
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
             uint32_t default_skip = 0 | database::skip_undo_history_check |
                                     database::skip_authority_check;
 
-            std::shared_ptr<steemit::plugin::debug_node::debug_node_plugin> db_plugin;
+            golos::plugins::chain::plugin *ch_plugin = nullptr;
+            golos::plugins::debug_node::plugin *db_plugin = nullptr;
+            golos::plugins::account_history::plugin *ah_plugin = nullptr;
 
             optional<fc::temp_directory> data_dir;
             bool skip_key_index_test = false;
 
             uint32_t anon_acct_count;
 
-            database_fixture() : app(), db(*app.chain_database()) {
+            database_fixture() {
             }
 
-            virtual ~database_fixture() {
-
-            }
+            virtual ~database_fixture();
 
             static fc::ecc::private_key generate_private_key(string seed);
 
             string generate_anon_acct_name();
 
+            void initialize();
+            void startup(bool generate_hardfork = true);
+
             void open_database();
+            void close_database();
 
             void generate_block(uint32_t skip = 0,
-                    const fc::ecc::private_key &key = generate_private_key(BLOCKCHAIN_NAME),
+                    const fc::ecc::private_key &key = STEEMIT_INIT_PRIVATE_KEY,
                     int miss_blocks = 0);
 
             /**

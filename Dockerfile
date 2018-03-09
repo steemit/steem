@@ -15,6 +15,7 @@ RUN \
         cmake \
         doxygen \
         git \
+        ccache\
         libboost-all-dev \
         libreadline-dev \
         libssl-dev \
@@ -31,43 +32,6 @@ RUN \
     pip3 install gcovr
 
 ADD . /usr/local/src/golos
-
-#RUN \
-#    cd /usr/local/src/golos && \
-#    git submodule update --init --recursive && \
-#    mkdir build && \
-#    cd build && \
-#    cmake \
-#        -DCMAKE_BUILD_TYPE=Release \
-#        -DBUILD_GOLOS_TESTNET=TRUE \
-#        -DLOW_MEMORY_NODE=FALSE \
-#        -DCLEAR_VOTES=TRUE \
-#        .. && \
-#    make -j$(nproc) chain_test && \
-#    ./tests/chain_test && \
-#    cd /usr/local/src/golos && \
-#    doxygen && \
-#    programs/build_helpers/check_reflect.py && \
-#    rm -rf /usr/local/src/golos/build
-
-#RUN \
-#    cd /usr/local/src/golos && \
-#    git submodule update --init --recursive && \
-#    mkdir build && \
-#    cd build && \
-#    cmake \
-#        -DCMAKE_BUILD_TYPE=Debug \
-#        -DENABLE_COVERAGE_TESTING=TRUE \
-#        -DBUILD_GOLOS_TESTNET=TRUE \
-#        -DLOW_MEMORY_NODE=FALSE \
-#        -DCLEAR_VOTES=TRUE \
-#        .. && \
-#    make -j$(nproc) chain_test && \
-#    ./tests/chain_test && \
-#    mkdir -p /var/cobertura && \
-#    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*"  --output="/var/cobertura/coverage.xml" && \
-#    cd /usr/local/src/golos && \
-#    rm -rf /usr/local/src/golos/build
 
 RUN \
     cd /usr/local/src/golos && \
@@ -146,19 +110,22 @@ RUN mkdir /var/cache/golosd && \
 ENV HOME /var/lib/golosd
 RUN chown golosd:golosd -R /var/lib/golosd
 
-ADD programs/golosd/snapshot5392323.json /var/lib/golosd
+ADD share/golosd/snapshot5392323.json /var/lib/golosd
 
 # rpc service:
+# http
 EXPOSE 8090
+# ws
+EXPOSE 8091
 # p2p service:
 EXPOSE 2001
 
 RUN mkdir -p /etc/service/golosd
-ADD contribution/golosd.sh /etc/service/golosd/run
+ADD share/golosd/golosd.sh /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
-ADD documentation/seednodes /etc/golosd/seednodes
+ADD share/golosd/seednodes /etc/golosd/seednodes
 
 # the following adds lots of logging info to stdout
-ADD contribution/config.ini /etc/golosd/config.ini
+ADD share/golosd/config/config.ini /etc/golosd/config.ini

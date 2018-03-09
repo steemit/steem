@@ -1,8 +1,8 @@
-#include <steemit/chain/steem_evaluator.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/custom_operation_interpreter.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/block_summary_object.hpp>
+#include <golos/chain/steem_evaluator.hpp>
+#include <golos/chain/database.hpp>
+#include <golos/chain/custom_operation_interpreter.hpp>
+#include <golos/chain/steem_objects.hpp>
+#include <golos/chain/block_summary_object.hpp>
 
 #ifndef IS_LOW_MEM
 
@@ -21,7 +21,7 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-namespace steemit {
+namespace golos {
     namespace chain {
         using fc::uint128_t;
 
@@ -293,7 +293,7 @@ namespace steemit {
 
             if (_db.is_producing()) {
                 FC_ASSERT(comment.net_rshares <=
-                          0, "Cannot delete a comment with net positive votes.");
+                          0, "Cannot delete a comment with network positive votes.");
             }
             if (comment.net_rshares > 0) {
                 return;
@@ -835,7 +835,7 @@ namespace steemit {
                                   props.get_vesting_share_price();
                 min_vests.amount.value *= 10;
 
-                FC_ASSERT(account.vesting_shares > min_vests ||
+                FC_ASSERT(account.vesting_shares.amount > min_vests.amount ||
                           (_db.has_hardfork(STEEMIT_HARDFORK_0_16__562) &&
                            o.vesting_shares.amount == 0),
                         "Account registered by another account requires 10x account creation fee worth of Golos Power before it can be powered down.");
@@ -1224,7 +1224,7 @@ namespace steemit {
                         if (!_db.has_hardfork(STEEMIT_HARDFORK_0_6__114) &&
                             c.net_rshares == -c.abs_rshares)
                             FC_ASSERT(c.net_votes <
-                                      0, "Comment has negative net votes?");
+                                      0, "Comment has negative network votes?");
                     });
 
                     _db.modify(root, [&](comment_object &c) {
@@ -2097,4 +2097,4 @@ namespace steemit {
             });
         }
     }
-} // steemit::chain
+} // golos::chain
