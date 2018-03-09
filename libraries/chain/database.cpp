@@ -545,16 +545,13 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
-      with_write_lock( [&]()
+      detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
       {
-         detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
+         try
          {
-            try
-            {
-               result = _push_block(new_block);
-            }
-            FC_CAPTURE_AND_RETHROW( (new_block) )
-         });
+            result = _push_block(new_block);
+         }
+         FC_CAPTURE_AND_RETHROW( (new_block) )
       });
    });
 
@@ -689,10 +686,7 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
          detail::with_skip_flags( *this, skip,
             [&]()
             {
-               with_write_lock( [&]()
-               {
-                  _push_transaction( trx );
-               });
+               _push_transaction( trx );
             });
          set_producing( false );
       }

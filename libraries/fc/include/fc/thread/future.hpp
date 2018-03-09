@@ -32,13 +32,13 @@ namespace fc {
           virtual ~completion_handler(){};
           virtual void on_complete( const void* v, const fc::exception_ptr& e ) = 0;
      };
-     
+
      template<typename Functor, typename T>
      class completion_handler_impl : public completion_handler {
        public:
          completion_handler_impl( Functor&& f ):_func(fc::move(f)){}
          completion_handler_impl( const Functor& f ):_func(f){}
-     
+
          virtual void on_complete( const void* v, const fc::exception_ptr& e ) {
            _func( *static_cast<const T*>(v), e);
          }
@@ -64,7 +64,7 @@ namespace fc {
       promise_base(const char* desc FC_TASK_NAME_DEFAULT_ARG);
 
       const char* get_desc()const;
-                   
+
       virtual void cancel(const char* reason FC_CANCELATION_REASON_DEFAULT_ARG);
       bool canceled()const { return _canceled; }
       bool ready()const;
@@ -105,14 +105,14 @@ namespace fc {
       detail::completion_handler* _compl;
   };
 
-  template<typename T = void> 
+  template<typename T = void>
   class promise : virtual public promise_base {
     public:
       typedef fc::shared_ptr< promise<T> > ptr;
       promise( const char* desc FC_TASK_NAME_DEFAULT_ARG):promise_base(desc){}
       promise( const T& val ){ set_value(val); }
       promise( T&& val ){ set_value(fc::move(val) ); }
-    
+
       const T& wait(const microseconds& timeout = microseconds::maximum() ){
         this->_wait( timeout );
         return *result;
@@ -147,7 +147,7 @@ namespace fc {
       typedef fc::shared_ptr< promise<void> > ptr;
       promise( const char* desc FC_TASK_NAME_DEFAULT_ARG):promise_base(desc){}
       //promise( const void_t& ){ set_value(); }
-    
+
       void wait(const microseconds& timeout = microseconds::maximum() ){
         this->_wait( timeout );
       }
@@ -165,23 +165,23 @@ namespace fc {
     protected:
       ~promise(){}
   };
-  
+
   /**
    *  @brief a placeholder for the result of an asynchronous operation.
    *
-   *  By calling future<T>::wait() you will block the current fiber until 
-   *  the asynchronous operation completes.  
+   *  By calling future<T>::wait() you will block the current fiber until
+   *  the asynchronous operation completes.
    *
    *  If you would like to use an asynchronous interface instead of the synchronous
    *  'wait' method you could specify a CompletionHandler which is a method that takes
    *  two parameters, a const reference to the value and an exception_ptr.  If the
    *  exception_ptr is set, the value reference is invalid and accessing it is
-   *  'undefined'.  
+   *  'undefined'.
    *
    *  Promises have pointer semantics, futures have reference semantics that
    *  contain a shared pointer to a promise.
    */
-  template<typename T> 
+  template<typename T>
   class future {
     public:
       future( const fc::shared_ptr<promise<T>>& p ):m_prom(p){}
@@ -190,13 +190,13 @@ namespace fc {
       future(){}
 
       future& operator=(future<T>&& f ) {
-        fc_swap(m_prom,f.m_prom); 
+        fc_swap(m_prom,f.m_prom);
         return *this;
       }
 
 
       operator const T&()const { return wait(); }
-      
+
       /// @pre valid()
       /// @post ready()
       /// @throws timeout
@@ -238,6 +238,9 @@ namespace fc {
          }
       }
 
+      void set_value( const T& v ) { m_prom->set_value(v); }
+      void set_value( T&& v ) { m_prom->set_value(v); }
+
       /**
        * @pre valid()
        *
@@ -263,11 +266,11 @@ namespace fc {
       future(){}
 
       future& operator=(future<void>&& f ) {
-        fc_swap(m_prom,f.m_prom); 
+        fc_swap(m_prom,f.m_prom);
         return *this;
       }
 
-      
+
       /// @pre valid()
       /// @post ready()
       /// @throws timeout
@@ -286,7 +289,7 @@ namespace fc {
       bool valid()const    { return !!m_prom;           }
       bool canceled()const { return m_prom ? m_prom->canceled() : true; }
 
-      void cancel_and_wait(const char* reason FC_CANCELATION_REASON_DEFAULT_ARG) 
+      void cancel_and_wait(const char* reason FC_CANCELATION_REASON_DEFAULT_ARG)
       {
         cancel(reason);
         try
@@ -306,6 +309,9 @@ namespace fc {
 
       void cancel(const char* reason FC_CANCELATION_REASON_DEFAULT_ARG) const { if( m_prom ) m_prom->cancel(reason); }
 
+      void set_value(){ m_prom->set_value(); }
+      void set_value( const void_t&  ) { m_prom->set_value(); }
+
       template<typename CompletionHandler>
       void on_complete( CompletionHandler&& c ) {
         m_prom->on_complete( fc::forward<CompletionHandler>(c) );
@@ -315,5 +321,5 @@ namespace fc {
       friend class thread;
       fc::shared_ptr<promise<void>> m_prom;
   };
-} 
+}
 
