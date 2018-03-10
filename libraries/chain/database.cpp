@@ -4249,19 +4249,9 @@ namespace golos {
                      * the min cashout time for each child in the discussion. Then iterate over the children and set
                      * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
                      */
-                    const auto &comment_idx = get_index<comment_index, by_id>();
                     const auto &by_time_idx = get_index<comment_index, by_cashout_time>();
                     const auto &by_root_idx = get_index<comment_index, by_root>();
                     const auto max_cashout_time = head_block_time();
-
-                    auto recalc_rshares2 = [&](const comment_object &c) {
-                        if (c.net_rshares.value > 0) {
-                            auto old_rshares2 = calculate_vshares_quadratic(
-                                    c.net_rshares.value, get_content_constant_s());
-                            auto new_rshares2 = calculate_vshares_linear(c.net_rshares.value);
-                            adjust_rshares2(c, old_rshares2, new_rshares2);
-                        }
-                    };
 
                     std::vector<comment_object::id_type> root_posts;
                     root_posts.reserve(STEEMIT_HF_17_NUM_POSTS);
@@ -4274,24 +4264,19 @@ namespace golos {
                     }
 
                     for (const auto &id: root_posts) {
-                        auto itr = comment_idx.find(id);
-                        FC_ASSERT(comment_idx.end() != itr);
-
-                        modify(*itr, [&](comment_object &c) {
-                            // limit second cashout window to 1 week, or a current block time
-                            c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
-                        });
-
-                        recalc_rshares2(*itr);
-
-                        auto reply_itr = by_root_idx.lower_bound(id);
-                        for (; reply_itr != by_root_idx.end() && reply_itr->root_comment == id; ++reply_itr) {
-                            modify(*reply_itr, [&](comment_object &c) {
+                        auto itr = by_root_idx.lower_bound(id);
+                        for (; itr != by_root_idx.end() && itr->root_comment == id; ++itr) {
+                            modify(*itr, [&](comment_object &c) {
                                 // limit second cashout window to 1 week, or a current block time
                                 c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
                             });
 
-                            recalc_rshares2(*reply_itr);
+                            if (itr->net_rshares.value > 0) {
+                                auto old_rshares2 = calculate_vshares_quadratic(
+                                        itr->net_rshares.value, get_content_constant_s());
+                                auto new_rshares2 = calculate_vshares_linear(itr->net_rshares.value);
+                                adjust_rshares2(*itr, old_rshares2, new_rshares2);
+                            }
                         }
                     }}
                     break;
