@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 16, 5))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 17, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 #ifdef STEEMIT_BUILD_TESTNET
@@ -24,7 +24,8 @@
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hour
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS * 2)
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEMIT_CASHOUT_WINDOW_SECONDS * 2)
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*5) /// 5 hours
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*2) /// 2 hours
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
@@ -42,7 +43,7 @@
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY / 512)
 #define STEEMIT_START_MINER_VOTING_BLOCK        (60*10/STEEMIT_BLOCK_INTERVAL)
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1484478000))
+#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1476788400 + STEEMIT_BLOCK_INTERVAL))
 
 #define STEEMIT_INIT_MINER_NAME                 "cyberfounder"
 #define STEEMIT_NUM_INIT_MINERS                 1
@@ -66,6 +67,7 @@
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+#define STEEMIT_MAX_COMMENT_BENEFICIARIES       8
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -95,8 +97,9 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
-
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
 #define STEEMIT_MINING_REWARD                   asset( 666, STEEM_SYMBOL )
@@ -220,8 +223,9 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)  /// 1 day
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  // 1 weak
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    // 1 day
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2) /// 2 hours
@@ -263,6 +267,7 @@
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+#define STEEMIT_MAX_COMMENT_BENEFICIARIES       64
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -292,7 +297,9 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 

@@ -467,7 +467,7 @@ namespace golos {
         }
 
         const time_point_sec database::calculate_discussion_payout_time(const comment_object &comment) const {
-            if (comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
+            if (has_hardfork(STEEMIT_HARDFORK_0_17__431) || comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
                 return comment.cashout_time;
             } else {
                 return get<comment_object>(comment.root_comment).cashout_time;
@@ -1917,63 +1917,20 @@ namespace golos {
             }
         }
 
-        void database::adjust_total_payout(const comment_object &cur, const asset &sbd_created, const asset &curator_sbd_value) {
+        void database::adjust_total_payout(
+                const comment_object &cur,
+                const asset &sbd_created,
+                const asset &curator_sbd_value,
+                const asset &beneficiary_value
+        ) {
             modify(cur, [&](comment_object &c) {
                 if (c.total_payout_value.symbol == sbd_created.symbol) {
                     c.total_payout_value += sbd_created;
+                    c.beneficiary_payout_value += beneficiary_value;
+                    c.curator_payout_value += curator_sbd_value;
                 }
-                c.curator_payout_value += curator_sbd_value;
             });
             /// TODO: potentially modify author's total payout numbers as well
-        }
-
-/**
- *  This method will iterate through all comment_vote_objects and give them
- *  (max_rewards * weight) / c.total_vote_weight.
- *
- *  @returns unclaimed rewards.
- */
-        share_type database::pay_discussions(const comment_object &c, share_type max_rewards) {
-            share_type unclaimed_rewards = max_rewards;
-            std::deque<comment_id_type> child_queue;
-
-            // TODO: Optimize in future hardfork
-
-            if (c.children_rshares2 > 0) {
-                const auto &comment_by_parent = get_index<comment_index>().indices().get<by_parent>();
-                fc::uint128_t total_rshares2(c.children_rshares2 -
-                                             calculate_vshares(c.net_rshares.value));
-                child_queue.push_back(c.id);
-
-                // Pre-order traversal of the tree of child comments
-                while (child_queue.size()) {
-                    const auto &cur = get(child_queue.front());
-                    child_queue.pop_front();
-
-                    if (cur.net_rshares > 0) {
-                        auto claim = static_cast< uint64_t >(
-                                (to256(calculate_vshares(cur.net_rshares.value)) *
-                                 max_rewards.value) / to256(total_rshares2));
-                        unclaimed_rewards -= claim;
-
-                        if (claim > 0) {
-                            create_vesting(get_account(cur.author), asset(claim, STEEM_SYMBOL));
-                            // create discussion reward vop
-                        }
-                    }
-
-                    auto itr = comment_by_parent.lower_bound(boost::make_tuple(cur.author, cur.permlink, comment_id_type()));
-
-                    while (itr != comment_by_parent.end() &&
-                           itr->parent_author == cur.author &&
-                           itr->parent_permlink == cur.permlink) {
-                        child_queue.push_back(itr->id);
-                        ++itr;
-                    }
-                }
-            }
-
-            return unclaimed_rewards;
         }
 
 /**
@@ -2030,29 +1987,34 @@ namespace golos {
                 const auto &cat = get_category(comment.category);
 
                 if (comment.net_rshares > 0) {
-                    uint128_t reward_tokens = uint128_t(claim_rshare_reward(comment.net_rshares, comment.reward_weight, to_steem(comment.max_accepted_payout)).value);
+                    uint128_t reward_tokens = uint128_t(
+                         claim_rshare_reward(
+                             comment.net_rshares,
+                             comment.reward_weight,
+                             to_steem(comment.max_accepted_payout)));
 
                     asset total_payout;
                     if (reward_tokens > 0) {
-                        share_type discussion_tokens = 0;
                         share_type curation_tokens = ((reward_tokens *
                                                        get_curation_rewards_percent()) /
                                                       STEEMIT_100_PERCENT).to_uint64();
-                        if (comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                            discussion_tokens = ((reward_tokens *
-                                                  get_discussion_rewards_percent()) /
-                                                 STEEMIT_100_PERCENT).to_uint64();
-                        }
 
-                        share_type author_tokens =
-                                reward_tokens.to_uint64() - discussion_tokens -
-                                curation_tokens;
+                        share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
                         author_tokens += pay_curators(comment, curation_tokens);
 
-                        if (discussion_tokens > 0) {
-                            author_tokens += pay_discussions(comment, discussion_tokens);
+                        share_type total_beneficiary = 0;
+
+                        for (auto &b : comment.beneficiaries) {
+                            auto benefactor_tokens = (author_tokens * b.weight) / STEEMIT_100_PERCENT;
+                            auto vest_created = create_vesting(get_account(b.account), benefactor_tokens);
+                            push_virtual_operation(
+                                comment_benefactor_reward_operation(
+                                    b.account, comment.author, to_string(comment.permlink), vest_created));
+                            total_beneficiary += benefactor_tokens;
                         }
+
+                        author_tokens -= total_beneficiary;
 
                         auto sbd_steem = (author_tokens *
                                           comment.percent_steem_dollars) /
@@ -2063,11 +2025,12 @@ namespace golos {
                         auto vest_created = create_vesting(author, vesting_steem);
                         auto sbd_payout = create_sbd(author, sbd_steem);
 
-                        adjust_total_payout(comment, sbd_payout.first +
-                                                     to_sbd(sbd_payout.second +
-                                                            asset(vesting_steem, STEEM_SYMBOL)), to_sbd(asset(
-                                reward_tokens.to_uint64() -
-                                author_tokens, STEEM_SYMBOL)));
+                        adjust_total_payout(
+                                comment,
+                                sbd_payout.first + to_sbd(sbd_payout.second + asset(vesting_steem, STEEM_SYMBOL)),
+                                to_sbd(asset(curation_tokens, STEEM_SYMBOL)),
+                                to_sbd(asset(total_beneficiary, STEEM_SYMBOL))
+                        );
 
                         /*if( sbd_created.symbol == SBD_SYMBOL )
                            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
@@ -2120,11 +2083,11 @@ namespace golos {
                     c.total_vote_weight = 0;
                     c.max_cashout_time = fc::time_point_sec::maximum();
 
-                    if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                        if (has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                            c.last_payout == fc::time_point_sec::min()) {
-                            c.cashout_time = head_block_time() +
-                                             STEEMIT_SECOND_CASHOUT_WINDOW;
+                    if (has_hardfork(STEEMIT_HARDFORK_0_17__431)) {
+                        c.cashout_time = fc::time_point_sec::maximum();
+                    } else if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                        if (has_hardfork(STEEMIT_HARDFORK_0_12__177) && c.last_payout == fc::time_point_sec::min()) {
+                            c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
                         } else {
                             c.cashout_time = fc::time_point_sec::maximum();
                         }
@@ -2178,17 +2141,21 @@ namespace golos {
             int count = 0;
             const auto &cidx = get_index<comment_index>().indices().get<by_cashout_time>();
             const auto &com_by_root = get_index<comment_index>().indices().get<by_root>();
+            const bool has_hardfork_0_17__431 = has_hardfork(STEEMIT_HARDFORK_0_17__431);
+            const auto block_time = head_block_time();
 
             auto current = cidx.begin();
-            while (current != cidx.end() &&
-                   current->cashout_time <= head_block_time()) {
-                auto itr = com_by_root.lower_bound(current->root_comment);
-                while (itr != com_by_root.end() &&
-                       itr->root_comment == current->root_comment) {
-                    const auto &comment = *itr;
-                    ++itr;
-                    cashout_comment_helper(comment);
-                    ++count;
+            while (current != cidx.end() && current->cashout_time <= block_time) {
+                if (has_hardfork_0_17__431) {
+                    cashout_comment_helper(*current);
+                } else {
+                    auto itr = com_by_root.lower_bound(current->root_comment);
+                    while (itr != com_by_root.end() && itr->root_comment == current->root_comment) {
+                        const auto &comment = *itr;
+                        ++itr;
+                        cashout_comment_helper(comment);
+                        ++count;
+                    }
                 }
                 current = cidx.begin();
             }
@@ -2442,10 +2409,6 @@ namespace golos {
             }
         }
 
-        uint16_t database::get_discussion_rewards_percent() const {
-            return 0;
-        }
-
         uint16_t database::get_curation_rewards_percent() const {
             if (has_hardfork(STEEMIT_HARDFORK_0_8__116)) {
                 return STEEMIT_1_PERCENT * 25;
@@ -2458,9 +2421,20 @@ namespace golos {
             return uint128_t(uint64_t(2000000000000ll)); // looking good for posters
         }
 
-        uint128_t database::calculate_vshares(uint128_t rshares) const {
-            auto s = get_content_constant_s();
+        inline uint128_t calculate_vshares_linear(uint128_t rshares) {
+            return rshares;
+        }
+
+        inline const uint128_t calculate_vshares_quadratic(uint128_t rshares, uint128_t s) {
             return (rshares + s) * (rshares + s) - s * s;
+        }
+
+        uint128_t database::calculate_vshares(uint128_t rshares) const {
+            if (has_hardfork(STEEMIT_HARDFORK_0_17__433)) {
+                return calculate_vshares_linear(rshares);
+            } else {
+                return calculate_vshares_quadratic(rshares, get_content_constant_s());
+            }
         }
 
 /**
@@ -2533,7 +2507,7 @@ namespace golos {
  *  redeemed.
  */
         share_type database::claim_rshare_reward(share_type rshares, uint16_t reward_weight, asset max_steem) {
-            try {
+        try {
                 FC_ASSERT(rshares > 0);
 
                 const auto &props = get_dynamic_global_properties();
@@ -4005,75 +3979,63 @@ namespace golos {
         void database::init_hardforks() {
             _hardfork_times[0] = fc::time_point_sec(STEEMIT_GENESIS_TIME);
             _hardfork_versions[0] = hardfork_version(0, 0);
-            FC_ASSERT(STEEMIT_HARDFORK_0_1 ==
-                      1, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_1 == 1, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_1] = fc::time_point_sec(STEEMIT_HARDFORK_0_1_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_1] = STEEMIT_HARDFORK_0_1_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_2 ==
-                      2, "Invlaid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_2 == 2, "Invlaid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_2] = fc::time_point_sec(STEEMIT_HARDFORK_0_2_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_2] = STEEMIT_HARDFORK_0_2_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_3 ==
-                      3, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_3 == 3, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_3] = fc::time_point_sec(STEEMIT_HARDFORK_0_3_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_3] = STEEMIT_HARDFORK_0_3_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_4 ==
-                      4, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_4 == 4, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_4] = fc::time_point_sec(STEEMIT_HARDFORK_0_4_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_4] = STEEMIT_HARDFORK_0_4_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_5 ==
-                      5, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_5 == 5, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_5] = fc::time_point_sec(STEEMIT_HARDFORK_0_5_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_5] = STEEMIT_HARDFORK_0_5_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_6 ==
-                      6, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_6 == 6, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_6] = fc::time_point_sec(STEEMIT_HARDFORK_0_6_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_6] = STEEMIT_HARDFORK_0_6_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_7 ==
-                      7, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_7 == 7, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_7] = fc::time_point_sec(STEEMIT_HARDFORK_0_7_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_7] = STEEMIT_HARDFORK_0_7_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_8 ==
-                      8, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_8 == 8, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_8] = fc::time_point_sec(STEEMIT_HARDFORK_0_8_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_8] = STEEMIT_HARDFORK_0_8_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_9 ==
-                      9, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_9 == 9, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_9] = fc::time_point_sec(STEEMIT_HARDFORK_0_9_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_9] = STEEMIT_HARDFORK_0_9_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_10 ==
-                      10, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_10 == 10, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_10] = fc::time_point_sec(STEEMIT_HARDFORK_0_10_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_10] = STEEMIT_HARDFORK_0_10_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_11 ==
-                      11, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_11 == 11, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_11] = fc::time_point_sec(STEEMIT_HARDFORK_0_11_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_11] = STEEMIT_HARDFORK_0_11_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_12 ==
-                      12, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_12 == 12, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_12] = fc::time_point_sec(STEEMIT_HARDFORK_0_12_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_12] = STEEMIT_HARDFORK_0_12_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_13 ==
-                      13, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_13 == 13, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_13] = fc::time_point_sec(STEEMIT_HARDFORK_0_13_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_13] = STEEMIT_HARDFORK_0_13_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_14 ==
-                      14, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_14 == 14, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_14] = fc::time_point_sec(STEEMIT_HARDFORK_0_14_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_14] = STEEMIT_HARDFORK_0_14_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_15 ==
-                      15, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_15 == 15, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_15] = fc::time_point_sec(STEEMIT_HARDFORK_0_15_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_15] = STEEMIT_HARDFORK_0_15_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_16 ==
-                      16, "Invalid hardfork configuration");
+            FC_ASSERT(STEEMIT_HARDFORK_0_16 == 16, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_16] = fc::time_point_sec(STEEMIT_HARDFORK_0_16_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_16] = STEEMIT_HARDFORK_0_16_VERSION;
-
+            FC_ASSERT(STEEMIT_HARDFORK_0_17 == 17, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_17] = fc::time_point_sec(STEEMIT_HARDFORK_0_17_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_17] = STEEMIT_HARDFORK_0_17_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(hardforks.last_hardfork <=
-                      STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork", hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS", STEEMIT_NUM_HARDFORKS));
+                      STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration",
+                      ("hardforks.last_hardfork", hardforks.last_hardfork)
+                      ("STEEMIT_NUM_HARDFORKS", STEEMIT_NUM_HARDFORKS));
             FC_ASSERT(_hardfork_versions[hardforks.last_hardfork] <=
                       STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork");
             FC_ASSERT(STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ==
@@ -4216,16 +4178,14 @@ namespace golos {
                                 itr->cashout_time ==
                                 fc::time_point_sec::maximum()) {
                                 modify(*itr, [&](comment_object &c) {
-                                    c.cashout_time = head_block_time() +
-                                                     STEEMIT_CASHOUT_WINDOW_SECONDS;
+                                    c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
                                     c.mode = first_payout;
                                 });
                             }
                                 // Has been paid out, needs to be on second cashout window
                             else if (itr->last_payout > fc::time_point_sec()) {
                                 modify(*itr, [&](comment_object &c) {
-                                    c.cashout_time = c.last_payout +
-                                                     STEEMIT_SECOND_CASHOUT_WINDOW;
+                                    c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
                                     c.mode = second_payout;
                                 });
                             }
@@ -4275,6 +4235,50 @@ namespace golos {
                             auth.posting = authority(1, public_key_type("GLS8hLtc7rC59Ed7uNVVTXtF578pJKQwMfdTvuzYLwUi8GkNTh5F6"), 1);
                         });
                     }
+                    break;
+                case STEEMIT_HARDFORK_0_17: {
+                    /*
+                     * For all current comments we will either keep their current cashout time, or extend it to 1 week
+                     * after creation.
+                     *
+                     * We cannot do a simple iteration by cashout time because we are editting cashout time.
+                     * More specifically, we will be adding an explicit cashout time to all comments with parents.
+                     * To find all discussions that have not been paid out we fir iterate over posts by cashout time.
+                     * Before the hardfork these are all root posts. Iterate over all of their children, adding each
+                     * to a specific list. Next, update payout times for all discussions on the root post. This defines
+                     * the min cashout time for each child in the discussion. Then iterate over the children and set
+                     * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
+                     */
+                    const auto &by_time_idx = get_index<comment_index, by_cashout_time>();
+                    const auto &by_root_idx = get_index<comment_index, by_root>();
+                    const auto max_cashout_time = head_block_time();
+
+                    std::vector<comment_object::id_type> root_posts;
+                    root_posts.reserve(STEEMIT_HF_17_NUM_POSTS);
+
+                    for (const auto &comment: by_time_idx) {
+                        if (comment.cashout_time == fc::time_point_sec::maximum()) {
+                            break;
+                        }
+                        root_posts.push_back(comment.id);
+                    }
+
+                    for (const auto &id: root_posts) {
+                        auto itr = by_root_idx.lower_bound(id);
+                        for (; itr != by_root_idx.end() && itr->root_comment == id; ++itr) {
+                            modify(*itr, [&](comment_object &c) {
+                                // limit second cashout window to 1 week, or a current block time
+                                c.cashout_time = std::max(c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, max_cashout_time);
+                            });
+
+                            if (itr->net_rshares.value > 0) {
+                                auto old_rshares2 = calculate_vshares_quadratic(
+                                        itr->net_rshares.value, get_content_constant_s());
+                                auto new_rshares2 = calculate_vshares_linear(itr->net_rshares.value);
+                                adjust_rshares2(*itr, old_rshares2, new_rshares2);
+                            }
+                        }
+                    }}
                     break;
                 default:
                     break;
