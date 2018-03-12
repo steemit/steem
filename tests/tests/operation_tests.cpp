@@ -967,7 +967,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 BOOST_TEST_MESSAGE("--- Test failure when increasing rshares within lockout period");
 
                 generate_blocks(fc::time_point_sec(
-                        (new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17).sec_since_epoch() +
+                        (new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT).sec_since_epoch() +
                         STEEMIT_BLOCK_INTERVAL), true);
 
                 op.weight = STEEMIT_100_PERCENT;

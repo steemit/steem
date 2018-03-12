@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
 
       generate_blocks(
               db->get_comment( "bob", string( "test" ) ).cashout_time -
-              STEEMIT_MIN_VOTE_INTERVAL_SEC - STEEMIT_BLOCK_INTERVAL- STEEMIT_UPVOTE_LOCKOUT_HF17,
+              STEEMIT_MIN_VOTE_INTERVAL_SEC - STEEMIT_BLOCK_INTERVAL- STEEMIT_UPVOTE_LOCKOUT,
               true);
 
 //      broken checks after switching to single window cashout

@@ -64,8 +64,7 @@
 #define STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
-#define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
-#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
+#define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
 #define STEEMIT_MAX_COMMENT_BENEFICIARIES       8
@@ -265,8 +264,7 @@
 #define STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
-#define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
-#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
+#define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
 #define STEEMIT_MAX_COMMENT_BENEFICIARIES       64
