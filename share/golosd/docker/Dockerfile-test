@@ -44,6 +44,7 @@ RUN \
         -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCLEAR_VOTES=TRUE \
+        -DSTEEMIT_MAX_VOTED_WITNESSES=19 \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
     ./tests/chain_test && \
@@ -61,6 +62,7 @@ RUN \
         -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCLEAR_VOTES=TRUE \
+        -DSTEEMIT_MAX_VOTED_WITNESSES=19 \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
     ./tests/chain_test && \

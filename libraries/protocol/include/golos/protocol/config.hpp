@@ -48,7 +48,9 @@
 #define STEEMIT_INIT_MINER_NAME                 "cyberfounder"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_VOTED_WITNESSES             19
+#ifndef STEEMIT_MAX_VOTED_WITNESSES
+#  define STEEMIT_MAX_VOTED_WITNESSES           1
+#endif
 #define STEEMIT_MAX_MINER_WITNESSES             1
 #define STEEMIT_MAX_RUNNER_WITNESSES            1
 #define STEEMIT_MAX_WITNESSES                   (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
