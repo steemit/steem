@@ -22,7 +22,10 @@ def overwrite_if_different( target_path, text ):
         f.write(text)
     return
 
-def build(template_dir="templates", output_dir=None, ctx=None, do_write=True, deps=None, outputs=None):
+def build(template_dir="templates", output_dir=None, ctx=None, do_write=True, deps=None, outputs=None, jinja2_env=None):
+    if jinja2_env is None:
+        jinja2_env = jinja2.Environment()
+        jinja2_env.filters["json_to_char_array"] = json_to_char_array
     os.makedirs(output_dir, exist_ok=True)
     for root, dirs, files in os.walk(template_dir):
         dirs_to_remove = [d for d in dirs if d.startswith(".")]
@@ -37,12 +40,13 @@ def build(template_dir="templates", output_dir=None, ctx=None, do_write=True, de
             with open(fpath, "r") as infile:
                 infile_text = infile.read()
             if f.endswith(".j2"):
-                template = jinja2.Template( infile_text )
-                outfile_text = template.render( **ctx )
                 target_path = target_path[:-3]
-            else:
-                outfile_text = infile_text
             if do_write:
+                if f.endswith(".j2"):
+                    template = jinja2_env.from_string( infile_text )
+                    outfile_text = template.render( **ctx )
+                else:
+                    outfile_text = infile_text
                 overwrite_if_different( target_path, outfile_text )
             if deps is not None:
                 deps.append(fpath)
@@ -69,6 +73,23 @@ def load_context(json_dir, ctx=None, do_read=True, deps=None):
             if deps is not None:
                 deps.append(fpath)
     return ctx
+
+def json_to_char_array(json_object):
+    s = json.dumps(json_object, separators=(",", ":") )
+    a = []
+    n = len(s)
+    j = 0
+    for i in range(n):
+        c = str(ord(s[i]))
+        a.append(" "*(3-len(c)))
+        a.append(c)
+        if i < n-1:
+            a.append(",")
+        j += 1
+        if j == 20:
+            a.append("\n")
+            j = 0
+    return "".join(a)
 
 def main(argv):
 
