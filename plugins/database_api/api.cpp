@@ -297,7 +297,7 @@ namespace golos {
 
                 my->database().with_read_lock([&]{
                     my->set_block_applied_callback([msg = transfer.msg()](const fc::variant & block_header) {
-                        msg->result(fc::variant(block_header));
+                        msg->unsafe_result(fc::variant(block_header));
                     });
                 });
 

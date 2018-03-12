@@ -1,5 +1,6 @@
 #include <golos/chain/block_log.hpp>
 #include <fstream>
+#include <mutex>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -18,6 +19,7 @@ namespace golos {
                 fc::path index_file;
                 bool block_write;
                 bool index_write;
+                std::mutex mutex;
 
                 inline void check_block_read() {
                     if (block_write) {
@@ -58,10 +60,8 @@ namespace golos {
 
         block_log::block_log()
                 : my(new detail::block_log_impl()) {
-            my->block_stream.exceptions(
-                    std::fstream::failbit | std::fstream::badbit);
-            my->index_stream.exceptions(
-                    std::fstream::failbit | std::fstream::badbit);
+            my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
+            my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
         }
 
         block_log::~block_log() {
@@ -153,20 +153,25 @@ namespace golos {
 
         uint64_t block_log::append(const signed_block &b) {
             try {
-                my->check_block_write();
-                my->check_index_write();
-
-                uint64_t pos = my->block_stream.tellp();
-                FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) *
-                                                      (b.block_num() -
-                                                       1), "Append to index file occuring at wrong position.", ("position", (uint64_t)my->index_stream.tellp())("expected",
-                        (b.block_num() - 1) * sizeof(uint64_t)));
                 auto data = fc::raw::pack(b);
-                my->block_stream.write(data.data(), data.size());
-                my->block_stream.write((char *)&pos, sizeof(pos));
-                my->index_stream.write((char *)&pos, sizeof(pos));
-                my->head = b;
-                my->head_id = b.id();
+                uint64_t pos;
+                {
+                    std::lock_guard<std::mutex> lock(my->mutex);
+                    my->check_block_write();
+                    my->check_index_write();
+
+                    FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b.block_num() - 1),
+                              "Append to index file occuring at wrong position.",
+                              ("position", (uint64_t) my->index_stream.tellp())
+                              ("expected", (b.block_num() - 1) * sizeof(uint64_t)));
+
+                    pos = my->block_stream.tellp();
+                    my->block_stream.write(data.data(), data.size());
+                    my->block_stream.write((char *) &pos, sizeof(pos));
+                    my->index_stream.write((char *) &pos, sizeof(pos));
+                    my->head = b;
+                    my->head_id = b.id();
+                }
 
                 return pos;
             }
@@ -179,12 +184,14 @@ namespace golos {
         }
 
         std::pair<signed_block, uint64_t> block_log::read_block(uint64_t pos) const {
-            my->check_block_read();
-
-            my->block_stream.seekg(pos);
             std::pair<signed_block, uint64_t> result;
-            fc::raw::unpack(my->block_stream, result.first);
-            result.second = uint64_t(my->block_stream.tellg()) + 8;
+            {
+                std::lock_guard<std::mutex> lock(my->mutex);
+                my->check_block_read();
+                my->block_stream.seekg(pos);
+                fc::raw::unpack(my->block_stream, result.first);
+                result.second = uint64_t(my->block_stream.tellg()) + 8;
+            }
             return result;
         }
 
@@ -194,8 +201,10 @@ namespace golos {
                 uint64_t pos = get_block_pos(block_num);
                 if (pos != npos) {
                     b = read_block(pos).first;
-                    FC_ASSERT(b->block_num() ==
-                              block_num, "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
+                    FC_ASSERT(b->block_num() == block_num,
+                              "Wrong block was read from block log.",
+                              ("returned", b->block_num())
+                              ("expected", block_num));
                 }
                 return b;
             }
@@ -203,25 +212,33 @@ namespace golos {
         }
 
         uint64_t block_log::get_block_pos(uint32_t block_num) const {
-            my->check_index_read();
-
-            if (!(my->head.valid() && block_num <=
-                                      protocol::block_header::num_from_id(my->head_id) &&
-                  block_num > 0)) {
-                      return npos;
-            }
-            my->index_stream.seekg(sizeof(uint64_t) * (block_num - 1));
             uint64_t pos;
-            my->index_stream.read((char *)&pos, sizeof(pos));
+            {
+                std::lock_guard<std::mutex> lock(my->mutex);
+
+                if (!(my->head.valid() &&
+                      block_num <= protocol::block_header::num_from_id(my->head_id) &&
+                      block_num > 0)
+                ) {
+                    return npos;
+                }
+
+                my->check_index_read();
+                my->index_stream.seekg(sizeof(uint64_t) * (block_num - 1));
+                my->index_stream.read((char *) &pos, sizeof(pos));
+            }
             return pos;
         }
 
         signed_block block_log::read_head() const {
-            my->check_block_read();
-
             uint64_t pos;
-            my->block_stream.seekg(-sizeof(pos), std::ios::end);
-            my->block_stream.read((char *)&pos, sizeof(pos));
+            {
+                std::lock_guard<std::mutex> lock(my->mutex);
+                my->check_block_read();
+
+                my->block_stream.seekg(-sizeof(pos), std::ios::end);
+                my->block_stream.read((char *) &pos, sizeof(pos));
+            }
             return read_block(pos).first;
         }
 
