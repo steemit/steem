@@ -356,7 +356,9 @@ BOOST_AUTO_TEST_CASE( comment_payout1 )
       generate_block();
 
       // return; // FIXME: broken test
+      printf("359 A\n");
       auto bob_comment_reward = get_last_operations( 1 )[0].get< comment_reward_operation >();
+      printf("B\n");
 
       BOOST_REQUIRE( db->get_dynamic_global_properties().total_reward_fund_steem.amount.value == reward_steem.amount.value - ( bob_comment_payout + bob_comment_vote_rewards - unclaimed_payments ).amount.value );
       BOOST_REQUIRE( db->get_comment( "bob", string( "test" ) ).total_payout_value.amount.value == ( ( bob_comment_vesting_reward * db->get_dynamic_global_properties().get_vesting_share_price() ) + ( bob_comment_sbd_reward * exchange_rate ) ).amount.value );
@@ -1134,8 +1136,9 @@ BOOST_AUTO_TEST_CASE( nested_comments )
         // return; // FIXME: broken test
         try {
             resize_shared_mem(1024 * 1024 * 32);
-            // fund("cyberfounder", ASSET("10000.000 GBG"));
-                vest("cyberfounder", ASSET("10000.000 GOLOS"));
+            fund("cyberfounder", ASSET("10000.000 GBG"));
+            vest("cyberfounder", ASSET("10000.000 GOLOS"));
+            generate_block();
             std::cout << "vest(\"cyberfounder\", 10000); \n";
 
             ACTORS((alice0)(alice1)(alice2)(alice3)(alice4)(alice5)(alice6))
@@ -1254,6 +1257,13 @@ BOOST_AUTO_TEST_CASE( nested_comments )
                 BOOST_TEST_MESSAGE("Check feed_history");
 
                 feed_history = db->get(feed_history_id_type());
+
+
+                std::cout << "feed history\n"; 
+                
+                std::cout << "feed_history.current_median_history = " << feed_history.current_median_history.quote.amount.value << ' ' <<  feed_history.current_median_history.base.amount.value << ' ' <<
+                             "feed_history.price_history[(i + 1) / 2] = " << feed_history.price_history[(i + 1) / 2].quote.amount.value << ' ' << feed_history.price_history[(i + 1) / 2].base.amount.value <<std::endl;
+                // FAILS here VVVV #FIXME
                 BOOST_REQUIRE(feed_history.current_median_history ==
                               feed_history.price_history[(i + 1) / 2]);
                 BOOST_REQUIRE(feed_history.price_history[i + 1] ==
@@ -1347,6 +1357,11 @@ BOOST_AUTO_TEST_CASE( nested_comments )
 
             BOOST_REQUIRE(convert_request != convert_request_idx.end());
             BOOST_REQUIRE(alice_2.balance.amount.value == 0);
+
+            std::cout << "alice_2.sbd_balance = " << alice_2.sbd_balance.amount.value <<
+                " start_balance - op.amount = " << (start_balance - op.amount).amount.value <<
+                std::endl;
+
             // FAILS HERE VVVVV
             BOOST_REQUIRE(alice_2.sbd_balance.amount.value ==
                           (start_balance - op.amount).amount.value);
@@ -2623,6 +2638,10 @@ BOOST_AUTO_TEST_CASE( nested_comments )
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
+            std::cout << "comment_freeze" << std::endl;
+            std::cout << "alice = " << db->get_comment("alice", string("test")).last_payout.sec_since_epoch() << std::endl;
+            std::cout << "head_block_time = " << db->head_block_time().sec_since_epoch() << std::endl;
+            // FAIL here VVV 
             BOOST_REQUIRE(db->get_comment("alice", string("test")).last_payout ==
                           db->head_block_time());
             BOOST_REQUIRE(
@@ -2884,6 +2903,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
     BOOST_AUTO_TEST_CASE(sbd_price_feed_limit) {
         // return; // FIXME: broken test
         try {
+            printf("sbd_price_feed_limit A\n");
             ACTORS((alice));
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
@@ -2922,7 +2942,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
                     (STEEMIT_100_PERCENT) * gpo.current_supply.amount));
             set_price_feed(new_exchange_rate);
             set_price_feed(new_exchange_rate);
-
+            // FIXME IT FAILs HERE VVV
             BOOST_REQUIRE(db->get_feed_history().current_median_history >
                           new_exchange_rate &&
                           db->get_feed_history().current_median_history <
