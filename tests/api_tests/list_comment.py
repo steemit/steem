@@ -41,7 +41,7 @@ def list_comments(url):
     last_cashout_time = actual_cashout_time
 
     for comment in comment_list:
-      comments.append( comment["permlink"]+";"+comment["author"] )
+      comments.append( comment["permlink"]+";"+comment["author"] +";"+comment["last_update"] )
 
   # while end == False
   return comments
@@ -49,7 +49,7 @@ def list_comments(url):
 
 def main():
   if len( sys.argv ) < 2 or len( sys.argv ) > 3:
-    exit( "Usage: create_comment_list.py <server_address> [<output_filename>]" )
+    exit( "Usage: list_comment.py <server_address> [<output_filename>]" )
 
   url = sys.argv[1]
   print( url )

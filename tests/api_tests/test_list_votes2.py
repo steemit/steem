@@ -135,16 +135,17 @@ def list_votes(url1, url2, comment_line, max_tries=10, timeout=0.1):
   comment_array = comment_line.split(';')
   permlink = comment_array[0]
   author = comment_array[1]
+  last_update = comment_array[2]
   voter = ""
 
-  print( "PERMLINK: {}, AUTHOR: {}".format( permlink, author ))
+  print( "PERMLINK: {}, AUTHOR: {} LAST_UPDATE: {}".format( permlink, author, last_update ))
 
   while True:
     request = bytes( json.dumps( {
       "jsonrpc": "2.0",
       "id": 0,
       "method": "database_api.list_votes",
-      "params": { "start": [ author, permlink, voter ], "limit": LIMIT, "order":"by_comment_voter" }
+      "params": { "start": [ voter, last_update, author, permlink ], "limit": LIMIT, "order":"by_voter_last_update" }
       } ), "utf-8" ) + b"\r\n"
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -180,6 +181,7 @@ def list_votes(url1, url2, comment_line, max_tries=10, timeout=0.1):
         actual_permlink = votes[-1]["permlink"]
         actual_author = votes[-1]["author"]
         actual_voter = votes[-1]["voter"]
+        actual_last_update = votes[-1]["last_update"]
 
         if( actual_permlink == permlink and actual_author == author and actual_voter == voter ):
             break
@@ -187,6 +189,7 @@ def list_votes(url1, url2, comment_line, max_tries=10, timeout=0.1):
             permlink = actual_permlink
             author = actual_author
             voter = actual_voter
+            last_update = actual_last_update
     else:
         break;
 

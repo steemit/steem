@@ -64,6 +64,7 @@ REF_STEEMD_PID=$STEEMD_NODE_PID
 #echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
 if [ $TEST_STEEMD_PID -ne -1 ] &&  [ $REF_STEEMD_PID -ne -1 ]; then
    run_test "test_list_votes.py"
+   run_test "test_list_votes2.py"
 else
    EXIT_CODE=-1
 fi
