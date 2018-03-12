@@ -1216,12 +1216,9 @@ namespace golos {
                     int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
 
                     if (rshares > 0) {
-                        if( _db.has_hardfork(STEEMIT_HARDFORK_0_17__454)) {
-                            FC_ASSERT(_db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17,
-                                      "Cannot increase payout within last twelve hours before payout.");
-                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
                             FC_ASSERT(_db.head_block_time() <
-                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT_HF7,
+                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT,
                                       "Cannot increase reward of post within the last minute before payout.");
                         }
                     }
@@ -1430,12 +1427,9 @@ namespace golos {
                     int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
 
                     if (itr->rshares < rshares) {
-                        if( _db.has_hardfork(STEEMIT_HARDFORK_0_17__454)) {
-                            FC_ASSERT(_db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17,
-                                      "Cannot increase payout within last twelve hours before payout.");
-                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
                             FC_ASSERT(_db.head_block_time() <
-                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT_HF7,
+                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT,
                                       "Cannot increase reward of post within the last minute before payout.");
                         }
                     }
