@@ -4,7 +4,7 @@ VERSION=`cat /etc/steemdversion`
 
 STEEMD="/usr/local/steemd-testnet/bin/steemd"
 
-UTILS="/usr/local/steemd-default/bin"
+UTILS="/usr/local/steemd-testnet/bin"
 
 chown -R steemd:steemd $HOME
 
