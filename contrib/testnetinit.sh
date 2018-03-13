@@ -67,7 +67,7 @@ sleep 120
 # pipe the transactions through keysub and into the fastgen node
 echo steemd-testnet: pipelining transactions into fastgen node, this may take some time
 ( \
-  echo '["set_secret", {"secret":"$SHARED_SECRET"}]' ; \
+  echo [\"set_secret\", {\"secret\":\"$SHARED_SECRET\"}] ; \
   cat txgen.list \
 ) | \
 tinman keysub --get-dev-key $UTILS/get_dev_key | \
