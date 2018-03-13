@@ -58,6 +58,7 @@ namespace detail
 
       {
          boost::lock_guard< boost::mutex > guard( _mtx );
+         FC_ASSERT( _callbacks.find( txid ) == _callbacks.end(), "Transaction is a duplicate" );
          _callbacks[ txid ] = [&p]( const broadcast_transaction_synchronous_return& r )
          {
             p.set_value( r );
