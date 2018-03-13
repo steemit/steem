@@ -21,8 +21,12 @@ cp /etc/steemd/testnet.config.ini $HOME/config.ini
 cp /etc/steemd/fastgen.config.ini $HOME/testnet_datadir/config.ini
 
 chown steemd:steemd $HOME/config.ini
+chown steemd:steemd $HOME/testnet_datadir/config.ini
 
 cd $HOME
+
+echo chain-id = $CHAIN_ID >> config.ini
+echo chain-id = $CHAIN_ID >> testnet_datadir/config.ini
 
 mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
