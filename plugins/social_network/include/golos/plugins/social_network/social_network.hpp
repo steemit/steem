@@ -22,6 +22,7 @@ namespace golos {
             DEFINE_API_ARGS(get_content,                           msg_pack, discussion)
             DEFINE_API_ARGS(get_trending_tags,                     msg_pack, std::vector<tag_api_object>)
             DEFINE_API_ARGS(get_content_replies,                   msg_pack, std::vector<discussion>)
+            DEFINE_API_ARGS(get_all_content_replies,               msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_tags_used_by_author,               msg_pack, tags_used_by_author_r)
             DEFINE_API_ARGS(get_discussions_by_payout,             msg_pack, std::vector<discussion>)
             DEFINE_API_ARGS(get_discussions_by_trending,           msg_pack, std::vector<discussion>)
@@ -160,6 +161,7 @@ namespace golos {
                  **/
                 (get_discussions_by_promoted)
                                 (get_content_replies)
+                                (get_all_content_replies)
                                 /**
                                     *  This method is used to fetch all posts/comments by start_author that occur after before_date and start_permlink with up to limit being returned.
                                     *
