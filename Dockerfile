@@ -165,7 +165,6 @@ RUN \
         cmake \
         doxygen \
         dpkg-dev \
-        git \
         libboost-all-dev \
         libc6-dev \
         libexpat1-dev \
