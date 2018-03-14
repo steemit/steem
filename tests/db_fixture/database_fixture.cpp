@@ -576,20 +576,34 @@ void database_fixture::sign(signed_transaction& trx, const fc::ecc::private_key&
    trx.sign( key, db->get_chain_id() );
 }
 
-vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
+vector< operation > database_fixture::get_last_operations( uint32_t num_ops, const char* account_name )
 {
    vector< operation > ops;
-   const auto& acc_hist_idx = db->get_index< account_history_index >().indices().get< by_id >();
-   auto itr = acc_hist_idx.end();
 
-   while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
+   if(account_name != nullptr)
    {
-      itr--;
-      const buffer_type& _serialized_op = db->get(itr->op).serialized_op;
-      std::vector<char> serialized_op;
-      serialized_op.reserve( _serialized_op.size() );
-      std::copy( _serialized_op.begin(), _serialized_op.end(), std::back_inserter( serialized_op ) );
-      ops.push_back( fc::raw::unpack_from_vector< steem::chain::operation >( serialized_op ) );
+      const auto& account = db->get_account(std::string(account_name));
+      const auto& acc_hist_idx = db->get_index< account_history_index, by_account >();
+      auto itr = acc_hist_idx.find(account.id);
+      const account_history_object& dataSource = *itr;
+
+      const auto& histOps = dataSource.get_ops();
+      for(auto opI = histOps.crbegin(); opI != histOps.crend() && ops.size() < num_ops; ++opI)
+      {
+         const auto& op = db->get(*opI);
+         operation o = fc::raw::unpack_from_vector< steem::chain::operation >( op.serialized_op );
+         ops.emplace_back( std::move(o) );
+      }
+   }
+   else
+   {
+      const auto& opIdx = db->get_index< operation_index, by_id >();
+      for(auto opI = opIdx.crbegin(); opI != opIdx.crend() && ops.size() < num_ops; ++opI)
+      {
+         const auto& op = *opI;
+         operation o = fc::raw::unpack_from_vector< steem::chain::operation >( op.serialized_op );
+         ops.emplace_back( std::move(o) );
+      }
    }
 
    return ops;
