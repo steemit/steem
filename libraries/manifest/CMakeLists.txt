@@ -15,8 +15,8 @@ file(GLOB HEADERS "include/steem/plugins/*.hpp")
 #
 
 execute_process(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.plugins
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.list_plugins
    ${CMAKE_CURRENT_SOURCE_DIR}/../plugins
    -o ${CMAKE_CURRENT_BINARY_DIR}/template_context/plugins.json
    --print-dependencies
@@ -30,8 +30,8 @@ endif()
 message( STATUS "PLUGINS_DEPS: ${PLUGINS_DEPS}" )
 
 add_custom_command(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.plugins
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.list_plugins
    ${CMAKE_CURRENT_SOURCE_DIR}/../plugins
    -o ${CMAKE_CURRENT_BINARY_DIR}/template_context/plugins.json
    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/template_context/plugins.json
@@ -45,8 +45,8 @@ add_custom_command(
 # Then we use add_custom_command() to execute at build time.
 
 execute_process(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.build
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -61,8 +61,8 @@ endif()
 message( STATUS "MANIFEST_DEPS: ${MANIFEST_DEPS}" )
 
 execute_process(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.build
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -77,8 +77,8 @@ endif()
 message( STATUS "MANIFEST_OUTPUTS: ${MANIFEST_OUTPUTS}" )
 
 add_custom_command(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.build
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -93,15 +93,15 @@ add_custom_command(
 #
 
 execute_process(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.plugins
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.list_plugins
    ${CMAKE_CURRENT_SOURCE_DIR}/../plugins
    -o ${CMAKE_CURRENT_BINARY_DIR}/template_context/plugins.json
 )
 
 execute_process(
-   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
-   python3 -m steem_manifest.build
+   COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
