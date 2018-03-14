@@ -7,7 +7,7 @@
 
 namespace steem { namespace chain {
 
-typedef chainbase::bip::vector< char, chainbase::allocator< char > > buffer_type;
+typedef chainbase::t_vector< char > buffer_type;
 
 } } // steem::chain
 
@@ -37,4 +37,6 @@ template< typename T > inline T unpack_from_buffer( const steem::chain::buffer_t
 
 } } // fc::raw
 
+#ifndef ENABLE_STD_ALLOCATOR
 FC_REFLECT_TYPENAME( steem::chain::buffer_type )
+#endif

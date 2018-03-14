@@ -20,7 +20,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          operation_object( Constructor&& c, allocator< Allocator > a )
-            :serialized_op( a.get_segment_manager() )
+            :serialized_op( a )
          {
             c( *this );
          }

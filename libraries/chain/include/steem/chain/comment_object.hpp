@@ -12,6 +12,7 @@
 namespace steem { namespace chain {
 
    using protocol::beneficiary_route_type;
+   using chainbase::t_vector;
 
    struct strcmp_less
    {
@@ -20,6 +21,7 @@ namespace steem { namespace chain {
          return less( a.c_str(), b.c_str() );
       }
 
+#ifndef ENABLE_STD_ALLOCATOR
       bool operator()( const shared_string& a, const string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -29,6 +31,7 @@ namespace steem { namespace chain {
       {
          return less( a.c_str(), b.c_str() );
       }
+#endif
 
       private:
          inline bool less( const char* a, const char* b )const
@@ -95,8 +98,9 @@ namespace steem { namespace chain {
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
 
-         typedef bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > t_beneficiaries;
-         t_beneficiaries   beneficiaries;
+         using t_beneficiaries = t_vector< beneficiary_route_type >;
+
+         t_beneficiaries beneficiaries;
    };
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >

@@ -7,7 +7,8 @@ namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
 using namespace steem::chain;
-using chainbase::shared_vector;
+
+using chainbase::t_vector;
 
 #ifndef STEEM_FOLLOW_SPACE_ID
 #define STEEM_FOLLOW_SPACE_ID 8
@@ -58,22 +59,22 @@ class feed_object : public object< feed_object_type, feed_object >
 
       template< typename Constructor, typename Allocator >
       feed_object( Constructor&& c, allocator< Allocator > a )
-      :reblogged_by( a.get_segment_manager() )
+      :reblogged_by( a )
       {
          c( *this );
       }
 
-      typedef shared_vector<account_name_type> t_reblogged_by_container;
+      typedef t_vector<account_name_type> t_reblogged_by_container;
 
       id_type                    id;
 
-      account_name_type          account;
-      t_reblogged_by_container   reblogged_by;
-      account_name_type          first_reblogged_by;
-      time_point_sec             first_reblogged_on;
-      comment_id_type            comment;
-      uint32_t                   reblogs;
-      uint32_t                   account_feed_id = 0;
+      account_name_type                account;
+      t_vector<account_name_type>      reblogged_by;
+      account_name_type                first_reblogged_by;
+      time_point_sec                   first_reblogged_on;
+      comment_id_type                  comment;
+      uint32_t                         reblogs;
+      uint32_t                         account_feed_id = 0;
 };
 
 typedef oid< feed_object > feed_id_type;
