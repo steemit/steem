@@ -1087,23 +1087,18 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
+         // Get share price.
          const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
          FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
-
+         // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
-
-         modify( to_account, [&]( account_object& to )
-         {
-            if( to_reward_balance )
-            {
-               to.reward_vesting_balance += new_vesting;
-               to.reward_vesting_steem += liquid;
-            }
-            else
-               to.vesting_shares += new_vesting;
-         } );
-
+         // Add new vesting to owner's balance.
+         if( to_reward_balance )
+            add_to_smt_vesting_balance< account_rewards_balance_object >( to_account, new_vesting, liquid );
+         else
+            add_to_smt_vesting_balance< account_regular_balance_object >( to_account, new_vesting, liquid );
+         // Update global vesting pool numbers.
          modify( smt, [&]( smt_token_object& smt_object )
          {
             if( to_reward_balance )
@@ -1126,11 +1121,12 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
 
       FC_ASSERT( liquid.symbol == STEEM_SYMBOL );
       // ^ A novelty, needed but risky in case someone managed to slip SBD/TESTS here in blockchain history.
+      // Get share price.
       const auto& cprops = get_dynamic_global_properties();
       price vesting_share_price = to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price();
-
+      // Calculate new vesting from provided liquid using share price.
       asset new_vesting = calculate_new_vesting( vesting_share_price );
-
+      // Add new vesting to owner's balance.
       modify( to_account, [&]( account_object& to )
       {
          if( to_reward_balance )
@@ -1141,7 +1137,7 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
          else
             to.vesting_shares += new_vesting;
       } );
-
+      // Update global vesting pool numbers.
       modify( cprops, [&]( dynamic_global_property_object& props )
       {
          if( to_reward_balance )
@@ -1155,7 +1151,7 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
             props.total_vesting_shares += new_vesting;
          }
       } );
-
+      // Update witness voting numbers.
       if( !to_reward_balance )
          adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
@@ -3560,6 +3556,38 @@ void database::adjust_smt_liquid_balance( const account_name_type& name, const a
       }
    }
 }
+
+template< typename smt_balance_object_type >
+void database::add_to_smt_vesting_balance( const account_object& to_account, asset vesting_shares, asset vesting_value )
+{
+   FC_ASSERT( vesting_shares.symbol.is_vesting() );
+   FC_ASSERT( vesting_shares.symbol.get_paired_symbol() == vesting_value.symbol );
+   FC_ASSERT( vesting_shares.amount >= 0 );
+   if( vesting_shares.amount == 0 )
+      return;
+
+   const smt_balance_object_type* bo = 
+      find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( to_account.name, vesting_value.symbol ) );
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( bo == nullptr )
+   {
+      // No balance object related to the SMT means '0' balance. Create one.
+      create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      {
+         smt_balance.clear( vesting_value.symbol );
+         smt_balance.owner = to_account.name;
+         smt_balance.add_vesting( vesting_shares, vesting_value );
+         smt_balance.validate();
+      } );
+   }
+   else
+   {
+      modify( *bo, [&]( smt_balance_object_type& smt_balance )
+      {
+         smt_balance.add_vesting( vesting_shares, vesting_value ); 
+      } );
+   }
+}
 #endif
 
 void database::modify_balance( const account_object& a, const asset& delta, bool check_balance )
@@ -3770,7 +3798,7 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       // Note that only STEEM/SBD/or liquid SMT get here.
-      adjust_smt_liquid_balance< account_rewards_balance_object >( name, delta, false/*check_account*/ );
+      adjust_smt_liquid_balance< account_rewards_balance_object >( name, delta, true/*check_account*/ );
       return;
    }
 #endif

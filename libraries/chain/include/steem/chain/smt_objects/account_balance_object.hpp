@@ -47,6 +47,12 @@ public:
       vesting = asset( 0, liquid_symbol.get_paired_symbol() );
    }
 
+   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+   {
+      // There's no need to store vesting value (in liquid SMT variant) in regular balance.
+      vesting += vesting_shares;
+   }
+
    bool is_vesting_empty() const
    { return vesting.amount == 0; }
 
@@ -94,6 +100,12 @@ public:
       pending_liquid = asset( 0, liquid_symbol);
       pending_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
       pending_vesting_value = asset( 0, liquid_symbol);
+   }
+
+   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+   {
+      pending_vesting_shares += vesting_shares;
+      pending_vesting_value += vesting_value;
    }
 
    bool is_vesting_empty() const
