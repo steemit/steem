@@ -379,7 +379,11 @@ namespace golos {
                 select_content_replies(result, author, permlink);
                 for (std::size_t i = 0; i < result.size(); ++i) {
                     if (result[i].children > 0) {
+                        auto j = result.size();
                         select_content_replies(result, result[i].author, result[i].permlink);
+                        for (; j < result.size(); ++j) {
+                            result[i].replies.push_back(result[j].author + "/" + result[j].permlink);
+                        }
                     }
                 }
                 return result;
@@ -393,6 +397,7 @@ namespace golos {
                     return pimpl->get_all_content_replies(author, permlink);
                 });
             }
+
             boost::multiprecision::uint256_t to256(const fc::uint128_t &t) {
                 boost::multiprecision::uint256_t result(t.high_bits());
                 result <<= 65;
