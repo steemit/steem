@@ -251,6 +251,24 @@ void webserver_plugin_impl::handle_ws_message( websocket_server_type* server, co
       {
          con->send( "error calling API " + e.to_string() );
       }
+      catch( ... )
+      {
+         auto eptr = std::current_exception();
+
+         try
+         {
+            if( eptr )
+               std::rethrow_exception( eptr );
+
+            con->send( "unknown error occurred" );
+         }
+         catch( const std::exception& e )
+         {
+            std::stringstream s;
+            s << "unknown exception: " << e.what();
+            con->send( s.str() );
+         }
+      }
    });
 }
 
@@ -273,6 +291,26 @@ void webserver_plugin_impl::handle_http_message( websocket_server_type* server, 
          edump( (e) );
          con->set_body( "Could not call API" );
          con->set_status( websocketpp::http::status_code::not_found );
+      }
+      catch( ... )
+      {
+         auto eptr = std::current_exception();
+
+         try
+         {
+            if( eptr )
+               std::rethrow_exception( eptr );
+
+            con->set_body( "unknown error occurred" );
+            con->set_status( websocketpp::http::status_code::internal_server_error );
+         }
+         catch( const std::exception& e )
+         {
+            std::stringstream s;
+            s << "unknown exception: " << e.what();
+            con->set_body( s.str() );
+            con->set_status( websocketpp::http::status_code::internal_server_error );
+         }
       }
 
       con->send_http_response();
