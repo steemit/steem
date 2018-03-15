@@ -11,7 +11,7 @@
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "database_fixture.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -91,7 +91,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.title = "bar";
             comment_op.body = "foo bar";
 
-            tx.operations = { comment_op };
+            tx.operations = {comment_op};
             tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -101,7 +101,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             comment_op.author = "bob";
 
-            tx.operations = { comment_op };
+            tx.operations = {comment_op};
             tx.signatures.clear();
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             vote_op.permlink = "foo";
             vote_op.weight = STEEMIT_100_PERCENT;
 
-            tx.operations = { vote_op };
+            tx.operations = {vote_op};
             tx.signatures.clear();
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -122,7 +122,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             vote_op.voter = "sam";
             vote_op.weight = STEEMIT_1_PERCENT * 50;
 
-            tx.operations = { vote_op };
+            tx.operations = {vote_op};
             tx.signatures.clear();
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -133,7 +133,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             vote_op.permlink = "foo";
             vote_op.weight = STEEMIT_1_PERCENT * 75;
 
-            tx.operations = { vote_op };
+            tx.operations = {vote_op};
             tx.signatures.clear();
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -141,7 +141,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             vote_op.voter = "sam";
             vote_op.weight = STEEMIT_1_PERCENT * 50;
 
-            tx.operations = { vote_op };
+            tx.operations = {vote_op};
             tx.signatures.clear();
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
@@ -160,53 +160,55 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             const auto alice_power = (STEEMIT_1_PERCENT * 75 + vote_denom - 1) / vote_denom;
             const auto alice_vshares = alice_account.vesting_shares.amount.value * alice_power / STEEMIT_100_PERCENT;
 
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              quadratic_curve(sam_vshares + bob_vshares) +
-                              quadratic_curve(sam_vshares + alice_vshares));
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              quadratic_curve(alice_comment.net_rshares.value) +
-                              quadratic_curve(bob_comment.net_rshares.value));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                quadratic_curve(sam_vshares + bob_vshares) + quadratic_curve(sam_vshares + alice_vshares));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                quadratic_curve(alice_comment.net_rshares.value) + quadratic_curve(bob_comment.net_rshares.value));
 
             db->set_hardfork(STEEMIT_HARDFORK_0_17);
             generate_block();
             validate_database();
 
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              linear_curve(sam_vshares + bob_vshares) +
-                              linear_curve(sam_vshares + alice_vshares));
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              linear_curve(alice_comment.net_rshares.value) +
-                              linear_curve(bob_comment.net_rshares.value));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                linear_curve(sam_vshares + bob_vshares) + linear_curve(sam_vshares + alice_vshares));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                linear_curve(alice_comment.net_rshares.value) + linear_curve(bob_comment.net_rshares.value));
 
             comment_op.author = "sam";
 
-            tx.operations = { comment_op };
+            tx.operations = {comment_op};
             tx.signatures.clear();
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto &sam_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& sam_comment = db->get_comment(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "alice";
             vote_op.author = "sam";
             vote_op.permlink = "foo";
             vote_op.weight = STEEMIT_1_PERCENT * 75;
 
-            tx.operations = { vote_op };
+            tx.operations = {vote_op};
             tx.signatures.clear();
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
             generate_block();
 
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              linear_curve(sam_vshares + bob_vshares) +
-                              linear_curve(sam_vshares + alice_vshares) +
-                              linear_curve(alice_vshares));
-            BOOST_REQUIRE(gpo.total_reward_shares2 ==
-                              linear_curve(alice_comment.net_rshares.value) +
-                              linear_curve(bob_comment.net_rshares.value) +
-                              linear_curve(sam_comment.net_rshares.value));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                linear_curve(sam_vshares + bob_vshares) +
+                linear_curve(sam_vshares + alice_vshares) +
+                linear_curve(alice_vshares));
+            BOOST_REQUIRE(
+                gpo.total_reward_shares2 ==
+                linear_curve(alice_comment.net_rshares.value) +
+                linear_curve(bob_comment.net_rshares.value) +
+                linear_curve(sam_comment.net_rshares.value));
 
         }
         FC_LOG_AND_RETHROW()
@@ -239,7 +241,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto &alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
@@ -249,7 +251,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto &bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
 
             validate_database();
 
