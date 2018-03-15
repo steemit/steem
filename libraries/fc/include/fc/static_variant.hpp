@@ -349,7 +349,8 @@ struct visitor {
       typedef void result_type;
       template<typename T> void operator()( const T& v )const
       {
-         to_variant( v, var );
+         auto name = trim_typename_namespace( fc::get_typename< T >::name() );
+         var = variant( std::make_pair( name, v ) );
       }
    };
 
@@ -365,22 +366,55 @@ struct visitor {
       }
    };
 
-
    template<typename... T> void to_variant( const fc::static_variant<T...>& s, fc::variant& v )
    {
-      variant tmp;
-      variants vars(2);
-      vars[0] = s.which();
-      s.visit( from_static_variant(vars[1]) );
-      v = std::move(vars);
-   }
-   template<typename... T> void from_variant( const fc::variant& v, fc::static_variant<T...>& s )
-   {
-      auto ar = v.get_array();
-      if( ar.size() < 2 ) return;
-      s.set_which( static_cast< int64_t >( ar[0].as_uint64() ) );
-      s.visit( to_static_variant(ar[1]) );
+      s.visit( from_static_variant( v ) );
    }
 
-  template<typename... T> struct get_typename { static const char* name()   { return typeid(static_variant<T...>).name();   } };
+   struct get_static_variant_name
+   {
+      string& name;
+      get_static_variant_name( string& n )
+         : name( n ) {}
+
+      typedef void result_type;
+
+      template< typename T > void operator()( const T& v )const
+      {
+         name = trim_typename_namespace( fc::get_typename< T >::name() );
+      }
+   };
+
+   template<typename... T> void from_variant( const fc::variant& v, fc::static_variant<T...>& s )
+   {
+      static std::map< string, int64_t > to_tag = []()
+      {
+         std::map< string, int64_t > name_map;
+         for( int i = 0; i < fc::static_variant<T...>::count(); ++i )
+         {
+            fc::static_variant<T...> tmp;
+            tmp.set_which(i);
+            string n;
+            tmp.visit( get_static_variant_name( n ) );
+            name_map[n] = i;
+         }
+         return name_map;
+      }();
+
+      auto ar = v.get_array();
+      if( ar.size() < 2 ) return;
+      if( ar[0].is_uint64() )
+         s.set_which( static_cast< int64_t >( ar[0].as_uint64() ) );
+      else
+      {
+         auto itr = to_tag.find( ar[0].as_string() );
+         FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
+         s.set_which( to_tag[ ar[0].as_string() ] );
+      }
+
+      s.visit( fc::to_static_variant( ar[1] ) );
+
+   }
+
+   template<typename... T> struct get_typename { static const char* name()   { return typeid(static_variant<T...>).name();   } };
 } // namespace fc
