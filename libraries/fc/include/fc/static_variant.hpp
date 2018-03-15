@@ -350,7 +350,7 @@ struct visitor {
       template<typename T> void operator()( const T& v )const
       {
          auto name = trim_typename_namespace( fc::get_typename< T >::name() );
-         var = variant( std::make_pair( name, v ) );
+         var = mutable_variant_object( "type", name )( "value", v );
       }
    };
 
@@ -401,19 +401,18 @@ struct visitor {
          return name_map;
       }();
 
-      auto ar = v.get_array();
-      if( ar.size() < 2 ) return;
-      if( ar[0].is_uint64() )
-         s.set_which( static_cast< int64_t >( ar[0].as_uint64() ) );
-      else
-      {
-         auto itr = to_tag.find( ar[0].as_string() );
-         FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
-         s.set_which( to_tag[ ar[0].as_string() ] );
-      }
+      FC_ASSERT( v.is_object(), "Operation has to treated as object." );
+      auto v_object = v.get_object();
 
-      s.visit( fc::to_static_variant( ar[1] ) );
+      FC_ASSERT( v_object.contains( "type" ), "Type field doesn't exist." );
+      FC_ASSERT( v_object.contains( "value" ), "Value field doesn't exist." );
 
+      auto itr = to_tag.find( v_object[ "type" ].as_string() );
+      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", v_object[ "type" ]) );
+
+      s.set_which( to_tag[ v_object[ "type" ].as_string() ] );
+
+      s.visit( fc::to_static_variant( v_object[ "value" ] ) );
    }
 
    template<typename... T> struct get_typename { static const char* name()   { return typeid(static_variant<T...>).name();   } };
