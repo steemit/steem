@@ -3761,11 +3761,6 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
    } );
 }
 
-#define SMT_REWARD_LIQUID_BALANCE_MODIFY_DELTA \
-   [] ( const asset& total_amount, account_rewards_balance_object& smt_balance) { \
-   smt_balance.pending_liquid = total_amount; \
-   }
-
 void database::adjust_reward_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
