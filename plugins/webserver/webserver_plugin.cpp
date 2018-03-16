@@ -236,7 +236,11 @@ namespace golos {
                         // this sending response can't be merged with sending response from try-block
                         //   because try-block can work from other thread,
                         //   when catch-block happens in current thread on parsing request
-                        con->send_http_response();
+                        try {
+                            con->send_http_response();
+                        } catch (...) {
+                            // disable segfault
+                        }
                     }
                 });
             }

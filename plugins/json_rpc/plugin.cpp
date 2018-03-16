@@ -5,6 +5,7 @@
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
+#include <thirdparty/fc/vendor/websocketpp/websocketpp/error.hpp>
 
 namespace golos {
     namespace plugins {
@@ -83,12 +84,22 @@ namespace golos {
                 }
                 return fc::optional<fc::variant>();
             }
-            
-            void msg_pack::result(fc::optional<fc::variant> result) {
+
+            void msg_pack::unsafe_result(fc::optional<fc::variant> result) {
                 // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
                 FC_ASSERT(valid(), "The msg_pack delegated its handlers");
                 pimpl->response.result = std::move(result);
                 pimpl->handler(pimpl->response);
+            }
+
+            void msg_pack::result(fc::optional<fc::variant> result) {
+                // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
+                try {
+                    unsafe_result(std::move(result));
+                } catch (const websocketpp::exception &) {
+                    // Can't send data via socket -
+                    //    don't pass exception to upper level, because it doesn't have handler for exception
+                }
             }
 
             fc::optional<fc::variant> msg_pack::result() const {
@@ -103,7 +114,12 @@ namespace golos {
                 // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
                 FC_ASSERT(valid(), "The msg_pack delegated its handlers");
                 pimpl->response.error = json_rpc_error(code, std::move(message), std::move(data));
-                pimpl->handler(pimpl->response);
+                try {
+                    pimpl->handler(pimpl->response);
+                } catch (const websocketpp::exception &) {
+                    // Can't send data via socket - see
+                    //    don't pass exception to upper level, because it doesn't have handler for exception
+               }
             }
 
             void msg_pack::error(std::string message, fc::optional<fc::variant> data) {

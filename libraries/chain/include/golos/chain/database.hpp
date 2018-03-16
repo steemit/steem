@@ -335,7 +335,7 @@ namespace golos {
 
             asset create_vesting(const account_object &to_account, asset steem);
 
-            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value);
+            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value, const asset& beneficiary_value);
 
             void update_witness_schedule();
 
@@ -382,8 +382,6 @@ namespace golos {
 
             void process_vesting_withdrawals();
 
-            share_type pay_discussions(const comment_object &c, share_type max_rewards);
-
             share_type pay_curators(const comment_object &c, share_type max_rewards);
 
             void cashout_comment_helper(const comment_object &comment);
@@ -415,8 +413,6 @@ namespace golos {
             asset get_curation_reward() const;
 
             asset get_pow_reward() const;
-
-            uint16_t get_discussion_rewards_percent() const;
 
             uint16_t get_curation_rewards_percent() const;
 

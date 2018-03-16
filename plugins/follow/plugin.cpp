@@ -481,11 +481,13 @@ namespace golos {
 
             std::vector<feed_entry> plugin::impl::get_feed_entries(
                     account_name_type account,
-                    uint32_t start_entry_id,
+                    uint32_t entry_id,
                     uint32_t limit) {
                 FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
 
-                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
+                if (entry_id == 0) {
+                    entry_id = ~0;
+                }
 
                 std::vector<feed_entry> result;
                 result.reserve(limit);
@@ -518,11 +520,13 @@ namespace golos {
 
             std::vector<comment_feed_entry> plugin::impl::get_feed(
                     account_name_type account,
-                    uint32_t start_entry_id,
+                    uint32_t entry_id,
                     uint32_t limit) {
                 FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 feed entries at a time.");
 
-                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
+                if (entry_id == 0) {
+                    entry_id = ~0;
+                }
 
                 std::vector<comment_feed_entry> result;
                 result.reserve(limit);
@@ -554,11 +558,13 @@ namespace golos {
 
             std::vector<blog_entry> plugin::impl::get_blog_entries(
                     account_name_type account,
-                    uint32_t start_entry_id,
+                    uint32_t entry_id,
                     uint32_t limit) {
                 FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
 
-                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
+                if (entry_id == 0) {
+                    entry_id = ~0;
+                }
 
                 std::vector<blog_entry> result;
                 result.reserve(limit);
@@ -586,11 +592,13 @@ namespace golos {
 
             std::vector<comment_blog_entry> plugin::impl::get_blog(
                     account_name_type account,
-                    uint32_t start_entry_id,
+                    uint32_t entry_id,
                     uint32_t limit) {
                 FC_ASSERT(limit <= 500, "Cannot retrieve more than 500 blog entries at a time.");
 
-                auto entry_id = start_entry_id == 0 ? start_entry_id : ~0;
+                if (entry_id == 0) {
+                    entry_id = ~0;
+                }
 
                 std::vector<comment_blog_entry> result;
                 result.reserve(limit);
