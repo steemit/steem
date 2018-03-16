@@ -4544,6 +4544,10 @@ void database::validate_smt_invariants()const
          // Check liquid SMT supply.
          asset total_liquid_supply = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) :
             ( totalIt->second.liquid + totalIt->second.pending_liquid );
+         total_liquid_supply += asset( smt.total_vesting_fund_smt, smt.liquid_symbol )
+                             /*+ gpo.total_reward_fund_steem */
+                             + asset( smt.pending_rewarded_vesting_smt, smt.liquid_symbol );
+#pragma message( "TODO: Supplement ^ once SMT rewards are implemented" )
          FC_ASSERT( asset(smt.current_supply, smt.liquid_symbol) == total_liquid_supply,
                     "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
          // Check vesting SMT supply.

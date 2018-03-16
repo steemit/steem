@@ -30,31 +30,38 @@ public:
    asset               liquid;   /// 'balance' for STEEM
    asset               vesting;  /// 'vesting_shares' for VESTS
 
-   /// Returns symbol of the asset the balance is held for.
+   /** Set of simple methods that allow unification of
+    *  regular and rewards balance manipulation code.
+    */
+   ///@{
    asset_symbol_type get_liquid_symbol() const
-   { return liquid.symbol; }
-
+   {
+      return liquid.symbol;
+   }
    asset get_liquid() const
-   { return liquid; }
-
+   {
+      return liquid;
+   }
    void set_liquid( const asset& new_liquid )
-   { liquid = new_liquid; }
-
+   {
+      liquid = new_liquid;
+   }
    void clear( asset_symbol_type liquid_symbol )
    {
       owner = "";
       liquid = asset( 0, liquid_symbol);
       vesting = asset( 0, liquid_symbol.get_paired_symbol() );
    }
-
    void add_vesting( const asset& vesting_shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
       vesting += vesting_shares;
    }
-
    bool is_vesting_empty() const
-   { return vesting.amount == 0; }
+   {
+      return vesting.amount == 0;
+   }
+   ///@}
 
    bool validate() const
    { return liquid.symbol == vesting.symbol.get_paired_symbol(); }
@@ -84,16 +91,22 @@ public:
    asset               pending_vesting_shares;  /// 'reward_vesting_balance' for pending VESTS
    asset               pending_vesting_value;   /// 'reward_vesting_steem' for pending VESTS
 
-   /// Returns symbol of the asset the balance is held for.
+   /** Set of simple methods that allow unification of
+    *  regular and rewards balance manipulation code.
+    */
+   ///@{
    asset_symbol_type get_liquid_symbol() const
-   { return pending_liquid.symbol; }
-
+   {
+      return pending_liquid.symbol;
+   }
    asset get_liquid() const
-   { return pending_liquid; }
-
+   {
+      return pending_liquid;
+   }
    void set_liquid( const asset& new_liquid )
-   { pending_liquid = new_liquid; }
-
+   {
+      pending_liquid = new_liquid;
+   }
    void clear( asset_symbol_type liquid_symbol )
    {
       owner = "";
@@ -101,18 +114,17 @@ public:
       pending_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
       pending_vesting_value = asset( 0, liquid_symbol);
    }
-
    void add_vesting( const asset& vesting_shares, const asset& vesting_value )
    {
       pending_vesting_shares += vesting_shares;
       pending_vesting_value += vesting_value;
    }
-
    bool is_vesting_empty() const
    { 
       FC_ASSERT( pending_vesting_shares.amount > 0 || pending_vesting_value.amount == 0 );
       return pending_vesting_shares.amount == 0;
    }
+   ///@}
 
    bool validate() const
    {
