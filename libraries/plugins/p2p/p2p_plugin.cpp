@@ -8,6 +8,7 @@
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>
 #include <fc/thread/thread.hpp>
+#include <fc/io/json.hpp>
 
 #include <boost/range/algorithm/reverse.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -96,6 +97,7 @@ public:
    fc::optional<fc::ip::endpoint> endpoint;
    vector<fc::ip::endpoint> seeds;
    string user_agent;
+   fc::mutable_variant_object config;
    uint32_t max_connections = 0;
    bool force_validate = false;
    bool block_producer = false;
@@ -188,7 +190,7 @@ void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_
 {
    try
    {
-      chain.db().push_transaction( trx_msg.trx );
+      chain.accept_transaction( trx_msg.trx );
    } FC_CAPTURE_AND_RETHROW( (trx_msg) )
 }
 
@@ -480,6 +482,7 @@ void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::option
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint.")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
+      ("p2p-parameters", bpo::value<string>(), ("P2P network parameters. (Default: " + fc::json::to_string(graphene::net::node_configuration()) + " )").c_str() )
       ;
    cli.add_options()
       ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions. Deprecated in favor of p2p-force-validate" )
@@ -537,6 +540,12 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       wlog( "Option force-validate is deprecated in favor of p2p-force-validate" );
       my->force_validate = true;
    }
+
+   if( options.count("p2p-parameters") )
+   {
+      fc::variant var = fc::json::from_string( options.at("p2p-parameters").as<string>(), fc::json::strict_parser );
+      my->config = var.get_object();
+   }
 }
 
 void p2p_plugin::plugin_startup()
@@ -562,13 +571,13 @@ void p2p_plugin::plugin_startup()
 
       if( my->max_connections )
       {
-         ilog( "Setting p2p max connections to ${n}", ("n", my->max_connections) );
-         fc::variant_object node_param = fc::variant_object(
-            "maximum_number_of_connections",
-            fc::variant( my->max_connections ) );
-         my->node->set_advanced_node_parameters( node_param );
+         if( my->config.find( "maximum_number_of_connections" ) != my->config.end() )
+            ilog( "Overriding advanded_node_parameters[ \"maximum_number_of_connections\" ] with ${cons}", ("cons", my->max_connections) );
+
+         my->config.set( "maximum_number_of_connections", fc::variant( my->max_connections ) );
       }
 
+      my->node->set_advanced_node_parameters( my->config );
       my->node->listen_to_p2p_network();
       my->node->connect_to_p2p_network();
       block_id_type block_id;

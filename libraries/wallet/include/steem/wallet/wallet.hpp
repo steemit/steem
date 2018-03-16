@@ -813,7 +813,7 @@ class wallet_api
        * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
        */
       condenser_api::get_order_book_return get_order_book( uint32_t limit = 1000 );
-      vector< condenser_api::extended_limit_order > get_open_orders( string accountname );
+      vector< condenser_api::api_limit_order_object > get_open_orders( string accountname );
 
       /**
        *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account

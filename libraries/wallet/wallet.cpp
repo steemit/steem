@@ -765,7 +765,7 @@ public:
          return ss.str();
       };
       m["get_open_orders"] = []( variant result, const fc::variants& a ) {
-          auto orders = result.as<vector<condenser_api::extended_limit_order>>();
+          auto orders = result.as<vector<condenser_api::api_limit_order_object>>();
 
           std::stringstream ss;
 
@@ -2117,7 +2117,7 @@ condenser_api::get_order_book_return wallet_api::get_order_book( uint32_t limit 
    return my->_remote_api->get_order_book( limit );
 }
 
-vector< condenser_api::extended_limit_order > wallet_api::get_open_orders( string owner )
+vector< condenser_api::api_limit_order_object > wallet_api::get_open_orders( string owner )
 {
    return my->_remote_api->get_open_orders( owner );
 }

@@ -166,25 +166,25 @@ namespace graphene { namespace net
       };
 
 
-      size_t _total_queued_messages_size;
+      size_t _total_queued_messages_size = 0;
       std::queue<std::unique_ptr<queued_message>, std::list<std::unique_ptr<queued_message> > > _queued_messages;
       fc::future<void> _send_queued_messages_done;
     public:
       fc::time_point connection_initiation_time;
       fc::time_point connection_closed_time;
       fc::time_point connection_terminated_time;
-      peer_connection_direction direction;
+      peer_connection_direction direction = peer_connection_direction::unknown;
       //connection_state state;
-      firewalled_state is_firewalled;
+      firewalled_state is_firewalled = firewalled_state::unknown;
       fc::microseconds clock_offset;
       fc::microseconds round_trip_delay;
 
-      our_connection_state our_state;
-      bool they_have_requested_close;
-      their_connection_state their_state;
-      bool we_have_requested_close;
+      our_connection_state our_state = our_connection_state::disconnected;
+      bool they_have_requested_close = false;
+      their_connection_state their_state = their_connection_state::disconnected;
+      bool we_have_requested_close = false;
 
-      connection_negotiation_status negotiation_status;
+      connection_negotiation_status negotiation_status = connection_negotiation_status::disconnected;
       fc::oexception connection_closed_error;
 
       fc::time_point get_connection_time()const { return _message_connection.get_connection_time(); }
@@ -199,7 +199,7 @@ namespace graphene { namespace net
        * from the user_data field of the hello, or if none is present it will be filled with a
        * copy of node_public_key */
       node_id_t        node_id;
-      uint32_t         core_protocol_version;
+      uint32_t         core_protocol_version = 0;
       std::string      user_agent;
       fc::optional<std::string> graphene_git_revision_sha;
       fc::optional<fc::time_point_sec> graphene_git_revision_unix_timestamp;
@@ -213,8 +213,8 @@ namespace graphene { namespace net
       // its hello message.  For outbound, they record what we sent the peer
       // in our hello message
       fc::ip::address inbound_address;
-      uint16_t inbound_port;
-      uint16_t outbound_port;
+      uint16_t inbound_port = 0;
+      uint16_t outbound_port = 0;
       /// @}
 
       typedef std::unordered_map<item_id, fc::time_point> item_to_time_map_type;
@@ -223,15 +223,15 @@ namespace graphene { namespace net
       /// @{
       boost::container::deque<item_hash_t> ids_of_items_to_get; /// id of items in the blockchain that this peer has told us about
       std::set<item_hash_t> ids_of_items_being_processed; /// list of all items this peer has offered use that we've already handed to the client but the client hasn't finished processing
-      uint32_t number_of_unfetched_item_ids; /// number of items in the blockchain that follow ids_of_items_to_get but the peer hasn't yet told us their ids
-      bool peer_needs_sync_items_from_us;
-      bool we_need_sync_items_from_peer;
+      uint32_t number_of_unfetched_item_ids = 0; /// number of items in the blockchain that follow ids_of_items_to_get but the peer hasn't yet told us their ids
+      bool peer_needs_sync_items_from_us = false;
+      bool we_need_sync_items_from_peer = false;
       fc::optional<boost::tuple<std::vector<item_hash_t>, fc::time_point> > item_ids_requested_from_peer; /// we check this to detect a timed-out request and in busy()
       fc::time_point last_sync_item_received_time; /// the time we received the last sync item or the time we sent the last batch of sync item requests to this peer
       std::set<item_hash_t> sync_items_requested_from_peer; /// ids of blocks we've requested from this peer during sync.  fetch from another peer if this peer disconnects
       item_hash_t last_block_delegate_has_seen; /// the hash of the last block  this peer has told us about that the peer knows
       fc::time_point_sec last_block_time_delegate_has_seen;
-      bool inhibit_fetching_sync_blocks;
+      bool inhibit_fetching_sync_blocks = false;
       /// @}
 
       /// non-synchronization state data
@@ -261,17 +261,17 @@ namespace graphene { namespace net
       // blockchain catch up
       fc::time_point transaction_fetching_inhibited_until;
 
-      uint32_t last_known_fork_block_number;
+      uint32_t last_known_fork_block_number = 0;
 
       fc::future<void> accept_or_connect_task_done;
 
-      firewall_check_state_data *firewall_check_state;
+      firewall_check_state_data *firewall_check_state = nullptr;
 #ifndef NDEBUG
     private:
-      fc::thread* _thread;
-      unsigned _send_message_queue_tasks_running; // temporary debugging
+      fc::thread* _thread = nullptr;
+      unsigned _send_message_queue_tasks_running = 0; // temporary debugging
 #endif
-      bool _currently_handling_message; // true while we're in the middle of handling a message from the remote system
+      bool _currently_handling_message = false; // true while we're in the middle of handling a message from the remote system
     private:
       peer_connection(peer_connection_delegate* delegate);
       void destroy();

@@ -82,7 +82,7 @@ struct operation_visitor
       }
 
       auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
-      uint32_t sequence = 0;
+      uint32_t sequence = 1;
       if( hist_itr != hist_idx.end() && hist_itr->account == item )
          sequence = hist_itr->sequence + 1;
 

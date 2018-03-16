@@ -153,8 +153,10 @@ namespace steem { namespace chain {
          const comment_object&  get_comment(  const account_name_type& author, const shared_string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const shared_string& permlink )const;
 
+#ifndef ENABLE_STD_ALLOCATOR
          const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
+#endif
 
          const escrow_object&   get_escrow(  const account_name_type& name, uint32_t escrow_id )const;
          const escrow_object*   find_escrow( const account_name_type& name, uint32_t escrow_id )const;
@@ -388,7 +390,7 @@ namespace steem { namespace chain {
          /** when popping a block, the transactions that were removed get cached here so they
           * can be reapplied at the proper time */
          std::deque< signed_transaction >       _popped_tx;
-
+         vector< signed_transaction >           _pending_tx;
 
          bool apply_order( const limit_order_object& new_order_object );
          bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
@@ -482,7 +484,6 @@ namespace steem { namespace chain {
 
          std::unique_ptr< database_impl > _my;
 
-         vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEM_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEM_NUM_HARDFORKS + 1 ];

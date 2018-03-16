@@ -80,6 +80,7 @@ will build out of the box without further effort:
 
     git clone https://github.com/steemit/steem
     cd steem
+    git checkout stable
     git submodule update --init --recursive
     mkdir build
     cd build
@@ -143,6 +144,7 @@ Then the instructions are the same as for steem:
 
     git clone https://github.com/steemit/steem
     cd steem
+    git checkout stable
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -164,8 +166,8 @@ Install Homebrew by following the instructions here: http://brew.sh/
 
 ### Initialize Homebrew:
 
-   brew doctor
-   brew update
+    brew doctor
+    brew update
 
 ### Install steem dependencies:
 
@@ -177,9 +179,10 @@ Install Homebrew by following the instructions here: http://brew.sh/
         boost160 \
         libtool \
         openssl \
-        python3 \
-        python3-jinja2
-
+        python3
+        
+    pip3 install --user jinja2
+    
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
 steem. Until then, this will allow you to install boost 1.60.0.
 
@@ -201,6 +204,7 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
     export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
     export BOOST_ROOT=$(brew --prefix)/Cellar/boost@1.60/1.60.0/
+    git checkout stable
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DBOOST_ROOT="$BOOST_ROOT" -DCMAKE_BUILD_TYPE=Release ..

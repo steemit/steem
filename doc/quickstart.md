@@ -6,7 +6,7 @@ Use docker:
 ```
 docker run \
     -d -p 2001:2001 -p 8090:8090 --name steemd-default \
-    steemit/steem
+    --restart unless-stopped steemit/steem
 ```
 #### Low memory node?
 Above runs low memory node, which is suitable for:
@@ -19,6 +19,7 @@ For full api node use:
 docker run \
     --env USE_WAY_TOO_MUCH_RAM=1 --env USE_FULL_WEB_NODE=1 \
     -d -p 2001:2001 -p 8090:8090 --name steemd-full \
+    --restart unless-stopped \
     steemit/steem
 ```
 ### Configure for your use case
@@ -40,9 +41,9 @@ Do not add other APIs or plugins unless you know what you are doing.
 This configuration exists in Docker with the following command
 
 ```
-docker run \
-    --env TRACK_ACCOUNT="yourexchangeid" \
-    -d -p 2001:2001 -p 8090:8090 --name steemd-exchange \
+docker run -d --env TRACK_ACCOUNT="yourexchangeid" \
+    --name steemd \
+    --restart unless-stopped \
     steemit/steem
 ```
 

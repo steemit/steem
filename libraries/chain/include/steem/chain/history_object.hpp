@@ -20,7 +20,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          operation_object( Constructor&& c, allocator< Allocator > a )
-            :serialized_op( a.get_segment_manager() )
+            :serialized_op( a )
          {
             c( *this );
          }
@@ -81,6 +81,7 @@ namespace steem { namespace chain {
    };
 
    struct by_account;
+   struct by_account_rev;
    typedef multi_index_container<
       account_history_object,
       indexed_by<

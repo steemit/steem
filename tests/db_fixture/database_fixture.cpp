@@ -585,10 +585,10 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
    {
       itr--;
-      const buffer_type& bip_serialized_op = db->get(itr->op).serialized_op;
+      const buffer_type& _serialized_op = db->get(itr->op).serialized_op;
       std::vector<char> serialized_op;
-      serialized_op.reserve( bip_serialized_op.size() );
-      std::copy( bip_serialized_op.begin(), bip_serialized_op.end(), std::back_inserter( serialized_op ) );
+      serialized_op.reserve( _serialized_op.size() );
+      std::copy( _serialized_op.begin(), _serialized_op.end(), std::back_inserter( serialized_op ) );
       ops.push_back( fc::raw::unpack_from_vector< steem::chain::operation >( serialized_op ) );
    }
 

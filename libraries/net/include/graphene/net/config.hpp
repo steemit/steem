@@ -104,6 +104,11 @@
 
 #define GRAPHENE_NET_MAX_TRX_PER_SECOND                      1000
 
+#define GRAPHENE_NET_MAX_NUMBER_OF_BLOCKS_TO_HANDLE_AT_ONE_TIME 200
+#define GRAPHENE_NET_MAX_NUMBER_OF_BLOCKS_TO_PREFETCH           (10 * GRAPHENE_NET_MAX_NUMBER_OF_BLOCKS_TO_HANDLE_AT_ONE_TIME)
+
+#define GRAPHENE_NET_MAX_TRX_PER_SECOND                      1000
+
 /**
  * Set the ignored request time out to 1 second.  When we request a block
  * or transaction from a peer, this timeout determines how long we wait for them

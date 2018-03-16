@@ -1,11 +1,12 @@
 # Introducing Steem (beta)
 
-Steem is an experimental Delegated Proof of Stake blockchain with an unproven consensus
-algorithm.
+Steem is a Delegated Proof of Stake blockchain that uses a "Proof of Brain" social consensus algorithm for token allocation.
 
-  - Currency symbol STEEM
-  - 1.000 STEEM block reward at launch
+  - Currency symbol STEEM.
   - 10% APR inflation narrowing to 1% APR over 20 years.
+  - 75% of inflation to "Proof of Brain" social consensus algorithm.
+  - 15% of inflation to stake holders.
+  - 10% of inflation to block producers.
 
 # Public Announcement & Discussion
 
@@ -23,15 +24,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 
-# Blockchain consensus rules
+# Whitepaper
 
-Rather than attempt to describe the rules of the blockchain, it is up to
-each individual to inspect the code to understand the consensus rules.
+You can read the Steem Whitepaper at [Steem.io/SteemWhitePaper.pdf](https://steem.io/SteemWhitePaper.pdf).
 
 # Quickstart
 
-Just want to get up and running quickly?  Try deploying a prebuilt
-dockerized container.  Both common binary types are included.
+Just want to get up and running quickly? We have pre-built docker images for your convenience. More details are in our [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
+
+# Building
+
+We strongly recommend using one of our pre-built Docker images or using Docker to build Steem. Both of these processes are described in the [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
+
+If you would still like to build from source, we do have [build instructions](https://github.com/steemit/steem/blob/master/doc/building.md) for Linux (Ubuntu LTS) and macOS X.
 
 ## Dockerized p2p Node
 
@@ -102,7 +107,7 @@ on how to use lcov to check code test coverage.
 
 # System Requirements
 
-For a full web node, you need at least 55GB of space available. Steemd uses a memory mapped file which currently holds 36GB of data and by default is set to use up to 40GB. The block log of the blockchain itself is a little over 10GB. It's highly recommended to run steemd on a fast disk such as an SSD or by placing the shared memory files in a ramdisk and using the `--shard-file-dir=/path` command line option to specify where. At least 16GB of memory is required for a full web node. Seed nodes (p2p mode) can run with as little as 4GB of memory. Any CPU with decent single core performance should be sufficient.
+For a full web node, you need at least 110GB of disk space available. Steemd uses a memory mapped file which currently holds 56GB of data and by default is set to use up to 80GB. The block log of the blockchain itself is a little over 27GB. It's highly recommended to run steemd on a fast disk such as an SSD or by placing the shared memory files in a ramdisk and using the `--shared-file-dir=/path` command line option to specify where. At least 16GB of memory is required for a full web node. Seed nodes (p2p mode) can run with as little as 4GB of memory with a 24 GB state file. Any CPU with decent single core performance should be sufficient. Steemd is constantly growing. As of August 2017, these numbers were accurate, but you may find you need more disk space to run a full node. We are also constantly working on optimizing Steem's use of disk space.
 
 On Linux use the following Virtual Memory configuration for the initial sync and subsequent replays. It is not needed for normal operation.
 

@@ -1,0 +1,9 @@
+[submodule "libraries/fc/vendor/diff-match-patch-cpp-stl"]
+	path = libraries/fc/vendor/diff-match-patch-cpp-stl
+	url = https://github.com/leutloff/diff-match-patch-cpp-stl.git
+[submodule "libraries/fc/vendor/secp256k1-zkp"]
+	path = libraries/fc/vendor/secp256k1-zkp
+	url = https://github.com/cryptonomex/secp256k1-zkp.git
+[submodule "libraries/fc/vendor/websocketpp"]
+	path = libraries/fc/vendor/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git

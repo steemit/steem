@@ -24,8 +24,8 @@ namespace steem { namespace chain {
             std::fstream             index_stream;
             fc::path                 block_file;
             fc::path                 index_file;
-            bool                     block_write;
-            bool                     index_write;
+            bool                     block_write = false;
+            bool                     index_write = false;
 
             bool                     use_locking = true;
 

@@ -421,6 +421,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
+#ifndef ENABLE_STD_ALLOCATOR
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 { try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
@@ -430,6 +431,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
 {
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
+#endif
 
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
 { try {
@@ -547,16 +549,13 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
-      with_write_lock( [&]()
+      detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
       {
-         detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
+         try
          {
-            try
-            {
-               result = _push_block(new_block);
-            }
-            FC_CAPTURE_AND_RETHROW( (new_block) )
-         });
+            result = _push_block(new_block);
+         }
+         FC_CAPTURE_AND_RETHROW( (new_block) )
       });
    });
 
@@ -691,10 +690,7 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
          detail::with_skip_flags( *this, skip,
             [&]()
             {
-               with_write_lock( [&]()
-               {
-                  _push_transaction( trx );
-               });
+               _push_transaction( trx );
             });
          set_producing( false );
       }
@@ -2625,7 +2621,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
+#ifndef ENABLE_STD_ALLOCATOR
    show_free_memory( false, next_block.block_num() );
+#endif
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
@@ -2722,6 +2720,13 @@ void database::_apply_block( const signed_block& next_block )
    if( has_hardfork( STEEM_HARDFORK_0_12 ) )
    {
       FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
+   }
+
+   if( block_size < STEEM_MIN_BLOCK_SIZE )
+   {
+      elog( "Block size is too small",
+         ("next_block_num",next_block_num)("block_size", block_size)("min",STEEM_MIN_BLOCK_SIZE)
+      );
    }
 
    /// modify current witness so transaction evaluators can know who included the transaction,

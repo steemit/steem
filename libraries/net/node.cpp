@@ -71,6 +71,7 @@
 #include <fc/network/ip.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <graphene/net/node_configuration.hpp>
 #include <graphene/net/node.hpp>
 #include <graphene/net/peer_database.hpp>
 #include <graphene/net/peer_connection.hpp>
@@ -219,35 +220,6 @@ namespace graphene { namespace net {
       }
       FC_THROW_EXCEPTION(  fc::key_not_found_exception, "Requested message not in cache" );
     }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // This specifies configuration info for the local node.  It's stored as JSON
-    // in the configuration directory (application data directory)
-    struct node_configuration
-    {
-      node_configuration() : accept_incoming_connections(true), wait_if_endpoint_is_busy(true) {}
-
-      fc::ip::endpoint listen_endpoint;
-      bool accept_incoming_connections;
-      bool wait_if_endpoint_is_busy;
-      /**
-       * Originally, our p2p code just had a 'node-id' that was a random number identifying this node
-       * on the network.  This is now a private key/public key pair, where the public key is used
-       * in place of the old random node-id.  The private part is unused, but might be used in
-       * the future to support some notion of trusted peers.
-       */
-      fc::ecc::private_key private_key;
-    };
-
-
-} } } // end namespace graphene::net::detail
-FC_REFLECT(graphene::net::detail::node_configuration, (listen_endpoint)
-                                                 (accept_incoming_connections)
-                                                 (wait_if_endpoint_is_busy)
-                                                 (private_key));
-
-namespace graphene { namespace net { namespace detail {
 
     // when requesting items from peers, we want to prioritize any blocks before
     // transactions, but otherwise request items in the order we heard about them
@@ -496,15 +468,6 @@ namespace graphene { namespace net { namespace detail {
        */
       node_id_t            _node_id;
 
-      /** if we have less than `_desired_number_of_connections`, we will try to connect with more nodes */
-      uint32_t             _desired_number_of_connections;
-      /** if we have _maximum_number_of_connections or more, we will refuse any inbound connections */
-      uint32_t             _maximum_number_of_connections;
-      /** retry connections to peers that have failed or rejected us this often, in seconds */
-      uint32_t              _peer_connection_retry_timeout;
-      /** how many seconds of inactivity are permitted before disconnecting a peer */
-      uint32_t              _peer_inactivity_timeout;
-
       fc::tcp_server       _tcp_server;
       fc::future<void>     _accept_loop_complete;
 
@@ -529,8 +492,6 @@ namespace graphene { namespace net { namespace detail {
       fc::rate_limiting_group _rate_limiter;
 
       uint32_t _last_reported_number_of_connections; // number of connections last reported to the client (to avoid sending duplicate messages)
-
-      bool _peer_advertising_disabled;
 
       fc::future<void> _fetch_updated_peer_lists_loop_done;
 
@@ -568,10 +529,6 @@ namespace graphene { namespace net { namespace detail {
 #endif // ENABLE_P2P_DEBUGGING_API
 
       bool _node_is_shutting_down; // set to true when we begin our destructor, used to prevent us from starting new tasks while we're shutting down
-
-      unsigned _maximum_number_of_blocks_to_handle_at_one_time;
-      unsigned _maximum_number_of_sync_blocks_to_prefetch;
-      unsigned _maximum_blocks_per_peer_during_syncing;
 
       std::list<fc::future<void> > _handle_message_calls_in_progress;
       std::set<message_hash_type> _message_ids_currently_being_processed;
@@ -738,7 +695,7 @@ namespace graphene { namespace net { namespace detail {
       std::vector<potential_peer_record> get_potential_peers() const;
       void set_advanced_node_parameters( const fc::variant_object& params );
 
-      fc::variant_object         get_advanced_node_parameters();
+      node_configuration         get_advanced_node_parameters()const;
       message_propagation_data   get_transaction_propagation_data( const graphene::net::transaction_id_type& transaction_id );
       message_propagation_data   get_block_propagation_data( const graphene::net::block_id_type& block_id );
 
@@ -746,7 +703,6 @@ namespace graphene { namespace net { namespace detail {
       void                       set_allowed_peers( const std::vector<node_id_t>& allowed_peers );
       void                       clear_peer_database();
       void                       set_total_bandwidth_limit( uint32_t upload_bytes_per_second, uint32_t download_bytes_per_second );
-      void                       disable_peer_advertising();
       fc::variant_object         get_call_statistics() const;
       message                    get_message_for_item(const item_id& item) override;
 
@@ -786,9 +742,6 @@ namespace graphene { namespace net { namespace detail {
 # define VERIFY_CORRECT_THREAD() do {} while (0)
 #endif
 
-#define MAXIMUM_NUMBER_OF_BLOCKS_TO_HANDLE_AT_ONE_TIME 200
-#define MAXIMUM_NUMBER_OF_BLOCKS_TO_PREFETCH (10 * MAXIMUM_NUMBER_OF_BLOCKS_TO_HANDLE_AT_ONE_TIME)
-
     node_impl::node_impl(const std::string& user_agent) :
 #ifdef P2P_IN_DEDICATED_THREAD
       _thread(std::make_shared<fc::thread>("p2p")),
@@ -802,15 +755,10 @@ namespace graphene { namespace net { namespace detail {
       _items_to_fetch_sequence_counter(0),
       _recent_block_interval_in_seconds(STEEM_BLOCK_INTERVAL),
       _user_agent_string(user_agent),
-      _desired_number_of_connections(GRAPHENE_NET_DEFAULT_DESIRED_CONNECTIONS),
-      _maximum_number_of_connections(GRAPHENE_NET_DEFAULT_MAX_CONNECTIONS),
-      _peer_connection_retry_timeout(GRAPHENE_NET_DEFAULT_PEER_CONNECTION_RETRY_TIME),
-      _peer_inactivity_timeout(GRAPHENE_NET_PEER_HANDSHAKE_INACTIVITY_TIMEOUT),
-      _most_recent_blocks_accepted(_maximum_number_of_connections),
+      _most_recent_blocks_accepted(GRAPHENE_NET_DEFAULT_MAX_CONNECTIONS),
       _total_number_of_unfetched_items(0),
       _rate_limiter(0, 0),
       _last_reported_number_of_connections(0),
-      _peer_advertising_disabled(false),
       _average_network_read_speed_seconds(60),
       _average_network_write_speed_seconds(60),
       _average_network_read_speed_minutes(60),
@@ -819,10 +767,7 @@ namespace graphene { namespace net { namespace detail {
       _average_network_write_speed_hours(72),
       _average_network_usage_second_counter(0),
       _average_network_usage_minute_counter(0),
-      _node_is_shutting_down(false),
-      _maximum_number_of_blocks_to_handle_at_one_time(MAXIMUM_NUMBER_OF_BLOCKS_TO_HANDLE_AT_ONE_TIME),
-      _maximum_number_of_sync_blocks_to_prefetch(MAXIMUM_NUMBER_OF_BLOCKS_TO_PREFETCH),
-      _maximum_blocks_per_peer_during_syncing(GRAPHENE_NET_MAX_BLOCKS_PER_PEER_DURING_SYNCING)
+      _node_is_shutting_down(false)
     {
       _rate_limiter.set_actual_rate_time_constant(fc::seconds(2));
       fc::rand_pseudo_bytes(&_node_id.data[0], (int)_node_id.size());
@@ -922,7 +867,7 @@ namespace graphene { namespace net { namespace detail {
                  iter != _potential_peer_db.end() && is_wanting_new_connections();
                  ++iter)
             {
-              fc::microseconds delay_until_retry = fc::seconds((iter->number_of_failed_connection_attempts + 1) * _peer_connection_retry_timeout);
+              fc::microseconds delay_until_retry = fc::seconds((iter->number_of_failed_connection_attempts + 1) * _node_configuration.peer_connection_retry_timeout);
 
               if (!is_connection_to_endpoint_in_progress(iter->endpoint) &&
                   ((iter->last_connection_disposition != last_connection_failed &&
@@ -1059,7 +1004,7 @@ namespace graphene { namespace net { namespace detail {
                       // then schedule a request from this peer
                       sync_item_requests_to_send[peer].push_back(item_to_potentially_request);
                       sync_items_to_request.insert( item_to_potentially_request );
-                      if (sync_item_requests_to_send[peer].size() >= _maximum_blocks_per_peer_during_syncing)
+                      if (sync_item_requests_to_send[peer].size() >= _node_configuration.maximum_blocks_per_peer_during_syncing)
                         break;
                     }
                   }
@@ -1337,7 +1282,7 @@ namespace graphene { namespace net { namespace detail {
         // those lists yielding at our leisure later.
         ASSERT_TASK_NOT_PREEMPTED();
 
-        uint32_t handshaking_timeout = _peer_inactivity_timeout;
+        uint32_t handshaking_timeout = _node_configuration.peer_inactivity_timeout;
         fc::time_point handshaking_disconnect_threshold = fc::time_point::now() - fc::seconds(handshaking_timeout);
         for( const peer_connection_ptr handshaking_peer : _handshaking_connections )
           if( handshaking_peer->connection_initiation_time < handshaking_disconnect_threshold &&
@@ -1363,9 +1308,19 @@ namespace graphene { namespace net { namespace detail {
         uint32_t active_disconnect_timeout = 10 * _recent_block_interval_in_seconds;
         uint32_t active_send_keepalive_timeout = active_disconnect_timeout / 2;
 
+        // set the ignored request time out to 6 second.  When we request a block
+        // or transaction from a peer, this timeout determines how long we wait for them
+        // to reply before we give up and ask another peer for the item.
+        // Ideally this should be significantly shorter than the block interval, because
+        // we'd like to realize the block isn't coming and fetch it from a different
+        // peer before the next block comes in.
+        // Increased to 6 from 1 in #1660 due to heavy load. May need to adjust further
+        fc::microseconds active_ignored_request_timeout = fc::microseconds( _node_configuration.active_ignored_request_timeout_microseconds );
+
+
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
-        fc::time_point active_ignored_request_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS);
+        fc::time_point active_ignored_request_threshold = fc::time_point::now() - active_ignored_request_timeout;
         for( const peer_connection_ptr& active_peer : _active_connections )
         {
           if( active_peer->connection_initiation_time < active_disconnect_threshold &&
@@ -1425,8 +1380,8 @@ namespace graphene { namespace net { namespace detail {
               wlog( "Sending a keepalive message to peer ${peer} who hasn't sent us any messages in the last ${timeout} seconds",
                     ( "peer", active_peer->get_remote_endpoint() )("timeout", active_send_keepalive_timeout ) );
               peers_to_send_keep_alive.push_back(active_peer);
-            }            
-            else if (active_peer->we_need_sync_items_from_peer && 
+            }
+            else if (active_peer->we_need_sync_items_from_peer &&
                      !active_peer->is_currently_handling_message() &&
                      !active_peer->item_ids_requested_from_peer &&
                      active_peer->ids_of_items_to_get.empty())
@@ -1494,7 +1449,7 @@ namespace graphene { namespace net { namespace detail {
         fc::exception detailed_error( FC_LOG_MESSAGE(warn, "Disconnecting due to inactivity",
                                                       ( "last_message_received_seconds_ago", (peer->get_last_message_received_time() - fc::time_point::now() ).count() / fc::seconds(1 ).count() )
                                                       ( "last_message_sent_seconds_ago", (peer->get_last_message_sent_time() - fc::time_point::now() ).count() / fc::seconds(1 ).count() )
-                                                      ( "inactivity_timeout", _active_connections.find(peer ) != _active_connections.end() ? _peer_inactivity_timeout * 10 : _peer_inactivity_timeout ) ) );
+                                                      ( "inactivity_timeout", _active_connections.find(peer ) != _active_connections.end() ? _node_configuration.peer_inactivity_timeout * 10 : _node_configuration.peer_inactivity_timeout ) ) );
         disconnect_from_peer( peer.get(), "Disconnecting due to inactivity", false, detailed_error );
       }
       peers_to_disconnect_gently.clear();
@@ -1666,13 +1621,13 @@ namespace graphene { namespace net { namespace detail {
     bool node_impl::is_accepting_new_connections()
     {
       VERIFY_CORRECT_THREAD();
-      return !_p2p_network_connect_loop_done.canceled() && get_number_of_connections() <= _maximum_number_of_connections;
+      return !_p2p_network_connect_loop_done.canceled() && get_number_of_connections() <= _node_configuration.maximum_number_of_connections;
     }
 
     bool node_impl::is_wanting_new_connections()
     {
       VERIFY_CORRECT_THREAD();
-      return !_p2p_network_connect_loop_done.canceled() && get_number_of_connections() < _desired_number_of_connections;
+      return !_p2p_network_connect_loop_done.canceled() && get_number_of_connections() < _node_configuration.desired_number_of_connections;
     }
 
     uint32_t node_impl::get_number_of_connections()
@@ -1739,8 +1694,8 @@ namespace graphene { namespace net { namespace detail {
       VERIFY_CORRECT_THREAD();
       dlog("Currently have ${current} of [${desired}/${max}] connections",
            ("current", get_number_of_connections())
-           ("desired", _desired_number_of_connections)
-           ("max", _maximum_number_of_connections));
+           ("desired", _node_configuration.desired_number_of_connections)
+           ("max", _node_configuration.maximum_number_of_connections));
       dlog("   my id is ${id}", ("id", _node_id));
 
       for (const peer_connection_ptr& active_connection : _active_connections)
@@ -2172,7 +2127,7 @@ namespace graphene { namespace net { namespace detail {
       dlog("Received an address request message");
 
       address_message reply;
-      if (!_peer_advertising_disabled)
+      if (!_node_configuration.peer_advertising_disabled)
       {
         reply.addresses.reserve(_active_connections.size());
         for (const peer_connection_ptr& active_peer : _active_connections)
@@ -3254,7 +3209,7 @@ namespace graphene { namespace net { namespace detail {
       }
 
       dlog("in process_backlog_of_sync_blocks");
-      if (_handle_message_calls_in_progress.size() >= _maximum_number_of_blocks_to_handle_at_one_time)
+      if (_handle_message_calls_in_progress.size() >= _node_configuration.maximum_number_of_blocks_to_handle_at_one_time)
       {
         dlog("leaving process_backlog_of_sync_blocks because we're already processing too many blocks");
         return; // we will be rescheduled when the next block finishes its processing
@@ -3334,6 +3289,7 @@ namespace graphene { namespace net { namespace detail {
             else
             {
               dlog("Already received and accepted this block (presumably through normal inventory mechanism), treating it as accepted");
+              std::vector< peer_connection_ptr > peers_needing_next_batch;
               for (const peer_connection_ptr& peer : _active_connections)
               {
                 auto items_being_processed_iter = peer->ids_of_items_being_processed.find(received_block_iter->block_id);
@@ -3344,30 +3300,32 @@ namespace graphene { namespace net { namespace detail {
                        ("endpoint", peer->get_remote_endpoint())("len", peer->ids_of_items_being_processed.size()));
 
                   // if we just processed the last item in our list from this peer, we will want to
-                  // send another request to find out if we are now in sync (this is normally handled in 
+                  // send another request to find out if we are now in sync (this is normally handled in
                   // send_sync_block_to_node_delegate)
                   if (peer->ids_of_items_to_get.empty() &&
                       peer->number_of_unfetched_item_ids == 0 &&
                       peer->ids_of_items_being_processed.empty())
                   {
                     dlog("We received last item in our list for peer ${endpoint}, setup to do a sync check", ("endpoint", peer->get_remote_endpoint()));
-                    fetch_next_batch_of_item_ids_from_peer(peer.get());
+                    peers_needing_next_batch.push_back( peer );
                   }
                 }
               }
+              for( const peer_connection_ptr& peer : peers_needing_next_batch )
+                fetch_next_batch_of_item_ids_from_peer(peer.get());
             }
 
             break; // start iterating _received_sync_items from the beginning
           } // end if potential_first_block
         } // end for each block in _received_sync_items
 
-        if (_handle_message_calls_in_progress.size() >= _maximum_number_of_blocks_to_handle_at_one_time)
+        if (_handle_message_calls_in_progress.size() >= _node_configuration.maximum_number_of_blocks_to_handle_at_one_time)
         {
           dlog("stopping processing sync block backlog because we have ${count} blocks in progress",
                ("count", _handle_message_calls_in_progress.size()));
           //ulog("stopping processing sync block backlog because we have ${count} blocks in progress, total on hand: ${received}",
           //     ("count", _handle_message_calls_in_progress.size())("received", _received_sync_items.size()));
-          if (_received_sync_items.size() >= _maximum_number_of_sync_blocks_to_prefetch)
+          if (_received_sync_items.size() >= _node_configuration.maximum_number_of_sync_blocks_to_prefetch)
             _suspend_fetching_sync_blocks = true;
           break;
         }
@@ -4488,11 +4446,14 @@ namespace graphene { namespace net { namespace detail {
       {
         try
         {
-          _node_configuration = fc::json::from_file( configuration_file_name ).as<detail::node_configuration>();
+          _node_configuration = fc::json::from_file( configuration_file_name ).as<node_configuration>();
           ilog( "Loaded configuration from file ${filename}", ("filename", configuration_file_name ) );
 
           if( _node_configuration.private_key == fc::ecc::private_key() )
+          {
+            ilog( "generating new private key for this node" );
             _node_configuration.private_key = fc::ecc::private_key::generate();
+          }
 
           node_configuration_loaded = true;
         }
@@ -4510,7 +4471,7 @@ namespace graphene { namespace net { namespace detail {
 
       if( !node_configuration_loaded )
       {
-        _node_configuration = detail::node_configuration();
+        _node_configuration = node_configuration();
 
 #ifdef GRAPHENE_TEST_NETWORK
         uint32_t port = GRAPHENE_NET_TEST_P2P_PORT + GRAPHENE_TEST_NETWORK_VERSION;
@@ -4537,7 +4498,7 @@ namespace graphene { namespace net { namespace detail {
         {
           potential_peer_record updated_peer_record = *itr;
           updated_peer_record.last_connection_attempt_time = std::min<fc::time_point_sec>(updated_peer_record.last_connection_attempt_time,
-                                                                                          fc::time_point::now() - fc::seconds(_peer_connection_retry_timeout));
+                                                                                          fc::time_point::now() - fc::seconds(_node_configuration.peer_connection_retry_timeout));
           _potential_peer_db.update_entry(updated_peer_record);
         }
 
@@ -4680,7 +4641,7 @@ namespace graphene { namespace net { namespace detail {
       // if we've recently connected to this peer, reset the last_connection_attempt_time to allow
       // us to immediately retry this peer
       updated_peer_record.last_connection_attempt_time = std::min<fc::time_point_sec>(updated_peer_record.last_connection_attempt_time,
-                                                                                      fc::time_point::now() - fc::seconds(_peer_connection_retry_timeout));
+                                                                                      fc::time_point::now() - fc::seconds(_node_configuration.peer_connection_retry_timeout));
       _add_once_node_list.push_back(updated_peer_record);
       _potential_peer_db.update_entry(updated_peer_record);
       trigger_p2p_network_connect_loop();
@@ -4786,7 +4747,7 @@ namespace graphene { namespace net { namespace detail {
       ilog( "----------------- PEER STATUS UPDATE --------------------" );
       ilog( " number of peers: ${active} active, ${handshaking}, ${closing} closing.  attempting to maintain ${desired} - ${maximum} peers",
            ( "active", _active_connections.size() )("handshaking", _handshaking_connections.size() )("closing",_closing_connections.size() )
-           ( "desired", _desired_number_of_connections )("maximum", _maximum_number_of_connections ) );
+           ( "desired", _node_configuration.desired_number_of_connections )("maximum", _node_configuration.maximum_number_of_connections ) );
       for( const peer_connection_ptr& peer : _active_connections )
       {
         ilog( "       active peer ${endpoint} peer_is_in_sync_with_us:${in_sync_with_us} we_are_in_sync_with_peer:${in_sync_with_them}",
@@ -5041,38 +5002,37 @@ namespace graphene { namespace net { namespace detail {
     void node_impl::set_advanced_node_parameters(const fc::variant_object& params)
     {
       VERIFY_CORRECT_THREAD();
-      if (params.contains("peer_connection_retry_timeout"))
-        _peer_connection_retry_timeout = params["peer_connection_retry_timeout"].as<uint32_t>();
-      if (params.contains("desired_number_of_connections"))
-        _desired_number_of_connections = params["desired_number_of_connections"].as<uint32_t>();
-      if (params.contains("maximum_number_of_connections"))
-        _maximum_number_of_connections = params["maximum_number_of_connections"].as<uint32_t>();
-      if (params.contains("maximum_number_of_blocks_to_handle_at_one_time"))
-        _maximum_number_of_blocks_to_handle_at_one_time = params["maximum_number_of_blocks_to_handle_at_one_time"].as<uint32_t>();
-      if (params.contains("maximum_number_of_sync_blocks_to_prefetch"))
-        _maximum_number_of_sync_blocks_to_prefetch = params["maximum_number_of_sync_blocks_to_prefetch"].as<uint32_t>();
-      if (params.contains("maximum_blocks_per_peer_during_syncing"))
-        _maximum_blocks_per_peer_during_syncing = params["maximum_blocks_per_peer_during_syncing"].as<uint32_t>();
+      ilog( "set_advanced_node_parameters ${params}", ("params", params) );
 
-      _desired_number_of_connections = std::min(_desired_number_of_connections, _maximum_number_of_connections);
+      fc::from_variant( params, _node_configuration );
 
-      while (_active_connections.size() > _maximum_number_of_connections)
+      if( _node_configuration.private_key == fc::ecc::private_key() )
+      {
+         ilog( "generating new private key for this node" );
+         _node_configuration.private_key = fc::ecc::private_key::generate();
+      }
+
+      // Private key could have been overridden at this point. Update public key just in case
+      _node_public_key = _node_configuration.private_key.get_public_key().serialize();
+
+      if( _node_configuration.desired_number_of_connections > _node_configuration.maximum_number_of_connections )
+      {
+         wlog( "Reducing desired_number_of_connections from ${x0} to maximum_number_of_connections=${x1}",
+            ("x0", _node_configuration.desired_number_of_connections)
+            ("x1", _node_configuration.maximum_number_of_connections)
+            );
+      }
+
+      while (_active_connections.size() > _node_configuration.maximum_number_of_connections)
         disconnect_from_peer(_active_connections.begin()->get(),
                              "I have too many connections open");
       trigger_p2p_network_connect_loop();
     }
 
-    fc::variant_object node_impl::get_advanced_node_parameters()
+    node_configuration node_impl::get_advanced_node_parameters()const
     {
       VERIFY_CORRECT_THREAD();
-      fc::mutable_variant_object result;
-      result["peer_connection_retry_timeout"] = _peer_connection_retry_timeout;
-      result["desired_number_of_connections"] = _desired_number_of_connections;
-      result["maximum_number_of_connections"] = _maximum_number_of_connections;
-      result["maximum_number_of_blocks_to_handle_at_one_time"] = _maximum_number_of_blocks_to_handle_at_one_time;
-      result["maximum_number_of_sync_blocks_to_prefetch"] = _maximum_number_of_sync_blocks_to_prefetch;
-      result["maximum_blocks_per_peer_during_syncing"] = _maximum_blocks_per_peer_during_syncing;
-      return result;
+      return _node_configuration;
     }
 
     message_propagation_data node_impl::get_transaction_propagation_data( const graphene::net::transaction_id_type& transaction_id )
@@ -5118,12 +5078,6 @@ namespace graphene { namespace net { namespace detail {
       VERIFY_CORRECT_THREAD();
       _rate_limiter.set_upload_limit( upload_bytes_per_second );
       _rate_limiter.set_download_limit( download_bytes_per_second );
-    }
-
-    void node_impl::disable_peer_advertising()
-    {
-      VERIFY_CORRECT_THREAD();
-      _peer_advertising_disabled = true;
     }
 
     fc::variant_object node_impl::get_call_statistics() const
@@ -5294,7 +5248,7 @@ namespace graphene { namespace net { namespace detail {
     INVOKE_IN_IMPL(set_advanced_node_parameters, params);
   }
 
-  fc::variant_object node::get_advanced_node_parameters()
+  node_configuration node::get_advanced_node_parameters()const
   {
     INVOKE_IN_IMPL(get_advanced_node_parameters);
   }
@@ -5328,11 +5282,6 @@ namespace graphene { namespace net { namespace detail {
                                        uint32_t download_bytes_per_second)
   {
     INVOKE_IN_IMPL(set_total_bandwidth_limit, upload_bytes_per_second, download_bytes_per_second);
-  }
-
-  void node::disable_peer_advertising()
-  {
-    INVOKE_IN_IMPL(disable_peer_advertising);
   }
 
   fc::variant_object node::get_call_statistics() const
@@ -5464,17 +5413,21 @@ namespace graphene { namespace net { namespace detail {
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
     try \
     { \
-      call_statistics_collector statistics_collector(#method_name, \
-                                                     &_ ## method_name ## _execution_accumulator, \
-                                                     &_ ## method_name ## _delay_before_accumulator, \
-                                                     &_ ## method_name ## _delay_after_accumulator); \
       if (_thread->is_current()) \
       { \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
         call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
         return _node_delegate->method_name(__VA_ARGS__); \
       } \
       else \
         return _thread->async([&](){ \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
           call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
           return _node_delegate->method_name(__VA_ARGS__); \
         }, "invoke " BOOST_STRINGIZE(method_name)).wait(); \
@@ -5502,11 +5455,19 @@ namespace graphene { namespace net { namespace detail {
                                                    &_ ## method_name ## _delay_after_accumulator); \
     if ( _thread->is_current()) \
     { \
+      call_statistics_collector statistics_collector(#method_name, \
+         &_ ## method_name ## _execution_accumulator, \
+         &_ ## method_name ## _delay_before_accumulator, \
+         &_ ## method_name ## _delay_after_accumulator); \
       call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
       return _node_delegate->method_name(__VA_ARGS__); \
     } \
     else \
       return _thread->async([&](){ \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
         call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
         return _node_delegate->method_name(__VA_ARGS__); \
       }, "invoke " BOOST_STRINGIZE(method_name)).wait()

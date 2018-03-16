@@ -2,6 +2,9 @@ FROM phusion/baseimage:0.9.19
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
+ARG STEEM_STATIC_BUILD=ON
+ENV STEEM_STATIC_BUILD ${STEEM_STATIC_BUILD}
+
 ENV LANG=en_US.UTF-8
 
 RUN \
@@ -58,7 +61,8 @@ RUN \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
-    programs/build_helpers/check_reflect.py && \
+    PYTHONPATH=programs/build_helpers \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
@@ -81,7 +85,8 @@ RUN \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
-    programs/build_helpers/check_reflect.py && \
+    PYTHONPATH=programs/build_helpers \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
@@ -119,6 +124,7 @@ RUN \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=OFF \
         -DBUILD_STEEM_TESTNET=OFF \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
     make -j$(nproc) && \
@@ -141,6 +147,7 @@ RUN \
         -DCLEAR_VOTES=OFF \
         -DSKIP_BY_TX_ID=ON \
         -DBUILD_STEEM_TESTNET=OFF \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
     make -j$(nproc) && \
