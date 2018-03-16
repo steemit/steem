@@ -9,7 +9,6 @@ import sys
 import json
 import os
 import shutil
-import re
 import locale
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
@@ -50,10 +49,9 @@ def main():
   accounts_file = sys.argv[5] if len( sys.argv ) > 5 else ""
 
   if accounts_file != "":
-    name = re.compile("[^\r^\n]*")
     try:
       with open(accounts_file, "rt") as file:
-        accounts = [name.match(account).group(0) for account in file]
+        accounts = file.readlines()
     except:
       exit("Cannot open file: " + accounts_file)
   else:

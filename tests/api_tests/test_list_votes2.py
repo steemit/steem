@@ -10,7 +10,6 @@ import sys
 import json
 import os
 import shutil
-import re
 import locale
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
@@ -56,10 +55,9 @@ def main():
   comments_file = sys.argv[6] if len( sys.argv ) > 6 else ""
 
   if comments_file != "":
-    name = re.compile("[^\r^\n]*")
     try:
       with open(comments_file, "rt") as file:
-        comments = [name.match(comment_line).group(0) for comment_line in file]
+        comments = file.readlines()
     except:
       exit("Cannot open file: " + comments_file)
   else:
