@@ -340,31 +340,63 @@ namespace golos {
             _db.remove(comment);
         }
 
+        struct comment_options_extension_visitor {
+            comment_options_extension_visitor(const comment_object &c, database &db)
+                    : _c(c), _db(db) {
+            }
+
+            using result_type = void;
+
+            const comment_object &_c;
+            database &_db;
+
+            void operator()(const comment_payout_beneficiaries &cpb) const {
+                if (_db.is_producing()) {
+                    FC_ASSERT(cpb.beneficiaries.size() <= STEEMIT_MAX_COMMENT_BENEFICIARIES,
+                              "Cannot specify more than ${m} beneficiaries.", ("m", STEEMIT_MAX_COMMENT_BENEFICIARIES));
+                }
+
+                FC_ASSERT(_c.beneficiaries.size() == 0, "Comment already has beneficiaries specified.");
+                FC_ASSERT(_c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries.");
+
+                _db.modify(_c, [&](comment_object &c) {
+                    for (auto &b : cpb.beneficiaries) {
+                        auto acc = _db.find< account_object, by_name >( b.account );
+                        FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
+                        c.beneficiaries.push_back(b);
+                    }
+                });
+            }
+        };
+
         void comment_options_evaluator::do_apply(const comment_options_operation &o) {
             database &_db = db();
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_10)) {
                 const auto &auth = _db.get_account(o.author);
-                FC_ASSERT(!(auth.owner_challenged ||
-                            auth.active_challenged), "Operation cannot be processed because account is currently challenged.");
+                FC_ASSERT(!(auth.owner_challenged || auth.active_challenged),
+                          "Operation cannot be processed because account is currently challenged.");
             }
 
 
             const auto &comment = _db.get_comment(o.author, o.permlink);
-            if (!o.allow_curation_rewards || !o.allow_votes ||
-                o.max_accepted_payout < comment.max_accepted_payout)
-                FC_ASSERT(comment.abs_rshares ==
-                          0, "One of the included comment options requires the comment to have no rshares allocated to it.");
+            if (!o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout) {
+                FC_ASSERT(comment.abs_rshares == 0,
+                          "One of the included comment options requires the comment to have no rshares allocated to it.");
+            }
 
-            FC_ASSERT(o.extensions.size() ==
-                      0, "Operation extensions for the comment_options_operation are not currently supported.");
-            FC_ASSERT(comment.allow_curation_rewards >=
-                      o.allow_curation_rewards, "Curation rewards cannot be re-enabled.");
-            FC_ASSERT(comment.allow_votes >=
-                      o.allow_votes, "Voting cannot be re-enabled.");
-            FC_ASSERT(comment.max_accepted_payout >=
-                      o.max_accepted_payout, "A comment cannot accept a greater payout.");
-            FC_ASSERT(comment.percent_steem_dollars >=
-                      o.percent_steem_dollars, "A comment cannot accept a greater percent SBD.");
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__432)) {// TODO: Remove after hardfork 17
+                FC_ASSERT(o.extensions.size() == 0,
+                          "Operation extensions for the comment_options_operation are not currently supported.");
+            }
+
+            FC_ASSERT(comment.allow_curation_rewards >= o.allow_curation_rewards,
+                      "Curation rewards cannot be re-enabled.");
+            FC_ASSERT(comment.allow_votes >= o.allow_votes,
+                      "Voting cannot be re-enabled.");
+            FC_ASSERT(comment.max_accepted_payout >= o.max_accepted_payout,
+                      "A comment cannot accept a greater payout.");
+            FC_ASSERT(comment.percent_steem_dollars >= o.percent_steem_dollars,
+                      "A comment cannot accept a greater percent SBD.");
 
             _db.modify(comment, [&](comment_object &c) {
                 c.max_accepted_payout = o.max_accepted_payout;
@@ -372,6 +404,10 @@ namespace golos {
                 c.allow_votes = o.allow_votes;
                 c.allow_curation_rewards = o.allow_curation_rewards;
             });
+
+            for (auto &e : o.extensions) {
+                e.visit(comment_options_extension_visitor(comment, _db));
+            }
         }
 
         void comment_evaluator::do_apply(const comment_operation &o) {
@@ -397,8 +433,15 @@ namespace golos {
                 const comment_object *parent = nullptr;
                 if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
                     parent = &_db.get_comment(o.parent_author, o.parent_permlink);
-                    FC_ASSERT(parent->depth <
-                              STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x", parent->depth)("y", STEEMIT_MAX_COMMENT_DEPTH));
+                    auto max_depth = STEEMIT_MAX_COMMENT_DEPTH;
+                    if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__430)) {
+                        max_depth = STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17;
+                    } else if (_db.is_producing()) {
+                        max_depth = STEEMIT_SOFT_MAX_COMMENT_DEPTH;
+                    }
+                    FC_ASSERT(parent->depth < max_depth,
+                              "Comment is nested ${x} posts deep, maximum depth is ${y}.",
+                              ("x", parent->depth)("y", max_depth));
                 }
                 auto now = _db.head_block_time();
 
@@ -494,7 +537,7 @@ namespace golos {
                             com.cashout_time = _db.has_hardfork(STEEMIT_HARDFORK_0_12__177)
                                                ?
                                                _db.head_block_time() +
-                                               STEEMIT_CASHOUT_WINDOW_SECONDS :
+                                               STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 :
                                                fc::time_point_sec::maximum();
                         } else {
                             com.parent_author = parent->author;
@@ -503,6 +546,10 @@ namespace golos {
                             com.category = parent->category;
                             com.root_comment = parent->root_comment;
                             com.cashout_time = fc::time_point_sec::maximum();
+                        }
+
+                        if (_db.has_hardfork( STEEMIT_HARDFORK_0_17__431)) {
+                            com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
                         }
 
 #ifndef IS_LOW_MEM
@@ -552,12 +599,13 @@ namespace golos {
                 {
                     const auto &comment = *itr;
 
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__306))
-                        FC_ASSERT(comment.mode !=
-                                  archived, "The comment is archived.");
-                    else if (_db.has_hardfork(STEEMIT_HARDFORK_0_10))
-                        FC_ASSERT(comment.last_payout ==
-                                  fc::time_point_sec::min(), "Can only edit during the first 24 hours.");
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__306)) {
+                        FC_ASSERT(_db.calculate_discussion_payout_time(comment) != fc::time_point_sec::maximum(),
+                                  "The comment is archived.");
+                    } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_10)) {
+                        FC_ASSERT(comment.last_payout == fc::time_point_sec::min(),
+                                  "Can only edit during the first 24 hours.");
+                    }
 
                     _db.modify(comment, [&](comment_object &com) {
                         com.last_update = _db.head_block_time();
@@ -1072,25 +1120,24 @@ namespace golos {
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
                     _db.calculate_discussion_payout_time(comment) ==
-                    fc::time_point_sec::maximum()) {
+                    fc::time_point_sec::maximum()
+                ) {
 #ifndef CLEAR_VOTES
-                                                                                                                                            const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+                    const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
+                    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
-      if( itr == comment_vote_idx.end() )
-         _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
-         {
-            cvo.voter = voter.id;
-            cvo.comment = comment.id;
-            cvo.vote_percent = o.weight;
-            cvo.last_update = _db.head_block_time();
-         });
-      else
-         _db.modify( *itr, [&]( comment_vote_object& cvo )
-         {
-            cvo.vote_percent = o.weight;
-            cvo.last_update = _db.head_block_time();
-         });
+                    if( itr == comment_vote_idx.end() )
+                        _db.create< comment_vote_object >( [&]( comment_vote_object& cvo ) {
+                            cvo.voter = voter.id;
+                            cvo.comment = comment.id;
+                            cvo.vote_percent = o.weight;
+                            cvo.last_update = _db.head_block_time();
+                        });
+                    else
+                        _db.modify( *itr, [&]( comment_vote_object& cvo ) {
+                            cvo.vote_percent = o.weight;
+                            cvo.last_update = _db.head_block_time();
+                    });
 #endif
                     return;
                 }
@@ -1168,10 +1215,12 @@ namespace golos {
                     /// this is the rshares voting for or against the post
                     int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-                    if (rshares > 0 && _db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
-                        FC_ASSERT(_db.head_block_time() <
-                                  _db.calculate_discussion_payout_time(comment) -
-                                  STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout.");
+                    if (rshares > 0) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
+                            FC_ASSERT(_db.head_block_time() <
+                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT,
+                                      "Cannot increase reward of post within the last minute before payout.");
+                        }
                     }
 
                     //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -1187,24 +1236,24 @@ namespace golos {
                     const auto &root = _db.get(comment.root_comment);
                     auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-                    fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time(comment).sec_since_epoch();
-                    fc::uint128_t new_cashout_time_sec;
+                    fc::uint128_t avg_cashout_sec = 0;
 
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                        !_db.has_hardfork(STEEMIT_HARDFORK_0_13__257)) {
-                            new_cashout_time_sec =
-                                    _db.head_block_time().sec_since_epoch() +
-                                    STEEMIT_CASHOUT_WINDOW_SECONDS;
-                    } else {
-                            new_cashout_time_sec =
-                                    _db.head_block_time().sec_since_epoch() +
-                                    STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+                    if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__431)) {
+                        fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time(comment).sec_since_epoch();
+                        fc::uint128_t new_cashout_time_sec = _db.head_block_time().sec_since_epoch();
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
+                            !_db.has_hardfork(STEEMIT_HARDFORK_0_13__257)
+                        ) {
+                            new_cashout_time_sec += STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
+                        } else {
+                            new_cashout_time_sec += STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+                        }
+                        avg_cashout_sec =
+                                (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) /
+                                (old_root_abs_rshares + abs_rshares);
                     }
 
-                    auto avg_cashout_sec =
-                            (cur_cashout_time_sec * old_root_abs_rshares +
-                             new_cashout_time_sec * abs_rshares) /
-                            (old_root_abs_rshares + abs_rshares);
 
                     FC_ASSERT(abs_rshares > 0, "Cannot vote with 0 rshares.");
 
@@ -1229,18 +1278,21 @@ namespace golos {
 
                     _db.modify(root, [&](comment_object &c) {
                         c.children_abs_rshares += abs_rshares;
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                            c.last_payout > fc::time_point_sec::min()) {
-                                c.cashout_time = c.last_payout +
-                                                 STEEMIT_SECOND_CASHOUT_WINDOW;
-                        } else {
-                                c.cashout_time = fc::time_point_sec(std::min(uint32_t(avg_cashout_sec.to_uint64()), c.max_cashout_time.sec_since_epoch()));
-                        }
+                        if (!_db.has_hardfork( STEEMIT_HARDFORK_0_17__431)) {
+                            if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
+                                c.last_payout > fc::time_point_sec::min()
+                            ) {
+                                c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                            } else {
+                                c.cashout_time = fc::time_point_sec(
+                                        std::min(uint32_t(avg_cashout_sec.to_uint64()),
+                                                 c.max_cashout_time.sec_since_epoch()));
+                            }
 
-                        if (c.max_cashout_time ==
-                            fc::time_point_sec::maximum()) {
-                                c.max_cashout_time = _db.head_block_time() +
-                                                     fc::seconds(STEEMIT_MAX_CASHOUT_WINDOW_SECONDS);
+                            if (c.max_cashout_time == fc::time_point_sec::maximum()) {
+                                c.max_cashout_time =
+                                        _db.head_block_time() + fc::seconds(STEEMIT_MAX_CASHOUT_WINDOW_SECONDS);
+                            }
                         }
                     });
 
@@ -1258,24 +1310,25 @@ namespace golos {
 
                     uint64_t max_vote_weight = 0;
 
-                    /** this verifies uniqueness of voter
-       *
-       *  cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
-       *
-       *  W(R) = B * R / ( R + 2S )
-       *  W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
-       *
-       *  The equation for an individual vote is:
-       *    W(R_N) - W(R_N-1), which is the delta increase of proportional weight
-       *
-       *  c.total_vote_weight =
-       *    W(R_1) - W(R_0) +
-       *    W(R_2) - W(R_1) + ...
-       *    W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
-       *
-       *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
-       *
-      **/
+                   /** this verifies uniqueness of voter
+                    *
+                    *  cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
+                    *
+                    *  W(R) = B * R / ( R + 2S )
+                    *  W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
+                    *
+                    *  The equation for an individual vote is:
+                    *    W(R_N) - W(R_N-1), which is the delta increase of proportional weight
+                    *
+                    *  c.total_vote_weight =
+                    *    W(R_1) - W(R_0) +
+                    *    W(R_2) - W(R_1) + ...
+                    *    W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
+                    *
+                    *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
+                    *
+                    **/
+
                     _db.create<comment_vote_object>([&](comment_vote_object &cv) {
                         cv.voter = voter.id;
                         cv.comment = comment.id;
@@ -1373,11 +1426,13 @@ namespace golos {
                     /// this is the rshares voting for or against the post
                     int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-                    if (itr->rshares < rshares &&
-                        _db.has_hardfork(STEEMIT_HARDFORK_0_7))
-                        FC_ASSERT(_db.head_block_time() <
-                                  _db.calculate_discussion_payout_time(comment) -
-                                  STEEMIT_UPVOTE_LOCKOUT, "Cannot increase payout within last minute before payout.");
+                    if (itr->rshares < rshares) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_7)) {
+                            FC_ASSERT(_db.head_block_time() <
+                                      _db.calculate_discussion_payout_time(comment) - STEEMIT_UPVOTE_LOCKOUT,
+                                      "Cannot increase reward of post within the last minute before payout.");
+                        }
+                    }
 
                     _db.modify(voter, [&](account_object &a) {
                         a.voting_power = current_power - used_power;
@@ -1389,29 +1444,27 @@ namespace golos {
                     const auto &root = _db.get(comment.root_comment);
                     auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-                    fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time(comment).sec_since_epoch();
-                    fc::uint128_t new_cashout_time_sec;
+                    fc::uint128_t avg_cashout_sec = 0;
 
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                        !_db.has_hardfork(STEEMIT_HARDFORK_0_13__257)) {
-                            new_cashout_time_sec =
-                                    _db.head_block_time().sec_since_epoch() +
-                                    STEEMIT_CASHOUT_WINDOW_SECONDS;
-                    } else {
-                            new_cashout_time_sec =
-                                    _db.head_block_time().sec_since_epoch() +
-                                    STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
-                    }
+                    if (!_db.has_hardfork( STEEMIT_HARDFORK_0_17__431)) {
+                        fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time(comment).sec_since_epoch();
+                        fc::uint128_t new_cashout_time_sec = _db.head_block_time().sec_since_epoch();
 
-                    fc::uint128_t avg_cashout_sec;
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) &&
-                        abs_rshares == 0) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
+                            !_db.has_hardfork(STEEMIT_HARDFORK_0_13__257)
+                        ) {
+                            new_cashout_time_sec += STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
+                        } else {
+                            new_cashout_time_sec += STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+                        }
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) && abs_rshares == 0) {
                             avg_cashout_sec = cur_cashout_time_sec;
-                    } else {
+                        } else {
                             avg_cashout_sec =
-                                    (cur_cashout_time_sec * old_root_abs_rshares +
-                                     new_cashout_time_sec * abs_rshares) /
+                                    (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares) /
                                     (old_root_abs_rshares + abs_rshares);
+                        }
                     }
 
                     _db.modify(comment, [&](comment_object &c) {
@@ -1437,18 +1490,21 @@ namespace golos {
 
                     _db.modify(root, [&](comment_object &c) {
                         c.children_abs_rshares += abs_rshares;
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
-                            c.last_payout > fc::time_point_sec::min()) {
-                                c.cashout_time = c.last_payout +
-                                                 STEEMIT_SECOND_CASHOUT_WINDOW;
-                        } else {
-                                c.cashout_time = fc::time_point_sec(std::min(uint32_t(avg_cashout_sec.to_uint64()), c.max_cashout_time.sec_since_epoch()));
-                        }
+                        if (!_db.has_hardfork( STEEMIT_HARDFORK_0_17__431)) {
+                            if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
+                                c.last_payout > fc::time_point_sec::min()
+                            ) {
+                                c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                            } else {
+                                c.cashout_time = fc::time_point_sec(
+                                        std::min(uint32_t(avg_cashout_sec.to_uint64()),
+                                                 c.max_cashout_time.sec_since_epoch()));
+                            }
 
-                        if (c.max_cashout_time ==
-                            fc::time_point_sec::maximum()) {
-                                c.max_cashout_time = _db.head_block_time() +
-                                                     fc::seconds(STEEMIT_MAX_CASHOUT_WINDOW_SECONDS);
+                            if (c.max_cashout_time == fc::time_point_sec::maximum()) {
+                                c.max_cashout_time =
+                                        _db.head_block_time() + fc::seconds(STEEMIT_MAX_CASHOUT_WINDOW_SECONDS);
+                            }
                         }
                     });
 

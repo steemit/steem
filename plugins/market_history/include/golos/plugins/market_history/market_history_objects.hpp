@@ -180,8 +180,8 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (date)(current_pays)(open_pays));
-FC_REFLECT((golos::plugins::market_history::limit_order),
-           (real_price)(rewarded));
+
+FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
 
 
 
