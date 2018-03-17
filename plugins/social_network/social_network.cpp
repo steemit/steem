@@ -182,7 +182,17 @@ namespace golos {
                         Args... args
                 ) const;
 
-                std::vector<discussion> get_content_replies(std::string author, std::string permlink) const;
+                void select_content_replies(
+                    std::vector<discussion>& result, const std::string &author, const std::string &permlink
+                ) const;
+
+                std::vector<discussion> get_content_replies(
+                    const std::string &author, const std::string &permlink
+                ) const;
+
+                std::vector<discussion> get_all_content_replies(
+                    const std::string &author, const std::string &permlink
+                ) const;
 
                 std::vector<tag_api_object> get_trending_tags(std::string after, uint32_t limit) const;
 
@@ -325,13 +335,17 @@ namespace golos {
                 }
             }
 
-            std::vector<discussion> social_network_t::impl::get_content_replies(std::string author, std::string permlink) const {
+            void social_network_t::impl::select_content_replies(
+                std::vector<discussion> &result, const std::string &author, const std::string &permlink
+            ) const {
                 account_name_type acc_name = account_name_type(author);
                 const auto &by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
                 auto itr = by_permlink_idx.find(boost::make_tuple(acc_name, permlink));
-                std::vector<discussion> result;
-                while (itr != by_permlink_idx.end() && itr->parent_author == author &&
-                       to_string(itr->parent_permlink) == permlink) {
+                while (
+                    itr != by_permlink_idx.end() &&
+                    itr->parent_author == author &&
+                    !strcmp(itr->parent_permlink.c_str(), permlink.c_str())
+                ) {
                     discussion push_discussion(*itr);
                     push_discussion.active_votes = get_active_votes(author, permlink);
 
@@ -339,6 +353,13 @@ namespace golos {
                     set_pending_payout(result.back());
                     ++itr;
                 }
+            }
+
+            std::vector<discussion> social_network_t::impl::get_content_replies(
+                const std::string &author, const std::string &permlink
+            ) const {
+                std::vector<discussion> result;
+                select_content_replies(result, author, permlink);
                 return result;
             }
 
@@ -348,6 +369,32 @@ namespace golos {
                 auto permlink = args.args->at(1).as<string>();
                 return pimpl->database().with_read_lock([&]() {
                     return pimpl->get_content_replies(author, permlink);
+                });
+            }
+
+            std::vector<discussion> social_network_t::impl::get_all_content_replies(
+                const std::string &author, const std::string &permlink
+            ) const {
+                std::vector<discussion> result;
+                select_content_replies(result, author, permlink);
+                for (std::size_t i = 0; i < result.size(); ++i) {
+                    if (result[i].children > 0) {
+                        auto j = result.size();
+                        select_content_replies(result, result[i].author, result[i].permlink);
+                        for (; j < result.size(); ++j) {
+                            result[i].replies.push_back(result[j].author + "/" + result[j].permlink);
+                        }
+                    }
+                }
+                return result;
+            }
+
+            DEFINE_API(social_network_t, get_all_content_replies) {
+                CHECK_ARG_SIZE(2)
+                auto author = args.args->at(0).as<string>();
+                auto permlink = args.args->at(1).as<string>();
+                return pimpl->database().with_read_lock([&]() {
+                    return pimpl->get_all_content_replies(author, permlink);
                 });
             }
 

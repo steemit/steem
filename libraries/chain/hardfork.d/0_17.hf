@@ -8,7 +8,7 @@
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_17_TIME  1519894800 // 1 mar 2018 12:00:00 MSK
 #else
-#define STEEMIT_HARDFORK_0_17_TIME  1525856400 // 9 may 2018 12:00:00 MSK - fake date, real date will be agreed with Bittrex
+#define STEEMIT_HARDFORK_0_17_TIME  1522832400 // 4 apr 2018 12:00:00 MSK
 #endif
 
 #define STEEMIT_HARDFORK_0_17_VERSION hardfork_version( 0, 17 )
