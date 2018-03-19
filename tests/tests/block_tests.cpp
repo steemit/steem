@@ -336,8 +336,8 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       STEEM_CHECK_THROW(PUSH_TX( db1, trx, skip_sigs ), fc::exception);
       STEEM_CHECK_THROW(PUSH_TX( db2, trx, skip_sigs ), fc::exception);
-      BOOST_CHECK_EQUAL(db1.get_balance( "alice", STEEM_SYMBOL ).amount.value, 500);
-      BOOST_CHECK_EQUAL(db2.get_balance( "alice", STEEM_SYMBOL ).amount.value, 500);
+      BOOST_CHECK_EQUAL(db1.get_liquid_balance( "alice", STEEM_SYMBOL ).amount.value, 500);
+      BOOST_CHECK_EQUAL(db2.get_liquid_balance( "alice", STEEM_SYMBOL ).amount.value, 500);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

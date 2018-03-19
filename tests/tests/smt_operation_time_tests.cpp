@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
 
       const account_object& alice_account = db->get_account( "alice" );
       FUND( "alice", asset( 25522, any_smt_symbol ) );
-      asset alice_smt = db->get_balance( alice_account, any_smt_symbol );
+      asset alice_smt = db->get_liquid_balance( alice_account, any_smt_symbol );
 
       FUND( "alice", alice_smt.amount );
       FUND( "bob", alice_smt.amount );

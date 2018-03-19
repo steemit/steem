@@ -1019,8 +1019,8 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
 
          if( to_reward_balance )
          {
-            adjust_reward_balance( to_account, sbd );
-            adjust_reward_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
+            adjust_reward_liquid_balance( to_account, sbd );
+            adjust_reward_liquid_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
          }
          else
          {
@@ -1335,13 +1335,13 @@ void database::clear_null_account_balance()
    if( null_account.reward_steem_balance.amount > 0 )
    {
       total_steem += null_account.reward_steem_balance;
-      adjust_reward_balance( null_account, -null_account.reward_steem_balance );
+      adjust_reward_liquid_balance( null_account, -null_account.reward_steem_balance );
    }
 
    if( null_account.reward_sbd_balance.amount > 0 )
    {
       total_sbd += null_account.reward_sbd_balance;
-      adjust_reward_balance( null_account, -null_account.reward_sbd_balance );
+      adjust_reward_liquid_balance( null_account, -null_account.reward_sbd_balance );
    }
 
    if( null_account.reward_vesting_balance.amount > 0 )
@@ -3745,11 +3745,10 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
    } );
 }
 
-void database::adjust_reward_balance( const account_object& a, const asset& delta )
+void database::adjust_reward_liquid_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
-   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only." );
-   // ^ As this method is called with STEEM or SBD only its name should be changed to adjust_reward_liquid_balance
+   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only (STEEM/SBD/liquid SMT)." );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
@@ -3765,11 +3764,10 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
    modify_reward_balance(a, delta, check_balance);
 }
 
-void database::adjust_reward_balance( const account_name_type& name, const asset& delta )
+void database::adjust_reward_liquid_balance( const account_name_type& name, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
-   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only." );
-   // ^ As this method is called with STEEM or SBD only its name should be changed to adjust_reward_liquid_balance
+   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only (STEEM/SBD/liquid SMT)." );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
@@ -3839,7 +3837,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
 }
 
 
-asset database::get_balance( const account_object& a, asset_symbol_type symbol )const
+asset database::get_liquid_balance( const account_object& a, asset_symbol_type symbol )const
 {
    switch( symbol.asset_num )
    {

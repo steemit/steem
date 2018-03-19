@@ -147,7 +147,7 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 // To be incorporated into fund() method if deemed appropriate.
 // 'SMT' would be dropped from the name then.
 #define FUND_SMT_REWARDS( account_name, amount ) \
-   db->adjust_reward_balance( account_name, amount ); \
+   db->adjust_reward_liquid_balance( account_name, amount ); \
    db->adjust_supply( amount ); \
    generate_block();
 
@@ -266,7 +266,7 @@ struct database_fixture {
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
    void set_witness_props( const flat_map< string, vector< char > >& new_props );
-   const asset& get_balance( const string& account_name )const;
+   const asset& get_liquid_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 
    vector< operation > get_last_operations( uint32_t ops );

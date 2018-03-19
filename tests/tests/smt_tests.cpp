@@ -722,20 +722,20 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FUND( "bob", asset( 110, bob_symbol ) );
 
       // Check pre-tranfer amounts.
-      FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
-      FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 0, "SMT balance adjusting error" );
-      FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 0, "SMT balance adjusting error" );
-      FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_liquid_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_liquid_balance( "alice", bob_symbol ).amount == 0, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_liquid_balance( "bob", alice_symbol ).amount == 0, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_liquid_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
 
       // Transfer SMT.
       transfer( "alice", "bob", asset(20, alice_symbol) );
       transfer( "bob", "alice", asset(50, bob_symbol) );
 
       // Check transfer outcome.
-      FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
-      FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
-      FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
-      FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
+      FC_ASSERT( db->get_liquid_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
+      FC_ASSERT( db->get_liquid_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
+      FC_ASSERT( db->get_liquid_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
+      FC_ASSERT( db->get_liquid_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
 
       validate_database();
    }

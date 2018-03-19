@@ -948,7 +948,7 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
+   FC_ASSERT( _db.get_liquid_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
    _db.adjust_liquid_balance( o.from, -o.amount );
    _db.adjust_liquid_balance( o.to, o.amount );
 }
@@ -958,7 +958,7 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = o.to.size() ? _db.get_account(o.to) : from_account;
 
-   FC_ASSERT( _db.get_balance( from_account, o.amount.symbol) >= o.amount,
+   FC_ASSERT( _db.get_liquid_balance( from_account, o.amount.symbol) >= o.amount,
               "Account does not have sufficient liquid amount for transfer." );
    _db.adjust_liquid_balance( from_account, -o.amount );
    _db.create_vesting( to_account, o.amount );
@@ -1836,7 +1836,7 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-  FC_ASSERT( _db.get_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
+  FC_ASSERT( _db.get_liquid_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
   _db.adjust_liquid_balance( o.owner, -o.amount );
 
@@ -1861,7 +1861,7 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
+   FC_ASSERT( _db.get_liquid_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
    _db.adjust_liquid_balance( o.owner, -o.amount_to_sell );
 
@@ -1884,7 +1884,7 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
-   FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
+   FC_ASSERT( _db.get_liquid_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
    _db.adjust_liquid_balance( o.owner, -o.amount_to_sell );
 
@@ -2050,7 +2050,7 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
 {
    const auto& from = _db.get_account( op.from );
    const auto& to   = _db.get_account(op.to);
-   FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
+   FC_ASSERT( _db.get_liquid_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
 
    _db.adjust_liquid_balance( from, -op.amount );
    _db.adjust_savings_balance( to, op.amount );
@@ -2169,8 +2169,8 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
       reward_vesting_steem_to_move = asset( ( ( uint128_t( op.reward_vests.amount.value ) * uint128_t( acnt.reward_vesting_steem.amount.value ) )
          / uint128_t( acnt.reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
 
-   _db.adjust_reward_balance( acnt, -op.reward_steem );
-   _db.adjust_reward_balance( acnt, -op.reward_sbd );
+   _db.adjust_reward_liquid_balance( acnt, -op.reward_steem );
+   _db.adjust_reward_liquid_balance( acnt, -op.reward_sbd );
    _db.adjust_liquid_balance( acnt, op.reward_steem );
    _db.adjust_liquid_balance( acnt, op.reward_sbd );
 
@@ -2205,7 +2205,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
          
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
-         _db.adjust_reward_balance( op.account, -token );
+         _db.adjust_reward_liquid_balance( op.account, -token );
          _db.adjust_liquid_balance( op.account, token );
       }
       else
@@ -2253,7 +2253,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
                        "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
             FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a->reward_sbd_balance,
                        "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
-            _db.adjust_reward_balance( *a, -token );
+            _db.adjust_reward_liquid_balance( *a, -token );
             _db.adjust_liquid_balance( *a, token );
          }
          else

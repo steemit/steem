@@ -102,7 +102,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    FC_ASSERT( o.smt_creation_fee >= effective_elevation_fee, 
       "Fee of ${of} is too small, must be at least ${ef}", ("of", o.smt_creation_fee)("ef", effective_elevation_fee) );
-   FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
+   FC_ASSERT( _db.get_liquid_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
     "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
 
    _db.adjust_liquid_balance( o.control_account , -o.smt_creation_fee );
