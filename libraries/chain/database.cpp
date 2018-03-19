@@ -503,18 +503,6 @@ const reward_fund_object& database::get_reward_fund( const comment_object& c ) c
    return get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
 }
 
-#pragma message( "After HF20 passes, re-apply the commit titled 'Remove now-redundant sufficient funds checks #1811'" )
-void database::pay_fee( const account_object& account, asset fee )
-{
-   FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
-   if( fee.amount == 0 )
-      return;
-
-   FC_ASSERT( account.balance >= fee );
-   adjust_balance( account, -fee );
-   adjust_supply( -fee );
-}
-
 uint32_t database::witness_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
@@ -1036,8 +1024,8 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
          }
          else
          {
-            adjust_balance( to_account, sbd );
-            adjust_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
+            adjust_liquid_balance( to_account, sbd );
+            adjust_liquid_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
          }
 
          adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
@@ -1047,7 +1035,7 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
       }
       else
       {
-         adjust_balance( to_account, steem );
+         adjust_liquid_balance( to_account, steem );
          assets.second = steem;
       }
    }
@@ -1304,7 +1292,7 @@ void database::clear_null_account_balance()
    if( null_account.balance.amount > 0 )
    {
       total_steem += null_account.balance;
-      adjust_balance( null_account, -null_account.balance );
+      adjust_liquid_balance( null_account, -null_account.balance );
    }
 
    if( null_account.savings_balance.amount > 0 )
@@ -1316,7 +1304,7 @@ void database::clear_null_account_balance()
    if( null_account.sbd_balance.amount > 0 )
    {
       total_sbd += null_account.sbd_balance;
-      adjust_balance( null_account, -null_account.sbd_balance );
+      adjust_liquid_balance( null_account, -null_account.sbd_balance );
    }
 
    if( null_account.savings_sbd_balance.amount > 0 )
@@ -1952,7 +1940,7 @@ void database::process_savings_withdraws()
   while( itr != idx.end() ) {
      if( itr->complete > head_block_time() )
         break;
-     adjust_balance( get_account( itr->to ), itr->amount );
+     adjust_liquid_balance( get_account( itr->to ), itr->amount );
 
      modify( get_account( itr->from ), [&]( account_object& a )
      {
@@ -2054,7 +2042,7 @@ void database::pay_liquidity_reward()
       if( itr != ridx.end() && itr->volume_weight() > 0 )
       {
          adjust_supply( reward, true );
-         adjust_balance( get(itr->owner), reward );
+         adjust_liquid_balance( get(itr->owner), reward );
          modify( *itr, [&]( liquidity_reward_balance_object& obj )
          {
             obj.steem_volume = 0;
@@ -2124,7 +2112,7 @@ void database::process_conversions()
    {
       auto amount_to_issue = itr->amount * fhistory.current_median_history;
 
-      adjust_balance( itr->owner, amount_to_issue );
+      adjust_liquid_balance( itr->owner, amount_to_issue );
 
       net_sbd   += itr->amount;
       net_steem += amount_to_issue;
@@ -2203,9 +2191,9 @@ void database::expire_escrow_ratification()
       const auto& old_escrow = *escrow_itr;
       ++escrow_itr;
 
-      adjust_balance( old_escrow.from, old_escrow.steem_balance );
-      adjust_balance( old_escrow.from, old_escrow.sbd_balance );
-      adjust_balance( old_escrow.from, old_escrow.pending_fee );
+      adjust_liquid_balance( old_escrow.from, old_escrow.steem_balance );
+      adjust_liquid_balance( old_escrow.from, old_escrow.sbd_balance );
+      adjust_liquid_balance( old_escrow.from, old_escrow.pending_fee );
 
       remove( old_escrow );
    }
@@ -3424,7 +3412,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
          order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
          ("order", order)("pays", pays)("receives", receives) );
 
-      adjust_balance( order.seller, receives );
+      adjust_liquid_balance( order.seller, receives );
 
       if( pays == order.amount_for_sale() )
       {
@@ -3464,7 +3452,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
 
 void database::cancel_order( const limit_order_object& order )
 {
-   adjust_balance( order.seller, order.amount_for_sale() );
+   adjust_liquid_balance( order.seller, order.amount_for_sale() );
    remove(order);
 }
 
@@ -3668,18 +3656,16 @@ void database::modify_reward_balance( const account_object& a, const asset& delt
    });
 }
 
-void database::adjust_balance( const account_object& a, const asset& delta )
+void database::adjust_liquid_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
-   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only." );
-   // ^ As this method is called with STEEM or SBD only its name should be changed to adjust_liquid_balance
+   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only (STEEM/SBD/liquid SMT)." );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      // Note that only STEEM/SBD/or liquid SMT get here.
       adjust_smt_liquid_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/ );
       return;
    }
@@ -3687,18 +3673,16 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    modify_balance( a, delta, check_balance );
 }
 
-void database::adjust_balance( const account_name_type& name, const asset& delta )
+void database::adjust_liquid_balance( const account_name_type& name, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
-   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only." );
-   // ^ As this method is called with STEEM or SBD only its name should be changed to adjust_liquid_balance
+   FC_ASSERT( delta.symbol.is_vesting() == false, "Use this method to adjust liquid balance only (STEEM/SBD/liquid SMT)." );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      // Note that only STEEM/SBD/or liquid SMT get here.
       adjust_smt_liquid_balance< account_regular_balance_object >( name, delta, true/*check_account*/ );
       return;
    }

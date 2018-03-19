@@ -397,7 +397,7 @@ void database_fixture::fund(
       {
          if( amount.symbol.space() == asset_symbol_type::smt_nai_space )
          {
-            db.adjust_balance(account_name, amount);
+            db.adjust_liquid_balance(account_name, amount);
             db.adjust_supply(amount);
             // Note that SMT have no equivalent of SBD, hence no virtual supply, hence no need to update it.
             return;
@@ -446,15 +446,15 @@ void database_fixture::convert(
    {
       if ( amount.symbol == STEEM_SYMBOL )
       {
-         db->adjust_balance( account_name, -amount );
-         db->adjust_balance( account_name, db->to_sbd( amount ) );
+         db->adjust_liquid_balance( account_name, -amount );
+         db->adjust_liquid_balance( account_name, db->to_sbd( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_sbd( amount ) );
       }
       else if ( amount.symbol == SBD_SYMBOL )
       {
-         db->adjust_balance( account_name, -amount );
-         db->adjust_balance( account_name, db->to_steem( amount ) );
+         db->adjust_liquid_balance( account_name, -amount );
+         db->adjust_liquid_balance( account_name, db->to_steem( amount ) );
          db->adjust_supply( -amount );
          db->adjust_supply( db->to_steem( amount ) );
       }
