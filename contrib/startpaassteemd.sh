@@ -99,7 +99,6 @@ if [[ $? -ne 0 ]]; then
     if [[ "$USE_RAMDISK" ]]; then
       mkdir -p /mnt/ramdisk/blockchain
       chown -R steemd:steemd /mnt/ramdisk/blockchain
-      cd /mnt/ramdisk
     else
       mkdir blockchain
     fi
