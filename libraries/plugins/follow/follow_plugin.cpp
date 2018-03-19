@@ -1,6 +1,7 @@
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/util/impacted.hpp>
 
@@ -135,8 +136,10 @@ struct post_operation_visitor
 {
    follow_plugin_impl& _plugin;
 
+   performance perf;
+
    post_operation_visitor( follow_plugin_impl& plugin )
-      : _plugin( plugin ) {}
+      : _plugin( plugin ), perf( plugin._db ) {}
 
    typedef void result_type;
 
@@ -186,9 +189,10 @@ struct post_operation_visitor
 
          const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
+         const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
          auto itr = idx.find( op.author );
 
-         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
+         performance_data pd;
 
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
@@ -196,15 +200,13 @@ struct post_operation_visitor
             {
                if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = 0;
-                  auto last_feed = feed_idx.lower_bound( itr->follower );
+                  auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+                  bool is_empty = feed_itr == comment_idx.end();
 
-                  if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
-                  {
-                     next_id = last_feed->account_feed_id + 1;
-                  }
+                  pd.init( c.id, is_empty );
+                  uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
 
-                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
+                  if( pd.s.creation && is_empty )
                   {
                      db.create< feed_object >( [&]( feed_object& f )
                      {
@@ -212,33 +214,22 @@ struct post_operation_visitor
                         f.comment = c.id;
                         f.account_feed_id = next_id;
                      });
-
-                     const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-                     auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-                     while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin._self.max_feed_size )
-                     {
-                        db.remove( *old_feed );
-                        old_feed = old_feed_idx.lower_bound( itr->follower );
-                     }
                   }
-               }
 
+               }
                ++itr;
             }
          }
 
-         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
-         auto last_blog = blog_idx.lower_bound( op.author );
-         uint32_t next_id = 0;
+         auto blog_itr = comment_blog_idx.find( boost::make_tuple( c.id, op.author ) );
+         const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
+         bool is_empty = blog_itr == comment_blog_idx.end();
 
-         if( last_blog != blog_idx.end() && last_blog->account == op.author )
-         {
-            next_id = last_blog->blog_feed_id + 1;
-         }
+         pd.init( c.id, is_empty );
+         uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_blog >( old_blog_idx, op.author, _plugin._self.max_feed_size, pd );
 
-         if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
+         if( pd.s.creation && is_empty )
          {
             db.create< blog_object >( [&]( blog_object& b)
             {
@@ -246,15 +237,6 @@ struct post_operation_visitor
                b.comment = c.id;
                b.blog_feed_id = next_id;
             });
-
-            const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
-            auto old_blog = old_blog_idx.lower_bound( op.author );
-
-            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin._self.max_feed_size )
-            {
-               db.remove( *old_blog );
-               old_blog = old_blog_idx.lower_bound( op.author );
-            }
          }
       }
       FC_LOG_AND_RETHROW()
