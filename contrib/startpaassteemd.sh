@@ -80,7 +80,7 @@ if [[ "$USE_RAMDISK" ]]; then
   else
     s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   fi
-  if [[ $? -e 0 ]]; then
+  if [[ $? -eq 0 ]]; then
     chown -R steemd:steemd /mnt/ramdisk/blockchain
   fi
 else
