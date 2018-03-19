@@ -3034,13 +3034,10 @@ struct fcall<TResult(TArgs...)>
 
    fcall() = default;
    fcall(const TNotification& func, util::advanced_benchmark_dumper& dumper,
-         const std::string& plugin_name, const std::string& item_name)
-         : _func(func), _benchmark_dumper(dumper)
+         const abstract_plugin& plugin, const std::string& item_name)
+         : _func(func), _benchmark_dumper(dumper), _plugin(plugin)
       {
-         if (plugin_name.empty())
-            _name = item_name;
-         else
-            _name = plugin_name + "--->" + item_name;
+         _name = plugin.get_name() + "--->" + item_name;
       }
 
    void operator () (TArgs&&... args)
@@ -3057,6 +3054,7 @@ struct fcall<TResult(TArgs...)>
 private:
    TNotification                    _func;
    util::advanced_benchmark_dumper& _benchmark_dumper;
+   const abstract_plugin&           _plugin;
    std::string                      _name;
 };
 
@@ -3069,10 +3067,10 @@ struct fcall<std::function<TResult(TArgs...)>>
 };
 
 template <typename TSignal, typename TNotification>
-boost::signals2::connection database::connect_impl( TSignal& signal, const TNotification& func, int32_t group,
-   const std::string& item_name, const std::string& plugin_name )
+boost::signals2::connection database::connect_impl( TSignal& signal, const TNotification& func,
+   const abstract_plugin& plugin, int32_t group, const std::string& item_name )
 {
-   fcall<TNotification> fcall_wrapper(func,_benchmark_dumper,plugin_name,item_name);
+   fcall<TNotification> fcall_wrapper(func,_benchmark_dumper,plugin,item_name);
 
    if (group == -1)
       return signal.connect(fcall_wrapper);
@@ -3082,16 +3080,16 @@ boost::signals2::connection database::connect_impl( TSignal& signal, const TNoti
 
 template< bool IS_PRE_OPERATION >
 boost::signals2::connection database::any_apply_operation_proxy_impl( const operation_notification_t& func,
-   int32_t group, const std::string& plugin_name )
+   const abstract_plugin& plugin, int32_t group )
 {
-   auto complex_func = [=]( const operation_notification& o )
+   auto complex_func = [this, func, &plugin]( const operation_notification& o )
    {
       std::string name;
 
       if (_benchmark_dumper.is_enabled())
       {
          if( _my->_evaluator_registry.is_evaluator( o.op ) )
-            name = _benchmark_dumper.generate_desc< IS_PRE_OPERATION >( plugin_name, _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op ) );
+            name = _benchmark_dumper.generate_desc< IS_PRE_OPERATION >( plugin.get_name(), _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op ) );
          else
             name = util::advanced_benchmark_dumper::get_virtual_operation_name();
 
@@ -3120,50 +3118,52 @@ boost::signals2::connection database::any_apply_operation_proxy_impl( const oper
    }
 }
 
-boost::signals2::connection database::pre_apply_operation_proxy( const operation_notification_t& func, int32_t group, const std::string& name )
+boost::signals2::connection database::pre_apply_operation_proxy( const operation_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return any_apply_operation_proxy_impl< true/*IS_PRE_OPERATION*/ >( func, group, name );
+   return any_apply_operation_proxy_impl< true/*IS_PRE_OPERATION*/ >( func, plugin, group );
 }
 
-boost::signals2::connection database::post_apply_operation_proxy( const operation_notification_t& func, int32_t group, const std::string& name )
+boost::signals2::connection database::post_apply_operation_proxy( const operation_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return any_apply_operation_proxy_impl< false/*IS_PRE_OPERATION*/ >( func, group, name );
+   return any_apply_operation_proxy_impl< false/*IS_PRE_OPERATION*/ >( func, plugin, group );
 }
 
-boost::signals2::connection database::on_pending_transaction_proxy( const transaction_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::on_pending_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_on_pending_transaction, func, group, plugin_name, "@transaction");
+   return connect_impl(_on_pending_transaction, func, plugin, group, "@transaction");
 }
 
-boost::signals2::connection database::on_pre_apply_transaction_proxy( const transaction_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::on_pre_apply_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_on_pre_apply_transaction, func, group, plugin_name, "->transaction");
+   return connect_impl(_on_pre_apply_transaction, func, plugin, group, "->transaction");
 }
 
-boost::signals2::connection database::on_applied_transaction_proxy( const transaction_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::on_applied_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_on_pre_apply_transaction, func, group, plugin_name, "<-transaction");
+   return connect_impl(_on_pre_apply_transaction, func, plugin, group, "<-transaction");
 }
 
-boost::signals2::connection database::applied_block_proxy( const block_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::applied_block_proxy( const block_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_applied_block, func, group, plugin_name, "<-block");
+   return connect_impl(_applied_block, func, plugin, group, "<-block");
 }
 
-boost::signals2::connection database::on_reindex_start_proxy(const on_reindex_start_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::on_reindex_start_proxy(const on_reindex_start_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_on_reindex_start, func, group, plugin_name, "->reindex");
+   return connect_impl(_on_reindex_start, func, plugin, group, "->reindex");
 }
 
-boost::signals2::connection database::on_reindex_done_proxy(const on_reindex_done_notification_t& func, int32_t group,
-   const std::string& plugin_name )
+boost::signals2::connection database::on_reindex_done_proxy(const on_reindex_done_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_on_reindex_done, func, group, plugin_name, "<-reindex");
+   return connect_impl(_on_reindex_done, func, plugin, group, "<-reindex");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const

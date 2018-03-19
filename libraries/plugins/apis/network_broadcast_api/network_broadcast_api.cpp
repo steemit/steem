@@ -18,8 +18,7 @@ namespace detail
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
          {
             _on_applied_block_connection = _chain.db().applied_block_proxy(
-               [&]( const signed_block& b ){ on_applied_block( b ); }, 0,
-               STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME );
+               [&]( const signed_block& b ){ on_applied_block( b ); }, _chain, 0 );
          }
 
          DECLARE_API_IMPL(

@@ -269,8 +269,8 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
       ilog( "Initializing smt_test plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ my->pre_operation( o ); }, 0, STEEM_SMT_TEST_PLUGIN_NAME );
-      db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->post_operation( o ); }, 0, STEEM_SMT_TEST_PLUGIN_NAME );
+      db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ my->pre_operation( o ); }, *this, 0 );
+      db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->post_operation( o ); }, *this, 0 );
 
       // add_plugin_index< key_lookup_index >(db);
    }

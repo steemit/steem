@@ -15,6 +15,8 @@
 
 #include <steem/chain/util/advanced_benchmark_dumper.hpp>
 
+#include <appbase/plugin.hpp>
+
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -29,6 +31,7 @@ namespace steem { namespace chain {
    using steem::protocol::asset;
    using steem::protocol::asset_symbol_type;
    using steem::protocol::price;
+   using abstract_plugin = appbase::abstract_plugin;
 
    class database_impl;
    class custom_operation_interpreter;
@@ -238,22 +241,23 @@ namespace steem { namespace chain {
       private:
          template <typename TSignal,
                    typename TNotification = std::function<typename TSignal::signature_type>>
-         boost::signals2::connection connect_impl( TSignal& signal, const TNotification& func, int32_t group,
-                                                   const std::string& item_name = "", const std::string& plugin_name = "" );
+         boost::signals2::connection connect_impl( TSignal& signal, const TNotification& func,
+            const abstract_plugin& plugin, int32_t group, const std::string& item_name = "" );
 
          template< bool IS_PRE_OPERATION >
-         boost::signals2::connection any_apply_operation_proxy_impl( const operation_notification_t& func, int32_t group, const std::string& plugin_name );
+         boost::signals2::connection any_apply_operation_proxy_impl( const operation_notification_t& func,
+            const abstract_plugin& plugin, int32_t group );
 
       public:
 
-         boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection on_pending_transaction_proxy( const transaction_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection on_applied_transaction_proxy( const transaction_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection applied_block_proxy( const block_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection on_reindex_start_proxy(const on_reindex_start_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
-         boost::signals2::connection on_reindex_done_proxy(const on_reindex_done_notification_t& func, int32_t group = -1, const std::string& plugin_name = "unknown_name" );
+         boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_pending_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_applied_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection applied_block_proxy( const block_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_reindex_start_proxy(const on_reindex_start_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_reindex_done_proxy(const on_reindex_done_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
 
 
          //////////////////// db_witness_schedule.cpp ////////////////////
