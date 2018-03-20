@@ -168,11 +168,6 @@ namespace steem { namespace chain {
          const time_point_sec                   calculate_discussion_payout_time( const comment_object& comment )const;
          const reward_fund_object&              get_reward_fund( const comment_object& c )const;
 
-         /**
-          *  Deducts fee from the account and the share supply
-          */
-         void pay_fee( const account_object& a, asset fee );
-
          void max_bandwidth_per_share()const;
 
          /**
@@ -312,8 +307,10 @@ namespace steem { namespace chain {
          void        adjust_balance( const account_object& a, const asset& delta );
          void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
-         void        adjust_reward_balance( const account_object& a, const asset& delta );
-         void        adjust_reward_balance( const account_name_type& name, const asset& delta );
+         void        adjust_reward_balance( const account_object& a, const asset& value_delta,
+                                            const asset& share_delta = asset(0,VESTS_SYMBOL) );
+         void        adjust_reward_balance( const account_name_type& name, const asset& value_delta,
+                                            const asset& share_delta = asset(0,VESTS_SYMBOL) );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
          void        update_owner_authority( const account_object& account, const authority& owner_authority );
@@ -492,14 +489,12 @@ namespace steem { namespace chain {
 
          ///@}
 #ifdef STEEM_ENABLE_SMT
-         template< typename smt_balance_object_type >
-         void adjust_smt_liquid_balance( const account_name_type& name, const asset& delta, bool check_account );
-
-         template< typename smt_balance_object_type >
-         void add_to_smt_vesting_balance( const account_object& to_account, asset vesting_shares, asset vesting_value );
+         template< typename smt_balance_object_type, class balance_operator_type >
+         void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account,
+                                  balance_operator_type balance_operator );
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
-         void modify_reward_balance( const account_object& a, const asset& delta, bool check_balance );
+         void modify_reward_balance( const account_object& a, const asset& value_delta, const asset& share_delta, bool check_balance );
 
          std::unique_ptr< database_impl > _my;
 

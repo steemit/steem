@@ -38,15 +38,7 @@ public:
    {
       return liquid.symbol;
    }
-   asset get_liquid() const
-   {
-      return liquid;
-   }
-   void set_liquid( const asset& new_liquid )
-   {
-      liquid = new_liquid;
-   }
-   void clear( asset_symbol_type liquid_symbol )
+   void clear_balance( asset_symbol_type liquid_symbol )
    {
       owner = "";
       liquid = asset( 0, liquid_symbol);
@@ -56,10 +48,6 @@ public:
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
       vesting += vesting_shares;
-   }
-   bool is_vesting_empty() const
-   {
-      return vesting.amount == 0;
    }
    ///@}
 
@@ -99,15 +87,7 @@ public:
    {
       return pending_liquid.symbol;
    }
-   asset get_liquid() const
-   {
-      return pending_liquid;
-   }
-   void set_liquid( const asset& new_liquid )
-   {
-      pending_liquid = new_liquid;
-   }
-   void clear( asset_symbol_type liquid_symbol )
+   void clear_balance( asset_symbol_type liquid_symbol )
    {
       owner = "";
       pending_liquid = asset( 0, liquid_symbol);
@@ -118,11 +98,6 @@ public:
    {
       pending_vesting_shares += vesting_shares;
       pending_vesting_value += vesting_value;
-   }
-   bool is_vesting_empty() const
-   { 
-      FC_ASSERT( pending_vesting_shares.amount > 0 || pending_vesting_value.amount == 0 );
-      return pending_vesting_shares.amount == 0;
    }
    ///@}
 
