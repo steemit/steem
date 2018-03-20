@@ -401,14 +401,14 @@ struct visitor {
          return name_map;
       }();
 
-      FC_ASSERT( v.is_object(), "Operation has to treated as object." );
+      FC_ASSERT( v.is_object(), "Input data have to treated as object." );
       auto v_object = v.get_object();
 
       FC_ASSERT( v_object.contains( "type" ), "Type field doesn't exist." );
       FC_ASSERT( v_object.contains( "value" ), "Value field doesn't exist." );
 
       auto itr = to_tag.find( v_object[ "type" ].as_string() );
-      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", v_object[ "type" ]) );
+      FC_ASSERT( itr != to_tag.end(), "Invalid object name: ${n}", ("n", v_object[ "type" ]) );
 
       s.set_which( to_tag[ v_object[ "type" ].as_string() ] );
 
