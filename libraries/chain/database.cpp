@@ -3035,9 +3035,9 @@ struct fcall<TResult(TArgs...)>
    fcall() = default;
    fcall(const TNotification& func, util::advanced_benchmark_dumper& dumper,
          const abstract_plugin& plugin, const std::string& item_name)
-         : _func(func), _benchmark_dumper(dumper), _plugin(plugin)
+         : _func(func), _benchmark_dumper(dumper)
       {
-         _name = plugin.get_name() + "--->" + item_name;
+         _name = plugin.get_name() + item_name;
       }
 
    void operator () (TArgs&&... args)
@@ -3054,7 +3054,6 @@ struct fcall<TResult(TArgs...)>
 private:
    TNotification                    _func;
    util::advanced_benchmark_dumper& _benchmark_dumper;
-   const abstract_plugin&           _plugin;
    std::string                      _name;
 };
 
