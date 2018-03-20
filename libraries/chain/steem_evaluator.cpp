@@ -792,8 +792,8 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       FC_ASSERT( from_account.balance >= steem_spent, "Account cannot cover STEEM costs of escrow. Required: ${r} Available: ${a}", ("r",steem_spent)("a",from_account.balance) );
       FC_ASSERT( from_account.sbd_balance >= sbd_spent, "Account cannot cover SBD costs of escrow. Required: ${r} Available: ${a}", ("r",sbd_spent)("a",from_account.sbd_balance) );
 
-      _db.adjust_liquid_balance( from_account, -steem_spent );
-      _db.adjust_liquid_balance( from_account, -sbd_spent );
+      _db.adjust_balance( from_account, -steem_spent );
+      _db.adjust_balance( from_account, -sbd_spent );
 
       _db.create<escrow_object>([&]( escrow_object& esc )
       {
@@ -851,15 +851,15 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       if( reject_escrow )
       {
-         _db.adjust_liquid_balance( o.from, escrow.steem_balance );
-         _db.adjust_liquid_balance( o.from, escrow.sbd_balance );
-         _db.adjust_liquid_balance( o.from, escrow.pending_fee );
+         _db.adjust_balance( o.from, escrow.steem_balance );
+         _db.adjust_balance( o.from, escrow.sbd_balance );
+         _db.adjust_balance( o.from, escrow.pending_fee );
 
          _db.remove( escrow );
       }
       else if( escrow.to_approved && escrow.agent_approved )
       {
-         _db.adjust_liquid_balance( o.agent, escrow.pending_fee );
+         _db.adjust_balance( o.agent, escrow.pending_fee );
 
          _db.modify( escrow, [&]( escrow_object& esc )
          {
@@ -929,8 +929,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
 
-      _db.adjust_liquid_balance( o.receiver, o.steem_amount );
-      _db.adjust_liquid_balance( o.receiver, o.sbd_amount );
+      _db.adjust_balance( o.receiver, o.steem_amount );
+      _db.adjust_balance( o.receiver, o.sbd_amount );
 
       _db.modify( e, [&]( escrow_object& esc )
       {
@@ -949,8 +949,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
    FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
-   _db.adjust_liquid_balance( o.from, -o.amount );
-   _db.adjust_liquid_balance( o.to, o.amount );
+   _db.adjust_balance( o.from, -o.amount );
+   _db.adjust_balance( o.to, o.amount );
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
@@ -960,7 +960,7 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
 
    FC_ASSERT( _db.get_balance( from_account, o.amount.symbol) >= o.amount,
               "Account does not have sufficient liquid amount for transfer." );
-   _db.adjust_liquid_balance( from_account, -o.amount );
+   _db.adjust_balance( from_account, -o.amount );
    _db.create_vesting( to_account, o.amount );
 }
 
@@ -1720,7 +1720,7 @@ void pow_apply( database& db, Operation o )
    /// pay the witness that includes this POW
    const auto& inc_witness = db.get_account( dgp.current_witness );
    if( db.head_block_num() < STEEM_START_MINER_VOTING_BLOCK )
-      db.adjust_liquid_balance( inc_witness, pow_reward );
+      db.adjust_balance( inc_witness, pow_reward );
    else
       db.create_vesting( inc_witness, pow_reward );
 }
@@ -1838,7 +1838,7 @@ void convert_evaluator::do_apply( const convert_operation& o )
 {
   FC_ASSERT( _db.get_balance( o.owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
-  _db.adjust_liquid_balance( o.owner, -o.amount );
+  _db.adjust_balance( o.owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
@@ -1863,7 +1863,7 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   _db.adjust_liquid_balance( o.owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -1886,7 +1886,7 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
-   _db.adjust_liquid_balance( o.owner, -o.amount_to_sell );
+   _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
    {
@@ -2052,7 +2052,7 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
    const auto& to   = _db.get_account(op.to);
    FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
 
-   _db.adjust_liquid_balance( from, -op.amount );
+   _db.adjust_balance( from, -op.amount );
    _db.adjust_savings_balance( to, op.amount );
 }
 
@@ -2171,8 +2171,8 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
    _db.adjust_reward_balance( acnt, -op.reward_steem );
    _db.adjust_reward_balance( acnt, -op.reward_sbd );
-   _db.adjust_liquid_balance( acnt, op.reward_steem );
-   _db.adjust_liquid_balance( acnt, op.reward_sbd );
+   _db.adjust_balance( acnt, op.reward_steem );
+   _db.adjust_balance( acnt, op.reward_sbd );
 
    _db.modify( acnt, [&]( account_object& a )
    {
@@ -2206,7 +2206,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          _db.adjust_reward_balance( op.account, -token );
-         _db.adjust_liquid_balance( op.account, token );
+         _db.adjust_balance( op.account, token );
       }
       else
       {
@@ -2254,7 +2254,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
             FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a->reward_sbd_balance,
                        "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
             _db.adjust_reward_balance( *a, -token );
-            _db.adjust_liquid_balance( *a, token );
+            _db.adjust_balance( *a, token );
          }
          else
             FC_ASSERT( false, "Unknown asset symbol" );

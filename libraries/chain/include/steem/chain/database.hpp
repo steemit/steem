@@ -168,6 +168,11 @@ namespace steem { namespace chain {
          const time_point_sec                   calculate_discussion_payout_time( const comment_object& comment )const;
          const reward_fund_object&              get_reward_fund( const comment_object& c )const;
 
+         /**
+          *  Deducts fee from the account and the share supply
+          */
+         void pay_fee( const account_object& a, asset fee );
+
          void max_bandwidth_per_share()const;
 
          /**
@@ -304,8 +309,8 @@ namespace steem { namespace chain {
          void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value, const asset& beneficiary_value );
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
-         void        adjust_liquid_balance( const account_object& a, const asset& delta );
-         void        adjust_liquid_balance( const account_name_type& name, const asset& delta );
+         void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_balance( const account_name_type& name, const asset& delta );
          void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_object& a, const asset& delta );
          void        adjust_reward_balance( const account_name_type& name, const asset& delta );
