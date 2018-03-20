@@ -566,7 +566,7 @@ void database_fixture::set_witness_props( const flat_map< string, vector< char >
    generate_blocks( STEEM_BLOCKS_PER_HOUR );
 }
 
-const asset& database_fixture::get_liquid_balance( const string& account_name )const
+const asset& database_fixture::get_balance( const string& account_name )const
 {
   return db->get_account( account_name ).balance;
 }
