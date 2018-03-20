@@ -31,7 +31,6 @@ RUN \
         python3-pip \
         nginx \
         fcgiwrap \
-        s3cmd \
         awscli \
         jq \
         wget \
