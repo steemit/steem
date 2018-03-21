@@ -326,6 +326,17 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.work.visit( convert_to_legacy_static_variant< legacy_pow2_work >( work ) );
       }
 
+      operator pow2_operation()const
+      {
+         pow2_operation op;
+         work.visit( convert_to_legacy_static_variant< pow2_work >( op.work ) );
+         op.new_owner_key = new_owner_key;
+         op.props.account_creation_fee = props.account_creation_fee;
+         op.props.maximum_block_size = props.maximum_block_size;
+         op.props.sbd_interest_rate = props.sbd_interest_rate;
+         return op;
+      }
+
       legacy_pow2_work              work;
       optional< public_key_type >   new_owner_key;
       legacy_chain_properties       props;
@@ -1264,6 +1275,11 @@ struct convert_from_legacy_operation_visitor
    operation operator()( const legacy_escrow_release_operation& op )const
    {
       return operation( escrow_release_operation( op ) );
+   }
+
+   operation operator()( const legacy_pow2_operation& op )const
+   {
+      return operation( pow2_operation( op ) );
    }
 
    operation operator()( const legacy_transfer_to_savings_operation& op )const
