@@ -229,7 +229,8 @@ namespace golos {
             signed_block _generate_block(
                     const fc::time_point_sec when,
                     const account_name_type &witness_owner,
-                    const fc::ecc::private_key &block_signing_private_key
+                    const fc::ecc::private_key &block_signing_private_key,
+                    uint32_t skip
             );
 
             void pop_block();
