@@ -17,8 +17,8 @@ namespace detail
             _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
          {
-            _on_applied_block_connection = _chain.db().applied_block.connect(
-               0, [&]( const signed_block& b ){ on_applied_block( b ); } );
+            _on_applied_block_connection = _chain.db().applied_block_proxy(
+               [&]( const signed_block& b ){ on_applied_block( b ); }, _chain, 0 );
          }
 
          DECLARE_API_IMPL(

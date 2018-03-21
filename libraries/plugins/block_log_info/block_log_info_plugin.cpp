@@ -149,7 +149,8 @@ void block_log_info_plugin::plugin_initialize( const boost::program_options::var
       ilog( "Initializing block_log_info plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      my->on_applied_block_connection = db.applied_block.connect( [&]( const signed_block& b ){ my->on_applied_block( b ); } );
+      my->on_applied_block_connection = db.applied_block_proxy(
+         [&]( const signed_block& b ){ my->on_applied_block( b ); }, *this );
 
       add_plugin_index< block_log_hash_state_index >(db);
       add_plugin_index< block_log_pending_message_index >(db);

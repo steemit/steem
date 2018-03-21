@@ -125,10 +125,15 @@ namespace fc
    template<typename T>
    void from_variant( const variant& var, fc::flat_set<T>& vo );
 
-   template<typename T>
-   void to_variant( const std::set<T>& var,  variant& vo );
-   template<typename T>
-   void from_variant( const variant& var,  std::set<T>& vo );
+   template<typename... T>
+   void to_variant( const std::set<T...>& var,  variant& vo );
+   template<typename... T>
+   void from_variant( const variant& var,  std::set<T...>& vo );
+
+   template<typename... T>
+   void to_variant( const std::multiset<T...>& var,  variant& vo );
+   template<typename... T>
+   void from_variant( const variant& var,  std::multiset<T...>& vo );
 
    void to_variant( const time_point& var,  variant& vo );
    void from_variant( const variant& var,  time_point& vo );
@@ -453,8 +458,8 @@ namespace fc
    }
 
 
-   template<typename T>
-   void to_variant( const std::set<T>& var,  variant& vo )
+   template<typename... T>
+   void to_variant( const std::set<T...>& var,  variant& vo )
    {
        std::vector<variant> vars(var.size());
        size_t i = 0;
@@ -462,14 +467,33 @@ namespace fc
           vars[i] = variant(*itr);
        vo = vars;
    }
-   template<typename T>
-   void from_variant( const variant& var,  std::set<T>& vo )
+   template<typename... T>
+   void from_variant( const variant& var,  std::set<T...>& vo )
    {
       const variants& vars = var.get_array();
       vo.clear();
       //vo.reserve( vars.size() );
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         vo.insert( itr->as<T>() );
+         vo.insert( itr->as<typename std::set<T...>::value_type>() );
+   }
+
+   template<typename... T>
+   void to_variant( const std::multiset<T...>& var,  variant& vo )
+   {
+       std::vector<variant> vars(var.size());
+       size_t i = 0;
+       for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
+          vars[i] = variant(*itr);
+       vo = vars;
+   }
+   template<typename... T>
+   void from_variant( const variant& var,  std::multiset<T...>& vo )
+   {
+      const variants& vars = var.get_array();
+      vo.clear();
+      //vo.reserve( vars.size() );
+      for( auto itr = vars.begin(); itr != vars.end(); ++itr )
+         vo.insert( itr->as<typename std::multiset<T...>::value_type>() );
    }
 
    /** @ingroup Serializable */

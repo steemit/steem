@@ -13,6 +13,10 @@
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
 
+#include <steem/chain/util/advanced_benchmark_dumper.hpp>
+
+#include <appbase/plugin.hpp>
+
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -27,6 +31,7 @@ namespace steem { namespace chain {
    using steem::protocol::asset;
    using steem::protocol::asset_symbol_type;
    using steem::protocol::price;
+   using abstract_plugin = appbase::abstract_plugin;
 
    class database_impl;
    class custom_operation_interpreter;
@@ -35,6 +40,9 @@ namespace steem { namespace chain {
       struct comment_reward_context;
    }
 
+   namespace util {
+      class advanced_benchmark_dumper;
+   }
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -81,6 +89,7 @@ namespace steem { namespace chain {
             uint64_t shared_file_size = 0;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
+            bool benchmark_is_enabled = false;
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
@@ -222,50 +231,34 @@ namespace steem { namespace chain {
          void notify_on_pre_apply_transaction( const signed_transaction& tx );
          void notify_on_applied_transaction( const signed_transaction& tx );
 
-         /**
-          *  This signal is emitted for plugins to process every operation after it has been fully applied.
-          */
-         fc::signal<void(const operation_notification&)> pre_apply_operation;
-         fc::signal<void(const operation_notification&)> post_apply_operation;
+         using operation_notification_t = std::function< void(const operation_notification&) >;
+         using transaction_notification_t = std::function< void(const signed_transaction&) >;
+         using block_notification_t = std::function< void(const signed_block&) >;
+         using plugin_index_signal_notification_t = std::function< void(void) >;
+         using on_reindex_start_notification_t = std::function< void () >;
+         using on_reindex_done_notification_t = std::function< void(bool,uint32_t) >;
 
-         /**
-          *  This signal is emitted after all operations and virtual operation for a
-          *  block have been applied but before the get_applied_operations() are cleared.
-          *
-          *  You may not yield from this callback because the blockchain is holding
-          *  the write lock and may be in an "inconstant state" until after it is
-          *  released.
-          */
-         fc::signal<void(const signed_block&)>           applied_block;
+      private:
+         template <typename TSignal,
+                   typename TNotification = std::function<typename TSignal::signature_type>>
+         boost::signals2::connection connect_impl( TSignal& signal, const TNotification& func,
+            const abstract_plugin& plugin, int32_t group, const std::string& item_name = "" );
 
-         /**
-          * This signal is emitted any time a new transaction is added to the pending
-          * block state.
-          */
-         fc::signal<void(const signed_transaction&)>     on_pending_transaction;
+         template< bool IS_PRE_OPERATION >
+         boost::signals2::connection any_apply_operation_proxy_impl( const operation_notification_t& func,
+            const abstract_plugin& plugin, int32_t group );
 
-         /**
-          * This signla is emitted any time a new transaction is about to be applied
-          * to the chain state.
-          */
-         fc::signal<void(const signed_transaction&)>     on_pre_apply_transaction;
+      public:
 
-         /**
-          * This signal is emitted any time a new transaction has been applied to the
-          * chain state.
-          */
-         fc::signal<void(const signed_transaction&)>     on_applied_transaction;
+         boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_pending_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_applied_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection applied_block_proxy( const block_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_reindex_start_proxy(const on_reindex_start_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection on_reindex_done_proxy(const on_reindex_done_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
 
-         /**
-          *  Emitted After a block has been applied and committed.  The callback
-          *  should not yield and should execute quickly.
-          */
-         //fc::signal<void(const vector< object_id_type >&)> changed_objects;
-
-         /** this signal is emitted any time an object is removed and contains a
-          * pointer to the last value of every object that was removed.
-          */
-         //fc::signal<void(const vector<const object*>&)>  removed_objects;
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -449,13 +442,6 @@ namespace steem { namespace chain {
 
          ///@}
 #endif
-         typedef void on_reindex_start_t();
-         typedef void on_reindex_done_t(bool,uint32_t);
-
-         void on_reindex_start_connect(on_reindex_start_t functor)
-            { _on_reindex_start.connect(functor); }
-         void on_reindex_done_connect(on_reindex_done_t functor)
-            { _on_reindex_done.connect(functor); }
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
@@ -512,8 +498,6 @@ namespace steem { namespace chain {
          template< typename MultiIndexType >
          friend void add_plugin_index( database& db );
 
-         fc::signal< void() >          _plugin_index_signal;
-
          transaction_id_type           _current_trx_id;
          uint32_t                      _current_block_num    = 0;
          uint16_t                      _current_trx_in_block = 0;
@@ -534,8 +518,57 @@ namespace steem { namespace chain {
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;
 
-         fc::signal<on_reindex_start_t>   _on_reindex_start;
-         fc::signal<on_reindex_done_t>    _on_reindex_done;
+         util::advanced_benchmark_dumper  _benchmark_dumper;
+
+         /**
+          *  This signal is emitted for plugins to process every operation after it has been fully applied.
+          */
+         fc::signal<void(const operation_notification&)> _pre_apply_operation;
+         fc::signal<void(const operation_notification&)> _post_apply_operation;
+
+         /**
+          *  This signal is emitted after all operations and virtual operation for a
+          *  block have been applied but before the get_applied_operations() are cleared.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         fc::signal<void(const signed_block&)>           _applied_block;
+
+         /**
+          * This signal is emitted any time a new transaction is added to the pending
+          * block state.
+          */
+         fc::signal<void(const signed_transaction&)>     _on_pending_transaction;
+
+         /**
+          * This signla is emitted any time a new transaction is about to be applied
+          * to the chain state.
+          */
+         fc::signal<void(const signed_transaction&)>     _on_pre_apply_transaction;
+
+         /**
+          * This signal is emitted any time a new transaction has been applied to the
+          * chain state.
+          */
+         fc::signal<void(const signed_transaction&)>     _on_applied_transaction;
+
+         /**
+          *  Emitted After a block has been applied and committed.  The callback
+          *  should not yield and should execute quickly.
+          */
+         //fc::signal<void(const vector< object_id_type >&)> changed_objects;
+
+         /** this signal is emitted any time an object is removed and contains a
+          * pointer to the last value of every object that was removed.
+          */
+         //fc::signal<void(const vector<const object*>&)>  removed_objects;
+
+         fc::signal< void() >                _plugin_index_signal;
+
+         fc::signal< void() >                _on_reindex_start;
+         fc::signal< void(bool, uint32_t) >  _on_reindex_done;
    };
 
 } }

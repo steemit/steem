@@ -115,6 +115,8 @@ void database::open( const open_args& args )
             init_genesis( args.initial_supply );
          });
 
+      _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
+
       _block_log.open( args.data_dir / "block_log" );
 
       auto log_head = _block_log.head();
@@ -916,12 +918,12 @@ void database::notify_pre_apply_operation( operation_notification& note )
    note.trx_in_block = _current_trx_in_block;
    note.op_in_trx    = _current_op_in_trx;
 
-   STEEM_TRY_NOTIFY( pre_apply_operation, note )
+   STEEM_TRY_NOTIFY( _pre_apply_operation, note )
 }
 
 void database::notify_post_apply_operation( const operation_notification& note )
 {
-   STEEM_TRY_NOTIFY( post_apply_operation, note )
+   STEEM_TRY_NOTIFY( _post_apply_operation, note )
 }
 
 inline const void database::push_virtual_operation( const operation& op, bool force )
@@ -943,22 +945,22 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
 
 void database::notify_applied_block( const signed_block& block )
 {
-   STEEM_TRY_NOTIFY( applied_block, block )
+   STEEM_TRY_NOTIFY( _applied_block, block )
 }
 
 void database::notify_on_pending_transaction( const signed_transaction& tx )
 {
-   STEEM_TRY_NOTIFY( on_pending_transaction, tx )
+   STEEM_TRY_NOTIFY( _on_pending_transaction, tx )
 }
 
 void database::notify_on_pre_apply_transaction( const signed_transaction& tx )
 {
-   STEEM_TRY_NOTIFY( on_pre_apply_transaction, tx )
+   STEEM_TRY_NOTIFY( _on_pre_apply_transaction, tx )
 }
 
 void database::notify_on_applied_transaction( const signed_transaction& tx )
 {
-   STEEM_TRY_NOTIFY( on_applied_transaction, tx )
+   STEEM_TRY_NOTIFY( _on_applied_transaction, tx )
 }
 
 account_name_type database::get_scheduled_witness( uint32_t slot_num )const
@@ -3010,8 +3012,157 @@ void database::apply_operation(const operation& op)
 {
    operation_notification note(op);
    notify_pre_apply_operation( note );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
+   
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
+
    notify_post_apply_operation( note );
+}
+
+
+template <typename TFunction> struct fcall {};
+
+template <typename TResult, typename... TArgs>
+struct fcall<TResult(TArgs...)>
+{
+   using TNotification = std::function<TResult(TArgs...)>;
+
+   fcall() = default;
+   fcall(const TNotification& func, util::advanced_benchmark_dumper& dumper,
+         const abstract_plugin& plugin, const std::string& item_name)
+         : _func(func), _benchmark_dumper(dumper)
+      {
+         _name = plugin.get_name() + item_name;
+      }
+
+   void operator () (TArgs&&... args)
+   {
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.begin();
+
+      _func(std::forward<TArgs>(args)...);
+
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.end(_name);
+   }
+
+private:
+   TNotification                    _func;
+   util::advanced_benchmark_dumper& _benchmark_dumper;
+   std::string                      _name;
+};
+
+template <typename TResult, typename... TArgs>
+struct fcall<std::function<TResult(TArgs...)>>
+   : public fcall<TResult(TArgs...)>
+{
+   typedef fcall<TResult(TArgs...)> TBase;
+   using TBase::TBase;
+};
+
+template <typename TSignal, typename TNotification>
+boost::signals2::connection database::connect_impl( TSignal& signal, const TNotification& func,
+   const abstract_plugin& plugin, int32_t group, const std::string& item_name )
+{
+   fcall<TNotification> fcall_wrapper(func,_benchmark_dumper,plugin,item_name);
+
+   if (group == -1)
+      return signal.connect(fcall_wrapper);
+   else
+      return signal.connect(group, fcall_wrapper);
+}
+
+template< bool IS_PRE_OPERATION >
+boost::signals2::connection database::any_apply_operation_proxy_impl( const operation_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   auto complex_func = [this, func, &plugin]( const operation_notification& o )
+   {
+      std::string name;
+
+      if (_benchmark_dumper.is_enabled())
+      {
+         if( _my->_evaluator_registry.is_evaluator( o.op ) )
+            name = _benchmark_dumper.generate_desc< IS_PRE_OPERATION >( plugin.get_name(), _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op ) );
+         else
+            name = util::advanced_benchmark_dumper::get_virtual_operation_name();
+
+         _benchmark_dumper.begin();
+      }
+
+      func( o );
+
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.end( name );
+   };
+
+   if( IS_PRE_OPERATION )
+   {
+      if (group == -1)
+         return _pre_apply_operation.connect(complex_func);
+      else
+         return _pre_apply_operation.connect(group, complex_func);
+   }
+   else
+   {
+      if (group == -1)
+         return _post_apply_operation.connect(complex_func);
+      else
+         return _post_apply_operation.connect(group, complex_func);
+   }
+}
+
+boost::signals2::connection database::pre_apply_operation_proxy( const operation_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return any_apply_operation_proxy_impl< true/*IS_PRE_OPERATION*/ >( func, plugin, group );
+}
+
+boost::signals2::connection database::post_apply_operation_proxy( const operation_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return any_apply_operation_proxy_impl< false/*IS_PRE_OPERATION*/ >( func, plugin, group );
+}
+
+boost::signals2::connection database::on_pending_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_pending_transaction, func, plugin, group, "@transaction");
+}
+
+boost::signals2::connection database::on_pre_apply_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_pre_apply_transaction, func, plugin, group, "->transaction");
+}
+
+boost::signals2::connection database::on_applied_transaction_proxy( const transaction_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_pre_apply_transaction, func, plugin, group, "<-transaction");
+}
+
+boost::signals2::connection database::applied_block_proxy( const block_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_applied_block, func, plugin, group, "<-block");
+}
+
+boost::signals2::connection database::on_reindex_start_proxy(const on_reindex_start_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_reindex_start, func, plugin, group, "->reindex");
+}
+
+boost::signals2::connection database::on_reindex_done_proxy(const on_reindex_done_notification_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_reindex_done, func, plugin, group, "<-reindex");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const

@@ -581,9 +581,12 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
-   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( 0, [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->applied_block_connection = my->_db.applied_block.connect( 0, [&]( const signed_block& b ){ my->on_block( b ); } );
+   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction_proxy(
+      [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); }, *this, 0 );
+   my->pre_apply_connection = my->_db.pre_apply_operation_proxy(
+      [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0);
+   my->applied_block_connection = my->_db.applied_block_proxy(
+      [&]( const signed_block& b ){ my->on_block( b ); }, *this, 0 );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
