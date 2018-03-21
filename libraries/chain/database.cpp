@@ -3641,6 +3641,7 @@ void database::modify_reward_balance( const account_object& a, const asset& valu
    });
 }
 
+#ifdef STEEM_ENABLE_SMT
 struct smt_regular_balance_operator
 {
    smt_regular_balance_operator( const asset& delta ) : delta(delta), is_vesting(delta.symbol.is_vesting()) {}
@@ -3693,6 +3694,7 @@ struct smt_reward_balance_operator
    asset share_delta;
    bool  is_vesting;
 };
+#endif
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
