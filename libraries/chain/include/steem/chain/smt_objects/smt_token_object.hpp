@@ -40,6 +40,34 @@ public:
       return liquid_symbol.to_nai();
    }
 
+   price    one_vesting_to_one_liquid() const
+   {
+      int64_t one_smt = std::pow(10, liquid_symbol.decimals());
+      return price ( asset( one_smt, liquid_symbol.get_paired_symbol() ), asset( one_smt, liquid_symbol ) );
+      // ^ On the assumption that liquid and vesting SMT have the same precision. See issue 2212
+   }
+
+   price    get_vesting_share_price() const
+   {
+      if ( total_vesting_fund_smt == 0 || total_vesting_shares == 0 )
+         return one_vesting_to_one_liquid();
+         // ^ In original method of globa_property_object it was one liquid to one vesting which seems to be a bug.
+
+      return price( asset( total_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( total_vesting_fund_smt, liquid_symbol ) );
+   }
+
+   price    get_reward_vesting_share_price() const
+   {
+      share_type reward_vesting_shares = total_vesting_shares + pending_rewarded_vesting_shares;
+      share_type reward_vesting_smt = total_vesting_fund_smt + pending_rewarded_vesting_smt;
+
+      if( reward_vesting_shares == 0 || reward_vesting_smt == 0 )
+          return one_vesting_to_one_liquid();
+      // ^ Additional check not found in original get_reward_vesting_share_price. See issue 2212
+
+      return price( asset( reward_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( reward_vesting_smt, liquid_symbol ) );
+   }
+
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
@@ -50,7 +78,12 @@ public:
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
-   share_type              current_supply = 0;
+   share_type  current_supply = 0;
+   share_type  total_vesting_fund_smt = 0;
+   share_type  total_vesting_shares = 0;
+   share_type  pending_rewarded_vesting_shares = 0;
+   share_type  pending_rewarded_vesting_smt = 0;
+
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
@@ -142,6 +175,10 @@ FC_REFLECT( steem::chain::smt_token_object,
    (control_account)
    (phase)
    (current_supply)
+   (total_vesting_fund_smt)
+   (total_vesting_shares)
+   (pending_rewarded_vesting_shares)
+   (pending_rewarded_vesting_smt)
    (market_maker)
    (allow_voting)
    (allow_vesting)
