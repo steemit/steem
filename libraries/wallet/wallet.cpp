@@ -266,18 +266,21 @@ namespace golos { namespace wallet {
                 }
 
                 variant info() const {
-                    //auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
-                    //fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
-                    fc::mutable_variant_object result;
-                    //result["witness_majority_version"] = std::string( _remote_database_api->get_witness_schedule().majority_version );
-                    //result["hardfork_version"] = std::string( _remote_database_api->get_hardfork_version() );
-                    //result["head_block_num"] = dynamic_props.head_block_number;
-                    //result["head_block_id"] = dynamic_props.head_block_id;
-                    //result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time, time_point_sec(time_point::now()), " old");
-                    //result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
-                    //result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
-                    //result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
-                    //result["post_reward_fund"] = fc::variant(_remote_api->get_reward_fund( STEEM_POST_REWARD_FUND_NAME )).get_object();
+                    auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
+                    fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
+                    result["witness_majority_version"] =
+                        std::string(_remote_database_api->get_witness_schedule().majority_version);
+                    result["hardfork_version"] =
+                        std::string(_remote_database_api->get_hardfork_version());
+                    result["head_block_num"] = dynamic_props.head_block_number;
+                    result["head_block_id"] = dynamic_props.head_block_id;
+                    result["head_block_age"] =
+                        fc::get_approximate_relative_time_string(
+                            dynamic_props.time, time_point_sec(time_point::now()), " old");
+                    result["participation"] =
+                        (100 * dynamic_props.recent_slots_filled.popcount()) / 128.0;
+                    result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
+                    result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
                     return result;
                 }
 
