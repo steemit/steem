@@ -61,7 +61,7 @@ using ::rocksdb::ColumnFamilyOptions;
 using ::rocksdb::ColumnFamilyHandle;
 using ::rocksdb::WriteBatch;
 
-namespace 
+namespace
 {
    template <class T>
    serialize_buffer_t dump(const T& obj)
@@ -88,7 +88,7 @@ namespace
    }
 
 /** Helper class to simplify construction of Slice objects holding primitive type values.
- * 
+ *
  */
 template <typename T>
 class PrimitiveTypeSlice final : public Slice
@@ -117,7 +117,7 @@ private:
 };
 
 /** Helper base class to cover all common functionality across defined comparators.
- * 
+ *
  */
 class AComparator : public Comparator
 {
@@ -142,7 +142,7 @@ protected:
    AComparator() = default;
 };
 
-/// Pairs account_name storage type and the ID to make possible nonunique index definition over names. 
+/// Pairs account_name storage type and the ID to make possible nonunique index definition over names.
 typedef std::pair<account_name_type::Storage, size_t> account_name_storage_id_pair;
 
 template <typename T>
@@ -163,7 +163,7 @@ public:
       if(id1 > id2)
          return 1;
 
-      return 0; 
+      return 0;
   }
 
   virtual bool Equal(const Slice& a, const Slice& b) const override
@@ -190,9 +190,9 @@ typedef PrimitiveTypeComparatorImpl<uint32_t> by_id_ComparatorImpl;
 
 typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_ComparatorImpl;
 
-/** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended 
+/** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended
  *  by some unique part (ie ID).
- * 
+ *
  */
 typedef std::pair<uint32_t, uint32_t> location_id_pair;
 typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
@@ -203,7 +203,7 @@ typedef PrimitiveTypeComparatorImpl<std::pair<uint32_t, uint32_t>> by_ah_info_op
 const Comparator* by_id_Comparator()
 {
    static by_id_ComparatorImpl c;
-   return &c; 
+   return &c;
 }
 
 const Comparator* by_location_Comparator()
@@ -348,7 +348,7 @@ public:
       /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
       options.IncreaseParallelism();
       options.OptimizeLevelStyleCompaction();
-      
+
       DBOptions dbOptions(options);
       options.max_open_files = OPEN_FILE_LIMIT;
 
@@ -361,11 +361,12 @@ public:
          loadSeqIdentifiers(storageDb);
          _storage.reset(storageDb);
 
-         _pre_apply_connection = _mainDb.pre_apply_operation.connect(
+         _pre_apply_connection = _mainDb.pre_apply_operation_proxy(
             [&]( const operation_notification& note )
             {
                on_operation(note);
-            });
+            },
+            appbase::app().get_plugin< rocksdb_plugin >() );
       }
       else
       {
@@ -390,7 +391,7 @@ public:
    /// Allows to enumerate all operations registered in given block range.
    uint32_t enumVirtualOperationsFromBlockRange(uint32_t blockRangeBegin,
       uint32_t blockRangeEnd, std::function<void(const tmp_operation_object&)> processor) const;
-      
+
    void shutdownDb()
    {
       chain::util::disconnect_signal(_pre_apply_connection);
@@ -439,13 +440,13 @@ private:
       auto s = storageDb->Get(rOptions, "STORE_MAJOR_VERSION", &buffer);
       checkStatus(s);
       const auto major = PrimitiveTypeSlice<uint32_t>::unpackSlice(buffer);
-      
+
       FC_ASSERT(major == STORE_MAJOR_VERSION, "Store major version mismatch");
 
       s = storageDb->Get(rOptions, "STORE_MINOR_VERSION", &buffer);
       checkStatus(s);
       const auto minor = PrimitiveTypeSlice<uint32_t>::unpackSlice(buffer);
-      
+
       FC_ASSERT(minor == STORE_MINOR_VERSION, "Store minor version mismatch");
    }
 
@@ -524,7 +525,7 @@ private:
     */
    bool isTrackedAccount(const account_name_type& name) const;
 
-   /** Returns a collection of the accounts being impacted by given `op` and 
+   /** Returns a collection of the accounts being impacted by given `op` and
     *  also tracked, because of passed options.
     *
     *  \see isTrackedAccount.
@@ -759,7 +760,7 @@ void rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
    uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
 {
    ReadOptions rOptions;
-   
+
    PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
    PinnableSlice buffer;
    auto s = _storage->Get(rOptions, _columnHandles[3], nameSlice, &buffer);
@@ -827,7 +828,7 @@ bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_obje
       load(*op, data.data(), data.size());
       return true;
    }
-   
+
    FC_ASSERT(s.IsNotFound());
 
    return false;
@@ -953,7 +954,7 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    }
 
    options.create_if_missing = true;
-   
+
    s = DB::Open(options, strPath, &db);
    if(s.ok())
    {
@@ -1106,7 +1107,7 @@ void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& na
    //       ("oid", obj.id)
    //    );
    // }
-      
+
    }
    else
    {
@@ -1134,7 +1135,7 @@ void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& na
    //       ("oid", obj.id)
    //    );
    // }
-      
+
    }
 }
 
@@ -1162,10 +1163,10 @@ void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahI
 
    std::unique_ptr<::rocksdb::Iterator> dataItr(_storage->NewIterator(rOptions, _columnHandles[4]));
 
-   /** To clean outdated records we have to iterate over all AH records having subsequent number greater than limit 
+   /** To clean outdated records we have to iterate over all AH records having subsequent number greater than limit
     *  and additionally verify date of operation, to clean up only these exceeding a date limit.
     *  So just operations having a list position > ACCOUNT_HISTORY_LENGTH_LIMIT and older that ACCOUNT_HISTORY_TIME_LIMIT
-    *  shall be removed. 
+    *  shall be removed.
     */
    dataItr->Seek(oldestEntrySlice);
 
@@ -1202,7 +1203,7 @@ void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahI
          ahInfo->oldestEntryId = foundEntry.second;
          ahInfo->oldestEntryTimestamp = op.timestamp;
          FC_ASSERT(ahInfo->oldestEntryId <= ahInfo->newestEntryId);
-         
+
          break;
       }
    }
@@ -1310,7 +1311,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
       ("ct", measure.cpu_ms)
       ("cm", measure.current_mem)
       ("pm", measure.peak_mem) );
-   
+
    printReport(blockNo, "RocksDB data import finished. ");
 }
 
@@ -1346,7 +1347,7 @@ void rocksdb_plugin::set_program_options(
       ("account-history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored.")
       ("history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of account-history-blacklist-ops.")
       ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" )
-         
+
    ;
    command_line_options.add_options()
       ("rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
