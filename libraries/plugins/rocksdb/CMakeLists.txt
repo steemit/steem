@@ -1,11 +1,3 @@
-#Configure needed build options of RocksDB.
-SET(WITH_TESTS OFF CACHE BOOL "build with tests")
-SET(WITH_SNAPPY ON CACHE BOOL "build with SNAPPY")
-SET(WITH_ZLIB ON CACHE BOOL "build with ZLIB")
-SET(WITH_BZ2 ON CACHE BOOL "build with BZ2")
-
-add_subdirectory(rocksdb)
-
 file(GLOB HEADERS "include/steem/plugins/rocksdb/*.hpp")
 
 add_library( rocksdb_plugin
@@ -19,7 +11,7 @@ target_link_libraries( rocksdb_plugin
 
 target_include_directories( rocksdb_plugin
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-          "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/include"
+          "${CMAKE_CURRENT_SOURCE_DIR}/../../vendor/rocksdb/include"
    )
 
 install( TARGETS
