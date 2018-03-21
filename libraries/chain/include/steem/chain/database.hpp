@@ -79,6 +79,8 @@ namespace steem { namespace chain {
             fc::path shared_mem_dir;
             uint64_t initial_supply = STEEM_INIT_SUPPLY;
             uint64_t shared_file_size = 0;
+            uint16_t shared_file_full_threshold = 0;
+            uint16_t shared_file_scale_rate = 0;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
 
@@ -427,7 +429,7 @@ namespace steem { namespace chain {
          const std::string& get_json_schema() const;
 
          void set_flush_interval( uint32_t flush_blocks );
-         void show_free_memory( bool force, uint32_t current_block_num );
+         void check_free_memory( bool force_print, uint32_t current_block_num );
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
@@ -528,6 +530,9 @@ namespace steem { namespace chain {
          uint32_t                      _last_free_gb_printed = 0;
          /// For Initial value see appropriate comment where get_smt_next_identifier is implemented.
          uint32_t                      _next_available_nai = SMT_MIN_NON_RESERVED_NAI;
+
+         uint16_t                      _shared_file_full_threshold = 0;
+         uint16_t                      _shared_file_scale_rate = 0;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;

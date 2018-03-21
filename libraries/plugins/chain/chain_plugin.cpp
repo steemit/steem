@@ -50,6 +50,8 @@ class chain_plugin_impl
       void stop_write_processing();
 
       uint64_t                         shared_memory_size = 0;
+      uint16_t                         shared_file_full_threshold = 0;
+      uint16_t                         shared_file_scale_rate = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;
@@ -234,7 +236,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("shared-file-dir", bpo::value<bfs::path>()->default_value("blockchain"),
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
-         ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G")
+         ("shared-file-size", bpo::value<string>()->default_value("24G"), "Size of the shared memory file. Default: 24G. If running a full node, increase this value to 200G.")
+         ("shared-file-full-threshold", bpo::value<uint16_t>()->default_value(0),
+            "A 2 precision percentage (0-10000) that defines the threshold for when to autoscale the shared memory file. Setting this to 0 disables autoscaling. Recommended value for consensus node is 9500 (95%). Full node is 9900 (99%)" )
+         ("shared-file-scale-rate", bpo::value<uint16_t>()->default_value(0),
+            "A 2 precision percentage (0-10000) that defines how quickly to scale the shared memory file. When autoscaling occurs the file's size will be increased by this percent. Setting this to 0 disables autoscaling. Recommended value is between 1000-2000 (10-20%)" )
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
@@ -266,6 +272,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
+
+   if( options.count( "shared-file-full-threshold" ) )
+      my->shared_file_full_threshold = options.at( "shared-file-full-threshold" ).as< uint16_t >();
+
+   if( options.count( "shared-file-scale-rate" ) )
+      my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
@@ -341,6 +353,8 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_mem_dir = my->shared_memory_dir;
    db_open_args.initial_supply = STEEM_INIT_SUPPLY;
    db_open_args.shared_file_size = my->shared_memory_size;
+   db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
+   db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
 

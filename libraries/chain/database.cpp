@@ -149,6 +149,9 @@ void database::open( const open_args& args )
          auto last_block_num = _block_log.head()->block_num();
          args.benchmark.second(last_block_num, get_abstract_index_cntr());
       }
+
+      _shared_file_full_threshold = args.shared_file_full_threshold;
+      _shared_file_scale_rate = args.shared_file_scale_rate;
    }
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
@@ -207,6 +210,7 @@ uint32_t database::reindex( const open_args& args )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
+
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
                args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
             itr = _block_log.read_block( itr.second );
@@ -552,6 +556,8 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
             result = _push_block(new_block);
          }
          FC_CAPTURE_AND_RETHROW( (new_block) )
+
+         check_free_memory( false, new_block.block_num() );
       });
    });
 
@@ -613,7 +619,7 @@ bool database::_push_block(const signed_block& new_block)
                 optional<fc::exception> except;
                 try
                 {
-                   auto session = start_undo_session( true );
+                   auto session = start_undo_session();
                    apply_block( (*ritr)->data, skip );
                    session.push();
                 }
@@ -636,7 +642,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      auto session = start_undo_session( true );
+                      auto session = start_undo_session();
                       apply_block( (*ritr)->data, skip );
                       session.push();
                    }
@@ -652,7 +658,7 @@ bool database::_push_block(const signed_block& new_block)
 
    try
    {
-      auto session = start_undo_session( true );
+      auto session = start_undo_session();
       apply_block(new_block, skip);
       session.push();
    }
@@ -704,14 +710,14 @@ void database::_push_transaction( const signed_transaction& trx )
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_tx_session.valid() )
-      _pending_tx_session = start_undo_session( true );
+      _pending_tx_session = start_undo_session();
 
    // Create a temporary undo session as a child of _pending_tx_session.
    // The temporary session will be discarded by the destructor if
    // _apply_transaction fails.  If we make it to merge(), we
    // apply the changes.
 
-   auto temp_session = start_undo_session( true );
+   auto temp_session = start_undo_session();
    _apply_transaction( trx );
    _pending_tx.push_back( trx );
 
@@ -780,7 +786,7 @@ signed_block database::_generate_block(
       // re-apply pending transactions in this method.
       //
       _pending_tx_session.reset();
-      _pending_tx_session = start_undo_session( true );
+      _pending_tx_session = start_undo_session();
 
       uint64_t postponed_tx_count = 0;
       // pop pending state (reset to head block state)
@@ -803,7 +809,7 @@ signed_block database::_generate_block(
 
          try
          {
-            auto temp_session = start_undo_session( true );
+            auto temp_session = start_undo_session();
             _apply_transaction( tx );
             temp_session.squash();
 
@@ -2505,7 +2511,7 @@ void database::validate_transaction( const signed_transaction& trx )
 {
    database::with_write_lock( [&]()
    {
-      auto session = start_undo_session( true );
+      auto session = start_undo_session();
       _apply_transaction( trx );
       session.undo();
    });
@@ -2617,28 +2623,44 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
-   show_free_memory( false, next_block.block_num() );
-
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
-void database::show_free_memory( bool force, uint32_t current_block_num )
+void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
-   uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
-   if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
-   {
-      ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
-      _last_free_gb_printed = free_gb;
-   }
+   uint64_t free_mem = get_free_memory();
+   uint64_t max_mem = get_max_memory();
 
-   if( free_gb == 0 )
+   if( BOOST_UNLIKELY( _shared_file_full_threshold != 0 && _shared_file_scale_rate != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - _shared_file_full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
    {
+      uint64_t new_max = ( uint128_t( max_mem * _shared_file_scale_rate ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
+
+      wlog( "Memory is almost full, increasing to ${mem}M", ("mem", new_max / (1024*1024)) );
+
+      resize( new_max );
+
       uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+      wlog( "Free memory is now ${free}M", ("free", free_mb) );
+      _last_free_gb_printed = free_mb / 1024;
+   }
+   else
+   {
+      uint32_t free_gb = uint32_t( free_mem / (1024*1024*1024) );
+      if( BOOST_UNLIKELY( force_print || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) ) )
+      {
+         ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
+         _last_free_gb_printed = free_gb;
+      }
 
-#ifdef IS_TEST_NET
-   if( !disable_low_mem_warning )
-#endif
-      if( free_mb <= 100 && head_block_num() % 10 == 0 )
-         elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
+      if( BOOST_UNLIKELY( free_gb == 0 ) )
+      {
+         uint32_t free_mb = uint32_t( free_mem / (1024*1024) );
+
+   #ifdef IS_TEST_NET
+      if( !disable_low_mem_warning )
+   #endif
+         if( free_mb <= 100 && head_block_num() % 10 == 0 )
+            elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
+      }
    }
 }
 
