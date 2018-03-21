@@ -8,27 +8,50 @@
 namespace steem { namespace protocol {
 
 /**
+ * Base of all smt operations issued by token creator, holding what's needed by all of them.
+ */
+struct smt_base_operation : public base_operation
+{
+   /// Account that controls the SMT.
+   account_name_type control_account;
+   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
+   asset_symbol_type symbol;
+
+   void validate()const;
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
+};
+
+/**
+ * Base of all smt operations issued any user (aka executor).
+ */
+struct smt_executor_base_operation : public base_operation
+{
+   /// Account that executes the operation.
+   account_name_type executor;
+   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
+   asset_symbol_type symbol;
+
+   void validate()const;
+   void get_required_active_authorities( flat_set< account_name_type >& a )const
+   { a.insert( executor ); }
+};
+
+/**
  * This operation introduces new SMT into blockchain as identified by
  * Numerical Asset Identifier (NAI). Also the SMT precision (decimal points)
  * is explicitly provided.
  */
-struct smt_create_operation : public base_operation
+struct smt_create_operation : public smt_base_operation
 {
-   /// Account that controls the SMT.
-   account_name_type control_account;
    /// The amount to be transfered from @account to null account as elevation fee.
    asset             smt_creation_fee;
-   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
-   asset_symbol_type symbol;
    /// Separately provided precision for clarity and redundancy.
    uint8_t           precision;
 
    extensions_type   extensions;
 
    void validate()const;
-
-   void get_required_active_authorities( flat_set<account_name_type>& a )const
-   { a.insert( control_account ); }
 };
 
 struct smt_generation_unit
@@ -93,9 +116,8 @@ typedef static_variant<
    smt_capped_generation_policy
    > smt_generation_policy;
 
-struct smt_setup_operation : public base_operation
+struct smt_setup_operation : public smt_base_operation
 {
-   account_name_type       control_account;
    uint8_t                 decimal_places = 0;
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
@@ -111,8 +133,6 @@ struct smt_setup_operation : public base_operation
    extensions_type         extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( control_account ); }
 };
 
 struct smt_revealed_cap
@@ -138,30 +158,23 @@ struct smt_revealed_cap
    }
 };
 
-struct smt_cap_reveal_operation : public base_operation
+struct smt_cap_reveal_operation : public smt_base_operation
 {
-   account_name_type     control_account;
-   smt_revealed_cap      cap;
+   smt_revealed_cap  cap;
 
-   extensions_type       extensions;
+   extensions_type   extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( control_account ); }
 };
 
-struct smt_refund_operation : public base_operation
+struct smt_refund_operation : public smt_executor_base_operation
 {
-   account_name_type       executor;
    account_name_type       contributor;
    contribution_id_type    contribution_id;
-   asset_symbol_type       smt;
    asset                   amount;
    extensions_type         extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( executor ); }
 };
 
 struct smt_emissions_unit
@@ -169,12 +182,8 @@ struct smt_emissions_unit
    flat_map< account_name_type, uint16_t >        token_unit;
 };
 
-struct smt_setup_emissions_operation : public base_operation
+struct smt_setup_emissions_operation : public smt_base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision of the SMT.
-   asset_symbol_type   symbol;
-   account_name_type   control_account;
-
    time_point_sec      schedule_time;
    smt_emissions_unit  emissions_unit;
 
@@ -194,8 +203,6 @@ struct smt_setup_emissions_operation : public base_operation
    extensions_type     extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( control_account ); }
 };
 
 
@@ -241,47 +248,46 @@ typedef static_variant<
    smt_param_rewards_v1
    > smt_runtime_parameter;
 
-struct smt_set_setup_parameters_operation : public base_operation
+struct smt_set_setup_parameters_operation : public smt_base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision of the SMT.
-   asset_symbol_type                                 symbol;
-   account_name_type                                 control_account;
-
-   flat_set< smt_setup_parameter >                   setup_parameters;
-   extensions_type                                   extensions;
+   flat_set< smt_setup_parameter >  setup_parameters;
+   extensions_type                  extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( control_account ); }
 };
 
-struct smt_set_runtime_parameters_operation : public base_operation
+struct smt_set_runtime_parameters_operation : public smt_base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision of the SMT.
-   asset_symbol_type                                 symbol;
-   account_name_type                                 control_account;
-
-   flat_set< smt_runtime_parameter >                 runtime_parameters;
-   extensions_type                                   extensions;
+   flat_set< smt_runtime_parameter >   runtime_parameters;
+   extensions_type                     extensions;
 
    void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( control_account ); }
 };
 
 } }
 
 FC_REFLECT(
-   steem::protocol::smt_create_operation,
+   steem::protocol::smt_base_operation,
    (control_account)
-   (smt_creation_fee)
    (symbol)
-   (extensions)
 )
 
 FC_REFLECT(
+   steem::protocol::smt_executor_base_operation,
+   (executor)
+   (symbol)
+)
+
+FC_REFLECT_DERIVED(
+   steem::protocol::smt_create_operation,
+   (steem::protocol::smt_base_operation),
+   (smt_creation_fee)
+   (extensions)
+)
+
+FC_REFLECT_DERIVED(
    steem::protocol::smt_setup_operation,
-   (control_account)
+   (steem::protocol::smt_base_operation),
    (decimal_places)
    (max_supply)
    (initial_generation_policy)
@@ -312,9 +318,9 @@ FC_REFLECT(
    (nonce)
    )
 
-FC_REFLECT(
+FC_REFLECT_DERIVED(
    steem::protocol::smt_cap_reveal_operation,
-   (control_account)
+   (steem::protocol::smt_base_operation),
    (cap)
    (extensions)
    )
@@ -331,12 +337,11 @@ FC_REFLECT(
    (extensions)
    )
 
-FC_REFLECT(
+FC_REFLECT_DERIVED(
    steem::protocol::smt_refund_operation,
-   (executor)
+   (steem::protocol::smt_executor_base_operation),
    (contributor)
    (contribution_id)
-   (smt)
    (amount)
    (extensions)
    )
@@ -346,10 +351,9 @@ FC_REFLECT(
    (token_unit)
    )
 
-FC_REFLECT(
+FC_REFLECT_DERIVED(
    steem::protocol::smt_setup_emissions_operation,
-   (symbol)
-   (control_account)
+   (steem::protocol::smt_base_operation),
    (schedule_time)
    (emissions_unit)
    (interval_seconds)
@@ -401,18 +405,16 @@ FC_REFLECT_TYPENAME(
    steem::protocol::smt_runtime_parameter
    )
 
-FC_REFLECT(
+FC_REFLECT_DERIVED(
    steem::protocol::smt_set_setup_parameters_operation,
-   (symbol)
-   (control_account)
+   (steem::protocol::smt_base_operation),
    (setup_parameters)
    (extensions)
    )
 
-FC_REFLECT(
+FC_REFLECT_DERIVED(
    steem::protocol::smt_set_runtime_parameters_operation,
-   (symbol)
-   (control_account)
+   (steem::protocol::smt_base_operation),
    (runtime_parameters)
    (extensions)
    )

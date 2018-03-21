@@ -206,6 +206,10 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
       FC_UNUSED(an);
 
       smt_setup_emissions_operation op;
+      // Invalid token symbol.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.symbol = alice_symbol;
       // Invalid account name.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -248,10 +252,18 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 {
    try
    {
+      ACTORS( (dany) )
+      generate_block();
+      asset_symbol_type dany_symbol = create_smt("dany", dany_private_key, 3);
+
       smt_set_setup_parameters_operation op;
+
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception ); // invalid symbol
+      op.symbol = dany_symbol;
+
       op.control_account = "####";
       STEEM_REQUIRE_THROW( op.validate(), fc::exception ); // invalid account name
-
+      
       op.control_account = "dany";
       op.validate();
 
@@ -435,12 +447,19 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_windows_validate )
    {
       BOOST_REQUIRE( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS > SMT_UPVOTE_LOCKOUT );
 
+      ACTORS( (alice) )
+      generate_block();
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
+
       smt_set_runtime_parameters_operation op;
 
       op.control_account = "{}{}{}{}";
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.control_account = "alice";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.symbol = alice_symbol;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       smt_param_windows_v1 windows;
@@ -492,8 +511,13 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_regeneration_period_validate )
 {
    try
    {
+      ACTORS( (alice) )
+      generate_block();
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
+
       smt_set_runtime_parameters_operation op;
       op.control_account = "alice";
+      op.symbol = alice_symbol;
 
       smt_param_vote_regeneration_period_seconds_v1 regeneration;
 
@@ -593,6 +617,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
       fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
       // Do minimal operation setup that allows successful validatation.
       {
+         ACTORS( (alice) )
+         generate_block();
+         asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 4);
+
          smt_capped_generation_policy gpolicy;
          uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
          // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
@@ -606,6 +634,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
          // Note that neither tested SMT nor even its creator is necessary to validate this operation.
          op.control_account = "alice";
+         op.symbol = alice_symbol;
          op.decimal_places = 4;
          op.initial_generation_policy = gpolicy;
          op.generation_begin_time = start_time;
@@ -636,7 +665,7 @@ BOOST_AUTO_TEST_CASE( smt_refund_validate )
       op.executor = "executor";
       op.contributor = "contributor";
       op.contribution_id = 0;
-      op.smt = creator_symbol;
+      op.symbol = creator_symbol;
       op.amount = ASSET( "1.000 TESTS" );
       op.validate();
 
@@ -648,9 +677,9 @@ BOOST_AUTO_TEST_CASE( smt_refund_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.contributor = "contributor";
 
-      op.smt = op.amount.symbol;
+      op.symbol = op.amount.symbol;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.smt = creator_symbol;
+      op.symbol = creator_symbol;
 
       op.amount = asset( 1, creator_symbol );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
