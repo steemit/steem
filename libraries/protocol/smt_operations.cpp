@@ -6,15 +6,31 @@
 
 namespace steem { namespace protocol {
 
-void smt_create_operation::validate()const
+void common_symbol_validation( const asset_symbol_type& symbol )
 {
-   validate_account_name( control_account );
-   FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
-   FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
-   FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
    symbol.validate();
    FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
    FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
+}
+
+void smt_base_operation::validate()const
+{
+   validate_account_name( control_account );
+   common_symbol_validation( symbol );
+}
+
+void smt_executor_base_operation::validate()const
+{
+   validate_account_name( executor );
+   common_symbol_validation( symbol );
+}
+
+void smt_create_operation::validate()const
+{
+   smt_base_operation::validate();
+   FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
+   FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
+   FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
    FC_ASSERT( symbol.decimals() == precision, "Mismatch between redundantly provided precision ${prec1} vs ${prec2}",
       ("prec1",symbol.decimals())("prec2",precision) );
 }
@@ -177,7 +193,7 @@ struct validate_visitor
 
 void smt_setup_emissions_operation::validate()const
 {
-   FC_ASSERT( is_valid_account_name( control_account ) );
+   smt_base_operation::validate();
    
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
    FC_ASSERT( emissions_unit.token_unit.empty() == false );
@@ -204,7 +220,7 @@ void smt_setup_emissions_operation::validate()const
 
 void smt_setup_operation::validate()const
 {
-   FC_ASSERT( is_valid_account_name( control_account ) );
+   smt_base_operation::validate();
    FC_ASSERT( decimal_places <= SMT_MAX_DECIMAL_PLACES );
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
@@ -255,7 +271,7 @@ struct smt_set_runtime_parameters_operation_visitor
 
 void smt_set_runtime_parameters_operation::validate()const
 {
-   FC_ASSERT( is_valid_account_name( control_account ) );
+   smt_base_operation::validate();
    FC_ASSERT( !runtime_parameters.empty() );
 
    smt_set_runtime_parameters_operation_visitor visitor;
@@ -265,17 +281,20 @@ void smt_set_runtime_parameters_operation::validate()const
 
 void smt_refund_operation::validate()const
 {
-   FC_ASSERT( is_valid_account_name( executor ) );
+   smt_executor_base_operation::validate();
    FC_ASSERT( is_valid_account_name( contributor ) );
-   FC_ASSERT( smt.space() == asset_symbol_type::smt_nai_space );
    FC_ASSERT( amount.symbol == STEEM_SYMBOL );
 }
 
 // TODO: These validators
-void smt_cap_reveal_operation::validate()const {}
+void smt_cap_reveal_operation::validate()const
+{
+   smt_base_operation::validate();
+}
+
 void smt_set_setup_parameters_operation::validate() const
 {
-   FC_ASSERT( is_valid_account_name( control_account ) );
+   smt_base_operation::validate();
 }
 
 } }
