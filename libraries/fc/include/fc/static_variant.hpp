@@ -407,11 +407,20 @@ struct visitor {
       FC_ASSERT( v_object.contains( "type" ), "Type field doesn't exist." );
       FC_ASSERT( v_object.contains( "value" ), "Value field doesn't exist." );
 
-      auto itr = to_tag.find( v_object[ "type" ].as_string() );
-      FC_ASSERT( itr != to_tag.end(), "Invalid object name: ${n}", ("n", v_object[ "type" ]) );
+      int64_t which = -1;
 
-      s.set_which( to_tag[ v_object[ "type" ].as_string() ] );
+      if( v_object[ "type" ].is_integer() )
+      {
+         which = v_object[ "type" ].as_int64();
+      }
+      else
+      {
+         auto itr = to_tag.find( v_object[ "type" ].as_string() );
+         FC_ASSERT( itr != to_tag.end(), "Invalid object name: ${n}", ("n", v_object[ "type" ]) );
+         which = itr->second;
+      }
 
+      s.set_which( which );
       s.visit( fc::to_static_variant( v_object[ "value" ] ) );
    }
 

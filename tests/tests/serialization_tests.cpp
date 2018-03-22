@@ -561,9 +561,9 @@ BOOST_AUTO_TEST_CASE( static_variant_json_test )
       op = transfer_operation();
 
       auto json_str = fc::json::to_string( op );
-      BOOST_CHECK_EQUAL( json_str, "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"\",\"to\":\"\",\"amount\":[\"0\",3,\"@@000000021\"],\"memo\":\"\"}}" );
+      BOOST_CHECK_EQUAL( json_str, "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"\",\"to\":\"\",\"amount\":{\"amount\":\"0\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}" );
 
-      json_str = "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":[\"1000\",3,\"@@000000021\"],\"memo\":\"\"}}";
+      json_str = "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":{\"amount\":\"1000\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}";
       from_variant( fc::json::from_string( json_str ), op );
       BOOST_CHECK_EQUAL( op.which(), 0 );
 
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE( static_variant_json_test )
       BOOST_CHECK( c.body == "" );
       BOOST_CHECK( c.json_metadata == "" );
 
-      json_str = "{\"type\":\"not_a_type\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":[\"1000\",3,\"@@000000021\"],\"memo\":\"\"}}";
+      json_str = "{\"type\":\"not_a_type\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":{\"amount\":\"1000\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}";
       STEEM_REQUIRE_THROW( from_variant( fc::json::from_string( json_str ), op ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW();
