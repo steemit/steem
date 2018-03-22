@@ -112,12 +112,6 @@ void smt_revealed_cap::validate( const smt_cap_commitment& commitment )const
    FC_ASSERT( reveal_hash == commitment.hash );
 }
 
-#define SMT_MAX_UNIT_COUNT                  20
-#define SMT_MAX_DECIMAL_PLACES               8
-#define SMT_MIN_HARD_CAP_STEEM_UNITS     10000
-#define SMT_MIN_SATURATION_STEEM_UNITS    1000
-#define SMT_MIN_SOFT_CAP_STEEM_UNITS      1000
-
 void smt_capped_generation_policy::validate()const
 {
    pre_soft_cap_unit.validate();
