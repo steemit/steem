@@ -58,7 +58,7 @@ const smt_token_object& common_pre_setup_evaluation(
    const smt_token_object& smt = get_controlled_smt( _db, control_account, symbol );
 
    // Check whether it's not too late to setup emissions operation.
-   FC_ASSERT( smt.phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+   FC_ASSERT( smt.phase < smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
 
    return smt;
 }
@@ -117,10 +117,71 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    });
 }
 
+struct smt_setup_evaluator_visitor
+{
+   const smt_token_object& _token;
+   database& _db;
+
+   smt_setup_evaluator_visitor( const smt_token_object& token, database& db ): _token( token ), _db( db ){}
+
+   typedef void result_type;
+
+   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
+   {
+      _db.modify( _token, [&]( smt_token_object& token )
+      {
+         token.capped_generation_policy = capped_generation_policy;
+      });
+   }
+};
+
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   // TODO: Check whether some impostor tries to hijack SMT operation.
+
+   const auto* _token = _db.find< smt_token_object, by_control_account >( o.control_account );
+   FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
+
+   _db.modify(  *_token, [&]( smt_token_object& token )
+   {
+      token.control_account = o.control_account;
+      token.max_supply = o.max_supply;
+
+      token.generation_begin_time = o.generation_begin_time;
+      token.generation_end_time = o.generation_end_time;
+      token.announced_launch_time = o.announced_launch_time;
+      token.launch_expiration_time = o.launch_expiration_time;
+
+      /*
+         We should override precision in: 'lep_abs_amount', 'rep_abs_amount', 'liquid_symbol'
+         in case when new precision differs from old.
+      */
+      asset_symbol_type old_symbol = _token->liquid_symbol;
+      uint8_t old_decimal_places = old_symbol.decimals();
+
+      if( old_decimal_places != o.decimal_places )
+      {
+         uint32_t nai = old_symbol.to_nai();
+         asset_symbol_type new_symbol = asset_symbol_type::from_nai( nai, o.decimal_places );
+
+         token.liquid_symbol = new_symbol;
+         token.lep_abs_amount = asset( token.lep_abs_amount, new_symbol );
+         token.rep_abs_amount = asset( token.rep_abs_amount, new_symbol );
+      }
+   });
+
+   smt_setup_evaluator_visitor visitor( *_token, _db );
+   o.initial_generation_policy.visit( visitor );
+
+   _db.create< smt_event_token_object >( [&]( smt_event_token_object& event_token )
+   {
+      event_token.parent = _token->id;
+
+      event_token.generation_begin_time = _token->generation_begin_time;
+      event_token.generation_end_time = _token->generation_end_time;
+      event_token.announced_launch_time = _token->announced_launch_time;
+      event_token.launch_expiration_time = _token->launch_expiration_time;
+   });
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )

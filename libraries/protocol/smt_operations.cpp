@@ -2,7 +2,6 @@
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/validation.hpp>
 #ifdef STEEM_ENABLE_SMT
-#define SMT_MAX_UNIT_ROUTES       10
 
 namespace steem { namespace protocol {
 
@@ -104,12 +103,6 @@ void smt_cap_commitment::validate()const
       FC_ASSERT( hash == h );
    }
 }
-
-#define SMT_MAX_UNIT_COUNT                  20
-#define SMT_MAX_DECIMAL_PLACES               8
-#define SMT_MIN_HARD_CAP_STEEM_UNITS     10000
-#define SMT_MIN_SATURATION_STEEM_UNITS    1000
-#define SMT_MIN_SOFT_CAP_STEEM_UNITS      1000
 
 void smt_capped_generation_policy::validate()const
 {
@@ -230,10 +223,6 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
    FC_ASSERT( launch_expiration_time >= announced_launch_time );
-
-   // TODO:  Support using STEEM as well
-   // TODO:  Move amount check to evaluator, symbol check should remain here
-   FC_ASSERT( smt_creation_fee == asset( 1000000, SBD_SYMBOL ) );
 }  
 
 struct smt_set_runtime_parameters_operation_visitor
