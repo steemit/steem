@@ -14,7 +14,9 @@ FC_TODO( "After we vendor fc, also vendor diff_match_patch and fix these warning
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic push
+#if !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 #include <diff_match_patch.h>
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
