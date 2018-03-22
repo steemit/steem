@@ -810,6 +810,69 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( cap_commit_reveal_validate )
+{
+   try
+   {
+      smt_revealed_cap reveal0;
+      reveal0.amount = 0;
+      reveal0.nonce = 0;
+      smt_revealed_cap revealMaxPlus;
+      revealMaxPlus.amount = STEEM_MAX_SHARE_SUPPLY + 1;
+      revealMaxPlus.nonce = 0;
+      smt_revealed_cap reveal1M;
+      reveal1M.amount = 1000000;
+      reveal1M.nonce = 0;
+      smt_revealed_cap reveal1M1234;
+      reveal1M1234.amount = 1000000;
+      reveal1M1234.nonce = 1234;
+      smt_revealed_cap reveal1K1234;
+      reveal1K1234.amount = 1000;
+      reveal1K1234.nonce = 1234;
+      smt_revealed_cap reveal1G1234;
+      reveal1G1234.amount = 1000000000;
+      reveal1G1234.nonce = 1234;
+      smt_revealed_cap reveal1M4321;
+      reveal1M1234.amount = 1000000;
+      reveal1M1234.nonce = 4321;
+
+      // Public (i.e. non-hidden) cap
+      // Test cap value too low
+      smt_cap_commitment public_cap0;
+      public_cap0.lower_bound = public_cap0.upper_bound = 0;
+      public_cap0.hash = fc::sha256::hash( reveal0 );
+      STEEM_REQUIRE_THROW( public_cap0.validate(), fc::assert_exception );
+      // Test cap value too big
+      smt_cap_commitment public_capMaxPlus;
+      public_capMaxPlus.lower_bound = public_capMaxPlus.upper_bound = STEEM_MAX_SHARE_SUPPLY + 1;
+      public_capMaxPlus.hash = fc::sha256::hash( revealMaxPlus );
+      STEEM_REQUIRE_THROW( public_capMaxPlus.validate(), fc::assert_exception );
+      // Test valid commitment cap ...
+      smt_cap_commitment public_cap1M;
+      public_cap1M.lower_bound = public_cap1M.upper_bound = 1000000;
+      public_cap1M.hash = fc::sha256::hash( reveal1M );
+      public_cap1M.validate();
+      // ... matching reveal
+      reveal1M.validate( public_cap1M );
+
+      // Secret (hidden) cap
+      smt_cap_commitment hidden_cap1M1234;
+      hidden_cap1M1234.lower_bound =  500000;
+      hidden_cap1M1234.upper_bound = 1500000;
+      hidden_cap1M1234.hash = fc::sha256::hash( reveal1M1234 );
+      hidden_cap1M1234.validate();
+      // Test reveal too low
+      STEEM_REQUIRE_THROW( reveal1K1234.validate(hidden_cap1M1234), fc::assert_exception );
+      // Test reveal too big
+      STEEM_REQUIRE_THROW( reveal1G1234.validate(hidden_cap1M1234), fc::assert_exception );
+      // Test wrong nonce
+      STEEM_REQUIRE_THROW( reveal1M4321.validate(hidden_cap1M1234), fc::assert_exception );
+      // Test valid commitment cap matching reveal
+      reveal1M1234.validate( hidden_cap1M1234 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( asset_symbol_vesting_methods )
 {
    try
