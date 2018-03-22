@@ -96,7 +96,12 @@ if [[ $? -ne 0 ]]; then
     exit 1
   else
     echo notifysteemdsync steemdsync: shared memory file for $VERSION not found, creating a new one by replaying the blockchain
-    mkdir blockchain
+    if [[ "$USE_RAMDISK" ]]; then
+      mkdir -p /mnt/ramdisk/blockchain
+      chown -R steemd:steemd /mnt/ramdisk/blockchain
+    else
+      mkdir blockchain
+    fi
     aws s3 cp s3://$S3_BUCKET/block_log-latest blockchain/block_log
     if [[ $? -ne 0 ]]; then
       echo notifysteemdsync steemdsync: unable to pull latest block_log from S3, will sync from scratch.
