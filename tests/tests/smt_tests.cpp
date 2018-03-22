@@ -882,6 +882,10 @@ BOOST_AUTO_TEST_CASE( setup_validate )
    {
       smt_setup_operation op;
 
+      ACTORS( (alice) )
+      generate_block();
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 4);
+
       op.control_account = "";
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -893,6 +897,8 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.control_account = "abcd";
       op.max_supply = -1;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.symbol = alice_symbol;
 
       //FC_ASSERT( max_supply > 0 )
       op.max_supply = 0;
@@ -1232,7 +1238,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.generation_begin_time = start_time;
       op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
 
-      create_smt( "bob", bob_private_key, 4 );
+      asset_symbol_type bob_symbol = create_smt( "bob", bob_private_key, 4 );
 
       signed_transaction tx;
 
@@ -1245,11 +1251,12 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       tx.signatures.clear();
 
       //Try to elevate account
-      create_smt( "alice", alice_private_key, 3 );
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
       tx.operations.clear();
       tx.signatures.clear();
 
       //Make transaction again. Everything is correct.
+      op.symbol = alice_symbol;
       op.decimal_places = 3;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -1259,6 +1266,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       tx.signatures.clear();
 
       //Change precision.
+      op.symbol = bob_symbol;
       op.control_account = "bob";
       op.decimal_places = 5;
       tx.operations.push_back( op );
