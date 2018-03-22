@@ -36,7 +36,7 @@ Just want to get up and running quickly? We have pre-built docker images for you
 
 We strongly recommend using one of our pre-built Docker images or using Docker to build Steem. Both of these processes are described in the [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
 
-If you would still like to build from source, we do have [build instructions](https://github.com/steemit/steem/blob/master/doc/building.md) for Linux (Ubuntu LTS) and macOS X.
+If you would still like to build from source, we do have [build instructions](https://github.com/steemit/steem/blob/master/doc/building.md) for Linux (Ubuntu LTS) and macOS.
 
 ## Dockerized p2p Node
 
@@ -98,7 +98,7 @@ We provide a basic cli wallet for interfacing with `steemd`. The wallet is self 
 # Building
 
 See [doc/building.md](doc/building.md) for detailed build instructions, including
-compile-time options, and specific commands for Linux (Ubuntu LTS) or macOS X.
+compile-time options, and specific commands for Linux (Ubuntu LTS) or macOS.
 
 # Testing
 
