@@ -62,7 +62,7 @@ namespace steem { namespace chain {
          }
 
          virtual ~undo_scenario(){}
-        
+
          //Proxy method for `database::create`.
          template< typename CALL >
          const Object& create( CALL call )
@@ -91,7 +91,7 @@ namespace steem { namespace chain {
          {
             old_values.clear();
 
-            const auto& idx = db.get_index< Index >().indices().get< by_id >();
+            const auto& idx = db.get_index< Index, by_id >();
             auto it = idx.begin();
 
             while( it != idx.end() )
@@ -102,7 +102,7 @@ namespace steem { namespace chain {
          template< typename Index >
          uint32_t size()
          {
-            const auto& idx = db.get_index< Index >().indices().get< by_id >();
+            const auto& idx = db.get_index< Index, by_id >();
             return idx.size();
          }
 
@@ -113,7 +113,7 @@ namespace steem { namespace chain {
          {
             try
             {
-               const auto& idx = db.get_index< Index >().indices().get< by_id >();
+               const auto& idx = db.get_index< Index, by_id >();
 
                uint32_t idx_size = idx.size();
                uint32_t old_size = old_values.size();
@@ -157,7 +157,7 @@ namespace steem { namespace chain {
 
       protected:
       public:
-      
+
          undo_db( chain::database& _db ): db( _db )
          {
          }

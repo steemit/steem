@@ -106,8 +106,6 @@ void test_alpha()
    setup_op.generation_end_time   = fc::variant( "2017-08-17T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-08-21T00:00:00" ).as< fc::time_point_sec >();
 
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
-
    setup_op.validate();
 
    smt_cap_reveal_operation reveal_min_op;
@@ -162,8 +160,6 @@ void test_beta()
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
 
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
-
    setup_op.validate();
 
    smt_cap_reveal_operation reveal_min_op;
@@ -214,8 +210,6 @@ void test_delta()
    setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 

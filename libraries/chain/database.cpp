@@ -391,6 +391,65 @@ void database::set_chain_id( const std::string& _chain_id_name )
    steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
+void database::foreach_block(std::function<bool(const signed_block_header&, const signed_block&)> processor) const
+{
+   if(!_block_log.head())
+      return;
+
+   auto itr = _block_log.read_block( 0 );
+   auto last_block_num = _block_log.head()->block_num();
+   signed_block_header previousBlockHeader = itr.first;
+   while( itr.first.block_num() != last_block_num )
+   {
+      const signed_block& b = itr.first;
+      if(processor(previousBlockHeader, b) == false)
+         return;
+
+      previousBlockHeader = b;
+      itr = _block_log.read_block( itr.second );
+   }
+
+   processor(previousBlockHeader, itr.first);
+}
+
+void database::foreach_tx(std::function<bool(const signed_block_header&, const signed_block&,
+   const signed_transaction&, uint32_t)> processor) const
+{
+   foreach_block([&processor](const signed_block_header& prevBlockHeader, const signed_block& block) -> bool
+   {
+      uint32_t txInBlock = 0;
+      for( const auto& trx : block.transactions )
+      {
+         if(processor(prevBlockHeader, block, trx, txInBlock) == false)
+            return false;
+         ++txInBlock;
+      }
+
+      return true;
+   }
+   );
+}
+
+void database::foreach_operation(std::function<bool(const signed_block_header&,const signed_block&,
+   const signed_transaction&, uint32_t, const operation&, uint16_t)> processor) const
+{
+   foreach_tx([&processor](const signed_block_header& prevBlockHeader, const signed_block& block,
+      const signed_transaction& tx, uint32_t txInBlock) -> bool
+   {
+      uint16_t opInTx = 0;
+      for(const auto& op : tx.operations)
+      {
+         if(processor(prevBlockHeader, block, tx, txInBlock, op, opInTx) == false)
+            return false;
+         ++opInTx;
+      }
+
+      return true;
+   }
+   );
+}
+
+
 const witness_object& database::get_witness( const account_name_type& name ) const
 { try {
    return get< witness_object, by_name >( name );
@@ -1946,6 +2005,40 @@ void database::process_savings_withdraws()
   }
 }
 
+#ifdef STEEM_ENABLE_SMT
+
+template< typename T, bool ALLOW_REMOVE >
+void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
+{
+   FC_ASSERT( db != nullptr );
+   const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
+   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+
+   while( itr != idx.end() && itr->phase == phase )
+   {
+      #pragma message( "TODO: Add virtual_operation." )
+
+      if( ALLOW_REMOVE )
+      {
+         const auto& old_itr = *itr;
+         ++itr;
+         db->remove( old_itr );
+      }
+      if( !ALLOW_REMOVE )
+         ++itr;
+   }
+}
+
+void database::process_smt_objects()
+{
+   process_smt_objects_internal< by_interval_gen_begin, false >( this, smt_phase::setup_completed );
+   process_smt_objects_internal< by_interval_gen_end, false >( this, smt_phase::contribution_begin_time_completed );
+   process_smt_objects_internal< by_interval_launch, false >( this, smt_phase::contribution_end_time_completed );
+   process_smt_objects_internal< by_interval_launch_exp, true >( this, smt_phase::launch_time_completed );
+}
+
+#endif
+
 asset database::get_liquidity_reward()const
 {
    if( has_hardfork( STEEM_HARDFORK_0_12__178 ) )
@@ -2353,6 +2446,7 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< smt_event_token_index                   >(*this);
    add_core_index< account_regular_balance_index           >(*this);
    add_core_index< account_rewards_balance_index           >(*this);
 #endif
@@ -3823,7 +3917,7 @@ struct smt_regular_balance_operator
 struct smt_reward_balance_operator
 {
    smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
-      : value_delta(value_delta), share_delta(share_delta), is_vesting(is_vesting == (share_delta.amount.value != 0)) 
+      : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 ) 
    {
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }

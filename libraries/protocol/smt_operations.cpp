@@ -2,7 +2,6 @@
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/validation.hpp>
 #ifdef STEEM_ENABLE_SMT
-#define SMT_MAX_UNIT_ROUTES       10
 
 namespace steem { namespace protocol {
 
@@ -18,7 +17,7 @@ void smt_base_operation::validate()const
    validate_account_name( control_account );
    common_symbol_validation( symbol );
 }
-
+SMT_MAX_UNIT_COUNT
 void smt_executor_base_operation::validate()const
 {
    validate_account_name( executor );
@@ -238,10 +237,6 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
    FC_ASSERT( launch_expiration_time >= announced_launch_time );
-
-   // TODO:  Support using STEEM as well
-   // TODO:  Move amount check to evaluator, symbol check should remain here
-   FC_ASSERT( smt_creation_fee == asset( 1000000, SBD_SYMBOL ) );
 }  
 
 struct smt_set_runtime_parameters_operation_visitor

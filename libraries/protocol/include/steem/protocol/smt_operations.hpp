@@ -5,6 +5,14 @@
 #include <steem/protocol/misc_utilities.hpp>
 
 #ifdef STEEM_ENABLE_SMT
+
+#define SMT_MAX_UNIT_ROUTES            10
+#define SMT_MAX_UNIT_COUNT             20
+#define SMT_MAX_DECIMAL_PLACES         8
+#define SMT_MIN_HARD_CAP_STEEM_UNITS   10000
+#define SMT_MIN_SATURATION_STEEM_UNITS 1000
+#define SMT_MIN_SOFT_CAP_STEEM_UNITS   1000
+
 namespace steem { namespace protocol {
 
 /**
@@ -127,8 +135,6 @@ struct smt_setup_operation : public smt_base_operation
    time_point_sec          generation_end_time;
    time_point_sec          announced_launch_time;
    time_point_sec          launch_expiration_time;
-
-   asset                   smt_creation_fee;
 
    extensions_type         extensions;
 
@@ -295,7 +301,6 @@ FC_REFLECT_DERIVED(
    (generation_end_time)
    (announced_launch_time)
    (launch_expiration_time)
-   (smt_creation_fee)
    (extensions)
    )
 
