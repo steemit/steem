@@ -7,7 +7,7 @@
 
 namespace steem { namespace chain {
 
-enum class smt_phase : unsigned char
+enum class smt_phase : uint8_t
 {
    account_elevated,
    setup_completed,
@@ -123,7 +123,7 @@ public:
    uint8_t              rel_amount_denom_bits = 0;
 
    ///parameters for 'smt_setup_operation'
-   int64_t                       max_supply;
+   int64_t                       max_supply = 0;
    steem::protocol::
    smt_capped_generation_policy  capped_generation_policy;
    time_point_sec                generation_begin_time;
