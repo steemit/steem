@@ -14,6 +14,8 @@ using std::unique_ptr;
 using namespace appbase;
 using namespace steem::chain;
 
+namespace bfs = boost::filesystem;
+
 class chain_plugin : public plugin< chain_plugin >
 {
 public:
@@ -22,6 +24,8 @@ public:
    chain_plugin();
    virtual ~chain_plugin();
 
+   bfs::path state_storage_dir() const;
+   
    static const std::string& name() { static std::string name = STEEM_CHAIN_PLUGIN_NAME; return name; }
 
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;

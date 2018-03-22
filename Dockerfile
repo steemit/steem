@@ -36,6 +36,12 @@ RUN \
         jq \
         wget \
         gdb \
+        libgflags-dev \
+        libsnappy-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        liblz4-dev \
+        libzstd-dev \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
@@ -192,6 +198,12 @@ RUN \
         python-dev \
         python2.7-dev \
         python3-dev \
+        libgflags-dev \
+        libsnappy-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        liblz4-dev \
+        libzstd-dev \
     && \
     apt-get autoremove -y && \
     rm -rf \
