@@ -628,8 +628,8 @@ namespace golos {
             //fc::time_point begin_time = fc::time_point::now();
 
             bool result;
-            detail::with_skip_flags(*this, skip, [&]() {
-                with_write_lock([&]() {
+            with_write_lock([&]() {
+                detail::with_skip_flags(*this, skip, [&]() {
                     detail::without_pending_transactions(*this, std::move(_pending_tx), [&]() {
                         try {
                             result = _push_block(new_block);
@@ -654,7 +654,9 @@ namespace golos {
                     witness_time_pairs.push_back(std::make_pair(b->data.witness, b->data.timestamp));
                 }
 
-                ilog("Encountered block num collision at block ${n} due to a fork, witnesses are:", ("n", height)("w", witness_time_pairs));
+                ilog(
+                    "Encountered block num collision at block ${n} due to a fork, witnesses are: ${w}",
+                    ("n", height)("w", witness_time_pairs));
             }
             return;
         }
@@ -742,34 +744,25 @@ namespace golos {
             } FC_CAPTURE_AND_RETHROW()
         }
 
-/**
- * Attempts to push the transaction into the pending queue
- *
- * When called to push a locally generated transaction, set the skip_block_size_check bit on the skip argument. This
- * will allow the transaction to be pushed even if it causes the pending block size to exceed the maximum block size.
- * Although the transaction will probably not propagate further now, as the peers are likely to have their pending
- * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
- * queues.
- */
+       /**
+        * Attempts to push the transaction into the pending queue
+        *
+        * When called to push a locally generated transaction, set the skip_block_size_check bit on the skip argument. This
+        * will allow the transaction to be pushed even if it causes the pending block size to exceed the maximum block size.
+        * Although the transaction will probably not propagate further now, as the peers are likely to have their pending
+        * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
+        * queues.
+        */
         void database::push_transaction(const signed_transaction &trx, uint32_t skip) {
             try {
-                try {
-                    FC_ASSERT(fc::raw::pack_size(trx) <=
-                              (get_dynamic_global_properties().maximum_block_size -
-                               256));
-                    set_producing(true);
-                    detail::with_skip_flags(*this, skip,
-                            [&]() {
-                                with_write_lock([&]() {
-                                    _push_transaction(trx);
-                                });
-                            });
-                    set_producing(false);
-                }
-                catch (...) {
-                    set_producing(false);
-                    throw;
-                }
+                FC_ASSERT(fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256));
+                with_write_lock([&]() {
+                    detail::with_producing(*this, [&]() {
+                        detail::with_skip_flags(*this, skip, [&]() {
+                            _push_transaction(trx);
+                        });
+                    });
+                });
             }
             FC_CAPTURE_AND_RETHROW((trx))
         }
@@ -805,12 +798,10 @@ namespace golos {
                 uint32_t skip /* = 0 */
         ) {
             signed_block result;
-            detail::with_skip_flags(*this, skip, [&]() {
-                try {
-                    result = _generate_block(when, witness_owner, block_signing_private_key);
-                }
-                FC_CAPTURE_AND_RETHROW((witness_owner))
-            });
+            try {
+                result = _generate_block(when, witness_owner, block_signing_private_key, skip);
+            }
+            FC_CAPTURE_AND_RETHROW((witness_owner))
             return result;
         }
 
@@ -818,9 +809,9 @@ namespace golos {
         signed_block database::_generate_block(
                 fc::time_point_sec when,
                 const account_name_type &witness_owner,
-                const fc::ecc::private_key &block_signing_private_key
+                const fc::ecc::private_key &block_signing_private_key,
+                uint32_t skip
         ) {
-            uint32_t skip = get_node_properties().skip_flags;
             uint32_t slot_num = get_slot_at_time(when);
             FC_ASSERT(slot_num > 0);
             string scheduled_witness = get_scheduled_witness(slot_num);
@@ -839,7 +830,7 @@ namespace golos {
 
             signed_block pending_block;
 
-            with_write_lock([&]() {
+            with_write_lock([&]() { detail::with_skip_flags(*this, skip, [&]() {
                 //
                 // The following code throws away existing pending_tx_session and
                 // rebuilds it by re-applying pending transactions.
@@ -892,7 +883,7 @@ namespace golos {
                 }
 
                 _pending_tx_session.reset();
-            });
+            });});
 
             // We have temporarily broken the invariant that
             // _pending_tx_session is the result of applying _pending_tx, as
