@@ -15,7 +15,6 @@ class account_history_api_plugin : public plugin< account_history_api_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steem::plugins::account_history::account_history_plugin)
       (steem::plugins::json_rpc::json_rpc_plugin)
    )
 
