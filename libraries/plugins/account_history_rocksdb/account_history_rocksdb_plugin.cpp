@@ -1,4 +1,4 @@
-#include <steem/plugins/rocksdb/rocksdb_plugin.hpp>
+#include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
@@ -33,7 +33,7 @@ namespace bpo = boost::program_options;
 #define DIAGNOSTIC(s)
 //#define DIAGNOSTIC(s) s
 
-namespace steem { namespace plugins { namespace rocksdb {
+namespace steem { namespace plugins { namespace account_history_rocksdb {
 
 using steem::protocol::account_name_type;
 using steem::protocol::block_id_type;
@@ -321,7 +321,7 @@ private:
 
 } /// anonymous
 
-class rocksdb_plugin::impl final
+class account_history_rocksdb_plugin::impl final
 {
 public:
    impl( const bpo::variables_map& options, const bfs::path& storagePath) :
@@ -377,7 +377,7 @@ public:
             {
                on_operation(note);
             },
-            appbase::app().get_plugin< rocksdb_plugin >() );
+            appbase::app().get_plugin< account_history_rocksdb_plugin >() );
       }
       else
       {
@@ -606,63 +606,31 @@ private:
    bool                             _prune = false;
 };
 
-void rocksdb_plugin::impl::collectOptions(const boost::program_options::variables_map& options)
+void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_options::variables_map& options)
 {
    typedef std::pair< account_name_type, account_name_type > pairstring;
-   STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", _tracked_accounts, pairstring);
+   STEEM_LOAD_VALUE_SET(options, "account-history-rocksdb-track-account-range", _tracked_accounts, pairstring);
 
-   if(options.count("track-account-range"))
+   if(options.count("account-history-rocksdb-whitelist-ops"))
    {
-      wlog( "track-account-range is deprecated in favor of account-history-track-account-range" );
-      STEEM_LOAD_VALUE_SET( options, "track-account-range", _tracked_accounts, pairstring );
-   }
-
-   if(options.count("account-history-whitelist-ops"))
-   {
-      const auto& args = options.at("account-history-whitelist-ops").as<std::vector<std::string>>();
-      storeOpFilteringParameters(args, &_op_list);
-   }
-
-   if( options.count( "history-whitelist-ops" ) )
-   {
-      wlog( "history-whitelist-ops is deprecated in favor of account-history-whitelist-ops." );
-
-      const auto& args = options.at("history-whitelist-ops").as<std::vector<std::string>>();
+      const auto& args = options.at("account-history-rocksdb-whitelist-ops").as<std::vector<std::string>>();
       storeOpFilteringParameters(args, &_op_list);
    }
 
    if(_op_list.empty() == false)
       ilog( "Account History: whitelisting ops ${o}", ("o", _op_list) );
 
-   if(options.count("account-history-blacklist-ops"))
+   if(options.count("account-history-rocksdb-blacklist-ops"))
    {
-      const auto& args = options.at("account-history-blacklist-ops").as<std::vector<std::string>>();
-      storeOpFilteringParameters(args, &_blacklisted_op_list);
-   }
-
-   if( options.count( "history-blacklist-ops" ) )
-   {
-      wlog( "history-blacklist-ops is deprecated in favor of account-history-blacklist-ops." );
-
-      const auto& args = options.at("history-blacklist-ops").as<std::vector<std::string>>();
+      const auto& args = options.at("account-history-rocksdb-blacklist-ops").as<std::vector<std::string>>();
       storeOpFilteringParameters(args, &_blacklisted_op_list);
    }
 
    if(_blacklisted_op_list.empty() == false)
       ilog( "Account History: blacklisting ops ${o}", ("o", _blacklisted_op_list) );
-
-   if(options.count( "history-disable-pruning"))
-      _prune = !options["history-disable-pruning"].as<bool>();
-
-   if(_prune)
-   {
-      wlog("****************************************************************************************************");
-      wlog("*                       History pruning is deprecated. Please don't enable it.                     *");
-      wlog("****************************************************************************************************");
-   }
 }
 
-inline bool rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const
+inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const
 {
    if(_tracked_accounts.empty())
       return true;
@@ -709,7 +677,7 @@ inline bool rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name
    return inRange;
 }
 
-std::vector<account_name_type> rocksdb_plugin::impl::getImpactedAccounts(const operation& op) const
+std::vector<account_name_type> account_history_rocksdb_plugin::impl::getImpactedAccounts(const operation& op) const
 {
    flat_set<account_name_type> impacted;
    steem::app::operation_get_impacted_accounts(op, impacted);
@@ -735,7 +703,7 @@ std::vector<account_name_type> rocksdb_plugin::impl::getImpactedAccounts(const o
    return retVal;
 }
 
-inline bool rocksdb_plugin::impl::isTrackedOperation(const operation& op) const
+inline bool account_history_rocksdb_plugin::impl::isTrackedOperation(const operation& op) const
 {
    if(_op_list.empty() && _blacklisted_op_list.empty())
       return true;
@@ -749,7 +717,7 @@ inline bool rocksdb_plugin::impl::isTrackedOperation(const operation& op) const
    return isTracked;
 }
 
-void rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::string>& opList,
+void account_history_rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::string>& opList,
    flat_set<std::string>* storage) const
    {
       for(const auto& arg : opList)
@@ -765,7 +733,7 @@ void rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::str
       }
    }
 
-void rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
+void account_history_rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
    uint32_t limit, std::function<void(unsigned int, const rocksdb_operation_object&)> processor) const
 {
    ReadOptions rOptions;
@@ -826,7 +794,7 @@ void rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
    }
 }
 
-bool rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_object* op) const
+bool account_history_rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_object* op) const
 {
    std::string data;
    PrimitiveTypeSlice<uint32_t> idSlice(opId);
@@ -843,7 +811,7 @@ bool rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_
    return false;
 }
 
-void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
+void account_history_rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
    std::function<void(const rocksdb_operation_object&)> processor) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[2]));
@@ -863,7 +831,7 @@ void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
    }
 }
 
-uint32_t rocksdb_plugin::impl::enumVirtualOperationsFromBlockRange(uint32_t blockRangeBegin,
+uint32_t account_history_rocksdb_plugin::impl::enumVirtualOperationsFromBlockRange(uint32_t blockRangeBegin,
    uint32_t blockRangeEnd, std::function<void(const rocksdb_operation_object&)> processor) const
 {
    FC_ASSERT(blockRangeEnd > blockRangeBegin, "Block range must be upward");
@@ -917,7 +885,7 @@ uint32_t rocksdb_plugin::impl::enumVirtualOperationsFromBlockRange(uint32_t bloc
    return 0;
 }
 
-rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
+account_history_rocksdb_plugin::impl::ColumnDefinitions account_history_rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
 {
    ColumnDefinitions columnDefs;
    if(addDefaultColumn)
@@ -942,7 +910,7 @@ rocksdb_plugin::impl::ColumnDefinitions rocksdb_plugin::impl::prepareColumnDefin
    return columnDefs;
 }
 
-bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
+bool account_history_rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
 {
    DB* db = nullptr;
 
@@ -996,7 +964,7 @@ bool rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    }
 }
 
-void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
+void account_history_rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
    const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx)
 {
    if(_lastTx != txId)
@@ -1074,7 +1042,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
    ++_totalOps;
 }
 
-void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj,
+void account_history_rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj,
    const operation& op, const fc::time_point_sec& blockTime)
 {
    std::string strName = name;
@@ -1148,7 +1116,7 @@ void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& na
    }
 }
 
-void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
+void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
    const fc::time_point_sec& now)
 {
    std::string strName = name;
@@ -1218,7 +1186,7 @@ void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahI
    }
 }
 
-void rocksdb_plugin::impl::onReindexStart()
+void account_history_rocksdb_plugin::impl::onReindexStart()
 {
    ilog("Received onReindexStart request, attempting to clean database storage.");
 
@@ -1242,7 +1210,7 @@ void rocksdb_plugin::impl::onReindexStart()
    ilog("onReindexStart request completed successfully.");
 }
 
-void rocksdb_plugin::impl::onReindexStop(uint32_t finalBlock)
+void account_history_rocksdb_plugin::impl::onReindexStop(uint32_t finalBlock)
 {
    ilog("Reindex completed up to block: ${b}. Setting back write limit to non-massive level.",
       ("b", finalBlock));
@@ -1253,7 +1221,7 @@ void rocksdb_plugin::impl::onReindexStop(uint32_t finalBlock)
    printReport(finalBlock, "RocksDB data reindex finished. ");
 }
 
-void rocksdb_plugin::impl::printReport(uint32_t blockNo, const char* detailText) const
+void account_history_rocksdb_plugin::impl::printReport(uint32_t blockNo, const char* detailText) const
 {
    ilog("${t}Processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.\n"
         "${ep} operations have been filtered out due to configured options.\n"
@@ -1267,7 +1235,7 @@ void rocksdb_plugin::impl::printReport(uint32_t blockNo, const char* detailText)
       );
 }
 
-void rocksdb_plugin::impl::importData(unsigned int blockLimit)
+void account_history_rocksdb_plugin::impl::importData(unsigned int blockLimit)
 {
    if(_storage == nullptr)
    {
@@ -1324,7 +1292,7 @@ void rocksdb_plugin::impl::importData(unsigned int blockLimit)
    printReport(blockNo, "RocksDB data import finished. ");
 }
 
-void rocksdb_plugin::impl::on_operation(const operation_notification& n)
+void account_history_rocksdb_plugin::impl::on_operation(const operation_notification& n)
 {
    if(_storage != nullptr)
    {
@@ -1333,50 +1301,46 @@ void rocksdb_plugin::impl::on_operation(const operation_notification& n)
    }
 }
 
-rocksdb_plugin::rocksdb_plugin()
+account_history_rocksdb_plugin::account_history_rocksdb_plugin()
 {
 }
 
-rocksdb_plugin::~rocksdb_plugin()
+account_history_rocksdb_plugin::~account_history_rocksdb_plugin()
 {
 
 }
 
-void rocksdb_plugin::set_program_options(
+void account_history_rocksdb_plugin::set_program_options(
    boost::program_options::options_description &command_line_options,
    boost::program_options::options_description &cfg)
 {
    cfg.add_options()
-      ("rocksdb-path", bpo::value<bfs::path>()->default_value("rocksdb_storage"),
+      ("account-history-rocksdb-path", bpo::value<bfs::path>()->default_value("account-history-rocksdb_storage"),
          "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
-      ("account-history-track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
-      ("track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times. Deprecated in favor of account-history-track-account-range.")
-      ("account-history-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged.")
-      ("history-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged. Deprecated in favor of account-history-whitelist-ops.")
-      ("account-history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored.")
-      ("history-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of account-history-blacklist-ops.")
-      ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" )
+      ("account-history-rocksdb-track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
+      ("account-history-rocksdb-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged.")
+      ("account-history-rocksdb-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored.")
 
    ;
    command_line_options.add_options()
-      ("rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
+      ("account-history-rocksdb-immediate-import", bpo::bool_switch()->default_value(false),
          "Allows to force immediate data import at plugin startup. By default storage is supplied during reindex process.")
-      ("rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
+      ("account-history-rocksdb-stop-import-at-block", bpo::value<uint32_t>()->default_value(0),
          "Allows to specify block number, the data import process should stop at.")
    ;
 }
 
-void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_map& options)
+void account_history_rocksdb_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
-   if(options.count("rocksdb-stop-import-at-block"))
-      _blockLimit = options.at("rocksdb-stop-import-at-block").as<uint32_t>();
+   if(options.count("account-history-rocksdb-stop-import-at-block"))
+      _blockLimit = options.at("account-history-rocksdb-stop-import-at-block").as<uint32_t>();
 
-   _doImmediateImport = options.at("rocksdb-immediate-import").as<bool>();
+   _doImmediateImport = options.at("account-history-rocksdb-immediate-import").as<bool>();
 
    bfs::path dbPath;
 
-   if(options.count("rocksdb-path"))
-      dbPath = options.at("rocksdb-path").as<bfs::path>();
+   if(options.count("account-history-rocksdb-path"))
+      dbPath = options.at("account-history-rocksdb-path").as<bfs::path>();
 
    if(dbPath.is_absolute() == false)
    {
@@ -1390,38 +1354,38 @@ void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_m
    _my->openDb();
 }
 
-void rocksdb_plugin::plugin_startup()
+void account_history_rocksdb_plugin::plugin_startup()
 {
-   ilog("Starting up rocksdb_plugin...");
+   ilog("Starting up account_history_rocksdb_plugin...");
 
    if(_doImmediateImport)
       _my->importData(_blockLimit);
 }
 
-void rocksdb_plugin::plugin_shutdown()
+void account_history_rocksdb_plugin::plugin_shutdown()
 {
-   ilog("Shutting down rocksdb_plugin...");
+   ilog("Shutting down account_history_rocksdb_plugin...");
    _my->shutdownDb();
 }
 
-void rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
+void account_history_rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
    std::function<void(unsigned int, const rocksdb_operation_object&)> processor) const
 {
    _my->find_account_history_data(name, start, limit, processor);
 }
 
-bool rocksdb_plugin::find_operation_object(size_t opId, rocksdb_operation_object* op) const
+bool account_history_rocksdb_plugin::find_operation_object(size_t opId, rocksdb_operation_object* op) const
 {
    return _my->find_operation_object(opId, op);
 }
 
-void rocksdb_plugin::find_operations_by_block(size_t blockNum,
+void account_history_rocksdb_plugin::find_operations_by_block(size_t blockNum,
    std::function<void(const rocksdb_operation_object&)> processor) const
 {
    _my->find_operations_by_block(blockNum, processor);
 }
 
-uint32_t rocksdb_plugin::enum_operations_from_block_range(uint32_t blockRangeBegin, uint32_t blockRangeEnd,
+uint32_t account_history_rocksdb_plugin::enum_operations_from_block_range(uint32_t blockRangeBegin, uint32_t blockRangeEnd,
    std::function<void(const rocksdb_operation_object&)> processor) const
 {
    return _my->enumVirtualOperationsFromBlockRange(blockRangeBegin, blockRangeEnd, processor);
@@ -1429,5 +1393,5 @@ uint32_t rocksdb_plugin::enum_operations_from_block_range(uint32_t blockRangeBeg
 
 } } }
 
-FC_REFLECT( steem::plugins::rocksdb::account_history_info,
+FC_REFLECT( steem::plugins::account_history_rocksdb::account_history_info,
    (id)(oldestEntryId)(newestEntryId)(oldestEntryTimestamp) )

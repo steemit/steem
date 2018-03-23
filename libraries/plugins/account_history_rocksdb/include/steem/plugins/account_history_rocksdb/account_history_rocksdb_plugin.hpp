@@ -9,7 +9,7 @@
 
 namespace steem {
 
-namespace plugins { namespace rocksdb {
+namespace plugins { namespace account_history_rocksdb {
 
 namespace bfs = boost::filesystem;
 
@@ -38,15 +38,15 @@ public:
 
 };
 
-class rocksdb_plugin final : public appbase::plugin< rocksdb_plugin >
+class account_history_rocksdb_plugin final : public appbase::plugin< account_history_rocksdb_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES((steem::plugins::chain::chain_plugin))
 
-   rocksdb_plugin();
-   virtual ~rocksdb_plugin();
+   account_history_rocksdb_plugin();
+   virtual ~account_history_rocksdb_plugin();
 
-   static const std::string& name() { static std::string name = "rocksdb_plugin"; return name; }
+   static const std::string& name() { static std::string name = "account_history_rocksdb_plugin"; return name; }
 
    virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
@@ -74,6 +74,6 @@ private:
 };
 
 
-} } } // steem::plugins::rocksdb
+} } } // steem::plugins::account_history_rocksdb
 
-FC_REFLECT( steem::plugins::rocksdb::rocksdb_operation_object, (id)(trx_id)(block)(trx_in_block)(timestamp)(serialized_op) )
+FC_REFLECT( steem::plugins::account_history_rocksdb::rocksdb_operation_object, (id)(trx_id)(block)(trx_in_block)(timestamp)(serialized_op) )
