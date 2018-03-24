@@ -106,7 +106,7 @@ namespace golos {
             ///               API,                                    args,                return
             DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
-            DEFINE_API_ARGS(get_block,                        msg_pack, optional<block_header>)
+            DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_block>)
             DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
             DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
             DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
