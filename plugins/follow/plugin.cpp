@@ -679,7 +679,7 @@ namespace golos {
             }
 
 
-DEFINE_API(plugin, get_followers) {
+            DEFINE_API(plugin, get_followers) {
                 CHECK_ARG_SIZE(4)
                 auto following = args.args->at(0).as<account_name_type>();
                 auto start_follower = args.args->at(1).as<account_name_type>();
@@ -697,7 +697,7 @@ DEFINE_API(plugin, get_followers) {
                 auto type = args.args->at(2).as<follow_type>();
                 auto limit = args.args->at(3).as<uint32_t>();
                 return pimpl->database().with_read_lock([&]() {
-                    return pimpl->get_followers(follower, start_following, type, limit);
+                    return pimpl->get_following(follower, start_following, type, limit);
                 });
             }
 
