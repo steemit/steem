@@ -212,7 +212,8 @@ namespace golos { namespace wallet {
                     _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
                     _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
                     _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
-                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) )
+                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) ),
+                    _remote_account_by_key( con.get_remote_api< golos::wallet::remote_account_by_key>( 0, "account_by_key" ) )
                 {
                     init_prototype_ops();
 
@@ -828,6 +829,7 @@ namespace golos { namespace wallet {
                 fc::api< remote_follow >                _remote_follow;
                 fc::api< remote_market_history >        _remote_market_history;
                 fc::api< remote_private_message >       _remote_private_message;
+                fc::api< remote_account_by_key >        _remote_account_by_key;
                 uint32_t                                _tx_expiration_seconds = 30;
 
                 flat_map<string, operation>             _prototype_ops;
@@ -875,7 +877,7 @@ namespace golos { namespace wallet {
             for( const auto& item : my->_keys )
                 pub_keys.push_back(item.first);
 
-            auto refs = my->_remote_database_api->get_key_references( pub_keys );
+            auto refs = my->_remote_account_by_key->get_key_references( pub_keys );
             set<string> names;
             for( const auto& item : refs )
                 for( const auto& name : item )
