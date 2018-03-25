@@ -8,8 +8,13 @@
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/social_network/languages/language_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+
+// tag_visitor creates additional tables, we don't really need them in LOW_MEM mode
+#ifndef IS_LOW_MEM
 #include <golos/plugins/social_network/tag/tag_visitor.hpp>
 #include <golos/plugins/social_network/languages/language_visitor.hpp>
+#endif
+
 #include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(s) \
@@ -99,8 +104,10 @@ namespace golos {
                 void on_operation(const operation_notification &note){
                     try {
                         /// plugins shouldn't ever throw
+#ifndef IS_LOW_MEM
                         note.op.visit(languages::operation_visitor(database(), cache_languages));
                         note.op.visit(tags::operation_visitor(database()));
+#endif
                     } catch (const fc::exception &e) {
                         edump((e.to_detail_string()));
                     } catch (...) {
@@ -319,6 +326,7 @@ namespace golos {
                 pimpl->database().post_apply_operation.connect([&](const operation_notification &note) {
                     pimpl->on_operation(note);
                 });
+#ifndef IS_LOW_MEM
                 add_plugin_index<tags::tag_index>(db);
                 add_plugin_index<tags::tag_stats_index>(db);
                 add_plugin_index<tags::peer_stats_index>(db);
@@ -328,7 +336,7 @@ namespace golos {
                 add_plugin_index<languages::language_stats_index>(db);
                 add_plugin_index<languages::peer_stats_index>(db);
                 add_plugin_index<languages::author_language_stats_index>(db);
-
+#endif
 
                 JSON_RPC_REGISTER_API ( name() ) ;
 
