@@ -117,7 +117,6 @@ namespace golos {
             DEFINE_API_ARGS(get_witness_schedule,             msg_pack, witness_schedule_api_object)
             DEFINE_API_ARGS(get_hardfork_version,             msg_pack, hardfork_version)
             DEFINE_API_ARGS(get_next_scheduled_hardfork,      msg_pack, scheduled_hardfork)
-            DEFINE_API_ARGS(get_key_references,               msg_pack, std::vector<vector<account_name_type> >)
             DEFINE_API_ARGS(get_accounts,                     msg_pack, std::vector<extended_account>)
             DEFINE_API_ARGS(lookup_account_names,             msg_pack, std::vector<optional<account_api_object> >)
             DEFINE_API_ARGS(lookup_accounts,                  msg_pack, std::set<std::string>)
