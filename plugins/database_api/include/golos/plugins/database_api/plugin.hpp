@@ -170,7 +170,7 @@ namespace golos {
 
                 void plugin_initialize(const boost::program_options::variables_map &options) override;
 
-                void plugin_startup() override{}
+                void plugin_startup() override;
 
                 void plugin_shutdown() override{}
 

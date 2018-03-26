@@ -92,6 +92,10 @@ namespace golos {
                 impl():database_(appbase::app().get_plugin<chain::plugin>().db()){}
                 ~impl(){}
 
+                void startup() {
+                    follow_api_ = appbase::app().find_plugin<golos::plugins::follow::plugin>();
+                }
+
                 void on_operation(const operation_notification &note){
                     try {
                         /// plugins shouldn't ever throw
@@ -110,6 +114,19 @@ namespace golos {
 
                 golos::chain::database& database() const {
                     return database_;
+                }
+
+                share_type get_account_reputation(const account_name_type& account) const {
+                    if (!follow_api_) {
+                        return 0;
+                    }
+                    msg_pack msg;
+                    msg.args = std::vector<fc::variant>({fc::variant(account), fc::variant(1)});
+                    auto reputations = follow_api_->get_account_reputations(msg);
+                    if (reputations.empty()) {
+                        return 0;
+                    }
+                    return reputations[0].reputation;
                 }
 
                 comment_object::id_type get_parent(const discussion_query &query) const {
@@ -136,7 +153,7 @@ namespace golos {
                         vstate.rshares = itr->rshares;
                         vstate.percent = itr->vote_percent;
                         vstate.time = itr->last_update;
-
+                        vstate.reputation = get_account_reputation(vo.name);
                         result.emplace_back(vstate);
                         ++itr;
                     }
@@ -253,6 +270,7 @@ namespace golos {
                 std::set<std::string> cache_languages;
             private:
                 golos::chain::database& database_;
+                golos::plugins::follow::plugin* follow_api_ = nullptr;
             };
 
 
@@ -273,7 +291,7 @@ namespace golos {
 
 
             void social_network_t::plugin_startup() {
-
+                pimpl->startup();
             }
 
             void social_network_t::plugin_shutdown() {
@@ -440,6 +458,8 @@ namespace golos {
 
                     d.pending_payout_value = asset(static_cast<uint64_t>(r2), pot.symbol);
                     d.total_pending_payout_value = asset(static_cast<uint64_t>(tpp), pot.symbol);
+
+                    d.author_reputation = get_account_reputation(d.author);
 
                 }
 
