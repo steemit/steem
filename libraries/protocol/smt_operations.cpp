@@ -104,6 +104,14 @@ void smt_cap_commitment::validate()const
    }
 }
 
+void smt_revealed_cap::validate( const smt_cap_commitment& commitment )const
+{
+   FC_ASSERT( amount >= commitment.lower_bound );
+   FC_ASSERT( amount <= commitment.upper_bound );
+   fc::sha256 reveal_hash( fc::sha256::hash(*this) );
+   FC_ASSERT( reveal_hash == commitment.hash );
+}
+
 void smt_capped_generation_policy::validate()const
 {
    pre_soft_cap_unit.validate();
