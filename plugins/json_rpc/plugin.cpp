@@ -268,6 +268,8 @@ namespace golos {
                         msg.error(JSON_RPC_INVALID_PARAMS, e);
                     } catch (const fc::exception &e) {
                         msg.error(e);
+                    } catch (const std::exception &e) {
+                        msg.error(e.what());
                     } catch (...) {
                         msg.error("Unknown error - parsing rpc message failed");
                     }
