@@ -1,7 +1,5 @@
 #include <steem/plugins/rocksdb/rocksdb_plugin.hpp>
 
-#include "rocksdb_api.hpp"
-
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/util/impacted.hpp>
@@ -60,6 +58,25 @@ using ::rocksdb::ColumnFamilyDescriptor;
 using ::rocksdb::ColumnFamilyOptions;
 using ::rocksdb::ColumnFamilyHandle;
 using ::rocksdb::WriteBatch;
+
+/** Represents an AH entry in mapped to account name.
+ *  Holds additional informations, which are needed to simplify pruning process.
+ *  All operations specific to given account, are next mapped to ID of given object.
+ */
+class account_history_info
+{
+public:
+   uint32_t       id = 0;
+   uint32_t       oldestEntryId = 0;
+   uint32_t       newestEntryId = 0;
+   /// Timestamp of oldest operation, just to quickly decide if start detail prune checking at all.
+   time_point_sec oldestEntryTimestamp;
+
+   uint32_t getAssociatedOpCount() const
+   {
+      return newestEntryId - oldestEntryId + 1;
+   }
+};
 
 namespace
 {
@@ -197,7 +214,7 @@ typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_
 typedef std::pair<uint32_t, uint32_t> location_id_pair;
 typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
 
-/// Compares account_history_info::id and tmp_operation_object::id pair
+/// Compares account_history_info::id and rocksdb_operation_object::id pair
 typedef PrimitiveTypeComparatorImpl<std::pair<uint32_t, uint32_t>> by_ah_info_operation_ComparatorImpl;
 
 const Comparator* by_id_Comparator()
@@ -307,9 +324,8 @@ private:
 class rocksdb_plugin::impl final
 {
 public:
-   impl(const rocksdb_plugin& mainPlugin, const bpo::variables_map& options, const bfs::path& storagePath) :
+   impl( const bpo::variables_map& options, const bfs::path& storagePath) :
       _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
-      _mainPlugin(mainPlugin),
       _storagePath(storagePath),
       _writeBuffer(_storage, _columnHandles)
       {
@@ -329,11 +345,6 @@ public:
    ~impl()
    {
       shutdownDb();
-   }
-
-   void installApi()
-   {
-      _api = std::make_unique<rocksdb_api>(_mainPlugin);
    }
 
    void openDb()
@@ -383,14 +394,14 @@ public:
    void importData(unsigned int blockLimit);
 
    void find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
-      std::function<void(unsigned int, const tmp_operation_object&)> processor) const;
-   bool find_operation_object(size_t opId, tmp_operation_object* op) const;
+      std::function<void(unsigned int, const rocksdb_operation_object&)> processor) const;
+   bool find_operation_object(size_t opId, rocksdb_operation_object* op) const;
    /// Allows to look for all operations present in given block and call `processor` for them.
    void find_operations_by_block(size_t blockNum,
-      std::function<void(const tmp_operation_object&)> processor) const;
+      std::function<void(const rocksdb_operation_object&)> processor) const;
    /// Allows to enumerate all operations registered in given block range.
    uint32_t enumVirtualOperationsFromBlockRange(uint32_t blockRangeBegin,
-      uint32_t blockRangeEnd, std::function<void(const tmp_operation_object&)> processor) const;
+      uint32_t blockRangeEnd, std::function<void(const rocksdb_operation_object&)> processor) const;
 
    void shutdownDb()
    {
@@ -416,7 +427,7 @@ private:
 
    void importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime, const transaction_id_type& txId,
       uint32_t txInBlock, const operation& op, uint16_t opInTx);
-   void buildAccountHistoryRecord(const account_name_type& name, const tmp_operation_object& obj, const operation& op,
+   void buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj, const operation& op,
       const fc::time_point_sec& blockTime);
    void prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
       const fc::time_point_sec& now);
@@ -561,9 +572,7 @@ private:
    typedef flat_map< account_name_type, account_name_type > account_name_range_index;
 
    chain::database&                 _mainDb;
-   const rocksdb_plugin&            _mainPlugin;
    bfs::path                        _storagePath;
-   std::unique_ptr<rocksdb_api>     _api;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    CachableWriteBatch               _writeBuffer;
@@ -757,7 +766,7 @@ void rocksdb_plugin::impl::storeOpFilteringParameters(const std::vector<std::str
    }
 
 void rocksdb_plugin::impl::find_account_history_data(const account_name_type& name, uint64_t start,
-   uint32_t limit, std::function<void(unsigned int, const tmp_operation_object&)> processor) const
+   uint32_t limit, std::function<void(unsigned int, const rocksdb_operation_object&)> processor) const
 {
    ReadOptions rOptions;
 
@@ -804,7 +813,7 @@ void rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
 
       auto valueSlice = it->value();
       const auto& opId = PrimitiveTypeSlice<uint32_t>::unpackSlice(valueSlice);
-      tmp_operation_object oObj;
+      rocksdb_operation_object oObj;
       bool found = find_operation_object(opId, &oObj);
       FC_ASSERT(found, "Missing operation?");
 
@@ -817,7 +826,7 @@ void rocksdb_plugin::impl::find_account_history_data(const account_name_type& na
    }
 }
 
-bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_object* op) const
+bool rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_object* op) const
 {
    std::string data;
    PrimitiveTypeSlice<uint32_t> idSlice(opId);
@@ -835,7 +844,7 @@ bool rocksdb_plugin::impl::find_operation_object(size_t opId, tmp_operation_obje
 }
 
 void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
-   std::function<void(const tmp_operation_object&)> processor) const
+   std::function<void(const rocksdb_operation_object&)> processor) const
 {
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[2]));
    PrimitiveTypeSlice<uint32_t> blockNumSlice(blockNum);
@@ -846,7 +855,7 @@ void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
       auto valueSlice = it->value();
       const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
 
-      tmp_operation_object op;
+      rocksdb_operation_object op;
       bool found = find_operation_object(opId, &op);
       FC_ASSERT(found);
 
@@ -855,7 +864,7 @@ void rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
 }
 
 uint32_t rocksdb_plugin::impl::enumVirtualOperationsFromBlockRange(uint32_t blockRangeBegin,
-   uint32_t blockRangeEnd, std::function<void(const tmp_operation_object&)> processor) const
+   uint32_t blockRangeEnd, std::function<void(const rocksdb_operation_object&)> processor) const
 {
    FC_ASSERT(blockRangeEnd > blockRangeBegin, "Block range must be upward");
 
@@ -881,7 +890,7 @@ uint32_t rocksdb_plugin::impl::enumVirtualOperationsFromBlockRange(uint32_t bloc
          auto valueSlice = it->value();
          const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
 
-         tmp_operation_object op;
+         rocksdb_operation_object op;
          bool found = find_operation_object(opId, &op);
          FC_ASSERT(found);
 
@@ -1016,7 +1025,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
 
    FC_ASSERT(_operationSeqId < MAX_OPERATION_ID, "Operation id limit exceeded");
 
-   tmp_operation_object obj;
+   rocksdb_operation_object obj;
    obj.id           = _operationSeqId++;
    obj.trx_id       = txId;
    obj.block        = blockNum;
@@ -1065,7 +1074,7 @@ void rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_poi
    ++_totalOps;
 }
 
-void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const tmp_operation_object& obj,
+void rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj,
    const operation& op, const fc::time_point_sec& blockTime)
 {
    std::string strName = name;
@@ -1185,7 +1194,7 @@ void rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_history_info* ahI
       auto value = dataItr->value();
 
       auto pointedOpId = PrimitiveTypeSlice<uint32_t>::unpackSlice(value);
-      tmp_operation_object op;
+      rocksdb_operation_object op;
       find_operation_object(pointedOpId, &op);
 
       auto age = now - op.timestamp;
@@ -1376,7 +1385,7 @@ void rocksdb_plugin::plugin_initialize(const boost::program_options::variables_m
       dbPath = actualPath;
    }
 
-   _my = std::make_unique<impl>(*this, options, dbPath);
+   _my = std::make_unique<impl>( options, dbPath );
 
    _my->openDb();
 }
@@ -1387,8 +1396,6 @@ void rocksdb_plugin::plugin_startup()
 
    if(_doImmediateImport)
       _my->importData(_blockLimit);
-
-   _my->installApi();
 }
 
 void rocksdb_plugin::plugin_shutdown()
@@ -1398,27 +1405,29 @@ void rocksdb_plugin::plugin_shutdown()
 }
 
 void rocksdb_plugin::find_account_history_data(const account_name_type& name, uint64_t start, uint32_t limit,
-   std::function<void(unsigned int, const tmp_operation_object&)> processor) const
+   std::function<void(unsigned int, const rocksdb_operation_object&)> processor) const
 {
    _my->find_account_history_data(name, start, limit, processor);
 }
 
-bool rocksdb_plugin::find_operation_object(size_t opId, tmp_operation_object* op) const
+bool rocksdb_plugin::find_operation_object(size_t opId, rocksdb_operation_object* op) const
 {
    return _my->find_operation_object(opId, op);
 }
 
 void rocksdb_plugin::find_operations_by_block(size_t blockNum,
-   std::function<void(const tmp_operation_object&)> processor) const
+   std::function<void(const rocksdb_operation_object&)> processor) const
 {
    _my->find_operations_by_block(blockNum, processor);
 }
 
 uint32_t rocksdb_plugin::enum_operations_from_block_range(uint32_t blockRangeBegin, uint32_t blockRangeEnd,
-   std::function<void(const tmp_operation_object&)> processor) const
+   std::function<void(const rocksdb_operation_object&)> processor) const
 {
    return _my->enumVirtualOperationsFromBlockRange(blockRangeBegin, blockRangeEnd, processor);
 }
 
-
 } } }
+
+FC_REFLECT( steem::plugins::rocksdb::account_history_info,
+   (id)(oldestEntryId)(newestEntryId)(oldestEntryTimestamp) )

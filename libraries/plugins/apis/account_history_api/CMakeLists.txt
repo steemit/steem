@@ -4,7 +4,7 @@ add_library( account_history_api_plugin
              account_history_api.cpp
            )
 
-target_link_libraries( account_history_api_plugin account_history_plugin json_rpc_plugin )
+target_link_libraries( account_history_api_plugin account_history_plugin rocksdb_plugin json_rpc_plugin )
 target_include_directories( account_history_api_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )

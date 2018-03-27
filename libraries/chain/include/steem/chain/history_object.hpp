@@ -34,6 +34,8 @@ namespace steem { namespace chain {
          uint64_t             virtual_op = 0;
          time_point_sec       timestamp;
          buffer_type          serialized_op;
+
+         uint64_t             get_virtual_op() const { return virtual_op; }
    };
 
    struct by_location;
@@ -117,7 +119,7 @@ namespace helpers
       {
          index_statistic_info info;
          gather_index_static_data(index, &info);
-         
+
          if(onlyStaticInfo == false)
          {
             for(const auto& o : index)

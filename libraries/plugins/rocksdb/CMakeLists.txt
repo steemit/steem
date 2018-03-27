@@ -2,7 +2,6 @@ file(GLOB HEADERS "include/steem/plugins/rocksdb/*.hpp")
 
 add_library( rocksdb_plugin
              rocksdb_plugin.cpp
-             rocksdb_api.cpp
            )
 
 target_link_libraries( rocksdb_plugin
