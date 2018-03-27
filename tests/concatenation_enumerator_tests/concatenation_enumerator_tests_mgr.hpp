@@ -381,6 +381,22 @@ namespace ce_tests
    }
 
    template< typename Object, typename Collection >
+   void fill6( Collection& col )
+   {
+      col.clear();
+
+      auto c0 = []( Object& obj ){ obj.id = 0; obj.val = 30; obj.val2 = 50; obj.val3 = 100; };
+      auto c1 = []( Object& obj ){ obj.id = 1; obj.val = 31; obj.val2 = 51; obj.val3 = 101; };
+      auto c2 = []( Object& obj ){ obj.id = 2; obj.val = 32; obj.val2 = 52; obj.val3 = 102; };
+      auto c3 = []( Object& obj ){ obj.id = 3; obj.val = 33; obj.val2 = 53; obj.val3 = 102; };
+   
+      col.emplace( Object ( c0, std::allocator< Object >() ) );
+      col.emplace( Object ( c1, std::allocator< Object >() ) );
+      col.emplace( Object ( c2, std::allocator< Object >() ) );
+      col.emplace( Object ( c3, std::allocator< Object >() ) );
+   }
+
+   template< typename Object, typename Collection >
    void sort5( Collection& col )
    {
       col.clear();

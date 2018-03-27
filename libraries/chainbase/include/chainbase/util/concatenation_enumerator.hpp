@@ -52,9 +52,16 @@ namespace ce
 
       protected:
 
+         virtual void dec() = 0;
          virtual void inc() = 0;
 
       public:
+
+         abstract_sub_enumerator& operator--()
+         {
+            dec();
+            return *this;
+         }
 
          abstract_sub_enumerator& operator++()
          {
@@ -67,7 +74,8 @@ namespace ce
          virtual pointer operator->() const = 0;
          virtual bool operator==( const abstract_sub_enumerator& obj ) const = 0;
          virtual bool operator<( const abstract_sub_enumerator& obj ) const = 0;
-         virtual bool finished() const = 0;
+         virtual bool begin() const = 0;
+         virtual bool end() const = 0;
    };
 
    template< typename ITERATOR, typename OBJECT, typename CMP >
@@ -80,29 +88,44 @@ namespace ce
  
       protected:
 
+         void dec() override
+         {
+            assert( it != it_begin );
+            --it;
+         }
+
          void inc() override
          {
-            assert( it != end );
+            assert( it != it_end );
             ++it;
          }
 
       public:
 
          ITERATOR it;
-         ITERATOR end;
+
+         ITERATOR it_begin;
+         ITERATOR it_end;
 
          const CMP cmp;
 
          sub_enumerator( const ITERATOR& _it, const ITERATOR& _end, const CMP& _cmp )
-         : end( _end ), cmp( _cmp )
+         : it_end( _end ), cmp( _cmp )
          {
             it = _it;
+            it_begin = _it;//TEMPORARY!!!!!!!!!!!
          }
 
          size_t get_id() const override
          {
-            assert( it != end );
+            assert( it != it_end );
             return size_t( it->id );
+         }
+
+         sub_enumerator operator--()
+         {
+            dec();
+            return *this;
          }
 
          sub_enumerator operator++()
@@ -113,13 +136,13 @@ namespace ce
 
          reference operator*() const override
          {
-            assert( it != end );
+            assert( it != it_end );
             return *it;
          }
 
          pointer operator->() const override
          {
-            assert( it != end );
+            assert( it != it_end );
             return &( *it );
          }
 
@@ -133,9 +156,14 @@ namespace ce
             return cmp( *( *this ), *obj );
          }
 
-         bool finished() const override
+         bool begin() const override
          {
-            return it == end;
+            return it == it_begin;
+         }
+
+         bool end() const override
+         {
+            return it == it_end;
          }
    };
 
@@ -149,9 +177,101 @@ namespace ce
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
          using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
 
-         CMP cmp;
+         using pitem_idx = std::pair< pitem, int32_t >;
 
       protected:
+
+         enum class Direction : bool      { prev, next };
+         enum Position        : int32_t   { pos_begin = -2, pos_end = -1 };
+
+      private:
+
+         CMP cmp;
+
+         template< typename CONDITION >
+         void find_active_iterators( std::vector< pitem_idx >& dst, CONDITION&& condition )
+         {
+            int32_t cnt = 0;
+            for( auto& item : iterators )
+            {
+               if( condition( item ) )
+                  dst.emplace_back( std::make_pair( item, cnt ) );
+               ++cnt;
+            }
+         }
+
+         template< typename CONDITION, typename ACTION, typename COMPARISION >
+         void change_direction_impl( int32_t idx, CONDITION&& condition, ACTION&& action, COMPARISION&& comparision )
+         {
+            std::vector< pitem_idx > row;
+            find_active_iterators( row, condition );
+
+            if( idx < 0 )
+            {
+               for( auto& item : row )
+                  action( item.first );
+
+               return;
+            }
+
+            auto actual_it = iterators[ idx ];
+
+            for( auto& item : row )
+            {
+               if( item.second != idx )
+               {
+                  if( *item.first == *actual_it )
+                     action( item.first );
+                  else
+                  {
+                     auto res = comparision( actual_it, item.first );
+                     if( res )
+                        action( item.first );
+                  }
+               }
+            }
+
+            action( iterators[ idx ] );
+         }
+
+         template< Direction DIRECTION >
+         bool change_direction( int32_t idx )
+         {
+            //Direction is still the same.
+            if( direction == DIRECTION )
+               return false;
+
+            direction = DIRECTION;
+
+            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
+
+            if( DIRECTION == Direction::prev )
+            {
+               assert( idx != Position::pos_begin );
+               change_direction_impl( idx,
+                                    []( const pitem& item ){ return !item->begin(); },
+                                    []( const pitem& item ){ --( *item ); },
+                                    [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); }
+                                    );
+               return true;
+            }
+            else if( DIRECTION == Direction::next )
+            {
+               assert( idx != Position::pos_end );
+               change_direction_impl( idx,
+                                    []( const pitem& item ){ return !item->end(); },
+                                    []( const pitem& item ){ ++( *item ); },
+                                    [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); }
+                                    );
+               return true;
+            }
+
+            return false;
+         }
+
+      protected:
+
+         Direction direction = Direction::next;
 
          std::vector< pitem > iterators;
 
@@ -172,61 +292,85 @@ namespace ce
             add( elements... );
          }
 
-         int32_t find_next()
+      private:
+
+         template< Position position, typename COMPARISION >
+         int32_t find_impl( COMPARISION&& comparision )
          {
-            using pair = std::pair< pitem, int32_t >;
+            std::vector< pitem_idx > row;
 
-            std::vector< pair > row;
-
-            int32_t cnt = 0;
-            for( auto& item : iterators )
-            {
-               if( !item->finished() )
-                  row.emplace_back( std::make_pair( item, cnt ) );
-               ++cnt;
-            }
+            find_active_iterators( row, []( const pitem& item ){ return !item->end(); } );
 
             switch( row.size() )
             {
-               case 0: return -1;
+               case 0: return position;
                case 1: return row[0].second;
                default:
                {
                   std::sort( row.begin(), row.end(),
-                              [ this ]( const pair& a, const pair& b )
+                              [&]( const pitem_idx& a, const pitem_idx& b )
                               {
                                  if( *( a.first ) == *( b.first ) )
                                     return a.second > b.second;
                                  else
-                                    return cmp( *( *a.first ), *( *b.first ) );
+                                    return comparision( a.first, b.first );
                               }
                            );
                } break;
             }
 
             auto ret = row.begin()->second;
-            assert( !iterators[ ret ]->finished() );
+            assert( !iterators[ ret ]->end() );
 
             return ret;
          }
 
-         void move( int32_t idx )
+         template< Position position, typename ACTION >
+         void move_impl( int32_t idx, ACTION&& action )
          {
-            if( idx < 0 )
+            if( idx == position )
                return;
 
-            assert( static_cast< size_t >( idx ) < iterators.size() && !iterators[ idx ]->finished() );
+            assert( static_cast< size_t >( idx ) < iterators.size() && !iterators[ idx ]->end() );
 
             int32_t cnt = 0;
             for( size_t i = 0 ; i < iterators.size(); ++i )
             {
-               if( cnt != idx && !iterators[ cnt ]->finished() && ( *iterators[ cnt ] ) == ( *iterators[ idx ] ) )
-                  ++( *iterators[ cnt ] );
+               if( cnt != idx && !iterators[ cnt ]->end() && ( *iterators[ cnt ] ) == ( *iterators[ idx ] ) )
+                  action( iterators[ cnt ] );
 
                ++cnt;
             }
             //Move given iterator at the end, because it is used to comparision.
-            ++( *iterators[ idx ] );
+            action( iterators[ idx ] );
+         }
+
+      protected:
+
+         int32_t find( Direction _direction )
+         {
+            assert( _direction == Direction::prev || _direction == Direction::next );
+
+            if( _direction == Direction::next )
+               return find_impl< Position::pos_end >( [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); } );
+            else
+               return find_impl< Position::pos_begin >( [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); } );
+         }
+
+         void move( int32_t idx, Direction _direction )
+         {
+            assert( _direction == Direction::prev || _direction == Direction::next );
+
+            if( _direction == Direction::next )
+            {
+               if( !change_direction< Direction::next >( idx ) )
+                  move_impl< Position::pos_end >( idx, []( const pitem& item ){ ++( *item ); } );
+            }
+            else
+            {
+               if( !change_direction< Direction::prev >( idx ) )
+                  move_impl< Position::pos_begin >( idx, []( const pitem& item ){ --( *item ); } );
+            }
          }
 
       public:
@@ -237,38 +381,52 @@ namespace ce
          {
             add( elements... );
 
-            idx.current = find_next();
+            idx.current = find( Direction::next );
          }
 
          reference operator*() const
          {
-            assert( idx.current != -1 );
+            assert( idx.current != Position::pos_end );
             return *( *( iterators[ idx.current ] ) );
          }
 
          pointer operator->() const
          {
-            assert( idx.current != -1 );
+            assert( idx.current != Position::pos_end );
             return &( *( iterators[ idx.current ] ) );
          }
 
          concatenation_enumerator& operator++()
          {
-            move( idx.current );
-            idx.current = find_next();
+            move( idx.current, Direction::next );
+            idx.current = find( Direction::next );
 
             return *this;
          }
 
-         bool finished() const
+         concatenation_enumerator& operator--()
          {
-            return idx.current == -1;
+            move( idx.current, Direction::prev );
+            idx.current = find( Direction::prev );
+
+            return *this;
+         }
+
+         bool end() const
+         {
+           return idx.current == Position::pos_end;
          }
    };
 
    template< typename OBJECT, typename CMP >
    class concatenation_enumerator_ex: public concatenation_enumerator< OBJECT, CMP >
    {
+      protected:
+         
+         using base_class = concatenation_enumerator< OBJECT, CMP >;
+         using Direction = typename base_class::Direction;
+         using Position = typename base_class::Position;
+
       private:
 
          using pitem = typename abstract_sub_checker::pself;
@@ -279,7 +437,7 @@ namespace ce
 
          bool find_next_with_key_search_impl( size_t key )
          {
-            assert( this->idx.current != -1 );
+            assert( this->idx.current != Position::pos_end );
 
             for( size_t i = this->idx.current + 1; i < containers.size(); ++i )
             {
@@ -292,21 +450,21 @@ namespace ce
 
          void find_next_with_key_search()
          {
-            if( this->idx.current == -1 )
+            if( this->idx.current == Position::pos_end )
                return;
 
             size_t key;
 
-            while( this->idx.current != -1 )
+            while( this->idx.current != Position::pos_end )
             {
                key = this->iterators[ this->idx.current ]->get_id();
 
                if( !find_next_with_key_search_impl( key ) )
                   break;
             
-               this->move( this->idx.current );
+               this->move( this->idx.current, Direction::next );
 
-               this->idx.current = this->find_next();
+               this->idx.current = this->find( Direction::next );
             }
          }
 
@@ -335,9 +493,9 @@ namespace ce
 
       concatenation_enumerator_ex& operator++()
       {
-         this->move( this->idx.current );
+         this->move( this->idx.current, Direction::next );
 
-         this->idx.current = this->find_next();
+         this->idx.current = this->find( Direction::next );
          find_next_with_key_search();
 
          return *this;
