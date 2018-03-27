@@ -41,7 +41,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     STEEMD_PID=`pgrep -f p2p-endpoint`
     kill -SIGINT $STEEMD_PID
     echo steemdsync: waiting for steemd to exit cleanly
-    while [ -e /proc/$STEEMD_PID ]; do sleep 0.1; done
+    while [ -e /proc/$STEEMD_PID ]; do sleep 15; done
     echo steemdsync: starting a new blockchainstate upload operation
     cd ${COMPRESSPATH:-$HOME}
     echo steemdsync: compressing blockchainstate...
