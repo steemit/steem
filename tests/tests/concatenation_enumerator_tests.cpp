@@ -443,11 +443,11 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
 }
 
 template< typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
-void inc_dec_basic_test( Filler&& filler )
+void inc_dec_basic_1_source_test( Filler&& filler )
 {
    Collection bmic1;
 
-   BOOST_TEST_MESSAGE( "1 sources - '++' and '--'" );
+   BOOST_TEST_MESSAGE( "1 source - operations: '++' and '--'" );
    filler( bmic1 );
 
    const auto& idx1 = bmic1.template get< Index >();
@@ -457,15 +457,12 @@ void inc_dec_basic_test( Filler&& filler )
 
    auto it_comparer = idx1.begin();
    size_t size = idx1.size();
-   if( size < 2 )
-      return;
 
    size_t i = 0;
 
    {
       std::cout<<"[0]"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
       ++it;
       ++it_comparer;
@@ -474,8 +471,7 @@ void inc_dec_basic_test( Filler&& filler )
       --it_comparer;
 
       std::cout<<"[0] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    
       if( ++i == size ) return;
    }
@@ -485,8 +481,7 @@ void inc_dec_basic_test( Filler&& filler )
       ++it_comparer;
 
       std::cout<<"[1]"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
       ++it;
       ++it_comparer;
@@ -495,8 +490,7 @@ void inc_dec_basic_test( Filler&& filler )
       --it_comparer;
 
       std::cout<<"[1] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    
       if( ++i == size ) return;
    }
@@ -506,8 +500,7 @@ void inc_dec_basic_test( Filler&& filler )
       ++it_comparer;
 
       std::cout<<"[2]"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
       ++it;
       ++it_comparer;
@@ -516,8 +509,7 @@ void inc_dec_basic_test( Filler&& filler )
       --it_comparer;
 
       std::cout<<"[2] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    
       if( ++i == size ) return;
    }
@@ -527,8 +519,7 @@ void inc_dec_basic_test( Filler&& filler )
       ++it_comparer;
 
       std::cout<<"[3]"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
       ++it;
       ++it_comparer;
@@ -537,33 +528,210 @@ void inc_dec_basic_test( Filler&& filler )
       --it_comparer;
 
       std::cout<<"[3] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
-   
-      --it;
-      --it_comparer;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   }
 
-      std::cout<<"[2] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+   --it;
+   --it_comparer;
 
-      --it;
-      --it_comparer;
+   std::cout<<"[2] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
-      std::cout<<"[1] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+   --it;
+   --it_comparer;
+
+   std::cout<<"[1] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[0] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+}
+
+template< typename Collection, typename Object, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void inc_dec_basic_3_sources_test( Filler1& filler1, Filler2 filler2, Filler3& filler3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - operations: '++' and '--'" );
+   filler1( bmic1 );
+   filler2( bmic2 );
+   filler3( bmic3 );
+   sorted_filler( comparer );
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   ce::concatenation_enumerator< Object, Cmp > it( Cmp(),
+                                                   std::make_tuple( idx1.begin(), idx1.end() ),
+                                                   std::make_tuple( idx2.begin(), idx2.end() ),
+                                                   std::make_tuple( idx3.begin(), idx3.end() )
+                                                );
+
+   auto it_comparer = comparer.begin();
+   size_t size = comparer.size();
+
+   size_t i = 0;
+
+   {
+      std::cout<<"[0]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
 
       --it;
       --it_comparer;
 
       std::cout<<"[0] after operator--"<<std::endl;
-      std::cout<<*it<<std::endl;
-      std::cout<<*it_comparer<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   
+      if( ++i == size ) return;
    }
+
+   {
+      ++it;
+      ++it_comparer;
+
+      std::cout<<"[1]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
+
+      --it;
+      --it_comparer;
+
+      std::cout<<"[1] after operator--"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   
+      if( ++i == size ) return;
+   }
+
+   {
+      ++it;
+      ++it_comparer;
+
+      std::cout<<"[2]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
+
+      --it;
+      --it_comparer;
+
+      std::cout<<"[2] after operator--"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   
+      if( ++i == size ) return;
+   }
+
+   {
+      ++it;
+      ++it_comparer;
+
+      std::cout<<"[3]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
+
+      --it;
+      --it_comparer;
+
+      std::cout<<"[3] after operator--"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   }
+
+   {
+      ++it;
+      ++it_comparer;
+
+      std::cout<<"[4]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
+
+      --it;
+      --it_comparer;
+
+      std::cout<<"[4] after operator--"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   }
+
+   {
+      ++it;
+      ++it_comparer;
+
+      std::cout<<"[5]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+      ++it;
+      ++it_comparer;
+
+      --it;
+      --it_comparer;
+
+      std::cout<<"[5] after operator--"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   }
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[4] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[3] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[2] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[1] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
+   std::cout<<"[0] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(inc_dec_basic_tests1)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp1 = ce_tests::cmp1;
+   using oidx = ce_tests::OrderedIndex;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill7< obj >( collection ); };
+   auto f2 = []( bmic& collection ){ ce_tests::fill7a< obj >( collection ); };
+   auto f3 = []( bmic& collection ){ ce_tests::fill7b< obj >( collection ); };
+   auto s = []( bmic& collection ){ ce_tests::sort7< obj >( collection ); };
+
+   inc_dec_basic_3_sources_test< bmic, obj, oidx, cmp1 >( f1, f2, f3, s );
+}
 
 BOOST_AUTO_TEST_CASE(inc_dec_basic_tests)
 {
@@ -572,9 +740,9 @@ BOOST_AUTO_TEST_CASE(inc_dec_basic_tests)
    using cmp1 = ce_tests::cmp1;
    using oidx = ce_tests::OrderedIndex;
 
-   auto c1 = []( bmic& collection ){ ce_tests::fill6< obj >( collection ); };
+   auto f1 = []( bmic& collection ){ ce_tests::fill6< obj >( collection ); };
 
-   inc_dec_basic_test< bmic, obj, oidx, cmp1 >( c1 );
+   inc_dec_basic_1_source_test< bmic, obj, oidx, cmp1 >( f1 );
 }
 
 BOOST_AUTO_TEST_CASE(basic_tests)

@@ -76,6 +76,11 @@ namespace ce
          virtual bool operator<( const abstract_sub_enumerator& obj ) const = 0;
          virtual bool begin() const = 0;
          virtual bool end() const = 0;
+
+         //Set inactive status
+         virtual void change_status( bool val ) = 0;
+         //This method informs, that given iterator is inactive. Something like 'end()', but from the second way.
+         virtual bool is_inactive() const = 0;
    };
 
    template< typename ITERATOR, typename OBJECT, typename CMP >
@@ -86,6 +91,10 @@ namespace ce
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
          using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
  
+      private:
+
+         bool inactive = false;
+
       protected:
 
          void dec() override
@@ -98,6 +107,9 @@ namespace ce
          {
             assert( it != it_end );
             ++it;
+
+            if( inactive )
+               inactive = false;
          }
 
       public:
@@ -165,6 +177,16 @@ namespace ce
          {
             return it == it_end;
          }
+
+         void change_status( bool val ) override
+         {
+            inactive = val;
+         }
+
+         bool is_inactive() const
+         {
+            return inactive;
+         }
    };
 
    template< typename OBJECT, typename CMP >
@@ -172,6 +194,7 @@ namespace ce
    {
       private:
 
+         using self = concatenation_enumerator< OBJECT, CMP >;
          using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
 
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
@@ -184,26 +207,33 @@ namespace ce
          enum class Direction : bool      { prev, next };
          enum Position        : int32_t   { pos_begin = -2, pos_end = -1 };
 
-      private:
+      public:
 
          CMP cmp;
 
-         template< typename CONDITION >
-         void find_active_iterators( std::vector< pitem_idx >& dst, CONDITION&& condition )
+      private:
+
+         template< typename CONTAINER, typename CONDITION >
+         void find_active_iterators( CONTAINER& dst, CONDITION&& condition )
          {
             int32_t cnt = 0;
             for( auto& item : iterators )
             {
                if( condition( item ) )
-                  dst.emplace_back( std::make_pair( item, cnt ) );
+                  dst.emplace( std::make_pair( item, cnt ) );
                ++cnt;
             }
          }
 
-         template< typename CONDITION, typename ACTION, typename COMPARISION >
-         void change_direction_impl( int32_t idx, CONDITION&& condition, ACTION&& action, COMPARISION&& comparision )
+         template< typename CONDITION, typename ACTION, typename COMPARISION, typename CHECKER >
+         void change_direction_impl( int32_t idx, CONDITION&& condition, ACTION&& action, COMPARISION&& comparision, CHECKER&& checker )
          {
-            std::vector< pitem_idx > row;
+            struct _sorter
+            {
+               bool operator()( const pitem_idx& a, const pitem_idx& b ){ return a.second < b.second; };
+            };
+            std::set< pitem_idx, _sorter > row;
+
             find_active_iterators( row, condition );
 
             if( idx < 0 )
@@ -214,24 +244,28 @@ namespace ce
                return;
             }
 
-            auto actual_it = iterators[ idx ];
+            auto current_it = iterators[ idx ];
+            bool current_it_active = false;
 
             for( auto& item : row )
             {
-               if( item.second != idx )
+               if( item.second == idx )
+                  current_it_active = true;
+               else
                {
-                  if( *item.first == *actual_it )
+                  if( checker( item.first, current_it ) )
                      action( item.first );
                   else
                   {
-                     auto res = comparision( actual_it, item.first );
+                     auto res = comparision( item.first, current_it );
                      if( res )
                         action( item.first );
                   }
                }
             }
 
-            action( iterators[ idx ] );
+            if( current_it_active )
+               action( iterators[ idx ] );
          }
 
          template< Direction DIRECTION >
@@ -249,9 +283,22 @@ namespace ce
             {
                assert( idx != Position::pos_begin );
                change_direction_impl( idx,
-                                    []( const pitem& item ){ return !item->begin(); },
-                                    []( const pitem& item ){ --( *item ); },
-                                    [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); }
+                                    []( const pitem& item ){ return !item->is_inactive(); },
+                                    []( const pitem& item )
+                                    {
+                                       if( item->begin() )
+                                          item->change_status( true );
+                                       else
+                                          --( *item );
+                                    },
+                                    [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); },
+                                    []( const pitem& item, const pitem& item2 )
+                                    {
+                                       if( item->end() )
+                                          return true;
+                                       else
+                                          return *item == *item2;
+                                    }
                                     );
                return true;
             }
@@ -261,7 +308,18 @@ namespace ce
                change_direction_impl( idx,
                                     []( const pitem& item ){ return !item->end(); },
                                     []( const pitem& item ){ ++( *item ); },
-                                    [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); }
+                                    [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); },
+                                    []( const pitem& item, const pitem& item2 )
+                                    {
+                                       if( *item == *item2 )
+                                          return true;
+                                       else
+                                       {
+                                          if( item->is_inactive() )
+                                             item->change_status( false );
+                                          return false;
+                                       }
+                                    }
                                     );
                return true;
             }
@@ -294,33 +352,47 @@ namespace ce
 
       private:
 
-         template< Position position, typename COMPARISION >
-         int32_t find_impl( COMPARISION&& comparision )
+         template< Direction DIRECTION, Position position >
+         int32_t find_impl()
          {
-            std::vector< pitem_idx > row;
+            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
-            find_active_iterators( row, []( const pitem& item ){ return !item->end(); } );
+            struct _sorter
+            {
+               const self& obj;
+               Direction direction;
+
+               _sorter( const self& _obj, Direction _direction ): obj( _obj ), direction( _direction ) {}
+
+               bool operator()( const pitem_idx& a, const pitem_idx& b )
+               {
+                  if( *( a.first ) == *( b.first ) )
+                     return a.second > b.second;
+                  else
+                  {
+                     if( direction == Direction::next )
+                        return obj.cmp( *( *a.first ), *( *b.first ) );
+                     else
+                        return !obj.cmp( *( *a.first ), *( *b.first ) );
+                  }
+               };
+            };
+
+            _sorter __sorter( *this, DIRECTION );
+            std::set< pitem_idx, _sorter > row( __sorter );
+
+            find_active_iterators( row, []( const pitem& item ){ return !item->end() && !item->is_inactive(); } );
 
             switch( row.size() )
             {
                case 0: return position;
-               case 1: return row[0].second;
-               default:
-               {
-                  std::sort( row.begin(), row.end(),
-                              [&]( const pitem_idx& a, const pitem_idx& b )
-                              {
-                                 if( *( a.first ) == *( b.first ) )
-                                    return a.second > b.second;
-                                 else
-                                    return comparision( a.first, b.first );
-                              }
-                           );
-               } break;
+               case 1: return row.begin()->second;
+               default: break;
             }
 
-            auto ret = row.begin()->second;
-            assert( !iterators[ ret ]->end() );
+            int32_t ret;
+            ret = row.begin()->second;
+            assert( !iterators[ ret ]->end() && !iterators[ ret ]->is_inactive() );
 
             return ret;
          }
@@ -331,15 +403,12 @@ namespace ce
             if( idx == position )
                return;
 
-            assert( static_cast< size_t >( idx ) < iterators.size() && !iterators[ idx ]->end() );
+            assert( static_cast< size_t >( idx ) < iterators.size() && !iterators[ idx ]->end() && !iterators[ idx ]->is_inactive() );
 
-            int32_t cnt = 0;
             for( size_t i = 0 ; i < iterators.size(); ++i )
             {
-               if( cnt != idx && !iterators[ cnt ]->end() && ( *iterators[ cnt ] ) == ( *iterators[ idx ] ) )
-                  action( iterators[ cnt ] );
-
-               ++cnt;
+               if( static_cast< int32_t >( i ) != idx && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx ] ) )
+                  action( iterators[ i ] );
             }
             //Move given iterator at the end, because it is used to comparision.
             action( iterators[ idx ] );
@@ -352,9 +421,9 @@ namespace ce
             assert( _direction == Direction::prev || _direction == Direction::next );
 
             if( _direction == Direction::next )
-               return find_impl< Position::pos_end >( [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); } );
+               return find_impl< Direction::next, Position::pos_end >();
             else
-               return find_impl< Position::pos_begin >( [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); } );
+               return find_impl< Direction::prev, Position::pos_begin >();
          }
 
          void move( int32_t idx, Direction _direction )
@@ -369,7 +438,15 @@ namespace ce
             else
             {
                if( !change_direction< Direction::prev >( idx ) )
-                  move_impl< Position::pos_begin >( idx, []( const pitem& item ){ --( *item ); } );
+                  move_impl< Position::pos_begin >( idx,
+                                                   []( const pitem& item )
+                                                   {
+                                                      if( item->begin() )
+                                                         item->change_status( true );
+                                                      else
+                                                         --( *item );
+                                                   }
+                                                );
             }
          }
 
