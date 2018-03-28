@@ -60,9 +60,19 @@ void parse_commands(
     bool & interactive
 );
 
+int unsafe_main(int argc, char** argv);
 
-int main( int argc, char** argv ) {
+int main(int argc, char** argv) {
     try {
+        return unsafe_main(argc, argv);
+    } catch ( const fc::exception& e ) {
+        std::cout << e.to_detail_string() << "\n";
+        return -1;
+    }
+}
+
+int unsafe_main(int argc, char** argv) {
+    // try {
 
         boost::program_options::options_description opts;
         opts.add_options()
@@ -81,20 +91,39 @@ int main( int argc, char** argv ) {
 #endif
                 ("commands,C", boost::program_options::value<string>(), "Enable non-interactive mode")
                 ;
-        vector<string> allowed_ips;
 
-        std::vector < std::string > commands;
-
-        bool interactive = true;
+        bpo::options_description log_opts("Logging options");
+        log_opts.add_options()
+            ("logger.default.level", bpo::value<string>()->default_value("info"), "Log level of \"default\" (stderr) logger (all|debug|info|warn|error|off)")
+            ("logger.rpc.level", bpo::value<string>()->default_value("debug"), "Log level of \"rpc\" logger (all|debug|info|warn|error|off)")
+            ("logger.rpc.filename", bpo::value<string>()->default_value("logs/rpc/rpc.log"), "rpc logger filename, can be absolute or relative")
+            ("logger.rpc.flush", bpo::value<bool>()->default_value(true), "rpc logger flush (true|false or 1|0)")
+            ("logger.rpc.rotate", bpo::value<bool>()->default_value(true), "rpc logger rotate (true|false or 1|0)")
+            ("logger.rpc.rotation_interval", bpo::value<int64_t>()->default_value(fc::hours(1).to_seconds()), "rpc logger rotation interval in seconds")
+            ("logger.rpc.rotation_limit", bpo::value<int64_t>()->default_value(fc::days(1).to_seconds()), "rpc logger rotation limit in seconds")
+            ;
+        opts.add(log_opts);
 
         bpo::variables_map options;
 
         bpo::store( bpo::parse_command_line(argc, argv, opts), options );
 
+        string def_log_lvl = options["logger.default.level"].as<string>();
+        string rpc_log_lvl = options["logger.rpc.level"].as<string>();
+        string rpc_log_filename = options["logger.rpc.filename"].as<string>();
+        bool rpc_log_flush = options["logger.rpc.flush"].as<bool>();
+        bool rpc_log_rotate = options["logger.rpc.rotate"].as<bool>();
+        int64_t rpc_log_rot_interval = options["logger.rpc.rotation_interval"].as<int64_t>();
+        int64_t rpc_log_rot_limit = options["logger.rpc.rotation_limit"].as<int64_t>();
+
         if( options.count("help") ) {
             std::cout << opts << "\n";
             return 0;
         }
+
+        vector<string> allowed_ips;
+        vector<string> commands;
+        bool interactive = true;
 
         parse_commands(options, commands, interactive);
 
@@ -105,28 +134,33 @@ int main( int argc, char** argv ) {
 
         golos::protocol::chain_id_type _steem_chain_id = STEEMIT_CHAIN_ID;
 
-        fc::path data_dir;
+        fc::log_level ll_default;
+        from_variant(variant(def_log_lvl), ll_default);
+        fc::log_level ll_rpc;
+        from_variant(variant(rpc_log_lvl), ll_rpc);
+
         fc::logging_config cfg;
-        fc::path log_dir = data_dir / "logs";
-
         fc::file_appender::config ac;
-        ac.filename             = log_dir / "rpc" / "rpc.log";
-        ac.flush                = true;
-        ac.rotate               = true;
-        ac.rotation_interval    = fc::hours( 1 );
-        ac.rotation_limit       = fc::days( 1 );
+        if (ll_rpc < fc::log_level::off) {
+            fc::path file_name      = rpc_log_filename;
+            ac.filename             = file_name;
+            ac.flush                = rpc_log_flush;
+            ac.rotate               = rpc_log_rotate;
+            ac.rotation_interval    = fc::seconds(rpc_log_rot_interval);
+            ac.rotation_limit       = fc::seconds(rpc_log_rot_limit);
 
-        std::cout << "Logging RPC to file: " << (data_dir / ac.filename).preferred_string() << "\n";
+            std::cout << "Logging RPC to file: " << (ac.filename).preferred_string() << "\n";
+        }
 
         cfg.appenders.push_back(fc::appender_config( "default", "console", fc::variant(fc::console_appender::config())));
         cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac)));
 
         cfg.loggers = { fc::logger_config("default"), fc::logger_config( "rpc") };
-        cfg.loggers.front().level = fc::log_level::info;
+        cfg.loggers.front().level = ll_default;
         cfg.loggers.front().appenders = {"default"};
-        cfg.loggers.back().level = fc::log_level::debug;
+        cfg.loggers.back().level = ll_rpc;
         cfg.loggers.back().appenders = {"rpc"};
-
+        fc::configure_logging(cfg);
 
         //
         // TODO:  We read wallet_data twice, once in main() to grab the
@@ -245,10 +279,10 @@ int main( int argc, char** argv ) {
         wapi->save_wallet_file(wallet_file.generic_string());
         locked_connection.disconnect();
         closed_connection.disconnect();
-    } catch ( const fc::exception& e ) {
-        std::cout << e.to_detail_string() << "\n";
-        return -1;
-    }
+    // } catch ( const fc::exception& e ) {
+    //     std::cout << e.to_detail_string() << "\n";
+    //     return -1;
+    // }
     return 0;
 }
 
