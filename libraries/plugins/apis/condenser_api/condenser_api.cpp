@@ -753,7 +753,7 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_chain_properties )
    {
       CHECK_ARG_SIZE( 0 )
-      return legacy_chain_properties( _database_api->get_witness_schedule( {} ).median_props );
+      return api_chain_properties( _database_api->get_witness_schedule( {} ).median_props );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_current_median_history_price )
@@ -1596,7 +1596,6 @@ namespace detail
    {
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
-
       return _network_broadcast_api->broadcast_transaction( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } );
    }
 
