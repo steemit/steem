@@ -51,14 +51,8 @@ struct get_required_auth_visitor
 // functions related to your operation type
 //
 #define STEEM_DECLARE_OPERATION_TYPE( OperationType )                            \
-namespace fc {                                                                   \
                                                                                  \
-void to_variant( const OperationType&, fc::variant& );                           \
-void from_variant( const fc::variant&, OperationType& );                         \
-                                                                                 \
-} /* fc */                                                                       \
-                                                                                 \
-namespace steem { namespace protocol {                                         \
+namespace steem { namespace protocol {                                           \
                                                                                  \
 void operation_validate( const OperationType& o );                               \
 void operation_get_required_authorities( const OperationType& op,                \
