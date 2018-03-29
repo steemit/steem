@@ -207,21 +207,37 @@ namespace ce
          enum class Direction : bool      { prev, next };
          enum Position        : int32_t   { pos_begin = -2, pos_end = -1 };
 
-      public:
-
-         CMP cmp;
+         Direction direction = Direction::next;
 
       private:
+
+         void add() {}
+
+         template< typename TUPLE, typename... ELEMENTS >
+         void add( const TUPLE& tuple, ELEMENTS... elements )
+         {
+            using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
+            using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
+
+            iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+            add( elements... );
+         }
 
          template< typename CONTAINER, typename CONDITION >
          void find_active_iterators( CONTAINER& dst, CONDITION&& condition )
          {
-            int32_t cnt = 0;
-            for( auto& item : iterators )
+            int32_t cnt = iterators.size() - 1;
+
+            auto it = iterators.rbegin();
+            auto it_end = iterators.rend();
+
+            while( it != it_end )
             {
-               if( condition( item ) )
-                  dst.emplace( std::make_pair( item, cnt ) );
-               ++cnt;
+               if( condition( *it ) )
+                  dst.emplace( std::make_pair( *it, cnt ) );
+
+               ++it;
+               --cnt;
             }
          }
 
@@ -324,31 +340,6 @@ namespace ce
             return false;
          }
 
-      protected:
-
-         Direction direction = Direction::next;
-
-         std::vector< pitem > iterators;
-
-         struct
-         {
-            int32_t current;
-         } idx;
-
-         void add() {}
-
-         template< typename TUPLE, typename... ELEMENTS >
-         void add( const TUPLE& tuple, ELEMENTS... elements )
-         {
-            using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
-            using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
-
-            iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
-            add( elements... );
-         }
-
-      private:
-
          template< Direction DIRECTION, Position position >
          void find_impl()
          {
@@ -364,7 +355,7 @@ namespace ce
                bool operator()( const pitem_idx& a, const pitem_idx& b )
                {
                   if( *( a.first ) == *( b.first ) )
-                     return a.second > b.second;
+                     return false;
                   else
                   {
                      if( direction == Direction::next )
@@ -390,6 +381,17 @@ namespace ce
             assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
          }
 
+         template< Direction DIRECTION >
+         void find()
+         {
+            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
+
+            if( DIRECTION == Direction::next )
+               find_impl< Direction::next, Position::pos_end >();
+            else
+               find_impl< Direction::prev, Position::pos_begin >();
+         }
+
          template< Position position, typename ACTION >
          void move_impl( ACTION&& action )
          {
@@ -407,23 +409,12 @@ namespace ce
             action( iterators[ idx.current ] );
          }
 
-      protected:
-
-         void find( Direction _direction )
+         template< Direction DIRECTION >
+         void move()
          {
-            assert( _direction == Direction::prev || _direction == Direction::next );
+            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
-            if( _direction == Direction::next )
-               find_impl< Direction::next, Position::pos_end >();
-            else
-               find_impl< Direction::prev, Position::pos_begin >();
-         }
-
-         void move( Direction _direction )
-         {
-            assert( _direction == Direction::prev || _direction == Direction::next );
-
-            if( _direction == Direction::next )
+            if( DIRECTION == Direction::next )
             {
                if( !change_direction< Direction::next >() )
                   move_impl< Position::pos_end >( []( const pitem& item ){ ++( *item ); } );
@@ -442,7 +433,26 @@ namespace ce
             }
          }
 
+      protected:
+
+         std::vector< pitem > iterators;
+
+         struct
+         {
+            int32_t current;
+         } idx;
+
+         template< Direction DIRECTION >
+         void action()
+         {
+            move< DIRECTION >();
+            find< DIRECTION >();
+         }
+
+
       public:
+
+         CMP cmp;
 
          template< typename... ELEMENTS >
          concatenation_enumerator( const CMP& _cmp, ELEMENTS... elements )
@@ -450,7 +460,7 @@ namespace ce
          {
             add( elements... );
 
-            find( Direction::next );
+            find< Direction::next >();
          }
 
          reference operator*() const
@@ -467,16 +477,14 @@ namespace ce
 
          concatenation_enumerator& operator++()
          {
-            move( Direction::next );
-            find( Direction::next );
+            action< Direction::next >();
 
             return *this;
          }
 
          concatenation_enumerator& operator--()
          {
-            move( Direction::prev );
-            find( Direction::prev );
+            action< Direction::prev >();
 
             return *this;
          }
@@ -502,9 +510,22 @@ namespace ce
 
          std::vector< pitem > containers;
 
+         void add(){}
+
+         template< typename TUPLE, typename... ELEMENTS >
+         void add( const TUPLE& tuple, ELEMENTS... elements )
+         {
+            using t_without_ref = typename std::remove_reference< decltype( std::get<2>( tuple ) ) >::type;
+            using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
+
+            containers.push_back( pitem( new sub_checker< t_without_ref_const >( std::get<2>( tuple ) ) ) );
+
+            add( elements... );
+         }
+
       protected:
 
-         bool find_next_with_key_search_impl( size_t key )
+         bool find_with_key_search_impl( size_t key )
          {
             assert( this->idx.current != Position::pos_end );
 
@@ -517,7 +538,8 @@ namespace ce
             return false;
          }
 
-         void find_next_with_key_search()
+         template< Direction DIRECTION >
+         void find_with_key_search()
          {
             if( this->idx.current == Position::pos_end )
                return;
@@ -528,12 +550,10 @@ namespace ce
             {
                key = this->iterators[ this->idx.current ]->get_id();
 
-               if( !find_next_with_key_search_impl( key ) )
+               if( !find_with_key_search_impl( key ) )
                   break;
             
-               this->move( Direction::next );
-
-               this->find( Direction::next );
+               this-> template action< DIRECTION >();
             }
          }
 
@@ -544,28 +564,21 @@ namespace ce
                               : concatenation_enumerator< OBJECT, CMP >( _cmp, elements... )
       {
          add( elements... );
-         find_next_with_key_search();
-      }
-
-      void add(){}
-
-      template< typename TUPLE, typename... ELEMENTS >
-      void add( const TUPLE& tuple, ELEMENTS... elements )
-      {
-         using t_without_ref = typename std::remove_reference< decltype( std::get<2>( tuple ) ) >::type;
-         using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
-
-         containers.push_back( pitem( new sub_checker< t_without_ref_const >( std::get<2>( tuple ) ) ) );
-
-         add( elements... );
+         find_with_key_search< Direction::next >();
       }
 
       concatenation_enumerator_ex& operator++()
       {
-         this->move( Direction::next );
+         this-> template action< Direction::next >();
+         find_with_key_search< Direction::next >();
 
-         this->find( Direction::next );
-         find_next_with_key_search();
+         return *this;
+      }
+
+      concatenation_enumerator_ex& operator--()
+      {
+         this-> template action< Direction::prev >();
+         find_with_key_search< Direction::prev >();
 
          return *this;
       }

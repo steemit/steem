@@ -517,6 +517,74 @@ namespace ce_tests
    }
 
    template< typename Object, typename Collection >
+   void fill9( Collection& col )
+   {
+      col.clear();
+
+      auto c0 = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+      auto c1 = []( Object& obj ){ obj.id = 1; obj.val = 6; obj.val2 = 2; obj.val3 = 1; };
+      auto c2 = []( Object& obj ){ obj.id = 2; obj.val = 8; obj.val2 = 4; obj.val3 = 2; };
+      auto c3 = []( Object& obj ){ obj.id = 3; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+   
+      col.emplace( Object ( c0, std::allocator< Object >() ) );
+      col.emplace( Object ( c1, std::allocator< Object >() ) );
+      col.emplace( Object ( c2, std::allocator< Object >() ) );
+      col.emplace( Object ( c3, std::allocator< Object >() ) );
+   }
+
+   template< typename Object, typename Collection >
+   void fill9a( Collection& col )
+   {
+      col.clear();
+
+      auto c0 = []( Object& obj ){ obj.id = 4; obj.val = 0; obj.val2 = 6; obj.val3 = 10; };
+      auto c1 = []( Object& obj ){ obj.id = 5; obj.val = 5; obj.val2 = 0; obj.val3 = 11; };
+      auto c2 = []( Object& obj ){ obj.id = 2; obj.val = 6; obj.val2 = 3; obj.val3 = 12; };
+      auto c3 = []( Object& obj ){ obj.id = 7; obj.val = 7; obj.val2 = 2; obj.val3 = 13; };
+   
+      col.emplace( Object ( c0, std::allocator< Object >() ) );
+      col.emplace( Object ( c1, std::allocator< Object >() ) );
+      col.emplace( Object ( c2, std::allocator< Object >() ) );
+      col.emplace( Object ( c3, std::allocator< Object >() ) );
+   }
+
+   template< typename Object, typename Collection >
+   void fill9b( Collection& col )
+   {
+      col.clear();
+
+      auto c0 = []( Object& obj ){ obj.id = 5; obj.val = 1; obj.val2 = 6; obj.val3 = 20; };
+      auto c1 = []( Object& obj ){ obj.id = 1; obj.val = 5; obj.val2 = 3; obj.val3 = 21; };
+      auto c2 = []( Object& obj ){ obj.id = 2; obj.val = 6; obj.val2 = 4; obj.val3 = 22; };
+   
+      col.emplace( Object ( c0, std::allocator< Object >() ) );
+      col.emplace( Object ( c1, std::allocator< Object >() ) );
+      col.emplace( Object ( c2, std::allocator< Object >() ) );
+   }
+
+   template< typename Object, typename Collection >
+   void sort9( Collection& col )
+   {
+      col.clear();
+
+      auto c0 = []( Object& obj ){ obj.id = 4; obj.val = 0; obj.val2 = 6; obj.val3 = 10; };
+      auto c1 = []( Object& obj ){ obj.id = 5; obj.val = 1; obj.val2 = 6; obj.val3 = 20; };
+      auto c2 = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+      auto c3 = []( Object& obj ){ obj.id = 1; obj.val = 5; obj.val2 = 3; obj.val3 = 21; };
+      auto c4 = []( Object& obj ){ obj.id = 2; obj.val = 6; obj.val2 = 4; obj.val3 = 22; };
+      auto c5 = []( Object& obj ){ obj.id = 7; obj.val = 7; obj.val2 = 2; obj.val3 = 13; };
+      auto c6 = []( Object& obj ){ obj.id = 3; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+
+      col.emplace( Object ( c0, std::allocator< Object >() ) );
+      col.emplace( Object ( c1, std::allocator< Object >() ) );
+      col.emplace( Object ( c2, std::allocator< Object >() ) );
+      col.emplace( Object ( c3, std::allocator< Object >() ) );
+      col.emplace( Object ( c4, std::allocator< Object >() ) );
+      col.emplace( Object ( c5, std::allocator< Object >() ) );
+      col.emplace( Object ( c6, std::allocator< Object >() ) );
+   }
+
+   template< typename Object, typename Collection >
    void sort8( Collection& col )
    {
       col.clear();

@@ -913,7 +913,212 @@ void inc_dec_basic_6_sources_test( Filler1& f1, Filler2& f2, Filler3& f3, Filler
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 }
 
+template< typename Collection, typename Object, typename ID_Index, typename Index, typename Cmp,
+typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void inc_dec_basic_3_sources_sub_index_test( Filler1& f1, Filler2& f2, Filler3& f3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - operations: '++' and '--' ( sub-index is active )" );
+   f1( bmic1 );
+   f2( bmic2 );
+   f3( bmic3 );
+   sorted_filler( comparer );
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& id_idx3 = bmic3.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(),
+                                                   std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+                                                   std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+                                                   std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+                                                );
+
+   const auto& comparer_idx = comparer.template get< Index >();
+   auto it_comparer = comparer_idx.begin();
+   size_t size = comparer_idx.size();
+
+   std::cout<<"forward"<<std::endl;
+   for( size_t i = 0 ; i < size; ++i )
+   {
+      std::cout<<"["<<i<<"]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+
+   std::cout<<"backward"<<std::endl;
+   for( size_t i = 0 ; i < size; ++i )
+   {
+      --it;
+      --it_comparer;
+      std::cout<<"["<<size - i - 1<<"]"<<std::endl;
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+   }
+
+   ++it; ++it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[4]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[5]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[4]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[0]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[4]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[5]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[6]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[5]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[6]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[5]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[6]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[5]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[4]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[2]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[0]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it; ++it_comparer;
+   std::cout<<"[1]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it; --it_comparer;
+   std::cout<<"[0]"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+}
+
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(inc_dec_basic_tests3)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp2 = ce_tests::cmp2;
+   using oidx = ce_tests::OrderedIndex;
+   using oidx_a = ce_tests::CompositeOrderedIndexA;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill9< obj >( collection ); };
+   auto f2 = []( bmic& collection ){ ce_tests::fill9a< obj >( collection ); };
+   auto f3 = []( bmic& collection ){ ce_tests::fill9b< obj >( collection ); };
+   auto s = []( bmic& collection ){ ce_tests::sort9< obj >( collection ); };
+
+   inc_dec_basic_3_sources_sub_index_test< bmic, obj, oidx, oidx_a, cmp2 >( f1, f2, f3, s );
+}
 
 BOOST_AUTO_TEST_CASE(inc_dec_basic_tests2)
 {
