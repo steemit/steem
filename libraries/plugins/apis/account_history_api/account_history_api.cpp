@@ -1,7 +1,7 @@
 #include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
 #include <steem/plugins/account_history_api/account_history_api.hpp>
 
-#include <steem/plugins/rocksdb/rocksdb_plugin.hpp>
+#include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
 namespace steem { namespace plugins { namespace account_history {
 
@@ -113,7 +113,7 @@ class account_history_api_rocksdb_impl : public abstract_account_history_api_imp
 {
    public:
       account_history_api_rocksdb_impl() :
-         abstract_account_history_api_impl(), _dataSource( appbase::app().get_plugin< steem::plugins::rocksdb::rocksdb_plugin >() ) {}
+         abstract_account_history_api_impl(), _dataSource( appbase::app().get_plugin< steem::plugins::account_history_rocksdb::account_history_rocksdb_plugin >() ) {}
       ~account_history_api_rocksdb_impl() {}
 
       get_ops_in_block_return get_ops_in_block( const get_ops_in_block_args& ) override;
@@ -121,14 +121,14 @@ class account_history_api_rocksdb_impl : public abstract_account_history_api_imp
       get_account_history_return get_account_history( const get_account_history_args& ) override;
       enum_virtual_ops_return enum_virtual_ops( const enum_virtual_ops_args& ) override;
 
-      const rocksdb::rocksdb_plugin& _dataSource;
+      const account_history_rocksdb::account_history_rocksdb_plugin& _dataSource;
 };
 
 DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_ops_in_block )
 {
    get_ops_in_block_return result;
    _dataSource.find_operations_by_block(args.block_num,
-      [&result, &args](const rocksdb::rocksdb_operation_object& op)
+      [&result, &args](const account_history_rocksdb::rocksdb_operation_object& op)
       {
          api_operation_object temp(op);
          if( !args.only_virtual || is_virtual_operation( temp.op ) )
@@ -146,7 +146,7 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_account_history )
    get_account_history_return result;
 
    _dataSource.find_account_history_data(args.account, args.start, args.limit,
-      [&result, this](unsigned int sequence, const rocksdb::rocksdb_operation_object& op)
+      [&result, this](unsigned int sequence, const account_history_rocksdb::rocksdb_operation_object& op)
       {
          result.history[sequence] = api_operation_object(op);
       });
@@ -165,7 +165,7 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, enum_virtual_ops)
 
    result.next_block_range_begin = _dataSource.enum_operations_from_block_range(args.block_range_begin,
       args.block_range_end,
-      [&result](const rocksdb::rocksdb_operation_object& op)
+      [&result](const account_history_rocksdb::rocksdb_operation_object& op)
       {
          result.ops.emplace_back(api_operation_object(op));
       }
@@ -179,7 +179,7 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, enum_virtual_ops)
 account_history_api::account_history_api()
 {
    auto ah_cb = appbase::app().find_plugin< steem::plugins::account_history::account_history_plugin >();
-   auto ah_rocks = appbase::app().find_plugin< steem::plugins::rocksdb::rocksdb_plugin >();
+   auto ah_rocks = appbase::app().find_plugin< steem::plugins::account_history_rocksdb::account_history_rocksdb_plugin >();
 
    if( ah_rocks != nullptr )
    {
