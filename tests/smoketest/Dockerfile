@@ -1,11 +1,8 @@
 FROM phusion/baseimage:0.9.19
 
-ARG STOP_REPLAY_AT_BLOCK
-
 ENV LANG=en_US.UTF-8
 ENV WDIR=/usr/local/steem
 ENV SMOKETEST=$WDIR/smoketest
-ENV STOP_REPLAY_AT_BLOCK=$STOP_REPLAY_AT_BLOCK
 
 RUN apt-get update
 RUN apt-get install -y apt-utils
