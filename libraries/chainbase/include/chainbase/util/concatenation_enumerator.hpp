@@ -226,7 +226,7 @@ namespace ce
          }
 
          template< typename CONDITION, typename ACTION, typename COMPARISION, typename CHECKER >
-         void change_direction_impl( int32_t idx, CONDITION&& condition, ACTION&& action, COMPARISION&& comparision, CHECKER&& checker )
+         void change_direction_impl( CONDITION&& condition, ACTION&& action, COMPARISION&& comparision, CHECKER&& checker )
          {
             struct _sorter
             {
@@ -236,7 +236,7 @@ namespace ce
 
             find_active_iterators( row, condition );
 
-            if( idx < 0 )
+            if( idx.current < 0 )
             {
                for( auto& item : row )
                   action( item.first );
@@ -244,12 +244,12 @@ namespace ce
                return;
             }
 
-            auto current_it = iterators[ idx ];
+            auto current_it = iterators[ idx.current ];
             bool current_it_active = false;
 
             for( auto& item : row )
             {
-               if( item.second == idx )
+               if( item.second == idx.current )
                   current_it_active = true;
                else
                {
@@ -265,11 +265,11 @@ namespace ce
             }
 
             if( current_it_active )
-               action( iterators[ idx ] );
+               action( iterators[ idx.current ] );
          }
 
          template< Direction DIRECTION >
-         bool change_direction( int32_t idx )
+         bool change_direction()
          {
             //Direction is still the same.
             if( direction == DIRECTION )
@@ -281,45 +281,42 @@ namespace ce
 
             if( DIRECTION == Direction::prev )
             {
-               assert( idx != Position::pos_begin );
-               change_direction_impl( idx,
-                                    []( const pitem& item ){ return !item->is_inactive(); },
-                                    []( const pitem& item )
-                                    {
-                                       if( item->begin() )
-                                          item->change_status( true );
-                                       else
-                                          --( *item );
-                                    },
-                                    [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); },
-                                    []( const pitem& item, const pitem& item2 )
-                                    {
-                                       if( item->end() )
-                                          return true;
-                                       else
-                                          return *item == *item2;
-                                    }
+               assert( idx.current != Position::pos_begin );
+               change_direction_impl(  []( const pitem& item ){ return !item->is_inactive(); },
+                                       []( const pitem& item )
+                                       {
+                                          if( item->begin() )
+                                             item->change_status( true );
+                                          else
+                                             --( *item );
+                                       },
+                                       [ this ]( const pitem& item, const pitem& item2 ){ return !cmp( *( *item ), *( *item2 ) ); },
+                                       []( const pitem& item, const pitem& item2 )
+                                       {
+                                          if( item->end() )
+                                             return true;
+                                          else
+                                             return *item == *item2;
+                                       }
                                     );
                return true;
             }
             else if( DIRECTION == Direction::next )
             {
-               assert( idx != Position::pos_end );
-               change_direction_impl( idx,
-                                    []( const pitem& item ){ return !item->end(); },
-                                    []( const pitem& item ){ ++( *item ); },
-                                    [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); },
-                                    []( const pitem& item, const pitem& item2 )
-                                    {
-                                       if( *item == *item2 )
-                                          return true;
-                                       else
+               assert( idx.current != Position::pos_end );
+               change_direction_impl(  []( const pitem& item ){ return !item->end(); },
+                                       []( const pitem& item ){ ++( *item ); },
+                                       [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); },
+                                       []( const pitem& item, const pitem& item2 )
                                        {
                                           if( item->is_inactive() )
+                                          {
                                              item->change_status( false );
-                                          return false;
+                                             return false;
+                                          }
+                                          else
+                                             return *item == *item2;
                                        }
-                                    }
                                     );
                return true;
             }
@@ -353,7 +350,7 @@ namespace ce
       private:
 
          template< Direction DIRECTION, Position position >
-         int32_t find_impl()
+         void find_impl()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
@@ -383,63 +380,58 @@ namespace ce
 
             find_active_iterators( row, []( const pitem& item ){ return !item->end() && !item->is_inactive(); } );
 
-            switch( row.size() )
+            if( row.size() < 2 )
             {
-               case 0: return position;
-               case 1: return row.begin()->second;
-               default: break;
+               idx.current = ( row.size() == 0 ) ? position : ( row.begin()->second );
+               return;
             }
 
-            int32_t ret;
-            ret = row.begin()->second;
-            assert( !iterators[ ret ]->end() && !iterators[ ret ]->is_inactive() );
-
-            return ret;
+            idx.current = row.begin()->second;
+            assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
          }
 
          template< Position position, typename ACTION >
-         void move_impl( int32_t idx, ACTION&& action )
+         void move_impl( ACTION&& action )
          {
-            if( idx == position )
+            if( idx.current == position )
                return;
 
-            assert( static_cast< size_t >( idx ) < iterators.size() && !iterators[ idx ]->end() && !iterators[ idx ]->is_inactive() );
+            assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
 
             for( size_t i = 0 ; i < iterators.size(); ++i )
             {
-               if( static_cast< int32_t >( i ) != idx && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx ] ) )
+               if( static_cast< int32_t >( i ) != idx.current && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx.current ] ) )
                   action( iterators[ i ] );
             }
             //Move given iterator at the end, because it is used to comparision.
-            action( iterators[ idx ] );
+            action( iterators[ idx.current ] );
          }
 
       protected:
 
-         int32_t find( Direction _direction )
+         void find( Direction _direction )
          {
             assert( _direction == Direction::prev || _direction == Direction::next );
 
             if( _direction == Direction::next )
-               return find_impl< Direction::next, Position::pos_end >();
+               find_impl< Direction::next, Position::pos_end >();
             else
-               return find_impl< Direction::prev, Position::pos_begin >();
+               find_impl< Direction::prev, Position::pos_begin >();
          }
 
-         void move( int32_t idx, Direction _direction )
+         void move( Direction _direction )
          {
             assert( _direction == Direction::prev || _direction == Direction::next );
 
             if( _direction == Direction::next )
             {
-               if( !change_direction< Direction::next >( idx ) )
-                  move_impl< Position::pos_end >( idx, []( const pitem& item ){ ++( *item ); } );
+               if( !change_direction< Direction::next >() )
+                  move_impl< Position::pos_end >( []( const pitem& item ){ ++( *item ); } );
             }
             else
             {
-               if( !change_direction< Direction::prev >( idx ) )
-                  move_impl< Position::pos_begin >( idx,
-                                                   []( const pitem& item )
+               if( !change_direction< Direction::prev >() )
+                  move_impl< Position::pos_begin >( []( const pitem& item )
                                                    {
                                                       if( item->begin() )
                                                          item->change_status( true );
@@ -458,7 +450,7 @@ namespace ce
          {
             add( elements... );
 
-            idx.current = find( Direction::next );
+            find( Direction::next );
          }
 
          reference operator*() const
@@ -475,16 +467,16 @@ namespace ce
 
          concatenation_enumerator& operator++()
          {
-            move( idx.current, Direction::next );
-            idx.current = find( Direction::next );
+            move( Direction::next );
+            find( Direction::next );
 
             return *this;
          }
 
          concatenation_enumerator& operator--()
          {
-            move( idx.current, Direction::prev );
-            idx.current = find( Direction::prev );
+            move( Direction::prev );
+            find( Direction::prev );
 
             return *this;
          }
@@ -539,9 +531,9 @@ namespace ce
                if( !find_next_with_key_search_impl( key ) )
                   break;
             
-               this->move( this->idx.current, Direction::next );
+               this->move( Direction::next );
 
-               this->idx.current = this->find( Direction::next );
+               this->find( Direction::next );
             }
          }
 
@@ -570,9 +562,9 @@ namespace ce
 
       concatenation_enumerator_ex& operator++()
       {
-         this->move( this->idx.current, Direction::next );
+         this->move( Direction::next );
 
-         this->idx.current = this->find( Direction::next );
+         this->find( Direction::next );
          find_next_with_key_search();
 
          return *this;
