@@ -90,11 +90,13 @@ void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy
    {
       auto itr = to_tag.find(ar[0].as_string());
       if( itr == to_tag.end() )
-      itr = to_full_tag.find(ar[0].as_string());
-      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
-      vo.set_which( to_tag[ar[0].as_string()] );
+      {
+          itr = to_full_tag.find(ar[0].as_string());
+          FC_ASSERT( itr != to_full_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
+      }
+      vo.set_which( itr->second );
    }
-      vo.visit( fc::to_static_variant( ar[1] ) );
+   vo.visit( fc::to_static_variant( ar[1] ) );
 }
 
 void to_variant( const steem::plugins::condenser_api::legacy_comment_options_extensions& sv, fc::variant& v )
