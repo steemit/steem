@@ -48,7 +48,7 @@ function open_node {
 function run_test {
    pushd $PY_SCRIPT_DIR
    echo Running python3 $1 $JOBS http://$TEST_NODE http://$REF_NODE $WDIR
-   python3 $1 $JOBS http://$TEST_NODE http://$REF_NODE $WDIR
+   python3 $1 $JOBS http://$TEST_NODE http://$REF_NODE 50 $WDIR
    [ $? -ne 0 ] && echo test FAILED && EXIT_CODE=-1
    popd
 }
@@ -63,7 +63,8 @@ REF_STEEMD_PID=$STEEMD_NODE_PID
 
 #echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
 if [ $TEST_STEEMD_PID -ne -1 ] &&  [ $REF_STEEMD_PID -ne -1 ]; then
-   run_test "test_ah_get_account_history.py"
+   run_test "test_list_votes.py"
+   run_test "test_list_votes2.py"
 else
    EXIT_CODE=-1
 fi
