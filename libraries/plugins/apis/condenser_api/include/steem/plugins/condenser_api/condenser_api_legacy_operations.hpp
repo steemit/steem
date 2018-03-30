@@ -1,4 +1,7 @@
 #include <steem/protocol/operations.hpp>
+
+#include <steem/chain/witness_objects.hpp>
+
 #include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 
 namespace steem { namespace plugins { namespace condenser_api {
@@ -77,6 +80,20 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       legacy_asset base;
       legacy_asset quote;
+   };
+
+   struct api_chain_properties
+   {
+      api_chain_properties() {}
+      api_chain_properties( const chain::chain_properties& c ) :
+         account_creation_fee( legacy_asset::from_asset( c.account_creation_fee ) ),
+         maximum_block_size( c.maximum_block_size ),
+         sbd_interest_rate( c.sbd_interest_rate )
+      {}
+
+      legacy_asset   account_creation_fee;
+      uint32_t       maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
+      uint16_t       sbd_interest_rate = STEEM_DEFAULT_SBD_INTEREST_RATE;
    };
 
    struct legacy_account_create_operation
@@ -320,10 +337,12 @@ namespace steem { namespace plugins { namespace condenser_api {
    {
       legacy_pow2_operation() {}
       legacy_pow2_operation( const pow2_operation& op ) :
-         new_owner_key( op.new_owner_key ),
-         props( op.props )
+         new_owner_key( op.new_owner_key )
       {
          op.work.visit( convert_to_legacy_static_variant< legacy_pow2_work >( work ) );
+         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< true >() );
+         props.maximum_block_size = op.props.maximum_block_size;
+         props.sbd_interest_rate = op.props.sbd_interest_rate;
       }
 
       operator pow2_operation()const
@@ -331,7 +350,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          pow2_operation op;
          work.visit( convert_to_legacy_static_variant< pow2_work >( op.work ) );
          op.new_owner_key = new_owner_key;
-         op.props.account_creation_fee = props.account_creation_fee;
+         op.props.account_creation_fee = legacy_steem_asset::from_asset( asset( props.account_creation_fee ) );
          op.props.maximum_block_size = props.maximum_block_size;
          op.props.sbd_interest_rate = props.sbd_interest_rate;
          return op;
@@ -339,7 +358,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       legacy_pow2_work              work;
       optional< public_key_type >   new_owner_key;
-      legacy_chain_properties       props;
+      api_chain_properties          props;
    };
 
    struct legacy_transfer_to_vesting_operation
@@ -394,7 +413,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          block_signing_key( op.block_signing_key ),
          fee( legacy_asset::from_asset( op.fee ) )
       {
-         props.account_creation_fee = op.props.account_creation_fee;
+         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< true >() );
          props.maximum_block_size = op.props.maximum_block_size;
          props.sbd_interest_rate = op.props.sbd_interest_rate;
       }
@@ -405,7 +424,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.owner = owner;
          op.url = url;
          op.block_signing_key = block_signing_key;
-         op.props.account_creation_fee = props.account_creation_fee;
+         op.props.account_creation_fee = legacy_steem_asset::from_asset( asset( props.account_creation_fee ) );
          op.props.maximum_block_size = props.maximum_block_size;
          op.props.sbd_interest_rate = props.sbd_interest_rate;
          op.fee = fee;
@@ -415,7 +434,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       account_name_type       owner;
       string                  url;
       public_key_type         block_signing_key;
-      legacy_chain_properties props;
+      api_chain_properties    props;
       legacy_asset            fee;
    };
 
@@ -1431,6 +1450,10 @@ void old_sv_from_variant( const fc::variant& v, T& sv )
 }
 
 }
+
+FC_REFLECT( steem::plugins::condenser_api::api_chain_properties,
+            (account_creation_fee)(maximum_block_size)(sbd_interest_rate)
+          )
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_price, (base)(quote) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_transfer_to_savings_operation, (from)(to)(amount)(memo) )
