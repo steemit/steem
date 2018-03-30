@@ -106,14 +106,6 @@ int unsafe_main(int argc, char** argv) {
 
     bpo::store( bpo::parse_command_line(argc, argv, opts), options );
 
-    string def_log_lvl = options["logger.default.level"].as<string>();
-    string rpc_log_lvl = options["logger.rpc.level"].as<string>();
-    string rpc_log_filename = options["logger.rpc.filename"].as<string>();
-    bool rpc_log_flush = options["logger.rpc.flush"].as<bool>();
-    bool rpc_log_rotate = options["logger.rpc.rotate"].as<bool>();
-    int64_t rpc_log_rot_interval = options["logger.rpc.rotation_interval"].as<int64_t>();
-    int64_t rpc_log_rot_limit = options["logger.rpc.rotation_limit"].as<int64_t>();
-
     if( options.count("help") ) {
         std::cout << opts << "\n";
         return 0;
@@ -132,20 +124,18 @@ int unsafe_main(int argc, char** argv) {
 
     golos::protocol::chain_id_type _steem_chain_id = STEEMIT_CHAIN_ID;
 
-    fc::log_level ll_default;
-    from_variant(variant(def_log_lvl), ll_default);
-    fc::log_level ll_rpc;
-    from_variant(variant(rpc_log_lvl), ll_rpc);
-
+    // Note: each logging option have default value, so it's no need to call options.count()
+    auto ll_default = fc::variant(options["logger.default.level"].as<string>()).as<fc::log_level>();
+    auto ll_rpc = fc::variant(options["logger.rpc.level"].as<string>()).as<fc::log_level>();
+    
     fc::logging_config cfg;
     fc::file_appender::config ac;
     if (ll_rpc < fc::log_level::off) {
-        fc::path file_name      = rpc_log_filename;
-        ac.filename             = file_name;
-        ac.flush                = rpc_log_flush;
-        ac.rotate               = rpc_log_rotate;
-        ac.rotation_interval    = fc::seconds(rpc_log_rot_interval);
-        ac.rotation_limit       = fc::seconds(rpc_log_rot_limit);
+        ac.filename             = options["logger.rpc.filename"].as<string>();
+        ac.flush                = options["logger.rpc.flush"].as<bool>();
+        ac.rotate               = options["logger.rpc.rotate"].as<bool>();
+        ac.rotation_interval    = fc::seconds(options["logger.rpc.rotation_interval"].as<int64_t>());
+        ac.rotation_limit       = fc::seconds(options["logger.rpc.rotation_limit"].as<int64_t>());
 
         std::cout << "Logging RPC to file: " << (ac.filename).preferred_string() << "\n";
     }
