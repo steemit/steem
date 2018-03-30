@@ -1,7 +1,13 @@
 # for each subdirectory containing a CMakeLists.txt, add that subdirectory
 
-SET(old_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(BUILD_SHARED_LIBS OFF)
+
+#Configure needed build options of RocksDB.
+SET(WITH_TESTS OFF CACHE BOOL "build with tests")
+SET(WITH_SNAPPY ON CACHE BOOL "build with SNAPPY")
+SET(WITH_ZLIB ON CACHE BOOL "build with ZLIB")
+SET(WITH_BZ2 ON CACHE BOOL "build with BZ2")
+SET(WITH_BENCHMARKS OFF CACHE BOOL "build with BENCHMARKS")
 
 file( GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} * )
 foreach( child ${children} )
@@ -12,4 +18,3 @@ foreach( child ${children} )
    endif()
 endforeach()
 
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ${old_suffixes})

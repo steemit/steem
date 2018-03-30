@@ -257,12 +257,6 @@ endif()
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing -Werror -DBOOST_THREAD_DONT_PROVIDE_PROMISE_LAZY" )
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing -Werror -DBOOST_THREAD_DONT_PROVIDE_PROMISE_LAZY" )
 
-#Configure needed build options of RocksDB.
-SET(WITH_TESTS OFF CACHE BOOL "build with tests")
-SET(WITH_SNAPPY ON CACHE BOOL "build with SNAPPY")
-SET(WITH_ZLIB ON CACHE BOOL "build with ZLIB")
-SET(WITH_BZ2 ON CACHE BOOL "build with BZ2")
-
 # external_plugins needs to be compiled first because libraries/app depends on STEEM_EXTERNAL_PLUGINS being fully populated
 add_subdirectory( external_plugins )
 add_subdirectory( libraries )

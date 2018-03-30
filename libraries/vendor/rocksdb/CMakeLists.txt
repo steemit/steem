@@ -41,6 +41,10 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
 
+if(NOT BUILD_SHARED_LIBS)
+   set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+endif()
+
 option(WITH_JEMALLOC "build with JeMalloc" OFF)
 if(MSVC)
   include(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty.inc)
@@ -598,17 +602,22 @@ if(WIN32)
   set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 else()
   set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
-  set(LIBS ${ROCKSDB_SHARED_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
-  add_library(${ROCKSDB_SHARED_LIB} SHARED ${SOURCES})
-  target_link_libraries(${ROCKSDB_SHARED_LIB}
-    ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
-  set_target_properties(${ROCKSDB_SHARED_LIB} PROPERTIES
-                        LINKER_LANGUAGE CXX
-                        VERSION ${ROCKSDB_VERSION}
-                        SOVERSION ${ROCKSDB_VERSION_MAJOR}
-                        CXX_STANDARD 11
-                        OUTPUT_NAME "rocksdb")
+  if(BUILD_SHARED_LIBS)
+      set(LIBS ${ROCKSDB_SHARED_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+
+      add_library(${ROCKSDB_SHARED_LIB} SHARED ${SOURCES})
+      target_link_libraries(${ROCKSDB_SHARED_LIB}
+         ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+      set_target_properties(${ROCKSDB_SHARED_LIB} PROPERTIES
+                              LINKER_LANGUAGE CXX
+                              VERSION ${ROCKSDB_VERSION}
+                              SOVERSION ${ROCKSDB_VERSION_MAJOR}
+                              CXX_STANDARD 11
+                              OUTPUT_NAME "rocksdb")
+   else()
+      set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+   endif(BUILD_SHARED_LIBS)
 endif()
 
 option(WITH_LIBRADOS "Build with librados" OFF)
@@ -619,8 +628,12 @@ if(WITH_LIBRADOS)
 endif()
 
 add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
+
 target_link_libraries(${ROCKSDB_STATIC_LIB}
-  ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+   ${THIRDPARTY_LIBS}
+   ${SYSTEM_LIBS}
+)
+
 
 if(WIN32)
   add_library(${ROCKSDB_IMPORT_LIB} SHARED ${SOURCES})
@@ -682,14 +695,16 @@ if(NOT WIN32 OR ROCKSDB_INSTALL_ON_WINDOWS)
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
 
-  install(
-    TARGETS ${ROCKSDB_SHARED_LIB}
-    EXPORT RocksDBTargets
-    COMPONENT runtime
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-  )
+  if(BUILD_SHARED_LIBS)
+      install(
+         TARGETS ${ROCKSDB_SHARED_LIB}
+         EXPORT RocksDBTargets
+         COMPONENT runtime
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+      )
+  endif()
 
   install(
     EXPORT RocksDBTargets
@@ -849,20 +864,23 @@ if(WITH_TESTS)
     list(APPEND TESTS utilities/env_librados_test.cc)
   endif()
 
-  set(BENCHMARKS
-    cache/cache_bench.cc
-    memtable/memtablerep_bench.cc
-    tools/db_bench.cc
-    table/table_reader_bench.cc
-    utilities/column_aware_encoding_exp.cc
-    utilities/persistent_cache/hash_table_bench.cc)
-  add_library(testharness OBJECT util/testharness.cc)
-  foreach(sourcefile ${BENCHMARKS})
-    get_filename_component(exename ${sourcefile} NAME_WE)
-    add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile}
-      $<TARGET_OBJECTS:testharness>)
-    target_link_libraries(${exename}${ARTIFACT_SUFFIX} gtest ${LIBS})
-  endforeach(sourcefile ${BENCHMARKS})
+  option(WITH_BENCHMARKS "build with BENCHMARKS" ON)
+  IF(WITH_BENCHMARKS)
+      set(BENCHMARKS
+         cache/cache_bench.cc
+         memtable/memtablerep_bench.cc
+         tools/db_bench.cc
+         table/table_reader_bench.cc
+         utilities/column_aware_encoding_exp.cc
+         utilities/persistent_cache/hash_table_bench.cc)
+      add_library(testharness OBJECT util/testharness.cc)
+      foreach(sourcefile ${BENCHMARKS})
+         get_filename_component(exename ${sourcefile} NAME_WE)
+         add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile}
+            $<TARGET_OBJECTS:testharness>)
+         target_link_libraries(${exename}${ARTIFACT_SUFFIX} gtest ${LIBS})
+      endforeach(sourcefile ${BENCHMARKS})
+  ENDIF(WITH_BENCHMARKS)
 
   # For test util library that is build only in DEBUG mode
   # and linked to tests. Add test only code that is not #ifdefed for Release here.
