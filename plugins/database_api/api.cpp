@@ -126,13 +126,15 @@ namespace golos {
                     if (!_follow_api) {
                         return 0;
                     }
-                    msg_pack msg;
-                    msg.args = std::vector<fc::variant>({fc::variant(account), fc::variant(1)});
-                    auto reputations = _follow_api->get_account_reputations(msg);
-                    if (reputations.empty()) {
-                        return 0;
+
+                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                    auto itr = rep_idx.find(account);
+
+                    if (rep_idx.end() != itr) {
+                        return itr->reputation;
                     }
-                    return reputations[0].reputation;
+
+                    return 0;
                 }
 
                 template<typename T>
