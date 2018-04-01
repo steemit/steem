@@ -161,7 +161,7 @@ namespace golos {
 
                 void p2p_plugin_impl::handle_transaction(const trx_message &trx_msg) {
                     try {
-                        chain.db().push_transaction(trx_msg.trx);
+                        chain.accept_transaction(trx_msg.trx);
                     } FC_CAPTURE_AND_RETHROW((trx_msg))
                 }
 

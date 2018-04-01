@@ -8,6 +8,7 @@
 #include <iostream>
 #include <golos/protocol/protocol.hpp>
 #include <golos/protocol/types.hpp>
+#include <future>
 
 namespace golos {
 namespace plugins {
@@ -39,6 +40,8 @@ namespace chain {
 
         golos::chain::database db;
 
+        bool single_write_thread = false;
+
         plugin_impl() {
             // get default settings
             read_wait_micro = db.read_wait_micro();
@@ -51,6 +54,10 @@ namespace chain {
         // HELPERS
         golos::chain::database &database() {
             return db;
+        }
+
+        boost::asio::io_service& io_service() {
+            return appbase::app().get_io_service();
         }
 
         constexpr const static char *plugin_name = "chain_api";
@@ -80,11 +87,40 @@ namespace chain {
 
         check_time_in_block(block);
 
-        return db.push_block(block, skip);
+        if (single_write_thread) {
+            std::promise<bool> promise;
+            auto result = promise.get_future();
+
+            io_service().post([&]{
+                try {
+                    promise.set_value(db.push_block(block, skip));
+                } catch(...) {
+                    promise.set_exception(std::current_exception());
+                }
+            });
+            return result.get(); // if an exception was, it will be thrown
+        } else {
+            return db.push_block(block, skip);
+        }
     }
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
-        db.push_transaction(trx);
+        if (single_write_thread) {
+            std::promise<bool> promise;
+            auto wait = promise.get_future();
+
+            io_service().post([&]{
+                try {
+                    db.push_transaction(trx);
+                    promise.set_value(true);
+                } catch(...) {
+                    promise.set_exception(std::current_exception());
+                }
+            });
+            wait.get(); // if an exception was, it will be thrown
+        } else {
+            db.push_transaction(trx);
+        }
     }
 
     plugin::plugin() {
@@ -143,6 +179,11 @@ namespace chain {
                 "max-write-wait-retries",
                 boost::program_options::value<uint32_t>(),
                 "maximum number of retries to get write lock"
+            )
+            (
+                "single-write-thread",
+                boost::program_options::value<bool>()->default_value(false),
+                "push blocks and transactions from one thread"
             );
         cli.add_options()
             (
@@ -196,6 +237,8 @@ namespace chain {
         if (options.count("max-write-wait-retries")) {
             my->max_write_wait_retries = options.at("max-write-wait-retries").as<uint32_t>();
         }
+
+        my->single_write_thread = options.at("single-write-thread").as<bool>();
 
         my->shared_memory_size = fc::parse_size(options.at("shared-file-size").as<std::string>());
 
