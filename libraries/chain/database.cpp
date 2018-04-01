@@ -101,7 +101,7 @@ namespace golos {
 
                 if (chainbase_flags & chainbase::database::read_write) {
                     if (!find<dynamic_global_property_object>()) {
-                        with_write_lock([&]() {
+                        with_strong_write_lock([&]() {
                             init_genesis(initial_supply);
                         });
                     }
@@ -111,7 +111,7 @@ namespace golos {
                     auto log_head = _block_log.head();
 
                     // Rewind all undo state. This should return us to the state at the last irreversible block.
-                    with_write_lock([&]() {
+                    with_strong_write_lock([&]() {
                         undo_all();
                         FC_ASSERT(revision() ==
                                   head_block_num(), "Chainbase revision does not match head block num",
@@ -161,7 +161,7 @@ namespace golos {
                         skip_validate_invariants |
                         skip_block_log;
 
-                with_write_lock([&]() {
+                with_strong_write_lock([&]() {
                     auto itr = _block_log.read_block(0);
                     auto last_block_num = _block_log.head()->block_num();
 
@@ -628,7 +628,7 @@ namespace golos {
             //fc::time_point begin_time = fc::time_point::now();
 
             bool result;
-            with_write_lock([&]() {
+            with_strong_write_lock([&]() {
                 detail::with_skip_flags(*this, skip, [&]() {
                     detail::without_pending_transactions(*this, std::move(_pending_tx), [&]() {
                         try {
@@ -756,7 +756,7 @@ namespace golos {
         void database::push_transaction(const signed_transaction &trx, uint32_t skip) {
             try {
                 FC_ASSERT(fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256));
-                with_write_lock([&]() {
+                with_weak_write_lock([&]() {
                     detail::with_producing(*this, [&]() {
                         detail::with_skip_flags(*this, skip, [&]() {
                             _push_transaction(trx);
@@ -830,7 +830,7 @@ namespace golos {
 
             signed_block pending_block;
 
-            with_write_lock([&]() { detail::with_skip_flags(*this, skip, [&]() {
+            with_strong_write_lock([&]() { detail::with_skip_flags(*this, skip, [&]() {
                 //
                 // The following code throws away existing pending_tx_session and
                 // rebuilds it by re-applying pending transactions.
@@ -2930,7 +2930,7 @@ namespace golos {
 
 
         void database::validate_transaction(const signed_transaction &trx) {
-            database::with_write_lock([&]() {
+            database::with_weak_write_lock([&]() {
                 auto session = start_undo_session(true);
                 _apply_transaction(trx);
                 session.undo();
