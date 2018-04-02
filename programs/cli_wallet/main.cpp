@@ -47,7 +47,6 @@ using namespace std;
 void daemon_mode();
 
 void non_daemon_mode(
-    const bpo::variables_map& options,
     const vector<string>& commands,
     const bool interactive,
     std::shared_ptr<fc::rpc::cli> wallet_cli,
@@ -182,9 +181,13 @@ int unsafe_main(int argc, char** argv) {
         cerr << "Server has disconnected us.\n";
         wallet_cli->stop();
     }));
-    (void)(closed_connection);
 
-    if( wapiptr->is_new() ) {
+    boost::signals2::scoped_connection quit_connection(wapiptr->quit_command.connect([=]{
+        cout << "Bye.\n";
+        wallet_cli->stop();
+    }));
+
+    if (wapiptr->is_new()) {
         cout << "Please use the set_password method to initialize a new wallet before continuing\n";
         wallet_cli->set_prompt( "new >>> " );
     } else
@@ -257,18 +260,18 @@ int unsafe_main(int argc, char** argv) {
     if (options.count("daemon")) {
         daemon_mode();
     } else {
-        non_daemon_mode(options, commands, interactive, wallet_cli, wapi);
+        non_daemon_mode(commands, interactive, wallet_cli, wapi);
     }
 
     wapi->save_wallet_file(wallet_file.generic_string());
     locked_connection.disconnect();
+    quit_connection.disconnect();
     closed_connection.disconnect();
 
     return 0;
 }
 
 void non_daemon_mode (
-    const bpo::variables_map& options,
     const vector<string>& commands,
     const bool interactive,
     std::shared_ptr<fc::rpc::cli> wallet_cli,
