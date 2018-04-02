@@ -87,6 +87,9 @@ namespace appbase {
          void set_version_string( const string& version ) { version_info = version; }
          void set_app_name( const string& name ) { app_name = name; }
 
+         template< typename... Plugin >
+         void set_default_plugins() { default_plugins = { Plugin::name()... }; }
+
          boost::asio::io_service& get_io_service() { return *io_serv; }
 
       protected:
@@ -114,6 +117,7 @@ namespace appbase {
          std::shared_ptr< boost::asio::io_service >         io_serv;
          std::string                                        version_info;
          std::string                                        app_name = "appbase";
+         std::vector< std::string >                         default_plugins;
 
          void set_program_options();
          void write_default_config( const bfs::path& cfg_file );

@@ -56,10 +56,16 @@ void application::set_program_options()
    std::stringstream data_dir_ss;
    data_dir_ss << "Directory containing configuration file config.ini. Default location: $HOME/." << app_name << " or CWD/. " << app_name;
 
+   std::stringstream plugins_ss;
+   for( auto& p : default_plugins )
+   {
+      plugins_ss << p << ' ';
+   }
+
    options_description app_cfg_opts( "Application Config Options" );
    options_description app_cli_opts( "Application Command Line Options" );
    app_cfg_opts.add_options()
-         ("plugin", bpo::value< vector<string> >()->composing(), "Plugin(s) to enable, may be specified multiple times");
+         ("plugin", bpo::value< vector<string> >()->composing()->default_value( default_plugins, plugins_ss.str() ), "Plugin(s) to enable, may be specified multiple times");
 
    app_cli_opts.add_options()
          ("help,h", "Print this help message and exit.")
