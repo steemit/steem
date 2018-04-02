@@ -8,6 +8,7 @@
 #include <iostream>
 #include <golos/protocol/protocol.hpp>
 #include <golos/protocol/types.hpp>
+#include <future>
 
 namespace golos {
 namespace plugins {
@@ -31,9 +32,32 @@ namespace chain {
 
         uint32_t allow_future_time = 5;
 
+        uint64_t read_wait_micro;
+        uint32_t max_read_wait_retries;
+
+        uint64_t write_wait_micro;
+        uint32_t max_write_wait_retries;
+
+        golos::chain::database db;
+
+        bool single_write_thread = false;
+
+        plugin_impl() {
+            // get default settings
+            read_wait_micro = db.read_wait_micro();
+            max_read_wait_retries = db.max_read_wait_retries();
+
+            write_wait_micro = db.write_wait_micro();
+            max_write_wait_retries = db.max_write_wait_retries();
+        }
+
         // HELPERS
         golos::chain::database &database() {
             return db;
+        }
+
+        boost::asio::io_service& io_service() {
+            return appbase::app().get_io_service();
         }
 
         constexpr const static char *plugin_name = "chain_api";
@@ -45,9 +69,6 @@ namespace chain {
         void check_time_in_block(const protocol::signed_block &block);
         bool accept_block(const protocol::signed_block &block, bool currently_syncing, uint32_t skip);
         void accept_transaction(const protocol::signed_transaction &trx);
-
-
-        golos::chain::database db;
     };
 
     void plugin::plugin_impl::check_time_in_block(const protocol::signed_block &block) {
@@ -66,11 +87,40 @@ namespace chain {
 
         check_time_in_block(block);
 
-        return db.push_block(block, skip);
+        if (single_write_thread) {
+            std::promise<bool> promise;
+            auto result = promise.get_future();
+
+            io_service().post([&]{
+                try {
+                    promise.set_value(db.push_block(block, skip));
+                } catch(...) {
+                    promise.set_exception(std::current_exception());
+                }
+            });
+            return result.get(); // if an exception was, it will be thrown
+        } else {
+            return db.push_block(block, skip);
+        }
     }
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
-        db.push_transaction(trx);
+        if (single_write_thread) {
+            std::promise<bool> promise;
+            auto wait = promise.get_future();
+
+            io_service().post([&]{
+                try {
+                    db.push_transaction(trx);
+                    promise.set_value(true);
+                } catch(...) {
+                    promise.set_exception(std::current_exception());
+                }
+            });
+            wait.get(); // if an exception was, it will be thrown
+        } else {
+            db.push_transaction(trx);
+        }
     }
 
     plugin::plugin() {
@@ -89,23 +139,73 @@ namespace chain {
 
     void plugin::set_program_options(boost::program_options::options_description &cli,
                                      boost::program_options::options_description &cfg) {
-        cfg.add_options()("shared-file-dir", boost::program_options::value<boost::filesystem::path>()->default_value("blockchain"),
-                          "the location of the chain shared memory files (absolute path or relative to application data dir)")(
-                "shared-file-size", boost::program_options::value<std::string>()->default_value("54G"),
-                "Size of the shared memory file. Default: 54G")("checkpoint,c",
-                                                                boost::program_options::value<std::vector<std::string>>()->composing(),
-                                                                "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")(
-                "flush-state-interval", boost::program_options::value<uint32_t>(),
-                "flush shared memory changes to disk every N blocks");
-        cli.add_options()("replay-blockchain", boost::program_options::bool_switch()->default_value(false),
-                          "clear chain database and replay all blocks")("resync-blockchain",
-                                                                        boost::program_options::bool_switch()->default_value(
-                                                                                false),
-                                                                        "clear chain database and block log")(
-                "check-locks", boost::program_options::bool_switch()->default_value(false),
-                "Check correctness of chainbase locking")("validate-database-invariants",
-                                                          boost::program_options::bool_switch()->default_value(false),
-                                                          "Validate all supply invariants check out");
+        cfg.add_options()
+            (
+                "shared-file-dir",
+                boost::program_options::value<boost::filesystem::path>()->default_value("blockchain"),
+                "the location of the chain shared memory files (absolute path or relative to application data dir)"
+            )
+            (
+                "shared-file-size",
+                boost::program_options::value<std::string>()->default_value("64G"),
+                "Size of the shared memory file. Default: 54G"
+            )
+            (
+                "checkpoint,c",
+                boost::program_options::value<std::vector<std::string>>()->composing(),
+                "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints."
+            )
+            (
+                "flush-state-interval",
+                boost::program_options::value<uint32_t>(),
+                "flush shared memory changes to disk every N blocks"
+            )
+            (
+                "read-wait-micro",
+                boost::program_options::value<uint64_t>(),
+                "maximum microseconds for trying to get read lock"
+            )
+            (
+                "max-read-wait-retries",
+                boost::program_options::value<uint32_t>(),
+                "maximum number of retries to get read lock"
+            )
+            (
+                "write-wait-micro",
+                boost::program_options::value<uint64_t>(),
+                "maximum microseconds for trying to get write lock"
+            )
+            (
+                "max-write-wait-retries",
+                boost::program_options::value<uint32_t>(),
+                "maximum number of retries to get write lock"
+            )
+            (
+                "single-write-thread",
+                boost::program_options::value<bool>()->default_value(false),
+                "push blocks and transactions from one thread"
+            );
+        cli.add_options()
+            (
+                "replay-blockchain",
+                boost::program_options::bool_switch()->default_value(false),
+                "clear chain database and replay all blocks"
+            )
+            (
+                "resync-blockchain",
+                boost::program_options::bool_switch()->default_value(false),
+                "clear chain database and block log"
+            )
+            (
+                "check-locks",
+                boost::program_options::bool_switch()->default_value(false),
+                "Check correctness of chainbase locking"
+            )
+            (
+                "validate-database-invariants",
+                boost::program_options::bool_switch()->default_value(false),
+                "Validate all supply invariants check out"
+            );
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
@@ -121,6 +221,24 @@ namespace chain {
                 my->shared_memory_dir = sfd;
             }
         }
+
+        if (options.count("read-wait-micro")) {
+            my->read_wait_micro = options.at("read-wait-micro").as<uint64_t>();
+        }
+
+        if (options.count("max-read-wait-retries")) {
+            my->max_read_wait_retries = options.at("max-read-wait-retries").as<uint32_t>();
+        }
+
+        if (options.count("write-wait-micro")) {
+            my->write_wait_micro = options.at("write-wait-micro").as<uint64_t>();
+        }
+
+        if (options.count("max-write-wait-retries")) {
+            my->max_write_wait_retries = options.at("max-write-wait-retries").as<uint32_t>();
+        }
+
+        my->single_write_thread = options.at("single-write-thread").as<bool>();
 
         my->shared_memory_size = fc::parse_size(options.at("shared-file-size").as<std::string>());
 
@@ -155,6 +273,11 @@ namespace chain {
         my->db.set_flush_interval(my->flush_interval);
         my->db.add_checkpoints(my->loaded_checkpoints);
         my->db.set_require_locking(my->check_locks);
+
+        my->db.read_wait_micro(my->read_wait_micro);
+        my->db.max_read_wait_retries(my->max_read_wait_retries);
+        my->db.write_wait_micro(my->write_wait_micro);
+        my->db.max_write_wait_retries(my->max_write_wait_retries);
 
         if (my->replay) {
             ilog("Replaying blockchain on user request.");

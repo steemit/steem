@@ -120,13 +120,15 @@ namespace golos {
                     if (!follow_api_) {
                         return 0;
                     }
-                    msg_pack msg;
-                    msg.args = std::vector<fc::variant>({fc::variant(account), fc::variant(1)});
-                    auto reputations = follow_api_->get_account_reputations(msg);
-                    if (reputations.empty()) {
-                        return 0;
+
+                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                    auto itr = rep_idx.find(account);
+
+                    if (rep_idx.end() != itr) {
+                        return itr->reputation;
                     }
-                    return reputations[0].reputation;
+
+                    return 0;
                 }
 
                 comment_object::id_type get_parent(const discussion_query &query) const {
