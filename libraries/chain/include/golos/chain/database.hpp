@@ -97,6 +97,11 @@ namespace golos {
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size = (
                     1024l * 1024l * 1024l * 8l));
 
+            void min_free_shared_memory_size(size_t);
+            void inc_shared_memory_size(size_t);
+            void block_num_check_free_size(uint32_t);
+            void check_free_memory(bool skip_print, uint32_t current_block_num);
+
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
              * @param include_blocks If true, delete the raw chain as well as the database.
@@ -121,7 +126,7 @@ namespace golos {
 
             uint32_t get_pow_summary_target() const;
 
-                     block_id_type              get_block_id_for_num( uint32_t block_num )const;
+            block_id_type get_block_id_for_num( uint32_t block_num )const;
 
             block_id_type find_block_id_for_num(uint32_t block_num) const;
 
@@ -591,6 +596,11 @@ namespace golos {
             uint32_t _next_flush_block = 0;
 
             uint32_t _last_free_gb_printed = 0;
+
+            size_t _inc_shared_memory_size = 0;
+            size_t _min_free_shared_memory_size = 0;
+
+            uint32_t _block_num_check_free_memory = 1000;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;
