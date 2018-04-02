@@ -53,6 +53,9 @@ application& reset() { return application::instance( true ); }
 
 void application::set_program_options()
 {
+   std::stringstream data_dir_ss;
+   data_dir_ss << "Directory containing configuration file config.ini. Default location: $HOME/." << app_name << " or CWD/. " << app_name;
+
    options_description app_cfg_opts( "Application Config Options" );
    options_description app_cli_opts( "Application Command Line Options" );
    app_cfg_opts.add_options()
@@ -61,7 +64,7 @@ void application::set_program_options()
    app_cli_opts.add_options()
          ("help,h", "Print this help message and exit.")
          ("version,v", "Print version information.")
-         ("data-dir,d", bpo::value<bfs::path>()->default_value( "witness_node_data_dir" ), "Directory containing configuration file config.ini")
+         ("data-dir,d", bpo::value<bfs::path>(), data_dir_ss.str().c_str() )
          ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to data-dir");
 
    my->_cfg_options.add(app_cfg_opts);
@@ -99,12 +102,34 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
          return false;
       }
 
-      bfs::path data_dir = "data-dir";
+      bfs::path data_dir;
       if( my->_args.count("data-dir") )
       {
          data_dir = my->_args["data-dir"].as<bfs::path>();
          if( data_dir.is_relative() )
             data_dir = bfs::current_path() / data_dir;
+      }
+      else
+      {
+#ifdef WIN32
+         char* parent = getenv( "APPDATA" );
+#else
+         char* parent = getenv( "HOME" );
+#endif
+
+         if( parent != nullptr )
+         {
+            data_dir = std::string( parent );
+         }
+         else
+         {
+            data_dir = bfs::current_path();
+         }
+
+         std::stringstream app_dir;
+         app_dir << '.' << app_name;
+
+         data_dir = data_dir / app_dir.str();
       }
       my->_data_dir = data_dir;
 

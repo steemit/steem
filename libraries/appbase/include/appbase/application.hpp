@@ -85,6 +85,7 @@ namespace appbase {
          const bpo::variables_map& get_args() const;
 
          void set_version_string( const string& version ) { version_info = version; }
+         void set_app_name( const string& name ) { app_name = name; }
 
          boost::asio::io_service& get_io_service() { return *io_serv; }
 
@@ -112,6 +113,7 @@ namespace appbase {
          vector< abstract_plugin* >                         running_plugins; ///< stored in the order they were started running
          std::shared_ptr< boost::asio::io_service >         io_serv;
          std::string                                        version_info;
+         std::string                                        app_name = "appbase";
 
          void set_program_options();
          void write_default_config( const bfs::path& cfg_file );

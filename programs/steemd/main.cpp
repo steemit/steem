@@ -76,6 +76,7 @@ int main( int argc, char** argv )
 
       steem::plugins::register_plugins();
       appbase::app().set_version_string( version_string() );
+      appbase::app().set_app_name( "steemd" );
 
       bool initialized = appbase::app().initialize<
             steem::plugins::chain::chain_plugin,
