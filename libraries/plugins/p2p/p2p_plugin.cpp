@@ -1,4 +1,5 @@
 #include <steem/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/p2p/p2p_default_seeds.hpp>
 
 #include <graphene/net/node.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -12,6 +13,7 @@
 
 #include <boost/range/algorithm/reverse.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <boost/any.hpp>
 
@@ -476,12 +478,19 @@ p2p_plugin::p2p_plugin()
 
 p2p_plugin::~p2p_plugin() {}
 
-void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
+void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg)
+{
+   std::stringstream seed_ss;
+   for( auto& s : default_seeds )
+   {
+      seed_ss << s << ' ';
+   }
+
    cfg.add_options()
       ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint.")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
-      ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
+      ("p2p-seed-node", bpo::value<vector<string>>()->composing()->default_value( default_seeds, seed_ss.str() ), "The IP address and port of a remote peer to sync with.")
       ("p2p-parameters", bpo::value<string>(), ("P2P network parameters. (Default: " + fc::json::to_string(graphene::net::node_configuration()) + " )").c_str() )
       ;
    cli.add_options()
@@ -509,13 +518,23 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       {
          wlog( "Option seed-node is deprecated in favor of p2p-seed-node" );
          auto s = options.at("seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
+         for( auto& arg : s )
+         {
+            vector< string > addresses;
+            boost::split( addresses, arg, boost::is_any_of( " \t" ) );
+            seeds.insert( seeds.end(), addresses.begin(), addresses.end() );
+         }
       }
 
       if( options.count( "p2p-seed-node" ) )
       {
          auto s = options.at("p2p-seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
+         for( auto& arg : s )
+         {
+            vector< string > addresses;
+            boost::split( addresses, arg, boost::is_any_of( " \t" ) );
+            seeds.insert( seeds.end(), addresses.begin(), addresses.end() );
+         }
       }
 
       for( const string& endpoint_string : seeds )
