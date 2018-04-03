@@ -38,6 +38,11 @@ namespace chain {
         uint64_t write_wait_micro;
         uint32_t max_write_wait_retries;
 
+        size_t inc_shared_memory_size;
+        size_t min_free_shared_memory_size;
+
+        uint32_t block_num_check_free_size = 0;
+
         golos::chain::database db;
 
         bool single_write_thread = false;
@@ -141,69 +146,54 @@ namespace chain {
                                      boost::program_options::options_description &cfg) {
         cfg.add_options()
             (
-                "shared-file-dir",
-                boost::program_options::value<boost::filesystem::path>()->default_value("blockchain"),
+                "shared-file-dir", boost::program_options::value<boost::filesystem::path>()->default_value("blockchain"),
                 "the location of the chain shared memory files (absolute path or relative to application data dir)"
-            )
-            (
-                "shared-file-size",
-                boost::program_options::value<std::string>()->default_value("64G"),
-                "Size of the shared memory file. Default: 54G"
-            )
-            (
-                "checkpoint,c",
-                boost::program_options::value<std::vector<std::string>>()->composing(),
+            ) (
+                "shared-file-size", boost::program_options::value<std::string>()->default_value("2G"),
+                "Start size of the shared memory file. Default: 2G"
+            ) (
+                "inc-shared-file-size", boost::program_options::value<std::string>()->default_value("2G"),
+                "Increasing size on reaching limit of free space in shared memory file (see min-free-shared-file-size). Default: 2G"
+            ) (
+                "min-free-shared-file-size", boost::program_options::value<std::string>()->default_value("500M"),
+                "Minimum free space in shared memory file (see inc-shared-file-size). Default: 500M"
+            ) (
+                "block-num-check-free-size", boost::program_options::value<uint32_t>()->default_value(1000),
+                "Check free space in shared memory each N blocks. Default: 1000 (each 3000 seconds)."
+            ) (
+                "checkpoint,c", boost::program_options::value<std::vector<std::string>>()->composing(),
                 "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints."
-            )
-            (
-                "flush-state-interval",
-                boost::program_options::value<uint32_t>(),
+            ) (
+                "flush-state-interval", boost::program_options::value<uint32_t>(),
                 "flush shared memory changes to disk every N blocks"
-            )
-            (
-                "read-wait-micro",
-                boost::program_options::value<uint64_t>(),
+            ) (
+                "read-wait-micro", boost::program_options::value<uint64_t>(),
                 "maximum microseconds for trying to get read lock"
-            )
-            (
-                "max-read-wait-retries",
-                boost::program_options::value<uint32_t>(),
+            ) (
+                "max-read-wait-retries", boost::program_options::value<uint32_t>(),
                 "maximum number of retries to get read lock"
-            )
-            (
-                "write-wait-micro",
-                boost::program_options::value<uint64_t>(),
+            ) (
+                "write-wait-micro", boost::program_options::value<uint64_t>(),
                 "maximum microseconds for trying to get write lock"
-            )
-            (
-                "max-write-wait-retries",
-                boost::program_options::value<uint32_t>(),
+            ) (
+                "max-write-wait-retries", boost::program_options::value<uint32_t>(),
                 "maximum number of retries to get write lock"
-            )
-            (
-                "single-write-thread",
-                boost::program_options::value<bool>()->default_value(false),
+            ) (
+                "single-write-thread", boost::program_options::value<bool>()->default_value(false),
                 "push blocks and transactions from one thread"
             );
         cli.add_options()
             (
-                "replay-blockchain",
-                boost::program_options::bool_switch()->default_value(false),
+                "replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and replay all blocks"
-            )
-            (
-                "resync-blockchain",
-                boost::program_options::bool_switch()->default_value(false),
+            ) (
+                "resync-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and block log"
-            )
-            (
-                "check-locks",
-                boost::program_options::bool_switch()->default_value(false),
+            ) (
+                "check-locks", boost::program_options::bool_switch()->default_value(false),
                 "Check correctness of chainbase locking"
-            )
-            (
-                "validate-database-invariants",
-                boost::program_options::bool_switch()->default_value(false),
+            ) (
+                "validate-database-invariants", boost::program_options::bool_switch()->default_value(false),
                 "Validate all supply invariants check out"
             );
     }
@@ -241,6 +231,12 @@ namespace chain {
         my->single_write_thread = options.at("single-write-thread").as<bool>();
 
         my->shared_memory_size = fc::parse_size(options.at("shared-file-size").as<std::string>());
+        my->inc_shared_memory_size = fc::parse_size(options.at("inc-shared-file-size").as<std::string>());
+        my->min_free_shared_memory_size = fc::parse_size(options.at("min-free-shared-file-size").as<std::string>());
+
+        if (options.count("block-num-check-free-size")) {
+            my->block_num_check_free_size = options.at("block-num-check-free-size").as<uint32_t>();
+        }
 
         my->replay = options.at("replay-blockchain").as<bool>();
         my->resync = options.at("resync-blockchain").as<bool>();
@@ -278,6 +274,13 @@ namespace chain {
         my->db.max_read_wait_retries(my->max_read_wait_retries);
         my->db.write_wait_micro(my->write_wait_micro);
         my->db.max_write_wait_retries(my->max_write_wait_retries);
+
+        my->db.inc_shared_memory_size(my->inc_shared_memory_size);
+        my->db.min_free_shared_memory_size(my->min_free_shared_memory_size);
+
+        if (my->block_num_check_free_size) {
+            my->db.block_num_check_free_size(my->block_num_check_free_size);
+        }
 
         if (my->replay) {
             ilog("Replaying blockchain on user request.");
