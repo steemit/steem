@@ -168,15 +168,13 @@ namespace golos {
                     while (itr.first.block_num() != last_block_num) {
                         auto cur_block_num = itr.first.block_num();
                         if (cur_block_num % 100000 == 0) {
-                            std::cerr << "   " << double(cur_block_num * 100) /
-                                                  last_block_num << "%   "
-                                      << cur_block_num << " of "
-                                      << last_block_num <<
-                                      "   ("
-                                      << (get_free_memory() / (1024 * 1024))
-                                      << "M free)\n";
+                            std::cerr
+                                << "   " << double(cur_block_num * 100) / last_block_num << "%   "
+                                << cur_block_num << " of " << last_block_num
+                                << "   ("  << (free_memory() / (1024 * 1024)) << "M free)\n";
                         }
                         apply_block(itr.first, skip_flags);
+                        check_free_memory(true, itr.first.block_num());
                         itr = _block_log.read_block(itr.second);
                     }
 
@@ -194,6 +192,56 @@ namespace golos {
             }
             FC_CAPTURE_AND_RETHROW((data_dir)(shared_mem_dir))
 
+        }
+
+        void database::min_free_shared_memory_size(size_t value) {
+            _min_free_shared_memory_size = value;
+        }
+
+        void database::inc_shared_memory_size(size_t value) {
+            _inc_shared_memory_size = value;
+        }
+
+        void database::block_num_check_free_size(uint32_t value) {
+            _block_num_check_free_memory = value;
+        }
+
+        void database::check_free_memory(bool skip_print, uint32_t current_block_num) {
+            if (0 != current_block_num % _block_num_check_free_memory) {
+                return;
+            }
+
+            uint64_t free_mem = free_memory();
+            uint64_t max_mem = max_memory();
+
+            if (_inc_shared_memory_size != 0 && _min_free_shared_memory_size != 0 &&
+                free_mem < _min_free_shared_memory_size
+            ) {
+                size_t new_max = max_mem + _inc_shared_memory_size;
+                wlog(
+                    "Memory is almost full on block ${block}, increasing to ${mem}M",
+                    ("block", current_block_num)("mem", new_max / (1024 * 1024)));
+                resize(new_max);
+                free_mem = free_memory();
+                uint32_t free_mb = uint32_t(free_mem / (1024 * 1024));
+                wlog("Free memory is now ${free}M", ("free", free_mb));
+                _last_free_gb_printed = free_mb / 1024;
+            } else if (!skip_print && _inc_shared_memory_size == 0 && _min_free_shared_memory_size == 0) {
+                uint32_t free_gb = uint32_t(free_mem / (1024 * 1024 * 1024));
+                if ((free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed + 1)) {
+                    ilog(
+                        "Free memory is now ${n}G. Current block number: ${block}",
+                        ("n", free_gb)("block", current_block_num));
+                    _last_free_gb_printed = free_gb;
+                }
+
+                if (free_gb == 0) {
+                    uint32_t free_mb = uint32_t(free_mem / (1024 * 1024));
+                    if (free_mb <= 500 && current_block_num % 10 == 0) {
+                        elog("Free memory is now ${n}M. Increase shared file size immediately!", ("n", free_mb));
+                    }
+                }
+            }
         }
 
         void database::wipe(const fc::path &data_dir, const fc::path &shared_mem_dir, bool include_blocks) {
@@ -637,6 +685,8 @@ namespace golos {
                         FC_CAPTURE_AND_RETHROW((new_block))
                     });
                 });
+
+                check_free_memory(false, new_block.block_num());
             });
 
             //fc::time_point end_time = fc::time_point::now();
@@ -689,7 +739,7 @@ namespace golos {
                                 // ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
                                 optional<fc::exception> except;
                                 try {
-                                    auto session = start_undo_session(true);
+                                    auto session = start_undo_session();
                                     apply_block((*ritr)->data, skip);
                                     session.push();
                                 }
@@ -715,7 +765,7 @@ namespace golos {
                                     for (auto ritr = branches.second.rbegin();
                                          ritr !=
                                          branches.second.rend(); ++ritr) {
-                                        auto session = start_undo_session(true);
+                                        auto session = start_undo_session();
                                         apply_block((*ritr)->data, skip);
                                         session.push();
                                     }
@@ -730,7 +780,7 @@ namespace golos {
                 }
 
                 try {
-                    auto session = start_undo_session(true);
+                    auto session = start_undo_session();
                     apply_block(new_block, skip);
                     session.push();
                 }
@@ -771,7 +821,7 @@ namespace golos {
             // If this is the first transaction pushed after applying a block, start a new undo session.
             // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
             if (!_pending_tx_session.valid()) {
-                _pending_tx_session = start_undo_session(true);
+                _pending_tx_session = start_undo_session();
             }
 
             // Create a temporary undo session as a child of _pending_tx_session.
@@ -779,7 +829,7 @@ namespace golos {
             // _apply_transaction fails.  If we make it to merge(), we
             // apply the changes.
 
-            auto temp_session = start_undo_session(true);
+            auto temp_session = start_undo_session();
             _apply_transaction(trx);
             _pending_tx.push_back(trx);
 
@@ -843,7 +893,7 @@ namespace golos {
                 // re-apply pending transactions in this method.
                 //
                 _pending_tx_session.reset();
-                _pending_tx_session = start_undo_session(true);
+                _pending_tx_session = start_undo_session();
 
                 uint64_t postponed_tx_count = 0;
                 // pop pending state (reset to head block state)
@@ -865,7 +915,7 @@ namespace golos {
                     }
 
                     try {
-                        auto temp_session = start_undo_session(true);
+                        auto temp_session = start_undo_session();
                         _apply_transaction(tx);
                         temp_session.squash();
 
@@ -2931,7 +2981,7 @@ namespace golos {
 
         void database::validate_transaction(const signed_transaction &trx) {
             database::with_weak_write_lock([&]() {
-                auto session = start_undo_session(true);
+                auto session = start_undo_session();
                 _apply_transaction(trx);
                 session.undo();
             });
@@ -3034,14 +3084,6 @@ namespace golos {
 //                        ilog("Flushing database shared memory at block ${b}", ("b", block_num));
                         chainbase::database::flush();
                     }
-                }
-
-                uint32_t free_gb = uint32_t(
-                        get_free_memory() / (1024 * 1024 * 1024));
-                if ((free_gb < _last_free_gb_printed) ||
-                    (free_gb > _last_free_gb_printed + 1)) {
-                    ilog("Free memory is now ${n}G", ("n", free_gb));
-                    _last_free_gb_printed = free_gb;
                 }
 
             } FC_CAPTURE_AND_RETHROW((next_block))
