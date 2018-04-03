@@ -18,6 +18,7 @@ namespace ce
       public:
 
          virtual bool exists( size_t key ) = 0;
+         virtual abstract_sub_checker* create() = 0;
    };
 
    template< typename COLLECTION_POINTER >
@@ -37,6 +38,11 @@ namespace ce
          bool exists( size_t key ) override
          {
             return collection->lower_bound( key ) != collection->upper_bound( key );
+         }
+
+         abstract_sub_checker* create() override
+         {
+            return new sub_checker( collection );
          }
    };
 
@@ -73,6 +79,7 @@ namespace ce
          virtual reference operator*() const = 0;
          virtual pointer operator->() const = 0;
          virtual bool operator==( const abstract_sub_enumerator& obj ) const = 0;
+         virtual bool operator!=( const abstract_sub_enumerator& obj ) const = 0;
          virtual bool operator<( const abstract_sub_enumerator& obj ) const = 0;
          virtual bool begin() const = 0;
          virtual bool end() const = 0;
@@ -81,6 +88,7 @@ namespace ce
          virtual void change_status( bool val ) = 0;
          //This method informs, that given iterator is inactive. Something like 'end()', but from the second way.
          virtual bool is_inactive() const = 0;
+         virtual abstract_sub_enumerator* create() = 0;
    };
 
    template< typename ITERATOR, typename OBJECT, typename CMP >
@@ -121,11 +129,10 @@ namespace ce
 
          const CMP cmp;
 
-         sub_enumerator( const ITERATOR& _it, const ITERATOR& _end, const CMP& _cmp )
-         : it_end( _end ), cmp( _cmp )
+         sub_enumerator( const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
+         : it_begin( _begin ), it_end( _end ), cmp( _cmp )
          {
             it = _it;
-            it_begin = _it;//TEMPORARY!!!!!!!!!!!
          }
 
          size_t get_id() const override
@@ -163,6 +170,11 @@ namespace ce
             return get_id() == obj.get_id();
          }
 
+         bool operator!=( const abstract_sub_enumerator< OBJECT >& obj ) const override
+         {
+            return get_id() != obj.get_id();
+         }
+
          bool operator<( const abstract_sub_enumerator< OBJECT >& obj ) const override
          {
             return cmp( *( *this ), *obj );
@@ -186,6 +198,11 @@ namespace ce
          bool is_inactive() const
          {
             return inactive;
+         }
+
+         abstract_sub_enumerator< OBJECT >* create() override
+         {
+            return new sub_enumerator( it, it_begin, it_end, cmp );
          }
    };
 
@@ -219,7 +236,7 @@ namespace ce
             using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
             using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
 
-            iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+            iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
             add( elements... );
          }
 
@@ -433,6 +450,14 @@ namespace ce
             }
          }
 
+         void copy_iterators( const concatenation_enumerator& obj )
+         {
+            iterators.clear();
+
+            for( auto& item : obj.iterators )
+               iterators.push_back( pitem( item->create() ) );
+         }
+
       protected:
 
          std::vector< pitem > iterators;
@@ -453,6 +478,19 @@ namespace ce
       public:
 
          CMP cmp;
+
+         concatenation_enumerator( const concatenation_enumerator& obj )
+         : cmp( obj.cmp )
+         {
+            idx.current = obj.idx.current;
+            copy_iterators( obj );
+         }
+
+         concatenation_enumerator()
+         : cmp( CMP() )
+         {
+            idx.current = -1;
+         }
 
          template< typename... ELEMENTS >
          concatenation_enumerator( const CMP& _cmp, ELEMENTS... elements )
@@ -485,6 +523,40 @@ namespace ce
          concatenation_enumerator& operator--()
          {
             action< Direction::prev >();
+
+            return *this;
+         }
+
+         bool operator==( const concatenation_enumerator& obj ) const
+         {
+            if( ( idx.current == obj.idx.current ) && ( idx.current == Position::pos_end ) )
+               return true;
+
+            if( idx.current != obj.idx.current )
+               return false;
+
+            if( iterators.size() != obj.iterators.size() )
+               return false;
+
+            size_t _size = iterators.size();
+
+            for( size_t i = 0; i < _size; ++i )
+               if( ( *iterators[i] ) != ( *obj.iterators[i] ) )
+                  return false;
+
+            return true;
+         }
+
+         bool operator!=( const concatenation_enumerator& obj ) const
+         {
+            return !( *this == obj );
+         }
+
+         concatenation_enumerator& operator=( const concatenation_enumerator& obj )
+         {
+            idx.current = obj.idx.current;
+
+            copy_iterators( obj );
 
             return *this;
          }
@@ -523,6 +595,14 @@ namespace ce
             add( elements... );
          }
 
+         void copy_containers( const concatenation_enumerator_ex& obj )
+         {
+            containers.clear();
+
+            for( auto& item : obj.containers )
+               containers.push_back( pitem( item->create() ) );
+         }
+
       protected:
 
          bool find_with_key_search_impl( size_t key )
@@ -559,30 +639,48 @@ namespace ce
 
       public:
 
-      template< typename... ELEMENTS >
-      concatenation_enumerator_ex( const CMP& _cmp, ELEMENTS... elements )
-                              : concatenation_enumerator< OBJECT, CMP >( _cmp, elements... )
-      {
-         add( elements... );
-         find_with_key_search< Direction::next >();
-      }
+         concatenation_enumerator_ex( const concatenation_enumerator_ex& obj )
+         : concatenation_enumerator< OBJECT, CMP >( obj )
+         {
+            copy_containers( obj );
+         }
 
-      concatenation_enumerator_ex& operator++()
-      {
-         this-> template action< Direction::next >();
-         find_with_key_search< Direction::next >();
+         concatenation_enumerator_ex() 
+         {
+         }
 
-         return *this;
-      }
+         template< typename... ELEMENTS >
+         concatenation_enumerator_ex( const CMP& _cmp, ELEMENTS... elements )
+                                 : concatenation_enumerator< OBJECT, CMP >( _cmp, elements... )
+         {
+            add( elements... );
+            find_with_key_search< Direction::next >();
+         }
 
-      concatenation_enumerator_ex& operator--()
-      {
-         this-> template action< Direction::prev >();
-         find_with_key_search< Direction::prev >();
+         concatenation_enumerator_ex& operator++()
+         {
+            this-> template action< Direction::next >();
+            find_with_key_search< Direction::next >();
 
-         return *this;
-      }
+            return *this;
+         }
 
+         concatenation_enumerator_ex& operator--()
+         {
+            this-> template action< Direction::prev >();
+            find_with_key_search< Direction::prev >();
+
+            return *this;
+         }
+
+         concatenation_enumerator_ex& operator=( const concatenation_enumerator_ex& obj )
+         {
+            base_class::operator=( obj );
+            copy_containers( obj );
+
+            return *this;
+         }
+        
    };
 
 }

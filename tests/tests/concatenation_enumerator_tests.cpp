@@ -1102,7 +1102,218 @@ void inc_dec_basic_3_sources_sub_index_test( Filler1& f1, Filler2& f2, Filler3& 
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 }
 
+template< typename Iterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void comparision_assignment_test( Filler1& filler1, Filler2& filler2, Filler3& filler3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - assignments, comparisions" );
+   filler1( bmic1 );
+   filler2( bmic2 );
+   filler3( bmic3 );
+   sorted_filler( comparer );
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   using _t = Iterator;
+
+   _t _it( Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end() ),
+            std::make_tuple( idx2.begin(), idx2.end() ),
+            std::make_tuple( idx3.begin(), idx3.end() )
+         );
+
+   _t it_end;
+   _t it_begin( _it );
+   _t it( _it );
+
+   BOOST_REQUIRE( it == _it );
+   BOOST_REQUIRE( it == it_begin );
+   BOOST_REQUIRE( _it == it_begin );
+   BOOST_REQUIRE( it != it_end );
+
+   ++it;
+
+   BOOST_REQUIRE( _it == it_begin );
+
+   --it;
+   BOOST_REQUIRE( it == it_begin );
+
+   ++_it;
+   ++_it;
+   --_it;
+   --_it;
+   BOOST_REQUIRE( _it == it_begin );
+   BOOST_REQUIRE( _it == it );
+
+   auto it_comparer = comparer.begin();
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+
+   it = it_begin;
+   it_comparer = comparer.begin();
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+
+   it = it_end;
+   BOOST_REQUIRE( it == it_end );
+
+   BOOST_REQUIRE( _it == it_begin );
+   ++_it;
+   ++_it;
+   it_comparer = comparer.begin();
+   ++it_comparer;
+   ++it_comparer;
+   BOOST_REQUIRE( ( *_it ) == ( *it_comparer ) );
+   it = _it;
+   BOOST_REQUIRE( it == _it );
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+}
+
+template< typename Iterator, typename Collection, typename Object, typename ID_Index, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void comparision_assignment_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3& filler3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - assignments, comparisions ( sub-index is active )" );
+   filler1( bmic1 );
+   filler2( bmic2 );
+   filler3( bmic3 );
+   sorted_filler( comparer );
+
+   using _t = Iterator;
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& id_idx3 = bmic3.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   _t _it( Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+   _t it_end;
+   _t it_begin( _it );
+   _t it( _it );
+
+   BOOST_REQUIRE( it == _it );
+   BOOST_REQUIRE( it == it_begin );
+   BOOST_REQUIRE( _it == it_begin );
+   BOOST_REQUIRE( it != it_end );
+
+   ++it;
+
+   BOOST_REQUIRE( _it == it_begin );
+
+   --it;
+   BOOST_REQUIRE( it == it_begin );
+
+   ++_it;
+   ++_it;
+   --_it;
+   --_it;
+   BOOST_REQUIRE( _it == it_begin );
+   BOOST_REQUIRE( _it == it );
+
+   const auto& comparer_idx = comparer.template get< Index >();
+   auto it_comparer = comparer_idx.begin();
+
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+
+   it = it_begin;
+   it_comparer = comparer_idx.begin();
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+
+   it = it_end;
+   BOOST_REQUIRE( it == it_end );
+
+   BOOST_REQUIRE( _it == it_begin );
+   ++_it;
+   ++_it;
+   it_comparer = comparer_idx.begin();
+   ++it_comparer;
+   ++it_comparer;
+   BOOST_REQUIRE( ( *_it ) == ( *it_comparer ) );
+   it = _it;
+   BOOST_REQUIRE( it == _it );
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+      ++it;
+      ++it_comparer;
+   }
+}
+
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(comparision_assignment_sub_index_tests)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp2 = ce_tests::cmp2;
+   using oidx = ce_tests::OrderedIndex;
+   using oidx_a = ce_tests::CompositeOrderedIndexA;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill9< obj >( collection ); };
+   auto f2 = []( bmic& collection ){ ce_tests::fill9a< obj >( collection ); };
+   auto f3 = []( bmic& collection ){ ce_tests::fill9b< obj >( collection ); };
+   auto s = []( bmic& collection ){ ce_tests::sort9< obj >( collection ); };
+
+   comparision_assignment_sub_index_test< ce::concatenation_enumerator_ex< obj, cmp2 >, bmic, obj, oidx, oidx_a, cmp2 >( f1, f2, f3, s );
+}
+
+BOOST_AUTO_TEST_CASE(comparision_assignment_tests)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp1 = ce_tests::cmp1;
+   using oidx = ce_tests::OrderedIndex;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill7< obj >( collection ); };
+   auto f2 = []( bmic& collection ){ ce_tests::fill7a< obj >( collection ); };
+   auto f3 = []( bmic& collection ){ ce_tests::fill7b< obj >( collection ); };
+   auto s = []( bmic& collection ){ ce_tests::sort7< obj >( collection ); };
+
+   comparision_assignment_test< ce::concatenation_enumerator< obj, cmp1 >, bmic, obj, oidx, cmp1 >( f1, f2, f3, s );
+}
 
 BOOST_AUTO_TEST_CASE(inc_dec_basic_tests3)
 {
