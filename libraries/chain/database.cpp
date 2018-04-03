@@ -986,6 +986,8 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
 
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
+   ++_current_virtual_op;
+   note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
    notify_post_apply_operation( note );
 }
@@ -2882,6 +2884,9 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
+   _current_virtual_op = 0;
+   _current_trx_in_block = -1;
+
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
 
@@ -3054,6 +3059,7 @@ void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
    _current_trx_id = trx.id();
+   _current_virtual_op = 0;
    uint32_t skip = get_node_properties().skip_flags;
 
    if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
@@ -3139,7 +3145,7 @@ void database::apply_operation(const operation& op)
       _benchmark_dumper.begin();
 
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
-   
+
    if( _benchmark_dumper.is_enabled() )
       _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
 
@@ -3774,7 +3780,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       int64_t result = balance_operator.get_combined_balance( bo, &is_all_zero );
       // Check result to avoid negative balance storing.
       FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
-      
+
       // Exit if whole balance becomes zero.
       if( is_all_zero )
       {
@@ -3786,7 +3792,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       {
          modify( *bo, [&]( smt_balance_object_type& smt_balance )
          {
-            balance_operator.add_to_balance( smt_balance ); 
+            balance_operator.add_to_balance( smt_balance );
          } );
       }
    }
@@ -3917,7 +3923,7 @@ struct smt_regular_balance_operator
 struct smt_reward_balance_operator
 {
    smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
-      : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 ) 
+      : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 )
    {
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }
@@ -4142,7 +4148,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 #ifdef STEEM_ENABLE_SMT
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
          const account_regular_balance_object* arbo =
-            find< account_regular_balance_object, by_owner_liquid_symbol >( 
+            find< account_regular_balance_object, by_owner_liquid_symbol >(
                boost::make_tuple(a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol ) );
          if( arbo == nullptr )
          {
@@ -4828,7 +4834,7 @@ void database::validate_smt_invariants()const
          // Check pending_vesting_value
          asset pending_vesting_value = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) : totalIt->second.pending_vesting_value;
          FC_ASSERT( asset(smt.pending_rewarded_vesting_smt, smt.liquid_symbol) == pending_vesting_value, "",
-            ("smt pending_rewarded_vesting_smt", smt.pending_rewarded_vesting_smt)("pending_vesting_value", pending_vesting_value)); 
+            ("smt pending_rewarded_vesting_smt", smt.pending_rewarded_vesting_smt)("pending_vesting_value", pending_vesting_value));
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
