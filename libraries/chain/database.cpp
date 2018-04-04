@@ -769,9 +769,6 @@ void database::_push_transaction( const signed_transaction& trx )
    notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
-
-   // notify anyone listening to pending transactions
-   notify_on_pending_transaction( trx );
 }
 
 signed_block database::generate_block(
@@ -993,11 +990,6 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
 void database::notify_post_apply_block( const block_notification& note )
 {
    STEEM_TRY_NOTIFY( _on_post_apply_block, note )
-}
-
-void database::notify_on_pending_transaction( const signed_transaction& tx )
-{
-   STEEM_TRY_NOTIFY( _on_pending_transaction, tx )
 }
 
 void database::notify_on_pre_apply_transaction( const signed_transaction& tx )
@@ -3255,12 +3247,6 @@ boost::signals2::connection database::post_apply_operation_proxy( const operatio
    const abstract_plugin& plugin, int32_t group )
 {
    return any_apply_operation_proxy_impl< false/*IS_PRE_OPERATION*/ >( func, plugin, group );
-}
-
-boost::signals2::connection database::on_pending_transaction_proxy( const transaction_notification_t& func,
-   const abstract_plugin& plugin, int32_t group )
-{
-   return connect_impl(_on_pending_transaction, func, plugin, group, "@transaction");
 }
 
 boost::signals2::connection database::on_pre_apply_transaction_proxy( const transaction_notification_t& func,

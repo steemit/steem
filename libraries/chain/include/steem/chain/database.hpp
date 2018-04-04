@@ -227,6 +227,8 @@ namespace steem { namespace chain {
          void pop_block();
          void clear_pending();
 
+         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
+
          /**
           *  This method is used to track applied operations during the evaluation of a block, these
           *  operations should include any operation actually included in a transaction as well
@@ -235,9 +237,7 @@ namespace steem { namespace chain {
           */
          void notify_pre_apply_operation( operation_notification& note );
          void notify_post_apply_operation( const operation_notification& note );
-         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
          void notify_post_apply_block( const block_notification& note );
-         void notify_on_pending_transaction( const signed_transaction& tx );
          void notify_on_pre_apply_transaction( const signed_transaction& tx );
          void notify_on_applied_transaction( const signed_transaction& tx );
 
@@ -262,7 +262,6 @@ namespace steem { namespace chain {
 
          boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_pending_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection on_applied_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection on_post_apply_block_proxy( const block_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
@@ -560,12 +559,6 @@ namespace steem { namespace chain {
           *  released.
           */
          fc::signal<void(const block_notification&)>     _on_post_apply_block;
-
-         /**
-          * This signal is emitted any time a new transaction is added to the pending
-          * block state.
-          */
-         fc::signal<void(const signed_transaction&)>     _on_pending_transaction;
 
          /**
           * This signla is emitted any time a new transaction is about to be applied
