@@ -35,7 +35,7 @@ class account_history_plugin_impl
 
       virtual ~account_history_plugin_impl() {}
 
-      void on_operation( const operation_notification& note );
+      void on_pre_apply_operation( const operation_notification& note );
 
       flat_map< account_name_type, account_name_type > _tracked_accounts;
       bool                                             _filter_content = false;
@@ -43,7 +43,7 @@ class account_history_plugin_impl
       flat_set< string >                               _op_list;
       bool                                             _prune = true;
       database&                        _db;
-      boost::signals2::connection      pre_apply_connection;
+      boost::signals2::connection      _pre_apply_operation_conn;
 };
 
 struct operation_visitor
@@ -146,7 +146,7 @@ struct operation_visitor_filter : operation_visitor
    }
 };
 
-void account_history_plugin_impl::on_operation( const operation_notification& note )
+void account_history_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
    flat_set<account_name_type> impacted;
 
@@ -220,7 +220,8 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 {
    my = std::make_unique< detail::account_history_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation_proxy( [&]( const operation_notification& note ){ my->on_operation(note); }, *this, 0 );
+   my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler(
+      [&]( const operation_notification& note ){ my->on_pre_apply_operation(note); }, *this, 0 );
 
    typedef pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
@@ -321,7 +322,7 @@ void account_history_plugin::plugin_startup() {}
 
 void account_history_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->_pre_apply_operation_conn );
 }
 
 flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const

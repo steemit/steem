@@ -17,8 +17,8 @@ class account_by_key_plugin_impl
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
-      void pre_operation( const operation_notification& op_obj );
-      void post_operation( const operation_notification& op_obj );
+      void on_pre_apply_operation( const operation_notification& note );
+      void on_post_apply_operation( const operation_notification& note );
       void clear_cache();
       void cache_auths( const account_authority_object& a );
       void update_key_lookup( const account_authority_object& a );
@@ -26,8 +26,8 @@ class account_by_key_plugin_impl
       flat_set< public_key_type >   cached_keys;
       database&                     _db;
       account_by_key_plugin&        _self;
-      boost::signals2::connection   pre_apply_connection;
-      boost::signals2::connection   post_apply_connection;
+      boost::signals2::connection   _pre_apply_operation_conn;
+      boost::signals2::connection   _post_apply_operation_conn;
 };
 
 struct pre_operation_visitor
@@ -224,12 +224,12 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    cached_keys.clear();
 }
 
-void account_by_key_plugin_impl::pre_operation( const operation_notification& note )
+void account_by_key_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
    note.op.visit( pre_operation_visitor( *this ) );
 }
 
-void account_by_key_plugin_impl::post_operation( const operation_notification& note )
+void account_by_key_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
    note.op.visit( post_operation_visitor( *this ) );
 }
@@ -249,8 +249,8 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
       ilog( "Initializing account_by_key plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      my->pre_apply_connection = db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ my->pre_operation( o ); }, *this, 0 );
-      my->post_apply_connection = db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->post_operation( o ); }, *this, 0 );
+      my->_pre_apply_operation_conn = db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
+      my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
       add_plugin_index< key_lookup_index >(db);
    }
@@ -261,8 +261,8 @@ void account_by_key_plugin::plugin_startup() {}
 
 void account_by_key_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( my->pre_apply_connection );
-   chain::util::disconnect_signal( my->post_apply_connection );
+   chain::util::disconnect_signal( my->_pre_apply_operation_conn );
+   chain::util::disconnect_signal( my->_post_apply_operation_conn );
 }
 
 } } } // steem::plugins::account_by_key

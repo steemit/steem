@@ -21,7 +21,7 @@ namespace detail
             _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
          {
-            _on_post_apply_block_connection = _chain.db().on_post_apply_block_proxy(
+            _post_apply_block_conn = _chain.db().add_post_apply_block_handler(
                [&]( const steem::chain::block_notification& note ){ on_post_apply_block( note ); }, _chain, 0 );
          }
 
@@ -39,7 +39,7 @@ namespace detail
          steem::plugins::chain::chain_plugin&                  _chain;
          map< transaction_id_type, confirmation_callback >     _callbacks;
          map< time_point_sec, vector< transaction_id_type > >  _callback_expirations;
-         boost::signals2::connection                           _on_post_apply_block_connection;
+         boost::signals2::connection                           _post_apply_block_conn;
 
          boost::mutex                                          _mtx;
    };

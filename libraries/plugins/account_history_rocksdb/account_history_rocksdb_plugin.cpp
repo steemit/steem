@@ -324,22 +324,23 @@ private:
 class account_history_rocksdb_plugin::impl final
 {
 public:
-   impl( const bpo::variables_map& options, const bfs::path& storagePath) :
+   impl( account_history_rocksdb_plugin& self, const bpo::variables_map& options, const bfs::path& storagePath) :
+      _self(self),
       _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
       _storagePath(storagePath),
       _writeBuffer(_storage, _columnHandles)
       {
       collectOptions(options);
 
-      _mainDb.on_reindex_start_connect([&]() -> void
+      _mainDb.add_pre_reindex_handler([&]( const steem::chain::reindex_notification& note ) -> void
          {
-            onReindexStart();
-         });
+            on_pre_reindex( note );
+         }, _self, 0);
 
-      _mainDb.on_reindex_done_connect([&](bool success, uint32_t finalBlock) -> void
+      _mainDb.add_post_reindex_handler([&]( const steem::chain::reindex_notification& note ) -> void
          {
-            onReindexStop(finalBlock);
-         });
+            on_post_reindex( note );
+         }, _self, 0);
       }
 
    ~impl()
@@ -372,10 +373,10 @@ public:
          loadSeqIdentifiers(storageDb);
          _storage.reset(storageDb);
 
-         _pre_apply_connection = _mainDb.pre_apply_operation_proxy(
+         _on_pre_apply_operation_connection = _mainDb.add_pre_apply_operation_handler(
             [&]( const operation_notification& note )
             {
-               on_operation(note);
+               on_pre_apply_operation(note);
             },
             appbase::app().get_plugin< account_history_rocksdb_plugin >() );
       }
@@ -387,8 +388,8 @@ public:
    }
 
    void printReport(uint32_t blockNo, const char* detailText) const;
-   void onReindexStart();
-   void onReindexStop(uint32_t finalBlock);
+   void on_pre_reindex( const steem::chain::reindex_notification& note );
+   void on_post_reindex( const steem::chain::reindex_notification& note );
 
    /// Allows to start immediate data import (outside replay process).
    void importData(unsigned int blockLimit);
@@ -405,7 +406,7 @@ public:
 
    void shutdownDb()
    {
-      chain::util::disconnect_signal(_pre_apply_connection);
+      chain::util::disconnect_signal(_on_pre_apply_operation_connection);
       flushStorage();
       cleanupColumnHandles();
       _storage.reset();
@@ -526,7 +527,7 @@ private:
       }
    }
 
-   void on_operation(const operation_notification& opNote);
+   void on_pre_apply_operation(const operation_notification& opNote);
 
    void collectOptions(const bpo::variables_map& options);
 
@@ -571,12 +572,13 @@ private:
 private:
    typedef flat_map< account_name_type, account_name_type > account_name_range_index;
 
+   account_history_rocksdb_plugin&  _self;
    chain::database&                 _mainDb;
    bfs::path                        _storagePath;
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    CachableWriteBatch               _writeBuffer;
-   boost::signals2::connection      _pre_apply_connection;
+   boost::signals2::connection      _on_pre_apply_operation_connection;
    /// Helper member to be able to detect another incomming tx and increment tx-counter.
    transaction_id_type              _lastTx;
    size_t                           _txNo = 0;
@@ -635,7 +637,7 @@ inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account
    if(_tracked_accounts.empty())
       return true;
 
-   /// Code below is based on original contents of account_history_plugin_impl::on_operation
+   /// Code below is based on original contents of account_history_plugin_impl::on_pre_apply_operation
    auto itr = _tracked_accounts.lower_bound(name);
 
    /*
@@ -1186,7 +1188,7 @@ void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_h
    }
 }
 
-void account_history_rocksdb_plugin::impl::onReindexStart()
+void account_history_rocksdb_plugin::impl::on_pre_reindex(const steem::chain::reindex_notification& note)
 {
    ilog("Received onReindexStart request, attempting to clean database storage.");
 
@@ -1210,8 +1212,9 @@ void account_history_rocksdb_plugin::impl::onReindexStart()
    ilog("onReindexStart request completed successfully.");
 }
 
-void account_history_rocksdb_plugin::impl::onReindexStop(uint32_t finalBlock)
+void account_history_rocksdb_plugin::impl::on_post_reindex(const steem::chain::reindex_notification& note)
 {
+   const uint32_t finalBlock = note.last_block_number;
    ilog("Reindex completed up to block: ${b}. Setting back write limit to non-massive level.",
       ("b", finalBlock));
 
@@ -1292,7 +1295,7 @@ void account_history_rocksdb_plugin::impl::importData(unsigned int blockLimit)
    printReport(blockNo, "RocksDB data import finished. ");
 }
 
-void account_history_rocksdb_plugin::impl::on_operation(const operation_notification& n)
+void account_history_rocksdb_plugin::impl::on_pre_apply_operation(const operation_notification& n)
 {
    if(_storage != nullptr)
    {
@@ -1349,7 +1352,7 @@ void account_history_rocksdb_plugin::plugin_initialize(const boost::program_opti
       dbPath = actualPath;
    }
 
-   _my = std::make_unique<impl>( options, dbPath );
+   _my = std::make_unique<impl>( *this, options, dbPath );
 
    _my->openDb();
 }

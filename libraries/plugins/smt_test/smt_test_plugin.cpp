@@ -19,8 +19,8 @@ class smt_test_plugin_impl
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
-      void pre_operation( const operation_notification& op_obj );
-      void post_operation( const operation_notification& op_obj );
+      void on_pre_apply_operation( const operation_notification& op_obj );
+      void on_post_apply_operation( const operation_notification& op_obj );
       void clear_cache();
       void cache_auths( const account_authority_object& a );
       void update_key_lookup( const account_authority_object& a );
@@ -54,12 +54,12 @@ struct post_operation_visitor
    void operator()( const T& )const {}
 };
 
-void smt_test_plugin_impl::pre_operation( const operation_notification& note )
+void smt_test_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
    note.op.visit( pre_operation_visitor( *this ) );
 }
 
-void smt_test_plugin_impl::post_operation( const operation_notification& note )
+void smt_test_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
    note.op.visit( post_operation_visitor( *this ) );
 }
@@ -263,8 +263,8 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
       ilog( "Initializing smt_test plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation_proxy( [&]( const operation_notification& o ){ my->pre_operation( o ); }, *this, 0 );
-      db.post_apply_operation_proxy( [&]( const operation_notification& o ){ my->post_operation( o ); }, *this, 0 );
+      db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
+      db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
       // add_plugin_index< key_lookup_index >(db);
    }
