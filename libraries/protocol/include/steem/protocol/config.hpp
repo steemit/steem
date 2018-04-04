@@ -117,7 +117,7 @@
 #define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
 #define STEEM_POST_WEIGHT_CONSTANT            (uint64_t(4*STEEM_100_PERCENT) * (4*STEEM_100_PERCENT))// (4*STEEM_100_PERCENT) -> 2 posts per 1 days, average 1 every 12 hours
 
-#define STEEM_MAX_ACCOUNT_WITNESS_VOTES       30
+#define STEEM_MAX_ACCOUNT_WITNESS_VOTES       2
 
 #define STEEM_100_PERCENT                     10000
 #define STEEM_1_PERCENT                       (STEEM_100_PERCENT/100)
