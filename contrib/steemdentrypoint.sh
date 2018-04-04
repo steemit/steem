@@ -9,6 +9,8 @@ if [[ ! "$USE_PAAS" ]]; then
   cp /usr/local/bin/steem-sv-run.sh /etc/service/steemd/run
   chmod +x /etc/service/steemd/run
   runsv /etc/service/steemd
+elif [[ "$IS_TESTNET" ]]; then
+  /usr/local/bin/testnetinit.sh
 else
   /usr/local/bin/startpaassteemd.sh
 fi

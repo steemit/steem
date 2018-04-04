@@ -370,7 +370,7 @@ namespace detail {
 
          if( _db.is_producing() )
             STEEM_ASSERT( has_bandwidth,  plugin_exception,
-               "Account: ${account} bandwidth limit exeeded. Please wait to transact or power up STEEM.",
+               "Account: ${account} bandwidth limit exceeded. Please wait to transact or power up STEEM.",
                ("account", a.name)
                ("account_vshares", account_vshares)
                ("account_average_bandwidth", account_average_bandwidth)

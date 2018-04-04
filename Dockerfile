@@ -17,6 +17,7 @@ RUN \
         build-essential \
         cmake \
         doxygen \
+        gdb \
         git \
         libboost-all-dev \
         libreadline-dev \
@@ -31,11 +32,10 @@ RUN \
         python3-pip \
         nginx \
         fcgiwrap \
-        s3cmd \
         awscli \
         jq \
         wget \
-        gdb \
+        virtualenv \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
@@ -71,14 +71,17 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-testnet \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_SMT_SUPPORT=ON \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make install && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     ./programs/util/test_fixed_string && \
@@ -161,7 +164,6 @@ RUN \
         cmake \
         doxygen \
         dpkg-dev \
-        git \
         libboost-all-dev \
         libc6-dev \
         libexpat1-dev \
@@ -227,6 +229,8 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
 ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
 ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
+ADD contrib/testnet.config.ini /etc/steemd/testnet.config.ini
+ADD contrib/fastgen.config.ini /etc/steemd/fastgen.config.ini
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
@@ -238,10 +242,12 @@ ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
 
 # add PaaS startup script and service script
 ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
+ADD contrib/testnetinit.sh /usr/local/bin/testnetinit.sh
 ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
 ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
 ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/startpaassteemd.sh
+RUN chmod +x /usr/local/bin/testnetinit.sh
 RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh

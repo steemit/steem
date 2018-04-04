@@ -76,7 +76,7 @@ namespace detail
          "  - validators:\n"
          "    - extract_test: {jsonpath_mini: \"error\", test: \"not_exists\"}\n"
          "    - extract_test: {jsonpath_mini: \"result\", test: \"exists\"}\n";
-         
+
          fc::ofstream o(file);
          o << head;
          o << "    - json_file_validator: {jsonpath_mini: \"result\", comparator: \"json_compare\", expected: {template: '" << dir_name << "/$test_id'}}\n\n";
@@ -98,7 +98,7 @@ namespace detail
          fc::path file(dir_name);
          bool error = response.error.valid();
          std::string counter_str;
-         
+
          if (error)
             counter_str = std::to_string(++errors) + "_error";
          else
@@ -124,7 +124,7 @@ namespace detail
       uint32_t counter = 0;
       uint32_t errors = 0;
    };
-      
+
    class json_rpc_plugin_impl
    {
       public:
@@ -146,7 +146,7 @@ namespace detail
             if (_logger)
                _logger->log(request, response);
          }
-            
+
          DECLARE_API(
             (get_methods)
             (get_signature) )
@@ -408,7 +408,7 @@ void json_rpc_plugin::plugin_initialize( const variables_map& options )
          fc::remove_all(p);
       fc::create_directories(p);
       my->_logger.reset(new json_rpc_logger(dir_name));
-   }   
+   }
 }
 
 void json_rpc_plugin::plugin_startup()
@@ -460,6 +460,13 @@ string json_rpc_plugin::call( const string& message )
    {
       json_rpc_response response;
       response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+      return fc::json::to_string( response );
+   }
+   catch( ... )
+   {
+      json_rpc_response response;
+      response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown exception", fc::variant(
+         fc::unhandled_exception( FC_LOG_MESSAGE( warn, "Unknown Exception" ), std::current_exception() ).to_detail_string() ) );
       return fc::json::to_string( response );
    }
 
