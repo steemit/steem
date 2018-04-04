@@ -55,6 +55,8 @@ namespace steem { namespace chain {
 
          bool is_producing()const { return _is_producing; }
          void set_producing( bool p ) { _is_producing = p;  }
+         bool is_processing_block()const { return _currently_processing_block_id.valid(); }
+
          bool _is_producing = false;
 
          bool _log_hardforks = true;
@@ -523,6 +525,8 @@ namespace steem { namespace chain {
          uint16_t                      _current_trx_in_block = 0;
          uint16_t                      _current_op_in_trx    = 0;
          uint16_t                      _current_virtual_op   = 0;
+
+         optional< block_id_type >     _currently_processing_block_id;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 
