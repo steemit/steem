@@ -228,16 +228,24 @@ namespace ce
 
       private:
 
-         void add() {}
+         template< bool POSITION >
+         void add()
+         {
 
-         template< typename TUPLE, typename... ELEMENTS >
+         }
+
+         template< bool POSITION, typename TUPLE, typename... ELEMENTS >
          void add( const TUPLE& tuple, ELEMENTS... elements )
          {
             using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
             using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
 
-            iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
-            add( elements... );
+            if( POSITION )
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+            else
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+
+            add< POSITION >( elements... );
          }
 
          template< typename CONTAINER, typename CONDITION >
@@ -483,25 +491,35 @@ namespace ce
          : cmp( obj.cmp )
          {
             idx.current = obj.idx.current;
+            direction = obj.direction;
             copy_iterators( obj );
-         }
-
-         concatenation_enumerator()
-         : cmp( CMP() )
-         {
-            idx.current = -1;
          }
 
          template< typename... ELEMENTS >
          concatenation_enumerator( const CMP& _cmp, ELEMENTS... elements )
          : cmp( _cmp )
          {
-            add( elements... );
+            add< true/*POSITION*/ >( elements... );
 
             find< Direction::next >();
          }
 
-         reference operator*() const
+         template< typename... ELEMENTS >
+         concatenation_enumerator( bool, const CMP& _cmp, ELEMENTS... elements )
+         : cmp( _cmp )
+         {
+            add< false/*POSITION*/ >( elements... );
+
+            idx.current = -1;
+         }
+
+         reference operator*()
+         {
+            assert( idx.current != Position::pos_end );
+            return *( *( iterators[ idx.current ] ) );
+         }
+
+         const reference operator*() const
          {
             assert( idx.current != Position::pos_end );
             return *( *( iterators[ idx.current ] ) );
@@ -520,6 +538,15 @@ namespace ce
             return *this;
          }
 
+         concatenation_enumerator operator++( int )
+         {
+            auto tmp( *this );
+
+            action< Direction::next >();
+
+            return tmp;
+         }
+
          concatenation_enumerator& operator--()
          {
             action< Direction::prev >();
@@ -527,22 +554,29 @@ namespace ce
             return *this;
          }
 
+         concatenation_enumerator operator--( int )
+         {
+            auto tmp( *this );
+
+            action< Direction::prev >();
+
+            return tmp;
+         }
+
          bool operator==( const concatenation_enumerator& obj ) const
          {
-            if( ( idx.current == obj.idx.current ) && ( idx.current == Position::pos_end ) )
-               return true;
-
             if( idx.current != obj.idx.current )
                return false;
 
             if( iterators.size() != obj.iterators.size() )
                return false;
 
-            size_t _size = iterators.size();
-
-            for( size_t i = 0; i < _size; ++i )
-               if( ( *iterators[i] ) != ( *obj.iterators[i] ) )
+            if( idx.current != Position::pos_end )
+            {
+               assert( static_cast< size_t >( idx.current ) < iterators.size() );
+               if( *iterators[ idx.current ] != *obj.iterators[ idx.current ] )
                   return false;
+            }
 
             return true;
          }
@@ -559,11 +593,6 @@ namespace ce
             copy_iterators( obj );
 
             return *this;
-         }
-
-         bool end() const
-         {
-           return idx.current == Position::pos_end;
          }
    };
 
@@ -645,16 +674,19 @@ namespace ce
             copy_containers( obj );
          }
 
-         concatenation_enumerator_ex() 
-         {
-         }
-
          template< typename... ELEMENTS >
          concatenation_enumerator_ex( const CMP& _cmp, ELEMENTS... elements )
                                  : concatenation_enumerator< OBJECT, CMP >( _cmp, elements... )
          {
             add( elements... );
             find_with_key_search< Direction::next >();
+         }
+
+         template< typename... ELEMENTS >
+         concatenation_enumerator_ex( bool, const CMP& _cmp, ELEMENTS... elements )
+                                 : concatenation_enumerator< OBJECT, CMP >( false, _cmp, elements... )
+         {
+            add( elements... );
          }
 
          concatenation_enumerator_ex& operator++()
@@ -665,6 +697,16 @@ namespace ce
             return *this;
          }
 
+         concatenation_enumerator_ex operator++( int )
+         {
+            auto tmp( *this );
+
+            this-> template action< Direction::next >();
+            find_with_key_search< Direction::next >();
+
+            return tmp;
+         }
+
          concatenation_enumerator_ex& operator--()
          {
             this-> template action< Direction::prev >();
@@ -673,9 +715,20 @@ namespace ce
             return *this;
          }
 
+         concatenation_enumerator_ex operator--( int )
+         {
+            auto tmp( *this );
+
+            this-> template action< Direction::prev >();
+            find_with_key_search< Direction::prev >();
+
+            return tmp;
+         }
+
          concatenation_enumerator_ex& operator=( const concatenation_enumerator_ex& obj )
          {
             base_class::operator=( obj );
+
             copy_containers( obj );
 
             return *this;

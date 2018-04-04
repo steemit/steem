@@ -19,7 +19,8 @@ void basic_test()
    BOOST_TEST_MESSAGE( "1 empty source" );
    cnt = 0;
    ce::concatenation_enumerator< Object, ce_tests::cmp1 > it01( ce_tests::cmp1(), p1 );
-   while( !it01.end() )
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_01( false, ce_tests::cmp1(), p1 );
+   while( it01 != it_end_01 )
    {
       ++it01;
       ++cnt;
@@ -29,7 +30,8 @@ void basic_test()
    BOOST_TEST_MESSAGE( "2 empty sources" );
    cnt = 0;
    ce::concatenation_enumerator< Object, ce_tests::cmp1 > it02( ce_tests::cmp1(), p1, p2 );
-   while( !it02.end() )
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_02( false, ce_tests::cmp1(), p1, p2 );
+   while( it02 != it_end_02 )
    {
       ++it02;
       ++cnt;
@@ -39,8 +41,9 @@ void basic_test()
    BOOST_TEST_MESSAGE( "1 filled source" );
    ce_tests::fill1< Object >( s1 );
    ce::concatenation_enumerator< Object, ce_tests::cmp1 > it03( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_03( false, ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
    auto it_src03 = s1.begin();
-   while( !it03.end() )
+   while( it03 != it_end_03 )
    {
       BOOST_REQUIRE( ( *it03 ) == ( *it_src03 ) );
 
@@ -54,8 +57,13 @@ void basic_test()
                                                                            std::make_tuple( s1.begin(), s1.end() ),
                                                                            std::make_tuple( s2.begin(), s2.end() )
                                                                         );
+
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_04 ( false, ce_tests::cmp1(),
+                                                                           std::make_tuple( s1.begin(), s1.end() ),
+                                                                           std::make_tuple( s2.begin(), s2.end() )
+                                                                        );
    auto it_src04_1 = s1.begin();
-   while( !it04.end() )
+   while( it04 != it_end_04 )
    {
       BOOST_REQUIRE( ( *it04 ) == ( *it_src04_1 ) );
 
@@ -70,9 +78,13 @@ void basic_test()
                                                                            std::make_tuple( s1.begin(), s1.end() ),
                                                                            std::make_tuple( s2.begin(), s2.end() )
                                                                         );
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_05 ( false, ce_tests::cmp1(),
+                                                                           std::make_tuple( s1.begin(), s1.end() ),
+                                                                           std::make_tuple( s2.begin(), s2.end() )
+                                                                        );
    auto it_src05_1 = s1.begin();
    auto it_src05_2 = s2.begin();
-   while( !it05.end() )
+   while( it05 != it_end_05 )
    {
       BOOST_REQUIRE( ( *it05 ) == ( *it_src05_1 ) );
       BOOST_REQUIRE( ( *it05 ) == ( *it_src05_2 ) );
@@ -89,8 +101,12 @@ void basic_test()
                                                                            std::make_tuple( s1.begin(), s1.end() ),
                                                                            std::make_tuple( s2.begin(), s2.end() )
                                                                         );
+   ce::concatenation_enumerator< Object, ce_tests::cmp1 > it_end_06 ( false, ce_tests::cmp1(),
+                                                                           std::make_tuple( s1.begin(), s1.end() ),
+                                                                           std::make_tuple( s2.begin(), s2.end() )
+                                                                        );
    cnt = 0;
-   while( !it06.end() )
+   while( it06 != it_end_06 )
    {
       if( cnt == 0 )
          BOOST_REQUIRE( ( *it06 ) == ( *s1.begin() ) );
@@ -123,9 +139,10 @@ void test_different_sources( const SortedCollection& sorted )
    auto p2 = std::make_tuple( idx2.begin(), idx2.end() );
    auto p3 = std::make_tuple( s1.begin(), s1.end() );
    ce::concatenation_enumerator< Object, Cmp > it( Cmp(), p1, p2, p3 );
+   ce::concatenation_enumerator< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -155,9 +172,10 @@ void test_with_sub_index( Call1& call1, Call2& call2, const SortedCollection& so
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
 
    ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(), p1, p2 );
+   ce::concatenation_enumerator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -192,9 +210,10 @@ void test_with_sub_index_3_sources( const SortedCollection& sorted )
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    auto p3 = std::make_tuple( s.begin(), s.end(), &s_helper );
    ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(), p1, p2, p3 );
+   ce::concatenation_enumerator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -263,9 +282,10 @@ void test_with_sub_index_2_sources_many_objects_without_id_repeat()
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(), p1, p2 );
+   ce::concatenation_enumerator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -339,9 +359,10 @@ void test_with_sub_index_2_sources_many_objects_with_id_repeat()
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(), p1, p2 );
+   ce::concatenation_enumerator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -431,9 +452,10 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    auto p3 = std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 );
    ce::concatenation_enumerator_ex< Object, Cmp > it( Cmp(), p1, p2, p3 );
+   ce::concatenation_enumerator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
-   while( !it.end() )
+   while( it != it_end )
    {
       BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
 
@@ -1129,7 +1151,12 @@ void comparision_assignment_test( Filler1& filler1, Filler2& filler2, Filler3& f
             std::make_tuple( idx3.begin(), idx3.end() )
          );
 
-   _t it_end;
+   _t it_end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end() ),
+            std::make_tuple( idx2.begin(), idx2.end() ),
+            std::make_tuple( idx3.begin(), idx3.end() )
+         );
+
    _t it_begin( _it );
    _t it( _it );
 
@@ -1220,7 +1247,12 @@ void comparision_assignment_sub_index_test( Filler1& filler1, Filler2& filler2, 
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
 
-   _t it_end;
+   _t it_end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
    _t it_begin( _it );
    _t it( _it );
 
@@ -1282,7 +1314,158 @@ void comparision_assignment_sub_index_test( Filler1& filler1, Filler2& filler2, 
    }
 }
 
+template< typename Iterator, typename Collection, typename Object, typename ID_Index, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void misc_operations_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3& filler3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - miscellaneous operations ( sub-index is active )" );
+   filler1( bmic1 );
+   filler2( bmic2 );
+   filler3( bmic3 );
+   sorted_filler( comparer );
+
+   using _t = Iterator;
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& id_idx3 = bmic3.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   _t begin( Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+   _t end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+   const auto& comparer_idx = comparer.template get< Index >();
+   auto comp = comparer_idx.begin();
+
+   _t it_01( begin );
+   BOOST_REQUIRE( it_01 == begin );
+  
+   it_01++;
+   ++comp;
+   BOOST_REQUIRE( *it_01 == *comp );
+
+   it_01--;
+   --comp;
+   BOOST_REQUIRE( *it_01 == *comp );
+   BOOST_REQUIRE( it_01 == begin );
+
+   auto it_02( it_01++ );
+   BOOST_REQUIRE( *it_02 == *comp );
+   BOOST_REQUIRE( it_02 == begin );
+
+   it_01--;
+   BOOST_REQUIRE( it_02 == it_01 );
+
+   it_01++;
+   it_01++;
+   it_01++;
+   comp = std::next( comp, 3 );
+   BOOST_REQUIRE( *it_01 == *comp );
+
+   auto it_03( it_01-- );
+   BOOST_REQUIRE( *it_03 == *comp );
+   it_01++;
+   BOOST_REQUIRE( it_03 == it_01 );
+
+   auto it_04( it_01 );
+   auto it_05( it_01 );
+
+   ++it_04;
+   it_05++;
+   BOOST_REQUIRE( it_04 == it_05 );
+   --it_05;
+
+   auto it_06( it_05-- );
+   ++it_05;
+   BOOST_REQUIRE( it_06 == it_05 );
+
+   auto it_07( end );
+   comp = comparer_idx.end();
+   --it_07;
+   --comp;
+   BOOST_REQUIRE( *it_07 == *comp );
+
+   auto end_02( end );
+   auto it_08( end_02-- );
+   it_08--;
+   BOOST_REQUIRE( *it_08 == *comp );
+
+   auto end_03( end );
+   auto it_09( --end_03 );
+   comp = comparer_idx.end();
+   --comp;
+   BOOST_REQUIRE( *it_09 == *comp );
+
+   it_09++;
+   BOOST_REQUIRE( it_09 == end );
+
+   comp = comparer_idx.begin();
+   it_09 = begin;
+   BOOST_REQUIRE( it_09 == begin );
+   BOOST_REQUIRE( *it_09 == *comp );
+
+   it_09 = end;
+   BOOST_REQUIRE( it_09 == end );
+
+   it_08 = it_09;
+   BOOST_REQUIRE( it_08 == end );
+
+   it_08 = it_09 = begin;
+   BOOST_REQUIRE( ( it_08 == it_09 ) && ( it_09 == begin ) );
+   BOOST_REQUIRE( *it_09 == *comp );
+
+   it_08 = ++it_09;
+   BOOST_REQUIRE( it_08 == it_09 );
+   ++comp;
+   BOOST_REQUIRE( *it_09 == *comp );
+
+   it_08 = it_09++;
+   BOOST_REQUIRE( it_08 != it_09 );
+   ++comp;
+   BOOST_REQUIRE( *it_09 == *comp );
+
+   it_08++;
+   --it_08;
+   ++it_08;
+   it_08--;
+   it_08++;
+   BOOST_REQUIRE( it_08 == it_09 );
+}
+
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(misc_operations_sub_index_tests)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp2 = ce_tests::cmp2;
+   using oidx = ce_tests::OrderedIndex;
+   using oidx_a = ce_tests::CompositeOrderedIndexA;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill9< obj >( collection ); };
+   auto f2 = []( bmic& collection ){ ce_tests::fill9a< obj >( collection ); };
+   auto f3 = []( bmic& collection ){ ce_tests::fill9b< obj >( collection ); };
+   auto s = []( bmic& collection ){ ce_tests::sort9< obj >( collection ); };
+
+   misc_operations_sub_index_test< ce::concatenation_enumerator_ex< obj, cmp2 >, bmic, obj, oidx, oidx_a, cmp2 >( f1, f2, f3, s );
+}
 
 BOOST_AUTO_TEST_CASE(comparision_assignment_sub_index_tests)
 {
