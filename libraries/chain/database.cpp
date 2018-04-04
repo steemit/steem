@@ -990,9 +990,9 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
    notify_post_apply_operation( note );
 }
 
-void database::notify_applied_block( const signed_block& block )
+void database::notify_post_apply_block( const block_notification& note )
 {
-   STEEM_TRY_NOTIFY( _applied_block, block )
+   STEEM_TRY_NOTIFY( _on_post_apply_block, note )
 }
 
 void database::notify_on_pending_transaction( const signed_transaction& tx )
@@ -2772,15 +2772,14 @@ void database::show_free_memory( bool force, uint32_t current_block_num )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
-
-   block_id_type next_block_id = next_block.id();
-   uint32_t next_block_num = block_header::num_from_id( next_block_id );
+   block_notification note( next_block );
+   const uint32_t next_block_num = note.block_num;
 
    BOOST_SCOPE_EXIT( this_ )
    {
       this_->_currently_processing_block_id.reset();
    } BOOST_SCOPE_EXIT_END
-   _currently_processing_block_id = next_block_id;
+   _currently_processing_block_id = note.block_id;
 
    uint32_t skip = get_node_properties().skip_flags;
 
@@ -2919,7 +2918,7 @@ void database::_apply_block( const signed_block& next_block )
    process_hardforks();
 
    // notify observers that the block has been applied
-   notify_applied_block( next_block );
+   notify_post_apply_block( note );
 
    notify_changed_objects();
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -3276,10 +3275,10 @@ boost::signals2::connection database::on_applied_transaction_proxy( const transa
    return connect_impl(_on_pre_apply_transaction, func, plugin, group, "<-transaction");
 }
 
-boost::signals2::connection database::applied_block_proxy( const block_notification_t& func,
+boost::signals2::connection database::on_post_apply_block_proxy( const block_notification_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_applied_block, func, plugin, group, "<-block");
+   return connect_impl(_on_post_apply_block, func, plugin, group, "<-block");
 }
 
 boost::signals2::connection database::on_reindex_start_proxy(const on_reindex_start_notification_t& func,
