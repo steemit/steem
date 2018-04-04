@@ -207,11 +207,11 @@ namespace ce
    };
 
    template< typename OBJECT, typename CMP >
-   class concatenation_enumerator
+   class concatenation_iterator
    {
       private:
 
-         using self = concatenation_enumerator< OBJECT, CMP >;
+         using self = concatenation_iterator< OBJECT, CMP >;
          using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
 
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
@@ -458,7 +458,7 @@ namespace ce
             }
          }
 
-         void copy_iterators( const concatenation_enumerator& obj )
+         void copy_iterators( const concatenation_iterator& obj )
          {
             iterators.clear();
 
@@ -487,7 +487,7 @@ namespace ce
 
          CMP cmp;
 
-         concatenation_enumerator( const concatenation_enumerator& obj )
+         concatenation_iterator( const concatenation_iterator& obj )
          : cmp( obj.cmp )
          {
             idx.current = obj.idx.current;
@@ -496,7 +496,7 @@ namespace ce
          }
 
          template< typename... ELEMENTS >
-         concatenation_enumerator( const CMP& _cmp, ELEMENTS... elements )
+         concatenation_iterator( const CMP& _cmp, ELEMENTS... elements )
          : cmp( _cmp )
          {
             add< true/*POSITION*/ >( elements... );
@@ -505,7 +505,7 @@ namespace ce
          }
 
          template< typename... ELEMENTS >
-         concatenation_enumerator( bool, const CMP& _cmp, ELEMENTS... elements )
+         concatenation_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
          : cmp( _cmp )
          {
             add< false/*POSITION*/ >( elements... );
@@ -531,14 +531,14 @@ namespace ce
             return &( *( iterators[ idx.current ] ) );
          }
 
-         concatenation_enumerator& operator++()
+         concatenation_iterator& operator++()
          {
             action< Direction::next >();
 
             return *this;
          }
 
-         concatenation_enumerator operator++( int )
+         concatenation_iterator operator++( int )
          {
             auto tmp( *this );
 
@@ -547,14 +547,14 @@ namespace ce
             return tmp;
          }
 
-         concatenation_enumerator& operator--()
+         concatenation_iterator& operator--()
          {
             action< Direction::prev >();
 
             return *this;
          }
 
-         concatenation_enumerator operator--( int )
+         concatenation_iterator operator--( int )
          {
             auto tmp( *this );
 
@@ -563,7 +563,7 @@ namespace ce
             return tmp;
          }
 
-         bool operator==( const concatenation_enumerator& obj ) const
+         bool operator==( const concatenation_iterator& obj ) const
          {
             if( idx.current != obj.idx.current )
                return false;
@@ -581,12 +581,12 @@ namespace ce
             return true;
          }
 
-         bool operator!=( const concatenation_enumerator& obj ) const
+         bool operator!=( const concatenation_iterator& obj ) const
          {
             return !( *this == obj );
          }
 
-         concatenation_enumerator& operator=( const concatenation_enumerator& obj )
+         concatenation_iterator& operator=( const concatenation_iterator& obj )
          {
             idx.current = obj.idx.current;
 
@@ -597,11 +597,11 @@ namespace ce
    };
 
    template< typename OBJECT, typename CMP >
-   class concatenation_enumerator_ex: public concatenation_enumerator< OBJECT, CMP >
+   class concatenation_iterator_ex: public concatenation_iterator< OBJECT, CMP >
    {
       protected:
          
-         using base_class = concatenation_enumerator< OBJECT, CMP >;
+         using base_class = concatenation_iterator< OBJECT, CMP >;
          using Direction = typename base_class::Direction;
          using Position = typename base_class::Position;
 
@@ -624,7 +624,7 @@ namespace ce
             add( elements... );
          }
 
-         void copy_containers( const concatenation_enumerator_ex& obj )
+         void copy_containers( const concatenation_iterator_ex& obj )
          {
             containers.clear();
 
@@ -668,28 +668,28 @@ namespace ce
 
       public:
 
-         concatenation_enumerator_ex( const concatenation_enumerator_ex& obj )
-         : concatenation_enumerator< OBJECT, CMP >( obj )
+         concatenation_iterator_ex( const concatenation_iterator_ex& obj )
+         : concatenation_iterator< OBJECT, CMP >( obj )
          {
             copy_containers( obj );
          }
 
          template< typename... ELEMENTS >
-         concatenation_enumerator_ex( const CMP& _cmp, ELEMENTS... elements )
-                                 : concatenation_enumerator< OBJECT, CMP >( _cmp, elements... )
+         concatenation_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
+                                 : concatenation_iterator< OBJECT, CMP >( _cmp, elements... )
          {
             add( elements... );
             find_with_key_search< Direction::next >();
          }
 
          template< typename... ELEMENTS >
-         concatenation_enumerator_ex( bool, const CMP& _cmp, ELEMENTS... elements )
-                                 : concatenation_enumerator< OBJECT, CMP >( false, _cmp, elements... )
+         concatenation_iterator_ex( bool, const CMP& _cmp, ELEMENTS... elements )
+                                 : concatenation_iterator< OBJECT, CMP >( false, _cmp, elements... )
          {
             add( elements... );
          }
 
-         concatenation_enumerator_ex& operator++()
+         concatenation_iterator_ex& operator++()
          {
             this-> template action< Direction::next >();
             find_with_key_search< Direction::next >();
@@ -697,7 +697,7 @@ namespace ce
             return *this;
          }
 
-         concatenation_enumerator_ex operator++( int )
+         concatenation_iterator_ex operator++( int )
          {
             auto tmp( *this );
 
@@ -707,7 +707,7 @@ namespace ce
             return tmp;
          }
 
-         concatenation_enumerator_ex& operator--()
+         concatenation_iterator_ex& operator--()
          {
             this-> template action< Direction::prev >();
             find_with_key_search< Direction::prev >();
@@ -715,7 +715,7 @@ namespace ce
             return *this;
          }
 
-         concatenation_enumerator_ex operator--( int )
+         concatenation_iterator_ex operator--( int )
          {
             auto tmp( *this );
 
@@ -725,7 +725,7 @@ namespace ce
             return tmp;
          }
 
-         concatenation_enumerator_ex& operator=( const concatenation_enumerator_ex& obj )
+         concatenation_iterator_ex& operator=( const concatenation_iterator_ex& obj )
          {
             base_class::operator=( obj );
 
