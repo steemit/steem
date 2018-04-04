@@ -356,20 +356,18 @@ namespace golos {
             }
 
             void social_network_t::impl::select_content_replies(
-                std::vector<discussion> &result, const std::string &author, const std::string &permlink
+                std::vector<discussion>& result, const std::string& author, const std::string& permlink
             ) const {
                 account_name_type acc_name = account_name_type(author);
-                const auto &by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
+                const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
                 auto itr = by_permlink_idx.find(boost::make_tuple(acc_name, permlink));
                 while (
                     itr != by_permlink_idx.end() &&
                     itr->parent_author == author &&
-                    !strcmp(itr->parent_permlink.c_str(), permlink.c_str())
+                    to_string(itr->parent_permlink) == permlink
                 ) {
-                    discussion push_discussion(*itr);
-                    push_discussion.active_votes = get_active_votes(author, permlink);
-
                     result.emplace_back(*itr);
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     set_pending_payout(result.back());
                     ++itr;
                 }
@@ -1574,8 +1572,8 @@ namespace golos {
                             if (itr->parent_author.size() == 0) {
                                 result.push_back(*itr);
                                 pimpl->set_pending_payout(result.back());
-                                result.back().active_votes = pimpl->get_active_votes(itr->author,
-                                                                                  to_string(itr->permlink));
+                                result.back().active_votes =
+                                    pimpl->get_active_votes(result.back().author, result.back().permlink);
                                 ++count;
                             }
                             ++itr;
@@ -1613,7 +1611,7 @@ namespace golos {
                 while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
                     result.emplace_back(*itr);
                     set_pending_payout(result.back());
-                    result.back().active_votes = get_active_votes(itr->author, to_string(itr->permlink));
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     ++itr;
                 }
 
