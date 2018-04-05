@@ -619,6 +619,9 @@ namespace ce
       private:
 
          using base_class = concatenation_iterator< OBJECT, CMP >;
+
+      protected:
+
          using Direction = typename base_class::Direction;
 
       public:
@@ -671,12 +674,15 @@ namespace ce
          }
    };
 
-   template< typename OBJECT, typename CMP >
-   class concatenation_iterator_ex: public concatenation_iterator< OBJECT, CMP >
+   template< typename OBJECT, typename CMP, template< typename ... > typename CONCATENATION_ITERATOR >
+   class concatenation_iterator_proxy: public CONCATENATION_ITERATOR< OBJECT, CMP >
    {
+      private:
+
+         using base_class = CONCATENATION_ITERATOR< OBJECT, CMP >;
+
       protected:
-         
-         using base_class = concatenation_iterator< OBJECT, CMP >;
+
          using Direction = typename base_class::Direction;
 
       private:
@@ -698,15 +704,13 @@ namespace ce
             add( elements... );
          }
 
-         void copy_containers( const concatenation_iterator_ex& obj )
+         void copy_containers( const concatenation_iterator_proxy& obj )
          {
             containers.clear();
 
             for( auto& item : obj.containers )
                containers.push_back( pitem( item->create() ) );
          }
-
-      protected:
 
          bool find_with_key_search_impl( size_t key )
          {
@@ -740,66 +744,33 @@ namespace ce
             }
          }
 
-      public:
+      protected:
 
-         concatenation_iterator_ex( const concatenation_iterator_ex& obj )
-         : concatenation_iterator< OBJECT, CMP >( obj )
+         concatenation_iterator_proxy( const concatenation_iterator_proxy& obj )
+         : base_class( obj )
          {
             copy_containers( obj );
          }
 
          template< typename... ELEMENTS >
-         concatenation_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
-                                 : concatenation_iterator< OBJECT, CMP >( _cmp, elements... )
+         concatenation_iterator_proxy( const CMP& _cmp, bool status, ELEMENTS... elements )
+                                 : base_class( _cmp, elements... )
          {
             add( elements... );
-            find_with_key_search< Direction::next, this->pos_end >();
+            if( status )
+               find_with_key_search< Direction::next, this->pos_end >();
+            else
+               find_with_key_search< Direction::prev, this->pos_begin >();
          }
 
          template< typename... ELEMENTS >
-         concatenation_iterator_ex( bool, const CMP& _cmp, ELEMENTS... elements )
-                                 : concatenation_iterator< OBJECT, CMP >( false, _cmp, elements... )
+         concatenation_iterator_proxy( bool, const CMP& _cmp, ELEMENTS... elements )
+                                 : base_class( false, _cmp, elements... )
          {
             add( elements... );
          }
 
-         concatenation_iterator_ex& operator++()
-         {
-            this-> template action< Direction::next >();
-            find_with_key_search< Direction::next, this->pos_end >();
-
-            return *this;
-         }
-
-         concatenation_iterator_ex operator++( int )
-         {
-            auto tmp( *this );
-
-            this-> template action< Direction::next >();
-            find_with_key_search< Direction::next, this->pos_end >();
-
-            return tmp;
-         }
-
-         concatenation_iterator_ex& operator--()
-         {
-            this-> template action< Direction::prev >();
-            find_with_key_search< Direction::prev, this->pos_begin >();
-
-            return *this;
-         }
-
-         concatenation_iterator_ex operator--( int )
-         {
-            auto tmp( *this );
-
-            this-> template action< Direction::prev >();
-            find_with_key_search< Direction::prev, this->pos_begin >();
-
-            return tmp;
-         }
-
-         concatenation_iterator_ex& operator=( const concatenation_iterator_ex& obj )
+         concatenation_iterator_proxy& operator=( const concatenation_iterator_proxy& obj )
          {
             base_class::operator=( obj );
 
@@ -807,7 +778,110 @@ namespace ce
 
             return *this;
          }
-        
+
+         template< Direction DIRECTION, int32_t position >
+         void action_ex()
+         {
+            this-> template action< DIRECTION >();
+            find_with_key_search< DIRECTION, position >();
+         }
+   };
+
+   template< typename OBJECT, typename CMP >
+   class concatenation_iterator_ex: public concatenation_iterator_proxy< OBJECT, CMP, concatenation_iterator >
+   {
+      protected:
+
+         using base_class = concatenation_iterator_proxy< OBJECT, CMP, concatenation_iterator >;
+         using Direction = typename base_class::Direction;
+         using base_class::base_class;
+
+      public:
+
+         template< typename... ELEMENTS >
+         concatenation_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
+                                 : base_class( _cmp, true/*status*/, elements... )
+         {
+         }
+
+         concatenation_iterator_ex& operator++()
+         {
+            this-> template action_ex< Direction::next, this->pos_end >();
+            return *this;
+         }
+
+         concatenation_iterator_ex operator++( int )
+         {
+            auto tmp( *this );
+
+            this-> template action_ex< Direction::next, this->pos_end >();
+
+            return tmp;
+         }
+
+         concatenation_iterator_ex& operator--()
+         {
+            this-> template action_ex< Direction::prev, this->pos_begin >();
+            return *this;
+         }
+
+         concatenation_iterator_ex operator--( int )
+         {
+            auto tmp( *this );
+
+            this-> template action_ex< Direction::prev, this->pos_begin >();
+
+            return tmp;
+         }
+   };
+
+
+   template< typename OBJECT, typename CMP >
+   class concatenation_reverse_iterator_ex: public concatenation_iterator_proxy< OBJECT, CMP, concatenation_reverse_iterator >
+   {
+      protected:
+
+         using base_class = concatenation_iterator_proxy< OBJECT, CMP, concatenation_reverse_iterator >;
+         using Direction = typename base_class::Direction;
+         using base_class::base_class;
+
+      public:
+
+         template< typename... ELEMENTS >
+         concatenation_reverse_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
+                                 : base_class( _cmp, false/*status*/, elements... )
+         {
+         }
+
+         concatenation_reverse_iterator_ex& operator++()
+         {
+            this-> template action_ex< Direction::prev, this->pos_begin >();
+            return *this;
+         }
+
+         concatenation_reverse_iterator_ex operator++( int )
+         {
+            auto tmp( *this );
+
+            this-> template action_ex< Direction::prev, this->pos_begin >();
+
+            return tmp;
+         }
+
+         concatenation_reverse_iterator_ex& operator--()
+         {
+            this-> template action_ex< Direction::next, this->pos_end >();
+            return *this;
+         }
+
+         concatenation_reverse_iterator_ex operator--( int )
+         {
+            auto tmp( *this );
+
+            this-> template action_ex< Direction::next, this->pos_end >();
+
+            return tmp;
+         }
    };
 
 }
