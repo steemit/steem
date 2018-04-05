@@ -101,7 +101,7 @@ namespace ce
  
       private:
 
-         bool inactive = false;
+         bool inactive;
 
       protected:
 
@@ -129,8 +129,8 @@ namespace ce
 
          const CMP cmp;
 
-         sub_enumerator( const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
-         : it_begin( _begin ), it_end( _end ), cmp( _cmp )
+         sub_enumerator( bool _inactive, const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
+         : inactive( _inactive ), it_begin( _begin ), it_end( _end ), cmp( _cmp )
          {
             it = _it;
          }
@@ -202,13 +202,17 @@ namespace ce
 
          abstract_sub_enumerator< OBJECT >* create() override
          {
-            return new sub_enumerator( it, it_begin, it_end, cmp );
+            return new sub_enumerator( inactive, it, it_begin, it_end, cmp );
          }
    };
 
    template< typename OBJECT, typename CMP >
    class concatenation_iterator
    {
+      protected:
+
+         enum class Direction : bool { prev, next };
+
       private:
 
          using self = concatenation_iterator< OBJECT, CMP >;
@@ -219,31 +223,10 @@ namespace ce
 
          using pitem_idx = std::pair< pitem, int32_t >;
 
-      protected:
+         template< bool INACTIVE, bool POSITION >
+         void add(){}
 
-         enum class Direction : bool { prev, next };
-
-         Direction direction = Direction::next;
-
-         static const int32_t pos_begin = -2;
-         static const int32_t pos_end   = -1;
-
-         struct
-         {
-            int32_t current;
-         } idx;
-
-         std::vector< pitem > iterators;
-
-      private:
-
-         template< bool POSITION >
-         void add()
-         {
-
-         }
-
-         template< bool POSITION, typename TUPLE, typename... ELEMENTS >
+         template< bool INACTIVE, bool POSITION, typename TUPLE, typename... ELEMENTS >
          void add( const TUPLE& tuple, ELEMENTS... elements )
          {
             using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
@@ -254,11 +237,11 @@ namespace ce
                POSITION == false:   iterator is set on 'end()' at the start
             */
             if( POSITION )
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
             else
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
 
-            add< POSITION >( elements... );
+            add< INACTIVE, POSITION >( elements... );
          }
 
          template< typename CONTAINER, typename CONDITION >
@@ -288,15 +271,15 @@ namespace ce
             };
             std::set< pitem_idx, _sorter > row;
 
-            find_active_iterators( row, condition );
-
             if( idx.current < 0 )
             {
-               for( auto& item : row )
-                  action( item.first );
+               for( auto& item : iterators )
+                  action( item );
 
                return;
             }
+
+            find_active_iterators( row, condition );
 
             auto current_it = iterators[ idx.current ];
             bool current_it_active = false;
@@ -359,7 +342,13 @@ namespace ce
             {
                assert( idx.current != pos_end );
                change_direction_impl(  []( const pitem& item ){ return !item->end(); },
-                                       []( const pitem& item ){ ++( *item ); },
+                                       []( const pitem& item )
+                                       {
+                                          if( item->is_inactive() )
+                                             item->change_status( false );
+                                          else
+                                             ++( *item );
+                                       },
                                        [ this ]( const pitem& item, const pitem& item2 ){ return cmp( *( *item ), *( *item2 ) ); },
                                        []( const pitem& item, const pitem& item2 )
                                        {
@@ -443,7 +432,7 @@ namespace ce
                if( static_cast< int32_t >( i ) != idx.current && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx.current ] ) )
                   action( iterators[ i ] );
             }
-            //Move given iterator at the end, because it is used to comparision.
+            //Move current iterator at the end, because it is used to comparison.
             action( iterators[ idx.current ] );
          }
 
@@ -481,6 +470,18 @@ namespace ce
 
       protected:
 
+         Direction direction = Direction::next;
+
+         static const int32_t pos_begin = -2;
+         static const int32_t pos_end   = -1;
+
+         struct
+         {
+            int32_t current = 0;
+         } idx;
+
+         std::vector< pitem > iterators;
+
          template< Direction DIRECTION >
          void action()
          {
@@ -488,6 +489,15 @@ namespace ce
             find< DIRECTION >();
          }
 
+         template< typename... ELEMENTS >
+         concatenation_iterator( bool status, ELEMENTS... elements )
+         {
+            //This constructor is invoked only by 'reverse_iterator' class.
+            if( status )
+               add< true/*INACTIVE*/, true/*POSITION*/ >( elements... );
+            else
+               add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
+         }
 
       public:
 
@@ -498,6 +508,7 @@ namespace ce
          {
             idx.current = obj.idx.current;
             direction = obj.direction;
+
             copy_iterators( obj );
          }
 
@@ -505,7 +516,7 @@ namespace ce
          concatenation_iterator( const CMP& _cmp, ELEMENTS... elements )
          : cmp( _cmp )
          {
-            add< true/*POSITION*/ >( elements... );
+            add< false/*INACTIVE*/, true/*POSITION*/ >( elements... );
 
             find< Direction::next >();
          }
@@ -514,9 +525,9 @@ namespace ce
          concatenation_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
          : cmp( _cmp )
          {
-            add< false/*POSITION*/ >( elements... );
+            add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
 
-            idx.current = -1;
+            idx.current = pos_end;
          }
 
          reference operator*()
@@ -599,6 +610,64 @@ namespace ce
             copy_iterators( obj );
 
             return *this;
+         }
+   };
+
+   template< typename OBJECT, typename CMP >
+   class concatenation_reverse_iterator: public concatenation_iterator< OBJECT, CMP >
+   {
+      private:
+
+         using base_class = concatenation_iterator< OBJECT, CMP >;
+         using Direction = typename base_class::Direction;
+
+      public:
+
+         template< typename... ELEMENTS >
+         concatenation_reverse_iterator( const CMP& _cmp, ELEMENTS... elements )
+         : concatenation_iterator< OBJECT, CMP >( false/*status*/, elements... )
+         {
+            this->idx.current = this->pos_end;
+            this-> template action< Direction::prev >();
+         }
+
+         template< typename... ELEMENTS >
+         concatenation_reverse_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
+         : concatenation_iterator< OBJECT, CMP >( true/*status*/, elements... )
+         {
+            this->idx.current = this->pos_begin;
+         }
+
+         concatenation_reverse_iterator& operator++()
+         {
+            this-> template action< Direction::prev >();
+
+            return *this;
+         }
+
+         concatenation_reverse_iterator operator++( int )
+         {
+            auto tmp( *this );
+
+            this-> template action< Direction::prev >();
+
+            return tmp;
+         }
+
+         concatenation_reverse_iterator& operator--()
+         {
+            this-> template action< Direction::next >();
+
+            return *this;
+         }
+
+         concatenation_reverse_iterator operator--( int )
+         {
+            auto tmp( *this );
+
+            this-> template action< Direction::next >();
+
+            return tmp;
          }
    };
 
