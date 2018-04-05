@@ -117,6 +117,9 @@ struct api_account_object
       can_vote( a.can_vote ),
       voting_power( a.voting_power ),
       last_vote_time( a.last_vote_time ),
+#ifdef STEEM_ENABLE_SMT
+      last_smt_vote_time( a.last_smt_vote_time ),
+#endif
       balance( legacy_asset::from_asset( a.balance ) ),
       savings_balance( legacy_asset::from_asset( a.savings_balance ) ),
       sbd_balance( legacy_asset::from_asset( a.sbd_balance ) ),
@@ -177,6 +180,9 @@ struct api_account_object
    bool              can_vote = false;
    uint16_t          voting_power = 0;
    time_point_sec    last_vote_time;
+#ifdef STEEM_ENABLE_SMT
+   time_point_sec    last_smt_vote_time;
+#endif
 
    legacy_asset      balance;
    legacy_asset      savings_balance;
@@ -1057,6 +1063,9 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+#ifdef STEEM_ENABLE_SMT
+             (last_smt_vote_time)
+#endif
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)

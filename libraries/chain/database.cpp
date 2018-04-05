@@ -565,6 +565,27 @@ const reward_fund_object& database::get_reward_fund( const comment_object& c ) c
    return get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
 }
 
+asset database::get_effective_vesting_shares( const account_object& account, asset_symbol_type vested_symbol )const
+{
+   if( vested_symbol == VESTS_SYMBOL )
+      return account.vesting_shares - account.delegated_vesting_shares + account.received_vesting_shares;
+
+#ifdef STEEM_ENABLE_SMT
+   FC_ASSERT( vested_symbol.space() == asset_symbol_type::smt_nai_space );
+   FC_ASSERT( vested_symbol.is_vesting() );
+
+#pragma message( "TODO: Update the code below when delegation is modified to support SMTs." )
+   const account_regular_balance_object* bo = find< account_regular_balance_object, by_owner_liquid_symbol >( 
+      boost::make_tuple( account.name, vested_symbol.get_paired_symbol() ) );
+   if( bo == nullptr )
+      return asset( 0, vested_symbol );
+
+   return bo->vesting;
+#else
+   FC_ASSERT( false, "Invalid symbol" );
+#endif
+}
+
 uint32_t database::witness_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
@@ -3920,7 +3941,11 @@ struct smt_regular_balance_operator
 struct smt_reward_balance_operator
 {
    smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
+<<<<<<< eef53274d4fe796f3b061e44bacf81820ce5c5b6
       : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 )
+=======
+      : value_delta(value_delta), share_delta(share_delta), is_vesting(share_delta.amount.value != 0) 
+>>>>>>> Split vote evaluator code in preparation to support SMTs #1856
    {
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }

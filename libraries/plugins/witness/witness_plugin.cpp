@@ -363,7 +363,7 @@ namespace detail {
             b.last_bandwidth_update = _db.head_block_time();
          });
 
-         fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
+         fc::uint128 account_vshares( _db.get_effective_vesting_shares(a, VESTS_SYMBOL).amount.value );
          fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
          fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
          fc::uint128 max_virtual_bandwidth( _db.get( reserve_ratio_id_type() ).max_virtual_bandwidth );

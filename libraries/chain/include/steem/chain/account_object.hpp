@@ -49,6 +49,9 @@ namespace steem { namespace chain {
          bool              can_vote = true;
          uint16_t          voting_power = STEEM_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec    last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
+#ifdef STEEM_ENABLE_SMT
+         time_point_sec    last_smt_vote_time; ///< same as last_vote_time but related to voting with SMT asset.
+#endif
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
@@ -118,8 +121,6 @@ namespace steem { namespace chain {
                                     proxied_vsf_votes.end(),
                                     share_type() );
          }
-
-         asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
@@ -407,6 +408,9 @@ FC_REFLECT( steem::chain::account_object,
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+#ifdef STEEM_ENABLE_SMT
+             (last_smt_vote_time)
+#endif
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)

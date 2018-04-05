@@ -202,6 +202,8 @@ namespace steem { namespace chain {
          const time_point_sec                   calculate_discussion_payout_time( const comment_object& comment )const;
          const reward_fund_object&              get_reward_fund( const comment_object& c )const;
 
+         asset get_effective_vesting_shares( const account_object& account, asset_symbol_type vested_symbol )const;
+
          void max_bandwidth_per_share()const;
 
          /**
