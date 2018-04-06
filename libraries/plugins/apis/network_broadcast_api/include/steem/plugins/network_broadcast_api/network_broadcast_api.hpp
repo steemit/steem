@@ -30,28 +30,12 @@ struct broadcast_transaction_args
 
 typedef void_type broadcast_transaction_return;
 
-typedef broadcast_transaction_args broadcast_transaction_synchronous_args;
-
-struct broadcast_transaction_synchronous_return
-{
-   broadcast_transaction_synchronous_return() {}
-   broadcast_transaction_synchronous_return( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
-   : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
-
-   transaction_id_type   id;
-   int32_t               block_num = 0;
-   int32_t               trx_num   = 0;
-   bool                  expired   = false;
-};
-
 struct broadcast_block_args
 {
    signed_block   block;
 };
 
 typedef void_type broadcast_block_return;
-
-typedef std::function< void( const broadcast_transaction_synchronous_return& ) > confirmation_callback;
 
 namespace detail{ class network_broadcast_api_impl; }
 
@@ -63,7 +47,6 @@ class network_broadcast_api
 
       DECLARE_API(
          (broadcast_transaction)
-         (broadcast_transaction_synchronous)
          (broadcast_block)
       )
 
@@ -78,6 +61,3 @@ FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_transaction_args,
 
 FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_block_args,
    (block) )
-
-FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_transaction_synchronous_return,
-   (id)(block_num)(trx_num)(expired) )

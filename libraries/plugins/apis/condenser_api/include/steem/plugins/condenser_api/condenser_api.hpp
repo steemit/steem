@@ -765,6 +765,20 @@ struct get_version_return
 
 typedef map< uint32_t, api_operation_object > get_account_history_return_type;
 
+typedef vector< variant > broadcast_transaction_synchronous_args;
+
+struct broadcast_transaction_synchronous_return
+{
+   broadcast_transaction_synchronous_return() {}
+   broadcast_transaction_synchronous_return( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
+   : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
+
+   transaction_id_type   id;
+   int32_t               block_num = 0;
+   int32_t               trx_num   = 0;
+   bool                  expired   = false;
+};
+
 struct ticker
 {
    ticker() {}
@@ -912,7 +926,6 @@ DEFINE_API_ARGS( get_replies_by_last_update,             vector< variant >,   ve
 DEFINE_API_ARGS( get_discussions_by_author_before_date,  vector< variant >,   vector< discussion > )
 DEFINE_API_ARGS( get_account_history,                    vector< variant >,   get_account_history_return_type )
 DEFINE_API_ARGS( broadcast_transaction,                  vector< variant >,   json_rpc::void_type )
-DEFINE_API_ARGS( broadcast_transaction_synchronous,      vector< variant >,   network_broadcast_api::broadcast_transaction_synchronous_return )
 DEFINE_API_ARGS( broadcast_block,                        vector< variant >,   json_rpc::void_type )
 DEFINE_API_ARGS( get_followers,                          vector< variant >,   vector< follow::api_follow_object > )
 DEFINE_API_ARGS( get_following,                          vector< variant >,   vector< follow::api_follow_object > )
@@ -1186,6 +1199,9 @@ FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(
 
 FC_REFLECT( steem::plugins::condenser_api::get_version_return,
             (blockchain_version)(steem_revision)(fc_revision) )
+
+FC_REFLECT( steem::plugins::condenser_api::broadcast_transaction_synchronous_return,
+            (id)(block_num)(trx_num)(expired) )
 
 FC_REFLECT( steem::plugins::condenser_api::ticker,
             (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )

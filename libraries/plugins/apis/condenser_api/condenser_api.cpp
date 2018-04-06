@@ -21,6 +21,9 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <boost/thread/future.hpp>
+#include <boost/thread/lock_guard.hpp>
+
 #define CHECK_ARG_SIZE( s ) \
    FC_ASSERT( args.size() == s, "Expected #s argument(s), was ${n}", ("n", args.size()) );
 
@@ -28,10 +31,19 @@ namespace steem { namespace plugins { namespace condenser_api {
 
 namespace detail
 {
+   typedef std::function< void( const broadcast_transaction_synchronous_return& ) > confirmation_callback;
+
    class condenser_api_impl
    {
       public:
-         condenser_api_impl() : _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
+         condenser_api_impl() :
+            _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
+            _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
+            _db( _chain.db() )
+         {
+            _on_applied_block_connection = _db.applied_block_proxy(
+               [&]( const signed_block& b ){ on_applied_block( b ); }, _chain, 0 );
+         }
 
          DECLARE_API_IMPL(
             (get_version)
@@ -125,17 +137,28 @@ namespace detail
 
          void set_pending_payout( discussion& d );
 
-         chain::database& _db;
+         void on_applied_block( const signed_block& b );
 
-         std::shared_ptr< database_api::database_api > _database_api;
-         std::shared_ptr< block_api::block_api > _block_api;
-         std::shared_ptr< account_history::account_history_api > _account_history_api;
-         std::shared_ptr< account_by_key::account_by_key_api > _account_by_key_api;
-         std::shared_ptr< network_broadcast_api::network_broadcast_api > _network_broadcast_api;
-         std::shared_ptr< tags::tags_api > _tags_api;
-         std::shared_ptr< follow::follow_api > _follow_api;
-         std::shared_ptr< market_history::market_history_api > _market_history_api;
-         std::shared_ptr< witness::witness_api > _witness_api;
+         steem::plugins::p2p::p2p_plugin&                                  _p2p;
+         steem::plugins::chain::chain_plugin&                              _chain;
+
+         chain::database&                                                  _db;
+
+         std::shared_ptr< database_api::database_api >                     _database_api;
+         std::shared_ptr< block_api::block_api >                           _block_api;
+         std::shared_ptr< account_history::account_history_api >           _account_history_api;
+         std::shared_ptr< account_by_key::account_by_key_api >             _account_by_key_api;
+         std::shared_ptr< network_broadcast_api::network_broadcast_api >   _network_broadcast_api;
+         std::shared_ptr< tags::tags_api >                                 _tags_api;
+         std::shared_ptr< follow::follow_api >                             _follow_api;
+         std::shared_ptr< market_history::market_history_api >             _market_history_api;
+         std::shared_ptr< witness::witness_api >                           _witness_api;
+
+         map< transaction_id_type, confirmation_callback >                 _callbacks;
+         map< time_point_sec, vector< transaction_id_type > >              _callback_expirations;
+         boost::signals2::connection                                       _on_applied_block_connection;
+
+         boost::mutex                                                      _mtx;
    };
 
    DEFINE_API_IMPL( condenser_api_impl, get_version )
@@ -1604,7 +1627,57 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
 
-      return _network_broadcast_api->broadcast_transaction_synchronous( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } );
+      signed_transaction trx = args[0].as< legacy_signed_transaction >();
+      auto txid = trx.id();
+      boost::promise< broadcast_transaction_synchronous_return > p;
+
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+         _callbacks[ txid ] = [&p]( const broadcast_transaction_synchronous_return& r )
+         {
+            p.set_value( r );
+         };
+         _callback_expirations[ trx.expiration ].push_back( txid );
+      }
+
+      try
+      {
+         /* It may look strange to call these without the lock and then lock again in the case of an exception,
+          * but it is correct and avoids deadlock. accept_transaction is trained along with all other writes, including
+          * pushing blocks. Pushing blocks do not originate from this code path and will never have this lock.
+          * However, it will trigger the on_applied_block callback and then attempt to acquire the lock. In this case,
+          * this thread will be waiting on accept_block so it can write and the block thread will be waiting on this
+          * thread for the lock.
+          */
+         _chain.accept_transaction( trx );
+         _p2p.broadcast_transaction( trx );
+      }
+      catch( fc::exception& e )
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+
+         // The callback may have been cleared in the meantine, so we need to check for existence.
+         auto c_itr = _callbacks.find( txid );
+         if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
+
+         // We do not need to clean up _callback_expirations because on_applied_block handles this case.
+
+         throw e;
+      }
+      catch( ... )
+      {
+         boost::lock_guard< boost::mutex > guard( _mtx );
+
+         // The callback may have been cleared in the meantine, so we need to check for existence.
+         auto c_itr = _callbacks.find( txid );
+         if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
+
+         throw fc::unhandled_exception(
+            FC_LOG_MESSAGE( warn, "Unknown error occured when pushing transaction" ),
+            std::current_exception() );
+      }
+
+      return p.get_future().get();
    }
 
    DEFINE_API_IMPL( condenser_api_impl, broadcast_block )
@@ -1864,6 +1937,48 @@ namespace detail
       if( root.id != d.id )
          d.url += "#@" + d.author + "/" + d.permlink;
    }
+
+   void condenser_api_impl::on_applied_block( const signed_block& b )
+   { try {
+      boost::lock_guard< boost::mutex > guard( _mtx );
+      int32_t block_num = int32_t(b.block_num());
+      if( _callbacks.size() )
+      {
+         for( size_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
+         {
+            const auto& trx = b.transactions[trx_num];
+            auto id = trx.id();
+            auto itr = _callbacks.find( id );
+            if( itr == _callbacks.end() ) continue;
+            itr->second( broadcast_transaction_synchronous_return( id, block_num, int32_t( trx_num ), false ) );
+            _callbacks.erase( itr );
+         }
+      }
+
+      /// clear all expirations
+      while( true )
+      {
+         auto exp_it = _callback_expirations.begin();
+         if( exp_it == _callback_expirations.end() )
+            break;
+         if( exp_it->first >= b.timestamp )
+            break;
+         for( const transaction_id_type& txid : exp_it->second )
+         {
+            auto cb_it = _callbacks.find( txid );
+            // If it's empty, that means the transaction has been confirmed and has been deleted by the above check.
+            if( cb_it == _callbacks.end() )
+               continue;
+
+            confirmation_callback callback = cb_it->second;
+            transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
+            callback( broadcast_transaction_synchronous_return( txid_byval, block_num, -1, true ) );
+
+            _callbacks.erase( cb_it );
+         }
+         _callback_expirations.erase( exp_it );
+      }
+   } FC_LOG_AND_RETHROW() }
 
 } // detail
 
