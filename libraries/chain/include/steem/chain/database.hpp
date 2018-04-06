@@ -245,6 +245,7 @@ namespace steem { namespace chain {
           */
          void notify_pre_apply_operation( operation_notification& note );
          void notify_post_apply_operation( const operation_notification& note );
+         void notify_pre_apply_block( const block_notification& note );
          void notify_post_apply_block( const block_notification& note );
          void notify_pre_apply_transaction( const transaction_notification& note );
          void notify_post_apply_transaction( const transaction_notification& note );
@@ -270,6 +271,7 @@ namespace steem { namespace chain {
          boost::signals2::connection add_post_apply_operation_handler  ( const apply_operation_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_pre_apply_transaction_handler ( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_post_apply_transaction_handler( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_block_handler       ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_post_apply_block_handler      ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_pre_reindex_handler           ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_post_reindex_handler          ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
@@ -547,6 +549,15 @@ namespace steem { namespace chain {
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */
          fc::signal<void(const operation_notification&)>       _post_apply_operation_signal;
+
+         /**
+          *  This signal is emitted when we start processing a block.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         fc::signal<void(const block_notification&)>           _pre_apply_block_signal;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a

@@ -986,6 +986,11 @@ void database::notify_post_apply_operation( const operation_notification& note )
    STEEM_TRY_NOTIFY( _post_apply_operation_signal, note )
 }
 
+void database::notify_pre_apply_block( const block_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_block_signal, note )
+}
+
 void database::notify_post_apply_block( const block_notification& note )
 {
    STEEM_TRY_NOTIFY( _post_apply_block_signal, note )
@@ -2764,6 +2769,9 @@ void database::show_free_memory( bool force, uint32_t current_block_num )
 void database::_apply_block( const signed_block& next_block )
 { try {
    block_notification note( next_block );
+
+   notify_pre_apply_block( note );
+
    const uint32_t next_block_num = note.block_num;
 
    BOOST_SCOPE_EXIT( this_ )
@@ -3260,6 +3268,12 @@ boost::signals2::connection database::add_post_apply_transaction_handler( const 
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_pre_apply_transaction_signal, func, plugin, group, "<-transaction");
+}
+
+boost::signals2::connection database::add_pre_apply_block_handler( const apply_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_block_signal, func, plugin, group, "->block");
 }
 
 boost::signals2::connection database::add_post_apply_block_handler( const apply_block_handler_t& func,
