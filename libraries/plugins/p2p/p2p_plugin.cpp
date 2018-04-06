@@ -15,6 +15,10 @@
 
 #include <boost/any.hpp>
 
+#include <atomic>
+#include <chrono>
+#include <future>
+
 using std::string;
 using std::vector;
 
@@ -71,7 +75,11 @@ class p2p_plugin_impl : public graphene::net::node_delegate
 public:
 
    p2p_plugin_impl( plugins::chain::chain_plugin& c )
-      : chain( c ) {}
+      : running(true), chain( c )
+   {
+      handleBlockFinished.second = std::shared_future<void>(handleBlockFinished.first.get_future());
+      handleTxFinished.second = std::shared_future<void>(handleTxFinished.first.get_future());
+   }
    virtual ~p2p_plugin_impl() {}
 
    bool is_included_block(const block_id_type& block_id);
@@ -101,13 +109,43 @@ public:
    uint32_t max_connections = 0;
    bool force_validate = false;
    bool block_producer = false;
-   bool running = true;
+   std::atomic_bool   running;
+   std::atomic_bool   activeHandleBlock;
+   std::atomic_bool   activeHandleTx;
+   typedef std::pair<std::promise<void>, std::shared_future<void>> handler_state;
+
+   handler_state handleBlockFinished;
+   handler_state handleTxFinished;
 
    std::unique_ptr<graphene::net::node> node;
 
    plugins::chain::chain_plugin& chain;
 
    fc::thread p2p_thread;
+
+private:
+   class shutdown_helper final
+   {
+   public:
+      shutdown_helper(p2p_plugin_impl& impl, std::atomic_bool& activityFlag,
+         handler_state& barrier) :
+         _impl(impl), _barrier(barrier), _activityFlag(activityFlag)
+      {
+         _activityFlag.store(true);
+      }
+      ~shutdown_helper()
+      {
+         _activityFlag.store(false);
+         if(_impl.running.load() == false && _barrier.second.valid() == false)
+            _barrier.first.set_value();
+      }
+
+   private:
+      p2p_plugin_impl&    _impl;
+      handler_state&      _barrier;
+      std::atomic_bool&   _activityFlag;
+   };
+   
 };
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
@@ -128,8 +166,10 @@ bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
 { try {
-   if( running )
+   if( running.load() )
    {
+      shutdown_helper helper(*this, activeHandleBlock, handleBlockFinished);
+
       uint32_t head_block_num;
       chain.db().with_read_lock( [&]()
       {
@@ -183,15 +223,31 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
          throw;
       }
    }
+   else
+   {
+      ilog("Block ignored due to started p2p_plugin shutdown");
+      if(handleBlockFinished.second.valid() == false)
+         handleBlockFinished.first.set_value();
+   }
    return false;
 } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
 void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_msg )
 {
-   try
+   if(running.load())
    {
-      chain.accept_transaction( trx_msg.trx );
-   } FC_CAPTURE_AND_RETHROW( (trx_msg) )
+      try
+      {
+         shutdown_helper helper(*this, activeHandleTx, handleTxFinished);
+         chain.accept_transaction( trx_msg.trx );
+      } FC_CAPTURE_AND_RETHROW( (trx_msg) )
+   }
+   else
+   {
+      ilog("Transaction ignored due to started p2p_plugin shutdown");
+      if(handleTxFinished.second.valid() == false)
+         handleTxFinished.first.set_value();
+   }
 }
 
 void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_process )
@@ -593,11 +649,37 @@ void p2p_plugin::plugin_startup()
 
 void p2p_plugin::plugin_shutdown() {
    ilog("Shutting down P2P Plugin");
-   my->running = false;
+   my->running.store(false);
 
-   // Wait for outstanding calls to `handle_block` to be resolved
-   boost::this_thread::sleep_for( boost::chrono::milliseconds(200) );
+   ilog("P2P Plugin: checking handle_block and handle_transaction activity");
+   std::future_status bfState, tfState; 
+   do
+   {
+      if(my->activeHandleBlock.load())
+      {
+         bfState = my->handleBlockFinished.second.wait_for(std::chrono::milliseconds(10));
+         if(bfState != std::future_status::ready)
+            ilog("waiting for handle_block finish...");
+      }
+      else
+      {
+         bfState = std::future_status::ready;
+      }
 
+      if(my->activeHandleTx.load())
+      {
+         tfState = my->handleTxFinished.second.wait_for(std::chrono::milliseconds(10));
+         if(tfState != std::future_status::ready)
+            ilog("waiting for handle_transaction finish...");
+      }
+      else
+      {
+         tfState = std::future_status::ready;
+      }
+   }
+   while(bfState != std::future_status::ready && tfState != std::future_status::ready);
+
+   ilog("P2P Plugin: checking handle_block and handle_transaction activity");
    my->node->close();
    my->p2p_thread.quit();
    my->node.reset();
