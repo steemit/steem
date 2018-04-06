@@ -206,6 +206,34 @@ namespace ce
          }
    };
 
+   template< typename CMP, typename DIRECTION >
+   struct t_complex_sorter
+   {
+      CMP cmp;
+      DIRECTION direction;
+
+      t_complex_sorter( CMP _cmp, DIRECTION _direction ): cmp( _cmp ), direction( _direction ) {}
+
+      void set_direction( DIRECTION _direction )
+      {
+         direction = _direction;
+      }
+
+      template< typename T >
+      bool operator()( const T& a, const T& b )
+      {
+         if( *( a.first ) == *( b.first ) )
+            return false;
+         else
+         {
+            if( direction == DIRECTION::next )
+               return cmp( *( *a.first ), *( *b.first ) );
+            else
+               return !cmp( *( *a.first ), *( *b.first ) );
+         }
+      };
+   };
+
    template< typename OBJECT, typename CMP >
    class concatenation_iterator
    {
@@ -228,9 +256,10 @@ namespace ce
 
       private:
 
-         using self = concatenation_iterator< OBJECT, CMP >;
-
          using pitem_idx = std::pair< pitem, int32_t >;
+         using _t_complex_sorter = t_complex_sorter< CMP, Direction >;
+
+          _t_complex_sorter complex_sorter;
 
          template< bool INACTIVE, bool POSITION >
          void add(){}
@@ -381,29 +410,8 @@ namespace ce
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
-            struct _sorter
-            {
-               const self& obj;
-               Direction direction;
-
-               _sorter( const self& _obj, Direction _direction ): obj( _obj ), direction( _direction ) {}
-
-               bool operator()( const pitem_idx& a, const pitem_idx& b )
-               {
-                  if( *( a.first ) == *( b.first ) )
-                     return false;
-                  else
-                  {
-                     if( direction == Direction::next )
-                        return obj.cmp( *( *a.first ), *( *b.first ) );
-                     else
-                        return !obj.cmp( *( *a.first ), *( *b.first ) );
-                  }
-               };
-            };
-
-            _sorter __sorter( *this, DIRECTION );
-            std::set< pitem_idx, _sorter > row( __sorter );
+            complex_sorter.set_direction( DIRECTION );
+            std::set< pitem_idx, _t_complex_sorter > row( complex_sorter );
 
             find_active_iterators( row, []( const pitem& item ){ return !item->end() && !item->is_inactive(); } );
 
@@ -499,7 +507,8 @@ namespace ce
          }
 
          template< typename... ELEMENTS >
-         concatenation_iterator( bool status, ELEMENTS... elements )
+         concatenation_iterator( const CMP& _cmp, bool status, ELEMENTS... elements )
+         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
          {
             //This constructor is invoked only by 'reverse_iterator' class.
             if( status )
@@ -513,7 +522,7 @@ namespace ce
          CMP cmp;
 
          concatenation_iterator( const concatenation_iterator& obj )
-         : cmp( obj.cmp )
+         : complex_sorter( obj.cmp, Direction::next ), cmp( obj.cmp )
          {
             idx.current = obj.idx.current;
             direction = obj.direction;
@@ -523,7 +532,7 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_iterator( const CMP& _cmp, ELEMENTS... elements )
-         : cmp( _cmp )
+         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
          {
             add< false/*INACTIVE*/, true/*POSITION*/ >( elements... );
 
@@ -532,7 +541,7 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
-         : cmp( _cmp )
+         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
          {
             add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
 
@@ -643,7 +652,7 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_reverse_iterator( const CMP& _cmp, ELEMENTS... elements )
-         : concatenation_iterator< OBJECT, CMP >( false/*status*/, elements... )
+         : concatenation_iterator< OBJECT, CMP >( _cmp, false/*status*/, elements... )
          {
             this->idx.current = this->pos_end;
             this-> template action< Direction::prev >();
@@ -651,7 +660,7 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_reverse_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
-         : concatenation_iterator< OBJECT, CMP >( true/*status*/, elements... )
+         : concatenation_iterator< OBJECT, CMP >( _cmp, true/*status*/, elements... )
          {
             this->idx.current = this->pos_begin;
          }
