@@ -94,7 +94,7 @@ typedef multi_index_container<
 
 } } } // steem::plugins::account_history_rocksdb
 
-FC_REFLECT( steem::plugins::account_history_rocksdb::volatile_operation_object, (id)(trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op) )
+FC_REFLECT( steem::plugins::account_history_rocksdb::volatile_operation_object, (id)(trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op)(impacted) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::account_history_rocksdb::volatile_operation_object, steem::plugins::account_history_rocksdb::volatile_operation_index )
 
 FC_REFLECT( steem::plugins::account_history_rocksdb::rocksdb_operation_object, (id)(trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op) )
