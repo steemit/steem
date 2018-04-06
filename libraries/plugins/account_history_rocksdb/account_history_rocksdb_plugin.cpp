@@ -227,7 +227,7 @@ typedef PrimitiveTypeSlice< int64_t > id_slice_t;
 typedef PrimitiveTypeSlice< block_location_pair > by_location_slice_t;
 typedef PrimitiveTypeSlice< uint32_t > by_block_slice_t;
 typedef PrimitiveTypeSlice< account_name_type::Storage > ah_info_by_name_slice_t;
-typedef PrimitiveTypeSlice< std::pair<uint32_t, uint32_t > > ah_info_op_by_id_slice_t;
+typedef PrimitiveTypeSlice< std::pair<int64_t, int64_t > > ah_info_op_by_id_slice_t;
 
 const Comparator* by_id_Comparator()
 {
@@ -810,41 +810,70 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
 {
    ReadOptions rOptions;
 
+   idump( (name)(start)(limit) );
+
    ah_info_by_name_slice_t nameSlice(name.data);
    PinnableSlice buffer;
    auto s = _storage->Get(rOptions, _columnHandles[AH_INFO_BY_NAME], nameSlice, &buffer);
 
+   ilog("");
+
    if(s.IsNotFound())
       return;
 
+   ilog("");
+
    checkStatus(s);
+
+   ilog("");
 
    account_history_info ahInfo;
    load(ahInfo, buffer.data(), buffer.size());
+   idump( (ahInfo) );
+
+   ilog("");
 
    ah_info_op_by_id_slice_t lowerBoundSlice(std::make_pair(ahInfo.id, ahInfo.oldestEntryId));
    ah_info_op_by_id_slice_t upperBoundSlice(std::make_pair(ahInfo.id, ahInfo.newestEntryId+1));
 
+   ilog("");
+
    rOptions.iterate_lower_bound = &lowerBoundSlice;
    rOptions.iterate_upper_bound = &upperBoundSlice;
+
+   ilog("");
 
    ah_info_op_by_id_slice_t key(std::make_pair(ahInfo.id, start));
    id_slice_t ahIdSlice(ahInfo.id);
 
+   ilog("");
+
    std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[AH_INFO_OPERATION_BY_ID]));
 
+   ilog("");
+
    it->SeekForPrev(key);
+
+   ilog("");
 
    if(it->Valid() == false)
       return;
 
+   ilog("");
+
    auto keySlice = it->key();
    auto keyValue = ah_info_op_by_id_slice_t::unpackSlice(keySlice);
 
+   ilog("");
+
    auto lowerBound = keyValue.second > limit ? keyValue.second - limit : 0;
+
+   ilog("");
 
    for(; it->Valid(); it->Prev())
    {
+      ilog("");
+
       auto keySlice = it->key();
       if(keySlice.starts_with(ahIdSlice) == false)
          break;
@@ -857,6 +886,8 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
       bool found = find_operation_object(opId, &oObj);
       FC_ASSERT(found, "Missing operation?");
 
+      idump( (oObj) );
+
 //      ilog("AH-info-id: ${a}, Entry: ${e}, OperationId: ${oid}", ("a", keyValue.first)("e", keyValue.second)("oid", oObj.id));
 
       processor(keyValue.second, oObj);
@@ -864,6 +895,8 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
       if(keyValue.second <= lowerBound)
         break;
    }
+
+   ilog("");
 }
 
 bool account_history_rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_object* op) const
