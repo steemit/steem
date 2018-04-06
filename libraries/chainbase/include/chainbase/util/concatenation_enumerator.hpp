@@ -635,6 +635,12 @@ namespace ce
 
       public:
 
+         concatenation_reverse_iterator( const concatenation_iterator< OBJECT, CMP >& obj )
+         : base_class( obj )
+         {
+            this-> template action< Direction::prev >();
+         }
+
          template< typename... ELEMENTS >
          concatenation_reverse_iterator( const CMP& _cmp, ELEMENTS... elements )
          : concatenation_iterator< OBJECT, CMP >( false/*status*/, elements... )
@@ -698,7 +704,11 @@ namespace ce
 
          using pitem = typename abstract_sub_checker::pself;
 
+      public:
+
          std::vector< pitem > containers;
+
+      private:
 
          void add(){}
 
@@ -713,7 +723,8 @@ namespace ce
             add( elements... );
          }
 
-         void copy_containers( const concatenation_iterator_proxy& obj )
+         template< typename SRC >
+         void copy_containers( const SRC& obj )
          {
             containers.clear();
 
@@ -754,6 +765,13 @@ namespace ce
          }
 
       protected:
+
+         template< typename T >
+         concatenation_iterator_proxy( const T& obj )
+         : base_class( obj )
+         {
+            copy_containers( obj );
+         }
 
          concatenation_iterator_proxy( const concatenation_iterator_proxy& obj )
          : base_class( obj )
@@ -855,6 +873,11 @@ namespace ce
          using base_class::base_class;
 
       public:
+
+         concatenation_reverse_iterator_ex( const concatenation_iterator_ex< OBJECT, CMP >& obj )
+                                 : base_class( obj )
+         {
+         }
 
          template< typename... ELEMENTS >
          concatenation_reverse_iterator_ex( const CMP& _cmp, ELEMENTS... elements )

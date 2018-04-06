@@ -464,53 +464,227 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
    }
 }
 
-template< typename Iterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
+template< typename Iterator, typename ReverseIterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
 void different_test( Filler&& filler )
 {
    Collection bmic1;
 
-   BOOST_TEST_MESSAGE( "1 source - iterator traits" );
+   BOOST_TEST_MESSAGE( "1 source - different tests" );
    filler( bmic1 );
 
    const auto& idx1 = bmic1.template get< Index >();
 
    auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
-   Iterator it( Cmp(), p1 );
-   Iterator it_begin( it );
-   Iterator it_end( false, Cmp(), p1 );
 
-   auto it_comparer = idx1.begin();
-
-   while( it != it_end )
    {
+      Iterator it( Cmp(), p1 );
+      Iterator it_begin( it );
+      Iterator it_end( false, Cmp(), p1 );
+
+      ReverseIterator it_r( Cmp(), p1 );
+      ReverseIterator it_r_begin( it_r );
+      ReverseIterator it_r_end( false, Cmp(), p1 );
+
+      auto it_comparer = idx1.begin();
+      auto it_r_comparer = idx1.rbegin();
+
+      while( it != it_end )
+      {
+         BOOST_REQUIRE( *it == *it_comparer );
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+         it = std::next( it, 1 );
+         it_r = std::next( it_r, 1 );
+         ++it_comparer;
+         ++it_r_comparer;
+      }
+
+      for( size_t i = 0; i<idx1.size(); ++i )
+      {
+         it = std::prev( it, 1 );
+         it_r = std::prev( it_r, 1 );
+         it_comparer = std::prev( it_comparer, 1 );
+         it_r_comparer = std::prev( it_r_comparer, 1 );
+
+         BOOST_REQUIRE( *it == *it_comparer );
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+      }
+
+      it = it_begin;
+      it_r = it_r_begin;
+      it_comparer = idx1.begin();
+      it_r_comparer = idx1.rbegin();
+
+      it = std::next( it, 3 );
+      it_r = std::next( it_r, 3 );
+      it_comparer = std::next( it_comparer, 3 );
+      it_r_comparer = std::next( it_r_comparer, 3 );
       BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
 
-      it = std::next( it, 1 );
-      ++it_comparer;
-   }
+      it = std::prev( it, 2 );
+      it_r = std::prev( it_r, 2 );
+      it_comparer = std::prev( it_comparer, 2 );
+      it_r_comparer = std::prev( it_r_comparer, 2 );
+      BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
 
-   for( size_t i = 0; i<idx1.size(); ++i )
-   {
       it = std::prev( it, 1 );
+      it_r = std::prev( it_r, 1 );
       it_comparer = std::prev( it_comparer, 1 );
-
+      it_r_comparer = std::prev( it_r_comparer, 1 );
       BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
    }
 
-   it = it_begin;
-   it_comparer = idx1.begin();
+   {
+      ReverseIterator it_r_end( false, Cmp(), p1 );
 
-   it = std::next( it, 3 );
-   it_comparer = std::next( it_comparer, 3 );
-   BOOST_REQUIRE( *it == *it_comparer );
+      ReverseIterator it_r( Iterator( false, Cmp(), p1 ) );
+      decltype( idx1.rbegin() ) it_r_comparer( idx1.end() );
 
-   it = std::prev( it, 2 );
-   it_comparer = std::prev( it_comparer, 2 );
-   BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( it_r == ReverseIterator( Cmp(), p1 ) );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
 
-   it = std::prev( it, 1 );
-   it_comparer = std::prev( it_comparer, 1 );
-   BOOST_REQUIRE( *it == *it_comparer );
+      while( it_r != it_r_end )
+      {
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+         it_r = std::next( it_r, 1 );
+         it_r_comparer = std::next( it_r_comparer, 1 );
+      }
+   }
+}
+
+template< typename Iterator, typename ReverseIterator, typename Collection, typename Object, typename ID_Index, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >
+void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& filler3, SortedFiller& sorted_filler )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+
+   Collection comparer;
+
+   BOOST_TEST_MESSAGE( "3 sources - different tests ( sub-index is active )" );
+   filler1( bmic1 );
+   filler2( bmic2 );
+   filler3( bmic3 );
+   sorted_filler( comparer );
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& id_idx3 = bmic3.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic3.template get< Index >();
+
+   const auto& comparer_idx = comparer.template get< Index >();
+   auto it_comparer = comparer_idx.begin();
+   auto it_r_comparer = comparer_idx.rbegin();
+
+   {
+      Iterator it( Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+      Iterator it_begin( it );
+      Iterator it_end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+      ReverseIterator it_r( Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+      ReverseIterator it_r_begin( it_r );
+      ReverseIterator it_r_end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+      while( it != it_end )
+      {
+         BOOST_REQUIRE( *it == *it_comparer );
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+         it = std::next( it, 1 );
+         it_r = std::next( it_r, 1 );
+         ++it_comparer;
+         ++it_r_comparer;
+      }
+
+      for( size_t i = 0; i<comparer_idx.size(); ++i )
+      {
+         it = std::prev( it, 1 );
+         it_r = std::prev( it_r, 1 );
+         it_comparer = std::prev( it_comparer, 1 );
+         it_r_comparer = std::prev( it_r_comparer, 1 );
+
+         BOOST_REQUIRE( *it == *it_comparer );
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+      }
+
+      it = it_begin;
+      it_r = it_r_begin;
+      it_comparer = comparer_idx.begin();
+      it_r_comparer = comparer_idx.rbegin();
+
+      it = std::next( it, 3 );
+      it_r = std::next( it_r, 3 );
+      it_comparer = std::next( it_comparer, 3 );
+      it_r_comparer = std::next( it_r_comparer, 3 );
+      BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+      it = std::prev( it, 2 );
+      it_r = std::prev( it_r, 2 );
+      it_comparer = std::prev( it_comparer, 2 );
+      it_r_comparer = std::prev( it_r_comparer, 2 );
+      BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+      it = std::prev( it, 1 );
+      it_r = std::prev( it_r, 1 );
+      it_comparer = std::prev( it_comparer, 1 );
+      it_r_comparer = std::prev( it_r_comparer, 1 );
+      BOOST_REQUIRE( *it == *it_comparer );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
+   }
+
+   {
+      ReverseIterator it_r_end( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         );
+
+      ReverseIterator it_r( Iterator( false, Cmp(),
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+         ) );
+      decltype( comparer_idx.rbegin() ) it_r_comparer( comparer_idx.end() );
+
+      BOOST_REQUIRE( it_r == ReverseIterator( Cmp(), 
+            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
+            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
+            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 ) ) );
+      BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+      while( it_r != it_r_end )
+      {
+         BOOST_REQUIRE( *it_r == *it_r_comparer );
+
+         it_r = std::next( it_r, 1 );
+         it_r_comparer = std::next( it_r_comparer, 1 );
+      }
+   }
 }
 
 template< typename ReverseIterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
@@ -1525,13 +1699,31 @@ BOOST_AUTO_TEST_CASE(different_tests)
 {
    using obj = ce_tests::test_object;
    using bmic = ce_tests::test_object_index;
-   using cmp1 = ce_tests::cmp1;
    using oidx = ce_tests::OrderedIndex;
 
-   auto f1 = []( bmic& collection ){ ce_tests::fill6< obj >( collection ); };
-   using iterator = ce::concatenation_iterator< obj, cmp1 >;
+   {
+      using cmp1 = ce_tests::cmp1;
+      using iterator = ce::concatenation_iterator< obj, cmp1 >;
+      using reverse_iterator = ce::concatenation_reverse_iterator< obj, cmp1 >;
 
-   different_test< iterator, bmic, obj, oidx, cmp1 >( f1 );
+      auto f1 = []( bmic& collection ){ ce_tests::fill6< obj >( collection ); };
+
+      different_test< iterator, reverse_iterator, bmic, obj, oidx, cmp1 >( f1 );
+   }
+
+   {
+      using cmp2 = ce_tests::cmp2;
+      using oidx_a = ce_tests::CompositeOrderedIndexA;
+      using iterator = ce::concatenation_iterator_ex< obj, cmp2 >;
+      using reverse_iterator = ce::concatenation_reverse_iterator_ex< obj, cmp2 >;
+
+      auto f1 = []( bmic& collection ){ ce_tests::fill9< obj >( collection ); };
+      auto f2 = []( bmic& collection ){ ce_tests::fill9a< obj >( collection ); };
+      auto f3 = []( bmic& collection ){ ce_tests::fill9b< obj >( collection ); };
+      auto s = []( bmic& collection ){ ce_tests::sort9< obj >( collection ); };
+
+      different_test_sub_index< iterator, reverse_iterator, bmic, obj, oidx, oidx_a, cmp2 >( f1, f2, f3, s );
+   }
 }
 
 BOOST_AUTO_TEST_CASE(inc_dec_basic_reverse_tests)
