@@ -62,29 +62,55 @@ mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
-echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
+echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4
 if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  if [[ "$IS_BROADCAST_NODE" ]]; then
-    aws s3 cp s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-  elif [[ "$IS_AH_NODE" ]]; then
-    aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-  else
-    aws s3 cp s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-  fi
+  # try five times to pull in shared memory file
+  finished=0
+  count=1
+  while [[ $count -le 5 ]] && [[ $finished == 0 ]]
+  do
+    rm -rf $HOME/blockchain/*
+    rm -rf /mnt/ramdisk/blockchain/*
+    if [[ "$IS_BROADCAST_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    elif [[ "$IS_AH_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    else
+      aws s3 cp s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    fi
+    if [[ $? -ne 0 ]]; then
+      sleep 1
+      echo notifyalert steemd: unable to pull blockchain state from S3 - attempt $count
+      (( count++ ))
+    else
+      finished=1
+    fi
+  done
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
-  if [[ "$IS_BROADCAST_NODE" ]]; then
-    aws s3 cp s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
-  elif [[ "$IS_AH_NODE" ]]; then
-    aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
-  else
-    aws s3 cp s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
-  fi
+  while [[ $count -le 5 ]] && [[ $finished == 0 ]]
+  do
+    rm -rf $HOME/blockchain/*
+    if [[ "$IS_BROADCAST_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.lz4 - | lz4 -d | tar x
+    elif [[ "$IS_AH_NODE" ]]; then
+      aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.lz4 - | lz4 -d | tar x
+    else
+      aws s3 cp s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4 - | lz4 -d | tar x
+    fi
+    if [[ $? -ne 0 ]]; then
+      sleep 1
+      echo notifyalert steemd: unable to pull blockchain state from S3 - attempt $count
+      (( count++ ))
+    else
+      finished=1
+    fi
+  done
 fi
-if [[ $? -ne 0 ]]; then
+if [[ $finished == 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
     echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
     exit 1
