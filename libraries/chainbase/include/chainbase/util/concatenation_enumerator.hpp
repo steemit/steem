@@ -55,7 +55,7 @@ namespace ce
 
          using reference = const OBJECT&;
          using pointer = const OBJECT*;
-
+      
       protected:
 
          virtual void dec() = 0;
@@ -209,6 +209,19 @@ namespace ce
    template< typename OBJECT, typename CMP >
    class concatenation_iterator
    {
+      private:
+
+         using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
+
+      public:
+
+         using iterator_category = std::bidirectional_iterator_tag;
+         using value_type = pitem;
+         using difference_type = std::ptrdiff_t;
+
+         using reference = typename abstract_sub_enumerator< OBJECT >::reference;
+         using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
+
       protected:
 
          enum class Direction : bool { prev, next };
@@ -216,10 +229,6 @@ namespace ce
       private:
 
          using self = concatenation_iterator< OBJECT, CMP >;
-         using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
-
-         using reference = typename abstract_sub_enumerator< OBJECT >::reference;
-         using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
 
          using pitem_idx = std::pair< pitem, int32_t >;
 

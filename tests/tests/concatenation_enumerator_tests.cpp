@@ -464,12 +464,61 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
    }
 }
 
+template< typename Iterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
+void different_test( Filler&& filler )
+{
+   Collection bmic1;
+
+   BOOST_TEST_MESSAGE( "1 source - iterator traits" );
+   filler( bmic1 );
+
+   const auto& idx1 = bmic1.template get< Index >();
+
+   auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
+   Iterator it( Cmp(), p1 );
+   Iterator it_begin( it );
+   Iterator it_end( false, Cmp(), p1 );
+
+   auto it_comparer = idx1.begin();
+
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( *it == *it_comparer );
+
+      it = std::next( it, 1 );
+      ++it_comparer;
+   }
+
+   for( size_t i = 0; i<idx1.size(); ++i )
+   {
+      it = std::prev( it, 1 );
+      it_comparer = std::prev( it_comparer, 1 );
+
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+
+   it = it_begin;
+   it_comparer = idx1.begin();
+
+   it = std::next( it, 3 );
+   it_comparer = std::next( it_comparer, 3 );
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   it = std::prev( it, 2 );
+   it_comparer = std::prev( it_comparer, 2 );
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   it = std::prev( it, 1 );
+   it_comparer = std::prev( it_comparer, 1 );
+   BOOST_REQUIRE( *it == *it_comparer );
+}
+
 template< typename ReverseIterator, typename Collection, typename Object, typename Index, typename Cmp, typename Filler >
 void inc_dec_basic_reverse_test( Filler&& filler )
 {
    Collection bmic1;
 
-   BOOST_TEST_MESSAGE( "1 source - operations: '++' and '--'" );
+   BOOST_TEST_MESSAGE( "1 source - reverse_iterator: operations: '++'" );
    filler( bmic1 );
 
    const auto& idx1 = bmic1.template get< Index >();
@@ -517,7 +566,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    auto it_comparer = idx1.begin();
    auto it_comparer_r = idx1.rbegin();
 
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -531,7 +579,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[0] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -540,30 +587,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    ++it_comparer;
    ++it_comparer_r;
 
-   std::cout<<"[1]"<<std::endl;
-   BOOST_REQUIRE( *it_r == *it_comparer_r );
-   BOOST_REQUIRE( *it == *it_comparer );
-
-   ++it;
-   ++it_r;
-   ++it_comparer;
-   ++it_comparer_r;
-
-   --it;
-   --it_r;
-   --it_comparer;
-   --it_comparer_r;
-
-   std::cout<<"[1] after operator--"<<std::endl;
-   BOOST_REQUIRE( *it_r == *it_comparer_r );
-   BOOST_REQUIRE( *it == *it_comparer );
-
-   ++it;
-   ++it_r;
-   ++it_comparer;
-   ++it_comparer_r;
-
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -577,7 +600,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[2] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -586,7 +608,27 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    ++it_comparer;
    ++it_comparer_r;
 
-   std::cout<<"[3]"<<std::endl;
+   BOOST_REQUIRE( *it_r == *it_comparer_r );
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   ++it;
+   ++it_r;
+   ++it_comparer;
+   ++it_comparer_r;
+
+   --it;
+   --it_r;
+   --it_comparer;
+   --it_comparer_r;
+
+   BOOST_REQUIRE( *it_r == *it_comparer_r );
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   ++it;
+   ++it_r;
+   ++it_comparer;
+   ++it_comparer_r;
+
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -602,7 +644,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[3] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -611,7 +652,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[2] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -620,7 +660,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[1] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 
@@ -629,7 +668,6 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    --it_comparer;
    --it_comparer_r;
 
-   std::cout<<"[0] after operator--"<<std::endl;
    BOOST_REQUIRE( *it_r == *it_comparer_r );
    BOOST_REQUIRE( *it == *it_comparer );
 }
@@ -660,143 +698,105 @@ void inc_dec_basic_3_sources_test( Filler1& filler1, Filler2& filler2, Filler3& 
                                                 );
 
    auto it_comparer = comparer.begin();
-   size_t size = comparer.size();
 
-   size_t i = 0;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
-   {
-      std::cout<<"[0]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[0] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   
-      if( ++i == size ) return;
-   }
-
-   {
-      ++it;
-      ++it_comparer;
-
-      std::cout<<"[1]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[1] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   
-      if( ++i == size ) return;
-   }
-
-   {
-      ++it;
-      ++it_comparer;
-
-      std::cout<<"[2]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[2] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   
-      if( ++i == size ) return;
-   }
-
-   {
-      ++it;
-      ++it_comparer;
-
-      std::cout<<"[3]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[3] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   }
-
-   {
-      ++it;
-      ++it_comparer;
-
-      std::cout<<"[4]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[4] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   }
-
-   {
-      ++it;
-      ++it_comparer;
-
-      std::cout<<"[5]"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-
-      ++it;
-      ++it_comparer;
-
-      --it;
-      --it_comparer;
-
-      std::cout<<"[5] after operator--"<<std::endl;
-      BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
-   }
+   ++it;
+   ++it_comparer;
 
    --it;
    --it_comparer;
 
-   std::cout<<"[4] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   --it;
+   --it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   --it;
+   --it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   --it;
+   --it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   --it;
+   --it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   ++it;
+   ++it_comparer;
+
+   --it;
+   --it_comparer;
+
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
 
-   std::cout<<"[3] after operator--"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
 
-   std::cout<<"[2] after operator--"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
 
-   std::cout<<"[1] after operator--"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
 
-   std::cout<<"[0] after operator--"<<std::endl;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
+
+   --it;
+   --it_comparer;
+
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 }
 
@@ -841,7 +841,6 @@ void inc_dec_basic_6_sources_test( Filler1& f1, Filler2& f2, Filler3& f3, Filler
    auto it_comparer = comparer.begin();
    size_t size = comparer.size();
 
-   std::cout<<"forward"<<std::endl;
    for( size_t i = 0 ; i < size; ++i )
    {
       BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
@@ -852,7 +851,6 @@ void inc_dec_basic_6_sources_test( Filler1& f1, Filler2& f2, Filler3& f3, Filler
    --it;
    --it_comparer;
 
-   std::cout<<"backward"<<std::endl;
    for( size_t i = 1 ; i < size; ++i )
    {
       BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
@@ -861,139 +859,105 @@ void inc_dec_basic_6_sources_test( Filler1& f1, Filler2& f2, Filler3& f3, Filler
    }
 
    ++it; ++it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it; ++it_comparer;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it; --it_comparer;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 }
 
@@ -1039,10 +1003,8 @@ void inc_dec_basic_3_sources_sub_index_test( Filler1& f1, Filler2& f2, Filler3& 
 
    size_t size = comparer_idx.size();
 
-   std::cout<<"forward"<<std::endl;
    for( size_t i = 0 ; i < size; ++i )
    {
-      std::cout<<"["<<i<<"]"<<std::endl;
       BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
       BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
       ++it;
@@ -1051,219 +1013,183 @@ void inc_dec_basic_3_sources_sub_index_test( Filler1& f1, Filler2& f2, Filler3& 
       ++it_comparer_r;
    }
 
-   std::cout<<"backward"<<std::endl;
    for( size_t i = 0 ; i < size; ++i )
    {
       --it;
       --it_comparer;
       --it_r;
       --it_comparer_r;
-      std::cout<<"["<<size - i - 1<<"]"<<std::endl;
       BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
       BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
    }
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[6]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[5]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[4]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[3]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[2]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    ++it; ++it_comparer;
    ++it_r; ++it_comparer_r;
-   std::cout<<"[1]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 
    --it; --it_comparer;
    --it_r; --it_comparer_r;
-   std::cout<<"[0]"<<std::endl;
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
    BOOST_REQUIRE( ( *it_r ) == ( *it_comparer_r ) );
 }
@@ -1594,6 +1520,19 @@ void misc_operations_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(different_tests)
+{
+   using obj = ce_tests::test_object;
+   using bmic = ce_tests::test_object_index;
+   using cmp1 = ce_tests::cmp1;
+   using oidx = ce_tests::OrderedIndex;
+
+   auto f1 = []( bmic& collection ){ ce_tests::fill6< obj >( collection ); };
+   using iterator = ce::concatenation_iterator< obj, cmp1 >;
+
+   different_test< iterator, bmic, obj, oidx, cmp1 >( f1 );
+}
 
 BOOST_AUTO_TEST_CASE(inc_dec_basic_reverse_tests)
 {
