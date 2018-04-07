@@ -339,7 +339,7 @@ void remote_node_api::broadcast_transaction( signed_transaction )
    FC_ASSERT( false );
 }
 
-network_broadcast_api::broadcast_transaction_synchronous_return remote_node_api::broadcast_transaction_synchronous( signed_transaction )
+condenser_api::broadcast_transaction_synchronous_return remote_node_api::broadcast_transaction_synchronous( signed_transaction )
 {
    FC_ASSERT( false );
 }

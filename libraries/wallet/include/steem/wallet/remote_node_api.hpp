@@ -88,7 +88,7 @@ struct remote_node_api
    vector< condenser_api::discussion > get_discussions_by_author_before_date( tags::discussion_query );
    map< uint32_t, condenser_api::api_operation_object > get_account_history( account_name_type, uint64_t, uint32_t );
    void broadcast_transaction( signed_transaction );
-   network_broadcast_api::broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
+   condenser_api::broadcast_transaction_synchronous_return broadcast_transaction_synchronous( signed_transaction );
    void broadcast_block( signed_block );
    vector< follow::api_follow_object > get_followers( account_name_type, account_name_type, follow::follow_type, uint32_t );
    vector< follow::api_follow_object > get_following( account_name_type, account_name_type, follow::follow_type, uint32_t );
