@@ -206,6 +206,18 @@ namespace golos {
             _block_num_check_free_memory = value;
         }
 
+        void database::set_clear_votes(uint32_t clear_votes_block) {
+            _clear_votes_block = clear_votes_block;
+        }
+
+        bool database::clear_votes() {
+            return _clear_votes_block > head_block_num();
+        }
+
+        void database::set_skip_virtual_ops() {
+            _skip_virtual_ops = true;
+        }
+
         void database::check_free_memory(bool skip_print, uint32_t current_block_num) {
             if (0 != current_block_num % _block_num_check_free_memory) {
                 return;
@@ -1036,10 +1048,8 @@ namespace golos {
         }
 
         inline const void database::push_virtual_operation(const operation &op, bool force) {
-            if (!force) {
-#if defined( IS_LOW_MEM ) && !defined( STEEMIT_BUILD_TESTNET )
+            if (!force && _skip_virtual_ops ) {
                 return;
-#endif
             }
 
             FC_ASSERT(is_virtual_operation(op));
@@ -2159,9 +2169,9 @@ namespace golos {
                             cvo.num_changes = -1;
                         });
                     } else {
-#ifdef CLEAR_VOTES
-                        remove(cur_vote);
-#endif
+                        if(clear_votes()) {
+                            remove(cur_vote);
+                        }
                     }
                 }
             } FC_CAPTURE_AND_RETHROW((comment))
