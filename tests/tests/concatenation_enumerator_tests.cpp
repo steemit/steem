@@ -554,6 +554,38 @@ void different_test( Filler&& filler )
          it_r_comparer = std::next( it_r_comparer, 1 );
       }
    }
+
+   {
+      auto it_comparer = idx1.end();
+      it_comparer = std::prev( it_comparer, 1 );
+
+      ReverseIterator it_r( Cmp(), p1 );
+      std::reverse_iterator< Iterator > std_it_r ( it_r );
+      Iterator it = std_it_r.base();
+      BOOST_REQUIRE( *it == *it_comparer );
+
+      it_comparer = std::prev( it_comparer, 1 );
+      it = std::prev( it, 1 );
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+
+   {
+      auto it_comparer = idx1.end();
+      Iterator it( false, Cmp(), p1 );
+      --it;
+      --it_comparer;
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+
+   {
+      auto it_comparer = idx1.begin();
+
+      ReverseIterator it_r( false, Cmp(), p1 );
+      it_r--;
+      std::reverse_iterator< Iterator > std_it_r ( it_r );
+      Iterator it = std_it_r.base();
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
 }
 
 template< typename Iterator, typename ReverseIterator, typename Collection, typename Object, typename ID_Index, typename Index, typename Cmp, typename Filler1, typename Filler2, typename Filler3, typename SortedFiller >

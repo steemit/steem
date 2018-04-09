@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+#include <boost/operators.hpp>
+#include <boost/multi_index/detail/bidir_node_iterator.hpp>
+
 using namespace boost::multi_index;
 
 namespace chainbase
@@ -235,17 +238,32 @@ namespace ce
    };
 
    template< typename OBJECT, typename CMP >
-   class concatenation_iterator
+   class concatenation_iterator: public boost::bidirectional_iterator_helper
+                                 <
+                                    boost::multi_index::detail::bidir_node_iterator< concatenation_iterator< OBJECT, CMP > >,
+                                    concatenation_iterator< OBJECT, CMP >,
+                                    std::ptrdiff_t,
+                                    const concatenation_iterator< OBJECT, CMP >*,
+                                    const concatenation_iterator< OBJECT, CMP >&
+                                 >
    {
       private:
+
+      using base_type = boost::bidirectional_iterator_helper
+                        <
+                           boost::multi_index::detail::bidir_node_iterator< concatenation_iterator< OBJECT, CMP > >,
+                           concatenation_iterator< OBJECT, CMP >,
+                           std::ptrdiff_t,
+                           const concatenation_iterator< OBJECT, CMP >*,
+                           const concatenation_iterator< OBJECT, CMP >&
+                        >;
 
          using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
 
       public:
 
-         using iterator_category = std::bidirectional_iterator_tag;
-         using value_type = pitem;
-         using difference_type = std::ptrdiff_t;
+         using value_type = typename base_type::value_type;
+         using difference_type = typename base_type::difference_type;
 
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
          using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
@@ -663,6 +681,7 @@ namespace ce
          : concatenation_iterator< OBJECT, CMP >( _cmp, true/*status*/, elements... )
          {
             this->idx.current = this->pos_begin;
+            this->direction = Direction::prev;
          }
 
          concatenation_reverse_iterator& operator++()
