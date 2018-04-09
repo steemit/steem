@@ -535,6 +535,29 @@ namespace ce
                add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
          }
 
+         concatenation_iterator( const CMP& _cmp )
+         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
+         {
+         }
+
+         template< typename... ELEMENTS >
+         static void create_end_internal( concatenation_iterator& ci, bool status, Direction _direction, int32_t start_pos, ELEMENTS... elements )
+         {
+            ci.idx.current = start_pos;
+            ci.direction = _direction;
+
+            if( status )
+               ci.add< true/*INACTIVE*/, true/*POSITION*/ >( elements... );
+            else
+               ci.add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
+         }
+
+         template< typename... ELEMENTS >
+         static void create_end( concatenation_iterator& ci, ELEMENTS... elements )
+         {
+            create_end_internal( ci, false/*status*/, Direction::next, pos_end, elements... );
+         }
+
       public:
 
          CMP cmp;
@@ -558,12 +581,12 @@ namespace ce
          }
 
          template< typename... ELEMENTS >
-         concatenation_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
-         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
+         static concatenation_iterator create_end( const CMP& _cmp, ELEMENTS... elements )
          {
-            add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
+            concatenation_iterator ret = concatenation_iterator( _cmp );
+            create_end( ret, elements... );
 
-            idx.current = pos_end;
+            return ret;
          }
 
          reference operator*()
@@ -660,6 +683,17 @@ namespace ce
 
          using Direction = typename base_class::Direction;
 
+         concatenation_reverse_iterator( const CMP& _cmp )
+         : base_class( _cmp )
+         {
+         }
+
+         template< typename... ELEMENTS >
+         static void create_end( concatenation_reverse_iterator& ci, ELEMENTS... elements )
+         {
+            base_class::create_end_internal( ci, true/*status*/, Direction::prev, base_class::pos_begin, elements... );
+         }
+
       public:
 
          concatenation_reverse_iterator( const concatenation_iterator< OBJECT, CMP >& obj )
@@ -677,11 +711,12 @@ namespace ce
          }
 
          template< typename... ELEMENTS >
-         concatenation_reverse_iterator( bool, const CMP& _cmp, ELEMENTS... elements )
-         : concatenation_iterator< OBJECT, CMP >( _cmp, true/*status*/, elements... )
+         static concatenation_reverse_iterator create_end( const CMP& _cmp, ELEMENTS... elements )
          {
-            this->idx.current = this->pos_begin;
-            this->direction = Direction::prev;
+            concatenation_reverse_iterator ret = concatenation_reverse_iterator( _cmp );
+            create_end( ret, elements... );
+
+            return ret;
          }
 
          concatenation_reverse_iterator& operator++()
@@ -807,6 +842,11 @@ namespace ce
             copy_containers( obj );
          }
 
+         concatenation_iterator_proxy( const CMP& _cmp )
+         : base_class( _cmp )
+         {
+         }
+
          template< typename... ELEMENTS >
          concatenation_iterator_proxy( const CMP& _cmp, bool status, ELEMENTS... elements )
                                  : base_class( _cmp, elements... )
@@ -816,13 +856,6 @@ namespace ce
                find_with_key_search< Direction::next, this->pos_end >();
             else
                find_with_key_search< Direction::prev, this->pos_begin >();
-         }
-
-         template< typename... ELEMENTS >
-         concatenation_iterator_proxy( bool, const CMP& _cmp, ELEMENTS... elements )
-                                 : base_class( false, _cmp, elements... )
-         {
-            add( elements... );
          }
 
          concatenation_iterator_proxy& operator=( const concatenation_iterator_proxy& obj )
@@ -839,6 +872,19 @@ namespace ce
          {
             this-> template action< DIRECTION >();
             find_with_key_search< DIRECTION, position >();
+         }
+
+      public:
+
+         template< typename... ELEMENTS >
+         static concatenation_iterator_proxy create_end( const CMP& _cmp, ELEMENTS... elements )
+         {
+            concatenation_iterator_proxy ret = concatenation_iterator_proxy( _cmp );
+            base_class::create_end( ret, elements... );
+
+            ret.add( elements... );
+
+            return ret;
          }
    };
 

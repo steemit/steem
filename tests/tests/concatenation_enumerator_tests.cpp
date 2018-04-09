@@ -18,8 +18,9 @@ void basic_test()
 
    BOOST_TEST_MESSAGE( "1 empty source" );
    cnt = 0;
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it01( ce_tests::cmp1(), p1 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_01( false, ce_tests::cmp1(), p1 );
+   using Iterator = ce::concatenation_iterator< Object, ce_tests::cmp1 >;
+   Iterator it01( ce_tests::cmp1(), p1 );
+   Iterator it_end_01 = Iterator::create_end( ce_tests::cmp1(), p1 );
    while( it01 != it_end_01 )
    {
       ++it01;
@@ -29,8 +30,8 @@ void basic_test()
 
    BOOST_TEST_MESSAGE( "2 empty sources" );
    cnt = 0;
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it02( ce_tests::cmp1(), p1, p2 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_02( false, ce_tests::cmp1(), p1, p2 );
+   Iterator it02( ce_tests::cmp1(), p1, p2 );
+   Iterator it_end_02 = Iterator::create_end( ce_tests::cmp1(), p1, p2 );
    while( it02 != it_end_02 )
    {
       ++it02;
@@ -40,8 +41,8 @@ void basic_test()
 
    BOOST_TEST_MESSAGE( "1 filled source" );
    ce_tests::fill1< Object >( s1 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it03( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_03( false, ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
+   Iterator it03( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
+   Iterator it_end_03 = Iterator::create_end( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
    auto it_src03 = s1.begin();
    while( it03 != it_end_03 )
    {
@@ -53,15 +54,15 @@ void basic_test()
 
    BOOST_TEST_MESSAGE( "2 filled sources: one has content, second is empty" );
    ce_tests::fill1< Object >( s1 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it04 (  ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
+   Iterator it04 (  ce_tests::cmp1(),
+                     std::make_tuple( s1.begin(), s1.end() ),
+                     std::make_tuple( s2.begin(), s2.end() )
+                  );
 
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_04 ( false, ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
+   Iterator it_end_04 = Iterator::create_end( ce_tests::cmp1(),
+                                                std::make_tuple( s1.begin(), s1.end() ),
+                                                std::make_tuple( s2.begin(), s2.end() )
+                                             );
    auto it_src04_1 = s1.begin();
    while( it04 != it_end_04 )
    {
@@ -74,14 +75,14 @@ void basic_test()
    BOOST_TEST_MESSAGE( "2 filled sources with the same content" );
    ce_tests::fill1< Object >( s1 );
    ce_tests::fill1< Object >( s2 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it05 (  ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_05 ( false, ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
+   Iterator it05 ( ce_tests::cmp1(),
+                     std::make_tuple( s1.begin(), s1.end() ),
+                     std::make_tuple( s2.begin(), s2.end() )
+                  );
+   Iterator it_end_05 = Iterator::create_end( ce_tests::cmp1(),
+                           std::make_tuple( s1.begin(), s1.end() ),
+                           std::make_tuple( s2.begin(), s2.end() )
+                        );
    auto it_src05_1 = s1.begin();
    auto it_src05_2 = s2.begin();
    while( it05 != it_end_05 )
@@ -97,14 +98,14 @@ void basic_test()
    BOOST_TEST_MESSAGE( "2 filled sources with different content" );
    ce_tests::fill2< Object >( s1 );
    ce_tests::fill2a< Object >( s2 );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it06 (  ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
-   ce::concatenation_iterator< Object, ce_tests::cmp1 > it_end_06 ( false, ce_tests::cmp1(),
-                                                                           std::make_tuple( s1.begin(), s1.end() ),
-                                                                           std::make_tuple( s2.begin(), s2.end() )
-                                                                        );
+   Iterator it06 ( ce_tests::cmp1(),
+                     std::make_tuple( s1.begin(), s1.end() ),
+                     std::make_tuple( s2.begin(), s2.end() )
+                  );
+   Iterator it_end_06 = Iterator::create_end( ce_tests::cmp1(),
+                        std::make_tuple( s1.begin(), s1.end() ),
+                        std::make_tuple( s2.begin(), s2.end() )
+                     );
    cnt = 0;
    while( it06 != it_end_06 )
    {
@@ -138,8 +139,11 @@ void test_different_sources( const SortedCollection& sorted )
    auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end() );
    auto p3 = std::make_tuple( s1.begin(), s1.end() );
-   ce::concatenation_iterator< Object, Cmp > it( Cmp(), p1, p2, p3 );
-   ce::concatenation_iterator< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
+
+   using Iterator = ce::concatenation_iterator< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2, p3 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -171,8 +175,10 @@ void test_with_sub_index( Call1& call1, Call2& call2, const SortedCollection& so
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
 
-   ce::concatenation_iterator_ex< Object, Cmp > it( Cmp(), p1, p2 );
-   ce::concatenation_iterator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -209,8 +215,11 @@ void test_with_sub_index_3_sources( const SortedCollection& sorted )
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    auto p3 = std::make_tuple( s.begin(), s.end(), &s_helper );
-   ce::concatenation_iterator_ex< Object, Cmp > it( Cmp(), p1, p2, p3 );
-   ce::concatenation_iterator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2, p3 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -281,8 +290,11 @@ void test_with_sub_index_2_sources_many_objects_without_id_repeat()
 
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
-   ce::concatenation_iterator_ex< Object, Cmp > it( Cmp(), p1, p2 );
-   ce::concatenation_iterator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -358,8 +370,11 @@ void test_with_sub_index_2_sources_many_objects_with_id_repeat()
 
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
-   ce::concatenation_iterator_ex< Object, Cmp > it( Cmp(), p1, p2 );
-   ce::concatenation_iterator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -451,8 +466,11 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
    auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
    auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
    auto p3 = std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 );
-   ce::concatenation_iterator_ex< Object, Cmp > it( Cmp(), p1, p2, p3 );
-   ce::concatenation_iterator_ex< Object, Cmp > it_end( false, Cmp(), p1, p2, p3 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2, p3 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2, p3 );
 
    auto sorted_it = sorted.begin();
    while( it != it_end )
@@ -479,11 +497,11 @@ void different_test( Filler&& filler )
    {
       Iterator it( Cmp(), p1 );
       Iterator it_begin( it );
-      Iterator it_end( false, Cmp(), p1 );
+      Iterator it_end = Iterator::create_end( Cmp(), p1 );
 
       ReverseIterator it_r( Cmp(), p1 );
       ReverseIterator it_r_begin( it_r );
-      ReverseIterator it_r_end( false, Cmp(), p1 );
+      ReverseIterator it_r_end = Iterator::create_end( Cmp(), p1 );
 
       auto it_comparer = idx1.begin();
       auto it_r_comparer = idx1.rbegin();
@@ -538,9 +556,9 @@ void different_test( Filler&& filler )
    }
 
    {
-      ReverseIterator it_r_end( false, Cmp(), p1 );
+      ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(), p1 );
 
-      ReverseIterator it_r( Iterator( false, Cmp(), p1 ) );
+      ReverseIterator it_r( Iterator::create_end( Cmp(), p1 ) );
       decltype( idx1.rbegin() ) it_r_comparer( idx1.end() );
 
       BOOST_REQUIRE( it_r == ReverseIterator( Cmp(), p1 ) );
@@ -571,7 +589,7 @@ void different_test( Filler&& filler )
 
    {
       auto it_comparer = idx1.end();
-      Iterator it( false, Cmp(), p1 );
+      Iterator it = Iterator::create_end( Cmp(), p1 );
       --it;
       --it_comparer;
       BOOST_REQUIRE( *it == *it_comparer );
@@ -580,7 +598,7 @@ void different_test( Filler&& filler )
    {
       auto it_comparer = idx1.begin();
 
-      ReverseIterator it_r( false, Cmp(), p1 );
+      ReverseIterator it_r = ReverseIterator::create_end( Cmp(), p1 );
       it_r--;
       std::reverse_iterator< Iterator > std_it_r ( it_r );
       Iterator it = std_it_r.base();
@@ -622,7 +640,7 @@ void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& fill
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
       Iterator it_begin( it );
-      Iterator it_end( false, Cmp(),
+      Iterator it_end = Iterator::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
@@ -634,7 +652,7 @@ void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& fill
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
       ReverseIterator it_r_begin( it_r );
-      ReverseIterator it_r_end( false, Cmp(),
+      ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
@@ -690,13 +708,13 @@ void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& fill
    }
 
    {
-      ReverseIterator it_r_end( false, Cmp(),
+      ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
 
-      ReverseIterator it_r( Iterator( false, Cmp(),
+      ReverseIterator it_r( Iterator::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
@@ -731,7 +749,7 @@ void inc_dec_basic_reverse_test( Filler&& filler )
 
    auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
    ReverseIterator it_r( Cmp(), p1 );
-   ReverseIterator it_end_r( false, Cmp(), p1 );
+   ReverseIterator it_end_r = ReverseIterator::create_end( Cmp(), p1 );
 
    auto it_comparer_r = idx1.rbegin();
    auto it01_r( it_r );
@@ -767,7 +785,7 @@ void inc_dec_basic_1_source_test( Filler&& filler )
    auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
    Iterator it( Cmp(), p1 );
    ReverseIterator it_r( Cmp(), p1 );
-   ReverseIterator it_end_r( false, Cmp(), p1 );
+   ReverseIterator it_end_r = ReverseIterator::create_end( Cmp(), p1 );
 
    auto it_comparer = idx1.begin();
    auto it_comparer_r = idx1.rbegin();
@@ -1427,7 +1445,7 @@ void comparision_assignment_test( Filler1& filler1, Filler2& filler2, Filler3& f
             std::make_tuple( idx3.begin(), idx3.end() )
          );
 
-   _t it_end( false, Cmp(),
+   _t it_end = _t::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end() ),
             std::make_tuple( idx2.begin(), idx2.end() ),
             std::make_tuple( idx3.begin(), idx3.end() )
@@ -1523,7 +1541,7 @@ void comparision_assignment_sub_index_test( Filler1& filler1, Filler2& filler2, 
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
 
-   _t it_end( false, Cmp(),
+   _t it_end = _t::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
@@ -1621,7 +1639,7 @@ void misc_operations_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
          );
 
-   _t end( false, Cmp(),
+   _t end = _t::create_end( Cmp(),
             std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
             std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
             std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
