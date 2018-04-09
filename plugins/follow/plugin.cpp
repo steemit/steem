@@ -369,8 +369,9 @@ namespace golos {
 
             void plugin::set_program_options(boost::program_options::options_description &cli,
                                                     boost::program_options::options_description &cfg) {
-                cli.add_options()("follow-max-feed-size", boost::program_options::value<uint32_t>()->default_value(500),
-                                  "Set the maximum size of cached feed for an account");
+                cli.add_options()
+                    ("follow-max-feed-size", boost::program_options::value<uint32_t>()->default_value(500),
+                        "Set the maximum size of cached feed for an account");
                 cfg.add(cli);
             }
 

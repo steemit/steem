@@ -133,7 +133,7 @@ namespace golos {
                     string witness_id_example = "initwitness";
 
                 command_line_options.add_options()
-                        ("enable-stale-production",  bpo::value<bool>()->implicit_value(false) , "Enable block production, even if the chain is stale.")
+                        ("enable-stale-production", bpo::value<bool>()->implicit_value(false) , "Enable block production, even if the chain is stale.")
                         ("required-participation", bpo::value<int>()->implicit_value(uint32_t(3 * STEEMIT_1_PERCENT)), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
                         ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(), ("name of witness controlled by this node (e.g. " + witness_id_example + " )").c_str())
                         ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )")

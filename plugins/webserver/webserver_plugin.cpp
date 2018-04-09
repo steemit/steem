@@ -252,13 +252,14 @@ namespace golos {
             }
 
             void webserver_plugin::set_program_options(boost::program_options::options_description &, boost::program_options::options_description &cfg) {
-                cfg.add_options()("webserver-http-endpoint", boost::program_options::value<string>(),
-                                  "Local http endpoint for webserver requests.")("webserver-ws-endpoint",
-                                                                                 boost::program_options::value<string>(),
-                                                                                 "Local websocket endpoint for webserver requests.")(
-                        "rpc-endpoint", boost::program_options::value<string>(),
-                        "Local http and websocket endpoint for webserver requests. Deprectaed in favor of webserver-http-endpoint and webserver-ws-endpoint")(
-                        "webserver-thread-pool-size", boost::program_options::value<thread_pool_size_t>()->default_value(256),
+                cfg.add_options()
+                    ("webserver-http-endpoint", boost::program_options::value<string>(),
+                        "Local http endpoint for webserver requests.")
+                    ("webserver-ws-endpoint", boost::program_options::value<string>(),
+                        "Local websocket endpoint for webserver requests.")
+                    ("rpc-endpoint", boost::program_options::value<string>(),
+                        "Local http and websocket endpoint for webserver requests. Deprectaed in favor of webserver-http-endpoint and webserver-ws-endpoint")
+                    ("webserver-thread-pool-size", boost::program_options::value<thread_pool_size_t>()->default_value(256),
                         "Number of threads used to handle queries. Default: 256.");
             }
 

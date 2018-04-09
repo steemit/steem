@@ -161,7 +161,7 @@ namespace chain {
                 "block-num-check-free-size", boost::program_options::value<uint32_t>()->default_value(1000),
                 "Check free space in shared memory each N blocks. Default: 1000 (each 3000 seconds)."
             ) (
-                "checkpoint,c", boost::program_options::value<std::vector<std::string>>()->composing(),
+                "checkpoint", boost::program_options::value<std::vector<std::string>>()->composing(),
                 "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints."
             ) (
                 "flush-state-interval", boost::program_options::value<uint32_t>(),
@@ -201,15 +201,12 @@ namespace chain {
     void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
 
         my.reset(new plugin_impl());
-        my->shared_memory_dir = appbase::app().data_dir() / "blockchain";
 
-        if (options.count("shared-file-dir")) {
-            auto sfd = options.at("shared-file-dir").as<boost::filesystem::path>();
-            if (sfd.is_relative()) {
-                my->shared_memory_dir = appbase::app().data_dir() / sfd;
-            } else {
-                my->shared_memory_dir = sfd;
-            }
+        auto sfd = options.at("shared-file-dir").as<boost::filesystem::path>();
+        if (sfd.is_relative()) {
+            my->shared_memory_dir = appbase::app().data_dir() / sfd;
+        } else {
+            my->shared_memory_dir = sfd;
         }
 
         if (options.count("read-wait-micro")) {
@@ -261,9 +258,11 @@ namespace chain {
     void plugin::plugin_startup() {
         ilog("Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size));
 
+        auto data_dir = appbase::app().data_dir() / "blockchain";
+
         if (my->resync) {
             wlog("resync requested: deleting block log and shared memory");
-            my->db.wipe(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, true);
+            my->db.wipe(data_dir, my->shared_memory_dir, true);
         }
 
         my->db.set_flush_interval(my->flush_interval);
@@ -284,19 +283,19 @@ namespace chain {
 
         if (my->replay) {
             ilog("Replaying blockchain on user request.");
-            my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size);
+            my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
         } else {
             try {
                 ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
-                my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+                my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
             } catch (const fc::exception &e) {
                 wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
 
                 try {
-                    my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size);
+                    my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
                 } catch (golos::chain::block_log &) {
                     wlog("Error opening block log. Having to resync from network...");
-                    my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+                    my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
                 }
             }
         }
