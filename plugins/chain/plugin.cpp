@@ -279,7 +279,7 @@ namespace chain {
 
         my->db.set_flush_interval(my->flush_interval);
         my->db.add_checkpoints(my->loaded_checkpoints);
-        my->db.set_require_locking(my->check_locks);
+        my->db.require_locking(my->check_locks);
 
         my->db.read_wait_micro(my->read_wait_micro);
         my->db.max_read_wait_retries(my->max_read_wait_retries);

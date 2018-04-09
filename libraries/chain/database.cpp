@@ -179,7 +179,7 @@ namespace golos {
                     }
 
                     apply_block(itr.first, skip_flags);
-                    set_revision(head_block_num());
+                    revision(head_block_num());
                 });
 
                 if (_block_log.head()->block_num()) {
@@ -504,10 +504,6 @@ namespace golos {
             } FC_CAPTURE_AND_RETHROW()
         }
 
-        const node_property_object &database::get_node_properties() const {
-            return _node_property_object;
-        }
-
         const feed_history_object &database::get_feed_history() const {
             try {
                 return get<feed_history_object>();
@@ -689,13 +685,11 @@ namespace golos {
 
             bool result;
             with_strong_write_lock([&]() {
-                detail::with_skip_flags(*this, skip, [&]() {
-                    detail::without_pending_transactions(*this, std::move(_pending_tx), [&]() {
-                        try {
-                            result = _push_block(new_block);
-                        }
-                        FC_CAPTURE_AND_RETHROW((new_block))
-                    });
+                detail::without_pending_transactions(*this, skip, std::move(_pending_tx), [&]() {
+                    try {
+                        result = _push_block(new_block, skip);
+                    }
+                    FC_CAPTURE_AND_RETHROW((new_block))
                 });
 
                 check_free_memory(false, new_block.block_num());
@@ -723,11 +717,8 @@ namespace golos {
             return;
         }
 
-        bool database::_push_block(const signed_block &new_block) {
+        bool database::_push_block(const signed_block &new_block, uint32_t skip) {
             try {
-                uint32_t skip = get_node_properties().skip_flags;
-                //uint32_t skip_undo_db = skip & skip_undo_block;
-
                 if (!(skip & skip_fork_db)) {
                     shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
                     _maybe_warn_multiple_production(new_head->num);
@@ -820,16 +811,14 @@ namespace golos {
                 FC_ASSERT(fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256));
                 with_weak_write_lock([&]() {
                     detail::with_producing(*this, [&]() {
-                        detail::with_skip_flags(*this, skip, [&]() {
-                            _push_transaction(trx);
-                        });
+                        _push_transaction(trx, skip);
                     });
                 });
             }
             FC_CAPTURE_AND_RETHROW((trx))
         }
 
-        void database::_push_transaction(const signed_transaction &trx) {
+        void database::_push_transaction(const signed_transaction &trx, uint32_t skip) {
             // If this is the first transaction pushed after applying a block, start a new undo session.
             // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
             if (!_pending_tx_session.valid()) {
@@ -842,7 +831,7 @@ namespace golos {
             // apply the changes.
 
             auto temp_session = start_undo_session();
-            _apply_transaction(trx);
+            _apply_transaction(trx, skip);
             _pending_tx.push_back(trx);
 
             notify_changed_objects();
@@ -892,7 +881,7 @@ namespace golos {
 
             signed_block pending_block;
 
-            with_strong_write_lock([&]() { detail::with_skip_flags(*this, skip, [&]() {
+            with_strong_write_lock([&]() {
                 //
                 // The following code throws away existing pending_tx_session and
                 // rebuilds it by re-applying pending transactions.
@@ -928,7 +917,7 @@ namespace golos {
 
                     try {
                         auto temp_session = start_undo_session();
-                        _apply_transaction(tx);
+                        _apply_transaction(tx, skip);
                         temp_session.squash();
 
                         total_block_size += fc::raw::pack_size(tx);
@@ -945,7 +934,7 @@ namespace golos {
                 }
 
                 _pending_tx_session.reset();
-            });});
+            });
 
             // We have temporarily broken the invariant that
             // _pending_tx_session is the result of applying _pending_tx, as
@@ -2688,10 +2677,6 @@ namespace golos {
             return get_dynamic_global_properties().head_block_id;
         }
 
-        node_property_object &database::node_properties() {
-            return _node_property_object;
-        }
-
         uint32_t database::last_non_undoable_block_num() const {
             return get_dynamic_global_properties().last_irreversible_block_num;
         }
@@ -2849,22 +2834,6 @@ namespace golos {
 
         void database::init_genesis(uint64_t init_supply) {
             try {
-                struct auth_inhibitor {
-                    auth_inhibitor(database &db)
-                            : db(db),
-                              old_flags(db.node_properties().skip_flags) {
-                        db.node_properties().skip_flags |= skip_authority_check;
-                    }
-
-                    ~auth_inhibitor() {
-                        db.node_properties().skip_flags = old_flags;
-                    }
-
-                private:
-                    database &db;
-                    uint32_t old_flags;
-                } inhibitor(*this);
-
                 // Create blockchain accounts
                 public_key_type init_public_key(STEEMIT_INIT_PUBLIC_KEY);
 
@@ -2992,7 +2961,7 @@ namespace golos {
         void database::validate_transaction(const signed_transaction &trx) {
             database::with_weak_write_lock([&]() {
                 auto session = start_undo_session();
-                _apply_transaction(trx);
+                _apply_transaction(trx, skip_nothing);
                 session.undo();
             });
         }
@@ -3059,9 +3028,7 @@ namespace golos {
                     }
                 }
 
-                detail::with_skip_flags(*this, skip, [&]() {
-                    _apply_block(next_block);
-                });
+                _apply_block(next_block, skip);
 
                 /*try
    {
@@ -3099,12 +3066,10 @@ namespace golos {
             } FC_CAPTURE_AND_RETHROW((next_block))
         }
 
-        void database::_apply_block(const signed_block &next_block) {
+        void database::_apply_block(const signed_block &next_block, uint32_t skip) {
             try {
                 uint32_t next_block_num = next_block.block_num();
                 //block_id_type next_block_id = next_block.id();
-
-                uint32_t skip = get_node_properties().skip_flags;
 
                 if (!(skip & skip_merkle_check)) {
                     auto merkle_root = next_block.calculate_merkle_root();
@@ -3167,10 +3132,10 @@ namespace golos {
                     ++_current_trx_in_block;
                 }
 
-                update_global_dynamic_data(next_block);
+                update_global_dynamic_data(next_block, skip);
                 update_signing_witness(signing_witness, next_block);
 
-                update_last_irreversible_block();
+                update_last_irreversible_block(skip);
 
                 create_block_summary(next_block);
                 clear_expired_transactions();
@@ -3315,17 +3280,15 @@ namespace golos {
         }
 
         void database::apply_transaction(const signed_transaction &trx, uint32_t skip) {
-            detail::with_skip_flags(*this, skip, [&]() { _apply_transaction(trx); });
+            _apply_transaction(trx, skip);
             notify_on_applied_transaction(trx);
         }
 
-        void database::_apply_transaction(const signed_transaction &trx) {
+        void database::_apply_transaction(const signed_transaction &trx, uint32_t skip) {
             try {
                 _current_trx_id = trx.id();
-                uint32_t skip = get_node_properties().skip_flags;
 
-                if (!(skip &
-                      skip_validate)) {   /* issue #505 explains why this skip_flag is disabled */
+                if (!(skip & skip_validate)) {   /* issue #505 explains why this skip_flag is disabled */
                     trx.validate();
                 }
 
@@ -3466,7 +3429,7 @@ namespace golos {
             } FC_CAPTURE_AND_RETHROW()
         }
 
-        void database::update_global_dynamic_data(const signed_block &b) {
+        void database::update_global_dynamic_data(const signed_block &b, uint32_t skip) {
             try {
                 auto block_size = fc::raw::pack_size(b);
                 const dynamic_global_property_object &_dgp =
@@ -3553,8 +3516,7 @@ namespace golos {
                                                 STEEMIT_BLOCK_INTERVAL;
                 });
 
-                if (!(get_node_properties().skip_flags &
-                      skip_undo_history_check)) {
+                if (!(skip & skip_undo_history_check)) {
                     STEEMIT_ASSERT(_dgp.head_block_number -
                                    _dgp.last_irreversible_block_num <
                                    STEEMIT_MAX_UNDO_HISTORY, undo_database_exception,
@@ -3615,7 +3577,7 @@ namespace golos {
             } FC_CAPTURE_AND_RETHROW()
         }
 
-        void database::update_last_irreversible_block() {
+        void database::update_last_irreversible_block(uint32_t skip) {
             try {
                 const dynamic_global_property_object &dpo = get_dynamic_global_properties();
 
@@ -3669,7 +3631,7 @@ namespace golos {
 
                 commit(dpo.last_irreversible_block_num);
 
-                if (!(get_node_properties().skip_flags & skip_block_log)) {
+                if (!(skip & skip_block_log)) {
                     // output to block log based on new last irreverisible block num
                     const auto &tmp_head = _block_log.head();
                     uint64_t log_head_num = 0;
