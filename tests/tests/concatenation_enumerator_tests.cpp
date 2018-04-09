@@ -3,6 +3,8 @@
 #include "../concatenation_enumerator_tests/concatenation_enumerator_tests_mgr.hpp"
 #include <chainbase/util/concatenation_enumerator.hpp>
 
+#include <chrono>
+
 using namespace chainbase;
 
 template< typename Collection, typename Object >
@@ -230,6 +232,278 @@ void test_with_sub_index_3_sources( const SortedCollection& sorted )
       ++sorted_it;
    }
 
+}
+
+template< typename ID_Index, typename Iterator, typename ReverseIterator, typename CmpIterator, typename CmpReverseIterator >
+void benchmark_internal( Iterator begin, Iterator end, CmpIterator cmp_begin, CmpIterator cmp_end,
+                         ReverseIterator r_begin, ReverseIterator r_end, CmpReverseIterator r_cmp_begin, CmpReverseIterator r_cmp_end,
+                         const ID_Index& id_index,
+                         int32_t cnt
+                         )
+{
+   //start benchmark - classical sorted collection
+   uint64_t start_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   auto tmp_end = id_index.end();
+   int32_t idx_cnt;
+   while( cmp_begin != cmp_end )
+   {
+      if( cnt > 0 )
+      {
+         idx_cnt = 0;
+         while( idx_cnt++ < cnt )
+         {
+            const auto& obj = *cmp_begin;
+
+            auto found = id_index.lower_bound( obj.id );
+            if( found != tmp_end )
+            {
+            }
+         }
+      }
+      ++cmp_begin;
+   }
+
+   uint64_t end_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   std::cout<<"iterator: bmic iterator: "<< end_time1 - start_time1<<" ms"<<std::endl;
+   //end benchmark
+
+   //start benchmark - concatenation iterator
+   uint64_t start_time2 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   while( begin != end )
+      ++begin;
+
+   uint64_t end_time2 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   std::cout<<"iterator: concatenation iterator: "<< end_time2 - start_time2<<" ms"<<std::endl;
+   std::cout<<"ratio: "<<( static_cast< double >( end_time2 - start_time2 ) )/( end_time1 - start_time1 )<<std::endl;
+   //end benchmark
+
+   BOOST_TEST_MESSAGE( "reverse_iterator" );
+   //start benchmark - classical sorted collection
+   start_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   while( r_cmp_begin != r_cmp_end )
+   {
+      if( cnt > 0 )
+      {
+         idx_cnt = 0;
+         while( idx_cnt++ < cnt )
+         {
+            const auto& obj = *r_cmp_begin;
+
+            auto found = id_index.lower_bound( obj.id );
+            if( found != tmp_end )
+            {
+            }
+         }
+      }
+      ++r_cmp_begin;
+   }
+
+   end_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   std::cout<<"reverse_iterator: bmic iterator: "<< end_time1 - start_time1<<" ms"<<std::endl;
+   //end benchmark
+
+   //start benchmark - concatenation iterator
+   start_time2 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   while( r_begin != r_end )
+      ++r_begin;
+
+   end_time2 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+
+   std::cout<<"reverse_iterator: concatenation iterator: "<< end_time2 - start_time2<<" ms"<<std::endl;
+   std::cout<<"ratio: "<<( static_cast< double >( end_time2 - start_time2 ) )/( end_time1 - start_time1 )<<std::endl;
+   //end benchmark
+}
+
+template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
+void benchmark_test_2_sources( bool is_artificial_searching )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection sorted;
+
+   using t_src = ce_tests::t_input_data;
+
+   const int32_t size1 = 150000;
+   const int32_t size2 = 150000;
+
+   std::vector< t_src > v1 = 
+   {
+      // Example:
+      // t_src(
+      //       3      /*_length*/,
+      //       true   /*bool incremented1*/,    "a"   /*std::string c1*/,    0   /*size_t idx1*/,
+      //       true   /*bool incremented2*/,    "b"   /*std::string c2*/,    0   /*size_t idx2*/
+      //       )
+
+      t_src( size1, true, "a", 0, true, "b", 0 )
+   };
+   std::vector< t_src > v2 = 
+   {
+      t_src( size2, true, "x", 0, true, "y", 0 )
+   };
+
+   size_t total_size = size1 + size2;
+   int64_t id_cnt = 0;
+   int64_t id_cnt_copy = id_cnt;
+
+   BOOST_TEST_MESSAGE( "benchmark test with 2 sources - ( sub-index is active )" );
+
+   //Making sorted collection
+   ce_tests::fill_with_many_objects< Object >( id_cnt_copy, sorted, std::vector< t_src >( v1 ) );
+   ce_tests::fill_with_many_objects< Object >( id_cnt_copy, sorted, std::vector< t_src >( v2 ) );
+   size_t sorted_size = sorted.size();
+   //Making sorted collection
+
+   BOOST_REQUIRE( total_size == sorted_size );
+
+   ce_tests::fill_with_many_objects< Object >( id_cnt, bmic1, v1 );
+   ce_tests::fill_with_many_objects< Object >( id_cnt, bmic2, v2 );
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx_sorted = sorted.template get< Index >();
+
+   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
+   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+   using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2 );
+
+   auto sorted_it = idx_sorted.begin();
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
+
+      ++it;
+      ++sorted_it;
+   }
+
+   BOOST_TEST_MESSAGE( "iterator" );
+   std::cout<<std::endl<<"***2 sources***"<<( is_artificial_searching?" artificial_searching ":" no searching" )<<std::endl;
+
+   Iterator _begin( Cmp(), p1, p2 );
+   Iterator _end = Iterator::create_end( Cmp(), p1, p2 );
+   auto cmp_begin = idx_sorted.begin();
+   auto cmp_end = idx_sorted.end();
+
+   ReverseIterator _r_begin( Cmp(), p1, p2 );
+   ReverseIterator _r_end = ReverseIterator::create_end( Cmp(), p1, p2 );
+   auto r_cmp_begin = idx_sorted.rbegin();
+   auto r_cmp_end = idx_sorted.rend();
+
+   benchmark_internal( _begin, _end, cmp_begin, cmp_end, _r_begin, _r_end, r_cmp_begin, r_cmp_end,
+                        sorted.template get< ID_Index >(), is_artificial_searching?1:0 );
+}
+
+template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
+void benchmark_test_3_sources( bool is_artificial_searching )
+{
+   Collection bmic1;
+   Collection bmic2;
+   Collection bmic3;
+   Collection sorted;
+
+   using t_src = ce_tests::t_input_data;
+
+   const int32_t size1 = 100000;
+   const int32_t size2 = 100000;
+   const int32_t size3 = 100000;
+
+   std::vector< t_src > v1 = 
+   {
+      // Example:
+      // t_src(
+      //       3      /*_length*/,
+      //       true   /*bool incremented1*/,    "a"   /*std::string c1*/,    0   /*size_t idx1*/,
+      //       true   /*bool incremented2*/,    "b"   /*std::string c2*/,    0   /*size_t idx2*/
+      //       )
+
+      t_src( size1, true, "a", 0, true, "b", 0 )
+   };
+   std::vector< t_src > v2 = 
+   {
+      t_src( size2, true, "x", 0, true, "y", 0 )
+   };
+   std::vector< t_src > v3 = 
+   {
+      t_src( size3, true, "p", 0, true, "q", 0 )
+   };
+
+   size_t total_size = size1 + size2 + size3;
+   int64_t id_cnt = 0;
+   int64_t id_cnt_copy = id_cnt;
+
+   BOOST_TEST_MESSAGE( "benchmark test with 3 sources - ( sub-index is active )" );
+
+   //Making sorted collection
+   ce_tests::fill_with_many_objects< Object >( id_cnt_copy, sorted, std::vector< t_src >( v1 ) );
+   ce_tests::fill_with_many_objects< Object >( id_cnt_copy, sorted, std::vector< t_src >( v2 ) );
+   ce_tests::fill_with_many_objects< Object >( id_cnt_copy, sorted, std::vector< t_src >( v3 ) );
+   size_t sorted_size = sorted.size();
+   //Making sorted collection
+
+   BOOST_REQUIRE( total_size == sorted_size );
+
+   ce_tests::fill_with_many_objects< Object >( id_cnt, bmic1, v1 );
+   ce_tests::fill_with_many_objects< Object >( id_cnt, bmic2, v2 );
+   ce_tests::fill_with_many_objects< Object >( id_cnt, bmic2, v3 );
+
+   const auto& id_idx1 = bmic1.template get< ID_Index >();
+   const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& id_idx3 = bmic2.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+   const auto& idx3 = bmic2.template get< Index >();
+   const auto& idx_sorted = sorted.template get< Index >();
+
+   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
+   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+   auto p3 = std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 );
+
+   using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
+   using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
+
+   Iterator it( Cmp(), p1, p2, p3 );
+   Iterator it_end = Iterator::create_end( Cmp(), p1, p2, p3 );
+
+   auto sorted_it = idx_sorted.begin();
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( ( *it ) == ( *sorted_it ) );
+
+      ++it;
+      ++sorted_it;
+   }
+
+   BOOST_TEST_MESSAGE( "iterator" );
+   std::cout<<std::endl<<"***3 sources***"<<( is_artificial_searching?" artificial_searching ":" no searching" )<<std::endl;
+
+   Iterator _begin( Cmp(), p1, p2, p3 );
+   Iterator _end = Iterator::create_end( Cmp(), p1, p2, p3 );
+   auto cmp_begin = idx_sorted.begin();
+   auto cmp_end = idx_sorted.end();
+
+   ReverseIterator _r_begin( Cmp(), p1, p2, p3 );
+   ReverseIterator _r_end = ReverseIterator::create_end( Cmp(), p1, p2, p3 );
+   auto r_cmp_begin = idx_sorted.rbegin();
+   auto r_cmp_end = idx_sorted.rend();
+
+   benchmark_internal( _begin, _end, cmp_begin, cmp_end, _r_begin, _r_end, r_cmp_begin, r_cmp_end,
+                        sorted.template get< ID_Index >(), is_artificial_searching?2:0 );
 }
 
 template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
@@ -553,6 +827,19 @@ void different_test( Filler&& filler )
       it_r_comparer = std::prev( it_r_comparer, 1 );
       BOOST_REQUIRE( *it == *it_comparer );
       BOOST_REQUIRE( *it_r == *it_r_comparer );
+   }
+
+   {
+      ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(), p1 );
+      it_r_end = std::prev( it_r_end, 1 );
+      auto it_comparer = idx1.begin();
+
+      while( it_comparer != idx1.end() )
+      {
+         BOOST_REQUIRE( *it_r_end == *it_comparer );
+         --it_r_end;
+         it_comparer++;
+      }
    }
 
    {
@@ -1744,6 +2031,51 @@ void misc_operations_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(benchmark_tests)
+{
+   using obj2 = ce_tests::test_object2;
+   using bmic2 = ce_tests::test_object_index2;
+   using oidx2 = ce_tests::OrderedIndex2;
+   using c_oidx2 = ce_tests::CompositeOrderedIndex2;
+   using cmp4 = ce_tests::cmp4;
+
+   benchmark_test_2_sources
+   <
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >( false/*is_artificial_searching*/ );
+
+   benchmark_test_3_sources
+   <
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >( false/*is_artificial_searching*/ );
+
+   benchmark_test_2_sources
+   <
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >( true/*is_artificial_searching*/ );
+
+   benchmark_test_3_sources
+   <
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >( true/*is_artificial_searching*/ );
+}
 
 BOOST_AUTO_TEST_CASE(different_tests)
 {
