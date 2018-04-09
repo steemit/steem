@@ -4,6 +4,7 @@
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/block_summary_object.hpp>
+#include <voting_helper.hpp>
 
 #include <steem/chain/util/reward.hpp>
 
@@ -1197,21 +1198,6 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    }
 }
 
-// SMT voting vs STEEM voting
-//
-// SMT parameters vs STEEM parameters
-//
-// common to all SMTs:
-//    STEEM_MIN_VOTE_INTERVAL_SEC   - SMT_MIN_VOTE_INTERVAL_SEC
-//
-// individually set by SMT creator:
-//    STEEM_VOTE_REGENERATION_SECONDS  - vote_regeneration_period_seconds
-//    vote_power_reserve_rate (dgpo)   - votes_per_regeneration_period
-//
-// Per-user voting data:
-//    last_vote_time - duplicated as last_smt_vote_time as dependent on ..._MIN_VOTE_INTERVAL_SEC
-//    voting_power   - common to both STEEM and SMT voting
-
 struct TVoterAssetInfo {
    asset_symbol_type liquid_symbol = STEEM_SYMBOL;
    int64_t           current_power = 0;
@@ -1310,35 +1296,7 @@ void prepare_voter_asset_info( TVoterAssetInfoContainer* infoContainer, const ac
    //calculate_power_shares( &smt_info, TSMTVotingParameters(x,y), voter.last_smt_vote_time, voter.voting_power );
 }
 
-/// Abstract interface implemented separately for STEEM and SMTs.
-class ICommonVoting
-{
-   public:
-   virtual uint32_t GetReverseAuctionWindowSeconds() = 0;
-   virtual const share_type& GetCommentNetRshares( const comment_object& comment ) = 0;
-   virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) = 0;
-
-   virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta ) = 0;
-
-   virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                               const int16_t& opWeight ) = 0;
-
-   virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                 const int64_t& voter_abs_rshares, bool is_recast ) = 0;
-   virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
-                                               const share_type& old_vote_rshares ) = 0;
-
-   virtual void UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower, const time_point_sec& newLastVoteTime) = 0;
-   virtual void UpdateComment( const comment_object& comment, const int64_t& rshares, const int64_t& absRshares ) = 0;
-   virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                     const int64_t& recast_rshares, const int64_t& vote_absRshares ) = 0;
-   virtual void UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec ) = 0;
-   virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares ) = 0;
-   virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) = 0;
-   virtual void UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight ) = 0;
-};
-
-void cast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, const vote_operation& o, const account_object& voter,
+void cast_vote( const TVoterAssetInfo& info, IVotingHelper* voting_helper, const vote_operation& o, const account_object& voter,
                 const comment_object& comment, database& db )
 {
    FC_ASSERT( o.weight != 0, "Vote weight cannot be 0." );
@@ -1356,22 +1314,22 @@ void cast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, const
    //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
    //if( used_power == 0 ) used_power = 1;
 
-   common_voting->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
+   voting_helper->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
 
    /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-   fc::uint128_t old_rshares = std::max( common_voting->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t old_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
    const auto& root = db.get( comment.root_comment );
 
-   fc::uint128_t avg_cashout_sec = common_voting->CalculateAvgCashoutSec( comment, root, info.abs_rshares, false /*is_recast*/ );
+   fc::uint128_t avg_cashout_sec = voting_helper->CalculateAvgCashoutSec( comment, root, info.abs_rshares, false /*is_recast*/ );
 
    FC_ASSERT( info.abs_rshares > 0, "Cannot vote with 0 rshares." );
 
-   auto old_vote_rshares = common_voting->GetCommentVoteRshares( comment );
+   auto old_vote_rshares = voting_helper->GetCommentVoteRshares( comment );
 
-   common_voting->UpdateComment( comment, rshares, info.abs_rshares );
-   common_voting->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
+   voting_helper->UpdateComment( comment, rshares, info.abs_rshares );
+   voting_helper->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
 
-   fc::uint128_t new_rshares = std::max( common_voting->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t new_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
 
    /// calculate rshares2 value
    new_rshares = util::evaluate_reward_curve( new_rshares );
@@ -1402,17 +1360,17 @@ void cast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, const
     *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
     *
    **/
-   const comment_vote_object& cvo = common_voting->CreateCommentVoteObject( voter.id, comment.id, o.weight );
+   const comment_vote_object& cvo = voting_helper->CreateCommentVoteObject( voter.id, comment.id, o.weight );
    uint64_t vote_weight = 0;
    if( curation_reward_eligible )
    {
-      vote_weight = common_voting->CalculateCommentVoteWeight( comment, rshares, old_vote_rshares );
+      vote_weight = voting_helper->CalculateCommentVoteWeight( comment, rshares, old_vote_rshares );
 
       max_vote_weight = vote_weight;
 
       if( db.head_block_time() > fc::time_point_sec(STEEM_HARDFORK_0_6_REVERSE_AUCTION_TIME) )  /// start enforcing this prior to the hardfork
       {
-         uint32_t raws = common_voting->GetReverseAuctionWindowSeconds();
+         uint32_t raws = voting_helper->GetReverseAuctionWindowSeconds();
          /// discount weight by time
          uint128_t w(max_vote_weight);
          uint64_t delta_t = std::min( uint64_t((cvo.last_update - comment.created).to_seconds()), uint64_t(raws) );
@@ -1422,17 +1380,17 @@ void cast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, const
          vote_weight = w.to_uint64();
       }
    }
-   common_voting->UpdateCommentVoteObject( cvo, vote_weight, rshares );
+   voting_helper->UpdateCommentVoteObject( cvo, vote_weight, rshares );
 
    
    if( max_vote_weight ) // Optimization
    {
-      common_voting->IncreaseCommentTotalVoteWeight( comment,  max_vote_weight );
+      voting_helper->IncreaseCommentTotalVoteWeight( comment,  max_vote_weight );
    }
-   common_voting->UpdateCommentRshares2( comment, old_rshares, new_rshares );
+   voting_helper->UpdateCommentRshares2( comment, old_rshares, new_rshares );
 }
 
-void recast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, const vote_operation& o, const account_object& voter,
+void recast_vote( const TVoterAssetInfo& info, IVotingHelper* voting_helper, const vote_operation& o, const account_object& voter,
                   const comment_object& comment, const comment_vote_object& vote, database& db )
 {
    FC_ASSERT( vote.num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
@@ -1451,37 +1409,28 @@ void recast_vote( const TVoterAssetInfo& info, ICommonVoting* common_voting, con
          FC_ASSERT( db.head_block_time() < db.calculate_discussion_payout_time( comment ) - STEEM_UPVOTE_LOCKOUT_HF7, "Cannot increase payout within last minute before payout." );
    }
 
-   common_voting->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
+   voting_helper->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
 
    /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-   fc::uint128_t old_rshares = std::max( common_voting->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t old_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
    const auto& root = db.get( comment.root_comment );
 
-   fc::uint128_t avg_cashout_sec = common_voting->CalculateAvgCashoutSec( comment, root, info.abs_rshares, true /*is_recast*/ );
+   fc::uint128_t avg_cashout_sec = voting_helper->CalculateAvgCashoutSec( comment, root, info.abs_rshares, true /*is_recast*/ );
 
-   common_voting->UpdateCommentRecast( comment, vote, rshares, info.abs_rshares );
-   common_voting->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
+   voting_helper->UpdateCommentRecast( comment, vote, rshares, info.abs_rshares );
+   voting_helper->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
 
-   fc::uint128_t new_rshares = std::max( common_voting->GetCommentNetRshares( comment ).value, int64_t(0));
+   fc::uint128_t new_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0));
 
    /// calculate rshares2 value
    new_rshares = util::evaluate_reward_curve( new_rshares );
    old_rshares = util::evaluate_reward_curve( old_rshares );
 
-   common_voting->IncreaseCommentTotalVoteWeight( comment, -vote.weight );
-   common_voting->UpdateVote( vote, rshares, o.weight );
-   common_voting->UpdateCommentRshares2( comment, old_rshares, new_rshares );
+   voting_helper->IncreaseCommentTotalVoteWeight( comment, -vote.weight );
+   voting_helper->UpdateVote( vote, rshares, o.weight );
+   voting_helper->UpdateCommentRshares2( comment, old_rshares, new_rshares );
 }
 
-// comment_object
-//    net_rshares
-//    abs_rshares
-//    vote_rshares
-//    total_vote_weight
-//
-// comment_vote_object
-//    rshares
-//    weight
 void vote_evaluator::do_apply( const vote_operation& o )
 { try {
    const auto& comment = _db.get_comment( o.author, o.permlink );
@@ -1532,216 +1481,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    TVoterAssetInfoContainer voter_asset_info_container;
    prepare_voter_asset_info( &voter_asset_info_container, voter, o, _db );
 
-   class TSteemVoting: public ICommonVoting
-   {
-      public:
-      TSteemVoting(database& db) : DB(db) {}
-
-      virtual uint32_t GetReverseAuctionWindowSeconds() override { return STEEM_REVERSE_AUCTION_WINDOW_SECONDS; }
-      virtual const share_type& GetCommentNetRshares( const comment_object& comment ) override { return comment.net_rshares; }
-      virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) override { return comment.vote_rshares; }
-
-      virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta ) override
-         {
-            DB.modify( comment, [&]( comment_object& c )
-            {
-               c.total_vote_weight += delta;
-            });
-         }
-
-      virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                                  const int16_t& opWeight ) override
-      {
-         if( CVO == nullptr )
-            CVO = &DB.create<comment_vote_object>( [&]( comment_vote_object& cv ){
-               cv.voter   = voterId;
-               cv.comment = commentId;
-               cv.vote_percent = opWeight;
-               cv.last_update = DB.head_block_time();
-            });
-
-         return *CVO;
-      }
-
-      virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                    const int64_t& voter_abs_rshares, bool is_recast ) override
-      {
-         // Note that SMT implementation returns 0 from here, thus children_abs_rshares stays a STEEM only field.
-         if( DB.has_hardfork( STEEM_HARDFORK_0_17__769 ) )
-            return fc::uint128_t();
-
-         auto old_root_abs_rshares = root.children_abs_rshares.value;
-
-         fc::uint128_t cur_cashout_time_sec = DB.calculate_discussion_payout_time( comment ).sec_since_epoch();
-         fc::uint128_t new_cashout_time_sec;
-
-         if( DB.has_hardfork( STEEM_HARDFORK_0_12__177 ) && !DB.has_hardfork( STEEM_HARDFORK_0_13__257)  )
-            new_cashout_time_sec = DB.head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF17;
-         else
-            new_cashout_time_sec = DB.head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF12;
-
-         if( is_recast )
-         {
-            if( DB.has_hardfork( STEEM_HARDFORK_0_14__259 ) && voter_abs_rshares == 0 )
-               return cur_cashout_time_sec;
-            else
-               return ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * voter_abs_rshares ) /
-                      ( old_root_abs_rshares + voter_abs_rshares );
-         }
-         else
-            return ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * voter_abs_rshares ) /
-                   ( old_root_abs_rshares + voter_abs_rshares );
-      }
-
-      virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
-                                                  const share_type& old_vote_rshares ) override
-      {
-         share_type comment_vote_rshares = GetCommentVoteRshares( comment );
-         if( comment.created < fc::time_point_sec(STEEM_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
-            u512 rshares3(rshares);
-            u256 total2( comment.abs_rshares.value );
-
-            if( !DB.has_hardfork( STEEM_HARDFORK_0_1 ) )
-            {
-               rshares3 *= 1000000;
-               total2 *= 1000000;
-            }
-
-            rshares3 = rshares3 * rshares3 * rshares3;
-
-            total2 *= total2;
-            return static_cast<uint64_t>( rshares3 / total2 );
-         }
-         
-         // cv.weight = W(R_1) - W(R_0)
-         const uint128_t two_s = 2 * util::get_content_constant_s();
-         if( DB.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
-         {
-#pragma message( "TODO: Make this block common with SMT implementation of this method." )
-#pragma message( "TODO: Use abstract methods to aquire reward curve and content constant here (stored in SMT object)." )
-            const auto& reward_fund = DB.get_reward_fund( comment );
-            auto curve = !DB.has_hardfork( STEEM_HARDFORK_0_19__1052 ) && comment.created > STEEM_HF_19_SQRT_PRE_CALC
-                           ? curve_id::square_root : reward_fund.curation_reward_curve;
-            uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
-            uint64_t new_weight = util::evaluate_reward_curve( comment_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
-            return new_weight - old_weight;
-         }
-         
-         if ( DB.has_hardfork( STEEM_HARDFORK_0_1 ) )
-         {
-            uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( two_s + old_vote_rshares.value ) ).to_uint64();
-            uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment_vote_rshares.value ) ) / ( two_s + comment_vote_rshares.value ) ).to_uint64();
-            return new_weight - old_weight;
-         }
-
-         uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( two_s + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
-         uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment_vote_rshares.value ) ) / ( two_s + ( 1000000 * comment_vote_rshares.value ) ) ).to_uint64();
-         return new_weight - old_weight;
-      }
-      
-      virtual void UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower,
-                                     const time_point_sec& newLastVoteTime) override
-      {
-         DB.modify( voter, [&]( account_object& a ){
-            a.voting_power = newVotingPower;
-            a.last_vote_time = newLastVoteTime;
-         });
-      }
-
-      virtual void UpdateComment( const comment_object& comment, const int64_t& vote_rshares, const int64_t& vote_absRshares ) override
-      {
-         DB.modify( comment, [&]( comment_object& c ){
-            c.net_rshares += vote_rshares;
-            c.abs_rshares += vote_absRshares;
-            if( vote_rshares > 0 )
-               c.vote_rshares += vote_rshares;
-#pragma message( "TODO: Exclude net_votes modification outside, so it was done once per vote." )
-            if( vote_rshares > 0 )
-               c.net_votes++;
-            else
-               c.net_votes--;
-            if( !DB.has_hardfork( STEEM_HARDFORK_0_6__114 ) && c.net_rshares == -c.abs_rshares)
-               FC_ASSERT( c.net_votes < 0, "Comment has negative net votes?" );
-         });
-      }
-
-      virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                        const int64_t& recast_rshares, const int64_t& vote_absRshares ) override
-      {
-         DB.modify( comment, [&]( comment_object& c )
-         {
-            c.net_rshares -= vote.rshares;
-            c.net_rshares += recast_rshares;
-            c.abs_rshares += vote_absRshares;
-#pragma message( "TODO: Exclude net_votes modification outside, so it was done once per vote." )
-            /// TODO: figure out how to handle remove a vote (rshares == 0 )
-            if( recast_rshares > 0 && vote.rshares < 0 )
-               c.net_votes += 2;
-            else if( recast_rshares > 0 && vote.rshares == 0 )
-               c.net_votes += 1;
-            else if( recast_rshares == 0 && vote.rshares < 0 )
-               c.net_votes += 1;
-            else if( recast_rshares == 0 && vote.rshares > 0 )
-               c.net_votes -= 1;
-            else if( recast_rshares < 0 && vote.rshares == 0 )
-               c.net_votes -= 1;
-            else if( recast_rshares < 0 && vote.rshares > 0 )
-               c.net_votes -= 2;
-         });
-      }
-
-      virtual void UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override
-      {
-         DB.modify( root, [&]( comment_object& c )
-         {
-            c.children_abs_rshares += vote_absRshares;
-
-            if( !DB.has_hardfork( STEEM_HARDFORK_0_17__769 ) )
-            {
-               if( DB.has_hardfork( STEEM_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
-                  c.cashout_time = c.last_payout + STEEM_SECOND_CASHOUT_WINDOW;
-               else
-                  c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
-
-               if( c.max_cashout_time == fc::time_point_sec::maximum() )
-                  c.max_cashout_time = DB.head_block_time() + fc::seconds( STEEM_MAX_CASHOUT_WINDOW_SECONDS );
-            }
-         });
-      }
-
-      virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares ) override
-      {
-         DB.modify( cvo, [&]( comment_vote_object& cv ){
-            cv.rshares = rshares;
-            cv.weight = vote_weight;
-         });
-      }
-
-      virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) override
-      {
-#pragma message("TODO: Find out whether SMT need their counterpart of total_reward_shares2")
-      if( !DB.has_hardfork( STEEM_HARDFORK_0_17__774) )
-         DB.adjust_rshares2( c, old_rshares2, new_rshares2 );
-      }
-
-      virtual void UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight ) override
-      {
-         DB.modify( vote, [&]( comment_vote_object& cv )
-         {
-            cv.rshares = rshares;
-            cv.vote_percent = opWeight;
-            cv.last_update = DB.head_block_time();
-            cv.weight = 0;
-            cv.num_changes += 1;
-         });
-      }
-
-      private:
-      database&                  DB;
-      const comment_vote_object* CVO = nullptr;
-   };
-
-   TSteemVoting steemVoting( _db );
+   TSteemVotingHelper steemVoting( _db );
 
    if( itr == comment_vote_idx.end() )
    {
