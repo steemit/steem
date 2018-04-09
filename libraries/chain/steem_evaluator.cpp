@@ -1205,25 +1205,17 @@ struct TVoterAssetInfo {
    int64_t           abs_rshares = 0;
 };
 
-class IAssetVotingParameters
-{
-   public:
-   virtual uint32_t GetMinimalVoteInterval() const = 0;
-   virtual uint32_t GetVoteRegenerationPeriod() const = 0;
-   virtual uint32_t GetVotesPerRegenerationPeriod() const = 0;
-};
-
-void calculate_power_shares( TVoterAssetInfo* info, const IAssetVotingParameters& params,
+void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info,
                              const time_point_sec& last_vote_time, const uint16_t& voting_power, const uint64_t& vote_weight,
                              const uint64_t& voter_effective_vesting_shares, const database& db )
 {
    int64_t elapsed_seconds = (db.head_block_time() - last_vote_time).to_seconds();
 
    if( db.has_hardfork( STEEM_HARDFORK_0_11 ) )
-      FC_ASSERT( elapsed_seconds >= params.GetMinimalVoteInterval(), 
-                 "Can only vote once every ${sec} seconds.", ("sec", params.GetMinimalVoteInterval()) );
+      FC_ASSERT( elapsed_seconds >= voting_helper->GetMinimalVoteInterval(), 
+                 "Can only vote once every ${sec} seconds.", ("sec", voting_helper->GetMinimalVoteInterval()) );
 
-   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / params.GetVoteRegenerationPeriod();
+   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / voting_helper->GetVoteRegenerationPeriod();
    info->current_power = std::min( int64_t(voting_power + regenerated_power), int64_t(STEEM_100_PERCENT) );
    FC_ASSERT( info->current_power > 0, "Account currently does not have voting power." );
 
@@ -1233,7 +1225,7 @@ void calculate_power_shares( TVoterAssetInfo* info, const IAssetVotingParameters
    info->used_power = ((info->current_power * abs_weight) / STEEM_100_PERCENT) * (60*60*24);
 
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = params.GetVotesPerRegenerationPeriod() * params.GetVoteRegenerationPeriod();
+   int64_t max_vote_denom = voting_helper->GetVotesPerRegenerationPeriod() * voting_helper->GetVoteRegenerationPeriod();
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
@@ -1264,39 +1256,7 @@ void calculate_power_shares( TVoterAssetInfo* info, const IAssetVotingParameters
    }
 }
 
-typedef std::vector<TVoterAssetInfo> TVoterAssetInfoContainer;
-
-void prepare_voter_asset_info( TVoterAssetInfoContainer* infoContainer, const account_object& voter, const vote_operation& o,
-                               const database& db )
-{
-   FC_ASSERT(infoContainer != nullptr);
-
-   // STEEM is always a votable token.
-   infoContainer->emplace_back( TVoterAssetInfo() );
-   TVoterAssetInfo& steem_info = infoContainer->back();
-   class TSteemVotingParameters : public IAssetVotingParameters
-   {
-      public:
-      TSteemVotingParameters( const database& db )
-      {
-         const dynamic_global_property_object& dgpo = db.get_dynamic_global_properties();
-         VotesPerRegenerationPeriod = dgpo.vote_power_reserve_rate;
-      }
-      virtual uint32_t GetMinimalVoteInterval() const override { return STEEM_MIN_VOTE_INTERVAL_SEC; }
-      virtual uint32_t GetVoteRegenerationPeriod() const override { return STEEM_VOTE_REGENERATION_SECONDS; }
-      virtual uint32_t GetVotesPerRegenerationPeriod() const override { return VotesPerRegenerationPeriod; }
-
-      private:
-      uint32_t VotesPerRegenerationPeriod = 0;
-   };
-   calculate_power_shares( &steem_info, TSteemVotingParameters(db), voter.last_vote_time, voter.voting_power, o.weight,
-                           db.get_effective_vesting_shares( voter, steem_info.liquid_symbol.get_paired_symbol() ).amount.value, db );
-   
-   //voter
-   //calculate_power_shares( &smt_info, TSMTVotingParameters(x,y), voter.last_smt_vote_time, voter.voting_power );
-}
-
-void cast_vote( const TVoterAssetInfo& info, IVotingHelper* voting_helper, const vote_operation& o, const account_object& voter,
+void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo info, const vote_operation& o, const account_object& voter,
                 const comment_object& comment, database& db )
 {
    FC_ASSERT( o.weight != 0, "Vote weight cannot be 0." );
@@ -1390,7 +1350,7 @@ void cast_vote( const TVoterAssetInfo& info, IVotingHelper* voting_helper, const
    voting_helper->UpdateCommentRshares2( comment, old_rshares, new_rshares );
 }
 
-void recast_vote( const TVoterAssetInfo& info, IVotingHelper* voting_helper, const vote_operation& o, const account_object& voter,
+void recast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const vote_operation& o, const account_object& voter,
                   const comment_object& comment, const comment_vote_object& vote, database& db )
 {
    FC_ASSERT( vote.num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
@@ -1478,20 +1438,22 @@ void vote_evaluator::do_apply( const vote_operation& o )
       itr = comment_vote_idx.end();
    }
 
-   TVoterAssetInfoContainer voter_asset_info_container;
-   prepare_voter_asset_info( &voter_asset_info_container, voter, o, _db );
-
+   TVoterAssetInfo info;
    TSteemVotingHelper steemVoting( _db );
+   calculate_power_shares( &steemVoting, &info, voter.last_vote_time, voter.voting_power, o.weight,
+                           _db.get_effective_vesting_shares( voter, STEEM_SYMBOL.get_paired_symbol() ).amount.value, _db );
 
    if( itr == comment_vote_idx.end() )
    {
-      for( const TVoterAssetInfo& info : voter_asset_info_container )
-         cast_vote( info, &steemVoting, o, voter, comment, _db );
+      //for( const TVoterAssetInfo& info : voter_asset_info_container )
+      //   cast_vote( info, &steemVoting, o, voter, comment, _db );
+      cast_vote( &steemVoting, info, o, voter, comment, _db );
    }
    else
    {
-      for( const TVoterAssetInfo& info : voter_asset_info_container )
-         recast_vote( info, &steemVoting, o, voter, comment, *itr, _db );
+      //for( const TVoterAssetInfo& info : voter_asset_info_container )
+      //   recast_vote( info, &steemVoting, o, voter, comment, *itr, _db );
+      recast_vote( &steemVoting, info, o, voter, comment, *itr, _db );
    }
 
 } FC_CAPTURE_AND_RETHROW( (o)) }

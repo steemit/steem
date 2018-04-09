@@ -31,7 +31,11 @@ namespace steem { namespace chain {
    class IVotingHelper
    {
       public:
+      virtual uint32_t GetMinimalVoteInterval() const = 0;
+      virtual uint32_t GetVoteRegenerationPeriod() const = 0;
+      virtual uint32_t GetVotesPerRegenerationPeriod() const = 0;
       virtual uint32_t GetReverseAuctionWindowSeconds() = 0;
+
       virtual const share_type& GetCommentNetRshares( const comment_object& comment ) = 0;
       virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) = 0;
 
@@ -58,9 +62,13 @@ namespace steem { namespace chain {
    class TSteemVotingHelper: public IVotingHelper
    {
       public:
-      TSteemVotingHelper(database& db) : DB(db) {}
+      TSteemVotingHelper(database& db);
 
+      virtual uint32_t GetMinimalVoteInterval() const override { return STEEM_MIN_VOTE_INTERVAL_SEC; }
+      virtual uint32_t GetVoteRegenerationPeriod() const override { return STEEM_VOTE_REGENERATION_SECONDS; }
+      virtual uint32_t GetVotesPerRegenerationPeriod() const override { return VotesPerRegenerationPeriod; }
       virtual uint32_t GetReverseAuctionWindowSeconds() override { return STEEM_REVERSE_AUCTION_WINDOW_SECONDS; }
+
       virtual const share_type& GetCommentNetRshares( const comment_object& comment ) override;
       virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) override;
       virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta ) override;
@@ -82,6 +90,7 @@ namespace steem { namespace chain {
 
       private:
       database&                  DB;
+      uint32_t                   VotesPerRegenerationPeriod = 0;
       const comment_vote_object* CVO = nullptr;
    };
 

@@ -10,6 +10,12 @@
 
 namespace steem { namespace chain {
 
+TSteemVotingHelper::TSteemVotingHelper(database& db) : DB(db)
+   {
+      const dynamic_global_property_object& dgpo = DB.get_dynamic_global_properties();
+      VotesPerRegenerationPeriod = dgpo.vote_power_reserve_rate;
+   }
+
 const share_type& TSteemVotingHelper::GetCommentNetRshares( const comment_object& comment ) { return comment.net_rshares; }
 const share_type& TSteemVotingHelper::GetCommentVoteRshares( const comment_object& comment ) { return comment.vote_rshares; }
 
