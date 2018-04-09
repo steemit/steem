@@ -267,7 +267,7 @@ namespace golos {
             DEFINE_API(account_by_key_plugin, get_key_references) {
                 auto tmp = args.args->at(0).as<vector<public_key_type>>();
                 auto &db = my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return my->get_key_references(tmp);
                 });
             }

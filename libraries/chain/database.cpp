@@ -128,7 +128,7 @@ namespace golos {
                     }
                 }
 
-                with_read_lock([&]() {
+                with_strong_read_lock([&]() {
                     init_hardforks(); // Writes to local state, but reads from db
                 });
 
@@ -681,7 +681,7 @@ namespace golos {
                 skip_block_size_check;
 
             if ((skip & validate_block_steps) != validate_block_steps) {
-                with_read_lock([&](){
+                with_strong_read_lock([&](){
                     _validate_block(new_block, skip);
                 });
 
@@ -3037,7 +3037,7 @@ namespace golos {
                 // this method can be used only for push_transaction(),
                 //  because such transactions only added to pending list,
                 //  and they will be rechecked on block generation
-                with_read_lock([&] {
+                with_weak_read_lock([&] {
                     _validate_transaction(trx, skip);
                 });
 

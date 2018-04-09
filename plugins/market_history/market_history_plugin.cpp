@@ -361,7 +361,7 @@ namespace golos {
             }
 
             std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(string owner) const {
-                return _db.with_read_lock([&]() {
+                return _db.with_weak_read_lock([&]() {
                     std::vector<limit_order> result;
                     const auto &idx = _db.get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_account>();
                     auto itr = idx.lower_bound(owner);
@@ -451,14 +451,14 @@ namespace golos {
 
             DEFINE_API(market_history_plugin, get_ticker) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_ticker();
                 });
             }
 
             DEFINE_API(market_history_plugin, get_volume) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_volume();
                 });
             }
@@ -467,7 +467,7 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto limit = args.args->at(0).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_order_book(limit);
                 });
             }
@@ -476,7 +476,7 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto limit = args.args->at(0).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_order_book_extended(limit);
                 });
             }
@@ -488,7 +488,7 @@ namespace golos {
                 auto end = args.args->at(1).as<time_point_sec>();
                 auto limit = args.args->at(2).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_trade_history(start, end, limit);
                 });
             }
@@ -497,7 +497,7 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto limit = args.args->at(0).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_recent_trades(limit);
                 });
             }
@@ -508,14 +508,14 @@ namespace golos {
                 auto start = args.args->at(1).as<time_point_sec>();
                 auto end = args.args->at(2).as<time_point_sec>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_market_history(bucket_seconds, start, end);
                 });
             }
 
             DEFINE_API(market_history_plugin, get_market_history_buckets) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_market_history_buckets();
                 });
             }
@@ -523,7 +523,7 @@ namespace golos {
             DEFINE_API(market_history_plugin, get_open_orders) {
                 auto tmp = args.args->at(0).as<string>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_open_orders(tmp);
                 });
             }

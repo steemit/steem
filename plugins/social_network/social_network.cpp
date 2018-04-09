@@ -139,7 +139,7 @@ namespace golos {
                 }
 
                 comment_object::id_type get_parent(const discussion_query &query) const {
-                    return database().with_read_lock([&]() {
+                    return database().with_weak_read_lock([&]() {
                         comment_object::id_type parent;
                         if (query.parent_author && query.parent_permlink) {
                             parent = database().get_comment(*query.parent_author, *query.parent_permlink).id;
@@ -291,7 +291,7 @@ namespace golos {
 
             DEFINE_API ( social_network_t, get_languages ) {
                 auto &db = pimpl->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     get_languages_r result;
                     result = pimpl->get_languages();
                     return result;
@@ -349,7 +349,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_active_votes(author, permlink);
                 });
             }
@@ -393,7 +393,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_content_replies(author, permlink);
                 });
             }
@@ -419,7 +419,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_all_content_replies(author, permlink);
                 });
             }
@@ -555,7 +555,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_feed) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -648,7 +648,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_blog) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -678,7 +678,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_comments) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -728,7 +728,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -758,7 +758,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -770,7 +770,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -782,7 +782,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -952,7 +952,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_trending) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> return_result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -1072,7 +1072,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_promoted) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_promoted(query);
                 });
             }
@@ -1081,7 +1081,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_account_votes) {
                 CHECK_ARG_SIZE(1)
                 account_name_type voter = args.args->at(0).as<account_name_type>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<account_vote> result;
 
                     const auto &voter_acnt = pimpl->database().get_account(voter);
@@ -1148,7 +1148,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_created) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_created(query);
                 });
             }
@@ -1196,7 +1196,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_active) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_active(query);
                 });
             }
@@ -1248,7 +1248,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_cashout) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_cashout(query);
                 });
             }
@@ -1256,7 +1256,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_payout) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> return_result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -1335,7 +1335,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_votes) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_votes(query);
                 });
             }
@@ -1387,7 +1387,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_children) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_children(query);
                 });
             }
@@ -1441,7 +1441,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_hot) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_hot(query);
                 });
             }
@@ -1451,7 +1451,7 @@ namespace golos {
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
 
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_trending_tags(after, limit);
                 });
             }
@@ -1491,7 +1491,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_tags_used_by_author) {
                 CHECK_ARG_SIZE(1)
                 auto author = args.args->at(0).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_tags_used_by_author(author);
                 });
             }
@@ -1567,7 +1567,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<account_name_type>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_content(author, permlink);
                 });
             }
@@ -1581,7 +1581,7 @@ namespace golos {
                 auto before_date = args.args->at(2).as<time_point_sec>();
                 auto limit = args.args->at(3).as<uint32_t>();
 
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     try {
                         std::vector<discussion> result;
 #ifndef IS_LOW_MEM
@@ -1667,7 +1667,7 @@ namespace golos {
                 auto start_parent_author = args.args->at(0).as<account_name_type>();
                 auto start_permlink = args.args->at(1).as<string>();
                 auto limit = args.args->at(2).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit);
                 });
             }
