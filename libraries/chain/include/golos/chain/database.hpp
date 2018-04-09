@@ -89,9 +89,9 @@ namespace golos {
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size = (
                     1024l * 1024l * 1024l * 8l));
 
-            void min_free_shared_memory_size(size_t);
-            void inc_shared_memory_size(size_t);
-            void block_num_check_free_size(uint32_t);
+            void set_min_free_shared_memory_size(size_t);
+            void set_inc_shared_memory_size(size_t);
+            void set_block_num_check_free_size(uint32_t);
             void check_free_memory(bool skip_print, uint32_t current_block_num);
 
             void set_clear_votes(uint32_t clear_votes_block);
@@ -565,6 +565,8 @@ namespace golos {
             void process_hardforks();
 
             void apply_hardfork(uint32_t hardfork);
+
+            bool _resize(uint32_t block_num);
 
             ///@}
 

@@ -1043,7 +1043,8 @@ namespace golos {
 
                 info.free_size = db.free_memory();
                 info.total_size = db.max_memory();
-                info.used_size = info.total_size - info.free_size;
+                info.reserved_size = db.reserved_memory();
+                info.used_size = info.total_size - info.free_size - info.reserved_size;
 
                 info.index_list.reserve(db.index_list_size());
 

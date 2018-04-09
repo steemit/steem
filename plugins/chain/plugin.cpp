@@ -289,15 +289,15 @@ namespace chain {
 
         my->db.set_flush_interval(my->flush_interval);
         my->db.add_checkpoints(my->loaded_checkpoints);
-        my->db.require_locking(my->check_locks);
+        my->db.set_require_locking(my->check_locks);
 
-        my->db.read_wait_micro(my->read_wait_micro);
-        my->db.max_read_wait_retries(my->max_read_wait_retries);
-        my->db.write_wait_micro(my->write_wait_micro);
-        my->db.max_write_wait_retries(my->max_write_wait_retries);
+        my->db.set_read_wait_micro(my->read_wait_micro);
+        my->db.set_max_read_wait_retries(my->max_read_wait_retries);
+        my->db.set_write_wait_micro(my->write_wait_micro);
+        my->db.set_max_write_wait_retries(my->max_write_wait_retries);
 
-        my->db.inc_shared_memory_size(my->inc_shared_memory_size);
-        my->db.min_free_shared_memory_size(my->min_free_shared_memory_size);
+        my->db.set_inc_shared_memory_size(my->inc_shared_memory_size);
+        my->db.set_min_free_shared_memory_size(my->min_free_shared_memory_size);
 
         my->db.set_clear_votes(my->clear_votes_before_block);
 
@@ -306,7 +306,7 @@ namespace chain {
         }
 
         if (my->block_num_check_free_size) {
-            my->db.block_num_check_free_size(my->block_num_check_free_size);
+            my->db.set_block_num_check_free_size(my->block_num_check_free_size);
         }
 
         my->db.enable_plugins_on_push_transaction(my->enable_plugins_on_push_transaction);

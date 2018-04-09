@@ -294,11 +294,11 @@ namespace golos { namespace wallet {
                         auto kb = value / (1024);
 
                         if (gb) {
-                            return std::to_string(gb) + " G";
+                            return std::to_string(gb) + "G";
                         } else if (mb) {
-                            return std::to_string(mb) + " M";
+                            return std::to_string(mb) + "M";
                         } else if (kb) {
-                            return std::to_string(kb) + " K";
+                            return std::to_string(kb) + "K";
                         }
 
                         return std::to_string(value);
@@ -309,6 +309,7 @@ namespace golos { namespace wallet {
                     result["total_size"] = convert(info.total_size);
                     result["used_size"] = convert(info.used_size);
                     result["free_size"] = convert(info.free_size);
+                    result["reserved_size"] = convert(info.reserved_size);
                     result["index_list"] = info.index_list;
 
                     return result;

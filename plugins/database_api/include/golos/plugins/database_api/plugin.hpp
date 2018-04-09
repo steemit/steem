@@ -38,6 +38,7 @@ namespace golos {
             struct database_info {
                 std::size_t total_size;
                 std::size_t free_size;
+                std::size_t reserved_size;
                 std::size_t used_size;
 
                 std::vector<database_index_info> index_list;
@@ -473,4 +474,4 @@ FC_REFLECT((golos::plugins::database_api::operation_api_object),
            (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
 
 FC_REFLECT((golos::plugins::database_api::database_index_info), (name)(record_count))
-FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(used_size)(index_list))
+FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(reserved_size)(used_size)(index_list))

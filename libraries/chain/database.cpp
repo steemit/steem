@@ -172,6 +172,7 @@ namespace golos {
                     auto itr = _block_log.read_block(0);
                     auto last_block_num = _block_log.head()->block_num();
 
+                    set_reserved_memory(1024*1024*1024); // protect from memory fragmentations ...
                     while (itr.first.block_num() != last_block_num) {
                         auto end = fc::time_point::now();
                         auto cur_block_num = itr.first.block_num();
@@ -188,7 +189,8 @@ namespace golos {
                     }
 
                     apply_block(itr.first, skip_flags);
-                    revision(head_block_num());
+                    set_reserved_memory(0);
+                    set_revision(head_block_num());
                 });
 
                 if (_block_log.head()->block_num()) {
@@ -203,15 +205,15 @@ namespace golos {
 
         }
 
-        void database::min_free_shared_memory_size(size_t value) {
+        void database::set_min_free_shared_memory_size(size_t value) {
             _min_free_shared_memory_size = value;
         }
 
-        void database::inc_shared_memory_size(size_t value) {
+        void database::set_inc_shared_memory_size(size_t value) {
             _inc_shared_memory_size = value;
         }
 
-        void database::block_num_check_free_size(uint32_t value) {
+        void database::set_block_num_check_free_size(uint32_t value) {
             _block_num_check_free_memory = value;
         }
 
@@ -227,26 +229,52 @@ namespace golos {
             _skip_virtual_ops = true;
         }
 
+        bool database::_resize(uint32_t current_block_num) {
+            if (_inc_shared_memory_size == 0) {
+                elog("Auto-scaling of shared file size is not configured!. Do it immediately!");
+                return false;
+            }
+
+            uint64_t max_mem = max_memory();
+
+            size_t new_max = max_mem + _inc_shared_memory_size;
+            wlog(
+                "Memory is almost full on block ${block}, increasing to ${mem}M",
+                ("block", current_block_num)("mem", new_max / (1024 * 1024)));
+            resize(new_max);
+
+            uint64_t free_mem = free_memory();
+            uint64_t reserved_mem = reserved_memory();
+
+            if (free_mem > reserved_mem) {
+                free_mem -= reserved_mem;
+            }
+
+            uint32_t free_mb = uint32_t(free_mem / (1024 * 1024));
+            uint32_t reserved_mb = uint32_t(reserved_mem / (1024 * 1024));
+            wlog("Free memory is now ${free}M (${reserved}M)", ("free", free_mb)("reserved", reserved_mb));
+            _last_free_gb_printed = free_mb / 1024;
+            return true;
+        }
+
         void database::check_free_memory(bool skip_print, uint32_t current_block_num) {
             if (0 != current_block_num % _block_num_check_free_memory) {
                 return;
             }
 
+            uint64_t reserved_mem = reserved_memory();
             uint64_t free_mem = free_memory();
-            uint64_t max_mem = max_memory();
+
+            if (free_mem > reserved_mem) {
+                free_mem -= reserved_mem;
+            } else {
+                set_reserved_memory(0);
+            }
 
             if (_inc_shared_memory_size != 0 && _min_free_shared_memory_size != 0 &&
                 free_mem < _min_free_shared_memory_size
             ) {
-                size_t new_max = max_mem + _inc_shared_memory_size;
-                wlog(
-                    "Memory is almost full on block ${block}, increasing to ${mem}M",
-                    ("block", current_block_num)("mem", new_max / (1024 * 1024)));
-                resize(new_max);
-                free_mem = free_memory();
-                uint32_t free_mb = uint32_t(free_mem / (1024 * 1024));
-                wlog("Free memory is now ${free}M", ("free", free_mb));
-                _last_free_gb_printed = free_mb / 1024;
+                _resize(current_block_num);
             } else if (!skip_print && _inc_shared_memory_size == 0 && _min_free_shared_memory_size == 0) {
                 uint32_t free_gb = uint32_t(free_mem / (1024 * 1024 * 1024));
                 if ((free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed + 1)) {
@@ -755,11 +783,21 @@ namespace golos {
                 detail::without_pending_transactions(*this, skip, std::move(_pending_tx), [&]() {
                     try {
                         result = _push_block(new_block, skip);
+                        check_free_memory(false, new_block.block_num());
+                    } catch (const fc::exception &e) {
+                        auto msg = std::string(e.what());
+                        // TODO: there is no easy way to catch boost::interprocess::bad_alloc
+                        if (msg.find("boost::interprocess::bad_alloc") == msg.npos) {
+                            throw e;
+                        }
+                        wlog("Receive bad_alloc exception. Forcing to resize shared memory file.");
+                        set_reserved_memory(free_memory());
+                        if (!_resize(new_block.block_num())) {
+                            throw e;
+                        }
+                        result = _push_block(new_block, skip);
                     }
-                    FC_CAPTURE_AND_RETHROW((new_block))
                 });
-
-                check_free_memory(false, new_block.block_num());
             });
 
             //fc::time_point end_time = fc::time_point::now();
@@ -3298,8 +3336,7 @@ namespace golos {
                 notify_applied_block(next_block);
 
                 notify_changed_objects();
-            } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
-            FC_CAPTURE_LOG_AND_RETHROW((next_block.block_num()))
+            } FC_CAPTURE_LOG_AND_RETHROW((next_block.block_num()))
         }
 
         void database::process_header_extensions(const signed_block &next_block) {
