@@ -212,6 +212,8 @@ namespace golos {
 
             bool push_block(const signed_block &b, uint32_t skip = skip_nothing);
 
+            void enable_plugins_on_push_transaction(bool);
+
             void push_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
             void _maybe_warn_multiple_production(uint32_t height) const;
@@ -600,8 +602,8 @@ namespace golos {
             uint32_t _block_num_check_free_memory = 1000;
 
             uint32_t _clear_votes_block = 0;
-            
             bool _skip_virtual_ops = false;
+            bool _enable_plugins_on_push_transaction = true;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;
