@@ -93,11 +93,17 @@ namespace golos {
 
         void database::open(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags) {
             try {
+                auto start = fc::time_point::now();
+                wlog("Start opening database. Please wait, don't break application...");
+
                 init_schema();
                 chainbase::database::open(shared_mem_dir, chainbase_flags, shared_file_size);
 
                 initialize_indexes();
                 initialize_evaluators();
+
+                auto end = fc::time_point::now();
+                wlog("Done opening database, elapsed time ${t} sec", ("t", double((end - start).count()) / 1000000.0));
 
                 if (chainbase_flags & chainbase::database::read_write) {
                     if (!find<dynamic_global_property_object>()) {
@@ -167,12 +173,14 @@ namespace golos {
                     auto last_block_num = _block_log.head()->block_num();
 
                     while (itr.first.block_num() != last_block_num) {
+                        auto end = fc::time_point::now();
                         auto cur_block_num = itr.first.block_num();
                         if (cur_block_num % 100000 == 0) {
                             std::cerr
                                 << "   " << double(cur_block_num * 100) / last_block_num << "%   "
                                 << cur_block_num << " of " << last_block_num
-                                << "   ("  << (free_memory() / (1024 * 1024)) << "M free)\n";
+                                << "   ("  << (free_memory() / (1024 * 1024)) << "M free"
+                                << ", elapsed " << double((end - start).count()) / 1000000.0 << " sec)\n";
                         }
                         apply_block(itr.first, skip_flags);
                         check_free_memory(true, itr.first.block_num());
