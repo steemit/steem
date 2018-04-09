@@ -281,6 +281,36 @@ namespace golos { namespace wallet {
                         (100 * dynamic_props.recent_slots_filled.popcount()) / 128.0;
                     result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
                     result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
+
+                    return result;
+                }
+
+                variant_object database_info() const {
+                    auto info = _remote_database_api->get_database_info();
+
+                    auto convert = [](std::size_t value) {
+                        auto gb = value / (1024 * 1024 * 1024);
+                        auto mb = value / (1024 * 1024);
+                        auto kb = value / (1024);
+
+                        if (gb) {
+                            return std::to_string(gb) + " G";
+                        } else if (mb) {
+                            return std::to_string(mb) + " M";
+                        } else if (kb) {
+                            return std::to_string(kb) + " K";
+                        }
+
+                        return std::to_string(value);
+                    };
+
+                    fc::mutable_variant_object result;
+
+                    result["total_size"] = convert(info.total_size);
+                    result["used_size"] = convert(info.used_size);
+                    result["free_size"] = convert(info.free_size);
+                    result["index_list"] = info.index_list;
+
                     return result;
                 }
 
@@ -967,9 +997,14 @@ namespace golos { namespace wallet {
             return detail::normalize_brain_key( s );
         }
 
-        variant wallet_api::info()
+        variant wallet_api::info() const
         {
             return my->info();
+        }
+
+        variant_object wallet_api::database_info() const
+        {
+            return my->database_info();
         }
 
         variant_object wallet_api::about() const

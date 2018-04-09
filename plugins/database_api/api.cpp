@@ -1033,6 +1033,26 @@ namespace golos {
                 });
             }
 
+            DEFINE_API(plugin, get_database_info) {
+                CHECK_ARG_SIZE(0);
+
+                // read lock doesn't seem needed...
+
+                database_info info;
+                auto& db = my->database();
+
+                info.free_size = db.free_memory();
+                info.total_size = db.max_memory();
+                info.used_size = info.total_size - info.free_size;
+
+                info.index_list.reserve(db.index_list_size());
+
+                for (auto it = db.index_list_begin(), et = db.index_list_end(); et != it; ++it) {
+                    info.index_list.push_back({(*it)->name(), (*it)->size()});
+                }
+
+                return info;
+            }
 
             void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 ilog("database_api plugin: plugin_initialize() begin");
