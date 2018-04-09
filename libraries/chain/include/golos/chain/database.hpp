@@ -63,10 +63,11 @@ namespace golos {
                 skip_merkle_check = 1 << 7,  ///< used while reindexing
                 skip_undo_history_check = 1 << 8,  ///< used while reindexing
                 skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
-                skip_validate = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
+                skip_validate_operations = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
                 skip_validate_invariants = 1 << 11, ///< used to skip database invariant check on block application
                 skip_undo_block = 1 << 12, ///< used to skip undo db on reindex
-                skip_block_log = 1 << 13  ///< used to skip block logging on reindex
+                skip_block_log = 1 << 13,  ///< used to skip block logging on reindex
+                skip_apply_transaction = 1 << 14 ///< used to skip apply transaction
             };
 
             /**
@@ -206,6 +207,8 @@ namespace golos {
             }
 
             bool before_last_checkpoint() const;
+
+            uint32_t validate_block(const signed_block &b, uint32_t skip = skip_nothing);
 
             bool push_block(const signed_block &b, uint32_t skip = skip_nothing);
 
@@ -454,8 +457,9 @@ namespace golos {
             /**
              *  This method validates transactions without adding it to the pending state.
              *  @throw if an error occurs
+             *  @return modified skip flags
              */
-            void validate_transaction(const signed_transaction &trx);
+            uint32_t validate_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
             /** when popping a block, the transactions that were removed get cached here so they
              * can be reapplied at the proper time */
@@ -516,9 +520,13 @@ namespace golos {
 
             void apply_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
+            void _validate_block(const signed_block& next_block, uint32_t skip);
+
             void _apply_block(const signed_block &next_block, uint32_t skip);
 
             void _apply_transaction(const signed_transaction &trx, uint32_t skip);
+
+            void _validate_transaction(const signed_transaction& trx, uint32_t skip);
 
             void apply_operation(const operation &op);
 

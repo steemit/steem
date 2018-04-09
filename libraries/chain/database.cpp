@@ -150,6 +150,7 @@ namespace golos {
 
 
                 uint64_t skip_flags =
+                        skip_block_size_check |
                         skip_witness_signature |
                         skip_transaction_signatures |
                         skip_transaction_dupe_check |
@@ -157,7 +158,7 @@ namespace golos {
                         skip_merkle_check |
                         skip_witness_schedule_check |
                         skip_authority_check |
-                        skip_validate | /// no need to validate operations
+                        skip_validate_operations | /// no need to validate operations
                         skip_validate_invariants |
                         skip_block_log;
 
@@ -674,12 +675,70 @@ namespace golos {
                    (_checkpoints.rbegin()->first >= head_block_num());
         }
 
-/**
- * Push block "may fail" in which case every partial change is unwound.  After
- * push block is successful the block is appended to the chain database on disk.
- *
- * @return true if we switched forks as a result of this push.
- */
+        uint32_t database::validate_block(const signed_block& new_block, uint32_t skip) {
+            uint32_t validate_block_steps =
+                skip_merkle_check |
+                skip_block_size_check;
+
+            if ((skip & validate_block_steps) != validate_block_steps) {
+                with_read_lock([&](){
+                    _validate_block(new_block, skip);
+                });
+
+                skip |= validate_block_steps;
+
+                // it's tempting but very dangerous to check transaction signatures here
+                //   because block can contain transactions with changing of authorizity
+                //   and state can too contain changes of authorizity
+            }
+
+            return skip;
+        }
+
+        void database::_validate_block(const signed_block& new_block, uint32_t skip) {
+            uint32_t new_block_num = new_block.block_num();
+
+            if (!(skip & skip_merkle_check)) {
+                auto merkle_root = new_block.calculate_merkle_root();
+
+                try {
+                    FC_ASSERT(
+                        new_block.transaction_merkle_root == merkle_root,
+                        "Merkle check failed",
+                        ("next_block.transaction_merkle_root", new_block.transaction_merkle_root)
+                        ("calc", merkle_root)
+                        ("next_block", new_block)
+                        ("id", new_block.id()));
+                } catch (fc::assert_exception &e) {
+                    const auto &merkle_map = get_shared_db_merkle();
+                    auto itr = merkle_map.find(new_block_num);
+
+                    if (itr == merkle_map.end() || itr->second != merkle_root) {
+                        throw e;
+                    }
+                }
+            }
+
+            if (!(skip & skip_block_size_check)) {
+                const auto &gprops = get_dynamic_global_properties();
+                auto block_size = fc::raw::pack_size(new_block);
+                if (has_hardfork(STEEMIT_HARDFORK_0_12)) {
+                    FC_ASSERT(
+                        block_size <= gprops.maximum_block_size,
+                        "Block Size is too Big",
+                        ("next_block_num", new_block_num)
+                        ("block_size", block_size)
+                        ("max", gprops.maximum_block_size));
+                }
+            }
+        }
+
+       /**
+        * Push block "may fail" in which case every partial change is unwound.  After
+        * push block is successful the block is appended to the chain database on disk.
+        *
+        * @return true if we switched forks as a result of this push.
+        */
         bool database::push_block(const signed_block &new_block, uint32_t skip) {
             //fc::time_point begin_time = fc::time_point::now();
 
@@ -2958,12 +3017,93 @@ namespace golos {
         }
 
 
-        void database::validate_transaction(const signed_transaction &trx) {
-            database::with_weak_write_lock([&]() {
-                auto session = start_undo_session();
-                _apply_transaction(trx, skip_nothing);
-                session.undo();
-            });
+        uint32_t database::validate_transaction(const signed_transaction &trx, uint32_t skip) {
+            const uint32_t validate_transaction_steps =
+                skip_authority_check |
+                skip_transaction_signatures |
+                skip_validate_operations |
+                skip_tapos_check;
+
+            // in case of multi-thread application, it's allow to validate transaction in read-thread
+            if ((skip & validate_transaction_steps) != validate_transaction_steps) {
+                // this method can be used only for push_transaction(),
+                //  because such transactions only added to pending list,
+                //  and they will be rechecked on block generation
+                with_read_lock([&] {
+                    _validate_transaction(trx, skip);
+                });
+
+                skip |= validate_transaction_steps;
+            }
+
+            if (!(skip & skip_apply_transaction)) {
+                with_weak_write_lock([&]() {
+                    auto session = start_undo_session();
+                    _apply_transaction(trx, skip);
+                    session.undo();
+                });
+            }
+
+            return skip;
+        }
+
+        void database::_validate_transaction(const signed_transaction &trx, uint32_t skip) {
+            if (!(skip & skip_validate_operations)) {   /* issue #505 explains why this skip_flag is disabled */
+                trx.validate();
+            }
+
+            if (!(skip & (skip_transaction_signatures | skip_authority_check))) {
+                const chain_id_type &chain_id = STEEMIT_CHAIN_ID;
+
+                auto get_active = [&](const string &name) {
+                    return authority(get<account_authority_object, by_account>(name).active);
+                };
+
+                auto get_owner = [&](const string &name) {
+                    return authority(get<account_authority_object, by_account>(name).owner);
+                };
+
+                auto get_posting = [&](const string &name) {
+                    return authority(get<account_authority_object, by_account>(name).posting);
+                };
+
+                try {
+                    trx.verify_authority(chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH);
+                }
+                catch (protocol::tx_missing_active_auth &e) {
+                    if (get_shared_db_merkle().find(head_block_num() + 1) == get_shared_db_merkle().end()) {
+                        throw e;
+                    }
+                }
+            }
+
+            //Skip all manner of expiration and TaPoS checking if we're on block 1;
+            // It's impossible that the transaction is expired, and TaPoS makes no sense as no blocks exist.
+            if (BOOST_LIKELY(head_block_num() > 0)) {
+                if (!(skip & skip_tapos_check)) {
+                    const auto &tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
+                    //Verify TaPoS block summary has correct ID prefix,
+                    //   and that this block's time is not past the expiration
+                    FC_ASSERT(
+                        trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], "",
+                        ("trx.ref_block_prefix", trx.ref_block_prefix)
+                        ("tapos_block_summary", tapos_block_summary.block_id._hash[1]));
+                }
+
+                fc::time_point_sec now = head_block_time();
+
+                FC_ASSERT(
+                    trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
+                    ("trx.expiration", trx.expiration)("now", now)
+                    ("max_til_exp", STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
+
+                // Simple solution to pending trx bug when now == trx.expiration
+                if (is_producing() || has_hardfork(STEEMIT_HARDFORK_0_9)) {
+                    FC_ASSERT(now < trx.expiration, "", ("now", now)("trx.exp", trx.expiration));
+                }
+
+                FC_ASSERT(now <= trx.expiration, "", ("now", now)("trx.exp", trx.expiration));
+            }
         }
 
         void database::notify_changed_objects() {
@@ -3023,7 +3163,7 @@ namespace golos {
                                /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
                                | skip_undo_history_check
                                | skip_witness_schedule_check
-                               | skip_validate
+                               | skip_validate_operations
                                | skip_validate_invariants;
                     }
                 }
@@ -3069,37 +3209,15 @@ namespace golos {
         void database::_apply_block(const signed_block &next_block, uint32_t skip) {
             try {
                 uint32_t next_block_num = next_block.block_num();
+                const auto &gprops = get_dynamic_global_properties();
                 //block_id_type next_block_id = next_block.id();
 
-                if (!(skip & skip_merkle_check)) {
-                    auto merkle_root = next_block.calculate_merkle_root();
-
-                    try {
-                        FC_ASSERT(next_block.transaction_merkle_root ==
-                                  merkle_root, "Merkle check failed", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)("calc", merkle_root)("next_block", next_block)("id", next_block.id()));
-                    }
-                    catch (fc::assert_exception &e) {
-                        const auto &merkle_map = get_shared_db_merkle();
-                        auto itr = merkle_map.find(next_block_num);
-
-                        if (itr == merkle_map.end() ||
-                            itr->second != merkle_root) {
-                            throw e;
-                        }
-                    }
-                }
+                _validate_block(next_block, skip);
 
                 const witness_object &signing_witness = validate_block_header(skip, next_block);
 
                 _current_block_num = next_block_num;
                 _current_trx_in_block = 0;
-
-                const auto &gprops = get_dynamic_global_properties();
-                auto block_size = fc::raw::pack_size(next_block);
-                if (has_hardfork(STEEMIT_HARDFORK_0_12)) {
-                    FC_ASSERT(block_size <=
-                              gprops.maximum_block_size, "Block Size is too Big", ("next_block_num", next_block_num)("block_size", block_size)("max", gprops.maximum_block_size));
-                }
 
                 /// modify current witness so transaction evaluators can know who included the transaction,
                 /// this is mostly for POW operations which must pay the current_witness
@@ -3288,35 +3406,15 @@ namespace golos {
             try {
                 _current_trx_id = trx.id();
 
-                if (!(skip & skip_validate)) {   /* issue #505 explains why this skip_flag is disabled */
-                    trx.validate();
-                }
-
                 auto &trx_idx = get_index<transaction_index>();
-                const chain_id_type &chain_id = STEEMIT_CHAIN_ID;
                 auto trx_id = trx.id();
                 // idump((trx_id)(skip&skip_transaction_dupe_check));
                 FC_ASSERT((skip & skip_transaction_dupe_check) ||
-                          trx_idx.indices().get<by_trx_id>().find(trx_id) ==
-                          trx_idx.indices().get<by_trx_id>().end(),
-                        "Duplicate transaction check failed", ("trx_ix", trx_id));
+                          trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
+                          "Duplicate transaction check failed", ("trx_ix", trx_id));
 
-                if (!(skip &
-                      (skip_transaction_signatures | skip_authority_check))) {
-                    auto get_active = [&](const string &name) { return authority(get<account_authority_object, by_account>(name).active); };
-                    auto get_owner = [&](const string &name) { return authority(get<account_authority_object, by_account>(name).owner); };
-                    auto get_posting = [&](const string &name) { return authority(get<account_authority_object, by_account>(name).posting); };
+                _validate_transaction(trx, skip);
 
-                    try {
-                        trx.verify_authority(chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH);
-                    }
-                    catch (protocol::tx_missing_active_auth &e) {
-                        if (get_shared_db_merkle().find(head_block_num() + 1) ==
-                            get_shared_db_merkle().end()) {
-                            throw e;
-                        }
-                    }
-                }
                 flat_set<account_name_type> required;
                 vector<authority> other;
                 trx.get_required_authorities(required, required, required, other);
@@ -3331,38 +3429,10 @@ namespace golos {
                     for (const auto &op : trx.operations) {
                         if (is_market_operation(op)) {
                             old_update_account_bandwidth(acnt, trx_size, bandwidth_type::old_market);
-                            update_account_bandwidth(acnt,
-                                    trx_size * 10, bandwidth_type::market);
+                            update_account_bandwidth(acnt, trx_size * 10, bandwidth_type::market);
                             break;
                         }
                     }
-                }
-
-
-
-                //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
-                //expired, and TaPoS makes no sense as no blocks exist.
-                if (BOOST_LIKELY(head_block_num() > 0)) {
-                    if (!(skip & skip_tapos_check)) {
-                        const auto &tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
-                        //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-                        FC_ASSERT(trx.ref_block_prefix ==
-                                  tapos_block_summary.block_id._hash[1],
-                                "", ("trx.ref_block_prefix", trx.ref_block_prefix)
-                                ("tapos_block_summary", tapos_block_summary.block_id._hash[1]));
-                    }
-
-                    fc::time_point_sec now = head_block_time();
-
-                    FC_ASSERT(trx.expiration <= now +
-                                                fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
-                            ("trx.expiration", trx.expiration)("now", now)("max_til_exp", STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
-                    if (is_producing() ||
-                        has_hardfork(STEEMIT_HARDFORK_0_9)) // Simple solution to pending trx bug when now == trx.expiration
-                        FC_ASSERT(now <
-                                  trx.expiration, "", ("now", now)("trx.exp", trx.expiration));
-                    FC_ASSERT(now <=
-                              trx.expiration, "", ("now", now)("trx.exp", trx.expiration));
                 }
 
                 //Insert transaction into unique transactions database.

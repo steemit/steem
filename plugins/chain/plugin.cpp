@@ -96,6 +96,8 @@ namespace chain {
 
         check_time_in_block(block);
 
+        skip = db.validate_block(block, skip);
+
         if (single_write_thread) {
             std::promise<bool> promise;
             auto result = promise.get_future();
@@ -114,13 +116,15 @@ namespace chain {
     }
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
+        uint32_t skip = db.validate_transaction(trx, db.skip_apply_transaction);
+
         if (single_write_thread) {
             std::promise<bool> promise;
             auto wait = promise.get_future();
 
             io_service().post([&]{
                 try {
-                    db.push_transaction(trx);
+                    db.push_transaction(trx, skip);
                     promise.set_value(true);
                 } catch(...) {
                     promise.set_exception(std::current_exception());
@@ -128,7 +132,7 @@ namespace chain {
             });
             wait.get(); // if an exception was, it will be thrown
         } else {
-            db.push_transaction(trx);
+            db.push_transaction(trx, skip);
         }
     }
 
