@@ -1058,14 +1058,12 @@ FC_REFLECT( steem::plugins::condenser_api::api_limit_order_object,
 FC_REFLECT( steem::plugins::condenser_api::api_operation_object,
              (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
 
+#ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
-#ifdef STEEM_ENABLE_SMT
-             (last_smt_vote_time)
-#endif
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)(last_smt_vote_time)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -1077,7 +1075,24 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)
           )
-
+#else
+FC_REFLECT( steem::plugins::condenser_api::api_account_object,
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (created)(mined)
+             (recovery_account)(last_account_recovery)(reset_account)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+             (balance)
+             (savings_balance)
+             (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
+             (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
+             (reward_sbd_balance)(reward_steem_balance)(reward_vesting_balance)(reward_vesting_steem)
+             (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
+             (curation_rewards)
+             (posting_rewards)
+             (proxied_vsf_votes)(witnesses_voted_for)
+             (last_post)(last_root_post)
+          )
+#endif
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::condenser_api::api_account_object),
             (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
             (vesting_balance)(reputation)(transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended) )
