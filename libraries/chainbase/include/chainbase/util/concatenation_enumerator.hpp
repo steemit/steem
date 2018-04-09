@@ -524,24 +524,13 @@ namespace ce
             find< DIRECTION >();
          }
 
-         template< typename... ELEMENTS >
-         concatenation_iterator( const CMP& _cmp, bool status, ELEMENTS... elements )
-         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
-         {
-            //This constructor is invoked only by 'reverse_iterator' class.
-            if( status )
-               add< true/*INACTIVE*/, true/*POSITION*/ >( elements... );
-            else
-               add< false/*INACTIVE*/, false/*POSITION*/ >( elements... );
-         }
-
          concatenation_iterator( const CMP& _cmp )
          : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
          {
          }
 
          template< typename... ELEMENTS >
-         static void create_end_internal( concatenation_iterator& ci, bool status, Direction _direction, int32_t start_pos, ELEMENTS... elements )
+         static void prepare( concatenation_iterator& ci, bool status, Direction _direction, int32_t start_pos, ELEMENTS... elements )
          {
             ci.idx.current = start_pos;
             ci.direction = _direction;
@@ -555,7 +544,7 @@ namespace ce
          template< typename... ELEMENTS >
          static void create_end( concatenation_iterator& ci, ELEMENTS... elements )
          {
-            create_end_internal( ci, false/*status*/, Direction::next, pos_end, elements... );
+            prepare( ci, false/*status*/, Direction::next, pos_end, elements... );
          }
 
       public:
@@ -691,7 +680,7 @@ namespace ce
          template< typename... ELEMENTS >
          static void create_end( concatenation_reverse_iterator& ci, ELEMENTS... elements )
          {
-            base_class::create_end_internal( ci, true/*status*/, Direction::prev, base_class::pos_begin, elements... );
+            base_class::prepare( ci, true/*status*/, Direction::prev, base_class::pos_begin, elements... );
          }
 
       public:
@@ -704,9 +693,10 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_reverse_iterator( const CMP& _cmp, ELEMENTS... elements )
-         : concatenation_iterator< OBJECT, CMP >( _cmp, false/*status*/, elements... )
+         : base_class( _cmp )
          {
-            this->idx.current = this->pos_end;
+            base_class::prepare( *this, false/*status*/, Direction::next, base_class::pos_end, elements... );
+
             this-> template action< Direction::prev >();
          }
 
@@ -808,6 +798,8 @@ namespace ce
             return false;
          }
 
+      protected:
+
          template< Direction DIRECTION, int32_t position >
          void find_with_key_search()
          {
@@ -842,20 +834,11 @@ namespace ce
             copy_containers( obj );
          }
 
-         concatenation_iterator_proxy( const CMP& _cmp )
-         : base_class( _cmp )
-         {
-         }
-
          template< typename... ELEMENTS >
-         concatenation_iterator_proxy( const CMP& _cmp, bool status, ELEMENTS... elements )
+         concatenation_iterator_proxy( const CMP& _cmp, ELEMENTS... elements )
                                  : base_class( _cmp, elements... )
          {
             add( elements... );
-            if( status )
-               find_with_key_search< Direction::next, this->pos_end >();
-            else
-               find_with_key_search< Direction::prev, this->pos_begin >();
          }
 
          concatenation_iterator_proxy& operator=( const concatenation_iterator_proxy& obj )
@@ -901,8 +884,9 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
-                                 : base_class( _cmp, true/*status*/, elements... )
+                                 : base_class( _cmp, elements... )
          {
+            this-> template find_with_key_search< Direction::next, this->pos_end >();
          }
 
          concatenation_iterator_ex& operator++()
@@ -948,15 +932,11 @@ namespace ce
 
       public:
 
-         concatenation_reverse_iterator_ex( const concatenation_iterator_ex< OBJECT, CMP >& obj )
-                                 : base_class( obj )
-         {
-         }
-
          template< typename... ELEMENTS >
          concatenation_reverse_iterator_ex( const CMP& _cmp, ELEMENTS... elements )
-                                 : base_class( _cmp, false/*status*/, elements... )
+                                 : base_class( _cmp, elements... )
          {
+            this-> template find_with_key_search< Direction::prev, this->pos_begin >();
          }
 
          concatenation_reverse_iterator_ex& operator++()
