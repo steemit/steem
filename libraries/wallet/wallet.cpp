@@ -1072,6 +1072,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             my->encrypt_keys();
         }
 
+        void wallet_api::quit() {
+            my->self.quit_command();
+        }
+
         void wallet_api::lock() {
             try {
                 FC_ASSERT( !is_locked() );
