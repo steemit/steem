@@ -161,7 +161,7 @@ namespace golos {
 
                 void p2p_plugin_impl::handle_transaction(const trx_message &trx_msg) {
                     try {
-                        chain.db().push_transaction(trx_msg.trx);
+                        chain.accept_transaction(trx_msg.trx);
                     } FC_CAPTURE_AND_RETHROW((trx_msg))
                 }
 
@@ -435,17 +435,19 @@ namespace golos {
             }
 
             void p2p_plugin::set_program_options(boost::program_options::options_description &cli, boost::program_options::options_description &cfg) {
-                cfg.add_options()("p2p-endpoint", boost::program_options::value<string>()->implicit_value("127.0.0.1:9876"),
-                                  "The local IP address and port to listen for incoming connections.")(
-                        "p2p-max-connections", boost::program_options::value<uint32_t>(),
-                        "Maxmimum number of incoming connections on P2P endpoint.")("seed-node", boost::program_options::value<
-                                                                                            vector<string>>()->composing(),
-                                                                                    "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")(
-                        "p2p-seed-node", boost::program_options::value<vector<string>>()->composing(),
+                cfg.add_options()
+                    ("p2p-endpoint", boost::program_options::value<string>()->implicit_value("127.0.0.1:9876"),
+                        "The local IP address and port to listen for incoming connections.")
+                    ("p2p-max-connections", boost::program_options::value<uint32_t>(),
+                        "Maxmimum number of incoming connections on P2P endpoint.")
+                    ("seed-node", boost::program_options::value<vector<string>>()->composing(),
+                        "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
+                    ("p2p-seed-node", boost::program_options::value<vector<string>>()->composing(),
                         "The IP address and port of a remote peer to sync with.");
-                cli.add_options()("force-validate", boost::program_options::bool_switch()->default_value(false),
-                                  "Force validation of all transactions. Deprecated in favor of p2p-force-validate")(
-                        "p2p-force-validate", boost::program_options::bool_switch()->default_value(false),
+                cli.add_options()
+                    ("force-validate", boost::program_options::bool_switch()->default_value(false),
+                        "Force validation of all transactions. Deprecated in favor of p2p-force-validate")
+                    ("p2p-force-validate", boost::program_options::bool_switch()->default_value(false),
                         "Force validation of all transactions.");
             }
 

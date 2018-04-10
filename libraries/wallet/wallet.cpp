@@ -212,7 +212,8 @@ namespace golos { namespace wallet {
                     _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
                     _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
                     _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
-                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) )
+                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) ),
+                    _remote_account_by_key( con.get_remote_api< golos::wallet::remote_account_by_key>( 0, "account_by_key" ) )
                 {
                     init_prototype_ops();
 
@@ -266,18 +267,21 @@ namespace golos { namespace wallet {
                 }
 
                 variant info() const {
-                    //auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
-                    //fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
-                    fc::mutable_variant_object result;
-                    //result["witness_majority_version"] = std::string( _remote_database_api->get_witness_schedule().majority_version );
-                    //result["hardfork_version"] = std::string( _remote_database_api->get_hardfork_version() );
-                    //result["head_block_num"] = dynamic_props.head_block_number;
-                    //result["head_block_id"] = dynamic_props.head_block_id;
-                    //result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time, time_point_sec(time_point::now()), " old");
-                    //result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
-                    //result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
-                    //result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
-                    //result["post_reward_fund"] = fc::variant(_remote_api->get_reward_fund( STEEM_POST_REWARD_FUND_NAME )).get_object();
+                    auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
+                    fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
+                    result["witness_majority_version"] =
+                        std::string(_remote_database_api->get_witness_schedule().majority_version);
+                    result["hardfork_version"] =
+                        std::string(_remote_database_api->get_hardfork_version());
+                    result["head_block_num"] = dynamic_props.head_block_number;
+                    result["head_block_id"] = dynamic_props.head_block_id;
+                    result["head_block_age"] =
+                        fc::get_approximate_relative_time_string(
+                            dynamic_props.time, time_point_sec(time_point::now()), " old");
+                    result["participation"] =
+                        (100 * dynamic_props.recent_slots_filled.popcount()) / 128.0;
+                    result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
+                    result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
                     return result;
                 }
 
@@ -825,6 +829,7 @@ namespace golos { namespace wallet {
                 fc::api< remote_follow >                _remote_follow;
                 fc::api< remote_market_history >        _remote_market_history;
                 fc::api< remote_private_message >       _remote_private_message;
+                fc::api< remote_account_by_key >        _remote_account_by_key;
                 uint32_t                                _tx_expiration_seconds = 30;
 
                 flat_map<string, operation>             _prototype_ops;
@@ -872,7 +877,7 @@ namespace golos { namespace wallet {
             for( const auto& item : my->_keys )
                 pub_keys.push_back(item.first);
 
-            auto refs = my->_remote_database_api->get_key_references( pub_keys );
+            auto refs = my->_remote_account_by_key->get_key_references( pub_keys );
             set<string> names;
             for( const auto& item : refs )
                 for( const auto& name : item )
@@ -1065,6 +1070,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         void wallet_api::encrypt_keys()
         {
             my->encrypt_keys();
+        }
+
+        void wallet_api::quit() {
+            my->self.quit_command();
         }
 
         void wallet_api::lock() {

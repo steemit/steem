@@ -43,7 +43,6 @@ RUN \
         -DCMAKE_BUILD_TYPE=Debug \
         -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=FALSE \
-        -DCLEAR_VOTES=TRUE \
         -DMAX_19_VOTED_WITNESSES=TRUE \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
@@ -61,7 +60,6 @@ RUN \
         -DENABLE_COVERAGE_TESTING=TRUE \
         -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=FALSE \
-        -DCLEAR_VOTES=TRUE \
         -DMAX_19_VOTED_WITNESSES=TRUE \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
