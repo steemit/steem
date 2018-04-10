@@ -8,8 +8,13 @@
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/social_network/languages/language_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+
+// These visitors creates additional tables, we don't really need them in LOW_MEM mode
+#ifndef IS_LOW_MEM
 #include <golos/plugins/social_network/tag/tag_visitor.hpp>
 #include <golos/plugins/social_network/languages/language_visitor.hpp>
+#endif
+
 #include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(s) \
@@ -99,8 +104,10 @@ namespace golos {
                 void on_operation(const operation_notification &note){
                     try {
                         /// plugins shouldn't ever throw
+#ifndef IS_LOW_MEM
                         note.op.visit(languages::operation_visitor(database(), cache_languages));
                         note.op.visit(tags::operation_visitor(database()));
+#endif
                     } catch (const fc::exception &e) {
                         edump((e.to_detail_string()));
                     } catch (...) {
@@ -315,6 +322,8 @@ namespace golos {
 
             void social_network_t::plugin_initialize(const boost::program_options::variables_map &options) {
                 pimpl.reset(new impl());
+// Disable index creation for tag and language visitors
+#ifndef IS_LOW_MEM
                 auto &db = pimpl->database();
                 pimpl->database().post_apply_operation.connect([&](const operation_notification &note) {
                     pimpl->on_operation(note);
@@ -328,8 +337,7 @@ namespace golos {
                 add_plugin_index<languages::language_stats_index>(db);
                 add_plugin_index<languages::peer_stats_index>(db);
                 add_plugin_index<languages::author_language_stats_index>(db);
-
-
+#endif
                 JSON_RPC_REGISTER_API ( name() ) ;
 
             }
@@ -425,12 +433,13 @@ namespace golos {
 
 
             void social_network_t::impl::set_pending_payout(discussion &d) const {
+#ifndef IS_LOW_MEM
                 const auto &cidx = database().get_index<tags::tag_index>().indices().get<tags::by_comment>();
                 auto itr = cidx.lower_bound(d.id);
                 if (itr != cidx.end() && itr->comment == d.id) {
                     d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
                 }
-
+#endif
                 const auto &props = database().get_dynamic_global_properties();
                 const auto &hist = database().get_feed_history();
                 asset pot = props.total_reward_fund_steem;
@@ -547,6 +556,8 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
+                    std::vector<discussion> result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
@@ -569,7 +580,7 @@ namespace golos {
                     );
 
                     std::vector<discussion> result = merge(tags_, languages_);
-
+#endif
                     return result;
                 });
             }
@@ -638,6 +649,8 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
+                    std::vector<discussion> result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
@@ -657,7 +670,7 @@ namespace golos {
                     );
 
                     std::vector<discussion> result = merge(tags_, languages_);
-
+#endif
                     return result;
                 });
             }
@@ -940,6 +953,8 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     auto parent = pimpl->get_parent(query);
 
@@ -999,12 +1014,14 @@ namespace golos {
 
 
                     std::vector<discussion> return_result = merge(map_result, map_result_);
-
+#endif
                     return return_result;
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_promoted(const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1046,7 +1063,7 @@ namespace golos {
 
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
 
                 return return_result;
             }
@@ -1091,6 +1108,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_created(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1122,7 +1141,7 @@ namespace golos {
                                 }, parent, fc::time_point_sec::maximum());
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                 return return_result;
             }
 
@@ -1136,7 +1155,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_active(
                     const discussion_query &query) const {
-
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1168,7 +1188,7 @@ namespace golos {
                                 }, parent, fc::time_point_sec::maximum());
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                 return return_result;
 
             }
@@ -1184,6 +1204,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_cashout(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
                 std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result = select <
@@ -1218,6 +1240,7 @@ namespace golos {
 
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
             }
 
@@ -1234,6 +1257,8 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
                 return pimpl->database().with_read_lock([&]() {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     auto parent = pimpl->get_parent(query);
 
@@ -1261,13 +1286,15 @@ namespace golos {
                             });
 
                     std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                     return return_result;
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_votes(
                     const discussion_query &query) const {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1300,7 +1327,7 @@ namespace golos {
                                 }, parent, std::numeric_limits<int32_t>::max());
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                 return return_result;
             }
 
@@ -1316,6 +1343,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_children(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
 
                 query.validate();
                 auto parent = get_parent(query);
@@ -1350,7 +1379,7 @@ namespace golos {
                                 }, parent, std::numeric_limits<int32_t>::max());
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                 return return_result;
 
             }
@@ -1365,6 +1394,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_hot(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
 
                 query.validate();
                 auto parent = get_parent(query);
@@ -1402,7 +1433,7 @@ namespace golos {
                                         double>::max());
 
                 std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+#endif
                 return return_result;
 
             }
@@ -1468,6 +1499,7 @@ namespace golos {
             std::vector<tag_api_object> social_network_t::impl::get_trending_tags(std::string after, uint32_t limit) const {
                 limit = std::min(limit, uint32_t(1000));
                 std::vector<tag_api_object> result;
+#ifndef IS_LOW_MEM
                 result.reserve(limit);
 
                 const auto &nidx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
@@ -1493,17 +1525,19 @@ namespace golos {
                     result.emplace_back(push_object);
                     ++itr;
                 }
+#endif
                 return result;
             }
 
             std::vector<std::pair<std::string, uint32_t>> social_network_t::impl::get_tags_used_by_author(
                     const std::string &author) const {
+                std::vector<std::pair<std::string, uint32_t>> result;
+#ifndef IS_LOW_MEM
                 const auto *acnt = database().find_account(author);
                 FC_ASSERT(acnt != nullptr);
                 const auto &tidx = database().get_index<tags::author_tag_stats_index>().indices().get<
                         tags::by_author_posts_tag>();
                 auto itr = tidx.lower_bound(boost::make_tuple(acnt->id, 0));
-                std::vector<std::pair<std::string, uint32_t>> result;
                 while (itr != tidx.end() && itr->author == acnt->id && result.size() < 1000) {
                     if (!fc::is_utf8(itr->tag)) {
                         result.emplace_back(std::make_pair(fc::prune_invalid_utf8(itr->tag), itr->total_posts));
@@ -1512,6 +1546,7 @@ namespace golos {
                     }
                     ++itr;
                 }
+#endif
                 return result;
             }
 
