@@ -56,10 +56,16 @@ namespace golos { namespace wallet {
 
         struct wallet_data {
             vector<char>              cipher_keys; /** encrypted keys */
-
             string                    ws_server = "ws://localhost:8090";
-            string                    ws_user;
-            string                    ws_password;
+        };
+
+        struct signed_block_with_info: public signed_block {
+            signed_block_with_info(const signed_block& block);
+            signed_block_with_info(const signed_block_with_info& block) = default;
+
+            block_id_type block_id;
+            public_key_type signing_key;
+            vector<transaction_id_type> transaction_ids;
         };
 
         enum authority_type {
@@ -109,7 +115,7 @@ namespace golos { namespace wallet {
              *
              * @returns Public block data on the blockchain
              */
-            optional< database_api::signed_block > get_block( uint32_t num );
+            optional<signed_block_with_info> get_block(uint32_t num);
 
             /** Returns sequence of operations included/generated in a specified block
              *
@@ -958,12 +964,10 @@ namespace golos { namespace wallet {
 
     } }
 
-FC_REFLECT( (golos::wallet::wallet_data),
-            (cipher_keys)
-                    (ws_server)
-                    (ws_user)
-                    (ws_password)
-)
+FC_REFLECT((golos::wallet::wallet_data), (cipher_keys)(ws_server))
+
+FC_REFLECT_DERIVED((golos::wallet::signed_block_with_info), ((golos::chain::signed_block)),
+        (block_id)(signing_key)(transaction_ids))
 
 FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
