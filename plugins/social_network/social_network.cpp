@@ -579,7 +579,7 @@ namespace golos {
                             start_permlink
                     );
 
-                    std::vector<discussion> result = merge(tags_, languages_);
+                    result = merge(tags_, languages_);
 #endif
                     return result;
                 });
@@ -669,7 +669,7 @@ namespace golos {
                             start_permlink
                     );
 
-                    std::vector<discussion> result = merge(tags_, languages_);
+                    result = merge(tags_, languages_);
 #endif
                     return result;
                 });
@@ -1013,7 +1013,7 @@ namespace golos {
                     );
 
 
-                    std::vector<discussion> return_result = merge(map_result, map_result_);
+                    return_result = merge(map_result, map_result_);
 #endif
                     return return_result;
                 });
@@ -1062,7 +1062,7 @@ namespace golos {
                                 }, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY));
 
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
 
                 return return_result;
@@ -1140,7 +1140,7 @@ namespace golos {
                                     return false;
                                 }, parent, fc::time_point_sec::maximum());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
                 return return_result;
             }
@@ -1187,7 +1187,7 @@ namespace golos {
                                     return false;
                                 }, parent, fc::time_point_sec::maximum());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
                 return return_result;
 
@@ -1239,7 +1239,7 @@ namespace golos {
                                    fc::minutes(60));
 
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
                 return return_result;
             }
@@ -1285,7 +1285,7 @@ namespace golos {
                                 return false;
                             });
 
-                    std::vector<discussion> return_result = merge(map_result, map_result_language);
+                    return_result = merge(map_result, map_result_language);
 #endif
                     return return_result;
                 });
@@ -1326,7 +1326,7 @@ namespace golos {
                                     return false;
                                 }, parent, std::numeric_limits<int32_t>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                merge(map_result, map_result_language);
 #endif
                 return return_result;
             }
@@ -1378,7 +1378,7 @@ namespace golos {
                                     return false;
                                 }, parent, std::numeric_limits<int32_t>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
                 return return_result;
 
@@ -1432,7 +1432,7 @@ namespace golos {
                                 }, parent, std::numeric_limits<
                                         double>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
 #endif
                 return return_result;
 
