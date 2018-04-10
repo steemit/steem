@@ -486,15 +486,7 @@ private:
       }
 
       id_slice_t idSlice(obj.id);
-      ReadOptions rOptions;
-      PinnableSlice buffer;
-      auto s = _storage->Get(rOptions, _columnHandles[OPERATION_BY_ID], idSlice, &buffer);
-      if( !s.IsNotFound() )
-      {
-         wlog( "Duplicate operation id. ${id}", ("id",obj.id) );
-      }
-
-      s = _writeBuffer.Put(_columnHandles[OPERATION_BY_ID], idSlice, Slice(serializedObj.data(), serializedObj.size()));
+      auto s = _writeBuffer.Put(_columnHandles[OPERATION_BY_ID], idSlice, Slice(serializedObj.data(), serializedObj.size()));
       checkStatus(s);
 
       // uint64_t location = ( (uint64_t) obj.trx_in_block << 32 ) | ( (uint64_t) obj.op_in_trx << 16 ) | ( obj.virtual_op );
@@ -506,17 +498,6 @@ private:
       }
 
       op_by_block_num_slice_t blockLocSlice( block_op_id_pair( obj.block, encoded_id ) );
-
-      s = _storage->Get(rOptions, _columnHandles[OPERATION_BY_BLOCK], blockLocSlice, &buffer);
-      if( !s.IsNotFound() )
-      {
-         wlog( "Duplicate location found block:${b} trx:${t} op:${o} vop:${v}",
-            ("b", obj.block)
-            ("t", obj.trx_in_block)
-            ("o", obj.op_in_trx)
-            ("v", obj.virtual_op) );
-      }
-
       s = _writeBuffer.Put(_columnHandles[OPERATION_BY_BLOCK], blockLocSlice, idSlice);
       checkStatus(s);
 
