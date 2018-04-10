@@ -158,9 +158,7 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_account_history )
    _dataSource.find_account_history_data(args.account, args.start, args.limit,
       [&result, this](unsigned int sequence, const account_history_rocksdb::rocksdb_operation_object& op)
       {
-         api_operation_object o( op );
-         idump( (o) );
-         result.history[sequence] = o;
+         result.history[sequence] = api_operation_object( op );
       });
 
    return result;

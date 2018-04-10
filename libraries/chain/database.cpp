@@ -2807,6 +2807,10 @@ void database::_apply_block( const signed_block& next_block )
 
    uint32_t skip = get_node_properties().skip_flags;
 
+   _current_block_num    = next_block_num;
+   _current_trx_in_block = 0;
+   _current_virtual_op   = 0;
+
    if( BOOST_UNLIKELY( next_block_num == 1 ) )
    {
       // For every existing before the head_block_time (genesis time), apply the hardfork
@@ -2864,9 +2868,6 @@ void database::_apply_block( const signed_block& next_block )
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
-   _current_block_num    = next_block_num;
-   _current_trx_in_block = 0;
-
    const auto& gprops = get_dynamic_global_properties();
    auto block_size = fc::raw::pack_size( next_block );
    if( has_hardfork( STEEM_HARDFORK_0_12 ) )
@@ -2912,8 +2913,9 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
-   _current_virtual_op = 0;
    _current_trx_in_block = -1;
+   _current_op_in_trx = 0;
+   _current_virtual_op = 0;
 
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
