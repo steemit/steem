@@ -58,6 +58,21 @@ namespace golos {
                 share_type sbd;
             };
 
+
+            struct order_extended {
+                price order_price;
+                double real_price; // dollars per steem
+                share_type steem;
+                share_type sbd;
+                fc::time_point_sec created;
+            };
+
+            struct order_book_extended {
+                vector <order_extended> bids;
+                vector <order_extended> asks;
+            };
+
+
             struct order_book {
                 vector <order> bids;
                 vector <order> asks;
@@ -180,9 +195,11 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (date)(current_pays)(open_pays));
-FC_REFLECT((golos::plugins::market_history::limit_order),
-           (real_price)(rewarded));
 
+FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
+
+FC_REFLECT((golos::plugins::market_history::order_extended), (order_price)(real_price)(steem)(sbd)(created));
+FC_REFLECT((golos::plugins::market_history::order_book_extended), (asks)(bids));
 
 
 FC_REFLECT((golos::plugins::market_history::bucket_object),

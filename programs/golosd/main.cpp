@@ -28,8 +28,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp>
 #include <graphene/utilities/git_revision.hpp>
 
 using golos::protocol::version;
@@ -46,8 +44,10 @@ std::string& version_string() {
 namespace golos {
 
     namespace utilities {
-        void set_logging_program_options(boost::program_options::options_description &);
-        fc::optional<fc::logging_config> load_logging_config( const boost::program_options::variables_map&, const boost::filesystem::path&);
+        namespace bpo = boost::program_options;
+        void set_logging_program_options(bpo::options_description &);
+        fc::optional<fc::logging_config> load_logging_config(const boost::filesystem::path&);
+        std::map<string, std::map<string, string>> load_config_sections(const boost::filesystem::path &path);
     }
 
     namespace plugins {
@@ -103,13 +103,13 @@ void logo(){
 int main( int argc, char** argv ) {
     try {
 
+        golos::plugins::register_plugins();
+        appbase::app().set_version_string(version_string());
+
         // Setup logging config
         boost::program_options::options_description options;
-
-        golos::utilities::set_logging_program_options( options );
-        appbase::app().add_program_options( boost::program_options::options_description(), options );
-        golos::plugins::register_plugins();
-        appbase::app().set_version_string( version_string() );
+        golos::utilities::set_logging_program_options(options);
+        appbase::app().add_program_options(boost::program_options::options_description(), options);
 
         bool initialized = appbase::app().initialize<
                 golos::plugins::chain::plugin,
@@ -118,19 +118,19 @@ int main( int argc, char** argv ) {
         >
                 ( argc, argv );
 
-        logo();
-
         if( !initialized )
             return 0;
 
-        auto& args = appbase::app().get_args();
+        logo();
+
+        // auto& args = appbase::app().get_args();
 
         try {
-            fc::optional< fc::logging_config > logging_config = golos::utilities::load_logging_config( args, appbase::app().data_dir() / "config.ini" );
-            if( logging_config )
-                fc::configure_logging( *logging_config );
-        } catch( const fc::exception& ) {
-            wlog( "Error parsing logging config" );
+            fc::optional<fc::logging_config> logging_config = golos::utilities::load_logging_config(appbase::app().config_path());
+            if (logging_config)
+                fc::configure_logging(*logging_config);
+        } catch (const fc::exception&) {
+            wlog("Error parsing logging config");
         }
 
         appbase::app().startup();
@@ -161,47 +161,68 @@ namespace utilities {
 using std::string;
 using std::vector;
 
-void set_logging_program_options(boost::program_options::options_description &options) {
-    /*
-    out << "# declare an appender named \"stderr\" that writes messages to the console\n"
-            "[log.console_appender.stderr]\n"
-            "stream=std_error\n\n"
-            "# declare an appender named \"p2p\" that writes messages to p2p.log\n"
-            "[log.file_appender.p2p]\n"
-            "filename=logs/p2p/p2p.log\n"
-            "# filename can be absolute or relative to this config file\n\n"
-            "# route any messages logged to the default logger to the \"stderr\" logger we\n"
-            "# declared above, if they are info level are higher\n"
-            "[logger.default]\n"
-            "level=warn\n"
-            "appenders=stderr\n\n"
-            "# route messages sent to the \"p2p\" logger to the p2p appender declared above\n"
-            "[logger.p2p]\n"
-            "level=warn\n"
-            "appenders=p2p\n\n";
-            */
+void set_logging_program_options(bpo::options_description &options) {
+    bpo::options_description log_opts("Logging options");
+    log_opts.add_options()
+        // pass section description with trailing dot (declare before section options)
+        ("log.console_appender.stderr.", "declare an appender named \"stderr\" that writes messages to the console")
+        ("log.console_appender.stderr.stream", bpo::value<string>()->default_value("std_error"), "console appender stream")
+        ("log.file_appender.p2p.", "declare an appender named \"p2p\" that writes messages to p2p.log")
+        ("log.file_appender.p2p.filename", bpo::value<string>()->default_value("logs/p2p/p2p.log"), "filename can be absolute or relative to this config file")
+        // The following 4 options can be implemented in load_logging_config()
+        // ("log.file_appender.p2p.flush", bpo::value<bool>()->default_value(true), "use flush (true|false|yes|no|1|0)")
+        // ("log.file_appender.p2p.rotate", bpo::value<bool>()->default_value(true), "use rotate (true|false|yes|no|1|0)")
+        // ("log.file_appender.p2p.rotation_interval", bpo::value<int64_t>()->default_value(fc::hours(1).to_seconds()), "rotation interval in seconds")
+        // ("log.file_appender.p2p.rotation_limit", bpo::value<int64_t>()->default_value(fc::days(1).to_seconds()), "rotation limit in seconds")
+
+        ("logger.default.", "route any messages logged to the default logger to the \"stderr\" logger we declared above, if they are info level are higher")
+        ("logger.default.level", bpo::value<string>()->default_value("warn"), "log level of \"default\" logger (all|debug|info|warn|error|off)")
+        ("logger.default.appenders", bpo::value<string>()->default_value("stderr"), "appender(s) of \"default\" logger")
+
+        ("logger.p2p.", "route messages sent to the \"p2p\" logger to the p2p appender declared above")
+        ("logger.p2p.level", bpo::value<string>()->default_value("warn"), "log level of \"p2p\" logger (all|debug|info|warn|error|off)")
+        ("logger.p2p.appenders", bpo::value<string>()->default_value("p2p"), "appender(s) of \"p2p\" logger")
+        ;
+
+    options.add(log_opts);
 }
 
 
-fc::optional<fc::logging_config> load_logging_config(const boost::program_options::variables_map &args, const boost::filesystem::path &pwd) {
+std::map<string, std::map<string, string>> load_config_sections(const boost::filesystem::path &path) {
+    bpo::options_description options;
+    auto parsed_options = bpo::parse_config_file<char>(path.string().c_str(), options, true);
+    std::map<string, std::map<string, string>> sections;
+    for (const auto& o : parsed_options.options) {
+        auto key = o.string_key;
+        auto pos = key.rfind('.');
+        if (pos != std::string::npos) {
+            auto s = key.substr(0, pos);
+            auto k = key.substr(pos+1);
+            auto v = o.value;
+            sections[s][k] = v.empty() ? "" : v[0];
+        }
+    }
+    return sections;
+}
+
+fc::optional<fc::logging_config> load_logging_config(const boost::filesystem::path &pwd) {
     try {
         fc::logging_config logging_config;
         bool found_logging_config = false;
 
-        boost::property_tree::ptree config_ini_tree;
-        boost::property_tree::ini_parser::read_ini(pwd.string(), config_ini_tree);
-        for (const auto &section : config_ini_tree) {            
-            const std::string &section_name = section.first;
-            const boost::property_tree::ptree &section_tree = section.second;
+        const std::string console_appender_section_prefix = "log.console_appender.";
+        const std::string json_console_appender_section_prefix = "log.json_console_appender.";
+        const std::string file_appender_section_prefix = "log.file_appender.";
+        const std::string logger_section_prefix = "logger.";
 
-            const std::string console_appender_section_prefix = "log.console_appender.";
-            const std::string json_console_appender_section_prefix = "log.json_console_appender.";
-            const std::string file_appender_section_prefix = "log.file_appender.";
-            const std::string logger_section_prefix = "logger.";
+        auto sections = load_config_sections(pwd);
+        for (const auto& sect : sections) {
+            const std::string &section_name = sect.first;
+            auto &options = sect.second;
 
             if (boost::starts_with(section_name, json_console_appender_section_prefix)) {
                 std::string console_appender_name = section_name.substr(json_console_appender_section_prefix.length());
-                std::string stream_name = section_tree.get<std::string>("stream");
+                std::string stream_name = options.at("stream");
 
                 // construct a default json console appender config here
                 // stdout/stderr will be taken from ini file, everything else hard-coded here
@@ -214,7 +235,7 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, console_appender_section_prefix)) {
                 std::string console_appender_name = section_name.substr(console_appender_section_prefix.length());
-                std::string stream_name = section_tree.get<std::string>("stream");
+                std::string stream_name = options.at("stream");
 
                 // construct a default console appender config here
                 // stdout/stderr will be taken from ini file, everything else hard-coded here
@@ -227,16 +248,16 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, file_appender_section_prefix)) {
                 std::string file_appender_name = section_name.substr(file_appender_section_prefix.length());
-                fc::path file_name = section_tree.get<std::string>("filename");
+                fc::path file_name = options.at("filename");
                 if (file_name.is_relative()) {
                     file_name = fc::absolute(pwd).parent_path() / file_name;
                 }
-
 
                 // construct a default file appender config here
                 // filename will be taken from ini file, everything else hard-coded here
                 fc::file_appender::config file_appender_config;
                 file_appender_config.filename = file_name;
+                // NOTE: the following 4 options can be loaded too, sample code in cli_wallet
                 file_appender_config.flush = true;
                 file_appender_config.rotate = true;
                 file_appender_config.rotation_interval = fc::hours(1);
@@ -245,8 +266,8 @@ fc::optional<fc::logging_config> load_logging_config(const boost::program_option
                 found_logging_config = true;
             } else if (boost::starts_with(section_name, logger_section_prefix)) {
                 std::string logger_name = section_name.substr(logger_section_prefix.length());
-                std::string level_string = section_tree.get<std::string>("level");
-                std::string appenders_string = section_tree.get<std::string>("appenders");
+                std::string level_string = options.at("level");
+                std::string appenders_string = options.at("appenders");
                 fc::logger_config logger_config(logger_name);
                 logger_config.level = fc::variant(level_string).as<fc::log_level>();
                 boost::split(logger_config.appenders, appenders_string, boost::is_any_of(" ,"), boost::token_compress_on);

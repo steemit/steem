@@ -52,7 +52,6 @@ struct remote_database_api {
     database_api::witness_schedule_api_object get_witness_schedule();
     hardfork_version get_hardfork_version();
     database_api::scheduled_hardfork get_next_scheduled_hardfork();
-    vector< vector< account_name_type > > get_key_references( vector< public_key_type > );
     vector< optional< database_api::account_api_object > > lookup_account_names( vector< account_name_type > );
     vector< account_name_type > lookup_accounts( account_name_type, uint32_t );
 
@@ -170,6 +169,14 @@ struct remote_private_message {
     vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit) const;
 };
 
+/**
+ * This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
+ * Class is used by wallet to send formatted API calls to account_by_key plugin on remote node.
+ */
+ struct remote_account_by_key {
+     vector< vector< account_name_type > > get_key_references( vector< public_key_type > );
+ };
+
 } }
 
 /**
@@ -188,7 +195,6 @@ FC_API( golos::wallet::remote_database_api,
         (get_witness_schedule)
         (get_hardfork_version)
         (get_next_scheduled_hardfork)
-        (get_key_references)
         (lookup_account_names)
         (lookup_accounts)
         (get_account_count)
@@ -287,4 +293,11 @@ FC_API( golos::wallet::remote_market_history,
 FC_API( golos::wallet::remote_private_message,
         (get_inbox)
         (get_outbox)
+)
+
+/**
+ * Declaration of remote API formatter to account by key plugin on remote node
+ */
+FC_API( golos::wallet::remote_account_by_key,
+        (get_key_references)
 )

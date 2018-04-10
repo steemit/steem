@@ -174,6 +174,19 @@ namespace golos {
             string permlink;
         };
 
+        struct comment_benefactor_reward_operation : public virtual_operation {
+            comment_benefactor_reward_operation() {
+            }
+
+            comment_benefactor_reward_operation(const account_name_type &b, const account_name_type &a, const string &p, const asset &r)
+                    : benefactor(b), author(a), permlink(p), reward(r) {
+            }
+
+            account_name_type benefactor;
+            account_name_type author;
+            string permlink;
+            asset reward;
+        };
     }
 } //golos::protocol
 
@@ -189,3 +202,4 @@ FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orde
 FC_REFLECT((golos::protocol::fill_transfer_from_savings_operation), (from)(to)(amount)(request_id)(memo))
 FC_REFLECT((golos::protocol::hardfork_operation), (hardfork_id))
 FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(permlink))
+FC_REFLECT((golos::protocol::comment_benefactor_reward_operation), (benefactor)(author)(permlink)(reward) )

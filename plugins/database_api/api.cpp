@@ -11,6 +11,7 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/plugins/follow/plugin.hpp>
 
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
@@ -26,36 +27,23 @@ namespace golos {
                 using ptr = std::shared_ptr<block_applied_callback_info>;
                 using cont = std::list<ptr>;
 
-                bool active = true;
                 block_applied_callback callback;
                 boost::signals2::connection connection;
                 cont::iterator it;
 
                 void connect(
-                    ptr this_ptr,
                     boost::signals2::signal<void(const signed_block &)> &sig,
-                    cont &active_cont,
                     cont &free_cont,
                     block_applied_callback cb
                 ) {
-                    active_cont.push_back(this_ptr);
-                    it = active_cont.end();
-                    --it;
-
                     callback = cb;
 
-                    connection = sig.connect([this, &active_cont, &free_cont](const signed_block &block) {
+                    connection = sig.connect([this, &free_cont](const signed_block &block) {
                         try {
-                            if (this->active) {
-                                this->callback(fc::variant(block));
-                            }
+                            this->callback(fc::variant(block));
                         } catch (...) {
-                            this->active = false;
-                            if (this->it != active_cont.end()) {
-                                free_cont.push_back(*this->it);
-                                active_cont.erase(this->it);
-                                this->it = active_cont.end();
-                            }
+                            free_cont.push_back(*this->it);
+                            this->connection.disconnect();
                         }
                     });
                 }
@@ -68,12 +56,18 @@ namespace golos {
 
                 ~api_impl();
 
+                void startup() {
+                    _follow_api = appbase::app().find_plugin<golos::plugins::follow::plugin>();
+                }
+
                 // Subscriptions
                 void set_subscribe_callback(std::function<void(const variant &)> cb, bool clear_filter);
 
                 void set_pending_transaction_callback(std::function<void(const variant &)> cb);
 
                 void set_block_applied_callback(block_applied_callback cb);
+
+                void clear_block_applied_callback();
 
                 void cancel_all_subscriptions();
 
@@ -128,6 +122,20 @@ namespace golos {
 
                 std::vector<account_name_type> get_miner_queue() const;
 
+                share_type get_account_reputation(const account_name_type& account) const {
+                    if (!_follow_api) {
+                        return 0;
+                    }
+
+                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                    auto itr = rep_idx.find(account);
+
+                    if (rep_idx.end() != itr) {
+                        return itr->reputation;
+                    }
+
+                    return 0;
+                }
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -169,6 +177,7 @@ namespace golos {
             private:
 
                 golos::chain::database &_db;
+                golos::plugins::follow::plugin *_follow_api = nullptr;
             };
 
 
@@ -235,14 +244,14 @@ namespace golos {
             plugin::~plugin() {
             }
 
-            plugin::api_impl::api_impl() : _db(appbase::app().get_plugin<chain::plugin>().db()) {
+            plugin::api_impl::api_impl() : _db(appbase::app().get_plugin<chain::plugin>().db())
+            {
                 wlog("creating database plugin ${x}", ("x", int64_t(this)));
             }
 
             plugin::api_impl::~api_impl() {
                 elog("freeing database plugin ${x}", ("x", int64_t(this)));
             }
-
 
             //////////////////////////////////////////////////////////////////////
             //                                                                  //
@@ -308,7 +317,7 @@ namespace golos {
 
                 my->database().with_read_lock([&]{
                     my->set_block_applied_callback([msg = transfer.msg()](const fc::variant & block_header) {
-                        msg->result(fc::variant(block_header));
+                        msg->unsafe_result(fc::variant(block_header));
                     });
                 });
 
@@ -320,20 +329,21 @@ namespace golos {
             void plugin::api_impl::set_block_applied_callback(std::function<void(const variant &block_header)> callback) {
                 auto info_ptr = std::make_shared<block_applied_callback_info>();
 
-                info_ptr->connect(
-                    info_ptr,
-                    database().applied_block,
-                    active_block_applied_callback,
-                    free_block_applied_callback,
-                    callback
-                );
+                active_block_applied_callback.push_back(info_ptr);
+                info_ptr->it = std::prev(active_block_applied_callback.end());
+
+                info_ptr->connect(database().applied_block, free_block_applied_callback, callback);
+            }
+
+            void plugin::api_impl::clear_block_applied_callback() {
+                for (auto &info: free_block_applied_callback) {
+                    active_block_applied_callback.erase(info->it);
+                }
+                free_block_applied_callback.clear();
             }
 
             void plugin::clear_block_applied_callback() {
-                for (auto &info: my->free_block_applied_callback) {
-                    my->database().applied_block.disconnect(info->connection);
-                }
-                my->free_block_applied_callback.clear();
+                my->clear_block_applied_callback();
             }
 
             //////////////////////////////////////////////////////////////////////
@@ -424,6 +434,7 @@ namespace golos {
                     auto itr = idx.find(name);
                     if (itr != idx.end()) {
                         results.push_back(extended_account(*itr, _db));
+                        results.back().reputation = get_account_reputation(name);
                         auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
                         while (vitr != vidx.end() && vitr->account == itr->id) {
                             results.back().witness_votes.insert(_db.get(vitr->witness).owner);
@@ -1033,6 +1044,9 @@ namespace golos {
                 ilog("database_api plugin: plugin_initialize() end");
             }
 
+            void plugin::plugin_startup() {
+                my->startup();
+            }
         }
     }
 } // golos::plugins::database_api

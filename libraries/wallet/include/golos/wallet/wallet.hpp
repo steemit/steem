@@ -284,6 +284,11 @@ namespace golos { namespace wallet {
              */
             void    save_wallet_file(string wallet_filename = "");
 
+            /**
+             * Quits wallet.
+             */
+            void    quit();
+
             /** Sets the wallet filename used for future writes.
              *
              * This does not trigger a save, it only changes the default filename
@@ -916,6 +921,7 @@ namespace golos { namespace wallet {
             std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
             fc::signal<void(bool)> lock_changed;
+            fc::signal<void(void)> quit_command;
             std::shared_ptr<detail::wallet_api_impl> my;
             void encrypt_keys();
 
@@ -970,6 +976,7 @@ FC_API( golos::wallet::wallet_api,
         (help)(gethelp)
                 (about)(is_new)(is_locked)(lock)(unlock)(set_password)
                 (load_wallet_file)(save_wallet_file)
+                (quit)
 
                 /// key api
                 (import_key)

@@ -100,12 +100,12 @@ void plugin::set_program_options (
    boost::program_options::options_description &cli,
    boost::program_options::options_description &cfg
 ) {
-   cfg.add_options()
+   cli.add_options()
       ("debug-node-edit-script,e",
          boost::program_options::value< std::vector< std::string > >()->composing(),
-            "Database edits to apply on startup (may specify multiple times)")
+         "Database edits to apply on startup (may specify multiple times)")
       ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(),
-          "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.")
+         "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.")
    ;
 }
 
@@ -451,10 +451,7 @@ DEFINE_API ( plugin, debug_generate_blocks ) {
         edit_if_needed = args_vector[4].as_bool();
     }
 
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_generate_blocks( debug_key, count, skip, miss_blocks, edit_if_needed );
-    });
+    return my->debug_generate_blocks( debug_key, count, skip, miss_blocks, edit_if_needed );
 }
 
 DEFINE_API ( plugin, debug_push_blocks ) {
@@ -475,10 +472,7 @@ DEFINE_API ( plugin, debug_push_blocks ) {
         skip_validate_invariants = args_vector[2].as_bool();
     }
 
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_push_blocks( src_filename, count, skip_validate_invariants );
-    });
+    return my->debug_push_blocks( src_filename, count, skip_validate_invariants );
 }
 
 DEFINE_API ( plugin, debug_generate_blocks_until ) {
@@ -505,24 +499,15 @@ DEFINE_API ( plugin, debug_generate_blocks_until ) {
         skip = args_vector[3].as_int64();
     }
 
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_generate_blocks_until( debug_key, head_block_time, generate_sparsely, skip );
-    });
+    return my->debug_generate_blocks_until( debug_key, head_block_time, generate_sparsely, skip );
 }
 
 DEFINE_API ( plugin, debug_pop_block ) {
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_pop_block();
-    });
+    return my->debug_pop_block();
 }
 
 DEFINE_API ( plugin, debug_get_witness_schedule ) {
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_get_witness_schedule();
-    });
+    return my->debug_get_witness_schedule();
 }
 
 // DEFINE_API ( plugin, debug_get_hardfork_property_object ) {
@@ -544,11 +529,8 @@ DEFINE_API ( plugin, debug_set_hardfork ) {
     auto args_vector = *(args.args);
     hardfork_id = args_vector[0].as_int64();
 
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        my->debug_set_hardfork( hardfork_id );
-        return void_type() ;
-    });
+    my->debug_set_hardfork( hardfork_id );
+    return void_type();
 }
 
 DEFINE_API ( plugin, debug_has_hardfork ) {
@@ -562,10 +544,7 @@ DEFINE_API ( plugin, debug_has_hardfork ) {
     auto args_vector = *(args.args);
     hardfork_id = args_vector[0].as_int64();
 
-    auto &db = my->database();
-    return db.with_read_lock([&]() {
-        return my->debug_has_hardfork( hardfork_id );
-    });
+    return my->debug_has_hardfork( hardfork_id );
 }
 
 

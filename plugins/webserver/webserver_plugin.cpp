@@ -139,32 +139,28 @@ namespace golos {
                 }
 
                 if (http_endpoint && ((ws_endpoint && ws_endpoint != http_endpoint) || !ws_endpoint)) {
-                    if (1) {
-                        ilog("http thread is disabled in this build!");
-                    } else {
-                        http_thread = std::make_shared<std::thread>([&]() {
-                            ilog("start processing http thread");
-                            try {
-                                http_server.clear_access_channels(websocketpp::log::alevel::all);
-                                http_server.clear_error_channels(websocketpp::log::elevel::all);
-                                http_server.init_asio(&http_ios);
-                                http_server.set_reuse_addr(true);
+                    http_thread = std::make_shared<std::thread>( [&]() {
+                        ilog("start processing http thread");
+                        try {
+                            http_server.clear_access_channels(websocketpp::log::alevel::all);
+                            http_server.clear_error_channels(websocketpp::log::elevel::all);
+                            http_server.init_asio(&http_ios);
+                            http_server.set_reuse_addr(true);
 
-                                http_server.set_http_handler(
-                                        boost::bind(&webserver_plugin_impl::handle_http_message, this, &http_server,
-                                                    _1));
+                            http_server.set_http_handler([this](connection_hdl hdl) {
+                                this->handle_http_message(&this->http_server, hdl);
+                            });
 
-                                ilog("start listening for http requests");
-                                http_server.listen(*http_endpoint);
-                                http_server.start_accept();
+                            ilog("start listening for http requests");
+                            http_server.listen(*http_endpoint);
+                            http_server.start_accept();
 
-                                http_ios.run();
-                                ilog("http io service exit");
-                            } catch (...) {
-                                elog("error thrown from http io service");
-                            }
-                        });
-                    }
+                            http_ios.run();
+                            ilog("http io service exit");
+                        } catch (...) {
+                            elog("error thrown from http io service");
+                        }
+                    });
                 }
             }
 
@@ -240,7 +236,11 @@ namespace golos {
                         // this sending response can't be merged with sending response from try-block
                         //   because try-block can work from other thread,
                         //   when catch-block happens in current thread on parsing request
-                        con->send_http_response();
+                        try {
+                            con->send_http_response();
+                        } catch (...) {
+                            // disable segfault
+                        }
                     }
                 });
             }
@@ -252,13 +252,14 @@ namespace golos {
             }
 
             void webserver_plugin::set_program_options(boost::program_options::options_description &, boost::program_options::options_description &cfg) {
-                cfg.add_options()("webserver-http-endpoint", boost::program_options::value<string>(),
-                                  "Local http endpoint for webserver requests.")("webserver-ws-endpoint",
-                                                                                 boost::program_options::value<string>(),
-                                                                                 "Local websocket endpoint for webserver requests.")(
-                        "rpc-endpoint", boost::program_options::value<string>(),
-                        "Local http and websocket endpoint for webserver requests. Deprectaed in favor of webserver-http-endpoint and webserver-ws-endpoint")(
-                        "webserver-thread-pool-size", boost::program_options::value<thread_pool_size_t>()->default_value(256),
+                cfg.add_options()
+                    ("webserver-http-endpoint", boost::program_options::value<string>(),
+                        "Local http endpoint for webserver requests.")
+                    ("webserver-ws-endpoint", boost::program_options::value<string>(),
+                        "Local websocket endpoint for webserver requests.")
+                    ("rpc-endpoint", boost::program_options::value<string>(),
+                        "Local http and websocket endpoint for webserver requests. Deprectaed in favor of webserver-http-endpoint and webserver-ws-endpoint")
+                    ("webserver-thread-pool-size", boost::program_options::value<thread_pool_size_t>()->default_value(256),
                         "Number of threads used to handle queries. Default: 256.");
             }
 

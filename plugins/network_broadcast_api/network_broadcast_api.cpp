@@ -46,7 +46,7 @@ namespace golos {
                     const auto max_block_age = args.args->at(1).as<uint32_t>();
                     FC_ASSERT(!check_max_block_age(max_block_age));
                 }
-                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_chain.accept_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
 
                 return broadcast_transaction_return();
@@ -73,7 +73,7 @@ namespace golos {
                     pimpl->_callback_expirations[trx.expiration].push_back(trx.id());
                 }
 
-                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_chain.accept_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
                 transfer.complete();
 
@@ -84,7 +84,7 @@ namespace golos {
                 const auto n_args = args.args->size();
                 FC_ASSERT(n_args == 1, "Expected 1 argument, got 0");
                 auto block = args.args->at(0).as<signed_block>();
-                pimpl->_chain.db().push_block(block);
+                pimpl->_chain.accept_block(block);
                 pimpl->_p2p.broadcast_block(block);
                 return broadcast_block_return();
             }
@@ -93,10 +93,10 @@ namespace golos {
             DEFINE_API(network_broadcast_api_plugin,broadcast_transaction_with_callback){
                 // TODO: implement commit semantic for delegating connection handlers
                 const auto n_args = args.args->size();
-                FC_ASSERT(n_args >= 1, "Expected at least 1 argument, got 0");
-                auto trx = args.args->at(0).as<signed_transaction>();
-                if (n_args > 1) {
-                    const auto max_block_age = args.args->at(1).as<uint32_t>();
+                FC_ASSERT(n_args >= 2, "Expected at least 1 argument, got 0");
+                auto trx = args.args->at(1).as<signed_transaction>();
+                if (n_args > 2) {
+                    const auto max_block_age = args.args->at(2).as<uint32_t>();
                     FC_ASSERT(!check_max_block_age(max_block_age));
                 }
 
@@ -116,7 +116,7 @@ namespace golos {
                 }
 
 
-                pimpl->_chain.db().push_transaction(trx);
+                pimpl->_chain.accept_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
                 transfer.complete();
 

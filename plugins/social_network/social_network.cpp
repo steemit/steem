@@ -92,6 +92,10 @@ namespace golos {
                 impl():database_(appbase::app().get_plugin<chain::plugin>().db()){}
                 ~impl(){}
 
+                void startup() {
+                    follow_api_ = appbase::app().find_plugin<golos::plugins::follow::plugin>();
+                }
+
                 void on_operation(const operation_notification &note){
                     try {
                         /// plugins shouldn't ever throw
@@ -110,6 +114,21 @@ namespace golos {
 
                 golos::chain::database& database() const {
                     return database_;
+                }
+
+                share_type get_account_reputation(const account_name_type& account) const {
+                    if (!follow_api_) {
+                        return 0;
+                    }
+
+                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                    auto itr = rep_idx.find(account);
+
+                    if (rep_idx.end() != itr) {
+                        return itr->reputation;
+                    }
+
+                    return 0;
                 }
 
                 comment_object::id_type get_parent(const discussion_query &query) const {
@@ -136,7 +155,7 @@ namespace golos {
                         vstate.rshares = itr->rshares;
                         vstate.percent = itr->vote_percent;
                         vstate.time = itr->last_update;
-
+                        vstate.reputation = get_account_reputation(vo.name);
                         result.emplace_back(vstate);
                         ++itr;
                     }
@@ -182,7 +201,17 @@ namespace golos {
                         Args... args
                 ) const;
 
-                std::vector<discussion> get_content_replies(std::string author, std::string permlink) const;
+                void select_content_replies(
+                    std::vector<discussion>& result, const std::string &author, const std::string &permlink
+                ) const;
+
+                std::vector<discussion> get_content_replies(
+                    const std::string &author, const std::string &permlink
+                ) const;
+
+                std::vector<discussion> get_all_content_replies(
+                    const std::string &author, const std::string &permlink
+                ) const;
 
                 std::vector<tag_api_object> get_trending_tags(std::string after, uint32_t limit) const;
 
@@ -243,6 +272,7 @@ namespace golos {
                 std::set<std::string> cache_languages;
             private:
                 golos::chain::database& database_;
+                golos::plugins::follow::plugin* follow_api_ = nullptr;
             };
 
 
@@ -263,7 +293,7 @@ namespace golos {
 
 
             void social_network_t::plugin_startup() {
-
+                pimpl->startup();
             }
 
             void social_network_t::plugin_shutdown() {
@@ -325,20 +355,29 @@ namespace golos {
                 }
             }
 
-            std::vector<discussion> social_network_t::impl::get_content_replies(std::string author, std::string permlink) const {
+            void social_network_t::impl::select_content_replies(
+                std::vector<discussion>& result, const std::string& author, const std::string& permlink
+            ) const {
                 account_name_type acc_name = account_name_type(author);
-                const auto &by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
+                const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
                 auto itr = by_permlink_idx.find(boost::make_tuple(acc_name, permlink));
-                std::vector<discussion> result;
-                while (itr != by_permlink_idx.end() && itr->parent_author == author &&
-                       to_string(itr->parent_permlink) == permlink) {
-                    discussion push_discussion(*itr);
-                    push_discussion.active_votes = get_active_votes(author, permlink);
-
+                while (
+                    itr != by_permlink_idx.end() &&
+                    itr->parent_author == author &&
+                    to_string(itr->parent_permlink) == permlink
+                ) {
                     result.emplace_back(*itr);
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     set_pending_payout(result.back());
                     ++itr;
                 }
+            }
+
+            std::vector<discussion> social_network_t::impl::get_content_replies(
+                const std::string &author, const std::string &permlink
+            ) const {
+                std::vector<discussion> result;
+                select_content_replies(result, author, permlink);
                 return result;
             }
 
@@ -348,6 +387,32 @@ namespace golos {
                 auto permlink = args.args->at(1).as<string>();
                 return pimpl->database().with_read_lock([&]() {
                     return pimpl->get_content_replies(author, permlink);
+                });
+            }
+
+            std::vector<discussion> social_network_t::impl::get_all_content_replies(
+                const std::string &author, const std::string &permlink
+            ) const {
+                std::vector<discussion> result;
+                select_content_replies(result, author, permlink);
+                for (std::size_t i = 0; i < result.size(); ++i) {
+                    if (result[i].children > 0) {
+                        auto j = result.size();
+                        select_content_replies(result, result[i].author, result[i].permlink);
+                        for (; j < result.size(); ++j) {
+                            result[i].replies.push_back(result[j].author + "/" + result[j].permlink);
+                        }
+                    }
+                }
+                return result;
+            }
+
+            DEFINE_API(social_network_t, get_all_content_replies) {
+                CHECK_ARG_SIZE(2)
+                auto author = args.args->at(0).as<string>();
+                auto permlink = args.args->at(1).as<string>();
+                return pimpl->database().with_read_lock([&]() {
+                    return pimpl->get_all_content_replies(author, permlink);
                 });
             }
 
@@ -393,6 +458,8 @@ namespace golos {
 
                     d.pending_payout_value = asset(static_cast<uint64_t>(r2), pot.symbol);
                     d.total_pending_payout_value = asset(static_cast<uint64_t>(tpp), pot.symbol);
+
+                    d.author_reputation = get_account_reputation(d.author);
 
                 }
 
@@ -1505,8 +1572,8 @@ namespace golos {
                             if (itr->parent_author.size() == 0) {
                                 result.push_back(*itr);
                                 pimpl->set_pending_payout(result.back());
-                                result.back().active_votes = pimpl->get_active_votes(itr->author,
-                                                                                  to_string(itr->permlink));
+                                result.back().active_votes =
+                                    pimpl->get_active_votes(result.back().author, result.back().permlink);
                                 ++count;
                             }
                             ++itr;
@@ -1544,7 +1611,7 @@ namespace golos {
                 while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
                     result.emplace_back(*itr);
                     set_pending_payout(result.back());
-                    result.back().active_votes = get_active_votes(itr->author, to_string(itr->permlink));
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     ++itr;
                 }
 

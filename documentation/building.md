@@ -14,10 +14,6 @@ Builds golosd to be a consensus-only low memory node. Data and fields not
 needed for consensus are not stored in the object database.  This option is
 recommended for witnesses and seed-nodes.
 
-### CLEAR_VOTES=[TRUE/FALSE]
-
-Clears old votes from memory that are no longer required for consensus.
-
 ### BUILD_GOLOS_TESTNET=[FALSE/TRUE]
 
 Builds golos for use in a private testnet. Also required for building unit tests.

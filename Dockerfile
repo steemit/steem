@@ -44,7 +44,6 @@ RUN \
         -DBUILD_SHARED_LIBRARIES=FALSE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCHAINBASE_CHECK_LOCKING=FALSE \
-        -DCLEAR_VOTES=FALSE \
         .. \
     && \
     make -j$(nproc) && \

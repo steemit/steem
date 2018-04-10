@@ -97,6 +97,15 @@ namespace golos {
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size = (
                     1024l * 1024l * 1024l * 8l));
 
+            void min_free_shared_memory_size(size_t);
+            void inc_shared_memory_size(size_t);
+            void block_num_check_free_size(uint32_t);
+            void check_free_memory(bool skip_print, uint32_t current_block_num);
+
+            void set_clear_votes(uint32_t clear_votes_block);
+            void set_skip_virtual_ops();
+            bool clear_votes();
+
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
              * @param include_blocks If true, delete the raw chain as well as the database.
@@ -121,7 +130,7 @@ namespace golos {
 
             uint32_t get_pow_summary_target() const;
 
-                     block_id_type              get_block_id_for_num( uint32_t block_num )const;
+            block_id_type get_block_id_for_num( uint32_t block_num )const;
 
             block_id_type find_block_id_for_num(uint32_t block_num) const;
 
@@ -229,7 +238,8 @@ namespace golos {
             signed_block _generate_block(
                     const fc::time_point_sec when,
                     const account_name_type &witness_owner,
-                    const fc::ecc::private_key &block_signing_private_key
+                    const fc::ecc::private_key &block_signing_private_key,
+                    uint32_t skip
             );
 
             void pop_block();
@@ -335,7 +345,7 @@ namespace golos {
 
             asset create_vesting(const account_object &to_account, asset steem);
 
-            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value);
+            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value, const asset& beneficiary_value);
 
             void update_witness_schedule();
 
@@ -382,8 +392,6 @@ namespace golos {
 
             void process_vesting_withdrawals();
 
-            share_type pay_discussions(const comment_object &c, share_type max_rewards);
-
             share_type pay_curators(const comment_object &c, share_type max_rewards);
 
             void cashout_comment_helper(const comment_object &comment);
@@ -415,8 +423,6 @@ namespace golos {
             asset get_curation_reward() const;
 
             asset get_pow_reward() const;
-
-            uint16_t get_discussion_rewards_percent() const;
 
             uint16_t get_curation_rewards_percent() const;
 
@@ -594,6 +600,15 @@ namespace golos {
             uint32_t _next_flush_block = 0;
 
             uint32_t _last_free_gb_printed = 0;
+
+            size_t _inc_shared_memory_size = 0;
+            size_t _min_free_shared_memory_size = 0;
+
+            uint32_t _block_num_check_free_memory = 1000;
+
+            uint32_t _clear_votes_block = 0;
+            
+            bool _skip_virtual_ops = false;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

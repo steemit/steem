@@ -58,7 +58,7 @@ namespace golos {
             struct witness_plugin::impl final {
                 impl():
                     p2p_(appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>()),
-                    database_(appbase::app().get_plugin<chain::plugin>().db()),
+                    chain_(appbase::app().get_plugin<golos::plugins::chain::plugin>()),
                     mining_work_(mining_service_),
                     production_timer_(appbase::app().get_io_service()) {
 
@@ -67,11 +67,19 @@ namespace golos {
                 ~impl(){}
 
                 golos::chain::database& database() {
-                    return database_;
+                    return chain_.db();
                 }
 
                 golos::chain::database& database() const {
-                    return database_;
+                    return chain_.db();
+                }
+
+                golos::plugins::chain::plugin& chain() {
+                    return chain_;
+                }
+
+                golos::plugins::chain::plugin& chain() const {
+                    return chain_;
                 }
 
                 golos::plugins::p2p::p2p_plugin& p2p(){
@@ -84,7 +92,7 @@ namespace golos {
 
                 golos::plugins::p2p::p2p_plugin& p2p_;
 
-                golos::chain::database& database_;
+                golos::plugins::chain::plugin& chain_;
 
                 void on_applied_block(const signed_block &b);
 
@@ -125,7 +133,7 @@ namespace golos {
                     string witness_id_example = "initwitness";
 
                 command_line_options.add_options()
-                        ("enable-stale-production",  bpo::value<bool>()->implicit_value(false) , "Enable block production, even if the chain is stale.")
+                        ("enable-stale-production", bpo::value<bool>()->implicit_value(false) , "Enable block production, even if the chain is stale.")
                         ("required-participation", bpo::value<int>()->implicit_value(uint32_t(3 * STEEMIT_1_PERCENT)), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
                         ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(), ("name of witness controlled by this node (e.g. " + witness_id_example + " )").c_str())
                         ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )")
@@ -421,6 +429,8 @@ namespace golos {
                 int retry = 0;
                 do {
                     try {
+                        // TODO: the same thread as used in chain-plugin,
+                        //       but in the future it should refactored to calling of a chain-plugin function
                         auto block = db.generate_block(
                                 scheduled_time,
                                 scheduled_witness,
@@ -579,7 +589,7 @@ namespace golos {
                                     head_block_num_.fetch_add(1, std::memory_order_relaxed);
 
                                     try {
-                                        database().push_transaction(trx);
+                                        chain().accept_transaction(trx);
                                         ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
                                         p2p().broadcast_transaction(trx);
                                     } catch (const fc::exception &e) {
@@ -625,7 +635,7 @@ namespace golos {
                                     trx.sign(pk, STEEMIT_CHAIN_ID);
 
                                     try {
-                                        database().push_transaction(trx);
+                                        chain().accept_transaction(trx);
                                         ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
                                         p2p().broadcast_transaction(trx);
                                     } catch (const fc::exception &e) {
