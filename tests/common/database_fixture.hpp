@@ -132,6 +132,15 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #define ASSET(s) \
    asset::from_string( s )
 
+// get_vesting_share_price() is a dynamic value which depends on funds,
+//   that is why comparision can be done only with some correction
+#define GOLOS_VEST_REQUIRE_EQUAL(left, right) \
+    BOOST_REQUIRE( \
+            std::abs((left).amount.value - (right).amount.value) < 5 && \
+            (left).symbol == (right).symbol \
+    )
+
+
 
 #ifndef STEEMIT_INIT_PRIVATE_KEY
 #  define STEEMIT_INIT_PRIVATE_KEY (fc::ecc::private_key::regenerate(fc::sha256::hash(BLOCKCHAIN_NAME)))

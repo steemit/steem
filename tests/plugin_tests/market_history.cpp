@@ -8,7 +8,7 @@
 
 #include <golos/plugins/market_history/market_history_plugin.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "database_fixture.hpp"
 
 using namespace golos::chain;
 using namespace golos::protocol;
