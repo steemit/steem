@@ -100,54 +100,53 @@ namespace golos { namespace wallet {
                 return derived_key;
             }
 
-            string normalize_brain_key( string s ) {
+            string normalize_brain_key(string s) {
                 size_t i = 0, n = s.length();
                 std::string result;
-                char c;
-                result.reserve( n );
+                result.reserve(n);
 
                 bool preceded_by_whitespace = false;
                 bool non_empty = false;
-                while( i < n )
-                {
-                    c = s[i++];
-                    switch( c )
-                    {
+                while (i < n) {
+                    char c = s[i++];
+                    switch (c) {
                         case ' ':  case '\t': case '\r': case '\n': case '\v': case '\f':
                             preceded_by_whitespace = true;
                             continue;
 
-                        case 'a': c = 'A'; break;
-                        case 'b': c = 'B'; break;
-                        case 'c': c = 'C'; break;
-                        case 'd': c = 'D'; break;
-                        case 'e': c = 'E'; break;
-                        case 'f': c = 'F'; break;
-                        case 'g': c = 'G'; break;
-                        case 'h': c = 'H'; break;
-                        case 'i': c = 'I'; break;
-                        case 'j': c = 'J'; break;
-                        case 'k': c = 'K'; break;
-                        case 'l': c = 'L'; break;
-                        case 'm': c = 'M'; break;
-                        case 'n': c = 'N'; break;
-                        case 'o': c = 'O'; break;
-                        case 'p': c = 'P'; break;
-                        case 'q': c = 'Q'; break;
-                        case 'r': c = 'R'; break;
-                        case 's': c = 'S'; break;
-                        case 't': c = 'T'; break;
-                        case 'u': c = 'U'; break;
-                        case 'v': c = 'V'; break;
-                        case 'w': c = 'W'; break;
-                        case 'x': c = 'X'; break;
-                        case 'y': c = 'Y'; break;
-                        case 'z': c = 'Z'; break;
+                        case 'a':
+                        case 'b':
+                        case 'c':
+                        case 'd':
+                        case 'e':
+                        case 'f':
+                        case 'g':
+                        case 'h':
+                        case 'i':
+                        case 'j':
+                        case 'k':
+                        case 'l':
+                        case 'm':
+                        case 'n':
+                        case 'o':
+                        case 'p':
+                        case 'q':
+                        case 'r':
+                        case 's':
+                        case 't':
+                        case 'u':
+                        case 'v':
+                        case 'w':
+                        case 'x':
+                        case 'y':
+                        case 'z':
+                            c ^= 'a' ^ 'A';     // ASCII upper/lowercase diffs only in 1 bit
+                            break;
 
                         default:
                             break;
                     }
-                    if( preceded_by_whitespace && non_empty )
+                    if (preceded_by_whitespace && non_empty)
                         result.push_back(' ');
                     result.push_back(c);
                     preceded_by_whitespace = false;
@@ -859,7 +858,7 @@ namespace golos { namespace wallet {
             return my->copy_wallet_file(destination_filename);
         }
 
-        optional< database_api::signed_block> wallet_api::get_block(uint32_t num) {
+        optional<signed_block_with_info> wallet_api::get_block(uint32_t num) {
             return my->_remote_database_api->get_block( num );
         }
 
@@ -1124,6 +1123,15 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
             auto priv = fc::ecc::private_key::regenerate( secret );
             return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
+        }
+
+        signed_block_with_info::signed_block_with_info(const signed_block& block): signed_block(block) {
+            block_id = id();
+            signing_key = signee();
+            transaction_ids.reserve(transactions.size());
+            for (const signed_transaction& tx : transactions) {
+                transaction_ids.push_back(tx.id());
+            }
         }
 
         database_api::feed_history_api_object wallet_api::get_feed_history()const {
