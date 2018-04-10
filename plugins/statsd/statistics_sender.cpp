@@ -1,4 +1,4 @@
-#include <golos/plugins/blockchain_statistics/statistics_sender.hpp>
+#include <golos/plugins/statsd/statistics_sender.hpp>
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/system/error_code.hpp>
@@ -15,7 +15,19 @@
 #include <algorithm>
 
 
-statistics_sender::statistics_sender(uint32_t default_port) : default_port(default_port) {
+statistics_sender::statistics_sender() :
+    ios( appbase::app().get_io_service() ),
+    is_previous_bucket_set(false),
+    socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0))  {
+        socket.set_option(boost::asio::socket_base::broadcast(true));
+}
+
+statistics_sender::statistics_sender(uint32_t default_port) :
+    default_port(default_port),
+    ios( appbase::app().get_io_service() ),
+    is_previous_bucket_set(false), 
+    socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0)) {
+        socket.set_option(boost::asio::socket_base::broadcast(true));
 }
 
 bool statistics_sender::can_start() {
@@ -23,14 +35,14 @@ bool statistics_sender::can_start() {
 }
 
 void statistics_sender::push(const std::string & str) {
-    boost::asio::io_service io_service;
+    ios.post ([this, str]() {
+        
+        for (auto endpoint : this->recipient_endpoint_set) {
+            this->socket.send_to(boost::asio::buffer(str), endpoint);
+        }
+ 
+    });
 
-    boost::asio::ip::udp::socket socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
-    socket.set_option(boost::asio::socket_base::broadcast(true));
-
-    for (auto endpoint : recipient_endpoint_set) {
-        socket.send_to(boost::asio::buffer(str), endpoint);
-    }
 }
 
 void statistics_sender::add_address(const std::string & address) {

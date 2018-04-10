@@ -7,7 +7,6 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/program_options.hpp>
 
-#include <golos/plugins/blockchain_statistics/bucket_object.hpp>
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the
@@ -18,17 +17,17 @@
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef BLOCKCHAIN_STATISTICS_SPACE_ID
-#define BLOCKCHAIN_STATISTICS_SPACE_ID 9
+#ifndef STATSD_SPACE_ID
+#define STATSD_SPACE_ID 9
 #endif
 
-#ifndef BLOCKCHAIN_STATISTICS_PLUGIN_NAME
-#define BLOCKCHAIN_STATISTICS_PLUGIN_NAME "chain_stats"
+#ifndef STATSD_PLUGIN_NAME
+#define STATSD_PLUGIN_NAME "statsd"
 #endif
 
 namespace golos {
 namespace plugins {
-namespace blockchain_statistics {
+namespace statsd {
 
 using namespace golos::chain;
 using boost::program_options::options_description;
@@ -38,7 +37,7 @@ using boost::program_options::variables_map;
 class plugin final : public appbase::plugin<plugin> {
 public:
     static const std::string &name() {
-        static std::string name = BLOCKCHAIN_STATISTICS_PLUGIN_NAME;
+        static std::string name = STATSD_PLUGIN_NAME;
         return name;
     }
 
@@ -66,4 +65,4 @@ private:
     std::unique_ptr<plugin_impl> _my;
 };
 
-} } } // golos::plugins::blockchain_statistics
+} } } // golos::plugins::statsd

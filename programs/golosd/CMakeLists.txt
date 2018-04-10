@@ -26,7 +26,7 @@ target_link_libraries(
         golos::test_api_plugin
         golos::social_network
         golos::market_history
-        golos::blockchain_statistics
+        golos::statsd
         golos::account_by_key
         golos::account_history
         golos::private_message
