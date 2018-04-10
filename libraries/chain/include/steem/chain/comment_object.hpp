@@ -13,6 +13,10 @@ namespace steem { namespace chain {
 
    using protocol::beneficiary_route_type;
    using chainbase::t_vector;
+   using chainbase::t_pair;
+#ifdef STEEM_ENABLE_SMT
+   using protocol::votable_asset_info;
+#endif
 
    struct strcmp_less
    {
@@ -48,6 +52,9 @@ namespace steem { namespace chain {
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
             :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
+#ifdef STEEM_ENABLE_SMT
+            , allowed_vote_assets( a )
+#endif
          {
             c( *this );
          }
@@ -99,8 +106,11 @@ namespace steem { namespace chain {
          bool              allow_curation_rewards = true;
 
          using t_beneficiaries = t_vector< beneficiary_route_type >;
-
-         t_beneficiaries beneficiaries;
+         t_beneficiaries   beneficiaries;
+#ifdef STEEM_ENABLE_SMT
+         using t_votable_assets = t_vector< t_pair< asset_symbol_type, votable_asset_info > >;
+         t_votable_assets  allowed_vote_assets;
+#endif
    };
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
@@ -268,6 +278,19 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::chain::comment_object,
+             (id)(author)(permlink)
+             (category)(parent_author)(parent_permlink)
+             (last_update)(created)(active)(last_payout)
+             (depth)(children)
+             (net_rshares)(abs_rshares)(vote_rshares)
+             (children_abs_rshares)(cashout_time)(max_cashout_time)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
+             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)(allowed_vote_assets)
+          )
+#else
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
@@ -279,6 +302,7 @@ FC_REFLECT( steem::chain::comment_object,
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
           )
+#endif
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
 
 FC_REFLECT( steem::chain::comment_content_object,
@@ -300,7 +324,9 @@ namespace helpers
    public:
       typedef steem::chain::comment_index IndexType;
       typedef typename steem::chain::comment_object::t_beneficiaries t_beneficiaries;
-
+#ifdef STEEM_ENABLE_SMT
+      typedef typename steem::chain::comment_object::t_votable_assets t_votable_assets;
+#endif
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {
          index_statistic_info info;
@@ -314,6 +340,9 @@ namespace helpers
                info._item_additional_allocation += o.parent_permlink.capacity()*sizeof(shared_string::value_type);
                info._item_additional_allocation += o.permlink.capacity()*sizeof(shared_string::value_type);
                info._item_additional_allocation += o.beneficiaries.capacity()*sizeof(t_beneficiaries::value_type);
+#ifdef STEEM_ENABLE_SMT
+               info._item_additional_allocation += o.allowed_vote_assets.capacity()*sizeof(t_votable_assets::value_type);
+#endif
             }
          }
 

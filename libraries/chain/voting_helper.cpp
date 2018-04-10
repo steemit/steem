@@ -214,4 +214,93 @@ void TSteemVotingHelper::UpdateVote( const comment_vote_object& vote, const int6
    });
 }
 
+TSmtVotingHelper::TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol
+   /*, const share_type& max_accepted_payout, bool allowed_curation_awards*/)
+   : CVO(cvo)
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+uint32_t TSmtVotingHelper::GetMinimalVoteInterval() const  { FC_ASSERT("Not implemented yet!"); return 0; }
+uint32_t TSmtVotingHelper::GetVoteRegenerationPeriod() const  { FC_ASSERT("Not implemented yet!"); return 0; }
+uint32_t TSmtVotingHelper::GetVotesPerRegenerationPeriod() const  { FC_ASSERT("Not implemented yet!"); return 0; }
+uint32_t TSmtVotingHelper::GetReverseAuctionWindowSeconds()  { FC_ASSERT("Not implemented yet!"); return 0; }
+
+const share_type& TSmtVotingHelper::GetCommentNetRshares( const comment_object& comment )
+   {
+      FC_ASSERT("Not implemented yet!");
+      static share_type temp = 0;
+      return temp;
+   }
+
+const share_type& TSmtVotingHelper::GetCommentVoteRshares( const comment_object& comment )
+   {
+      FC_ASSERT("Not implemented yet!");
+      static share_type temp = 0;
+      return temp;
+   }
+
+void TSmtVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+const comment_vote_object& TSmtVotingHelper::CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
+                                                                      const int16_t& opWeight )
+   {
+      FC_ASSERT("Not implemented yet!");
+      return CVO;
+   }
+
+fc::uint128_t TSmtVotingHelper::CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
+                                                        const int64_t& voter_abs_rshares, bool is_recast )
+   {
+      FC_ASSERT("Not implemented yet!");
+      return 0;
+   }
+
+uint64_t TSmtVotingHelper::CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
+                                                      const share_type& old_vote_rshares )
+   {
+      FC_ASSERT("Not implemented yet!");
+      return 0;
+   }
+
+void TSmtVotingHelper::UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower,
+                                         const time_point_sec& newLastVoteTime)
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateComment( const comment_object& comment, const int64_t& vote_rshares, const int64_t& vote_absRshares )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
+                                        const int64_t& recast_rshares, const int64_t& vote_absRshares )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
+void TSmtVotingHelper::UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight )
+   {
+      FC_ASSERT("Not implemented yet!");
+   }
+
 } } // steem::chain

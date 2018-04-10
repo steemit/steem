@@ -516,7 +516,22 @@ struct comment_options_extension_visitor
 #ifdef STEEM_ENABLE_SMT
    void operator()( const allowed_vote_assets& va) const
    {
-      FC_TODO("To be implemented  suppport for allowed_vote_assets");
+      FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying allowed vote assets." );
+      auto remaining_asset_number = SMT_MAX_VOTABLE_ASSETS;
+      FC_ASSERT( remaining_asset_number > 0 );
+      _db.modify( _c, [&]( comment_object& c )
+      {
+         for( const auto& a : va.votable_assets )
+         {
+            if( a.first != STEEM_SYMBOL )
+            {
+               FC_ASSERT( remaining_asset_number > 0, "Comment votable assets number exceeds allowed limit ${ava}.",
+                        ("ava", SMT_MAX_VOTABLE_ASSETS) );
+               --remaining_asset_number;
+               c.allowed_vote_assets.emplace_back( a.first, a.second );
+            }
+         }
+      });
    }
 #endif
 
@@ -1256,7 +1271,7 @@ void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info
    }
 }
 
-void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo info, const vote_operation& o, const account_object& voter,
+void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const vote_operation& o, const account_object& voter,
                 const comment_object& comment, database& db )
 {
    FC_ASSERT( o.weight != 0, "Vote weight cannot be 0." );
@@ -1438,23 +1453,33 @@ void vote_evaluator::do_apply( const vote_operation& o )
       itr = comment_vote_idx.end();
    }
 
-   TVoterAssetInfo info;
-   TSteemVotingHelper steemVoting( _db );
-   calculate_power_shares( &steemVoting, &info, voter.last_vote_time, voter.voting_power, o.weight,
-                           _db.get_effective_vesting_shares( voter, STEEM_SYMBOL.get_paired_symbol() ).amount.value, _db );
+   auto EvaluateVoteWithAsset = [&](IVotingHelper* voting_helper) {
+      TVoterAssetInfo info;
+      calculate_power_shares( voting_helper, &info, voter.last_vote_time, voter.voting_power, o.weight,
+                              _db.get_effective_vesting_shares( voter, STEEM_SYMBOL.get_paired_symbol() ).amount.value, _db );
 
-   if( itr == comment_vote_idx.end() )
+      if( itr == comment_vote_idx.end() )
+         cast_vote( voting_helper, info, o, voter, comment, _db );
+      else
+         recast_vote( voting_helper, info, o, voter, comment, *itr, _db );
+   };
+   // STEEM is always allowed votable asset.
+   TSteemVotingHelper steemVoting( _db );
+   EvaluateVoteWithAsset( &steemVoting );
+#ifdef STEEM_ENABLE_SMT
+   // Vote with SMT assets if allowed.
+   for( const auto& allowed_asset_info : comment.allowed_vote_assets )
    {
-      //for( const TVoterAssetInfo& info : voter_asset_info_container )
-      //   cast_vote( info, &steemVoting, o, voter, comment, _db );
-      cast_vote( &steemVoting, info, o, voter, comment, _db );
+      const asset_symbol_type& asset_type = allowed_asset_info.first;
+      if( asset_type == STEEM_SYMBOL )
+         continue;
+      //const share_type&        max_accepted_payout = allowed_asset_info.second.max_accepted_payout;
+      //const bool&              allow_curation_rewards = allowed_asset_info.second.allow_curation_rewards;
+      TSmtVotingHelper smtVoting( steemVoting.CreateCommentVoteObject(voter.id, comment.id, o.weight), _db, asset_type
+                                  /*, max_accepted_payout, allow_curation_rewards*/ );
+      EvaluateVoteWithAsset( &smtVoting );
    }
-   else
-   {
-      //for( const TVoterAssetInfo& info : voter_asset_info_container )
-      //   recast_vote( info, &steemVoting, o, voter, comment, *itr, _db );
-      recast_vote( &steemVoting, info, o, voter, comment, *itr, _db );
-   }
+#endif
 
 } FC_CAPTURE_AND_RETHROW( (o)) }
 

@@ -2,9 +2,15 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
+namespace steem { namespace protocol {
+   class asset_symbol_type;
+} }
+
 namespace steem { namespace chain {
 
    class database;
+
+   using steem::protocol::asset_symbol_type;
 
    /**Abstract interface implemented separately for STEEM and SMTs.
     *
@@ -92,6 +98,41 @@ namespace steem { namespace chain {
       database&                  DB;
       uint32_t                   VotesPerRegenerationPeriod = 0;
       const comment_vote_object* CVO = nullptr;
+   };
+
+   class TSmtVotingHelper: public IVotingHelper
+   {
+      public:
+      TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol/*, const share_type& max_accepted_payout, bool allowed_curation_awards*/);
+
+      virtual uint32_t GetMinimalVoteInterval() const override;
+      virtual uint32_t GetVoteRegenerationPeriod() const override;
+      virtual uint32_t GetVotesPerRegenerationPeriod() const override;
+      virtual uint32_t GetReverseAuctionWindowSeconds() override;
+
+      virtual const share_type& GetCommentNetRshares( const comment_object& comment ) override;
+      virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) override;
+      virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta ) override;
+      virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
+                                                                  const int16_t& opWeight ) override;
+      virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
+                                                    const int64_t& voter_abs_rshares, bool is_recast ) override;
+      virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
+                                                  const share_type& old_vote_rshares ) override;
+      virtual void UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower,
+                                     const time_point_sec& newLastVoteTime) override;
+      virtual void UpdateComment( const comment_object& comment, const int64_t& vote_rshares, const int64_t& vote_absRshares ) override;
+      virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
+                                        const int64_t& recast_rshares, const int64_t& vote_absRshares ) override;
+      virtual void UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override;
+      virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares ) override;
+      virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) override;
+      virtual void UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight ) override;
+
+      private:
+      //database&                  DB;
+      //uint32_t                   VotesPerRegenerationPeriod = 0;
+      const comment_vote_object& CVO;
    };
 
 } } // steem::chain
