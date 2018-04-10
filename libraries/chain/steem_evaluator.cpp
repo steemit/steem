@@ -1473,10 +1473,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
       const asset_symbol_type& asset_type = allowed_asset_info.first;
       if( asset_type == STEEM_SYMBOL )
          continue;
-      //const share_type&        max_accepted_payout = allowed_asset_info.second.max_accepted_payout;
-      //const bool&              allow_curation_rewards = allowed_asset_info.second.allow_curation_rewards;
-      TSmtVotingHelper smtVoting( steemVoting.CreateCommentVoteObject(voter.id, comment.id, o.weight), _db, asset_type
-                                  /*, max_accepted_payout, allow_curation_rewards*/ );
+      const votable_asset_info& vai = allowed_asset_info.second;
+      const steem::protocol::votable_asset_info_v1& info = vai.get<steem::protocol::votable_asset_info_v1>();
+      TSmtVotingHelper smtVoting( steemVoting.CreateCommentVoteObject(voter.id, comment.id, o.weight), _db, asset_type,
+                                  info.max_accepted_payout, info.allow_curation_rewards );
       EvaluateVoteWithAsset( &smtVoting );
    }
 #endif

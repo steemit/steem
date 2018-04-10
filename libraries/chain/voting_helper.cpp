@@ -214,8 +214,8 @@ void TSteemVotingHelper::UpdateVote( const comment_vote_object& vote, const int6
    });
 }
 
-TSmtVotingHelper::TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol
-   /*, const share_type& max_accepted_payout, bool allowed_curation_awards*/)
+TSmtVotingHelper::TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol,
+   const share_type& max_accepted_payout, bool allowed_curation_awards)
    : CVO(cvo)
    {
       FC_ASSERT("Not implemented yet!");

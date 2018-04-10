@@ -65,6 +65,7 @@ namespace steem { namespace chain {
       virtual void UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight ) = 0;
    };
 
+   /// Temporary implementation of IVotingHelper for STEEM.
    class TSteemVotingHelper: public IVotingHelper
    {
       public:
@@ -100,10 +101,12 @@ namespace steem { namespace chain {
       const comment_vote_object* CVO = nullptr;
    };
 
+   /// Empty implementation of IVotingHelper for SMT. \warning Throws exception at every attempt of using.
    class TSmtVotingHelper: public IVotingHelper
    {
       public:
-      TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol/*, const share_type& max_accepted_payout, bool allowed_curation_awards*/);
+      TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol,
+                       const share_type& max_accepted_payout, bool allowed_curation_awards);
 
       virtual uint32_t GetMinimalVoteInterval() const override;
       virtual uint32_t GetVoteRegenerationPeriod() const override;
