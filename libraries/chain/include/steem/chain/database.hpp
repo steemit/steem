@@ -2,18 +2,20 @@
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
  */
 #pragma once
+#include <steem/chain/block_log.hpp>
+#include <steem/chain/block_notification.hpp>
+#include <steem/chain/fork_database.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/hardfork_property_object.hpp>
 #include <steem/chain/node_property_object.hpp>
-#include <steem/chain/fork_database.hpp>
-#include <steem/chain/block_log.hpp>
 #include <steem/chain/operation_notification.hpp>
+#include <steem/chain/transaction_notification.hpp>
+
+#include <steem/chain/util/advanced_benchmark_dumper.hpp>
 #include <steem/chain/util/signal.hpp>
 
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
-
-#include <steem/chain/util/advanced_benchmark_dumper.hpp>
 
 #include <appbase/plugin.hpp>
 
@@ -43,6 +45,13 @@ namespace steem { namespace chain {
    namespace util {
       class advanced_benchmark_dumper;
    }
+
+   struct reindex_notification
+   {
+      bool reindex_success = false;
+      uint32_t last_block_number = 0;
+   };
+
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -55,6 +64,8 @@ namespace steem { namespace chain {
 
          bool is_producing()const { return _is_producing; }
          void set_producing( bool p ) { _is_producing = p;  }
+         bool is_processing_block()const { return _currently_processing_block_id.valid(); }
+
          bool _is_producing = false;
 
          bool _log_hardforks = true;
@@ -224,6 +235,8 @@ namespace steem { namespace chain {
          void pop_block();
          void clear_pending();
 
+         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
+
          /**
           *  This method is used to track applied operations during the evaluation of a block, these
           *  operations should include any operation actually included in a transaction as well
@@ -232,18 +245,15 @@ namespace steem { namespace chain {
           */
          void notify_pre_apply_operation( operation_notification& note );
          void notify_post_apply_operation( const operation_notification& note );
-         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
-         void notify_applied_block( const signed_block& block );
-         void notify_on_pending_transaction( const signed_transaction& tx );
-         void notify_on_pre_apply_transaction( const signed_transaction& tx );
-         void notify_on_applied_transaction( const signed_transaction& tx );
+         void notify_pre_apply_block( const block_notification& note );
+         void notify_post_apply_block( const block_notification& note );
+         void notify_pre_apply_transaction( const transaction_notification& note );
+         void notify_post_apply_transaction( const transaction_notification& note );
 
-         using operation_notification_t = std::function< void(const operation_notification&) >;
-         using transaction_notification_t = std::function< void(const signed_transaction&) >;
-         using block_notification_t = std::function< void(const signed_block&) >;
-         using plugin_index_signal_notification_t = std::function< void(void) >;
-         using on_reindex_start_notification_t = std::function< void () >;
-         using on_reindex_done_notification_t = std::function< void(bool,uint32_t) >;
+         using apply_operation_handler_t = std::function< void(const operation_notification&) >;
+         using apply_transaction_handler_t = std::function< void(const transaction_notification&) >;
+         using apply_block_handler_t = std::function< void(const block_notification&) >;
+         using reindex_handler_t = std::function< void(const reindex_notification&) >;
 
       private:
          template <typename TSignal,
@@ -252,20 +262,19 @@ namespace steem { namespace chain {
             const abstract_plugin& plugin, int32_t group, const std::string& item_name = "" );
 
          template< bool IS_PRE_OPERATION >
-         boost::signals2::connection any_apply_operation_proxy_impl( const operation_notification_t& func,
+         boost::signals2::connection any_apply_operation_handler_impl( const apply_operation_handler_t& func,
             const abstract_plugin& plugin, int32_t group );
 
       public:
 
-         boost::signals2::connection pre_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection post_apply_operation_proxy( const operation_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_pending_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_pre_apply_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_applied_transaction_proxy( const transaction_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection applied_block_proxy( const block_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_reindex_start_proxy(const on_reindex_start_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection on_reindex_done_proxy(const on_reindex_done_notification_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-
+         boost::signals2::connection add_pre_apply_operation_handler   ( const apply_operation_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_operation_handler  ( const apply_operation_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_transaction_handler ( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_transaction_handler( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_block_handler       ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_block_handler      ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_reindex_handler           ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_reindex_handler          ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -454,13 +463,6 @@ namespace steem { namespace chain {
 
          ///@}
 #endif
-         typedef void on_reindex_start_t();
-         typedef void on_reindex_done_t(bool,uint32_t);
-
-         void on_reindex_start_connect(std::function<on_reindex_start_t> functor)
-            { _on_reindex_start.connect(functor); }
-         void on_reindex_done_connect(std::function<on_reindex_done_t> functor)
-            { _on_reindex_done.connect(functor); }
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
@@ -524,6 +526,8 @@ namespace steem { namespace chain {
          uint16_t                      _current_op_in_trx    = 0;
          uint16_t                      _current_virtual_op   = 0;
 
+         optional< block_id_type >     _currently_processing_block_id;
+
          flat_map<uint32_t,block_id_type>  _checkpoints;
 
          node_property_object              _node_property_object;
@@ -540,11 +544,20 @@ namespace steem { namespace chain {
 
          util::advanced_benchmark_dumper  _benchmark_dumper;
 
+         fc::signal<void(const operation_notification&)>       _pre_apply_operation_signal;
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */
-         fc::signal<void(const operation_notification&)> _pre_apply_operation;
-         fc::signal<void(const operation_notification&)> _post_apply_operation;
+         fc::signal<void(const operation_notification&)>       _post_apply_operation_signal;
+
+         /**
+          *  This signal is emitted when we start processing a block.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         fc::signal<void(const block_notification&)>           _pre_apply_block_signal;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
@@ -554,25 +567,29 @@ namespace steem { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         fc::signal<void(const signed_block&)>           _applied_block;
+         fc::signal<void(const block_notification&)>           _post_apply_block_signal;
 
          /**
-          * This signal is emitted any time a new transaction is added to the pending
-          * block state.
-          */
-         fc::signal<void(const signed_transaction&)>     _on_pending_transaction;
-
-         /**
-          * This signla is emitted any time a new transaction is about to be applied
+          * This signal is emitted any time a new transaction is about to be applied
           * to the chain state.
           */
-         fc::signal<void(const signed_transaction&)>     _on_pre_apply_transaction;
+         fc::signal<void(const transaction_notification&)>     _pre_apply_transaction_signal;
 
          /**
           * This signal is emitted any time a new transaction has been applied to the
           * chain state.
           */
-         fc::signal<void(const signed_transaction&)>     _on_applied_transaction;
+         fc::signal<void(const transaction_notification&)>     _post_apply_transaction_signal;
+
+         /**
+          * Emitted when reindexing starts
+          */
+         fc::signal<void(const reindex_notification&)>         _pre_reindex_signal;
+
+         /**
+          * Emitted when reindexing finishes
+          */
+         fc::signal<void(const reindex_notification&)>         _post_reindex_signal;
 
          /**
           *  Emitted After a block has been applied and committed.  The callback
@@ -585,10 +602,10 @@ namespace steem { namespace chain {
           */
          //fc::signal<void(const vector<const object*>&)>  removed_objects;
 
-         fc::signal< void() >                _plugin_index_signal;
-
-         fc::signal< void() >                _on_reindex_start;
-         fc::signal< void(bool, uint32_t) >  _on_reindex_done;
+         /**
+          * Internal signal to execute deferred registration of plugin indexes.
+          */
+         fc::signal<void()>                                    _plugin_index_signal;
    };
 
 } }

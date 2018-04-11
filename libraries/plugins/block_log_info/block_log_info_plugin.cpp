@@ -22,19 +22,20 @@ class block_log_info_plugin_impl
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
-      void on_applied_block( const signed_block& b );
+      void on_post_apply_block( const block_notification& note );
       void print_message( const block_log_message_data& data );
 
       database&                     _db;
       block_log_info_plugin&        _self;
-      boost::signals2::connection   on_applied_block_connection;
+      boost::signals2::connection   _post_apply_block_conn;
       int32_t                       print_interval_seconds = 0;
       bool                          print_irreversible = true;
       std::string                   output_name;
 };
 
-void block_log_info_plugin_impl::on_applied_block( const signed_block& b )
+void block_log_info_plugin_impl::on_post_apply_block( const block_notification& note )
 {
+   const signed_block& b = note.block;
    uint32_t block_num = b.block_num();
    bool is_genesis = (block_num == 1);
 
@@ -149,8 +150,8 @@ void block_log_info_plugin::plugin_initialize( const boost::program_options::var
       ilog( "Initializing block_log_info plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      my->on_applied_block_connection = db.applied_block_proxy(
-         [&]( const signed_block& b ){ my->on_applied_block( b ); }, *this );
+      my->_post_apply_block_conn = db.add_post_apply_block_handler(
+         [&]( const block_notification& note ){ my->on_post_apply_block( note ); }, *this );
 
       add_plugin_index< block_log_hash_state_index >(db);
       add_plugin_index< block_log_pending_message_index >(db);
@@ -171,7 +172,7 @@ void block_log_info_plugin::plugin_startup() {}
 
 void block_log_info_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( my->on_applied_block_connection );
+   chain::util::disconnect_signal( my->_post_apply_block_conn );
 }
 
 } } } // steem::plugins::block_log_info

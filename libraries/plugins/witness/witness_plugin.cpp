@@ -54,9 +54,9 @@ namespace detail {
          _timer(io),
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      void pre_transaction( const steem::protocol::signed_transaction& trx );
-      void pre_operation( const chain::operation_notification& note );
-      void on_block( const signed_block& b );
+      void on_pre_apply_transaction( const chain::transaction_notification& note );
+      void on_pre_apply_operation( const chain::operation_notification& note );
+      void on_post_apply_block( const block_notification& note );
 
       void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
 
@@ -73,9 +73,9 @@ namespace detail {
       boost::asio::deadline_timer                                          _timer;
 
       chain::database&     _db;
-      boost::signals2::connection   pre_apply_connection;
-      boost::signals2::connection   applied_block_connection;
-      boost::signals2::connection   on_pre_apply_transaction_connection;
+      boost::signals2::connection   _pre_apply_operation_conn;
+      boost::signals2::connection   _post_apply_block_conn;
+      boost::signals2::connection   _pre_apply_transaction_conn;
    };
 
    struct comment_options_extension_visitor
@@ -216,8 +216,9 @@ namespace detail {
       }
    };
 
-   void witness_plugin_impl::pre_transaction( const steem::protocol::signed_transaction& trx )
+   void witness_plugin_impl::on_pre_apply_transaction( const chain::transaction_notification& note )
    {
+      const signed_transaction& trx = note.transaction;
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
 
@@ -240,7 +241,7 @@ namespace detail {
       }
    }
 
-   void witness_plugin_impl::pre_operation( const chain::operation_notification& note )
+   void witness_plugin_impl::on_pre_apply_operation( const chain::operation_notification& note )
    {
       if( _db.is_producing() )
       {
@@ -248,8 +249,9 @@ namespace detail {
       }
    }
 
-   void witness_plugin_impl::on_block( const signed_block& b )
+   void witness_plugin_impl::on_post_apply_block( const block_notification& note )
    { try {
+      const signed_block& b = note.block;
       int64_t max_block_size = _db.get_dynamic_global_properties().maximum_block_size;
 
       auto reserve_ratio_ptr = _db.find( reserve_ratio_id_type() );
@@ -581,12 +583,12 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
-   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction_proxy(
-      [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); }, *this, 0 );
-   my->pre_apply_connection = my->_db.pre_apply_operation_proxy(
-      [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0);
-   my->applied_block_connection = my->_db.applied_block_proxy(
-      [&]( const signed_block& b ){ my->on_block( b ); }, *this, 0 );
+   my->_pre_apply_transaction_conn = my->_db.add_pre_apply_transaction_handler(
+      [&]( const chain::transaction_notification& note ){ my->on_pre_apply_transaction( note ); }, *this, 0 );
+   my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler(
+      [&]( const chain::operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0);
+   my->_post_apply_block_conn = my->_db.add_post_apply_block_handler(
+      [&]( const chain::block_notification& note ){ my->on_post_apply_block( note ); }, *this, 0 );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
@@ -618,9 +620,9 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
-      chain::util::disconnect_signal( my->pre_apply_connection );
-      chain::util::disconnect_signal( my->applied_block_connection );
-      chain::util::disconnect_signal( my->on_pre_apply_transaction_connection );
+      chain::util::disconnect_signal( my->_pre_apply_operation_conn );
+      chain::util::disconnect_signal( my->_post_apply_block_conn );
+      chain::util::disconnect_signal( my->_pre_apply_transaction_conn );
 
       my->_timer.cancel();
    }

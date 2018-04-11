@@ -56,14 +56,14 @@ class tags_plugin_impl
       tags_plugin_impl();
       virtual ~tags_plugin_impl();
 
-      void pre_operation( const operation_notification& note );
-      void on_operation( const operation_notification& note );
+      void on_pre_apply_operation( const operation_notification& note );
+      void on_post_apply_operation( const operation_notification& note );
 
       chain::database&     _db;
       fc::time_point_sec   _promoted_start_time;
       bool                 _started = false;
-      boost::signals2::connection   pre_apply_connection;
-      boost::signals2::connection   post_apply_connection;
+      boost::signals2::connection   _pre_apply_operation_conn;
+      boost::signals2::connection   _post_apply_operation_conn;
       boost::signals2::connection   on_sync_connection;
 
       void remove_stats( const tag_object& tag, const tag_stats_object& stats )const;
@@ -451,7 +451,7 @@ struct operation_visitor
    void operator()( Op&& )const{} /// ignore all other ops
 };
 
-void tags_plugin_impl::pre_operation( const operation_notification& note )
+void tags_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
    try
    {
@@ -468,7 +468,7 @@ void tags_plugin_impl::pre_operation( const operation_notification& note )
    }
 }
 
-void tags_plugin_impl::on_operation( const operation_notification& note )
+void tags_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
    try
    {
@@ -506,8 +506,8 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation_proxy( [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0 );
-   my->post_apply_connection = my->_db.post_apply_operation_proxy( [&]( const operation_notification& note ){ my->on_operation(  note ); }, *this, 0 );
+   my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
+   my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
    if( !options.at( "tags-skip-startup-update" ).as< bool >() )
    {
@@ -545,8 +545,8 @@ void tags_plugin::plugin_startup()
 
    void tags_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( my->pre_apply_connection );
-   chain::util::disconnect_signal( my->post_apply_connection );
+   chain::util::disconnect_signal( my->_pre_apply_operation_conn );
+   chain::util::disconnect_signal( my->_post_apply_operation_conn );
 }
 
 } } } /// steem::plugins::tags
