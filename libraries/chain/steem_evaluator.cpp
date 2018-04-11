@@ -1221,8 +1221,8 @@ struct TVoterAssetInfo {
 };
 
 void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info,
-                             const time_point_sec& last_vote_time, const uint16_t& voting_power, const uint64_t& vote_weight,
-                             const uint64_t& voter_effective_vesting_shares, const database& db )
+                             const time_point_sec& last_vote_time, uint16_t voting_power, int16_t vote_weight,
+                             uint64_t voter_effective_vesting_shares, const database& db )
 {
    int64_t elapsed_seconds = (db.head_block_time() - last_vote_time).to_seconds();
 

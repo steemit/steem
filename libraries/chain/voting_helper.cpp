@@ -19,7 +19,7 @@ TSteemVotingHelper::TSteemVotingHelper(database& db) : DB(db)
 const share_type& TSteemVotingHelper::GetCommentNetRshares( const comment_object& comment ) { return comment.net_rshares; }
 const share_type& TSteemVotingHelper::GetCommentVoteRshares( const comment_object& comment ) { return comment.vote_rshares; }
 
-void TSteemVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta )
+void TSteemVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& comment, uint64_t delta )
    {
       DB.modify( comment, [&]( comment_object& c )
       {
@@ -28,7 +28,7 @@ void TSteemVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& c
    }
 
 const comment_vote_object& TSteemVotingHelper::CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                            const int16_t& opWeight )
+                                                                        int16_t opWeight )
 {
    if( CVO == nullptr )
       CVO = &DB.create<comment_vote_object>( [&]( comment_vote_object& cv ){
@@ -42,7 +42,7 @@ const comment_vote_object& TSteemVotingHelper::CreateCommentVoteObject( const ac
 }
 
 fc::uint128_t TSteemVotingHelper::CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                const int64_t& voter_abs_rshares, bool is_recast )
+                                                          int64_t voter_abs_rshares, bool is_recast )
 {
    // Note that SMT implementation returns 0 from here, thus children_abs_rshares stays a STEEM only field.
    if( DB.has_hardfork( STEEM_HARDFORK_0_17__769 ) )
@@ -71,8 +71,7 @@ fc::uint128_t TSteemVotingHelper::CalculateAvgCashoutSec( const comment_object& 
                ( old_root_abs_rshares + voter_abs_rshares );
 }
 
-uint64_t TSteemVotingHelper::CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
-                                             const share_type& old_vote_rshares )
+uint64_t TSteemVotingHelper::CalculateCommentVoteWeight(const comment_object& comment, int64_t rshares, const share_type& old_vote_rshares )
 {
    share_type comment_vote_rshares = GetCommentVoteRshares( comment );
    if( comment.created < fc::time_point_sec(STEEM_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
@@ -117,8 +116,7 @@ uint64_t TSteemVotingHelper::CalculateCommentVoteWeight(const comment_object& co
    return new_weight - old_weight;
 }
 
-void TSteemVotingHelper::UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower,
-                                 const time_point_sec& newLastVoteTime)
+void TSteemVotingHelper::UpdateVoterParams(const account_object& voter, uint16_t newVotingPower, const time_point_sec& newLastVoteTime)
 {
    DB.modify( voter, [&]( account_object& a ){
       a.voting_power = newVotingPower;
@@ -126,7 +124,7 @@ void TSteemVotingHelper::UpdateVoterParams(const account_object& voter, const ui
    });
 }
 
-void TSteemVotingHelper::UpdateComment( const comment_object& comment, const int64_t& vote_rshares, const int64_t& vote_absRshares )
+void TSteemVotingHelper::UpdateComment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares )
 {
    DB.modify( comment, [&]( comment_object& c ){
       c.net_rshares += vote_rshares;
@@ -144,7 +142,7 @@ void TSteemVotingHelper::UpdateComment( const comment_object& comment, const int
 }
 
 void TSteemVotingHelper::UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                    const int64_t& recast_rshares, const int64_t& vote_absRshares )
+                                              int64_t recast_rshares, int64_t vote_absRshares )
 {
    DB.modify( comment, [&]( comment_object& c )
    {
@@ -168,7 +166,7 @@ void TSteemVotingHelper::UpdateCommentRecast( const comment_object& comment, con
    });
 }
 
-void TSteemVotingHelper::UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec )
+void TSteemVotingHelper::UpdateRootComment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec )
 {
    DB.modify( root, [&]( comment_object& c )
    {
@@ -187,7 +185,7 @@ void TSteemVotingHelper::UpdateRootComment( const comment_object& root, const in
    });
 }
 
-void TSteemVotingHelper::UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares )
+void TSteemVotingHelper::UpdateCommentVoteObject( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares )
 {
    DB.modify( cvo, [&]( comment_vote_object& cv ){
       cv.rshares = rshares;
@@ -202,7 +200,7 @@ if( !DB.has_hardfork( STEEM_HARDFORK_0_17__774) )
    DB.adjust_rshares2( c, old_rshares2, new_rshares2 );
 }
 
-void TSteemVotingHelper::UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight )
+void TSteemVotingHelper::UpdateVote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight )
 {
    DB.modify( vote, [&]( comment_vote_object& cv )
    {
@@ -240,55 +238,55 @@ const share_type& TSmtVotingHelper::GetCommentVoteRshares( const comment_object&
       return temp;
    }
 
-void TSmtVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& comment, const uint64_t& delta )
+void TSmtVotingHelper::IncreaseCommentTotalVoteWeight( const comment_object& comment, uint64_t delta )
    {
       FC_ASSERT("Not implemented yet!");
    }
 
 const comment_vote_object& TSmtVotingHelper::CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                                      const int16_t& opWeight )
+                                                                      int16_t opWeight )
    {
       FC_ASSERT("Not implemented yet!");
       return CVO;
    }
 
 fc::uint128_t TSmtVotingHelper::CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                        const int64_t& voter_abs_rshares, bool is_recast )
+                                                        int64_t voter_abs_rshares, bool is_recast )
    {
       FC_ASSERT("Not implemented yet!");
       return 0;
    }
 
-uint64_t TSmtVotingHelper::CalculateCommentVoteWeight(const comment_object& comment, const int64_t& rshares, 
+uint64_t TSmtVotingHelper::CalculateCommentVoteWeight(const comment_object& comment, int64_t rshares, 
                                                       const share_type& old_vote_rshares )
    {
       FC_ASSERT("Not implemented yet!");
       return 0;
    }
 
-void TSmtVotingHelper::UpdateVoterParams(const account_object& voter, const uint16_t& newVotingPower,
+void TSmtVotingHelper::UpdateVoterParams(const account_object& voter, uint16_t newVotingPower,
                                          const time_point_sec& newLastVoteTime)
    {
       FC_ASSERT("Not implemented yet!");
    }
 
-void TSmtVotingHelper::UpdateComment( const comment_object& comment, const int64_t& vote_rshares, const int64_t& vote_absRshares )
+void TSmtVotingHelper::UpdateComment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares )
    {
       FC_ASSERT("Not implemented yet!");
    }
 
 void TSmtVotingHelper::UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                        const int64_t& recast_rshares, const int64_t& vote_absRshares )
+                                            int64_t recast_rshares, int64_t vote_absRshares )
    {
       FC_ASSERT("Not implemented yet!");
    }
 
-void TSmtVotingHelper::UpdateRootComment( const comment_object& root, const int64_t& vote_absRshares, const fc::uint128_t& avg_cashout_sec )
+void TSmtVotingHelper::UpdateRootComment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec )
    {
       FC_ASSERT("Not implemented yet!");
    }
 
-void TSmtVotingHelper::UpdateCommentVoteObject( const comment_vote_object& cvo, const uint64_t& vote_weight, const int64_t& rshares )
+void TSmtVotingHelper::UpdateCommentVoteObject( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares )
    {
       FC_ASSERT("Not implemented yet!");
    }
@@ -298,7 +296,7 @@ void TSmtVotingHelper::UpdateCommentRshares2( const comment_object& c, const fc:
       FC_ASSERT("Not implemented yet!");
    }
 
-void TSmtVotingHelper::UpdateVote( const comment_vote_object& vote, const int64_t& rshares, const int16_t& opWeight )
+void TSmtVotingHelper::UpdateVote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight )
    {
       FC_ASSERT("Not implemented yet!");
    }
