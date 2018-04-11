@@ -1213,24 +1213,24 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    }
 }
 
-struct TVoterAssetInfo {
+struct t_voter_asset_info {
    asset_symbol_type liquid_symbol = STEEM_SYMBOL;
    int64_t           current_power = 0;
    int64_t           used_power = 0;
    int64_t           abs_rshares = 0;
 };
 
-void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info,
+void calculate_power_shares( i_voting_helper* voting_helper, t_voter_asset_info* info,
                              const time_point_sec& last_vote_time, uint16_t voting_power, int16_t vote_weight,
                              uint64_t voter_effective_vesting_shares, const database& db )
 {
    int64_t elapsed_seconds = (db.head_block_time() - last_vote_time).to_seconds();
 
    if( db.has_hardfork( STEEM_HARDFORK_0_11 ) )
-      FC_ASSERT( elapsed_seconds >= voting_helper->GetMinimalVoteInterval(), 
-                 "Can only vote once every ${sec} seconds.", ("sec", voting_helper->GetMinimalVoteInterval()) );
+      FC_ASSERT( elapsed_seconds >= voting_helper->get_minimal_vote_interval(), 
+                 "Can only vote once every ${sec} seconds.", ("sec", voting_helper->get_minimal_vote_interval()) );
 
-   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / voting_helper->GetVoteRegenerationPeriod();
+   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / voting_helper->get_vote_regeneration_period();
    info->current_power = std::min( int64_t(voting_power + regenerated_power), int64_t(STEEM_100_PERCENT) );
    FC_ASSERT( info->current_power > 0, "Account currently does not have voting power." );
 
@@ -1240,7 +1240,7 @@ void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info
    info->used_power = ((info->current_power * abs_weight) / STEEM_100_PERCENT) * (60*60*24);
 
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = voting_helper->GetVotesPerRegenerationPeriod() * voting_helper->GetVoteRegenerationPeriod();
+   int64_t max_vote_denom = voting_helper->get_votes_per_regeneration_period() * voting_helper->get_vote_regeneration_period();
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
@@ -1271,7 +1271,7 @@ void calculate_power_shares( IVotingHelper* voting_helper, TVoterAssetInfo* info
    }
 }
 
-void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const vote_operation& o, const account_object& voter,
+void cast_vote( i_voting_helper* voting_helper, const t_voter_asset_info& info, const vote_operation& o, const account_object& voter,
                 const comment_object& comment, database& db )
 {
    FC_ASSERT( o.weight != 0, "Vote weight cannot be 0." );
@@ -1289,22 +1289,22 @@ void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const
    //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
    //if( used_power == 0 ) used_power = 1;
 
-   voting_helper->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
+   voting_helper->update_voter_params(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
 
    /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-   fc::uint128_t old_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t old_rshares = std::max( voting_helper->get_comment_net_rshares( comment ).value, int64_t(0) );
    const auto& root = db.get( comment.root_comment );
 
-   fc::uint128_t avg_cashout_sec = voting_helper->CalculateAvgCashoutSec( comment, root, info.abs_rshares, false /*is_recast*/ );
+   fc::uint128_t avg_cashout_sec = voting_helper->calculate_avg_cashout_sec( comment, root, info.abs_rshares, false /*is_recast*/ );
 
    FC_ASSERT( info.abs_rshares > 0, "Cannot vote with 0 rshares." );
 
-   auto old_vote_rshares = voting_helper->GetCommentVoteRshares( comment );
+   auto old_vote_rshares = voting_helper->get_comment_vote_rshares( comment );
 
-   voting_helper->UpdateComment( comment, rshares, info.abs_rshares );
-   voting_helper->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
+   voting_helper->update_comment( comment, rshares, info.abs_rshares );
+   voting_helper->update_root_comment( root, info.abs_rshares, avg_cashout_sec );
 
-   fc::uint128_t new_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t new_rshares = std::max( voting_helper->get_comment_net_rshares( comment ).value, int64_t(0) );
 
    /// calculate rshares2 value
    new_rshares = util::evaluate_reward_curve( new_rshares );
@@ -1335,17 +1335,17 @@ void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const
     *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
     *
    **/
-   const comment_vote_object& cvo = voting_helper->CreateCommentVoteObject( voter.id, comment.id, o.weight );
+   const comment_vote_object& cvo = voting_helper->create_comment_vote_object( voter.id, comment.id, o.weight );
    uint64_t vote_weight = 0;
    if( curation_reward_eligible )
    {
-      vote_weight = voting_helper->CalculateCommentVoteWeight( comment, rshares, old_vote_rshares );
+      vote_weight = voting_helper->calculate_comment_vote_weight( comment, rshares, old_vote_rshares );
 
       max_vote_weight = vote_weight;
 
       if( db.head_block_time() > fc::time_point_sec(STEEM_HARDFORK_0_6_REVERSE_AUCTION_TIME) )  /// start enforcing this prior to the hardfork
       {
-         uint32_t raws = voting_helper->GetReverseAuctionWindowSeconds();
+         uint32_t raws = voting_helper->get_reverse_auction_window_seconds();
          /// discount weight by time
          uint128_t w(max_vote_weight);
          uint64_t delta_t = std::min( uint64_t((cvo.last_update - comment.created).to_seconds()), uint64_t(raws) );
@@ -1355,17 +1355,17 @@ void cast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const
          vote_weight = w.to_uint64();
       }
    }
-   voting_helper->UpdateCommentVoteObject( cvo, vote_weight, rshares );
+   voting_helper->update_comment_vote_object( cvo, vote_weight, rshares );
 
    
    if( max_vote_weight ) // Optimization
    {
-      voting_helper->IncreaseCommentTotalVoteWeight( comment,  max_vote_weight );
+      voting_helper->increase_comment_total_vote_weight( comment,  max_vote_weight );
    }
-   voting_helper->UpdateCommentRshares2( comment, old_rshares, new_rshares );
+   voting_helper->update_comment_rshares2( comment, old_rshares, new_rshares );
 }
 
-void recast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, const vote_operation& o, const account_object& voter,
+void recast_vote( i_voting_helper* voting_helper, const t_voter_asset_info& info, const vote_operation& o, const account_object& voter,
                   const comment_object& comment, const comment_vote_object& vote, database& db )
 {
    FC_ASSERT( vote.num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
@@ -1384,26 +1384,26 @@ void recast_vote( IVotingHelper* voting_helper, const TVoterAssetInfo& info, con
          FC_ASSERT( db.head_block_time() < db.calculate_discussion_payout_time( comment ) - STEEM_UPVOTE_LOCKOUT_HF7, "Cannot increase payout within last minute before payout." );
    }
 
-   voting_helper->UpdateVoterParams(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
+   voting_helper->update_voter_params(voter, info.current_power - info.used_power /*newVotingPower*/, db.head_block_time() /*newLastVoteTime*/);
 
    /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-   fc::uint128_t old_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0) );
+   fc::uint128_t old_rshares = std::max( voting_helper->get_comment_net_rshares( comment ).value, int64_t(0) );
    const auto& root = db.get( comment.root_comment );
 
-   fc::uint128_t avg_cashout_sec = voting_helper->CalculateAvgCashoutSec( comment, root, info.abs_rshares, true /*is_recast*/ );
+   fc::uint128_t avg_cashout_sec = voting_helper->calculate_avg_cashout_sec( comment, root, info.abs_rshares, true /*is_recast*/ );
 
-   voting_helper->UpdateCommentRecast( comment, vote, rshares, info.abs_rshares );
-   voting_helper->UpdateRootComment( root, info.abs_rshares, avg_cashout_sec );
+   voting_helper->update_comment_recast( comment, vote, rshares, info.abs_rshares );
+   voting_helper->update_root_comment( root, info.abs_rshares, avg_cashout_sec );
 
-   fc::uint128_t new_rshares = std::max( voting_helper->GetCommentNetRshares( comment ).value, int64_t(0));
+   fc::uint128_t new_rshares = std::max( voting_helper->get_comment_net_rshares( comment ).value, int64_t(0));
 
    /// calculate rshares2 value
    new_rshares = util::evaluate_reward_curve( new_rshares );
    old_rshares = util::evaluate_reward_curve( old_rshares );
 
-   voting_helper->IncreaseCommentTotalVoteWeight( comment, -vote.weight );
-   voting_helper->UpdateVote( vote, rshares, o.weight );
-   voting_helper->UpdateCommentRshares2( comment, old_rshares, new_rshares );
+   voting_helper->increase_comment_total_vote_weight( comment, -vote.weight );
+   voting_helper->update_vote( vote, rshares, o.weight );
+   voting_helper->update_comment_rshares2( comment, old_rshares, new_rshares );
 }
 
 void vote_evaluator::do_apply( const vote_operation& o )
@@ -1453,8 +1453,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       itr = comment_vote_idx.end();
    }
 
-   auto EvaluateVoteWithAsset = [&](IVotingHelper* voting_helper) {
-      TVoterAssetInfo info;
+   auto EvaluateVoteWithAsset = [&](i_voting_helper* voting_helper) {
+      t_voter_asset_info info;
       calculate_power_shares( voting_helper, &info, voter.last_vote_time, voter.voting_power, o.weight,
                               _db.get_effective_vesting_shares( voter, STEEM_SYMBOL.get_paired_symbol() ).amount.value, _db );
 
@@ -1464,8 +1464,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
          recast_vote( voting_helper, info, o, voter, comment, *itr, _db );
    };
    // STEEM is always allowed votable asset.
-   TSteemVotingHelper steemVoting( _db );
-   EvaluateVoteWithAsset( &steemVoting );
+   t_steem_voting_helper steem_voting_helper( _db );
+   EvaluateVoteWithAsset( &steem_voting_helper );
 #ifdef STEEM_ENABLE_SMT
    // Vote with SMT assets if allowed.
    for( const auto& allowed_asset_info : comment.allowed_vote_assets )
@@ -1475,9 +1475,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
          continue;
       const votable_asset_info& vai = allowed_asset_info.second;
       const steem::protocol::votable_asset_info_v1& info = vai.get<steem::protocol::votable_asset_info_v1>();
-      TSmtVotingHelper smtVoting( steemVoting.CreateCommentVoteObject(voter.id, comment.id, o.weight), _db, asset_type,
-                                  info.max_accepted_payout, info.allow_curation_rewards );
-      EvaluateVoteWithAsset( &smtVoting );
+      t_smt_voting_helper smt_voting_helper( steem_voting_helper.create_comment_vote_object(voter.id, comment.id, o.weight),
+                                             _db, asset_type, info.max_accepted_payout, info.allow_curation_rewards );
+      EvaluateVoteWithAsset( &smt_voting_helper );
    }
 #endif
 

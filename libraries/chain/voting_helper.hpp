@@ -34,106 +34,108 @@ namespace steem { namespace chain {
     *        rshares
     *        weight
     */
-   class IVotingHelper
+   class i_voting_helper
    {
       public:
-      virtual uint32_t GetMinimalVoteInterval() const = 0;
-      virtual uint32_t GetVoteRegenerationPeriod() const = 0;
-      virtual uint32_t GetVotesPerRegenerationPeriod() const = 0;
-      virtual uint32_t GetReverseAuctionWindowSeconds() = 0;
+      virtual uint32_t get_minimal_vote_interval() const = 0;
+      virtual uint32_t get_vote_regeneration_period() const = 0;
+      virtual uint32_t get_votes_per_regeneration_period() const = 0;
+      virtual uint32_t get_reverse_auction_window_seconds() = 0;
 
-      virtual const share_type& GetCommentNetRshares( const comment_object& comment ) = 0;
-      virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) = 0;
+      virtual const share_type& get_comment_net_rshares( const comment_object& comment ) = 0;
+      virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) = 0;
 
-      virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, uint64_t delta ) = 0;
+      virtual void increase_comment_total_vote_weight( const comment_object& comment, uint64_t delta ) = 0;
 
-      virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                                  int16_t opWeight ) = 0;
+      virtual const comment_vote_object& create_comment_vote_object( const account_id_type& voterId, const comment_id_type& commentId,
+                                                                     int16_t opWeight ) = 0;
 
-      virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                    int64_t voter_abs_rshares, bool is_recast ) = 0;
-      virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, int64_t rshares, const share_type& old_vote_rshares ) = 0;
+      virtual fc::uint128_t calculate_avg_cashout_sec( const comment_object& comment, const comment_object& root,
+                                                       int64_t voter_abs_rshares, bool is_recast ) = 0;
+      virtual uint64_t calculate_comment_vote_weight( const comment_object& comment, int64_t rshares, const share_type& old_vote_rshares ) = 0;
 
-      virtual void UpdateVoterParams(const account_object& voter, uint16_t newVotingPower, const time_point_sec& newLastVoteTime) = 0;
-      virtual void UpdateComment( const comment_object& comment, int64_t rshares, int64_t absRshares ) = 0;
-      virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                        int64_t recast_rshares, int64_t vote_absRshares ) = 0;
-      virtual void UpdateRootComment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) = 0;
-      virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) = 0;
-      virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) = 0;
-      virtual void UpdateVote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) = 0;
+      virtual void update_voter_params( const account_object& voter, uint16_t newVotingPower, const time_point_sec& newLastVoteTime ) = 0;
+      virtual void update_comment( const comment_object& comment, int64_t rshares, int64_t absRshares ) = 0;
+      virtual void update_comment_recast( const comment_object& comment, const comment_vote_object& vote, 
+                                          int64_t recast_rshares, int64_t vote_absRshares ) = 0;
+      virtual void update_root_comment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) = 0;
+      virtual void update_comment_vote_object( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) = 0;
+      virtual void update_comment_rshares2( const comment_object& c, const fc::uint128_t& old_rshares2,
+                                            const fc::uint128_t& new_rshares2 ) = 0;
+      virtual void update_vote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) = 0;
    };
 
-   /// Temporary implementation of IVotingHelper for STEEM.
-   class TSteemVotingHelper: public IVotingHelper
+   /// Temporary implementation of i_voting_helper for STEEM.
+   class t_steem_voting_helper: public i_voting_helper
    {
       public:
-      TSteemVotingHelper(database& db);
+      t_steem_voting_helper(database& db);
 
-      virtual uint32_t GetMinimalVoteInterval() const override { return STEEM_MIN_VOTE_INTERVAL_SEC; }
-      virtual uint32_t GetVoteRegenerationPeriod() const override { return STEEM_VOTE_REGENERATION_SECONDS; }
-      virtual uint32_t GetVotesPerRegenerationPeriod() const override { return VotesPerRegenerationPeriod; }
-      virtual uint32_t GetReverseAuctionWindowSeconds() override { return STEEM_REVERSE_AUCTION_WINDOW_SECONDS; }
+      virtual uint32_t get_minimal_vote_interval() const override { return STEEM_MIN_VOTE_INTERVAL_SEC; }
+      virtual uint32_t get_vote_regeneration_period() const override { return STEEM_VOTE_REGENERATION_SECONDS; }
+      virtual uint32_t get_votes_per_regeneration_period() const override { return _votes_per_regeneration_period; }
+      virtual uint32_t get_reverse_auction_window_seconds() override { return STEEM_REVERSE_AUCTION_WINDOW_SECONDS; }
 
-      virtual const share_type& GetCommentNetRshares( const comment_object& comment ) override;
-      virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) override;
-      virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, uint64_t delta ) override;
-      virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                                  int16_t opWeight ) override;
-      virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                    int64_t voter_abs_rshares, bool is_recast ) override;
-      virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, int64_t rshares, 
-                                                  const share_type& old_vote_rshares ) override;
-      virtual void UpdateVoterParams(const account_object& voter, uint16_t newVotingPower, const time_point_sec& newLastVoteTime) override;
-      virtual void UpdateComment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares ) override;
-      virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                        int64_t recast_rshares, int64_t vote_absRshares ) override;
-      virtual void UpdateRootComment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override;
-      virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) override;
-      virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) override;
-      virtual void UpdateVote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) override;
+      virtual const share_type& get_comment_net_rshares( const comment_object& comment ) override;
+      virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) override;
+      virtual void increase_comment_total_vote_weight( const comment_object& comment, uint64_t delta ) override;
+      virtual const comment_vote_object& create_comment_vote_object( const account_id_type& voterId, const comment_id_type& commentId,
+                                                                     int16_t opWeight ) override;
+      virtual fc::uint128_t calculate_avg_cashout_sec( const comment_object& comment, const comment_object& root,
+                                                       int64_t voter_abs_rshares, bool is_recast ) override;
+      virtual uint64_t calculate_comment_vote_weight( const comment_object& comment, int64_t rshares, 
+                                                      const share_type& old_vote_rshares ) override;
+      virtual void update_voter_params( const account_object& voter, uint16_t newVotingPower, const time_point_sec& newLastVoteTime ) override;
+      virtual void update_comment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares ) override;
+      virtual void update_comment_recast( const comment_object& comment, const comment_vote_object& vote, 
+                                          int64_t recast_rshares, int64_t vote_absRshares ) override;
+      virtual void update_root_comment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override;
+      virtual void update_comment_vote_object( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) override;
+      virtual void update_comment_rshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) override;
+      virtual void update_vote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) override;
 
       private:
-      database&                  DB;
-      uint32_t                   VotesPerRegenerationPeriod = 0;
-      const comment_vote_object* CVO = nullptr;
+      database&                  _db;
+      uint32_t                   _votes_per_regeneration_period = 0;
+      const comment_vote_object* _comment_vote_object = nullptr;
    };
 
-   /// Empty implementation of IVotingHelper for SMT. \warning Throws exception at every attempt of using.
-   class TSmtVotingHelper: public IVotingHelper
+   /// Empty implementation of i_voting_helper for SMT. \warning Throws exception at every attempt of using.
+   class t_smt_voting_helper: public i_voting_helper
    {
       public:
-      TSmtVotingHelper(const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol,
-                       const share_type& max_accepted_payout, bool allowed_curation_awards);
+      t_smt_voting_helper( const comment_vote_object& cvo, database& db, const asset_symbol_type& symbol,
+                           const share_type& max_accepted_payout, bool allowed_curation_awards );
 
-      virtual uint32_t GetMinimalVoteInterval() const override;
-      virtual uint32_t GetVoteRegenerationPeriod() const override;
-      virtual uint32_t GetVotesPerRegenerationPeriod() const override;
-      virtual uint32_t GetReverseAuctionWindowSeconds() override;
+      virtual uint32_t get_minimal_vote_interval() const override;
+      virtual uint32_t get_vote_regeneration_period() const override;
+      virtual uint32_t get_votes_per_regeneration_period() const override;
+      virtual uint32_t get_reverse_auction_window_seconds() override;
 
-      virtual const share_type& GetCommentNetRshares( const comment_object& comment ) override;
-      virtual const share_type& GetCommentVoteRshares( const comment_object& comment ) override;
-      virtual void IncreaseCommentTotalVoteWeight( const comment_object& comment, uint64_t delta ) override;
-      virtual const comment_vote_object& CreateCommentVoteObject( const account_id_type& voterId, const comment_id_type& commentId,
-                                                                  int16_t opWeight ) override;
-      virtual fc::uint128_t CalculateAvgCashoutSec( const comment_object& comment, const comment_object& root,
-                                                    int64_t voter_abs_rshares, bool is_recast ) override;
-      virtual uint64_t CalculateCommentVoteWeight(const comment_object& comment, int64_t rshares, 
-                                                  const share_type& old_vote_rshares ) override;
-      virtual void UpdateVoterParams(const account_object& voter, uint16_t newVotingPower,
-                                     const time_point_sec& newLastVoteTime) override;
-      virtual void UpdateComment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares ) override;
-      virtual void UpdateCommentRecast( const comment_object& comment, const comment_vote_object& vote, 
-                                        int64_t recast_rshares, int64_t vote_absRshares ) override;
-      virtual void UpdateRootComment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override;
-      virtual void UpdateCommentVoteObject( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) override;
-      virtual void UpdateCommentRshares2( const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 ) override;
-      virtual void UpdateVote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) override;
+      virtual const share_type& get_comment_net_rshares( const comment_object& comment ) override;
+      virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) override;
+      virtual void increase_comment_total_vote_weight( const comment_object& comment, uint64_t delta ) override;
+      virtual const comment_vote_object& create_comment_vote_object( const account_id_type& voterId, const comment_id_type& commentId,
+                                                                     int16_t opWeight ) override;
+      virtual fc::uint128_t calculate_avg_cashout_sec( const comment_object& comment, const comment_object& root,
+                                                       int64_t voter_abs_rshares, bool is_recast ) override;
+      virtual uint64_t calculate_comment_vote_weight( const comment_object& comment, int64_t rshares, 
+                                                      const share_type& old_vote_rshares ) override;
+      virtual void update_voter_params( const account_object& voter, uint16_t newVotingPower,
+                                        const time_point_sec& newLastVoteTime) override;
+      virtual void update_comment( const comment_object& comment, int64_t vote_rshares, int64_t vote_absRshares ) override;
+      virtual void update_comment_recast( const comment_object& comment, const comment_vote_object& vote, 
+                                          int64_t recast_rshares, int64_t vote_absRshares ) override;
+      virtual void update_root_comment( const comment_object& root, int64_t vote_absRshares, const fc::uint128_t& avg_cashout_sec ) override;
+      virtual void update_comment_vote_object( const comment_vote_object& cvo, uint64_t vote_weight, int64_t rshares ) override;
+      virtual void update_comment_rshares2( const comment_object& c, const fc::uint128_t& old_rshares2,
+                                            const fc::uint128_t& new_rshares2 ) override;
+      virtual void update_vote( const comment_vote_object& vote, int64_t rshares, int16_t opWeight ) override;
 
       private:
-      //database&                  DB;
-      //uint32_t                   VotesPerRegenerationPeriod = 0;
-      const comment_vote_object& CVO;
+      //database&                  _db;
+      //uint32_t                   _votes_per_regeneration_period = 0;
+      const comment_vote_object& _comment_vote_object;
    };
 
 } } // steem::chain
