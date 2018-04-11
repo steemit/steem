@@ -8,9 +8,13 @@
 #include <steem/utilities/key_conversion.hpp>
 #include <steem/utilities/git_revision.hpp>
 
+#include <steem/plugins/account_by_key/account_by_key_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -75,8 +79,18 @@ int main( int argc, char** argv )
       appbase::app().add_program_options( bpo::options_description(), options );
 
       steem::plugins::register_plugins();
-      appbase::app().set_version_string( version_string() );
 
+      appbase::app().set_version_string( version_string() );
+      appbase::app().set_app_name( "steemd" );
+
+      // These plugins are included in the default config
+      appbase::app().set_default_plugins<
+         steem::plugins::witness::witness_plugin,
+         steem::plugins::account_by_key::account_by_key_plugin,
+         steem::plugins::account_by_key::account_by_key_api_plugin,
+         steem::plugins::condenser_api::condenser_api_plugin >();
+
+      // These plugins are loaded regardless of the config
       bool initialized = appbase::app().initialize<
             steem::plugins::chain::chain_plugin,
             steem::plugins::p2p::p2p_plugin,

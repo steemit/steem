@@ -22,7 +22,7 @@ void set_logging_program_options( boost::program_options::options_description& o
    std::string str_default_file_appender = boost::algorithm::join( default_file_appender, " " );
 
    std::vector< std::string > default_logger(
-      { "{\"name\":\"default\",\"level\":\"warn\",\"appender\":\"stderr\"}\n",
+      { "{\"name\":\"default\",\"level\":\"info\",\"appender\":\"stderr\"}\n",
          "log-logger = {\"name\":\"p2p\",\"level\":\"warn\",\"appender\":\"p2p\"}" } );
    std::string str_default_logger = boost::algorithm::join( default_logger, "" );
 

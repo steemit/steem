@@ -15,19 +15,7 @@ chown -R steemd:steemd $HOME
 # clean out data dir since it may be semi-persistent block storage on the ec2 with stale data
 rm -rf $HOME/*
 
-# seed nodes come from doc/seednodes.txt which is
-# installed by docker into /etc/steemd/seednodes.txt
-SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
-
 ARGS=""
-
-# if user did not pass in any desired
-# seed nodes, use the ones above:
-if [[ -z "$STEEMD_SEED_NODES" ]]; then
-    for NODE in $SEED_NODES ; do
-        ARGS+=" --p2p-seed-node=$NODE"
-    done
-fi
 
 # if user did pass in desired seed nodes, use
 # the ones the user specified:
