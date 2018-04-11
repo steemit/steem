@@ -681,7 +681,11 @@ void p2p_plugin::plugin_shutdown() {
 
    ilog("P2P Plugin: checking handle_block and handle_transaction activity");
    my->node->close();
-   my->p2p_thread.quit();
+   fc::promise<void>::ptr quitDone(new fc::promise<void>("P2P thread quit"));
+   my->p2p_thread.quit(quitDone.get());
+   ilog("Waiting for p2p_thread quit");
+   quitDone->wait();
+   ilog("p2p_thread quit done");
    my->node.reset();
 }
 

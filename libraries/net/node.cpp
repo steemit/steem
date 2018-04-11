@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <atomic>
 #include <sstream>
 #include <iomanip>
 #include <deque>
@@ -528,10 +529,13 @@ namespace graphene { namespace net {
       std::set<node_id_t> _allowed_peers;
 #endif // ENABLE_P2P_DEBUGGING_API
 
-      bool _node_is_shutting_down; // set to true when we begin our destructor, used to prevent us from starting new tasks while we're shutting down
+      std::atomic_bool _node_is_shutting_down; // set to true when we begin our destructor, used to prevent us from starting new tasks while we're shutting down
 
       std::list<fc::future<void> > _handle_message_calls_in_progress;
       std::set<message_hash_type> _message_ids_currently_being_processed;
+
+      std::atomic_int        _activeCalls;
+      fc::promise<void>::ptr _shutdownNotifier;
 
       node_impl(const std::string& user_agent);
       virtual ~node_impl();
@@ -711,7 +715,28 @@ namespace graphene { namespace net {
 
       bool is_hard_fork_block(uint32_t block_number) const;
       uint32_t get_next_known_hard_fork_block_number(uint32_t block_number) const;
-    }; // end class node_impl
+
+   private:
+      class activity_tracer
+      {
+      public:
+         activity_tracer(node_impl& node) : _node(node)
+         {
+            ++_node._activeCalls;
+         }
+
+         ~activity_tracer()
+         {
+            if(--_node._activeCalls == 0 && _node._node_is_shutting_down)
+            {
+               _node._shutdownNotifier->set_value();
+            }
+         }
+
+      private:
+         node_impl& _node;
+      };
+   }; // end class node_impl
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -771,6 +796,8 @@ namespace graphene { namespace net {
     {
       _rate_limiter.set_actual_rate_time_constant(fc::seconds(2));
       fc::rand_pseudo_bytes(&_node_id.data[0], (int)_node_id.size());
+
+      _shutdownNotifier.reset(new fc::promise<void>("Node shutdown notifier"));
     }
 
     node_impl::~node_impl()
@@ -790,6 +817,13 @@ namespace graphene { namespace net {
             updated_peer_record->last_seen_time = fc::time_point::now();
             _potential_peer_db.update_entry(*updated_peer_record);
           }
+        }
+
+        if(_activeCalls.load() != 0)
+        {
+           ilog("Waiting for node become inactive (on_message/on_connection_closed/get_message_for_item)");
+           _shutdownNotifier->wait();
+           ilog("Node became inactive");
         }
       }
 
@@ -1717,6 +1751,12 @@ namespace graphene { namespace net {
     void node_impl::on_message( peer_connection* originating_peer, const message& received_message )
     {
       VERIFY_CORRECT_THREAD();
+
+      if(_node_is_shutting_down)
+         FC_THROW_EXCEPTION(fc::canceled_exception, "node_impl::on_message canceled because it is shutting down");
+
+      activity_tracer aTracer(*this);
+
       message_hash_type message_hash = received_message.id();
       dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
            ("type", graphene::net::core_message_type_enum(received_message.msg_type))("hash", message_hash)
@@ -2368,7 +2408,11 @@ namespace graphene { namespace net {
         do
         {
           if( low_block_num >= first_block_num_in_ids_to_get )
-            synopsis.push_back(original_ids_of_items_to_get[low_block_num - first_block_num_in_ids_to_get]);
+          {
+            auto idx = low_block_num - first_block_num_in_ids_to_get;
+            FC_ASSERT(idx < original_ids_of_items_to_get.size());
+            synopsis.push_back(original_ids_of_items_to_get[idx]);
+          }
           low_block_num += (true_high_block_num - low_block_num + 2 ) / 2;
         }
         while ( low_block_num <= true_high_block_num );
@@ -2699,6 +2743,8 @@ namespace graphene { namespace net {
 
     message node_impl::get_message_for_item(const item_id& item)
     {
+      activity_tracer aTracer(*this);
+
       try
       {
         return _message_cache.get_message(item.item_hash);
@@ -2926,6 +2972,9 @@ namespace graphene { namespace net {
     void node_impl::on_connection_closed(peer_connection* originating_peer)
     {
       VERIFY_CORRECT_THREAD();
+
+      activity_tracer aTracer(*this);
+
       peer_connection_ptr originating_peer_ptr = originating_peer->shared_from_this();
       _rate_limiter.remove_tcp_socket( &originating_peer->get_socket() );
 
@@ -3027,9 +3076,15 @@ namespace graphene { namespace net {
                 ("block_num", block_message_to_send.block.block_num())
                 ("block_hash", block_message_to_send.block_id));
         _delegate->handle_block(block_message_to_send, true, contained_transaction_message_ids);
-        ilog("Successfully pushed sync block ${num} (id:${id})",
-             ("num", block_message_to_send.block.block_num())
-             ("id", block_message_to_send.block_id));
+
+        auto bn = block_message_to_send.block.block_num();
+        //if(bn % 1000 == 0)
+        {
+         ilog("Successfully pushed sync block ${num} (id:${id})",
+               ("num", bn)
+               ("id", block_message_to_send.block_id));
+        }
+
         _most_recent_blocks_accepted.push_back(block_message_to_send.block_id);
 
         client_accepted_block = true;
@@ -3950,6 +4005,8 @@ namespace graphene { namespace net {
     {
       VERIFY_CORRECT_THREAD();
 
+      _node_is_shutting_down = true;
+
       try
       {
         _potential_peer_db.close();
@@ -4137,27 +4194,37 @@ namespace graphene { namespace net {
       boost::push_back(all_peers, _handshaking_connections);
       boost::push_back(all_peers, _closing_connections);
 
-      for (const peer_connection_ptr& peer : all_peers)
+      do
       {
-        try
-        {
-          peer->destroy_connection();
-        }
-        catch ( const fc::exception& e )
-        {
-          wlog( "Exception thrown while closing peer connection, ignoring: ${e}", ("e", e) );
-        }
-        catch (...)
-        {
-          wlog( "Exception thrown while closing peer connection, ignoring" );
-        }
-      }
+         ilog("Attempting to destroy connection on ${c} peers...", ("c", all_peers.size()));
 
-      // and delete all of the peer_connection objects
-      _active_connections.clear();
-      _handshaking_connections.clear();
-      _closing_connections.clear();
-      all_peers.clear();
+         // and delete all of the peer_connection objects
+         _active_connections.clear();
+         _handshaking_connections.clear();
+         _closing_connections.clear();
+
+         for (const peer_connection_ptr& peer : all_peers)
+         {
+         try
+         {
+            peer->destroy_connection();
+         }
+         catch ( const fc::exception& e )
+         {
+            wlog( "Exception thrown while closing peer connection, ignoring: ${e}", ("e", e) );
+         }
+         catch (...)
+         {
+            wlog( "Exception thrown while closing peer connection, ignoring" );
+         }
+         }
+
+         all_peers.clear();
+         boost::push_back(all_peers, _active_connections);
+         boost::push_back(all_peers, _handshaking_connections);
+         boost::push_back(all_peers, _closing_connections);
+      }
+      while(all_peers.empty() == false);
 
       {
 #ifdef USE_PEERS_TO_DELETE_MUTEX
