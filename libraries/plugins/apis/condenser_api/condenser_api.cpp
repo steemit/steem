@@ -41,8 +41,10 @@ namespace detail
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
             _db( _chain.db() )
          {
-            _on_applied_block_connection = _db.applied_block_proxy(
-               [&]( const signed_block& b ){ on_applied_block( b ); }, _chain, 0 );
+            _on_applied_block_connection = _db.add_post_apply_block_handler(
+               [&]( const block_notification& note ){ on_applied_block( note.block ); },
+               appbase::app().get_plugin< steem::plugins::condenser_api::condenser_api_plugin >(),
+               0 );
          }
 
          DECLARE_API_IMPL(
