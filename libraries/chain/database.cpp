@@ -3200,10 +3200,7 @@ boost::signals2::connection database::connect_impl( TSignal& signal, const TNoti
 {
    fcall<TNotification> fcall_wrapper(func,_benchmark_dumper,plugin,item_name);
 
-   if (group == -1)
-      return signal.connect(fcall_wrapper);
-   else
-      return signal.connect(group, fcall_wrapper);
+   return signal.connect(group, fcall_wrapper);
 }
 
 template< bool IS_PRE_OPERATION >
@@ -3231,19 +3228,9 @@ boost::signals2::connection database::any_apply_operation_handler_impl( const ap
    };
 
    if( IS_PRE_OPERATION )
-   {
-      if (group == -1)
-         return _pre_apply_operation_signal.connect(complex_func);
-      else
-         return _pre_apply_operation_signal.connect(group, complex_func);
-   }
+      return _pre_apply_operation_signal.connect(group, complex_func);
    else
-   {
-      if (group == -1)
-         return _post_apply_operation_signal.connect(complex_func);
-      else
-         return _post_apply_operation_signal.connect(group, complex_func);
-   }
+      return _post_apply_operation_signal.connect(group, complex_func);
 }
 
 boost::signals2::connection database::add_pre_apply_operation_handler( const apply_operation_handler_t& func,
