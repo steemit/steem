@@ -1595,20 +1595,14 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
  */
 share_type database::pay_curators( const comment_object& c, share_type& max_rewards )
 {
-   struct proxy_item
+   struct cmp
    {
-      const account_id_type& voter;
-      uint64_t weight;
-
-      proxy_item( const account_id_type& _voter, uint64_t _weight )
-      : voter( _voter ), weight( _weight ) {}
-
-      bool operator<( const proxy_item& obj ) const
+      bool operator()( const comment_vote_object* obj, const comment_vote_object* obj2 ) const
       {
-         if( weight == obj.weight )
-            return voter < obj.voter;
+         if( obj->weight == obj2->weight )
+            return obj->voter < obj2->voter;
          else
-            return weight > obj.weight;
+            return obj->weight > obj2->weight;
       }
    };
 
@@ -1628,21 +1622,21 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
          const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
          auto itr = cvidx.lower_bound( c.id );
 
-         std::set< proxy_item > proxy_set;
+         std::set< const comment_vote_object*, cmp > proxy_set;
          while( itr != cvidx.end() && itr->comment == c.id )
          {
-            proxy_set.emplace( std::move( proxy_item( itr->voter, itr->weight ) ) ); 
+            proxy_set.insert( &( *itr ) ); 
             ++itr;
          }
 
          for( auto& item : proxy_set )
          {
-            uint128_t weight( item.weight );
+            uint128_t weight( item->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
-               const auto& voter = get( item.voter );
+               const auto& voter = get( item->voter );
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
                push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
