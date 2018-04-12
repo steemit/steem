@@ -16,16 +16,16 @@
 
 
 statistics_sender::statistics_sender() :
-    ios( appbase::app().get_io_service() ),
     is_previous_bucket_set(false),
+    ios( appbase::app().get_io_service() ),
     socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0))  {
         socket.set_option(boost::asio::socket_base::broadcast(true));
 }
 
 statistics_sender::statistics_sender(uint32_t default_port) :
+    is_previous_bucket_set(false),
     default_port(default_port),
     ios( appbase::app().get_io_service() ),
-    is_previous_bucket_set(false), 
     socket(ios, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0)) {
         socket.set_option(boost::asio::socket_base::broadcast(true));
 }
