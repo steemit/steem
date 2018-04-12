@@ -93,6 +93,8 @@ namespace ce
          //This method informs, that given iterator is inactive. Something like 'end()', but from the second way.
          virtual bool is_inactive() const = 0;
          virtual abstract_sub_enumerator* create() = 0;
+
+         virtual int32_t get_tag() const = 0;
    };
 
    template< typename ITERATOR, typename OBJECT, typename CMP >
@@ -106,6 +108,7 @@ namespace ce
       private:
 
          bool inactive;
+         const int32_t tag;
 
       protected:
 
@@ -133,8 +136,8 @@ namespace ce
 
          const CMP cmp;
 
-         sub_enumerator( bool _inactive, const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
-         : inactive( _inactive ), it_begin( _begin ), it_end( _end ), cmp( _cmp )
+         sub_enumerator( bool _inactive, int32_t _tag, const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
+         : inactive( _inactive ), tag( _tag ), it_begin( _begin ), it_end( _end ), cmp( _cmp )
          {
             it = _it;
          }
@@ -206,8 +209,10 @@ namespace ce
 
          abstract_sub_enumerator< OBJECT >* create() override
          {
-            return new sub_enumerator( inactive, it, it_begin, it_end, cmp );
+            return new sub_enumerator( inactive, tag, it, it_begin, it_end, cmp );
          }
+
+         int32_t get_tag() const{ return tag; };
    };
 
    template< typename CMP, typename DIRECTION >
@@ -221,14 +226,14 @@ namespace ce
       template< typename T >
       bool operator()( const T& a, const T& b )
       {
-         if( *( a.first ) == *( b.first ) )
+         if( *a == *b )
             return false;
          else
          {
             if( direction == DIRECTION::next )
-               return cmp( *( *a.first ), *( *b.first ) );
+               return cmp( *( *a ), *( *b ) );
             else
-               return !cmp( *( *a.first ), *( *b.first ) );
+               return !cmp( *( *a ), *( *b ) );
          }
       };
    };
@@ -270,7 +275,6 @@ namespace ce
 
       private:
 
-         using pitem_idx = std::pair< pitem, int32_t >;
          using _t_complex_sorter = t_complex_sorter< CMP, Direction >;
 
          template< bool INACTIVE, bool POSITION >
@@ -287,9 +291,9 @@ namespace ce
                POSITION == false:   iterator is set on 'end()' at the start
             */
             if( POSITION )
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
             else
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
 
             add< INACTIVE, POSITION >( elements... );
          }
@@ -297,18 +301,15 @@ namespace ce
          template< typename CONTAINER, typename CONDITION >
          void find_active_iterators( CONTAINER& dst, CONDITION&& condition )
          {
-            int32_t cnt = iterators.size() - 1;
-
             auto it = iterators.rbegin();
             auto it_end = iterators.rend();
 
             while( it != it_end )
             {
                if( condition( *it ) )
-                  dst.emplace( std::make_pair( *it, cnt ) );
+                  dst.emplace( *it );
 
                ++it;
-               --cnt;
             }
          }
 
@@ -317,9 +318,9 @@ namespace ce
          {
             struct _sorter
             {
-               bool operator()( const pitem_idx& a, const pitem_idx& b ){ return a.second < b.second; };
+               bool operator()( const pitem& a, const pitem& b ){ return a->get_tag() < b->get_tag(); };
             };
-            std::set< pitem_idx, _sorter > row;
+            std::set< pitem, _sorter > row;
 
             if( idx.current < 0 )
             {
@@ -336,17 +337,17 @@ namespace ce
 
             for( auto& item : row )
             {
-               if( item.second == idx.current )
+               if( item->get_tag() == idx.current )
                   current_it_active = true;
                else
                {
-                  if( checker( item.first, current_it ) )
-                     action( item.first );
+                  if( checker( item, current_it ) )
+                     action( item );
                   else
                   {
-                     auto res = comparision( item.first, current_it );
+                     auto res = comparision( item, current_it );
                      if( res )
-                        action( item.first );
+                        action( item );
                   }
                }
             }
@@ -425,11 +426,11 @@ namespace ce
 
             if( row.size() < 2 )
             {
-               idx.current = ( row.size() == 0 ) ? position : ( row.begin()->second );
+               idx.current = ( row.size() == 0 ) ? position : ( ( *row.begin() )->get_tag() );
                return;
             }
 
-            idx.current = row.begin()->second;
+            idx.current = ( *row.begin() )->get_tag();
             assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
          }
 
@@ -479,12 +480,12 @@ namespace ce
             {
                if( DIRECTION == Direction::prev )
                {
-                  static std::set< pitem_idx, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::prev ) );
+                  static std::set< pitem, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::prev ) );
                   generate_idx< position >( row );
                }
                else
                {
-                  static std::set< pitem_idx, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::next ) );
+                  static std::set< pitem, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::next ) );
                   generate_idx< position >( row );
                }
             }
