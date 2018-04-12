@@ -218,11 +218,6 @@ namespace ce
 
       t_complex_sorter( CMP _cmp, DIRECTION _direction ): cmp( _cmp ), direction( _direction ) {}
 
-      void set_direction( DIRECTION _direction )
-      {
-         direction = _direction;
-      }
-
       template< typename T >
       bool operator()( const T& a, const T& b )
       {
@@ -277,8 +272,6 @@ namespace ce
 
          using pitem_idx = std::pair< pitem, int32_t >;
          using _t_complex_sorter = t_complex_sorter< CMP, Direction >;
-
-          _t_complex_sorter complex_sorter;
 
          template< bool INACTIVE, bool POSITION >
          void add(){}
@@ -424,14 +417,10 @@ namespace ce
             return false;
          }
 
-         template< Direction DIRECTION, int32_t position >
-         void find_impl()
+         template< int32_t position, typename COLLECTION >
+         void generate_idx( COLLECTION& row )
          {
-            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
-
-            complex_sorter.set_direction( DIRECTION );
-            std::set< pitem_idx, _t_complex_sorter > row( complex_sorter );
-
+            row.clear();
             find_active_iterators( row, []( const pitem& item ){ return !item->end() && !item->is_inactive(); } );
 
             if( row.size() < 2 )
@@ -442,6 +431,63 @@ namespace ce
 
             idx.current = row.begin()->second;
             assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
+         }
+
+         template< int32_t position, typename Comparator >
+         void simple_generate_idx( const Comparator& comparator )
+         {
+            assert( iterators.size() == 2 );
+
+            static auto checker =[]( const pitem& item ){ return !item->end() && !item->is_inactive(); };
+
+            if( checker( iterators[0] ) && checker( iterators[1] ) )
+            {
+               if( *iterators[0] == *iterators[1] )
+                  idx.current = 1;
+               else
+                  idx.current = comparator( iterators[0], iterators[1] )?0:1;
+            }
+            else if( checker( iterators[0] ) )
+               idx.current = 0;
+            else if( checker( iterators[1] ) )
+               idx.current = 1;
+            else
+               idx.current = position;
+
+            assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
+         }
+
+         template< Direction DIRECTION, int32_t position >
+         void find_impl()
+         {
+            assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
+
+            if( iterators.size() == 2 )
+            {
+               if( DIRECTION == Direction::prev )
+               {
+                  static auto comparator = [this]( const pitem& a, const pitem& b ){ return !cmp( *( *a ), *( *b ) ); };
+                  simple_generate_idx< position >( comparator );
+               }
+               else
+               {
+                  static auto comparator = [this]( const pitem& a, const pitem& b ){ return cmp( *( *a ), *( *b ) ); };
+                  simple_generate_idx< position >( comparator );
+               }
+            }
+            else
+            {
+               if( DIRECTION == Direction::prev )
+               {
+                  static std::set< pitem_idx, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::prev ) );
+                  generate_idx< position >( row );
+               }
+               else
+               {
+                  static std::set< pitem_idx, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::next ) );
+                  generate_idx< position >( row );
+               }
+            }
          }
 
          template< Direction DIRECTION >
@@ -526,7 +572,7 @@ namespace ce
          }
 
          concatenation_iterator( const CMP& _cmp )
-         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
+         : cmp( _cmp )
          {
          }
 
@@ -553,7 +599,7 @@ namespace ce
          CMP cmp;
 
          concatenation_iterator( const concatenation_iterator& obj )
-         : complex_sorter( obj.cmp, Direction::next ), cmp( obj.cmp )
+         : cmp( obj.cmp )
          {
             idx.current = obj.idx.current;
             direction = obj.direction;
@@ -563,7 +609,7 @@ namespace ce
 
          template< typename... ELEMENTS >
          concatenation_iterator( const CMP& _cmp, ELEMENTS... elements )
-         : complex_sorter( _cmp, Direction::next ), cmp( _cmp )
+         : cmp( _cmp )
          {
             add< false/*INACTIVE*/, true/*POSITION*/ >( elements... );
 
