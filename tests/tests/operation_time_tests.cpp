@@ -189,6 +189,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             vest("sam", 8000);
             fund("dave", 5000);
             vest("dave", 5000);
+            
+            db->set_clear_votes(0xFFFFFFFF);
 
             price exchange_rate(ASSET("1.000 GOLOS"), ASSET("1.000 GBG"));
             set_price_feed(exchange_rate);
