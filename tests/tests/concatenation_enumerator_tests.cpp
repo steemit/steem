@@ -2052,6 +2052,51 @@ BOOST_AUTO_TEST_CASE(benchmark_tests)
       obj2,
       cmp4
    >();
+/*
+Checked on hardware:
+	16 GB RAM
+	Intel® Core™ i5-7400 CPU @ 3.00GHz × 4
+	OS-type 64 bit
+
+************************************************************************************************************************
+'benchmark_test_2_sources - Is_Another_Source( false )'
+`2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 100 000 objects`
+iterator: bmic iterator: 33 ms
+iterator: concatenation iterator: 143 ms
+ratio: 4.33333
+reverse_iterator: bmic iterator: 42 ms
+reverse_iterator: concatenation iterator: 126 ms
+ratio: 3
+
+'benchmark_test_2_sources - Is_Another_Source( true )'
+2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 0 objects
+iterator: bmic iterator: 39 ms
+iterator: concatenation iterator: 77 ms
+ratio: 1.97436
+reverse_iterator: bmic iterator: 44 ms
+reverse_iterator: concatenation iterator: 62 ms
+ratio: 1.40909
+
+************************************************************************************************************************
+
+'benchmark_test_3_sources - Is_Another_Source( false )'
+`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 100 000 objects`
+iterator: bmic iterator: 48 ms
+iterator: concatenation iterator: 354 ms
+ratio: 7.375
+reverse_iterator: bmic iterator: 44 ms
+reverse_iterator: concatenation iterator: 260 ms
+ratio: 5.90909
+
+'benchmark_test_3_sources - Is_Another_Source( true )'
+`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 0 objects`
+iterator: bmic iterator: 46 ms
+iterator: concatenation iterator: 246 ms
+ratio: 5.34783
+reverse_iterator: bmic iterator: 45 ms
+reverse_iterator: concatenation iterator: 153 ms
+ratio: 3.4
+*/
 }
 
 BOOST_AUTO_TEST_CASE(different_tests)
