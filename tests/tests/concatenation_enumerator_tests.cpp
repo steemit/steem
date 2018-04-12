@@ -288,9 +288,10 @@ void benchmark_internal( Iterator begin, Iterator end, CmpIterator cmp_begin, Cm
    //end benchmark
 }
 
-template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
+template< bool Is_Another_Source, typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
 void benchmark_test_2_sources()
 {
+   Collection another;
    Collection bmic1;
    Collection bmic2;
    Collection sorted;
@@ -336,13 +337,14 @@ void benchmark_test_2_sources()
 
    const auto& id_idx1 = bmic1.template get< ID_Index >();
    const auto& id_idx2 = bmic2.template get< ID_Index >();
+   const auto& idx_another = another.template get< ID_Index >();
 
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
    const auto& idx_sorted = sorted.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), Is_Another_Source?(&idx_another):(&id_idx1) );
+   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), Is_Another_Source?(&idx_another):(&id_idx2) );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
    using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
@@ -376,9 +378,10 @@ void benchmark_test_2_sources()
                         sorted.template get< ID_Index >() );
 }
 
-template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
+template< bool Is_Another_Source, typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
 void benchmark_test_3_sources()
 {
+   Collection another;
    Collection bmic1;
    Collection bmic2;
    Collection bmic3;
@@ -433,15 +436,16 @@ void benchmark_test_3_sources()
    const auto& id_idx1 = bmic1.template get< ID_Index >();
    const auto& id_idx2 = bmic2.template get< ID_Index >();
    const auto& id_idx3 = bmic2.template get< ID_Index >();
+   const auto& idx_another = another.template get< ID_Index >();
 
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
    const auto& idx3 = bmic2.template get< Index >();
    const auto& idx_sorted = sorted.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
-   auto p3 = std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 );
+   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), Is_Another_Source?(&idx_another):(&id_idx1) );
+   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), Is_Another_Source?(&idx_another):(&id_idx2) );
+   auto p3 = std::make_tuple( idx3.begin(), idx3.end(), Is_Another_Source?(&idx_another):(&id_idx3) );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
    using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
@@ -2011,6 +2015,7 @@ BOOST_AUTO_TEST_CASE(benchmark_tests)
 
    benchmark_test_2_sources
    <
+      false/*Is_Another_Source*/,
       bmic2,
       oidx2,
       c_oidx2,
@@ -2020,6 +2025,27 @@ BOOST_AUTO_TEST_CASE(benchmark_tests)
 
    benchmark_test_3_sources
    <
+      false/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+
+   benchmark_test_2_sources
+   <
+      true/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+
+   benchmark_test_3_sources
+   <
+      true/*Is_Another_Source*/,
       bmic2,
       oidx2,
       c_oidx2,
