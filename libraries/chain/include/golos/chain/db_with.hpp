@@ -17,34 +17,18 @@ namespace golos {
     namespace chain {
         namespace detail {
             /**
-             * Class used to help the with_skip_flags implementation.
-             * It must be defined in this header because it must be
-             * available to the with_skip_flags implementation,
-             * which is a template and therefore must also be defined
-             * in this header.
-             */
-            struct skip_flags_restorer final {
-                skip_flags_restorer(node_property_object &npo)
-                    : _npo(npo), _old_skip_flags(npo.skip_flags) {
-                }
-
-                ~skip_flags_restorer() {
-                    _npo.skip_flags = _old_skip_flags;
-                }
-
-                node_property_object &_npo;
-                uint32_t _old_skip_flags;      // initialized in ctor
-            };
-
-            /**
              * Class used to help the without_pending_transactions implementation.
                *
              * TODO:  Change the name of this class to better reflect the fact
              * that it restores popped transactions as well as pending transactions.
              */
             struct pending_transactions_restorer final {
-                pending_transactions_restorer(database &db, std::vector<signed_transaction> &&pending_transactions)
+                pending_transactions_restorer(
+                    database &db, uint32_t skip,
+                    std::vector<signed_transaction> &&pending_transactions
+                )
                     : _db(db),
+                      _skip(skip),
                       _pending_transactions(std::move(pending_transactions))
                 {
                     _db.clear_pending();
@@ -56,7 +40,7 @@ namespace golos {
                             if (!_db.is_known_transaction(tx.id())) {
                                 // since push_transaction() takes a signed_transaction,
                                 // the operation_results field will be ignored.
-                                _db._push_transaction(tx);
+                                _db._push_transaction(tx, _skip);
                             }
                         } catch (const fc::exception &) {
                         }
@@ -67,7 +51,7 @@ namespace golos {
                             if (!_db.is_known_transaction(tx.id())) {
                                 // since push_transaction() takes a signed_transaction,
                                 // the operation_results field will be ignored.
-                                _db._push_transaction(tx);
+                                _db._push_transaction(tx, _skip);
                             }
                         } catch (const fc::exception &e) {
 
@@ -79,6 +63,7 @@ namespace golos {
                 }
 
                 database &_db;
+                uint32_t _skip;
                 std::vector<signed_transaction> _pending_transactions;
             };
 
@@ -98,24 +83,6 @@ namespace golos {
             };
 
             /**
-             * Set the skip_flags to the given value, call callback,
-             * then reset skip_flags to their previous value after
-             * callback is done.
-             */
-            template<typename Lambda>
-            void with_skip_flags(
-                database &db,
-                uint32_t skip_flags,
-                Lambda callback
-            ) {
-                node_property_object &npo = db.node_properties();
-                skip_flags_restorer restorer(npo);
-                npo.skip_flags = skip_flags;
-                callback();
-                return;
-            }
-
-            /**
              * Empty pending_transactions, call callback,
              * then reset pending_transactions after callback is done.
              *
@@ -124,10 +91,11 @@ namespace golos {
             template<typename Lambda>
             void without_pending_transactions(
                 database& db,
+                uint32_t skip,
                 std::vector<signed_transaction>&& pending_transactions,
                 Lambda callback
             ) {
-                pending_transactions_restorer restorer(db, std::move(pending_transactions));
+                pending_transactions_restorer restorer(db, skip, std::move(pending_transactions));
                 callback();
                 return;
             }

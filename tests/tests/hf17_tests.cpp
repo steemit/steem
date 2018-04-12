@@ -35,11 +35,6 @@ namespace golos { namespace chain {
         }
 
         ~hf17_database_fixture() {
-            try {
-                if (!std::uncaught_exception()) {
-                    BOOST_CHECK(db->get_node_properties().skip_flags == database::skip_nothing);
-                }
-            } FC_CAPTURE_AND_RETHROW()
         }
 
         uint128_t quadratic_curve(uint128_t rshares) const {

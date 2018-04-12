@@ -102,7 +102,12 @@ namespace golos { namespace wallet {
             /**
              * Returns info about the current state of the blockchain
              */
-            variant                             info();
+            variant                             info() const;
+
+            /**
+             * Returns info about database objects
+             */
+            variant_object                      database_info() const;
 
             /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
              * @returns compile time info and client and dependencies versions
@@ -992,6 +997,7 @@ FC_API( golos::wallet::wallet_api,
 
                 /// query api
                 (info)
+                (database_info)
                 (list_my_accounts)
                 (list_accounts)
                 (list_witnesses)

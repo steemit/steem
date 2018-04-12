@@ -125,7 +125,7 @@ namespace golos {
             }
 
             bool network_broadcast_api_plugin::check_max_block_age(int32_t max_block_age) const {
-                return pimpl->_chain.db().with_read_lock([&]() {
+                return pimpl->_chain.db().with_weak_read_lock([&]() {
                     if (max_block_age < 0) {
                         return false;
                     }

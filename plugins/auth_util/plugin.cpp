@@ -72,7 +72,7 @@ DEFINE_API ( plugin, check_authority_signature ) {
     auto dig = args.args->at(2).as<fc::sha256>();
     auto sigs = args.args->at(3).as<std::vector<protocol::signature_type>>();
     auto &db = my->database();
-    return db.with_read_lock([&]() {
+    return db.with_weak_read_lock([&]() {
         return my->check_authority_signature(account_name, level, dig, sigs);
     });
 }

@@ -167,7 +167,7 @@ namespace golos {
                 auto newest = args.args->at(1).as<time_point>();
                 auto limit = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return my->get_inbox(to, newest, limit);
                 });
             }
@@ -177,7 +177,7 @@ namespace golos {
                 auto newest = args.args->at(1).as<time_point>();
                 auto limit = args.args->at(2).as<uint16_t>();
                 auto &db = my->_db;
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return my->get_outbox(from, newest, limit);
                 });
             }
