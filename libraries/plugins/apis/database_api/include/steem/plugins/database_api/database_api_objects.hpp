@@ -178,9 +178,6 @@ struct api_account_object
       can_vote( a.can_vote ),
       voting_power( a.voting_power ),
       last_vote_time( a.last_vote_time ),
-#ifdef STEEM_ENABLE_SMT
-      last_smt_vote_time( a.last_smt_vote_time ),
-#endif
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -255,9 +252,6 @@ struct api_account_object
    bool              can_vote = false;
    uint16_t          voting_power = 0;
    time_point_sec    last_vote_time;
-#ifdef STEEM_ENABLE_SMT
-   time_point_sec    last_smt_vote_time;
-#endif
 
    asset             balance;
    asset             savings_balance;
@@ -554,25 +548,6 @@ FC_REFLECT( steem::plugins::database_api::api_comment_vote_object,
              (id)(voter)(author)(permlink)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
 
-#ifdef STEEM_ENABLE_SMT
-FC_REFLECT( steem::plugins::database_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
-             (created)(mined)
-             (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)(last_smt_vote_time)
-             (balance)
-             (savings_balance)
-             (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
-             (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
-             (reward_sbd_balance)(reward_steem_balance)(reward_vesting_balance)(reward_vesting_steem)
-             (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
-             (curation_rewards)
-             (posting_rewards)
-             (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)
-             (is_smt)
-          )
-#else
 FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
@@ -590,7 +565,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (last_post)(last_root_post)
              (is_smt)
           )
-#endif
+
 FC_REFLECT( steem::plugins::database_api::api_owner_authority_history_object,
              (id)
              (account)

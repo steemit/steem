@@ -23,7 +23,7 @@ namespace steem { namespace chain {
     *        vote_power_reserve_rate (dgpo)   - votes_per_regeneration_period
     * 2. Separately stored user/comment/comment vote info:
     *     Per-user voting data:
-    *        last_vote_time - duplicated as last_smt_vote_time as dependent on ..._MIN_VOTE_INTERVAL_SEC
+    *        last_vote_time - separate value per SMT (and separate for STEEM too)
     *        voting_power   - common to both STEEM and SMT voting
     *     comment_object
     *        net_rshares
@@ -41,6 +41,8 @@ namespace steem { namespace chain {
       virtual uint32_t get_vote_regeneration_period() const = 0;
       virtual uint32_t get_votes_per_regeneration_period() const = 0;
       virtual uint32_t get_reverse_auction_window_seconds() = 0;
+
+      virtual const time_point_sec& get_last_vote_time( const account_object& voter ) const = 0;
 
       virtual const share_type& get_comment_net_rshares( const comment_object& comment ) = 0;
       virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) = 0;
@@ -75,6 +77,8 @@ namespace steem { namespace chain {
       virtual uint32_t get_vote_regeneration_period() const override { return STEEM_VOTE_REGENERATION_SECONDS; }
       virtual uint32_t get_votes_per_regeneration_period() const override { return _votes_per_regeneration_period; }
       virtual uint32_t get_reverse_auction_window_seconds() override { return STEEM_REVERSE_AUCTION_WINDOW_SECONDS; }
+
+      virtual const time_point_sec& get_last_vote_time( const account_object& voter ) const override;
 
       virtual const share_type& get_comment_net_rshares( const comment_object& comment ) override;
       virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) override;
@@ -111,6 +115,8 @@ namespace steem { namespace chain {
       virtual uint32_t get_vote_regeneration_period() const override;
       virtual uint32_t get_votes_per_regeneration_period() const override;
       virtual uint32_t get_reverse_auction_window_seconds() override;
+
+      virtual const time_point_sec& get_last_vote_time( const account_object& voter ) const override;
 
       virtual const share_type& get_comment_net_rshares( const comment_object& comment ) override;
       virtual const share_type& get_comment_vote_rshares( const comment_object& comment ) override;

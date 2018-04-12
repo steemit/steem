@@ -49,9 +49,6 @@ namespace steem { namespace chain {
          bool              can_vote = true;
          uint16_t          voting_power = STEEM_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec    last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
-#ifdef STEEM_ENABLE_SMT
-         time_point_sec    last_smt_vote_time; ///< same as last_vote_time but related to voting with SMT asset.
-#endif
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
@@ -403,25 +400,6 @@ namespace steem { namespace chain {
    > change_recovery_account_request_index;
 } }
 
-#ifdef STEEM_ENABLE_SMT
-FC_REFLECT( steem::chain::account_object,
-             (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
-             (created)(mined)
-             (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)(last_smt_vote_time)
-             (balance)
-             (savings_balance)
-             (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
-             (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
-             (reward_steem_balance)(reward_sbd_balance)(reward_vesting_balance)(reward_vesting_steem)
-             (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
-             (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
-             (curation_rewards)
-             (posting_rewards)
-             (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(post_bandwidth)
-          )
-#else
 FC_REFLECT( steem::chain::account_object,
              (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
              (created)(mined)
@@ -439,7 +417,7 @@ FC_REFLECT( steem::chain::account_object,
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)(post_bandwidth)
           )
-#endif
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
 
 FC_REFLECT( steem::chain::account_authority_object,

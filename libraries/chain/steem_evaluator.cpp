@@ -254,9 +254,6 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.memo_key = key;
    acc.created = props.time;
    acc.last_vote_time = props.time;
-#ifdef STEEM_ENABLE_SMT
-   acc.last_smt_vote_time = props.time;
-#endif
    acc.mined = mined;
    acc.recovery_account = recovery_account;
 }
@@ -1455,7 +1452,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    auto EvaluateVoteWithAsset = [&](i_voting_helper* voting_helper) {
       t_voter_asset_info info;
-      calculate_power_shares( voting_helper, &info, voter.last_vote_time, voter.voting_power, o.weight,
+      calculate_power_shares( voting_helper, &info, voting_helper->get_last_vote_time(voter), voter.voting_power, o.weight,
                               _db.get_effective_vesting_shares( voter, STEEM_SYMBOL.get_paired_symbol() ).amount.value, _db );
 
       if( itr == comment_vote_idx.end() )
