@@ -3941,11 +3941,7 @@ struct smt_regular_balance_operator
 struct smt_reward_balance_operator
 {
    smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
-<<<<<<< eef53274d4fe796f3b061e44bacf81820ce5c5b6
-      : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 )
-=======
       : value_delta(value_delta), share_delta(share_delta), is_vesting(share_delta.amount.value != 0) 
->>>>>>> Split vote evaluator code in preparation to support SMTs #1856
    {
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }
