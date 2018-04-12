@@ -106,6 +106,9 @@ namespace golos {
                 wlog("Done opening database, elapsed time ${t} sec", ("t", double((end - start).count()) / 1000000.0));
 
                 if (chainbase_flags & chainbase::database::read_write) {
+                    start = fc::time_point::now();
+                    wlog("Start opening block log. Please wait, don't break application...");
+
                     if (!find<dynamic_global_property_object>()) {
                         with_strong_write_lock([&]() {
                             init_genesis(initial_supply);
@@ -132,6 +135,8 @@ namespace golos {
 
                         _fork_db.start_block(*head_block);
                     }
+                    end = fc::time_point::now();
+                    wlog("Done opening block log, elapsed time ${t} sec", ("t", double((end - start).count()) / 1000000.0));
                 }
 
                 with_strong_read_lock([&]() {
