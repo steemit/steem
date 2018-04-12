@@ -30,17 +30,18 @@ namespace ce
       private:
 
          const COLLECTION_POINTER collection;
+         decltype( collection->end() ) it_end;
 
       public:
 
          sub_checker( const COLLECTION_POINTER _collection )
-                  : collection( _collection )
+                  : collection( _collection ), it_end( _collection->end() )
          {
          }
 
          bool exists( size_t key ) override
          {
-            return collection->lower_bound( key ) != collection->upper_bound( key );
+            return collection->find( key ) != it_end;
          }
 
          abstract_sub_checker* create() override

@@ -237,32 +237,14 @@ void test_with_sub_index_3_sources( const SortedCollection& sorted )
 template< typename ID_Index, typename Iterator, typename ReverseIterator, typename CmpIterator, typename CmpReverseIterator >
 void benchmark_internal( Iterator begin, Iterator end, CmpIterator cmp_begin, CmpIterator cmp_end,
                          ReverseIterator r_begin, ReverseIterator r_end, CmpReverseIterator r_cmp_begin, CmpReverseIterator r_cmp_end,
-                         const ID_Index& id_index,
-                         int32_t cnt
+                         const ID_Index& id_index
                          )
 {
    //start benchmark - classical sorted collection
    uint64_t start_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
 
-   auto tmp_end = id_index.end();
-   int32_t idx_cnt;
    while( cmp_begin != cmp_end )
-   {
-      if( cnt > 0 )
-      {
-         idx_cnt = 0;
-         while( idx_cnt++ < cnt )
-         {
-            const auto& obj = *cmp_begin;
-
-            auto found = id_index.lower_bound( obj.id );
-            if( found != tmp_end )
-            {
-            }
-         }
-      }
       ++cmp_begin;
-   }
 
    uint64_t end_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
 
@@ -286,22 +268,7 @@ void benchmark_internal( Iterator begin, Iterator end, CmpIterator cmp_begin, Cm
    start_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
 
    while( r_cmp_begin != r_cmp_end )
-   {
-      if( cnt > 0 )
-      {
-         idx_cnt = 0;
-         while( idx_cnt++ < cnt )
-         {
-            const auto& obj = *r_cmp_begin;
-
-            auto found = id_index.lower_bound( obj.id );
-            if( found != tmp_end )
-            {
-            }
-         }
-      }
       ++r_cmp_begin;
-   }
 
    end_time1 = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
 
@@ -322,7 +289,7 @@ void benchmark_internal( Iterator begin, Iterator end, CmpIterator cmp_begin, Cm
 }
 
 template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
-void benchmark_test_2_sources( bool is_artificial_searching )
+void benchmark_test_2_sources()
 {
    Collection bmic1;
    Collection bmic2;
@@ -330,8 +297,9 @@ void benchmark_test_2_sources( bool is_artificial_searching )
 
    using t_src = ce_tests::t_input_data;
 
-   const int32_t size1 = 150000;
-   const int32_t size2 = 150000;
+   const int32_t ratio = 10;
+   const int32_t size1 = 1000000;
+   const int32_t size2 = size1/ratio;
 
    std::vector< t_src > v1 = 
    {
@@ -392,7 +360,7 @@ void benchmark_test_2_sources( bool is_artificial_searching )
    }
 
    BOOST_TEST_MESSAGE( "iterator" );
-   std::cout<<std::endl<<"***2 sources***"<<( is_artificial_searching?" artificial_searching ":" no searching" )<<std::endl;
+   std::cout<<std::endl<<"***2 sources***"<<std::endl;
 
    Iterator _begin( Cmp(), p1, p2 );
    Iterator _end = Iterator::create_end( Cmp(), p1, p2 );
@@ -405,11 +373,11 @@ void benchmark_test_2_sources( bool is_artificial_searching )
    auto r_cmp_end = idx_sorted.rend();
 
    benchmark_internal( _begin, _end, cmp_begin, cmp_end, _r_begin, _r_end, r_cmp_begin, r_cmp_end,
-                        sorted.template get< ID_Index >(), is_artificial_searching?1:0 );
+                        sorted.template get< ID_Index >() );
 }
 
 template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
-void benchmark_test_3_sources( bool is_artificial_searching )
+void benchmark_test_3_sources()
 {
    Collection bmic1;
    Collection bmic2;
@@ -418,9 +386,10 @@ void benchmark_test_3_sources( bool is_artificial_searching )
 
    using t_src = ce_tests::t_input_data;
 
-   const int32_t size1 = 100000;
-   const int32_t size2 = 100000;
-   const int32_t size3 = 100000;
+   const int32_t ratio = 10;
+   const int32_t size1 = 1000000;
+   const int32_t size2 = size1/ratio;
+   const int32_t size3 = size1/ratio;
 
    std::vector< t_src > v1 = 
    {
@@ -490,7 +459,7 @@ void benchmark_test_3_sources( bool is_artificial_searching )
    }
 
    BOOST_TEST_MESSAGE( "iterator" );
-   std::cout<<std::endl<<"***3 sources***"<<( is_artificial_searching?" artificial_searching ":" no searching" )<<std::endl;
+   std::cout<<std::endl<<"***3 sources***"<<std::endl;
 
    Iterator _begin( Cmp(), p1, p2, p3 );
    Iterator _end = Iterator::create_end( Cmp(), p1, p2, p3 );
@@ -503,7 +472,7 @@ void benchmark_test_3_sources( bool is_artificial_searching )
    auto r_cmp_end = idx_sorted.rend();
 
    benchmark_internal( _begin, _end, cmp_begin, cmp_end, _r_begin, _r_end, r_cmp_begin, r_cmp_end,
-                        sorted.template get< ID_Index >(), is_artificial_searching?2:0 );
+                        sorted.template get< ID_Index >() );
 }
 
 template< typename Collection, typename ID_Index, typename Index, typename Object, typename Cmp >
@@ -2047,7 +2016,7 @@ BOOST_AUTO_TEST_CASE(benchmark_tests)
       c_oidx2,
       obj2,
       cmp4
-   >( false/*is_artificial_searching*/ );
+   >();
 
    benchmark_test_3_sources
    <
@@ -2056,25 +2025,7 @@ BOOST_AUTO_TEST_CASE(benchmark_tests)
       c_oidx2,
       obj2,
       cmp4
-   >( false/*is_artificial_searching*/ );
-
-   benchmark_test_2_sources
-   <
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >( true/*is_artificial_searching*/ );
-
-   benchmark_test_3_sources
-   <
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >( true/*is_artificial_searching*/ );
+   >();
 }
 
 BOOST_AUTO_TEST_CASE(different_tests)
