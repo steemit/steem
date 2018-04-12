@@ -1081,20 +1081,17 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
 
 namespace last_votes_misc
 {
-
-   template< bool IsVoterLastUpdate, typename KEY1, typename KEY2, typename KEY3 >
+   template< typename KEY1, typename KEY2, typename KEY3 >
    struct votes_sorter
    {
-      using selector = std::integral_constant< bool, IsVoterLastUpdate >;
-
       const comment_vote_object* cvo = nullptr;
-
+      
       const KEY1& val1;
       const KEY2& val2;
       const KEY3& val3;
 
       votes_sorter( const comment_vote_object* _cvo, const KEY1& _val1, const KEY2& _val2, const KEY3& _val3 )
-      : cvo( _cvo ), val1( _val1 ), val2( _val2 ), val3( _val3 ){}
+      : cvo( _cvo ), val1( _val1 ), val2( _val2 ), val3( _val3 ) {}
 
       bool operator<( const votes_sorter& obj ) const
       {
@@ -1108,18 +1105,28 @@ namespace last_votes_misc
          else
             return val1 < obj.val1;
       }
+   };
 
-      static const KEY1& get_val1( std::true_type t, const comment_vote_object& obj ){ return obj.voter; }
-      static const KEY1& get_val1( std::false_type t, const comment_vote_object& obj ){ return obj.comment; }
-      static const KEY1& get_val1( const comment_vote_object& obj ){ return get_val1( selector(), obj ); }
+   struct votes_sorter_last_update: public votes_sorter< account_id_type, comment_id_type, time_point_sec >
+   {
+      votes_sorter_last_update( const comment_vote_object* _cvo )
+      : votes_sorter( _cvo, _cvo->voter, _cvo->comment, _cvo->last_update ) {}
 
-      static const KEY2& get_val2( std::true_type t, const comment_vote_object& obj ){ return obj.comment; }
-      static const KEY2& get_val2( std::false_type t, const comment_vote_object& obj ){ return obj.voter; }
-      static const KEY2& get_val2( const comment_vote_object& obj ){ return get_val2( selector(), obj ); }
+      votes_sorter_last_update( const account_id_type& _val1, const comment_id_type& _val2, const time_point_sec& _val3 )
+      : votes_sorter( nullptr, _val1, _val2, _val3 ) {}
 
-      static const KEY3& get_val3( std::true_type t, const comment_vote_object& obj ){ return obj.last_update; }
-      static const KEY3& get_val3( std::false_type t, const comment_vote_object& obj ){ return obj.weight; }
-      static const KEY3& get_val3( const comment_vote_object& obj ) { return get_val3( selector(), obj ); }
+      static const account_id_type& get_main_key( const comment_vote_object& obj ){ return obj.voter; };
+   };
+
+   struct votes_sorter_weight: public votes_sorter< comment_id_type, account_id_type, uint64_t >
+   {
+      votes_sorter_weight( const comment_vote_object* _cvo )
+      : votes_sorter( _cvo, _cvo->comment, _cvo->voter, _cvo->weight ) {}
+
+      votes_sorter_weight( const comment_id_type& _val1, const account_id_type& _val2, const uint64_t& _val3 )
+      : votes_sorter( nullptr, _val1, _val2, _val3 ) {}
+
+      static const comment_id_type& get_main_key( const comment_vote_object& obj ){ return obj.comment; };
    };
 
    //====================================================process_result====================================================
@@ -1130,7 +1137,7 @@ namespace last_votes_misc
       std::set< WrapperType > s;
       typename std::set< WrapperType >::iterator start;
 
-      WrapperType start_obj( nullptr, v1, v2, v3 );
+      WrapperType start_obj( v1, v2, v3 );
 
       const auto& idx = _impl._db.get_index< IndexType, OrderType >();
       const auto& end = idx.end();
@@ -1189,7 +1196,7 @@ namespace last_votes_misc
          {
             //Add new current item.
             auto& cvo = const_cast< comment_vote_object& >( *itr );
-            s.emplace( std::move( WrapperType( &cvo, WrapperType::get_val1( cvo ), WrapperType::get_val2( cvo ), WrapperType::get_val3( cvo ) ) ) );
+            s.emplace( std::move( WrapperType( &cvo ) ) );
 
             ++itr;
          }
@@ -1209,7 +1216,7 @@ namespace last_votes_misc
 
          if( size <= limit && itr_u != end )
          {
-            val = WrapperType::get_val1( *itr_u );
+            val = WrapperType::get_main_key( *itr_u );
 
             //It is necessary to gather always(!!!) all records for first key( variable 'val' ).
             itr = idx.lower_bound( val );
@@ -1292,8 +1299,7 @@ namespace last_votes_misc
          [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
       } else if( SORTORDERTYPE == by_voter_last_update )
       {
-         using t_by_voter_last_update = votes_sorter< true, account_id_type, comment_id_type, time_point_sec >;
-         process_result< t_by_voter_last_update, chain::comment_vote_index, chain::by_voter_comment >
+         process_result< votes_sorter_last_update, chain::comment_vote_index, chain::by_voter_comment >
          (
             _impl,
             c,
@@ -1305,8 +1311,7 @@ namespace last_votes_misc
          );
       } else if( SORTORDERTYPE == by_comment_weight_voter )
       {
-         using t_by_comment_weight_voter = votes_sorter< false, comment_id_type, account_id_type, uint64_t >;
-         process_result< t_by_comment_weight_voter, chain::comment_vote_index, chain::by_comment_voter >
+         process_result< votes_sorter_weight, chain::comment_vote_index, chain::by_comment_voter >
          (
             _impl,
             c,
