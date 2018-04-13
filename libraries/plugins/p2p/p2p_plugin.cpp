@@ -77,7 +77,7 @@ class p2p_plugin_impl : public graphene::net::node_delegate
 public:
 
    p2p_plugin_impl( plugins::chain::chain_plugin& c )
-      : running(true), chain( c )
+      : running(true), activeHandleBlock(false), activeHandleTx(false), chain( c )
    {
       handleBlockFinished.second = std::shared_future<void>(handleBlockFinished.first.get_future());
       handleTxFinished.second = std::shared_future<void>(handleTxFinished.first.get_future());
@@ -139,7 +139,10 @@ private:
       {
          _activityFlag.store(false);
          if(_impl.running.load() == false && _barrier.second.valid() == false)
+         {
+            ilog("Sending notification to shutdown barrier.");
             _barrier.first.set_value();
+         }
       }
 
    private:

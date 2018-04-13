@@ -801,7 +801,8 @@ namespace graphene { namespace net {
       _average_network_write_speed_hours(72),
       _average_network_usage_second_counter(0),
       _average_network_usage_minute_counter(0),
-      _node_is_shutting_down(false)
+      _node_is_shutting_down(false),
+      _activeCalls(0)
     {
       _rate_limiter.set_actual_rate_time_constant(fc::seconds(2));
       fc::rand_pseudo_bytes(&_node_id.data[0], (int)_node_id.size());
