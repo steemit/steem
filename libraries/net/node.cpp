@@ -717,17 +717,25 @@ namespace graphene { namespace net {
       uint32_t get_next_known_hard_fork_block_number(uint32_t block_number) const;
 
    private:
-      class activity_tracer
+      class activity_tracer final
       {
       public:
-         activity_tracer(node_impl& node) : _node(node)
+         activity_tracer(const char* function, node_impl& node) : _node(node), _notify(false)
          {
+            if(_node._node_is_shutting_down)
+            {
+               FC_THROW_EXCEPTION(fc::canceled_exception, "${f} canceled because it is shutting down",
+                  ("f", function));
+            }
+
             ++_node._activeCalls;
+            /// At this point potential shutdownNotification shall be sent in destructor. 
+            _notify = true;
          }
 
          ~activity_tracer()
          {
-            if(--_node._activeCalls == 0 && _node._node_is_shutting_down)
+            if(_notify && --_node._activeCalls == 0 && _node._node_is_shutting_down)
             {
                _node._shutdownNotifier->set_value();
             }
@@ -735,6 +743,7 @@ namespace graphene { namespace net {
 
       private:
          node_impl& _node;
+         bool       _notify;
       };
    }; // end class node_impl
 
@@ -1752,10 +1761,7 @@ namespace graphene { namespace net {
     {
       VERIFY_CORRECT_THREAD();
 
-      if(_node_is_shutting_down)
-         FC_THROW_EXCEPTION(fc::canceled_exception, "node_impl::on_message canceled because it is shutting down");
-
-      activity_tracer aTracer(*this);
+      activity_tracer aTracer(__FUNCTION__, *this);
 
       message_hash_type message_hash = received_message.id();
       dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
@@ -2743,7 +2749,7 @@ namespace graphene { namespace net {
 
     message node_impl::get_message_for_item(const item_id& item)
     {
-      activity_tracer aTracer(*this);
+      activity_tracer aTracer(__FUNCTION__, *this);
 
       try
       {
@@ -2973,7 +2979,7 @@ namespace graphene { namespace net {
     {
       VERIFY_CORRECT_THREAD();
 
-      activity_tracer aTracer(*this);
+      activity_tracer aTracer(__FUNCTION__, *this);
 
       peer_connection_ptr originating_peer_ptr = originating_peer->shared_from_this();
       _rate_limiter.remove_tcp_socket( &originating_peer->get_socket() );
@@ -5516,10 +5522,6 @@ namespace graphene { namespace net {
     }
 #else
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
-    call_statistics_collector statistics_collector(#method_name, \
-                                                   &_ ## method_name ## _execution_accumulator, \
-                                                   &_ ## method_name ## _delay_before_accumulator, \
-                                                   &_ ## method_name ## _delay_after_accumulator); \
     if ( _thread->is_current()) \
     { \
       call_statistics_collector statistics_collector(#method_name, \

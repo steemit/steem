@@ -230,6 +230,7 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
       ilog("Block ignored due to started p2p_plugin shutdown");
       if(handleBlockFinished.second.valid() == false)
          handleBlockFinished.first.set_value();
+      FC_THROW("Preventing further processing of ignored block...");
    }
    return false;
 } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
@@ -241,7 +242,9 @@ void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_
       try
       {
          shutdown_helper helper(*this, activeHandleTx, handleTxFinished);
+
          chain.accept_transaction( trx_msg.trx );
+
       } FC_CAPTURE_AND_RETHROW( (trx_msg) )
    }
    else
@@ -249,6 +252,8 @@ void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_
       ilog("Transaction ignored due to started p2p_plugin shutdown");
       if(handleTxFinished.second.valid() == false)
          handleTxFinished.first.set_value();
+
+      FC_THROW("Preventing further processing of ignored transaction...");
    }
 }
 
@@ -666,6 +671,21 @@ void p2p_plugin::plugin_startup()
    ilog( "P2P Plugin started" );
 }
 
+const char* fStatus(std::future_status s)
+{
+   switch(s)
+   {
+      case std::future_status::ready:
+      return "ready";
+      case std::future_status::deferred:
+      return "deferred";
+      case std::future_status::timeout:
+      return "timeout";
+      default:
+      return "unknown";
+   }
+}
+
 void p2p_plugin::plugin_shutdown() {
    ilog("Shutting down P2P Plugin");
    my->running.store(false);
@@ -676,9 +696,14 @@ void p2p_plugin::plugin_shutdown() {
    {
       if(my->activeHandleBlock.load())
       {
-         bfState = my->handleBlockFinished.second.wait_for(std::chrono::milliseconds(10));
+         bfState = my->handleBlockFinished.second.wait_for(std::chrono::milliseconds(100));
          if(bfState != std::future_status::ready)
-            ilog("waiting for handle_block finish...");
+         {
+            ilog("waiting for handle_block finish: ${s}, future status: ${fs}",
+             ("s", fStatus(bfState))
+             ("fs", std::to_string(my->handleBlockFinished.second.valid()))
+            );
+         }
       }
       else
       {
@@ -687,9 +712,14 @@ void p2p_plugin::plugin_shutdown() {
 
       if(my->activeHandleTx.load())
       {
-         tfState = my->handleTxFinished.second.wait_for(std::chrono::milliseconds(10));
+         tfState = my->handleTxFinished.second.wait_for(std::chrono::milliseconds(100));
          if(tfState != std::future_status::ready)
-            ilog("waiting for handle_transaction finish...");
+         {
+            ilog("waiting for handle_transaction finish: ${s}, future status: ${fs}",
+             ("s", fStatus(tfState))
+             ("fs", std::to_string(my->handleTxFinished.second.valid()))
+            );
+         }
       }
       else
       {

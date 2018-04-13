@@ -128,7 +128,7 @@ namespace graphene { namespace net {
     {
       VERIFY_CORRECT_THREAD();
       _sock.connect_to(remote_endpoint);
-      assert(!_read_loop_done.valid()); // check to be sure we never launch two read loops
+      FC_ASSERT(!_read_loop_done.valid()); // check to be sure we never launch two read loops
       _read_loop_done = fc::async([=](){ read_loop(); }, "message read_loop");
     }
 
