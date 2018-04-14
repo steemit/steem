@@ -110,7 +110,7 @@ namespace graphene { namespace net
       //, [](peer_connection* peer_to_delete){ fc::async([peer_to_delete](){delete peer_to_delete;}); });
     }
 
-    void peer_connection::destroy()
+    void peer_connection::destroy(const char* caller)
     {
       VERIFY_CORRECT_THREAD();
 
@@ -169,13 +169,13 @@ namespace graphene { namespace net
         wlog("Unexpected exception from peer_connection's accept_or_connect_task");
       }
 
-      _message_connection.destroy_connection(); // shut down the read loop
+      _message_connection.destroy_connection(caller); // shut down the read loop
     }
 
     peer_connection::~peer_connection()
     {
       VERIFY_CORRECT_THREAD();
-      destroy();
+      destroy(__FUNCTION__);
     }
 
     fc::tcp_socket& peer_connection::get_socket()
@@ -396,11 +396,11 @@ namespace graphene { namespace net
       _message_connection.close_connection();
     }
 
-    void peer_connection::destroy_connection()
+    void peer_connection::destroy_connection(const char* caller)
     {
       VERIFY_CORRECT_THREAD();
       negotiation_status = connection_negotiation_status::closing;
-      destroy();
+      destroy(caller);
     }
 
     uint64_t peer_connection::get_total_bytes_sent() const
