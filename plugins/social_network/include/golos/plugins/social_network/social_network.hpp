@@ -13,7 +13,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     using tags_used_by_author_r = std::vector<std::pair<std::string, uint32_t>>;
 
-    struct get_languages_r {
+    struct get_languages_result {
         std::set<std::string> languages;
     };
 
@@ -42,7 +42,7 @@ namespace golos { namespace plugins { namespace social_network {
     DEFINE_API_ARGS(get_best_categories,                   msg_pack, std::vector<category_api_object>)
     DEFINE_API_ARGS(get_account_votes,                     msg_pack, std::vector<account_vote>)
     DEFINE_API_ARGS(get_active_votes,                      msg_pack, std::vector<vote_state>)
-    DEFINE_API_ARGS(get_languages,                         msg_pack, get_languages_r);
+    DEFINE_API_ARGS(get_languages,                         msg_pack, get_languages_result);
 
     class social_network final: public appbase::plugin<social_network> {
     public:
@@ -198,4 +198,4 @@ namespace golos { namespace plugins { namespace social_network {
     };
 } } } // golos::plugins::social_network
 
-FC_REFLECT((golos::plugins::social_network::get_languages_r), (languages))
+FC_REFLECT((golos::plugins::social_network::get_languages_result), (languages))

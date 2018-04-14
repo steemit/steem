@@ -1,4 +1,4 @@
-#include <fc/include/fc/reflect/reflect.hpp>
+#include <fc/reflect/reflect.hpp>
 
 namespace golos {
     namespace plugins {

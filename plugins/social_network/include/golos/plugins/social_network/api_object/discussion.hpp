@@ -22,6 +22,8 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<string> replies; ///< author/slug mapping
         share_type author_reputation = 0;
         asset promoted = asset(0, SBD_SYMBOL);
+        double hot = 0;
+        double trending = 0;
         uint32_t body_length = 0;
         std::vector<account_name_type> reblogged_by;
         optional <account_name_type> first_reblogged_by;

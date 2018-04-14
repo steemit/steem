@@ -8,25 +8,22 @@
 namespace golos { namespace plugins { namespace social_network { namespace tags {
 
     struct operation_visitor {
-        operation_visitor(database& db);;
-        typedef void result_type;
+        operation_visitor(database& db);
+        using result_type = void;
 
-        database& _db;
+        database& db_;
 
-        void remove_stats(const tag_object& tag, const tag_stats_object& stats) const;
+        void remove_stats(const tag_object& tag) const;
 
-        void add_stats(const tag_object& tag, const tag_stats_object& stats) const;
+        void add_stats(const tag_object& tag) const;
 
         void remove_tag(const tag_object& tag) const;
 
-        const tag_stats_object& get_stats(const std::string& tag) const;
+        const tag_stats_object& get_stats(const tag_object&) const;
 
-        comment_metadata filter_tags(const comment_object& c) const;
+        void update_tag(const tag_object&, const comment_object&, double hot, double trending) const;
 
-
-        void update_tag(const tag_object& current, const comment_object& comment, double hot, double trending) const;
-
-        void create_tag(const std::string& tag, const comment_object& comment, double hot, double trending) const;
+        void create_tag(const std::string&, const tag_type, const comment_object&, double hot, double trending) const;
 
         /**
          * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
@@ -55,16 +52,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
 
         /** finds tags that have been added or removed or updated */
-        void update_tags(const comment_object& c, bool parse_tags = false) const;
-
-        const peer_stats_object& get_or_create_peer_stats(account_object::id_type voter,
-                                                          account_object::id_type peer) const;
-
-        void update_indirect_vote(account_object::id_type a, account_object::id_type b, int positive) const;
-
-        void update_peer_stats(const account_object& voter, const account_object& author,
-                               const comment_object& c, int vote) const;
-
+        void update_tags(const account_name_type& author, const std::string& permlink, bool parse_tags = false) const;
 
         void operator()(const comment_operation& op) const;
 
