@@ -346,7 +346,7 @@ void plugin::set_program_options(
          ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
          ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
          ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
-         ("history-start-block", boost::program_options::value<uint32_t>()->composing(), "Defines starting block from wich recording starts")
+         ("history-start-block", boost::program_options::value<uint32_t>()->composing(), "Defines starting block from which recording stats.")
          ;
     cfg.add(cli);
 }
