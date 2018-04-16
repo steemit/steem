@@ -63,6 +63,7 @@ DEFINE_API_IMPL( account_history_api_impl, get_account_history )
    const auto& idx = _db.get_index< chain::account_history_index, chain::by_account >();
    auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
    auto end = idx.upper_bound( boost::make_tuple( args.account, std::max( int64_t(0), int64_t(itr->sequence) - args.limit ) ) );
+   FC_ASSERT( itr != idx.end() && itr->account == args.account, "Account not found in history" );
 
    get_account_history_return result;
    while( itr != end )
