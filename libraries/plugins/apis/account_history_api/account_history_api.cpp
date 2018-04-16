@@ -91,13 +91,20 @@ DEFINE_API_IMPL( account_history_api_chainbase_impl, get_account_history )
    {
       const auto& idx = _db.get_index< chain::account_history_index, chain::by_account >();
       auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
-      auto end = idx.upper_bound( boost::make_tuple( args.account, std::max( int64_t(0), int64_t(itr->sequence) - args.limit ) ) );
+      uint32_t n = 0;
 
       get_account_history_return result;
-      while( itr != end )
+      while( true )
       {
+         if( itr == idx.end() )
+            break;
+         if( itr->account != args.account )
+            break;
+         if( n >= args.limit )
+            break;
          result.history[ itr->sequence ] = _db.get( itr->op );
          ++itr;
+         ++n;
       }
 
       return result;
