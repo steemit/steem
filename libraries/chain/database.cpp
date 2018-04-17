@@ -4409,6 +4409,8 @@ namespace golos {
                         }
                     }}
                     break;
+                case STEEMIT_HARDFORK_0_18:
+                    break;
                 default:
                     break;
             }
