@@ -2,6 +2,10 @@
 
 #include <string>
 
+namespace fc {
+class variant;
+}
+
 namespace steem { namespace plugins { namespace block_data_export {
 
 class exportable_block_data
