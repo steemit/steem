@@ -13,8 +13,7 @@
 
 #include <numeric>
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using golos::protocol::authority;
 
@@ -156,6 +155,39 @@ namespace golos {
             share_type average_bandwidth;
             share_type lifetime_bandwidth;
             time_point_sec last_bandwidth_update;
+        };
+
+        class vesting_delegation_object: public object<vesting_delegation_object_type, vesting_delegation_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            vesting_delegation_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            vesting_delegation_object() {
+            }
+
+            id_type id;
+            account_name_type delegator;
+            account_name_type delegatee;
+            asset vesting_shares;
+            time_point_sec min_delegation_time;
+        };
+
+        class vesting_delegation_expiration_object: public object<vesting_delegation_expiration_object_type, vesting_delegation_expiration_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            vesting_delegation_expiration_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            vesting_delegation_expiration_object() {
+            }
+
+            id_type id;
+            account_name_type delegator;
+            asset vesting_shares;
+            time_point_sec expiration;
         };
 
         class owner_authority_history_object
@@ -357,6 +389,59 @@ namespace golos {
         >
         account_bandwidth_index;
 
+        struct by_delegation;
+
+        using vesting_delegation_index = multi_index_container<
+            vesting_delegation_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<vesting_delegation_object, vesting_delegation_id_type, &vesting_delegation_object::id>>,
+                ordered_unique<
+                    tag<by_delegation>,
+                    composite_key<
+                        vesting_delegation_object,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator>,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee>
+                    >,
+                    composite_key_compare<protocol::string_less, protocol::string_less>
+                >
+            >,
+            allocator<vesting_delegation_object>
+        >;
+
+        struct by_expiration;
+        struct by_account_expiration;
+
+        using vesting_delegation_expiration_index = multi_index_container<
+            vesting_delegation_expiration_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>>,
+                ordered_unique<
+                    tag<by_expiration>,
+                    composite_key<
+                        vesting_delegation_expiration_object,
+                        member<vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration>,
+                        member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>
+                    >,
+                    composite_key_compare<std::less<time_point_sec>, std::less<vesting_delegation_expiration_id_type>>
+                >,
+                ordered_unique<
+                    tag<by_account_expiration>,
+                    composite_key<
+                        vesting_delegation_expiration_object,
+                        member<vesting_delegation_expiration_object, account_name_type, &vesting_delegation_expiration_object::delegator>,
+                        member<vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration>,
+                        member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>
+                    >,
+                    composite_key_compare<std::less<account_name_type>, std::less<time_point_sec>, std::less<vesting_delegation_expiration_id_type>>
+                >
+            >,
+            allocator<vesting_delegation_expiration_object>
+        >;
+
         struct by_expiration;
 
         typedef multi_index_container<
@@ -439,6 +524,12 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::account_authority_object, golos::chain::a
 FC_REFLECT((golos::chain::account_bandwidth_object),
         (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_bandwidth_object, golos::chain::account_bandwidth_index)
+
+FC_REFLECT((golos::chain::vesting_delegation_object), (id)(delegator)(delegatee)(vesting_shares)(min_delegation_time))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_object, golos::chain::vesting_delegation_index)
+
+FC_REFLECT((golos::chain::vesting_delegation_expiration_object), (id)(delegator)(vesting_shares)(expiration))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_expiration_object, golos::chain::vesting_delegation_expiration_index)
 
 FC_REFLECT((golos::chain::owner_authority_history_object),
         (id)(account)(previous_owner_authority)(last_valid_time)
