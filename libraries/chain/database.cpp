@@ -3399,10 +3399,17 @@ namespace golos {
                 feeds.reserve(wso.num_scheduled_witnesses);
                 for (int i = 0; i < wso.num_scheduled_witnesses; i++) {
                     const auto &wit = get_witness(wso.current_shuffled_witnesses[i]);
-                    if (wit.last_sbd_exchange_update <
-                        now + STEEMIT_MAX_FEED_AGE &&
-                        !wit.sbd_exchange_rate.is_null()) {
-                        feeds.push_back(wit.sbd_exchange_rate);
+
+                    if (has_hardfork(STEEMIT_HARDFORK_0_18__220)) {
+                        if ( now < wit.last_sbd_exchange_update + STEEMIT_MAX_FEED_AGE && !wit.sbd_exchange_rate.is_null() ) {
+                            feeds.push_back(wit.sbd_exchange_rate);
+                        }
+                    }
+                    else {
+                        if ( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE && !wit.sbd_exchange_rate.is_null() ) { 
+
+                            feeds.push_back(wit.sbd_exchange_rate);
+                        }
                     }
                 }
 
