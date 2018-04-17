@@ -198,6 +198,11 @@ void application::quit() {
 }
 
 void application::exec() {
+   /** To avoid killing process by broken pipe and continue regular app shutdown.
+    *  Useful for usecase: `steemd | tee steemd.log` and pressing Ctrl+C
+    **/
+   signal(SIGPIPE, SIG_IGN);
+
    std::shared_ptr<boost::asio::signal_set> sigint_set(new boost::asio::signal_set(*io_serv, SIGINT));
    sigint_set->async_wait([sigint_set,this](const boost::system::error_code& err, int num) {
      quit();

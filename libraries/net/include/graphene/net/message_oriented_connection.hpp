@@ -53,7 +53,7 @@ namespace graphene { namespace net {
 
        void send_message(const message& message_to_send);
        void close_connection();
-       void destroy_connection();
+       void destroy_connection(const char* caller);
 
        uint64_t       get_total_bytes_sent() const;
        uint64_t       get_total_bytes_received() const;

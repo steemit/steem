@@ -274,7 +274,7 @@ namespace graphene { namespace net
       bool _currently_handling_message = false; // true while we're in the middle of handling a message from the remote system
     private:
       peer_connection(peer_connection_delegate* delegate);
-      void destroy();
+      void destroy(const char* caller);
     public:
       static peer_connection_ptr make_shared(peer_connection_delegate* delegate); // use this instead of the constructor
       virtual ~peer_connection();
@@ -290,7 +290,7 @@ namespace graphene { namespace net
       void send_message(const message& message_to_send, size_t message_send_time_field_offset = (size_t)-1);
       void send_item(const item_id& item_to_send);
       void close_connection();
-      void destroy_connection();
+      void destroy_connection(const char* caller);
 
       uint64_t get_total_bytes_sent() const;
       uint64_t get_total_bytes_received() const;
