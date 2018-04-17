@@ -1081,169 +1081,12 @@ DEFINE_API_IMPL( database_api_impl, find_comments )
 
 namespace last_votes_misc
 {
-   template< typename KEY1, typename KEY2, typename KEY3 >
-   struct votes_sorter
-   {
-      const comment_vote_object* cvo = nullptr;
-      
-      const KEY1& val1;
-      const KEY2& val2;
-      const KEY3& val3;
-
-      votes_sorter( const comment_vote_object* _cvo, const KEY1& _val1, const KEY2& _val2, const KEY3& _val3 )
-      : cvo( _cvo ), val1( _val1 ), val2( _val2 ), val3( _val3 ) {}
-
-      bool operator<( const votes_sorter& obj ) const
-      {
-         if( val1 == obj.val1 )
-         {
-            if( val3 == obj.val3 )
-               return val2 < obj.val2;
-            else
-               return val3 > obj.val3;
-         }
-         else
-            return val1 < obj.val1;
-      }
-   };
-
-   struct votes_sorter_last_update: public votes_sorter< account_id_type, comment_id_type, time_point_sec >
-   {
-      votes_sorter_last_update( const comment_vote_object* _cvo )
-      : votes_sorter( _cvo, _cvo->voter, _cvo->comment, _cvo->last_update ) {}
-
-      votes_sorter_last_update( const account_id_type& _val1, const comment_id_type& _val2, const time_point_sec& _val3 )
-      : votes_sorter( nullptr, _val1, _val2, _val3 ) {}
-
-      static const account_id_type& get_main_key( const comment_vote_object& obj ){ return obj.voter; };
-   };
-
-   struct votes_sorter_weight: public votes_sorter< comment_id_type, account_id_type, uint64_t >
-   {
-      votes_sorter_weight( const comment_vote_object* _cvo )
-      : votes_sorter( _cvo, _cvo->comment, _cvo->voter, _cvo->weight ) {}
-
-      votes_sorter_weight( const comment_id_type& _val1, const account_id_type& _val2, const uint64_t& _val3 )
-      : votes_sorter( nullptr, _val1, _val2, _val3 ) {}
-
-      static const comment_id_type& get_main_key( const comment_vote_object& obj ){ return obj.comment; };
-   };
-
-   //====================================================process_result====================================================
-
-   template< typename WrapperType, typename IndexType, typename OrderType, typename ValueType1, typename ValueType2, typename ValueType3, typename ResultType, typename OnPush >
-   void process_result( database_api_impl& _impl, vector< ResultType >& result, uint32_t limit, ValueType1& v1, ValueType2& v2, ValueType3& v3, OnPush&& on_push = &database_api_impl::on_push_default< ResultType > )
-   {
-      std::set< WrapperType > s;
-      typename std::set< WrapperType >::iterator start;
-
-      WrapperType start_obj( v1, v2, v3 );
-
-      const auto& idx = _impl._db.get_index< IndexType, OrderType >();
-      const auto& end = idx.end();
-
-      auto& val = v1;
-
-      /*
-         Short explanation:
-            - Index 'idx' contains complex key: a,c.
-            - We want to sort, using complex key: a,b,c.
-
-         So we have to emulate missing key( here 'b' ) by 'set'. This collection has to have implemented 'operator<', which allows to sort 
-         using complex key: a,b,c. 
-
-         Important
-            Since second level of sorting doesn't exist, so it is necessary to gather always(!!!),
-            all records for first key( variable 'val' ). Longer explanation is below.
-
-            For example( limit = 11, 2 keys( for simplicity, the example has only 2 keys ), no skip ):
-            a a a a a b b b b c c c c c d d d d
-            p q p q r s t t p p u v p u p v q v
-
-            1) take all 'a' items
-               a a a a a   <-- here is 5 items
-               p q p q r
-
-            2) take all 'b' items
-            b b b b        <-- here is 4 items
-            s t t p 
-
-            3) take all 'c' items
-            c c c c c        <-- here is 5 items
-            p u v p u
-
-            We have enough items: 5 + 4 + 5 >= 11
-            Finally on the output we have 11 items( sorted according to two keys ):
-            a a a a a b b b b c c
-            p p q q r p s t t p u
-
-      */
-      auto itr = idx.lower_bound( val );
-      auto itr_u = idx.upper_bound( val );
-
-      //Check if any output data exist.
-      if( ( itr == itr_u ) && ( itr_u == end ) )
-         return;
-
-      uint32_t size = 0;
-      uint32_t skip = 0;
-      bool allow_skip = true;
-
-      //Gathering 'limit' data and sorting in-fly according to 'operator<' in 'WrapperType'.
-      while( size <= limit && itr != itr_u )
-      {
-         while( itr != itr_u )
-         {
-            //Add new current item.
-            auto& cvo = const_cast< comment_vote_object& >( *itr );
-            s.emplace( std::move( WrapperType( &cvo ) ) );
-
-            ++itr;
-         }
-
-         //Find first item, which matches to 'v1' and 'v2' and 'v3'.
-         if( allow_skip )
-         {
-            start = s.lower_bound( start_obj );
-            //Calculate what is offset between first saved data in 's' collection and first correct(!!!) data.
-            skip = std::distance( s.begin(), start );
-
-            //The variable 'skip' has to calculated only once.
-            allow_skip = false;
-         }
-
-         size = s.size() - skip;
-
-         if( size <= limit && itr_u != end )
-         {
-            val = WrapperType::get_main_key( *itr_u );
-
-            //It is necessary to gather always(!!!) all records for first key( variable 'val' ).
-            itr = idx.lower_bound( val );
-            itr_u = idx.upper_bound( val );
-         }
-      }
-
-      uint32_t cnt = 0;
-      start = s.begin();
-
-      //Make offset from first element to first correct(!!!) element.
-      std::advance( start, skip );
-      //Save sorted data to output collection.
-      while( start != s.end() && cnt++ < limit )
-      {
-         result.push_back( on_push( *( start->cvo ) ) );
-         ++start;
-      }
-   }
 
    //====================================================votes_impl====================================================
    template< sort_order_type SORTORDERTYPE >
    void votes_impl( database_api_impl& _impl, vector< api_comment_vote_object >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp, uint64_t weight )
    {
-      if( SORTORDERTYPE == by_comment_weight_voter )
-         FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, string, uint64_t, account_name_type)", ("nr_args", nr_args ) );
-      else if( SORTORDERTYPE == by_comment_voter )
+      if( SORTORDERTYPE == by_comment_voter )
          FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, string, account_name_type)", ("nr_args", nr_args ) );
       else
          FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, ${desc}account_name_type, string)", ("nr_args", nr_args )("desc",( nr_args == 4 )?"time_point_sec, ":"" ) );
@@ -1255,11 +1098,11 @@ namespace last_votes_misc
       account_id_type voter_id;
       comment_id_type comment_id;
 
-      if( SORTORDERTYPE == by_comment_weight_voter || SORTORDERTYPE == by_comment_voter )
+      if( SORTORDERTYPE == by_comment_voter )
       {
          author = key[0].as< account_name_type >();
          permlink = key[1].as< string >();
-         voter = key[ ( SORTORDERTYPE == by_comment_weight_voter ) ? 3 : 2 ].as< account_name_type >();
+         voter = key[ 2 ].as< account_name_type >();
       }
       else
       {
@@ -1297,30 +1140,6 @@ namespace last_votes_misc
          c,
          limit,
          [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
-      } else if( SORTORDERTYPE == by_voter_last_update )
-      {
-         process_result< votes_sorter_last_update, chain::comment_vote_index, chain::by_voter_comment >
-         (
-            _impl,
-            c,
-            limit,
-            voter_id,
-            comment_id,
-            timestamp,
-            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); }
-         );
-      } else if( SORTORDERTYPE == by_comment_weight_voter )
-      {
-         process_result< votes_sorter_weight, chain::comment_vote_index, chain::by_comment_voter >
-         (
-            _impl,
-            c,
-            limit,
-            comment_id,
-            voter_id,
-            weight,
-            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); }
-         );
       }
    }
 
@@ -1351,19 +1170,6 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
       {
          static fc::time_point_sec t( -1 );
          last_votes_misc::votes_impl< by_voter_comment >( *this, result.votes, 3/*nr_args*/, args.limit, key, t, 0 );
-         break;
-      }
-      case( by_voter_last_update ):
-      {
-         fc::time_point_sec t = key[1].as< fc::time_point_sec >();
-         last_votes_misc::votes_impl< by_voter_last_update >( *this, result.votes, 4/*nr_args*/, args.limit, key, t, 0 );
-         break;
-      }
-      case( by_comment_weight_voter ):
-      {
-         static fc::time_point_sec t( -1 );
-         uint64_t weight = key[2].as< uint64_t >();
-         last_votes_misc::votes_impl< by_comment_weight_voter >( *this, result.votes, 4/*nr_args*/, args.limit, key, t, weight );
          break;
       }
       default:

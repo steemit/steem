@@ -53,7 +53,7 @@ struct get_ops_in_block_args
 
 struct get_ops_in_block_return
 {
-   vector< api_operation_object > ops;
+   std::multiset< api_operation_object > ops;
 };
 
 
