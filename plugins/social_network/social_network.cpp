@@ -273,7 +273,7 @@ namespace golos { namespace plugins { namespace social_network {
     ) const {
         account_name_type acc_name = account_name_type(author);
         const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
-        auto itr = by_permlink_idx.find(boost::make_tuple(acc_name, permlink));
+        auto itr = by_permlink_idx.find(std::make_tuple(acc_name, permlink));
         while (
             itr != by_permlink_idx.end() &&
             itr->parent_author == author &&
@@ -989,7 +989,7 @@ namespace golos { namespace plugins { namespace social_network {
         const auto& ridx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_trending>();
         auto itr = ridx.begin();
         if (after != "" && nidx.size()) {
-            auto nitr = nidx.lower_bound(after);
+            auto nitr = nidx.lower_bound(std::make_tuple(tags::tag_type::tag, after));
             if (nitr == nidx.end()) {
                 itr = ridx.end();
             } else {
@@ -997,17 +997,14 @@ namespace golos { namespace plugins { namespace social_network {
             }
         }
 
-        for (; itr != ridx.end() && result.size() < limit; ++itr) {
-            if (itr->type == tags::tag_type::tag) {
-                tag_api_object push_object = tag_api_object(*itr);
+        for (; itr->type == tags::tag_type::tag && itr != ridx.end() && result.size() < limit; ++itr) {
+            tag_api_object push_object = tag_api_object(*itr);
 
-                if (!fc::is_utf8(push_object.name)) {
-                    push_object.name = fc::prune_invalid_utf8(push_object.name);
-                }
-
-                result.emplace_back(push_object);
-                ++itr;
+            if (!fc::is_utf8(push_object.name)) {
+                push_object.name = fc::prune_invalid_utf8(push_object.name);
             }
+
+            result.emplace_back(push_object);
         }
 #endif
         return result;
@@ -1031,9 +1028,8 @@ namespace golos { namespace plugins { namespace social_network {
         auto& db = database();
         const auto* acnt = db.find_account(author);
         FC_ASSERT(acnt != nullptr);
-        const auto& tidx =
-            db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
-        auto itr = tidx.lower_bound(boost::make_tuple(acnt->id, 0));
+        const auto& tidx = db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
+        auto itr = tidx.lower_bound(std::make_tuple(acnt->id, tags::tag_type::tag));
         for (;itr != tidx.end() && itr->author == acnt->id && result.size() < 1000; ++itr) {
             if (itr->type == tags::tag_type::tag) {
                 if (!fc::is_utf8(itr->name)) {
@@ -1081,7 +1077,7 @@ namespace golos { namespace plugins { namespace social_network {
                 uint32_t count = 0;
                 const auto& didx = db.get_index<comment_index>().indices().get<by_author_last_update>();
 
-                auto itr = didx.lower_bound(boost::make_tuple(author, time_point_sec::maximum()));
+                auto itr = didx.lower_bound(std::make_tuple(author, time_point_sec::maximum()));
                 if (start_permlink.size()) {
                     const auto& comment = db.get_comment(author, start_permlink);
                     if (comment.created < before_date) {
@@ -1106,7 +1102,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     discussion social_network::impl::get_content(std::string author, std::string permlink, uint32_t limit) const {
         const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_permlink>();
-        auto itr = by_permlink_idx.find(boost::make_tuple(author, permlink));
+        auto itr = by_permlink_idx.find(std::make_tuple(author, permlink));
         if (itr != by_permlink_idx.end()) {
             return get_discussion(*itr, limit);
         }

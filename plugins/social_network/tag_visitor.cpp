@@ -9,7 +9,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
     void operation_visitor::remove_stats(const tag_object& tag) const {
         const auto& idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
-        auto itr = idx.find(std::make_tuple(tag.name, tag.type));
+        auto itr = idx.find(std::make_tuple(tag.type, tag.name));
         if (itr == idx.end()) {
             return;
         }
@@ -41,7 +41,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
     const tag_stats_object& operation_visitor::get_stats(const tag_object& tag) const {
         const auto& idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
-        auto itr = idx.find(std::make_tuple(tag.name, tag.type));
+        auto itr = idx.find(std::make_tuple(tag.type, tag.name));
         if (itr != idx.end()) {
             return *itr;
         }
@@ -66,7 +66,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
     void operation_visitor::remove_tag(const tag_object& tag) const {
         const auto& idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
-        auto itr = idx.lower_bound(std::make_tuple(tag.author, tag.name, tag.type));
+        auto itr = idx.lower_bound(std::make_tuple(tag.author, tag.type, tag.name));
         if (itr != idx.end() && itr->author == tag.author && itr->name == tag.name && itr->type == tag.type) {
             if (itr->total_posts == 1) {
                 db_.remove(*itr);
@@ -137,7 +137,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         add_stats(tag_obj);
 
         const auto& idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
-        auto itr = idx.lower_bound(std::make_tuple(author, name));
+        auto itr = idx.lower_bound(std::make_tuple(author, type, name));
         if (itr != idx.end() && itr->author == author && itr->name == name) {
             db_.modify(*itr, [&](author_tag_stats_object& stats) {
                 stats.total_posts++;
@@ -290,28 +290,28 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         const auto& stats_idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
         const auto& auth_idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
 
-        auto update_payout = [&](auto& name, const tag_type type) {
-            auto sitr = stats_idx.find(std::make_tuple(name, type));
+        auto update_payout = [&](const tag_type type, const auto& name) {
+            auto sitr = stats_idx.find(std::make_tuple(type, name));
             if (stats_idx.end() != sitr) {
                 db_.modify(*sitr, [&](tag_stats_object& ts) {
-                    ts.total_payout += op.payout.amount;
+                    ts.total_payout.amount += op.payout.amount;
                 });
             }
 
-            auto aitr = auth_idx.find(std::make_tuple(author, name, type));
+            auto aitr = auth_idx.find(std::make_tuple(author, type, name));
             if (auth_idx.end() != aitr) {
                 db_.modify(*aitr, [&](author_tag_stats_object& as) {
-                    as.total_rewards += op.payout.amount;
+                    as.total_rewards.amount += op.payout.amount;
                 });
             }
         };
 
         for (const auto& name : meta.tags) {
-            update_payout(name, tag_type::tag);
+            update_payout(tag_type::tag, name );
         }
 
         if (!meta.language.empty()) {
-            update_payout(meta.language, tag_type::language);
+            update_payout(tag_type::language, meta.language);
         }
     }
 

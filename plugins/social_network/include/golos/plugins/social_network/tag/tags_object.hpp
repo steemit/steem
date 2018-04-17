@@ -274,21 +274,21 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
                 tag<by_tag>,
                 composite_key<
                     tag_stats_object,
-                    member<tag_stats_object, tag_name_type, &tag_stats_object::name>,
-                    member<tag_stats_object, tag_type, &tag_stats_object::type>>,
+                    member<tag_stats_object, tag_type, &tag_stats_object::type>,
+                    member<tag_stats_object, tag_name_type, &tag_stats_object::name>>,
                 composite_key_compare<
-                    std::less<tag_name_type>,
-                    std::less<tag_type>>>,
+                    std::less<tag_type>,
+                    std::less<tag_name_type>>>,
             ordered_non_unique<
                 tag<by_trending>,
                 composite_key<
                     tag_stats_object,
-                    member<tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2>,
                     member<tag_stats_object, tag_type, &tag_stats_object::type>,
+                    member<tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2>,
                     member<tag_stats_object, tag_name_type, &tag_stats_object::name>>,
                 composite_key_compare<
-                    std::greater<uint128_t>,
                     std::less<tag_type>,
+                    std::greater<uint128_t>,
                     std::less<tag_name_type>>>>,
         allocator<tag_stats_object> > ;
 
@@ -329,26 +329,26 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
                 composite_key<
                     author_tag_stats_object,
                     member<author_tag_stats_object, account_object::id_type, &author_tag_stats_object::author>,
-                    member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>,
                     member<author_tag_stats_object, tag_type, &author_tag_stats_object::type>,
+                    member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>,
                     member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::name>>,
                 composite_key_compare<
                     std::less<account_object::id_type>,
-                    std::greater<uint32_t>,
                     std::less<tag_type>,
+                    std::greater<uint32_t>,
                     std::less<tag_name_type>>>,
             ordered_unique<
                 tag<by_author_tag_posts>,
                 composite_key<
                     author_tag_stats_object,
                     member<author_tag_stats_object, account_object::id_type, &author_tag_stats_object::author>,
-                    member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::name>,
                     member<author_tag_stats_object, tag_type, &author_tag_stats_object::type>,
+                    member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::name>,
                     member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts> >,
                 composite_key_compare<
                     std::less<account_object::id_type>,
-                    std::less<tag_name_type>,
                     std::less<tag_type>,
+                    std::less<tag_name_type>,
                     std::greater<uint32_t>>>>,
         allocator<author_tag_stats_object>>;
 
