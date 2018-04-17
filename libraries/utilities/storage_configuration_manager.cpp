@@ -36,6 +36,11 @@ const bfs::path& storage_configuration_plugin::get_config_file() const
    return config_file;
 }
 
+const bool storage_configuration_plugin::exist_config_file() const
+{
+   return bfs::exists( config_file );
+}
+
 void storage_configuration_plugin::set_storage_path( const bfs::path& src )
 {
    storage_path = src;
@@ -58,10 +63,10 @@ storage_configuration_manager::storage_configuration_manager()
 {
 }
 
-template< typename Callable >
-const bfs::path storage_configuration_manager::get_any_path( const std::string& plugin_name, Callable&& call ) const
+template< typename Result, typename Callable >
+const Result storage_configuration_manager::get_any_info( const std::string& plugin_name, Callable&& call ) const
 {
-   static bfs::path empty;
+   static Result empty;
 
    auto found = plugins.find( plugin_name );
 
@@ -106,10 +111,11 @@ void storage_configuration_manager::find_plugin( Variable& v )
          }
          else
          {
+            bfs::path _path = v.second. template as<bfs::path>();
             if( is_storage )
-               found->second.set_storage_path( v.second. template as<bfs::path>() );
+               found->second.set_storage_path( _path );
             else
-               found->second.set_config_file( v.second. template as<bfs::path>() );
+               found->second.set_config_file( _path );
          }
       }
    }
@@ -136,6 +142,16 @@ void storage_configuration_manager::default_values( options_description& cli_opt
          ( sp.c_str(), bpo::value<bfs::path>()->default_value( sp_default.c_str() ), "Storage location for specific plugin")
          ( cf.c_str(), bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration specific to given plugin’s storage");
    }
+
+   cli_opts.add( cfg_opts );
+}
+
+void storage_configuration_manager::create_path( bfs::path& dst, const bfs::path& src )
+{
+   if( src.is_relative() )
+      dst = bfs::current_path() / src;
+   else
+      dst = src;
 }
 
 void storage_configuration_manager::initialize_impl( int _argc, char** _argv )
@@ -156,24 +172,22 @@ void storage_configuration_manager::initialize_impl( int _argc, char** _argv )
       default_values( cli_opts, cfg_opts );
 
       bpo::store( bpo::command_line_parser( _argc, _argv ).options( cli_opts ).allow_unregistered().run(), args );
+      bpo::notify( args );
 
       bfs::path data_dir = "data-dir";
 
       bfs::path _config_file_name;
+      bfs::path _storage_root_path;
       bfs::path config_file_name;
 
       for( auto& item : args )
       {
          if( item.first == "data-dir" )
-         {
-            data_dir = item.second.as<bfs::path>();
-            if( data_dir.is_relative() )
-               data_dir = bfs::current_path() / data_dir;
-         }
+            create_path( data_dir, item.second.as<bfs::path>() );
          else if( item.first == "config" )
-         {
             _config_file_name = item.second.as<bfs::path>();
-         }
+         else if( item.first == "storage-root-path" )
+            create_path( _storage_root_path, item.second.as<bfs::path>() );
       }
 
       if( _config_file_name.empty() )
@@ -186,17 +200,21 @@ void storage_configuration_manager::initialize_impl( int _argc, char** _argv )
             config_file_name = _config_file_name;
       }
 
+      //config.ini for steemd has to exist.
+      if( !bfs::exists( config_file_name ) )
+      {
+         storage_root_path = _storage_root_path;
+         return;
+      }
+
       bpo::store(bpo::parse_config_file< char >( config_file_name.make_preferred().string().c_str(),
                                                 cfg_opts, true ), args );
+      bpo::notify( args );
 
       for( auto& item : args )
       {
          if( item.first == "storage-root-path" )
-         {
-            storage_root_path = item.second.as<bfs::path>();
-            if( storage_root_path.is_relative() )
-               storage_root_path = bfs::current_path() / storage_root_path;
-         }
+            create_path( storage_root_path, item.second.as<bfs::path>() );
          else
             find_plugin( item );
       }
@@ -231,12 +249,17 @@ const bfs::path& storage_configuration_manager::get_storage_root_path() const
 
 const bfs::path storage_configuration_manager::get_config_file( const std::string& plugin_name ) const
 {
-   return get_any_path( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_config_file(); } );
+   return get_any_info< bfs::path >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_config_file(); } );
+}
+
+const bool storage_configuration_manager::exist_config_file( const std::string& plugin_name ) const
+{
+   return get_any_info< bool >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.exist_config_file(); } );
 }
 
 const bfs::path storage_configuration_manager::get_storage_path( const std::string& plugin_name ) const
 {
-   return get_any_path( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_storage_path(); } );
+   return get_any_info< bfs::path >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_storage_path(); } );
 }
 
 } }

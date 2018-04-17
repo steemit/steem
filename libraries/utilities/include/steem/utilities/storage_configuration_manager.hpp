@@ -33,6 +33,7 @@ class storage_configuration_plugin
 
       void set_config_file( const bfs::path& src );
       const bfs::path& get_config_file() const;
+      const bool exist_config_file() const;
 
       void set_storage_path( const bfs::path& src );
       const bfs::path& get_storage_path() const;
@@ -50,8 +51,8 @@ class storage_configuration_manager
 
       t_plugins plugins;
 
-      template< typename Callable >
-      const bfs::path get_any_path( const std::string& plugin_name, Callable&& call ) const;
+      template< typename Result, typename Callable >
+      const Result get_any_info( const std::string& plugin_name, Callable&& call ) const;
 
       template< typename Callable >
       void action( Callable&& call );
@@ -60,6 +61,7 @@ class storage_configuration_manager
       void find_plugin( Variable& v );
 
       void default_values( options_description& cli_opts, options_description& cfg_opts );
+      void create_path( bfs::path& dst, const bfs::path& src );
       void initialize_impl( int _argc, char** _argv );
       void correct_paths();
 
@@ -71,7 +73,10 @@ class storage_configuration_manager
       void add_plugin( const std::string& plugin_name );
 
       const bfs::path& get_storage_root_path() const;
+
       const bfs::path get_config_file( const std::string& plugin_name ) const;
+      const bool exist_config_file( const std::string& plugin_name ) const;
+
       const bfs::path get_storage_path( const std::string& plugin_name ) const;
 };
 

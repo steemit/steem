@@ -41,13 +41,50 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
    {
       storage_configuration_manager scm;
 
+      const char* argv[] = { "path" };
+      scm.initialize( 1, (char**)argv );
+
+      bfs::path storage_root_path = bfs::current_path() / "witness_node_data_dir";
+
+      BOOST_REQUIRE( scm.get_storage_root_path().string() == storage_root_path );
+
+      BOOST_REQUIRE( scm.get_storage_path( "follow" ) == bfs::path() );
+      BOOST_REQUIRE( scm.get_config_file( "p2p" ) == bfs::path() );
+
+      BOOST_REQUIRE( scm.exist_config_file( "follow" ) == false );
+      BOOST_REQUIRE( scm.exist_config_file( "p2p" ) == false );
+      BOOST_REQUIRE( scm.exist_config_file( "something" ) == false );
+   }
+
+   {
+      storage_configuration_manager scm;
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "storage_path",
+                     "--follow-storage-path", "storage_path_for_follow",
+                     "--follow-configuration-file", "config_file_for_follow.ini"
+                     };
+      scm.add_plugin( "follow" );
+      scm.initialize( 9, (char**)argv );
+
+      bfs::path storage_root_path = bfs::current_path() / "storage_path";
+
+      BOOST_REQUIRE( scm.get_storage_root_path().string() == storage_root_path );
+
+      BOOST_REQUIRE( scm.get_storage_path( "follow" ) == storage_root_path / "storage_path_for_follow" );
+      BOOST_REQUIRE( scm.get_config_file( "follow" ) == storage_root_path / "config_file_for_follow.ini" );
+      BOOST_REQUIRE( scm.exist_config_file( "follow" ) == false );
+   }
+
+   {
+      storage_configuration_manager scm;
+
       const char* argv[] = { "path", "-d", "storage_configuration_tests_directory", "--storage-root-path", "any_path" };
       scm.add_plugin( "follow" );
       scm.add_plugin( "p2p" );
       scm.initialize( 5, (char**)argv );
-
-      const bfs::path& path = scm.get_storage_root_path();
-      std::string s_path = path.string();
 
       bfs::path storage_root_path = bfs::current_path() / "any_path";
 
@@ -58,8 +95,10 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
 
       BOOST_REQUIRE( scm.get_config_file( "follow" ) == storage_root_path / "follow_config.ini" );
       BOOST_REQUIRE( scm.get_config_file( "p2p" ) == storage_root_path / "p2p_config.ini" );
-   }
 
+      BOOST_REQUIRE( scm.exist_config_file( "follow" ) == false );
+      BOOST_REQUIRE( scm.exist_config_file( "p2p" ) == false );
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
