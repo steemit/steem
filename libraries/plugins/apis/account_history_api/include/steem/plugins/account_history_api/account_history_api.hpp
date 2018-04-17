@@ -37,6 +37,11 @@ struct api_operation_object
    uint64_t                               virtual_op = 0;
    fc::time_point_sec                     timestamp;
    steem::protocol::operation             op;
+
+   bool operator<( const api_operation_object& obj ) const
+   {
+      return std::tie( block, trx_in_block, op_in_trx, virtual_op ) < std::tie( obj.block, obj.trx_in_block, obj.op_in_trx, obj.virtual_op );
+   }
 };
 
 
@@ -48,7 +53,7 @@ struct get_ops_in_block_args
 
 struct get_ops_in_block_return
 {
-   vector< api_operation_object > ops;
+   std::multiset< api_operation_object > ops;
 };
 
 

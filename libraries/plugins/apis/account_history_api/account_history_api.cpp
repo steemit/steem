@@ -39,14 +39,17 @@ DEFINE_API_IMPL( account_history_api_chainbase_impl, get_ops_in_block )
    {
       const auto& idx = _db.get_index< chain::operation_index, chain::by_location >();
       auto itr = idx.lower_bound( args.block_num );
+
       get_ops_in_block_return result;
+
       while( itr != idx.end() && itr->block == args.block_num )
       {
          api_operation_object temp = *itr;
          if( !args.only_virtual || is_virtual_operation( temp.op ) )
-            result.ops.push_back( temp );
+            result.ops.emplace( std::move( temp ) );
          ++itr;
       }
+
       return result;
    });
 }
@@ -132,7 +135,7 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_ops_in_block )
       {
          api_operation_object temp(op);
          if( !args.only_virtual || is_virtual_operation( temp.op ) )
-            result.ops.emplace_back(std::move(temp));
+            result.ops.emplace(std::move(temp));
       }
    );
    return result;
