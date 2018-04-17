@@ -100,7 +100,7 @@ namespace golos {
 
                 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
                 bool p2p_plugin_impl::has_item(const item_id &id) {
-                    return chain.db().with_read_lock([&]() {
+                    return chain.db().with_weak_read_lock([&]() {
                         try {
                             if (id.item_type == network::block_message_type) {
                                 return chain.db().is_known_block(id.item_hash);
@@ -114,7 +114,7 @@ namespace golos {
                 bool p2p_plugin_impl::handle_block(const block_message &blk_msg, bool sync_mode, std::vector<fc::uint160_t> &) {
                     try {
                         uint32_t head_block_num;
-                        chain.db().with_read_lock([&]() {
+                        chain.db().with_weak_read_lock([&]() {
                             head_block_num = chain.db().head_block_num();
                         });
                         if (sync_mode)
@@ -174,7 +174,7 @@ namespace golos {
                         const std::vector<item_hash_t> &blockchain_synopsis, uint32_t &remaining_item_count,
                         uint32_t limit) {
                     try {
-                        return chain.db().with_read_lock([&]() {
+                        return chain.db().with_weak_read_lock([&]() {
                             vector<block_id_type> result;
                             remaining_item_count = 0;
                             if (chain.db().head_block_num() == 0) {
@@ -229,7 +229,7 @@ namespace golos {
                 message p2p_plugin_impl::get_item(const item_id &id) {
                     try {
                         if (id.item_type == network::block_message_type) {
-                            return chain.db().with_read_lock([&]() {
+                            return chain.db().with_weak_read_lock([&]() {
                                 auto opt_block = chain.db().fetch_block_by_id(id.item_hash);
                                 if (!opt_block)
                                     elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
@@ -240,7 +240,7 @@ namespace golos {
                                 return block_message(std::move(*opt_block));
                             });
                         }
-                        return chain.db().with_read_lock([&]() {
+                        return chain.db().with_weak_read_lock([&]() {
                             return trx_message(chain.db().get_recent_transaction(id.item_hash));
                         });
                     } FC_CAPTURE_AND_RETHROW((id))
@@ -254,7 +254,7 @@ namespace golos {
                                                                                   uint32_t number_of_blocks_after_reference_point) {
                     try {
                         std::vector<item_hash_t> synopsis;
-                        chain.db().with_read_lock([&]() {
+                        chain.db().with_weak_read_lock([&]() {
                             synopsis.reserve(30);
                             uint32_t high_block_num;
                             uint32_t non_fork_high_block_num;
@@ -382,7 +382,7 @@ namespace golos {
 
                 fc::time_point_sec p2p_plugin_impl::get_block_time(const item_hash_t &block_id) {
                     try {
-                        return chain.db().with_read_lock([&]() {
+                        return chain.db().with_weak_read_lock([&]() {
                             auto opt_block = chain.db().fetch_block_by_id(block_id);
                             if (opt_block.valid()) {
                                 return opt_block->timestamp;
@@ -394,7 +394,7 @@ namespace golos {
 
                 item_hash_t p2p_plugin_impl::get_head_block_id() const {
                     try {
-                        return chain.db().with_read_lock([&]() {
+                        return chain.db().with_weak_read_lock([&]() {
                             return chain.db().head_block_id();
                         });
                     } FC_CAPTURE_AND_RETHROW()
@@ -416,7 +416,7 @@ namespace golos {
 
                 bool p2p_plugin_impl::is_included_block(const block_id_type &block_id) {
                     try {
-                        return chain.db().with_read_lock([&]() {
+                        return chain.db().with_weak_read_lock([&]() {
                             uint32_t block_num = block_header::num_from_id(block_id);
                             block_id_type block_id_in_preferred_chain = chain.db().get_block_id_for_num(block_num);
                             return block_id == block_id_in_preferred_chain;
@@ -435,17 +435,19 @@ namespace golos {
             }
 
             void p2p_plugin::set_program_options(boost::program_options::options_description &cli, boost::program_options::options_description &cfg) {
-                cfg.add_options()("p2p-endpoint", boost::program_options::value<string>()->implicit_value("127.0.0.1:9876"),
-                                  "The local IP address and port to listen for incoming connections.")(
-                        "p2p-max-connections", boost::program_options::value<uint32_t>(),
-                        "Maxmimum number of incoming connections on P2P endpoint.")("seed-node", boost::program_options::value<
-                                                                                            vector<string>>()->composing(),
-                                                                                    "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")(
-                        "p2p-seed-node", boost::program_options::value<vector<string>>()->composing(),
+                cfg.add_options()
+                    ("p2p-endpoint", boost::program_options::value<string>()->implicit_value("127.0.0.1:9876"),
+                        "The local IP address and port to listen for incoming connections.")
+                    ("p2p-max-connections", boost::program_options::value<uint32_t>(),
+                        "Maxmimum number of incoming connections on P2P endpoint.")
+                    ("seed-node", boost::program_options::value<vector<string>>()->composing(),
+                        "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
+                    ("p2p-seed-node", boost::program_options::value<vector<string>>()->composing(),
                         "The IP address and port of a remote peer to sync with.");
-                cli.add_options()("force-validate", boost::program_options::bool_switch()->default_value(false),
-                                  "Force validation of all transactions. Deprecated in favor of p2p-force-validate")(
-                        "p2p-force-validate", boost::program_options::bool_switch()->default_value(false),
+                cli.add_options()
+                    ("force-validate", boost::program_options::bool_switch()->default_value(false),
+                        "Force validation of all transactions. Deprecated in favor of p2p-force-validate")
+                    ("p2p-force-validate", boost::program_options::bool_switch()->default_value(false),
                         "Force validation of all transactions.");
             }
 
@@ -523,7 +525,7 @@ namespace golos {
                     my->node->listen_to_p2p_network();
                     my->node->connect_to_p2p_network();
                     block_id_type block_id;
-                    my->chain.db().with_read_lock([&]() {
+                    my->chain.db().with_weak_read_lock([&]() {
                         block_id = my->chain.db().head_block_id();
                     });
                     my->node->sync_from(item_id(golos::network::block_message_type, block_id),

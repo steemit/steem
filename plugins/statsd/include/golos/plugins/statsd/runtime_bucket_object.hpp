@@ -1,36 +1,19 @@
+#pragma once
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
-
 #include <golos/chain/steem_object_types.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/program_options.hpp>
 
 
 namespace golos {
 namespace plugins {
-namespace blockchain_statistics {
+namespace statsd {
 
 using namespace golos::chain;
 
+struct runtime_bucket_object {
 
-#ifndef BLOCKCHAIN_STATISTICS_SPACE_ID
-#define BLOCKCHAIN_STATISTICS_SPACE_ID 9
-#endif
+    void operator=(const runtime_bucket_object & b);
 
-enum blockchain_statistics_object_type {
-    bucket_object_type = (BLOCKCHAIN_STATISTICS_SPACE_ID << 8)
-};
-
-struct bucket_object
-        : public object<bucket_object_type, bucket_object> {
-    template<typename Constructor, typename Allocator>
-    bucket_object(Constructor &&c, allocator<Allocator> a) {
-        c(*this);
-    }
-
-    id_type id;
-
-    fc::time_point_sec open;                                        ///< Open time of the bucket
     uint32_t seconds = 0;                                 ///< Seconds accounted for in the bucket
     uint32_t blocks = 0;                                  ///< Blocks produced
     uint32_t bandwidth = 0;                               ///< Bandwidth in bytes
@@ -73,76 +56,9 @@ struct bucket_object
     uint32_t limit_orders_created = 0;                    ///< Limit orders created
     uint32_t limit_orders_filled = 0;                     ///< Limit orders filled
     uint32_t limit_orders_cancelled = 0;                  ///< Limit orders cancelled
-    uint32_t total_pow = 0;                               ///< POW submitted
-    uint128_t estimated_hashpower = 0;                     ///< Estimated average hashpower over interval
+    uint32_t total_pow = 0;                               ///< POW submitte
+    uint32_t num_pow_witnesses = 0;                       /// < The current count of how many pending POW witnesses
+                                                          /// there are, determines the difficulty of doing pow
 };
 
-typedef object_id<bucket_object> bucket_id_type;
-
-struct by_id;
-struct by_bucket;
-typedef multi_index_container<
-        bucket_object,
-        indexed_by<
-                ordered_unique<tag<by_id>, member<bucket_object, bucket_id_type, &bucket_object::id>>,
-                ordered_unique<tag<by_bucket>,
-                        composite_key<bucket_object,
-                                member<bucket_object, uint32_t, &bucket_object::seconds>,
-                                member<bucket_object, fc::time_point_sec, &bucket_object::open>
-                        >
-                >
-        >,
-        allocator<bucket_object>
-> bucket_index;
-
-} } } // golos::plugins::blockchain_statistics
-
-FC_REFLECT( (golos::plugins::blockchain_statistics::bucket_object),
-    (id)
-    (open)
-    (seconds)
-    (blocks)
-    (bandwidth)
-    (operations)
-    (transactions)
-    (transfers)
-    (steem_transferred)
-    (sbd_transferred)
-    (sbd_paid_as_interest)
-    (paid_accounts_created)
-    (mined_accounts_created)
-    (root_comments)
-    (root_comment_edits)
-    (root_comments_deleted)
-    (replies)
-    (reply_edits)
-    (replies_deleted)
-    (new_root_votes)
-    (changed_root_votes)
-    (new_reply_votes)
-    (changed_reply_votes)
-    (payouts)
-    (sbd_paid_to_authors)
-    (vests_paid_to_authors)
-    (vests_paid_to_curators)
-    (liquidity_rewards_paid)
-    (transfers_to_vesting)
-    (steem_vested)
-    (new_vesting_withdrawal_requests)
-    (modified_vesting_withdrawal_requests)
-    (vesting_withdraw_rate_delta)
-    (vesting_withdrawals_processed)
-    (finished_vesting_withdrawals)
-    (vests_withdrawn)
-    (vests_transferred)
-    (sbd_conversion_requests_created)
-    (sbd_to_be_converted)
-    (sbd_conversion_requests_filled)
-    (steem_converted)
-    (limit_orders_created)
-    (limit_orders_filled)
-    (limit_orders_cancelled)
-    (total_pow)
-    (estimated_hashpower)
-)
-CHAINBASE_SET_INDEX_TYPE(golos::plugins::blockchain_statistics::bucket_object, golos::plugins::blockchain_statistics::bucket_index)
+} } } // golos::plugins::statsd

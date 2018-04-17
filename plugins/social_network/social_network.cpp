@@ -8,8 +8,13 @@
 #include <golos/plugins/social_network/api_object/vote_state.hpp>
 #include <golos/plugins/social_network/languages/language_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+
+// These visitors creates additional tables, we don't really need them in LOW_MEM mode
+#ifndef IS_LOW_MEM
 #include <golos/plugins/social_network/tag/tag_visitor.hpp>
 #include <golos/plugins/social_network/languages/language_visitor.hpp>
+#endif
+
 #include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(s) \
@@ -99,8 +104,10 @@ namespace golos {
                 void on_operation(const operation_notification &note){
                     try {
                         /// plugins shouldn't ever throw
+#ifndef IS_LOW_MEM
                         note.op.visit(languages::operation_visitor(database(), cache_languages));
                         note.op.visit(tags::operation_visitor(database()));
+#endif
                     } catch (const fc::exception &e) {
                         edump((e.to_detail_string()));
                     } catch (...) {
@@ -132,7 +139,7 @@ namespace golos {
                 }
 
                 comment_object::id_type get_parent(const discussion_query &query) const {
-                    return database().with_read_lock([&]() {
+                    return database().with_weak_read_lock([&]() {
                         comment_object::id_type parent;
                         if (query.parent_author && query.parent_permlink) {
                             parent = database().get_comment(*query.parent_author, *query.parent_permlink).id;
@@ -284,7 +291,7 @@ namespace golos {
 
             DEFINE_API ( social_network_t, get_languages ) {
                 auto &db = pimpl->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     get_languages_r result;
                     result = pimpl->get_languages();
                     return result;
@@ -315,6 +322,8 @@ namespace golos {
 
             void social_network_t::plugin_initialize(const boost::program_options::variables_map &options) {
                 pimpl.reset(new impl());
+// Disable index creation for tag and language visitors
+#ifndef IS_LOW_MEM
                 auto &db = pimpl->database();
                 pimpl->database().post_apply_operation.connect([&](const operation_notification &note) {
                     pimpl->on_operation(note);
@@ -328,8 +337,7 @@ namespace golos {
                 add_plugin_index<languages::language_stats_index>(db);
                 add_plugin_index<languages::peer_stats_index>(db);
                 add_plugin_index<languages::author_language_stats_index>(db);
-
-
+#endif
                 JSON_RPC_REGISTER_API ( name() ) ;
 
             }
@@ -341,7 +349,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_active_votes(author, permlink);
                 });
             }
@@ -356,20 +364,18 @@ namespace golos {
             }
 
             void social_network_t::impl::select_content_replies(
-                std::vector<discussion> &result, const std::string &author, const std::string &permlink
+                std::vector<discussion>& result, const std::string& author, const std::string& permlink
             ) const {
                 account_name_type acc_name = account_name_type(author);
-                const auto &by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
+                const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
                 auto itr = by_permlink_idx.find(boost::make_tuple(acc_name, permlink));
                 while (
                     itr != by_permlink_idx.end() &&
                     itr->parent_author == author &&
-                    !strcmp(itr->parent_permlink.c_str(), permlink.c_str())
+                    to_string(itr->parent_permlink) == permlink
                 ) {
-                    discussion push_discussion(*itr);
-                    push_discussion.active_votes = get_active_votes(author, permlink);
-
                     result.emplace_back(*itr);
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     set_pending_payout(result.back());
                     ++itr;
                 }
@@ -387,7 +393,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_content_replies(author, permlink);
                 });
             }
@@ -413,7 +419,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<string>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_all_content_replies(author, permlink);
                 });
             }
@@ -427,12 +433,13 @@ namespace golos {
 
 
             void social_network_t::impl::set_pending_payout(discussion &d) const {
+#ifndef IS_LOW_MEM
                 const auto &cidx = database().get_index<tags::tag_index>().indices().get<tags::by_comment>();
                 auto itr = cidx.lower_bound(d.id);
                 if (itr != cidx.end() && itr->comment == d.id) {
                     d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
                 }
-
+#endif
                 const auto &props = database().get_dynamic_global_properties();
                 const auto &hist = database().get_feed_history();
                 asset pot = props.total_reward_fund_steem;
@@ -548,7 +555,9 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_feed) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
+                    std::vector<discussion> result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
@@ -570,8 +579,8 @@ namespace golos {
                             start_permlink
                     );
 
-                    std::vector<discussion> result = merge(tags_, languages_);
-
+                    result = merge(tags_, languages_);
+#endif
                     return result;
                 });
             }
@@ -639,7 +648,9 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_blog) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
+                    std::vector<discussion> result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     FC_ASSERT(pimpl->database().has_index<follow::feed_index>(), "Node is not running the follow plugin");
                     FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
@@ -658,8 +669,8 @@ namespace golos {
                             start_permlink
                     );
 
-                    std::vector<discussion> result = merge(tags_, languages_);
-
+                    result = merge(tags_, languages_);
+#endif
                     return result;
                 });
             }
@@ -667,7 +678,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_comments) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<discussion> result;
 #ifndef IS_LOW_MEM
                     query.validate();
@@ -717,7 +728,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -747,7 +758,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -759,7 +770,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -771,7 +782,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     limit = std::min(limit, uint32_t(100));
                     std::vector<category_api_object> result;
                     result.reserve(limit);
@@ -941,7 +952,9 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_trending) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     auto parent = pimpl->get_parent(query);
 
@@ -1000,13 +1013,15 @@ namespace golos {
                     );
 
 
-                    std::vector<discussion> return_result = merge(map_result, map_result_);
-
+                    return_result = merge(map_result, map_result_);
+#endif
                     return return_result;
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_promoted(const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1047,8 +1062,8 @@ namespace golos {
                                 }, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY));
 
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                return_result = merge(map_result, map_result_language);
+#endif
 
                 return return_result;
             }
@@ -1057,7 +1072,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_promoted) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_promoted(query);
                 });
             }
@@ -1066,7 +1081,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_account_votes) {
                 CHECK_ARG_SIZE(1)
                 account_name_type voter = args.args->at(0).as<account_name_type>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     std::vector<account_vote> result;
 
                     const auto &voter_acnt = pimpl->database().get_account(voter);
@@ -1093,6 +1108,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_created(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1123,22 +1140,23 @@ namespace golos {
                                     return false;
                                 }, parent, fc::time_point_sec::maximum());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
             }
 
             DEFINE_API(social_network_t, get_discussions_by_created) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_created(query);
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_active(
                     const discussion_query &query) const {
-
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1169,8 +1187,8 @@ namespace golos {
                                     return false;
                                 }, parent, fc::time_point_sec::maximum());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
 
             }
@@ -1178,7 +1196,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_active) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_active(query);
                 });
             }
@@ -1186,6 +1204,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_cashout(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
                 std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result = select <
@@ -1219,7 +1239,8 @@ namespace golos {
                                    fc::minutes(60));
 
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
+                return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
             }
 
@@ -1227,7 +1248,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_cashout) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_cashout(query);
                 });
             }
@@ -1235,7 +1256,9 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_payout) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                     query.validate();
                     auto parent = pimpl->get_parent(query);
 
@@ -1262,14 +1285,16 @@ namespace golos {
                                 return false;
                             });
 
-                    std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                    return_result = merge(map_result, map_result_language);
+#endif
                     return return_result;
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_votes(
                     const discussion_query &query) const {
+                    std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
                 query.validate();
                 auto parent = get_parent(query);
 
@@ -1301,8 +1326,8 @@ namespace golos {
                                     return false;
                                 }, parent, std::numeric_limits<int32_t>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                merge(map_result, map_result_language);
+#endif
                 return return_result;
             }
 
@@ -1310,7 +1335,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_votes) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_votes(query);
                 });
             }
@@ -1318,6 +1343,8 @@ namespace golos {
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_children(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
 
                 query.validate();
                 auto parent = get_parent(query);
@@ -1351,8 +1378,8 @@ namespace golos {
                                     return false;
                                 }, parent, std::numeric_limits<int32_t>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
 
             }
@@ -1360,13 +1387,15 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_children) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_children(query);
                 });
             }
 
             std::vector<discussion> social_network_t::impl::get_discussions_by_hot(
                     const discussion_query &query) const {
+                std::vector<discussion> return_result;
+#ifndef IS_LOW_MEM
 
                 query.validate();
                 auto parent = get_parent(query);
@@ -1403,8 +1432,8 @@ namespace golos {
                                 }, parent, std::numeric_limits<
                                         double>::max());
 
-                std::vector<discussion> return_result = merge(map_result, map_result_language);
-
+                return_result = merge(map_result, map_result_language);
+#endif
                 return return_result;
 
             }
@@ -1412,7 +1441,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_discussions_by_hot) {
                 CHECK_ARG_SIZE(1)
                 auto query = args.args->at(0).as<discussion_query>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_discussions_by_hot(query);
                 });
             }
@@ -1422,7 +1451,7 @@ namespace golos {
                 auto after = args.args->at(0).as<string>();
                 auto limit = args.args->at(1).as<uint32_t>();
 
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_trending_tags(after, limit);
                 });
             }
@@ -1462,7 +1491,7 @@ namespace golos {
             DEFINE_API(social_network_t, get_tags_used_by_author) {
                 CHECK_ARG_SIZE(1)
                 auto author = args.args->at(0).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_tags_used_by_author(author);
                 });
             }
@@ -1470,6 +1499,7 @@ namespace golos {
             std::vector<tag_api_object> social_network_t::impl::get_trending_tags(std::string after, uint32_t limit) const {
                 limit = std::min(limit, uint32_t(1000));
                 std::vector<tag_api_object> result;
+#ifndef IS_LOW_MEM
                 result.reserve(limit);
 
                 const auto &nidx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
@@ -1495,17 +1525,19 @@ namespace golos {
                     result.emplace_back(push_object);
                     ++itr;
                 }
+#endif
                 return result;
             }
 
             std::vector<std::pair<std::string, uint32_t>> social_network_t::impl::get_tags_used_by_author(
                     const std::string &author) const {
+                std::vector<std::pair<std::string, uint32_t>> result;
+#ifndef IS_LOW_MEM
                 const auto *acnt = database().find_account(author);
                 FC_ASSERT(acnt != nullptr);
                 const auto &tidx = database().get_index<tags::author_tag_stats_index>().indices().get<
                         tags::by_author_posts_tag>();
                 auto itr = tidx.lower_bound(boost::make_tuple(acnt->id, 0));
-                std::vector<std::pair<std::string, uint32_t>> result;
                 while (itr != tidx.end() && itr->author == acnt->id && result.size() < 1000) {
                     if (!fc::is_utf8(itr->tag)) {
                         result.emplace_back(std::make_pair(fc::prune_invalid_utf8(itr->tag), itr->total_posts));
@@ -1514,6 +1546,7 @@ namespace golos {
                     }
                     ++itr;
                 }
+#endif
                 return result;
             }
 
@@ -1534,7 +1567,7 @@ namespace golos {
                 CHECK_ARG_SIZE(2)
                 auto author = args.args->at(0).as<account_name_type>();
                 auto permlink = args.args->at(1).as<string>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_content(author, permlink);
                 });
             }
@@ -1548,7 +1581,7 @@ namespace golos {
                 auto before_date = args.args->at(2).as<time_point_sec>();
                 auto limit = args.args->at(3).as<uint32_t>();
 
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     try {
                         std::vector<discussion> result;
 #ifndef IS_LOW_MEM
@@ -1574,8 +1607,8 @@ namespace golos {
                             if (itr->parent_author.size() == 0) {
                                 result.push_back(*itr);
                                 pimpl->set_pending_payout(result.back());
-                                result.back().active_votes = pimpl->get_active_votes(itr->author,
-                                                                                  to_string(itr->permlink));
+                                result.back().active_votes =
+                                    pimpl->get_active_votes(result.back().author, result.back().permlink);
                                 ++count;
                             }
                             ++itr;
@@ -1613,7 +1646,7 @@ namespace golos {
                 while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
                     result.emplace_back(*itr);
                     set_pending_payout(result.back());
-                    result.back().active_votes = get_active_votes(itr->author, to_string(itr->permlink));
+                    result.back().active_votes = get_active_votes(result.back().author, result.back().permlink);
                     ++itr;
                 }
 
@@ -1634,7 +1667,7 @@ namespace golos {
                 auto start_parent_author = args.args->at(0).as<account_name_type>();
                 auto start_permlink = args.args->at(1).as<string>();
                 auto limit = args.args->at(2).as<uint32_t>();
-                return pimpl->database().with_read_lock([&]() {
+                return pimpl->database().with_weak_read_lock([&]() {
                     return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit);
                 });
             }

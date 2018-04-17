@@ -5,6 +5,9 @@
 
 #include <fc/smart_ref_impl.hpp>
 
+#include <boost/algorithm/string.hpp>
+#define STEEM_NAMESPACE_PREFIX "golos::protocol::"
+
 namespace golos {
 namespace plugins {
 namespace account_history {
@@ -29,20 +32,15 @@ if( options.count(name) ) { \
 // 
 
 struct operation_visitor {
+    operation_visitor(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i)
+        : _db(db), _note(note), new_obj(n), item(i){};
+
     typedef void result_type;
 
     golos::chain::database &_db;
     const golos::chain::operation_notification &_note;
     const golos::chain::operation_object *&new_obj;
     string item;
-
-    operation_visitor (golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i)
-            : _db(db), _note(note), new_obj(n), item(i) {
-    };
-    /// ignore these ops
-    /*
-    */
-
 
     template<typename Op>
     void operator()(Op &&) const {
@@ -65,8 +63,7 @@ struct operation_visitor {
 
         auto hist_itr = hist_idx.lower_bound(boost::make_tuple(item, uint32_t(-1)));
         uint32_t sequence = 0;
-        if (hist_itr != hist_idx.end() &&
-            hist_itr->account == item) {
+        if (hist_itr != hist_idx.end() && hist_itr->account == item) {
                 sequence = hist_itr->sequence + 1;
         }
 
@@ -78,86 +75,25 @@ struct operation_visitor {
     }
 };
 struct operation_visitor_filter : operation_visitor {
-    operation_visitor_filter(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i)
-            : operation_visitor(db, note, n, i) {
+    operation_visitor_filter(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i, const flat_set<string> &filter, bool blacklist, uint32_t start_block)
+        : operation_visitor(db, note, n, i), _filter(filter), _blacklist(blacklist), _start_block(start_block) {
     }
 
-    void operator()(const comment_operation &) const {
-    }
+    const flat_set<string> &_filter;
+    bool _blacklist;
+    uint32_t _start_block;
 
-    void operator()(const vote_operation &) const {
-    }
-
-    void operator()(const delete_comment_operation &) const {
-    }
-
-    void operator()(const custom_json_operation &) const {
-    }
-
-    void operator()(const custom_operation &) const {
-    }
-
-    void operator()(const curation_reward_operation &) const {
-    }
-
-    void operator()(const fill_order_operation &) const {
-    }
-
-    void operator()(const limit_order_create_operation &) const {
-    }
-
-    void operator()(const limit_order_cancel_operation &) const {
-    }
-
-    void operator()(const pow_operation &) const {
-    }
-
-    void operator()(const transfer_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const transfer_to_vesting_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const account_create_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const account_update_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const transfer_to_savings_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const transfer_from_savings_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const cancel_transfer_from_savings_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const escrow_transfer_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const escrow_dispute_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const escrow_release_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    void operator()(const escrow_approve_operation &op) const {
-        operation_visitor::operator()(op);
-    }
-
-    template<typename Op>
-    void operator()(Op &&op) const {
+    template <typename T>
+    void operator()(const T &op) const {
+        if(_db.head_block_num() >= _start_block) {
+            if (_filter.find(fc::get_typename<T>::name()) != _filter.end()) {
+                if (!_blacklist)
+                    operation_visitor::operator()(op);
+            } else {
+                if (_blacklist)
+                    operation_visitor::operator()(op);
+            }
+        }
     }
 };
 
@@ -187,7 +123,7 @@ public:
             if (!_tracked_accounts.size() ||
                 (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second)) {
                 if (_filter_content) {
-                    note.op.visit(operation_visitor_filter(db, note, new_obj, item));
+                    note.op.visit(operation_visitor_filter(db, note, new_obj, item, _op_list, _blacklist, _start_block));
                 } else {
                     note.op.visit(operation_visitor(db, note, new_obj, item));
                 }
@@ -197,7 +133,10 @@ public:
 
     flat_map<string, string> _tracked_accounts;
     bool _filter_content = false;
-    golos::chain::database & database_;
+    uint32_t _start_block = 0;
+    bool _blacklist = false;
+    flat_set<string> _op_list;
+    golos::chain::database &database_;
 };
 
 
@@ -386,8 +325,7 @@ struct get_impacted_account_visitor {
         _impacted.insert(op.account);
     }
 
-    void operator()( const comment_benefactor_reward_operation& op )
-    {
+    void operator()( const comment_benefactor_reward_operation& op ) {
         _impacted.insert( op.benefactor );
         _impacted.insert( op.author );
     }
@@ -405,8 +343,11 @@ void plugin::set_program_options(
         boost::program_options::options_description &cfg
 ) {
     cli.add_options()
-            ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to]")
-            ("filter-posting-ops", "Ignore posting operations, only track transfers and account updates");
+         ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
+         ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
+         ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
+         ("history-start-block", boost::program_options::value<uint32_t>()->composing(), "Defines starting block from which recording stats.")
+         ;
     cfg.add(cli);
 }
 
@@ -418,9 +359,47 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
 
     typedef pair<string, string> pairstring;
     LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
-    if (options.count("filter-posting-ops")) {
+
+    if (options.count("history-whitelist-ops")) {
         my->_filter_content = true;
+        my->_blacklist = false;
+
+        for (auto &arg : options.at("history-whitelist-ops").as<vector<string>>()) {
+            vector<string> ops;
+            boost::split(ops, arg, boost::is_any_of(" \t,"));
+
+            for (const string &op : ops) {
+                if (op.size())
+                    my->_op_list.insert(STEEM_NAMESPACE_PREFIX + op);
+            }
+        }
+
+        ilog("Account History: whitelisting ops ${o}", ("o", my->_op_list));
     }
+    else if (options.count("history-blacklist-ops")) {
+        my->_filter_content = true;
+        my->_blacklist = true;
+        for (auto &arg : options.at("history-blacklist-ops").as<vector<string>>()) {
+            vector<string> ops;
+            boost::split(ops, arg, boost::is_any_of(" \t,"));
+
+            for (const string &op : ops) {
+                if (op.size())
+                    my->_op_list.insert(STEEM_NAMESPACE_PREFIX + op);
+            }
+        }
+
+        ilog("Account History: blacklisting ops ${o}", ("o", my->_op_list));
+    }
+
+    if (options.count("history-start-block")) {
+        my->_filter_content = true;
+        my->_start_block = options.at("history-start-block").as<uint32_t>();
+    }
+    else {
+        my->_start_block = 0;
+    }
+    ilog("Account History: start_block ${s}", ("s", my->_start_block));
     ilog("account_history plugin: plugin_initialize() end");
     // init(options);
 }

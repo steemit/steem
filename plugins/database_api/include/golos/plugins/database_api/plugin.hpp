@@ -30,6 +30,20 @@ namespace golos {
             using plugins::json_rpc::msg_pack;
             using plugins::json_rpc::msg_pack_transfer;
 
+            struct database_index_info {
+                std::string name;
+                std::size_t record_count;
+            };
+
+            struct database_info {
+                std::size_t total_size;
+                std::size_t free_size;
+                std::size_t reserved_size;
+                std::size_t used_size;
+
+                std::vector<database_index_info> index_list;
+            };
+
             struct scheduled_hardfork {
                 hardfork_version hf_version;
                 fc::time_point_sec live_time;
@@ -143,6 +157,7 @@ namespace golos {
             DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
             DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
             DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
+            DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
 
 
             /**
@@ -421,6 +436,7 @@ namespace golos {
                                      */
                                     (get_account_history)
 
+                                    (get_database_info)
 
                 )
 
@@ -456,3 +472,6 @@ FC_REFLECT((golos::plugins::database_api::signed_block_api_object), (block_id)(s
 
 FC_REFLECT((golos::plugins::database_api::operation_api_object),
            (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
+
+FC_REFLECT((golos::plugins::database_api::database_index_info), (name)(record_count))
+FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(reserved_size)(used_size)(index_list))

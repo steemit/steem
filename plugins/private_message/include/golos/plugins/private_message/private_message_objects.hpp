@@ -104,45 +104,53 @@ namespace golos {
 
             using namespace boost::multi_index;
 
-            typedef multi_index_container <
-            message_object,
-            indexed_by<
-                    ordered_unique < tag < by_id>, member<message_object, message_id_type, &message_object::id>>,
-            ordered_unique <tag<by_to_date>,
-            composite_key<message_object,
-                    member < message_object, account_name_type, &message_object::to>,
-            member<message_object, time_point_sec, &message_object::receive_time>,
-            member<message_object, message_id_type, &message_object::id>
-            >,
-            composite_key_compare<std::less<string>, std::greater<time_point_sec>, std::less<message_id_type>>
-            >,
-            ordered_unique <tag<by_from_date>,
-            composite_key<message_object,
-                    member < message_object, account_name_type, &message_object::from>,
-            member<message_object, time_point_sec, &message_object::receive_time>,
-            member<message_object, message_id_type, &message_object::id>
-            >,
-            composite_key_compare<std::less<string>, std::greater<time_point_sec>, std::less<message_id_type>>
-            >
-            >,
-            allocator <message_object>
-            >
-            message_index;
+            using message_index = multi_index_container<
+                message_object,
+                indexed_by<
+                    ordered_unique<
+                        tag<by_id>,
+                        member<message_object, message_id_type, &message_object::id>
+                    >,
+                    ordered_unique<
+                        tag<by_to_date>,
+                        composite_key<
+                            message_object,
+                            member<message_object, account_name_type, &message_object::to>,
+                            member<message_object, time_point_sec, &message_object::receive_time>,
+                            member<message_object, message_id_type, &message_object::id>
+                        >,
+                        composite_key_compare<std::less<string>, std::greater<time_point_sec>, std::less<message_id_type>>
+                    >,
+                    ordered_unique<
+                        tag<by_from_date>,
+                        composite_key<
+                            message_object,
+                            member<message_object, account_name_type, &message_object::from>,
+                            member<message_object, time_point_sec, &message_object::receive_time>,
+                            member<message_object, message_id_type, &message_object::id>
+                        >,
+                        composite_key_compare<std::less<string>, std::greater<time_point_sec>, std::less<message_id_type>>
+                    >
+                >,
+                allocator<message_object>
+            >;
 
-            struct private_message_operation
-                    : public golos::protocol::base_operation {
-                protocol::account_name_type from;
-                protocol::account_name_type to;
-                protocol::public_key_type from_memo_key;
-                protocol::public_key_type to_memo_key;
+            struct private_message_operation: public base_operation {
+                account_name_type from;
+                account_name_type to;
+                public_key_type from_memo_key;
+                public_key_type to_memo_key;
                 uint64_t sent_time = 0; /// used as seed to secret generation
                 uint32_t checksum = 0;
                 std::vector<char> encrypted_message;
 
                 void validate() const;
+                void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                    a.insert(from);
+                }
             };
 
-            typedef fc::static_variant <private_message_operation> private_message_plugin_operation;
+            using private_message_plugin_operation = fc::static_variant<private_message_operation>;
 
         }
     }
@@ -151,12 +159,5 @@ namespace golos {
 FC_REFLECT((golos::plugins::private_message::private_message_operation),
            (from)(to)(from_memo_key)(to_memo_key)(sent_time)(checksum)(encrypted_message))
 
-namespace fc {
-
-    void to_variant(const golos::plugins::private_message::private_message_plugin_operation &, fc::variant &);
-
-    void from_variant(const fc::variant &, golos::plugins::private_message::private_message_plugin_operation &);
-
-} /* fc */
-
 FC_REFLECT_TYPENAME((golos::plugins::private_message::private_message_plugin_operation))
+DECLARE_OPERATION_TYPE(golos::plugins::private_message::private_message_plugin_operation)

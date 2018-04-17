@@ -48,14 +48,6 @@ namespace golos {
         }
 
         clean_database_fixture::~clean_database_fixture() {
-            try {
-                // If we're unwinding due to an exception, don't do any more checks.
-                // This way, boost test's last checkpoint tells us approximately where the error was.
-                if (!std::uncaught_exception()) {
-                    BOOST_CHECK(db->get_node_properties().skip_flags ==
-                                database::skip_nothing);
-                }
-            } FC_CAPTURE_AND_RETHROW()
         }
 
         void clean_database_fixture::resize_shared_mem(uint64_t size) {
@@ -76,6 +68,7 @@ namespace golos {
             init_account_pub_key = init_account_priv_key.get_public_key();
 
             db->open(data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write);
+            startup();
         }
 
         live_database_fixture::live_database_fixture() {
@@ -99,13 +92,6 @@ namespace golos {
 
         live_database_fixture::~live_database_fixture() {
             try {
-                // If we're unwinding due to an exception, don't do any more checks.
-                // This way, boost test's last checkpoint tells us approximately where the error was.
-                if (!std::uncaught_exception()) {
-                    BOOST_CHECK(db->get_node_properties().skip_flags ==
-                                database::skip_nothing);
-                }
-
                 db->pop_block();
                 return;
             }

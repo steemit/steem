@@ -41,7 +41,12 @@ namespace chain {
         size_t inc_shared_memory_size;
         size_t min_free_shared_memory_size;
 
+        uint32_t clear_votes_before_block = 0;
+        bool enable_plugins_on_push_transaction;
+
         uint32_t block_num_check_free_size = 0;
+
+        bool skip_virtual_ops = false;
 
         golos::chain::database db;
 
@@ -92,6 +97,8 @@ namespace chain {
 
         check_time_in_block(block);
 
+        skip = db.validate_block(block, skip);
+
         if (single_write_thread) {
             std::promise<bool> promise;
             auto result = promise.get_future();
@@ -110,13 +117,15 @@ namespace chain {
     }
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
+        uint32_t skip = db.validate_transaction(trx, db.skip_apply_transaction);
+
         if (single_write_thread) {
             std::promise<bool> promise;
             auto wait = promise.get_future();
 
             io_service().post([&]{
                 try {
-                    db.push_transaction(trx);
+                    db.push_transaction(trx, skip);
                     promise.set_value(true);
                 } catch(...) {
                     promise.set_exception(std::current_exception());
@@ -124,7 +133,7 @@ namespace chain {
             });
             wait.get(); // if an exception was, it will be thrown
         } else {
-            db.push_transaction(trx);
+            db.push_transaction(trx, skip);
         }
     }
 
@@ -161,7 +170,7 @@ namespace chain {
                 "block-num-check-free-size", boost::program_options::value<uint32_t>()->default_value(1000),
                 "Check free space in shared memory each N blocks. Default: 1000 (each 3000 seconds)."
             ) (
-                "checkpoint,c", boost::program_options::value<std::vector<std::string>>()->composing(),
+                "checkpoint", boost::program_options::value<std::vector<std::string>>()->composing(),
                 "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints."
             ) (
                 "flush-state-interval", boost::program_options::value<uint32_t>(),
@@ -181,6 +190,15 @@ namespace chain {
             ) (
                 "single-write-thread", boost::program_options::value<bool>()->default_value(false),
                 "push blocks and transactions from one thread"
+            ) (
+                "clear-votes-before-block", boost::program_options::value<uint32_t>()->default_value(0),
+                "remove votes before defined block, should speedup initial synchronization"
+            ) (
+                "skip-virtual-ops", boost::program_options::value<bool>()->default_value(false),
+                "virtual operations will not be passed to the plugins, helps to save some memory"
+            ) (
+                "enable-plugins-on-push-transaction", boost::program_options::value<bool>()->default_value(true),
+                "enable calling of plugins for operations on push_transaction"
             );
         cli.add_options()
             (
@@ -201,15 +219,12 @@ namespace chain {
     void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
 
         my.reset(new plugin_impl());
-        my->shared_memory_dir = appbase::app().data_dir() / "blockchain";
 
-        if (options.count("shared-file-dir")) {
-            auto sfd = options.at("shared-file-dir").as<boost::filesystem::path>();
-            if (sfd.is_relative()) {
-                my->shared_memory_dir = appbase::app().data_dir() / sfd;
-            } else {
-                my->shared_memory_dir = sfd;
-            }
+        auto sfd = options.at("shared-file-dir").as<boost::filesystem::path>();
+        if (sfd.is_relative()) {
+            my->shared_memory_dir = appbase::app().data_dir() / sfd;
+        } else {
+            my->shared_memory_dir = sfd;
         }
 
         if (options.count("read-wait-micro")) {
@@ -230,9 +245,13 @@ namespace chain {
 
         my->single_write_thread = options.at("single-write-thread").as<bool>();
 
+        my->enable_plugins_on_push_transaction = options.at("enable-plugins-on-push-transaction").as<bool>();
+
         my->shared_memory_size = fc::parse_size(options.at("shared-file-size").as<std::string>());
         my->inc_shared_memory_size = fc::parse_size(options.at("inc-shared-file-size").as<std::string>());
         my->min_free_shared_memory_size = fc::parse_size(options.at("min-free-shared-file-size").as<std::string>());
+        my->clear_votes_before_block = options.at("clear-votes-before-block").as<uint32_t>();
+        my->skip_virtual_ops = options.at("skip-virtual-ops").as<bool>();
 
         if (options.count("block-num-check-free-size")) {
             my->block_num_check_free_size = options.at("block-num-check-free-size").as<uint32_t>();
@@ -261,42 +280,52 @@ namespace chain {
     void plugin::plugin_startup() {
         ilog("Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size));
 
+        auto data_dir = appbase::app().data_dir() / "blockchain";
+
         if (my->resync) {
             wlog("resync requested: deleting block log and shared memory");
-            my->db.wipe(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, true);
+            my->db.wipe(data_dir, my->shared_memory_dir, true);
         }
 
         my->db.set_flush_interval(my->flush_interval);
         my->db.add_checkpoints(my->loaded_checkpoints);
         my->db.set_require_locking(my->check_locks);
 
-        my->db.read_wait_micro(my->read_wait_micro);
-        my->db.max_read_wait_retries(my->max_read_wait_retries);
-        my->db.write_wait_micro(my->write_wait_micro);
-        my->db.max_write_wait_retries(my->max_write_wait_retries);
+        my->db.set_read_wait_micro(my->read_wait_micro);
+        my->db.set_max_read_wait_retries(my->max_read_wait_retries);
+        my->db.set_write_wait_micro(my->write_wait_micro);
+        my->db.set_max_write_wait_retries(my->max_write_wait_retries);
 
-        my->db.inc_shared_memory_size(my->inc_shared_memory_size);
-        my->db.min_free_shared_memory_size(my->min_free_shared_memory_size);
+        my->db.set_inc_shared_memory_size(my->inc_shared_memory_size);
+        my->db.set_min_free_shared_memory_size(my->min_free_shared_memory_size);
+
+        my->db.set_clear_votes(my->clear_votes_before_block);
+
+        if(my->skip_virtual_ops) {
+            my->db.set_skip_virtual_ops();
+        }
 
         if (my->block_num_check_free_size) {
-            my->db.block_num_check_free_size(my->block_num_check_free_size);
+            my->db.set_block_num_check_free_size(my->block_num_check_free_size);
         }
+
+        my->db.enable_plugins_on_push_transaction(my->enable_plugins_on_push_transaction);
 
         if (my->replay) {
             ilog("Replaying blockchain on user request.");
-            my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size);
+            my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
         } else {
             try {
                 ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
-                my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+                my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
             } catch (const fc::exception &e) {
                 wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
 
                 try {
-                    my->db.reindex(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size);
+                    my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
                 } catch (golos::chain::block_log &) {
                     wlog("Error opening block log. Having to resync from network...");
-                    my->db.open(appbase::app().data_dir() / "blockchain", my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+                    my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
                 }
             }
         }

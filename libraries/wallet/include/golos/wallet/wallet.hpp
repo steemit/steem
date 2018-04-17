@@ -56,10 +56,16 @@ namespace golos { namespace wallet {
 
         struct wallet_data {
             vector<char>              cipher_keys; /** encrypted keys */
-
             string                    ws_server = "ws://localhost:8090";
-            string                    ws_user;
-            string                    ws_password;
+        };
+
+        struct signed_block_with_info: public signed_block {
+            signed_block_with_info(const signed_block& block);
+            signed_block_with_info(const signed_block_with_info& block) = default;
+
+            block_id_type block_id;
+            public_key_type signing_key;
+            vector<transaction_id_type> transaction_ids;
         };
 
         enum authority_type {
@@ -96,7 +102,12 @@ namespace golos { namespace wallet {
             /**
              * Returns info about the current state of the blockchain
              */
-            variant                             info();
+            variant                             info() const;
+
+            /**
+             * Returns info about database objects
+             */
+            variant_object                      database_info() const;
 
             /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
              * @returns compile time info and client and dependencies versions
@@ -109,7 +120,7 @@ namespace golos { namespace wallet {
              *
              * @returns Public block data on the blockchain
              */
-            optional< database_api::signed_block > get_block( uint32_t num );
+            optional<signed_block_with_info> get_block(uint32_t num);
 
             /** Returns sequence of operations included/generated in a specified block
              *
@@ -283,6 +294,11 @@ namespace golos { namespace wallet {
              *                        save to the current filename.
              */
             void    save_wallet_file(string wallet_filename = "");
+
+            /**
+             * Quits wallet.
+             */
+            void    quit();
 
             /** Sets the wallet filename used for future writes.
              *
@@ -916,6 +932,7 @@ namespace golos { namespace wallet {
             std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
             fc::signal<void(bool)> lock_changed;
+            fc::signal<void(void)> quit_command;
             std::shared_ptr<detail::wallet_api_impl> my;
             void encrypt_keys();
 
@@ -952,12 +969,10 @@ namespace golos { namespace wallet {
 
     } }
 
-FC_REFLECT( (golos::wallet::wallet_data),
-            (cipher_keys)
-                    (ws_server)
-                    (ws_user)
-                    (ws_password)
-)
+FC_REFLECT((golos::wallet::wallet_data), (cipher_keys)(ws_server))
+
+FC_REFLECT_DERIVED((golos::wallet::signed_block_with_info), ((golos::chain::signed_block)),
+        (block_id)(signing_key)(transaction_ids))
 
 FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
@@ -970,6 +985,7 @@ FC_API( golos::wallet::wallet_api,
         (help)(gethelp)
                 (about)(is_new)(is_locked)(lock)(unlock)(set_password)
                 (load_wallet_file)(save_wallet_file)
+                (quit)
 
                 /// key api
                 (import_key)
@@ -981,6 +997,7 @@ FC_API( golos::wallet::wallet_api,
 
                 /// query api
                 (info)
+                (database_info)
                 (list_my_accounts)
                 (list_accounts)
                 (list_witnesses)

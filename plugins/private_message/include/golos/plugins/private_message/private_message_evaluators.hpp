@@ -1,10 +1,8 @@
 #pragma once
 
-#include <appbase/plugin.hpp>
-#include <golos/chain/evaluator.hpp>
-
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
+#include <golos/chain/database.hpp>
 #include <golos/chain/evaluator.hpp>
 
 namespace golos {

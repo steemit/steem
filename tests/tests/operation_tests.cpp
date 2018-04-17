@@ -11,7 +11,7 @@
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "database_fixture.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -6119,12 +6119,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             ACTORS((alice)(bob)(sam))
             generate_block();
 
-            fund( "alice", 10000 );
-            vest( "alice", 10000 );
-            fund( "bob", 10000 );
-            vest( "bob", 10000 );
-            fund( "sam", 10000 );
-            vest( "sam", 10000 );
+            fund("alice", 10000);
+            vest("alice", 10000);
+            fund("bob", 10000);
+            vest("bob", 10000);
+            fund("sam", 10000);
+            vest("sam", 10000);
 
             set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
 
@@ -6148,11 +6148,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("--- Test failure on max of benefactors");
             b.beneficiaries.push_back(beneficiary_route_type(account_name_type("bob"), STEEMIT_1_PERCENT));
 
-            for(size_t i = 0; i < STEEMIT_MAX_COMMENT_BENEFICIARIES; i++) {
+            for (size_t i = 0; i < STEEMIT_MAX_COMMENT_BENEFICIARIES; i++) {
                 b.beneficiaries.push_back(
-                        beneficiary_route_type(
-                                account_name_type(STEEMIT_INIT_MINER_NAME + fc::to_string(i)),
-                                STEEMIT_1_PERCENT));
+                    beneficiary_route_type(
+                        account_name_type(STEEMIT_INIT_MINER_NAME + fc::to_string(i)),
+                        STEEMIT_1_PERCENT));
             }
 
             op.author = "alice";
@@ -6209,17 +6209,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.extensions.insert(b);
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(db->push_transaction(tx), fc::assert_exception);
-
-
-            BOOST_TEST_MESSAGE("--- Payout and verify rewards were split properly");
-            tx.clear();
-            tx.operations.push_back(vote);
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL);
-
-            idump((db->get_comment("alice", string("test")))(db->get_account("alice"))(db->get_account("bob")));
         }
         FC_LOG_AND_RETHROW()
     }
