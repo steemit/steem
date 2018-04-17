@@ -25,6 +25,7 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
    //Create content of config.ini
    std::vector< std::string > content;
    content.emplace_back( "follow-configuration-file = follow_config.ini" );
+   content.emplace_back( "follow-storage-path = follow_storage_path_from_config_file" );
    content.emplace_back( "p2p-configuration-file = p2p_config.ini" );
 
    //remove file
@@ -81,6 +82,32 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
    {
       storage_configuration_manager scm;
 
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "storage_path",
+                     "--p2p-storage-path", "storage_path_for_p2p",
+                     };
+      scm.add_plugin( "follow" );
+      scm.add_plugin( "p2p" );
+      scm.initialize( 7, (char**)argv );
+
+      bfs::path storage_root_path = bfs::current_path() / "storage_path";
+
+      BOOST_REQUIRE( scm.get_storage_root_path().string() == storage_root_path );
+
+      BOOST_REQUIRE( scm.get_storage_path( "follow" ) == storage_root_path / "follow_storage_path_from_config_file" );
+      BOOST_REQUIRE( scm.get_config_file( "follow" ) == storage_root_path / "follow_config.ini" );
+      BOOST_REQUIRE( scm.exist_config_file( "follow" ) == false );
+
+      BOOST_REQUIRE( scm.get_storage_path( "p2p" ) == storage_root_path / "storage_path_for_p2p" );
+      BOOST_REQUIRE( scm.get_config_file( "p2p" ) == storage_root_path / "p2p_config.ini" );
+      BOOST_REQUIRE( scm.exist_config_file( "p2p" ) == false );
+   }
+
+   {
+      storage_configuration_manager scm;
+
       const char* argv[] = { "path", "-d", "storage_configuration_tests_directory", "--storage-root-path", "any_path" };
       scm.add_plugin( "follow" );
       scm.add_plugin( "p2p" );
@@ -90,7 +117,7 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
 
       BOOST_REQUIRE( scm.get_storage_root_path().string() == storage_root_path );
 
-      BOOST_REQUIRE( scm.get_storage_path( "follow" ) == storage_root_path / "follow-data-dir" );
+      BOOST_REQUIRE( scm.get_storage_path( "follow" ) == storage_root_path / "follow_storage_path_from_config_file" );
       BOOST_REQUIRE( scm.get_storage_path( "p2p" ) == storage_root_path / "p2p-data-dir" );
 
       BOOST_REQUIRE( scm.get_config_file( "follow" ) == storage_root_path / "follow_config.ini" );
@@ -98,6 +125,31 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
 
       BOOST_REQUIRE( scm.exist_config_file( "follow" ) == false );
       BOOST_REQUIRE( scm.exist_config_file( "p2p" ) == false );
+   }
+
+   {
+      storage_configuration_manager scm;
+
+      const char* argv[] = { "path",
+                              "-d", "storage_configuration_tests_directory",
+                              "--storage-root-path", "root_path",
+                              "--xyz-storage-path", "storage_path_for_xyz"
+                           };
+      scm.add_plugin( "xyz" );
+      scm.initialize( 7, (char**)argv );
+
+      bfs::path storage_root_path = bfs::current_path() / "root_path";
+
+      BOOST_REQUIRE( scm.get_storage_root_path().string() == storage_root_path );
+
+      BOOST_REQUIRE( scm.get_storage_path( "xyz" ) == storage_root_path / "storage_path_for_xyz" );
+      BOOST_REQUIRE( scm.get_storage_path( "abc" ) == bfs::path() );
+
+      BOOST_REQUIRE( scm.get_config_file( "xyz" ) == storage_root_path / "config.ini" );
+      BOOST_REQUIRE( scm.get_config_file( "abc" ) == bfs::path() );
+
+      BOOST_REQUIRE( scm.exist_config_file( "xyz" ) == false );
+      BOOST_REQUIRE( scm.exist_config_file( "abc" ) == false );
    }
 }
 
