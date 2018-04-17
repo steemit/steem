@@ -283,7 +283,6 @@ void smt_refund_operation::validate()const
    FC_ASSERT( amount.symbol == STEEM_SYMBOL );
 }
 
-// TODO: These validators
 void smt_cap_reveal_operation::validate()const
 {
    smt_base_operation::validate();

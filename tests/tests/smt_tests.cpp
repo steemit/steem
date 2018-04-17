@@ -1345,5 +1345,123 @@ BOOST_AUTO_TEST_CASE( setup_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_cap_reveal_validate )
+{
+   try
+   {
+   smt_cap_reveal_operation op;
+   // Set operation's fields to valid values.
+   op.control_account = "alice";
+   op.symbol = get_new_smt_symbol( 4, db );
+   op.validate();
+   // Check invalid control account name.
+   op.control_account = "@@@@@";
+   STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+   op.control_account = "alice";
+   // Check invalid SMT symbol.
+   op.symbol = op.symbol.get_paired_symbol();
+   STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+   op.symbol = op.symbol.get_paired_symbol();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_cap_reveal_authorities )
+{
+   try
+   {
+      smt_cap_reveal_operation op;
+      op.control_account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+void setup_smt_and_reveal_caps( const account_name_type& control_account, const fc::ecc::private_key& private_key,
+                                const asset_symbol_type& smt_symbol, const share_type& min_cap_val, const share_type& max_cap_val,
+                                fc::uint128_t nonce, database* db, smt_database_fixture& dbf )
+{
+   smt_cap_reveal_operation op;
+   op.control_account = control_account;
+   op.symbol = dbf.get_new_smt_symbol( 4, db );
+   // Fail due to SMT not created yet.
+   FAIL_WITH_OP( op, private_key, fc::assert_exception );
+
+   op.symbol = smt_symbol;
+   // Fail due to SMT setup phase not complete.
+   FAIL_WITH_OP( op, private_key, fc::assert_exception );
+
+   // Setup SMT
+   {
+      smt_setup_operation setup_op;
+      setup_op.control_account = control_account;
+      setup_op.symbol = op.symbol;
+      setup_op.decimal_places = op.symbol.decimals();
+      smt_capped_generation_policy gp = dbf.get_capped_generation_policy
+      (
+         dbf.get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
+         dbf.get_generation_unit()/*post_soft_cap_unit*/,
+         dbf.get_cap_commitment( min_cap_val, nonce )/*min_steem_units_commitment*/,
+         dbf.get_cap_commitment( max_cap_val, nonce )/*hard_cap_steem_units_commitment*/,
+         STEEM_100_PERCENT/*soft_cap_percent*/,
+         1/*min_unit_ratio*/,
+         2/*max_unit_ratio*/
+      );
+
+      fc::time_point_sec start_time        = fc::variant( "2021-01-01T00:00:00" ).as< fc::time_point_sec >();
+      fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
+
+      setup_op.initial_generation_policy = gp;
+      setup_op.generation_begin_time = start_time;
+      setup_op.generation_end_time = setup_op.announced_launch_time = setup_op.launch_expiration_time = start_time_plus_1;
+      PUSH_OP( setup_op, private_key );
+   }
+
+   const auto& smt_object = db->get< smt_token_object, by_symbol >( smt_symbol );
+   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap < 0 );
+   // Reveal max hard cap.
+   op.cap.amount = max_cap_val;
+   op.cap.nonce = nonce;
+   PUSH_OP( op, private_key );
+   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap == max_cap_val );
+   // Try to reveal max hard cap again.
+   FAIL_WITH_OP( op, private_key, fc::assert_exception );
+   // Reveal min cap.
+   op.cap.amount = min_cap_val;
+   PUSH_OP( op, private_key );
+   FC_ASSERT( smt_object.steem_units_min_cap == min_cap_val && smt_object.steem_units_hard_cap == max_cap_val );
+   // Try to reveal min cap again.
+   FAIL_WITH_OP( op, private_key, fc::assert_exception );
+}
+
+BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+
+      generate_block();
+
+      auto smts = create_smt_3("alice", alice_private_key);
+      // Test non-hidden caps (zero nonce).
+      setup_smt_and_reveal_caps("alice", alice_private_key, smts[0], 1, SMT_MIN_HARD_CAP_STEEM_UNITS + 1, 0, db, *this);
+      // Test hidden caps (1234 nonce).
+      setup_smt_and_reveal_caps("alice", alice_private_key, smts[1], 10000, SMT_MIN_HARD_CAP_STEEM_UNITS + 1, 1234, db, *this);
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
