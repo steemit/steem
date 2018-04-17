@@ -1,3 +1,7 @@
+
+#include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
+
+#include <steem/plugins/witness/witness_export_objects.hpp>
 #include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/witness/witness_objects.hpp>
 
@@ -29,6 +33,7 @@ namespace steem { namespace plugins { namespace witness {
 using chain::plugin_exception;
 using std::string;
 using std::vector;
+using steem::plugins::block_data_export::block_data_export_plugin;
 
 namespace bpo = boost::program_options;
 
@@ -47,6 +52,25 @@ void new_chain_banner( const chain::database& db )
    return;
 }
 
+exp_reserve_ratio_object::exp_reserve_ratio_object() {}
+exp_reserve_ratio_object::exp_reserve_ratio_object( const reserve_ratio_object& rr, int32_t bsize ) :
+   average_block_size( rr.average_block_size ),
+   current_reserve_ratio( rr.current_reserve_ratio ),
+   max_virtual_bandwidth( rr.max_virtual_bandwidth ),
+   block_size( bsize ) {}
+
+exp_bandwidth_update_object::exp_bandwidth_update_object() {}
+exp_bandwidth_update_object::exp_bandwidth_update_object( const account_bandwidth_object& bwo, uint32_t tsize ) :
+   account( bwo.account ),
+   type( bwo.type ),
+   average_bandwidth( bwo.average_bandwidth ),
+   lifetime_bandwidth( bwo.lifetime_bandwidth ),
+   last_bandwidth_update( bwo.last_bandwidth_update ),
+   tx_size( tsize ) {}
+
+exp_witness_data_object::exp_witness_data_object() {}
+exp_witness_data_object::~exp_witness_data_object() {}
+
 namespace detail {
 
    class witness_plugin_impl {
@@ -54,7 +78,8 @@ namespace detail {
       witness_plugin_impl( boost::asio::io_service& io ) :
          _timer(io),
          _chain_plugin( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
-         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() )
+         {}
 
       void on_pre_apply_block( const chain::block_notification& note );
       void on_post_apply_block( const chain::block_notification& note );
@@ -74,7 +99,7 @@ namespace detail {
 
       std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steem::protocol::account_name_type >                     _witnesses;
-      boost::asio::deadline_timer                                          _timer;
+      boost::asio::deadline_timer                                        _timer;
 
       std::set< steem::protocol::account_name_type >                     _dupe_customs;
 
@@ -293,6 +318,7 @@ namespace detail {
 
       auto reserve_ratio_ptr = _db.find( reserve_ratio_id_type() );
 
+      int32_t block_size = int32_t( fc::raw::pack_size( b ) );
       if( BOOST_UNLIKELY( reserve_ratio_ptr == nullptr ) )
       {
          _db.create< reserve_ratio_object >( [&]( reserve_ratio_object& r )
@@ -303,12 +329,13 @@ namespace detail {
                                        * STEEM_BANDWIDTH_PRECISION * STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
                                        / STEEM_BLOCK_INTERVAL;
          });
+         reserve_ratio_ptr = &_db.get( reserve_ratio_id_type() );
       }
       else
       {
          _db.modify( *reserve_ratio_ptr, [&]( reserve_ratio_object& r )
          {
-            r.average_block_size = ( 99 * r.average_block_size + fc::raw::pack_size( b ) ) / 100;
+            r.average_block_size = ( 99 * r.average_block_size + block_size ) / 100;
 
             /**
             * About once per minute the average network use is consulted and used to
@@ -361,7 +388,13 @@ namespace detail {
          });
       }
 
+      std::shared_ptr< exp_witness_data_object > export_data =
+         steem::plugins::block_data_export::find_export_data< exp_witness_data_object >( STEEM_WITNESS_PLUGIN_NAME );
+      if( export_data )
+         export_data->reserve_ratio = exp_reserve_ratio_object( *reserve_ratio_ptr, block_size );
+
       _dupe_customs.clear();
+
    } FC_LOG_AND_RETHROW() }
    #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
 
@@ -417,6 +450,10 @@ namespace detail {
                ("account_average_bandwidth", account_average_bandwidth)
                ("max_virtual_bandwidth", max_virtual_bandwidth)
                ("total_vesting_shares", total_vshares) );
+         std::shared_ptr< exp_witness_data_object > export_data =
+            steem::plugins::block_data_export::find_export_data< exp_witness_data_object >( STEEM_WITNESS_PLUGIN_NAME );
+         if( export_data )
+            export_data->bandwidth_updates.emplace_back( *band, trx_size );
       }
    }
 
@@ -599,7 +636,16 @@ void witness_plugin::set_program_options(
 
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
+   ilog( "Initializing witness plugin" );
    my = std::make_unique< detail::witness_plugin_impl >( appbase::app().get_io_service() );
+
+   block_data_export_plugin* export_plugin = appbase::app().find_plugin< block_data_export_plugin >();
+   if( export_plugin != nullptr )
+   {
+      ilog( "Registering witness export data factory" );
+      export_plugin->register_export_data_factory( STEEM_WITNESS_PLUGIN_NAME,
+         []() -> std::shared_ptr< exportable_block_data > { return std::make_shared< exp_witness_data_object >(); } );
+   }
 
    STEEM_LOAD_VALUE_SET( options, "witness", my->_witnesses, steem::protocol::account_name_type )
 

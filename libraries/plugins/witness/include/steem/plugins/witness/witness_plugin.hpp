@@ -34,7 +34,10 @@ namespace block_production_condition
 class witness_plugin : public appbase::plugin< witness_plugin >
 {
 public:
-   APPBASE_PLUGIN_REQUIRES((steem::plugins::chain::chain_plugin)(steem::plugins::p2p::p2p_plugin))
+   APPBASE_PLUGIN_REQUIRES(
+      (steem::plugins::chain::chain_plugin)
+      (steem::plugins::p2p::p2p_plugin)
+   )
 
    witness_plugin();
    virtual ~witness_plugin();
