@@ -448,10 +448,11 @@ namespace golos {
                 if (itr == by_permlink_idx.end()) {
                     if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
                         FC_ASSERT(_db.get(parent->root_comment).allow_replies, "The parent comment has disabled replies.");
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177))
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_12__177) && !_db.has_hardfork( STEEMIT_HARDFORK_0_18__536) ) {
                             FC_ASSERT(
                                     _db.calculate_discussion_payout_time(*parent) !=
                                     fc::time_point_sec::maximum(), "Discussion is frozen.");
+                        }
                     }
 
                     auto band = _db.find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(o.author, bandwidth_type::post));
@@ -598,13 +599,14 @@ namespace golos {
                 } else // start edit case
                 {
                     const auto &comment = *itr;
-
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__306)) {
-                        FC_ASSERT(_db.calculate_discussion_payout_time(comment) != fc::time_point_sec::maximum(),
-                                  "The comment is archived.");
-                    } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_10)) {
-                        FC_ASSERT(comment.last_payout == fc::time_point_sec::min(),
-                                  "Can only edit during the first 24 hours.");
+                    if ( !_db.has_hardfork( STEEMIT_HARDFORK_0_18__536 ) ) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__306)) {
+                            FC_ASSERT(_db.calculate_discussion_payout_time(comment) != fc::time_point_sec::maximum(),
+                                      "The comment is archived.");
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_10)) {
+                            FC_ASSERT(comment.last_payout == fc::time_point_sec::min(),
+                                      "Can only edit during the first 24 hours.");
+                        }
                     }
 
                     _db.modify(comment, [&](comment_object &com) {
