@@ -453,7 +453,10 @@ namespace ce
             else if( checker( iterators[1] ) )
                idx.current = 1;
             else
+            {
                idx.current = position;
+               return;
+            }
 
             assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
          }
