@@ -94,6 +94,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
       aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
       aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
+      aws s3api put-object-acl --bucket $S3_BUCKET --key block_log-latest --acl public-read
     fi
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation

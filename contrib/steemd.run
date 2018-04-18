@@ -82,6 +82,18 @@ if [[ "$USE_PUBLIC_SHARED_MEMORY" ]]; then
   wget -qO- https://s3.amazonaws.com/steemit-dev-blockchainstate/blockchain-$VERSION-latest.tar.bz2 | pbzip2 -m2000dc | tar x
 fi
 
+if [[ "$USE_PUBLIC_BLOCKLOG" ]]; then
+  if [[ ! -e $HOME/blockchain/block_log ]]; then
+    if [[ ! -d $HOME/blockchain ]]; then
+      mkdir -p $HOME/blockchain
+    fi
+    echo "steemd: Downloading a block_log and replaying the blockchain"
+    echo "This may take a little while..."
+    wget -O $HOME/blockchain/block_log https://s3.amazonaws.com/steemit-dev-blockchainstate/block_log-latest
+    ARGS+=" --replay-blockchain"
+  fi
+fi
+
 # slow down restart loop if flapping
 sleep 1
 
