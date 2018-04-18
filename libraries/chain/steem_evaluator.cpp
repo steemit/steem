@@ -1183,11 +1183,10 @@ namespace golos {
                           current_power, "Account does not have enough power to vote.");
 
                 int64_t abs_rshares = (
-                        (uint128_t(voter.vesting_shares.amount.value) *
-                         used_power) / (STEEMIT_100_PERCENT)).to_uint64();
-                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) &&
-                    abs_rshares == 0) {
-                        abs_rshares = 1;
+                    (uint128_t(voter.effective_vesting_shares().amount.value) * used_power) /
+                    (STEEMIT_100_PERCENT)).to_uint64();
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) && abs_rshares == 0) {
+                    abs_rshares = 1;
                 }
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {

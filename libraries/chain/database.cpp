@@ -679,7 +679,7 @@ namespace golos {
                     b.last_bandwidth_update = head_block_time();
                 });
 
-                fc::uint128_t account_vshares(a.vesting_shares.amount.value);
+                fc::uint128_t account_vshares(a.effective_vesting_shares().amount.value);
                 fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
                 fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
                 fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
@@ -2878,6 +2878,8 @@ namespace golos {
             add_core_index<escrow_index>(*this);
             add_core_index<savings_withdraw_index>(*this);
             add_core_index<decline_voting_rights_request_index>(*this);
+            add_core_index<vesting_delegation_index>(*this);
+            add_core_index<vesting_delegation_expiration_index>(*this);
 
             _plugin_index_signal();
         }
