@@ -26,7 +26,22 @@ namespace asio = boost::asio;
 
 #define NUM_THREADS 1
 
-typedef fc::static_variant< const signed_block*, const signed_transaction* > write_request_ptr;
+struct generate_block_request
+{
+   generate_block_request( const fc::time_point_sec w, const account_name_type& wo, const fc::ecc::private_key& priv_key, uint32_t s ) :
+      when( w ),
+      witness_owner( wo ),
+      block_signing_private_key( priv_key ),
+      skip( s ) {}
+
+   const fc::time_point_sec when;
+   const account_name_type& witness_owner;
+   const fc::ecc::private_key& block_signing_private_key;
+   uint32_t skip;
+   signed_block block;
+};
+
+typedef fc::static_variant< const signed_block*, const signed_transaction*, generate_block_request* > write_request_ptr;
 typedef fc::static_variant< boost::promise< void >*, fc::future< void >* > promise_ptr;
 
 struct write_context
@@ -68,6 +83,7 @@ class chain_plugin_impl
       bool                             running = true;
       std::shared_ptr< std::thread >   write_processor_thread;
       boost::lockfree::queue< write_context* > write_queue;
+      int16_t                          write_lock_hold_time;
 
       database  db;
 };
@@ -110,6 +126,33 @@ struct write_request_visitor
       try
       {
          db->push_transaction( *trx );
+         result = true;
+      }
+      catch( fc::exception& e )
+      {
+         *except = e;
+      }
+      catch( ... )
+      {
+         *except = fc::unhandled_exception( FC_LOG_MESSAGE( warn, "Unexpected exception while pushing block." ),
+                                           std::current_exception() );
+      }
+
+      return result;
+   }
+
+   bool operator()( generate_block_request* req )
+   {
+      bool result = false;
+
+      try
+      {
+         req->block = db->generate_block(
+            req->when,
+            req->witness_owner,
+            req->block_signing_private_key,
+            req->skip
+            );
          result = true;
       }
       catch( fc::exception& e )
@@ -192,7 +235,7 @@ void chain_plugin_impl::start_write_processing()
                      is_syncing = false;
                   }
 
-                  if( !is_syncing && fc::time_point::now() - start > fc::milliseconds( 500 ) )
+                  if( !is_syncing && write_lock_hold_time >= 0 && fc::time_point::now() - start > fc::milliseconds( write_lock_hold_time ) )
                   {
                      break;
                   }
@@ -493,6 +536,39 @@ void chain_plugin::accept_transaction( const steem::chain::signed_transaction& t
    if( cxt.except ) throw *(cxt.except);
 
    return;
+}
+
+steem::chain::signed_block chain_plugin::generate_block(
+   const fc::time_point_sec when,
+   const account_name_type& witness_owner,
+   const fc::ecc::private_key& block_signing_private_key,
+   uint32_t skip )
+{
+   generate_block_request req( when, witness_owner, block_signing_private_key, skip );
+   boost::promise< void > prom;
+   write_context cxt;
+   cxt.req_ptr = &req;
+   cxt.prom_ptr = &prom;
+
+   my->write_queue.push( &cxt );
+
+   prom.get_future().get();
+
+   if( cxt.except ) throw *(cxt.except);
+
+   FC_ASSERT( cxt.success, "Block could not be generated" );
+
+   return req.block;
+}
+
+int16_t chain_plugin::set_write_lock_hold_time( int16_t new_time )
+{
+   FC_ASSERT( get_state() == appbase::abstract_plugin::state::initialized,
+      "Can only change write_lock_hold_time while chain_plugin is initialized." );
+
+   int16_t old_time = my->write_lock_hold_time;
+   my->write_lock_hold_time = new_time;
+   return old_time;
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )
