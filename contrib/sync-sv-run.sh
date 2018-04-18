@@ -44,7 +44,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
 
     # wait 60 seconds for steemd to exit, to be safe.
     let WAIT_TIME=0
-    while ( kill -0 $STEEM_PID ) && [[ WAIT_TIME -le 60 ]]; do
+    while ( kill -0 $STEEMD_PID ) && [[ WAIT_TIME -le 60 ]]; do
        sleep 1
        let WAIT_TIME++
     done
