@@ -51,8 +51,8 @@ public:
    }
    ///@}
 
-   bool validate() const
-   { return liquid.symbol == vesting.symbol.get_paired_symbol(); }
+   void validate() const
+   { FC_ASSERT( liquid.symbol == vesting.symbol.get_paired_symbol() ); }
 };
 
 /**
@@ -101,10 +101,10 @@ public:
    }
    ///@}
 
-   bool validate() const
+   void validate() const
    {
-      return pending_liquid.symbol == pending_vesting_shares.symbol.get_paired_symbol() &&
-             pending_liquid.symbol == pending_vesting_value.symbol;
+      FC_ASSERT( pending_liquid.symbol == pending_vesting_shares.symbol.get_paired_symbol() &&
+                 pending_liquid.symbol == pending_vesting_value.symbol );
    }
 };
 

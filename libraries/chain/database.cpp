@@ -1132,7 +1132,7 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
          FC_ASSERT( liquid.symbol.is_vesting() == false );
          // Get share price.
          const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
-         FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
+         FC_ASSERT( smt.allow_voting || to_reward_balance == false, "No voting - no rewards" );
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
@@ -3746,18 +3746,18 @@ void database::clear_expired_delegations()
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type, class balance_operator_type >
-void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account,
-   balance_operator_type balance_operator )
+void database::adjust_smt_balance( const account_name_type& name, const asset_symbol_type& delta_symbol, bool positive_delta, bool zero_delta,
+                                   bool check_account, balance_operator_type balance_operator )
 {
-   asset_symbol_type liquid_symbol = delta.symbol.is_vesting() ? delta.symbol.get_paired_symbol() : delta.symbol;
+   asset_symbol_type liquid_symbol = delta_symbol.is_vesting() ? delta_symbol.get_paired_symbol() : delta_symbol;
    const smt_balance_object_type* bo = find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
       // No balance object related to the SMT means '0' balance. Check delta to avoid creation of negative balance.
-      FC_ASSERT( delta.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      FC_ASSERT( positive_delta, "Insufficient SMT ${smt} funds", ("smt", delta_symbol) );
       // No need to create object with '0' balance (see comment above).
-      if( delta.amount.value == 0 )
+      if( zero_delta )
          return;
 
       if( check_account )
@@ -3776,7 +3776,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       bool is_all_zero = false;
       int64_t result = balance_operator.get_combined_balance( bo, &is_all_zero );
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
+      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta_symbol ) );
 
       // Exit if whole balance becomes zero.
       if( is_all_zero )
@@ -3959,7 +3959,8 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta.symbol, delta.amount.value >= 0, delta.amount.value == 0,
+                                                            false/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -3976,7 +3977,8 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/, balance_operator );
+      adjust_smt_balance< account_regular_balance_object >( name, delta.symbol, delta.amount.value >= 0, delta.amount.value == 0,
+                                                            true/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -4050,7 +4052,8 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta.symbol, value_delta.amount.value >= 0, value_delta.amount.value == 0,
+                                                            false/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -4070,7 +4073,8 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
+      adjust_smt_balance< account_rewards_balance_object >( name, value_delta.symbol, value_delta.amount.value >= 0, value_delta.amount.value == 0,
+                                                            true/*check_account*/, balance_operator );
       return;
    }
 #endif
