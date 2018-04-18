@@ -50,7 +50,6 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     done
 
     echo steemdsync: starting a new blockchainstate upload operation
-    find $HOME
     cd ${COMPRESSPATH:-$HOME}
     echo steemdsync: compressing blockchainstate...
     if [[ "$USE_RAMDISK" ]]; then
