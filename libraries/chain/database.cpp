@@ -1132,7 +1132,8 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
          FC_ASSERT( liquid.symbol.is_vesting() == false );
          // Get share price.
          const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
-         FC_ASSERT( smt.allow_voting || to_reward_balance == false, "No voting - no rewards" );
+         if( to_reward_balance && false == smt.allow_voting )
+            return asset( 0, liquid.symbol.get_paired_symbol() ); // No voting - no rewards
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
