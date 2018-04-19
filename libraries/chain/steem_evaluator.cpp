@@ -949,10 +949,10 @@ namespace golos { namespace chain {
 
             const auto &account = _db.get_account(o.account);
 
-            FC_ASSERT(account.vesting_shares >=
-                      asset(0, VESTS_SYMBOL), "Account does not have sufficient Golos Power for withdraw.");
-            FC_ASSERT(account.vesting_shares >=
-                      o.vesting_shares, "Account does not have sufficient Golos Power for withdraw.");
+            FC_ASSERT(account.vesting_shares.amount >= 0,
+                "Account does not have sufficient Golos Power for withdraw.");
+            FC_ASSERT(account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares,
+                "Account does not have sufficient Golos Power for withdraw.");
 
             if (!account.mined && _db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto &props = _db.get_dynamic_global_properties();

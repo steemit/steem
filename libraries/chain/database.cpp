@@ -3317,6 +3317,7 @@ namespace golos {
                 create_block_summary(next_block);
                 clear_expired_transactions();
                 clear_expired_orders();
+                clear_expired_delegations();
                 update_witness_schedule();
 
                 update_median_feed();
@@ -3968,6 +3969,20 @@ namespace golos {
             while (itr != orders_by_exp.end() && itr->expiration < now) {
                 cancel_order(*itr);
                 itr = orders_by_exp.begin();
+            }
+        }
+
+        void database::clear_expired_delegations() {
+            auto now = head_block_time();
+            const auto& delegations_by_exp = get_index<vesting_delegation_expiration_index, by_expiration>();
+            auto itr = delegations_by_exp.begin();
+            while (itr != delegations_by_exp.end() && itr->expiration < now) {
+                modify(get_account(itr->delegator), [&](account_object& a) {
+                    a.delegated_vesting_shares -= itr->vesting_shares;
+                });
+                push_virtual_operation(return_vesting_delegation_operation(itr->delegator, itr->vesting_shares));
+                remove(*itr);
+                itr = delegations_by_exp.begin();
             }
         }
 
