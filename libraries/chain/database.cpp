@@ -2836,6 +2836,7 @@ namespace golos {
             _my->_evaluator_registry.register_evaluator<reset_account_evaluator>();
             _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
             _my->_evaluator_registry.register_evaluator<account_create_with_delegation_evaluator>();
+            _my->_evaluator_registry.register_evaluator<delegate_vesting_shares_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
