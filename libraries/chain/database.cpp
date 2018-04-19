@@ -3774,13 +3774,12 @@ void database::adjust_smt_balance( const account_name_type& name, bool check_acc
    }
    else
    {
-      bool is_all_zero = false;
-      int64_t result = balance_operator.get_combined_balance( bo, &is_all_zero );
+      auto is_not_negative_is_zero = balance_operator.get_combined_balance_info( *bo );
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", balance_symbol ) );
+      FC_ASSERT( is_not_negative_is_zero.first, "Insufficient SMT ${smt} funds", ( "smt", balance_symbol ) );
 
       // Exit if whole balance becomes zero.
-      if( is_all_zero )
+      if( is_not_negative_is_zero.second )
       {
          // Zero balance is the same as non object balance at all.
          // Remove balance object if both liquid and vesting balances are zero.
@@ -3907,11 +3906,12 @@ struct smt_regular_balance_operator
       else
          smt_balance.liquid += delta;
    }
-   int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero ) const
+   typedef std::pair<bool, bool> t_combined_balance_info;
+   t_combined_balance_info get_combined_balance_info( const account_regular_balance_object& bo ) const
    {
-      asset result = is_vesting ? bo->vesting + delta : bo->liquid + delta;
-      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting.amount.value) == 0;
-      return result.amount.value;
+      asset result = is_vesting ? bo.vesting + delta : bo.liquid + delta;
+      bool is_all_zero = result.amount.value == 0 && (is_vesting ? bo.liquid.amount.value : bo.vesting.amount.value) == 0;
+      return t_combined_balance_info( result.amount.value >= 0, is_all_zero );
    }
 
    const asset_symbol_type&   get_balance_symbol() const { return delta.symbol; }
@@ -3940,12 +3940,13 @@ struct smt_reward_balance_operator
       else
          smt_balance.pending_liquid += value_delta;
    }
-   int64_t get_combined_balance( const account_rewards_balance_object* bo, bool* is_all_zero ) const
+   typedef std::pair<bool, bool> t_combined_balance_info;
+   t_combined_balance_info get_combined_balance_info( const account_rewards_balance_object& bo ) const
    {
-      asset result = is_vesting ? bo->pending_vesting_value + value_delta : bo->pending_liquid + value_delta;
-      *is_all_zero = result.amount.value == 0 &&
-                     (is_vesting ? bo->pending_liquid.amount.value : bo->pending_vesting_value.amount.value) == 0;
-      return result.amount.value;
+      asset result = is_vesting ? bo.pending_vesting_value + value_delta : bo.pending_liquid + value_delta;
+      bool is_all_zero = result.amount.value == 0 &&
+                     (is_vesting ? bo.pending_liquid.amount.value : bo.pending_vesting_value.amount.value) == 0;
+      return t_combined_balance_info( result.amount.value >=0, is_all_zero);
    }
 
    const asset_symbol_type&   get_balance_symbol() const { return value_delta.symbol; }
