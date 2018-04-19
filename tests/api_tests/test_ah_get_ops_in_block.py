@@ -23,6 +23,12 @@ wdir = Path()
 errors = 0
 
 
+def future_end_cb(future):
+  global errors
+  if future.result() == False:
+    errors += 1
+
+
 def main():
   if len(sys.argv) < 4 or len(sys.argv) > 7:
     print("Usage: script_name jobs url1 url2 [wdir [last_block [first_block]]]")
@@ -89,11 +95,13 @@ def main():
 
     with ProcessPoolExecutor(max_workers=jobs) as executor:
       for i in range(jobs-1):
-        executor.submit(compare_results, first_block, (first_block + blocks_per_job - 1), url1, url2)
+        future = executor.submit(compare_results, first_block, (first_block + blocks_per_job - 1), url1, url2)
+        future.add_done_callback(future_end_cb)
         first_block = first_block + blocks_per_job
-      executor.submit(compare_results, first_block, last_block, url1, url2)
+      future = executor.submit(compare_results, first_block, last_block, url1, url2)
+      future.add_done_callback(future_end_cb)
   else:
-    compare_results(first_block, last_block, url1, url2)
+    errors = (compare_results(first_block, last_block, url1, url2) == False)
     
   exit( errors )
 
@@ -129,7 +137,6 @@ def get_last_block(url, max_tries=10, timeout=0.1):
 
 def compare_results(f_block, l_block, url1, url2, max_tries=10, timeout=0.1):
   global wdir
-  global errors
   
   print( "Compare blocks [{} : {}]".format(f_block, l_block) )
 
@@ -154,24 +161,25 @@ def compare_results(f_block, l_block, url1, url2, max_tries=10, timeout=0.1):
       
     if status1 == False or status2 == False or json1 != json2:
       print("Difference @block: {}\n".format(i))
-      errors += 1
       
-      filename = wdir / Path(str(f_block) + "_" + str(l_block) + ".log")
-      try:    file = filename.open( "w" )
-      except: print( "Cannot open file:", filename ); return
+      filename1 = wdir / Path(str(f_block) + "_" + str(l_block) + "_ref.log")
+      filename2 = wdir / Path(str(f_block) + "_" + str(l_block) + "_tested.log")
+      try:    file1 = filename1.open( "w" )
+      except: print( "Cannot open file:", filename1 ); return
+      try:    file2 = filename2.open( "w" )
+      except: print( "Cannot open file:", filename2 ); return
   
-      file.write("Difference @block: {}\n".format(i))
-      file.write("{} response:\n".format(url1))
-      json.dump(json1, file, indent=2, sort_keys=True)
-      file.write("\n")
-      file.write("{} response:\n".format(url2))
-      json.dump(json2, file, indent=2, sort_keys=True)
-      file.write("\n")
-      file.close()
+      file1.write("{} response:\n".format(url1))
+      json.dump(json1, file1, indent=2, sort_keys=True)
+      file1.close
+      file2.write("{} response:\n".format(url2))
+      json.dump(json2, file2, indent=2, sort_keys=True)
+      file2.close()
       print( "Compare blocks [{} : {}] break with error".format(f_block, l_block) )
-      return
+      return False
 
   print( "Compare blocks [{} : {}] finished".format(f_block, l_block) )
+  return True
 
   
 if __name__ == "__main__":

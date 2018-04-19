@@ -15,7 +15,7 @@ SCRIPT_DIR=../scripts
 PY_SCRIPT_DIR=../../api_tests
 REPLAY_SCRIPT=run_replay.sh
 NODE_SCRIPT=open_node.sh
-NODE_ADDRESS=127.0.0.1
+NODE_ADDRESS=0.0.0.0
 TEST_PORT=8090
 REF_PORT=8091
 TEST_NODE=$NODE_ADDRESS:$TEST_PORT
@@ -32,7 +32,7 @@ BLOCK_LIMIT=$6
 WDIR=$PWD/logs
 TEST_STEEMD_PID=-1
 REF_STEEMD_PID=-1
-export STEEMD_NODE_PID="default"
+export STEEMD_NODE_PID=-1
 
 function run_replay {
    echo Running $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT
@@ -46,10 +46,16 @@ function open_node {
 }
 
 function run_test {
+   echo Running test $1
+   WDIR=$PWD/$1/logs
+   rm -rf $WDIR
+   mkdir -p $1
    pushd $PY_SCRIPT_DIR
+   
    echo Running python3 $1 $JOBS http://$TEST_NODE http://$REF_NODE $WDIR
    python3 $1 $JOBS http://$TEST_NODE http://$REF_NODE 50 $WDIR
-   [ $? -ne 0 ] && echo test FAILED && EXIT_CODE=-1
+   [ $? -ne 0 ] && echo test $1 FAILED && EXIT_CODE=-1
+
    popd
 }
 
@@ -61,16 +67,40 @@ TEST_STEEMD_PID=$STEEMD_NODE_PID
 open_node "reference" $REF_STEEMD_PATH $REF_NODE_OPT $REF_WORK_PATH $REF_PORT
 REF_STEEMD_PID=$STEEMD_NODE_PID
 
-#echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
+function cleanup {
+   ARG=$1
+   if [ $TEST_STEEMD_PID -ne -1 ]
+   then
+      sleep 0.5 && kill -s SIGINT $TEST_STEEMD_PID &
+      wait -n $TEST_STEEMD_PID
+      [ $? -ne 0 ] && echo ERROR: $TEST_STEEMD_PATH exit failed && EXIT_CODE=-1
+   fi
+
+   if [ $REF_STEEMD_PID -ne -1 ]
+   then
+      sleep 0.5 && kill -s SIGINT $REF_STEEMD_PID &
+      wait -n $REF_STEEMD_PID
+      [ $? -ne 0 ] && echo ERROR: $REF_STEEMD_PATH exit failed && EXIT_CODE=-1
+   fi
+
+   wait
+
+   if [ $ARG -eq 0 ]
+   then
+      exit $EXIT_CODE
+   else
+      exit $ARG
+   fi
+}
+
+trap cleanup SIGINT SIGPIPE
+
+echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
 if [ $TEST_STEEMD_PID -ne -1 ] &&  [ $REF_STEEMD_PID -ne -1 ]; then
    run_test "test_list_votes.py"
-   #run_test "test_list_votes2.py"	Obsolete
+   # obsolete: run_test "test_list_votes2.py"
 else
    EXIT_CODE=-1
 fi
 
-kill -s SIGINT $TEST_STEEMD_PID
-kill -s SIGINT $REF_STEEMD_PID
-wait
-
-exit $EXIT_CODE
+cleanup $EXIT_CODE

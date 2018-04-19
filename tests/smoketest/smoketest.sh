@@ -4,7 +4,7 @@ EXIT_CODE=0
 GROUP_TOTAL=0
 GROUP_SKIPPED=0
 GROUP_FAILURE=0
-JOBS=1
+JOBS=0
 API_TEST_PATH=../../python_scripts/tests/api_tests
 BLOCK_SUBPATH=blockchain/block_log
 GROUP_TEST_SCRIPT=test_group.sh
@@ -14,12 +14,14 @@ pushd () { command pushd "$@" > /dev/null; }
 popd () { command popd "$@" > /dev/null; }
 
 function print_help_and_quit {
-   echo "Usage: path_to_tested_steemd path_to_reference_steemd path_to_test_blockchain_directory path_to_reference_blockchain_directory number_of_blocks_to_replay"
+   echo "Usage: path_to_tested_steemd path_to_reference_steemd path_to_test_blockchain_directory path_to_reference_blockchain_directory number_of_blocks_to_replay [number_of_jobs]"
    echo "Example: ~/work/steemit/steem/build/Release/programs/steemd/steemd ~/master/steemit/steem/build/Release/programs/steemd/steemd ~/steemit/steem/work1 ~/steemit/steem/work2 5000000"
+   echo "         Pass absolute, not relative paths;"
+   echo "         if <number_of_jobs> not passed or if is less or zero equal <nproc> will be used."
    exit $EXIT_CODE
 }
 
-if [ $# -ne 5 ]
+if [ $# -lt 5 ]
 then
    print_help_and_quit
 fi
@@ -29,6 +31,16 @@ REF_STEEMD_PATH=$2
 TEST_WORK_PATH=$3
 REF_WORK_PATH=$4
 BLOCK_LIMIT=$5
+
+if [ $# -eq 6 ]
+then
+   JOBS=$6
+fi
+
+if [ $JOBS -le 0 ]
+then
+   JOBS=$(nproc -all)
+fi
 
 function check_steemd_path {
    echo Checking $1...
@@ -63,10 +75,22 @@ function run_test_group {
 
    echo Running ./$GROUP_TEST_SCRIPT $JOBS $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT
    ./$GROUP_TEST_SCRIPT $JOBS $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT
-   [ $? -ne 0 ] && echo test group $1 FAILED && ((GROUP_FAILURE++)) && EXIT_CODE=-1
+   EXIT_CODE=$?
+   if [ $EXIT_CODE -ne 0 ]
+   then
+      EXIT_CODE=-1
+      echo test group $1 FAILED
+      ((GROUP_FAILURE++))
+   fi
 
    popd
 }
+
+function cleanup {
+   exit $1
+}
+
+trap cleanup SIGINT SIGPIPE
 
 check_steemd_path $TEST_STEEMD_PATH
 check_steemd_path $REF_STEEMD_PATH
@@ -76,9 +100,10 @@ check_work_path $REF_WORK_PATH
 
 for dir in ./*/
 do
-    dir=${dir%*/}
-    run_test_group ${dir##*/}
-    ((GROUP_TOTAL++))
+   dir=${dir%*/}
+   run_test_group ${dir##*/}
+   ((GROUP_TOTAL++))
+   [ $EXIT_CODE -gt 0 ] && break
 done
 
 echo TOTAL test groups: $GROUP_TOTAL
