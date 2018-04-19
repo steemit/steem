@@ -11,6 +11,7 @@ file(GLOB HEADERS "include/steem/utilities/*.hpp")
 
 set(sources
    benchmark_dumper.cpp
+   storage_configuration_manager.cpp
    key_conversion.cpp
    string_escape.cpp
    tempdir.cpp
