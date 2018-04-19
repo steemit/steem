@@ -8,19 +8,15 @@ list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/social_network/api_object/category_index.hpp
         include/golos/plugins/social_network/api_object/comment_api_object.hpp
         include/golos/plugins/social_network/api_object/discussion.hpp
-        include/golos/plugins/social_network/api_object/discussion_index.hpp
         include/golos/plugins/social_network/api_object/discussion_query.hpp
         include/golos/plugins/social_network/api_object/tag_api_object.hpp
-        include/golos/plugins/social_network/api_object/tag_index.hpp
         include/golos/plugins/social_network/api_object/vote_state.hpp
-        include/golos/plugins/social_network/languages/language_object.hpp
-        include/golos/plugins/social_network/languages/language_visitor.hpp
         include/golos/plugins/social_network/api_object/account_vote.hpp
+        include/golos/plugins/social_network/tag/social_network_sort.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
         discussion_query.cpp
-        language_visitor.cpp
         social_network.cpp
         tag_visitor.cpp
 )
