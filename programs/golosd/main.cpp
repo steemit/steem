@@ -59,7 +59,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
             appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
             golos::plugins::database_api::register_database_api();
-            appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
+            appbase::app().register_plugin<golos::plugins::social_network::social_network>();
             appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
             appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
             appbase::app().register_plugin<golos::plugins::account_history::plugin>();
