@@ -41,8 +41,8 @@ namespace detail
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
             _db( _chain.db() )
          {
-            _on_applied_block_connection = _db.add_post_apply_block_handler(
-               [&]( const block_notification& note ){ on_applied_block( note.block ); },
+            _on_post_apply_block_conn = _db.add_post_apply_block_handler(
+               [&]( const block_notification& note ){ on_post_apply_block( note.block ); },
                appbase::app().get_plugin< steem::plugins::condenser_api::condenser_api_plugin >(),
                0 );
          }
@@ -139,7 +139,7 @@ namespace detail
 
          void set_pending_payout( discussion& d );
 
-         void on_applied_block( const signed_block& b );
+         void on_post_apply_block( const signed_block& b );
 
          steem::plugins::p2p::p2p_plugin&                                  _p2p;
          steem::plugins::chain::chain_plugin&                              _chain;
@@ -158,7 +158,7 @@ namespace detail
 
          map< transaction_id_type, confirmation_callback >                 _callbacks;
          map< time_point_sec, vector< transaction_id_type > >              _callback_expirations;
-         boost::signals2::connection                                       _on_applied_block_connection;
+         boost::signals2::connection                                       _on_post_apply_block_conn;
 
          boost::mutex                                                      _mtx;
    };
@@ -1647,7 +1647,7 @@ namespace detail
          /* It may look strange to call these without the lock and then lock again in the case of an exception,
           * but it is correct and avoids deadlock. accept_transaction is trained along with all other writes, including
           * pushing blocks. Pushing blocks do not originate from this code path and will never have this lock.
-          * However, it will trigger the on_applied_block callback and then attempt to acquire the lock. In this case,
+          * However, it will trigger the on_post_apply_block callback and then attempt to acquire the lock. In this case,
           * this thread will be waiting on accept_block so it can write and the block thread will be waiting on this
           * thread for the lock.
           */
@@ -1662,7 +1662,7 @@ namespace detail
          auto c_itr = _callbacks.find( txid );
          if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
 
-         // We do not need to clean up _callback_expirations because on_applied_block handles this case.
+         // We do not need to clean up _callback_expirations because on_post_apply_block handles this case.
 
          throw e;
       }
@@ -1940,7 +1940,7 @@ namespace detail
          d.url += "#@" + d.author + "/" + d.permlink;
    }
 
-   void condenser_api_impl::on_applied_block( const signed_block& b )
+   void condenser_api_impl::on_post_apply_block( const signed_block& b )
    { try {
       boost::lock_guard< boost::mutex > guard( _mtx );
       int32_t block_num = int32_t(b.block_num());
