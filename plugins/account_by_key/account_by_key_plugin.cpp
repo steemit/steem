@@ -4,9 +4,7 @@
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
 
-namespace golos {
-    namespace plugins {
-        namespace account_by_key {
+namespace golos { namespace plugins { namespace account_by_key {
 
             namespace detail {
 
@@ -24,6 +22,9 @@ namespace golos {
                     }
 
                     void operator()(const account_create_operation &op) const {
+                        _plugin.my->clear_cache();
+                    }
+                    void operator()(const account_create_with_delegation_operation& op) const {
                         _plugin.my->clear_cache();
                     }
 
@@ -80,6 +81,13 @@ namespace golos {
                                 op.new_account_name);
                         if (acct_itr) {
                             _plugin.my->update_key_lookup(*acct_itr);
+                        }
+                    }
+
+                    void operator()(const account_create_with_delegation_operation& op) const {
+                        auto itr = _plugin.my->database().find<account_authority_object, by_account>(op.new_account_name);
+                        if (itr) {
+                            _plugin.my->update_key_lookup(*itr);
                         }
                     }
 
@@ -271,7 +279,4 @@ namespace golos {
                     return my->get_key_references(tmp);
                 });
             }
-        }
-    }
-} // golos::plugins::account_by_key
-
+} } } // golos::plugins::account_by_key
