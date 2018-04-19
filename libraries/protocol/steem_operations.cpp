@@ -38,9 +38,9 @@ namespace golos { namespace protocol {
             validate_account_name(new_account_name);
             validate_account_name(creator);
             FC_ASSERT(is_asset_type(fee, STEEM_SYMBOL), "Account creation fee must be GOLOS");
-            FC_ASSERT(is_asset_type(delegation, VESTS_SYMBOL), "Delegation must be VESTS");
-            FC_ASSERT(fee >= asset(0, STEEM_SYMBOL), "Account creation fee cannot be negative");
-            FC_ASSERT(delegation >= asset(0, VESTS_SYMBOL), "Delegation cannot be negative");
+            FC_ASSERT(is_asset_type(delegation, VESTS_SYMBOL), "Delegation must be GESTS");
+            FC_ASSERT(fee.amount >= 0, "Account creation fee cannot be negative");
+            FC_ASSERT(delegation.amount >= 0, "Delegation cannot be negative");
             owner.validate();
             active.validate();
             posting.validate();
@@ -553,8 +553,9 @@ namespace golos { namespace protocol {
         void delegate_vesting_shares_operation::validate() const {
             validate_account_name(delegator);
             validate_account_name(delegatee);
-            FC_ASSERT(is_asset_type(vesting_shares, VESTS_SYMBOL), "Delegation must be VESTS");
-            FC_ASSERT(vesting_shares >= asset(0, VESTS_SYMBOL), "Delegation cannot be negative");
+            FC_ASSERT(delegator != delegatee, "You cannot delegate GESTS to yourself");
+            FC_ASSERT(is_asset_type(vesting_shares, VESTS_SYMBOL), "Delegation must be GESTS");
+            FC_ASSERT(vesting_shares.amount >= 0, "Delegation cannot be negative");
         }
 
 } } // golos::protocol

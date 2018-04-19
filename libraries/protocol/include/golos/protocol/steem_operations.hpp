@@ -1025,7 +1025,7 @@ namespace golos { namespace protocol {
  * decreasing it as needed. (i.e. a delegation of 0 removes the delegation)
  *
  * When a delegation is removed the shares are placed in limbo for a week to prevent a satoshi
- * of VESTS from voting on the same content twice.
+ * of GESTS from voting on the same content twice.
  */
         class delegate_vesting_shares_operation: public base_operation {
         public:

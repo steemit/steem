@@ -117,9 +117,15 @@ namespace golos { namespace chain {
                         share_type());
             }
 
-            ///
+            /// vesting shares used in voting and bandwidth calculation
             asset effective_vesting_shares() const {
                 return vesting_shares - delegated_vesting_shares + received_vesting_shares;
+            }
+
+            /// vesting shares, which can be used for delegation (incl. create account) and withdraw operations
+            asset available_vesting_shares(bool consider_withdrawal = false) const {
+                auto have = vesting_shares - delegated_vesting_shares;
+                return consider_withdrawal ? have - asset(to_withdraw - withdrawn, VESTS_SYMBOL) : have;
             }
         };
 
