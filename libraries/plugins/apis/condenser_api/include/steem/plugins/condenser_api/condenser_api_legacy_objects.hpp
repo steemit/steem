@@ -16,6 +16,25 @@ typedef vector< legacy_block_header_extensions > legacy_block_header_extensions_
 struct legacy_signed_transaction
 {
    legacy_signed_transaction() {}
+
+   legacy_signed_transaction( const signed_transaction& t ) :
+      ref_block_num( t.ref_block_num ),
+      ref_block_prefix( t.ref_block_prefix ),
+      expiration( t.expiration )
+   {
+      for( const auto& o : t.operations )
+      {
+         legacy_operation op;
+         o.visit( legacy_operation_conversion_visitor( op ) );
+         operations.push_back( op );
+      }
+
+      // Signed transaction extensions field exists, but must be empty
+      // Don't worry about copying them.
+
+      signatures.insert( signatures.end(), t.signatures.begin(), t.signatures.end() );
+   }
+
    legacy_signed_transaction( const annotated_signed_transaction& t ) :
       ref_block_num( t.ref_block_num ),
       ref_block_prefix( t.ref_block_prefix ),

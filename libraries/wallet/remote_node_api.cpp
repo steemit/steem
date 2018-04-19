@@ -334,12 +334,12 @@ map< uint32_t, condenser_api::api_operation_object > remote_node_api::get_accoun
    FC_ASSERT( false );
 }
 
-void remote_node_api::broadcast_transaction( signed_transaction )
+void remote_node_api::broadcast_transaction( condenser_api::legacy_signed_transaction )
 {
    FC_ASSERT( false );
 }
 
-condenser_api::broadcast_transaction_synchronous_return remote_node_api::broadcast_transaction_synchronous( signed_transaction )
+condenser_api::broadcast_transaction_synchronous_return remote_node_api::broadcast_transaction_synchronous( condenser_api::legacy_signed_transaction )
 {
    FC_ASSERT( false );
 }
