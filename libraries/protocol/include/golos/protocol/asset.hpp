@@ -3,8 +3,7 @@
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/config.hpp>
 
-namespace golos {
-    namespace protocol {
+namespace golos { namespace protocol {
 
         typedef uint64_t asset_symbol_type;
 
@@ -42,6 +41,14 @@ namespace golos {
                 FC_ASSERT(symbol == o.symbol);
                 amount -= o.amount;
                 return *this;
+            }
+
+            asset& operator*=(int x) {
+                amount *= x;
+                return *this;
+            }
+            asset operator*(int x) const {
+                return asset(amount * x, symbol);
             }
 
             asset operator-() const {
@@ -82,6 +89,10 @@ namespace golos {
             friend asset operator+(const asset &a, const asset &b) {
                 FC_ASSERT(a.symbol == b.symbol);
                 return asset(a.amount + b.amount, a.symbol);
+            }
+
+            friend asset operator*(int l, const asset& r) {
+                return r * l;
             }
 
         };
@@ -138,10 +149,11 @@ namespace golos {
         bool operator!=(const price &a, const price &b);
 
         asset operator*(const asset &a, const price &b);
+        inline asset operator*(const price& l, const asset& r) {
+            return r * l;
+        }
 
-
-    }
-} // golos::protocol
+} } // golos::protocol
 
 namespace fc {
     inline void to_variant(const golos::protocol::asset &var, fc::variant &vo) {
@@ -155,4 +167,3 @@ namespace fc {
 
 FC_REFLECT((golos::protocol::asset), (amount)(symbol))
 FC_REFLECT((golos::protocol::price), (base)(quote))
-

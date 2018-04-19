@@ -1,16 +1,13 @@
 #pragma once
 
 #include <golos/protocol/steem_operations.hpp>
-
 #include <golos/chain/evaluator.hpp>
 
-namespace golos {
-    namespace chain {
-
+namespace golos { namespace chain {
         using namespace golos::protocol;
 
         DEFINE_EVALUATOR(account_create)
-
+        DEFINE_EVALUATOR(account_create_with_delegation)
         DEFINE_EVALUATOR(account_update)
 
         DEFINE_EVALUATOR(transfer)
@@ -87,5 +84,4 @@ namespace golos {
 
         DEFINE_EVALUATOR(set_reset_account)
 
-    }
-} // golos::chain
+} } // golos::chain

@@ -21,8 +21,11 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-namespace golos {
-    namespace chain {
+#define ASSERT_REQ_HF(HF, FEATURE) \
+    FC_ASSERT(_db.has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
+
+
+namespace golos { namespace chain {
         using fc::uint128_t;
 
         inline void validate_permlink_0_1(const string &permlink) {
@@ -134,13 +137,14 @@ namespace golos {
                       o.fee, "Insufficient balance to create account.", ("creator.balance", creator.balance)("required", o.fee));
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
-                const witness_schedule_object &wso = _db.get_witness_schedule_object();
-                FC_ASSERT(o.fee >=
-                          wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
-                        ("f", wso.median_props.account_creation_fee)
-                                ("p", o.fee));
+                auto min_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_18__535)) {
+                    min_fee *= GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+                }
+                FC_ASSERT(o.fee >= min_fee,
+                    "Insufficient Fee: ${f} required, ${p} provided.", ("f", min_fee)("p", o.fee));
             }
-
+            
             if (_db.is_producing() ||
                 _db.has_hardfork(STEEMIT_HARDFORK_0_15__465)) {
                 for (auto &a : o.owner.account_auths) {
@@ -173,7 +177,6 @@ namespace golos {
                     acc.recovery_account = o.creator;
                 }
 
-
 #ifndef IS_LOW_MEM
                 from_string(acc.json_metadata, o.json_metadata);
 #endif
@@ -192,6 +195,82 @@ namespace golos {
             }
         }
 
+        void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
+
+            const auto& creator = _db.get_account(o.creator);
+            FC_ASSERT(creator.balance >= o.fee, "Insufficient balance to create account.",
+                ("creator.balance", creator.balance)("required", o.fee));
+            FC_ASSERT(creator.vesting_shares - creator.delegated_vesting_shares -
+                asset(creator.to_withdraw - creator.withdrawn, VESTS_SYMBOL) >= o.delegation,
+                "Insufficient vesting shares to delegate to new account.",
+                ("creator.vesting_shares", creator.vesting_shares)
+                ("creator.delegated_vesting_shares", creator.delegated_vesting_shares)
+                ("required", o.delegation));
+
+            const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
+            const auto& median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+            // auto target_delegation = golos_to_vshares(_db, median_fee) * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+            // auto current_delegation = golos_to_vshares(_db, o.fee) * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO + o.delegation;
+            auto target_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER *
+                median_fee * v_share_price;
+            auto current_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * o.fee * v_share_price + o.delegation;
+
+            FC_ASSERT(current_delegation >= target_delegation,
+                "Inssufficient Delegation ${f} required, ${p} provided.",
+                ("f", target_delegation)("p", current_delegation)
+                ("account_creation_fee", median_fee)("o.fee", o.fee)("o.delegation", o.delegation));
+            FC_ASSERT(o.fee >= median_fee,
+                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_fee)("p", o.fee));
+
+            for (auto& a : o.owner.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : o.active.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : o.posting.account_auths) {
+                _db.get_account(a.first);
+            }
+
+            const auto now = _db.head_block_time();
+
+            _db.modify(creator, [&](account_object& c) {
+                c.balance -= o.fee;
+                c.delegated_vesting_shares += o.delegation;
+            });
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
+                acc.name = o.new_account_name;
+                acc.memo_key = o.memo_key;
+                acc.created = now;
+                acc.last_vote_time = now;
+                acc.mined = false;
+
+                acc.recovery_account = o.creator;
+                acc.received_vesting_shares += o.delegation;
+#ifndef IS_LOW_MEM
+                from_string(acc.json_metadata, o.json_metadata);
+#endif
+            });
+            _db.create<account_authority_object>([&](account_authority_object& auth) {
+                auth.account = o.new_account_name;
+                auth.owner = o.owner;
+                auth.active = o.active;
+                auth.posting = o.posting;
+                auth.last_owner_update = fc::time_point_sec::min();
+            });
+            if (o.delegation.amount > 0) {  // Is it needed to allow zero delegation in this method ?
+                _db.create<vesting_delegation_object>([&](vesting_delegation_object& d) {
+                    d.delegator = o.creator;
+                    d.delegatee = o.new_account_name;
+                    d.vesting_shares = o.delegation;
+                    d.min_delegation_time = now + GOLOS_CREATE_ACCOUNT_DELEGATION_TIME;
+                });
+            }
+            if (o.fee.amount > 0) {
+                _db.create_vesting(new_account, o.fee);
+            }
+        }
 
         void account_update_evaluator::do_apply(const account_update_operation &o) {
             database &_db = db();
@@ -2151,5 +2230,4 @@ namespace golos {
                 a.reset_account = op.reset_account;
             });
         }
-    }
-} // golos::chain
+} } // golos::chain
