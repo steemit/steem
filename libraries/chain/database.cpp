@@ -3747,18 +3747,18 @@ void database::clear_expired_delegations()
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type, class balance_operator_type >
-void database::adjust_smt_balance( const account_name_type& name, const asset_symbol_type& delta_symbol, bool positive_delta, bool zero_delta,
-                                   bool check_account, balance_operator_type balance_operator )
+void database::adjust_smt_balance( const account_name_type& name, bool check_account, const balance_operator_type& balance_operator )
 {
-   asset_symbol_type liquid_symbol = delta_symbol.is_vesting() ? delta_symbol.get_paired_symbol() : delta_symbol;
+   asset_symbol_type balance_symbol = balance_operator.get_balance_symbol();
+   asset_symbol_type liquid_symbol = balance_symbol.is_vesting() ? balance_symbol.get_paired_symbol() : balance_symbol;
    const smt_balance_object_type* bo = find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
       // No balance object related to the SMT means '0' balance. Check delta to avoid creation of negative balance.
-      FC_ASSERT( positive_delta, "Insufficient SMT ${smt} funds", ("smt", delta_symbol) );
+      FC_ASSERT( balance_operator.is_positive_delta(), "Insufficient SMT ${smt} funds", ("smt", balance_symbol) );
       // No need to create object with '0' balance (see comment above).
-      if( zero_delta )
+      if( balance_operator.is_zero_delta() )
          return;
 
       if( check_account )
@@ -3777,7 +3777,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset_sy
       bool is_all_zero = false;
       int64_t result = balance_operator.get_combined_balance( bo, &is_all_zero );
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta_symbol ) );
+      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", balance_symbol ) );
 
       // Exit if whole balance becomes zero.
       if( is_all_zero )
@@ -3900,19 +3900,23 @@ struct smt_regular_balance_operator
 {
    smt_regular_balance_operator( const asset& delta ) : delta(delta), is_vesting(delta.symbol.is_vesting()) {}
 
-   void add_to_balance( account_regular_balance_object& smt_balance )
+   void add_to_balance( account_regular_balance_object& smt_balance ) const
    {
       if( is_vesting )
          smt_balance.vesting += delta;
       else
          smt_balance.liquid += delta;
    }
-   int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero )
+   int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero ) const
    {
       asset result = is_vesting ? bo->vesting + delta : bo->liquid + delta;
       *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting.amount.value) == 0;
       return result.amount.value;
    }
+
+   const asset_symbol_type&   get_balance_symbol() const { return delta.symbol; }
+   bool                       is_zero_delta() const      { return delta.amount == 0; }
+   bool                       is_positive_delta() const  { return delta.amount.value >= 0; }
 
    asset delta;
    bool  is_vesting;
@@ -3926,7 +3930,7 @@ struct smt_reward_balance_operator
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }
 
-   void add_to_balance( account_rewards_balance_object& smt_balance )
+   void add_to_balance( account_rewards_balance_object& smt_balance ) const
    {
       if( is_vesting )
       {
@@ -3936,13 +3940,17 @@ struct smt_reward_balance_operator
       else
          smt_balance.pending_liquid += value_delta;
    }
-   int64_t get_combined_balance( const account_rewards_balance_object* bo, bool* is_all_zero )
+   int64_t get_combined_balance( const account_rewards_balance_object* bo, bool* is_all_zero ) const
    {
       asset result = is_vesting ? bo->pending_vesting_value + value_delta : bo->pending_liquid + value_delta;
       *is_all_zero = result.amount.value == 0 &&
                      (is_vesting ? bo->pending_liquid.amount.value : bo->pending_vesting_value.amount.value) == 0;
       return result.amount.value;
    }
+
+   const asset_symbol_type&   get_balance_symbol() const { return value_delta.symbol; }
+   bool                       is_zero_delta() const      { return value_delta.amount == 0; }
+   bool                       is_positive_delta() const  { return value_delta.amount.value >= 0; }
 
    asset value_delta;
    asset share_delta;
@@ -3960,8 +3968,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta.symbol, delta.amount.value >= 0, delta.amount.value == 0,
-                                                            false/*check_account*/, balance_operator );
+      adjust_smt_balance< account_regular_balance_object >( a.name, false/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -3978,8 +3985,7 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta.symbol, delta.amount.value >= 0, delta.amount.value == 0,
-                                                            true/*check_account*/, balance_operator );
+      adjust_smt_balance< account_regular_balance_object >( name, true/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -4053,8 +4059,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta.symbol, value_delta.amount.value >= 0, value_delta.amount.value == 0,
-                                                            false/*check_account*/, balance_operator );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, false/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -4074,8 +4079,7 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( name, value_delta.symbol, value_delta.amount.value >= 0, value_delta.amount.value == 0,
-                                                            true/*check_account*/, balance_operator );
+      adjust_smt_balance< account_rewards_balance_object >( name, true/*check_account*/, balance_operator );
       return;
    }
 #endif

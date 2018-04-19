@@ -502,8 +502,7 @@ namespace steem { namespace chain {
          ///@}
 #ifdef STEEM_ENABLE_SMT
          template< typename smt_balance_object_type, class balance_operator_type >
-         void adjust_smt_balance( const account_name_type& name, const asset_symbol_type& delta_symbol, bool positive_delta, bool zero_delta,
-                                  bool check_account, balance_operator_type balance_operator );
+         void adjust_smt_balance( const account_name_type& name, bool check_account, const balance_operator_type& balance_operator );
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
          void modify_reward_balance( const account_object& a, const asset& value_delta, const asset& share_delta, bool check_balance );
