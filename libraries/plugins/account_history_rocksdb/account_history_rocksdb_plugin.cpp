@@ -675,7 +675,7 @@ private:
    flat_set<std::string>            _op_list;
    flat_set<std::string>            _blacklisted_op_list;
 
-   bool                             _reindexing;
+   bool                             _reindexing = false;
 
    bool                             _prune = false;
 };
