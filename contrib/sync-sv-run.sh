@@ -44,7 +44,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
 
     # wait 60 seconds for steemd to exit, to be safe.
     let WAIT_TIME=0
-    while ( kill -0 $STEEM_PID ) && [[ WAIT_TIME -le 60 ]]; do
+    while ( kill -0 $STEEMD_PID ) && [[ WAIT_TIME -le 60 ]]; do
        sleep 1
        let WAIT_TIME++
     done
@@ -55,7 +55,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     if [[ "$USE_RAMDISK" ]]; then
       tar vcf blockchain.tar.bz2 --use-compress-prog=pbzip2 -C $HOME blockchain -C /mnt/ramdisk blockchain
     else
-      tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 -C $HOME blockchain
+      tar vcf blockchain.tar.bz2 --use-compress-prog=pbzip2 -C $HOME blockchain
     fi
     if [[ ! $? -eq 0 ]]; then
       echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.

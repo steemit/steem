@@ -993,6 +993,11 @@ void database::notify_pre_apply_block( const block_notification& note )
    STEEM_TRY_NOTIFY( _pre_apply_block_signal, note )
 }
 
+void database::notify_irreversible_block( uint32_t block_num )
+{
+   STEEM_TRY_NOTIFY( _on_irreversible_block, block_num )
+}
+
 void database::notify_post_apply_block( const block_notification& note )
 {
    STEEM_TRY_NOTIFY( _post_apply_block_signal, note )
@@ -2802,6 +2807,10 @@ void database::_apply_block( const signed_block& next_block )
 
    uint32_t skip = get_node_properties().skip_flags;
 
+   _current_block_num    = next_block_num;
+   _current_trx_in_block = 0;
+   _current_virtual_op   = 0;
+
    if( BOOST_UNLIKELY( next_block_num == 1 ) )
    {
       // For every existing before the head_block_time (genesis time), apply the hardfork
@@ -2859,9 +2868,6 @@ void database::_apply_block( const signed_block& next_block )
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
-   _current_block_num    = next_block_num;
-   _current_trx_in_block = 0;
-
    const auto& gprops = get_dynamic_global_properties();
    auto block_size = fc::raw::pack_size( next_block );
    if( has_hardfork( STEEM_HARDFORK_0_12 ) )
@@ -2907,8 +2913,9 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
-   _current_virtual_op = 0;
    _current_trx_in_block = -1;
+   _current_op_in_trx = 0;
+   _current_virtual_op = 0;
 
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
@@ -3294,6 +3301,12 @@ boost::signals2::connection database::add_post_apply_block_handler( const apply_
    return connect_impl(_post_apply_block_signal, func, plugin, group, "<-block");
 }
 
+boost::signals2::connection database::add_irreversible_block_handler( const irreversible_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_irreversible_block, func, plugin, group, "<-irreversible");
+}
+
 boost::signals2::connection database::add_pre_reindex_handler(const reindex_handler_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
@@ -3437,6 +3450,7 @@ void database::update_signing_witness(const witness_object& signing_witness, con
 void database::update_last_irreversible_block()
 { try {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   auto old_last_irreversible = dpo.last_irreversible_block_num;
 
    /**
     * Prior to voting taking over, we must be more conservative...
@@ -3485,6 +3499,11 @@ void database::update_last_irreversible_block()
    }
 
    commit( dpo.last_irreversible_block_num );
+
+   for( uint32_t i = old_last_irreversible; i <= dpo.last_irreversible_block_num; ++i )
+   {
+      notify_irreversible_block( i );
+   }
 
    if( !( get_node_properties().skip_flags & skip_block_log ) )
    {

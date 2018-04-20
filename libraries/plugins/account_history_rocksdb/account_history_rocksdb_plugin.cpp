@@ -2,6 +2,7 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
+#include <steem/chain/index.hpp>
 #include <steem/chain/util/impacted.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
@@ -32,6 +33,24 @@ namespace bpo = boost::program_options;
 
 #define DIAGNOSTIC(s)
 //#define DIAGNOSTIC(s) s
+
+#define OPERATION_BY_ID 1
+#define OPERATION_BY_BLOCK 2
+#define AH_INFO_BY_NAME 3
+#define AH_OPERATION_BY_ID 4
+
+#define WRITE_BUFFER_FLUSH_LIMIT     10
+#define ACCOUNT_HISTORY_LENGTH_LIMIT 30
+#define ACCOUNT_HISTORY_TIME_LIMIT   30
+#define VIRTUAL_OP_FLAG              0x8000000000000000
+
+/** Because localtion_id_pair stores block_number paired with (VIRTUAL_OP_FLAG|operation_id),
+ *  max allowed operation-id is max_int (instead of max_uint).
+ */
+#define MAX_OPERATION_ID             std::numeric_limits<int64_t>::max()
+
+#define STORE_MAJOR_VERSION          1
+#define STORE_MINOR_VERSION          0
 
 namespace steem { namespace plugins { namespace account_history_rocksdb {
 
@@ -66,7 +85,7 @@ using ::rocksdb::WriteBatch;
 class account_history_info
 {
 public:
-   uint32_t       id = 0;
+   int64_t        id = 0;
    uint32_t       oldestEntryId = 0;
    uint32_t       newestEntryId = 0;
    /// Timestamp of oldest operation, just to quickly decide if start detail prune checking at all.
@@ -211,11 +230,18 @@ typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_
  *  by some unique part (ie ID).
  *
  */
-typedef std::pair<uint32_t, uint32_t> location_id_pair;
-typedef PrimitiveTypeComparatorImpl<location_id_pair> by_location_ComparatorImpl;
+typedef std::pair< uint32_t, int64_t > block_op_id_pair;
+typedef PrimitiveTypeComparatorImpl< block_op_id_pair > op_by_block_num_ComparatorImpl;
 
 /// Compares account_history_info::id and rocksdb_operation_object::id pair
-typedef PrimitiveTypeComparatorImpl<std::pair<uint32_t, uint32_t>> by_ah_info_operation_ComparatorImpl;
+typedef std::pair< int64_t, uint32_t > ah_op_id_pair;
+typedef PrimitiveTypeComparatorImpl< ah_op_id_pair > ah_op_by_id_ComparatorImpl;
+
+typedef PrimitiveTypeSlice< int64_t > id_slice_t;
+typedef PrimitiveTypeSlice< block_op_id_pair > op_by_block_num_slice_t;
+typedef PrimitiveTypeSlice< uint32_t > by_block_slice_t;
+typedef PrimitiveTypeSlice< account_name_type::Storage > ah_info_by_name_slice_t;
+typedef PrimitiveTypeSlice< ah_op_id_pair > ah_op_by_id_slice_t;
 
 const Comparator* by_id_Comparator()
 {
@@ -223,9 +249,9 @@ const Comparator* by_id_Comparator()
    return &c;
 }
 
-const Comparator* by_location_Comparator()
+const Comparator* op_by_block_num_Comparator()
 {
-   static by_location_ComparatorImpl c;
+   static op_by_block_num_ComparatorImpl c;
    return &c;
 }
 
@@ -235,9 +261,9 @@ const Comparator* by_account_name_Comparator()
    return &c;
 }
 
-const Comparator* by_ah_info_operation_Comparator()
+const Comparator* ah_op_by_id_Comparator()
 {
-   static by_ah_info_operation_ComparatorImpl c;
+   static ah_op_by_id_ComparatorImpl c;
    return &c;
 }
 
@@ -284,9 +310,9 @@ public:
          return true;
       }
 
-      PrimitiveTypeSlice<account_name_type::Storage> key(name.data);
+      ah_info_by_name_slice_t key(name.data);
       PinnableSlice buffer;
-      auto s = _storage->Get(ReadOptions(), _columnHandles[3], key, &buffer);
+      auto s = _storage->Get(ReadOptions(), _columnHandles[AH_INFO_BY_NAME], key, &buffer);
       if(s.ok())
       {
          load(*ahInfo, buffer.data(), buffer.size());
@@ -301,8 +327,8 @@ public:
    {
       _ahInfoCache[name] = ahInfo;
       auto serializeBuf = dump(ahInfo);
-      PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
-      auto s = Put(_columnHandles[3], nameSlice, Slice(serializeBuf.data(), serializeBuf.size()));
+      ah_info_by_name_slice_t nameSlice(name.data);
+      auto s = Put(_columnHandles[AH_INFO_BY_NAME], nameSlice, Slice(serializeBuf.data(), serializeBuf.size()));
       checkStatus(s);
    }
 
@@ -341,6 +367,8 @@ public:
          {
             on_post_reindex( note );
          }, _self, 0);
+
+      add_plugin_index< volatile_operation_index >( _mainDb );
       }
 
    ~impl()
@@ -373,12 +401,23 @@ public:
          loadSeqIdentifiers(storageDb);
          _storage.reset(storageDb);
 
-         _on_pre_apply_operation_connection = _mainDb.add_pre_apply_operation_handler(
+         const auto& rocksdb_plugin = appbase::app().get_plugin< account_history_rocksdb_plugin >();
+
+         _on_post_apply_operation_con = _mainDb.add_post_apply_operation_handler(
             [&]( const operation_notification& note )
             {
-               on_pre_apply_operation(note);
+               on_post_apply_operation(note);
             },
-            appbase::app().get_plugin< account_history_rocksdb_plugin >() );
+            rocksdb_plugin
+         );
+
+         _on_irreversible_block_conn = _mainDb.add_irreversible_block_handler(
+            [&]( uint32_t block_num )
+            {
+               on_irreversible_block( block_num );
+            },
+            rocksdb_plugin
+         );
       }
       else
       {
@@ -406,7 +445,8 @@ public:
 
    void shutdownDb()
    {
-      chain::util::disconnect_signal(_on_pre_apply_operation_connection);
+      chain::util::disconnect_signal(_on_post_apply_operation_con);
+      chain::util::disconnect_signal(_on_irreversible_block_conn);
       flushStorage();
       cleanupColumnHandles();
       _storage.reset();
@@ -426,10 +466,51 @@ private:
       _columnHandles.clear();
    }
 
-   void importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime, const transaction_id_type& txId,
-      uint32_t txInBlock, const operation& op, uint16_t opInTx);
-   void buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj, const operation& op,
-      const fc::time_point_sec& blockTime);
+   template< typename T >
+   void importOperation( rocksdb_operation_object& obj, const T& impacted )
+   {
+      if(_lastTx != obj.trx_id)
+      {
+         ++_txNo;
+         _lastTx = obj.trx_id;
+      }
+
+      obj.id = _operationSeqId++;
+
+      serialize_buffer_t serializedObj;
+      auto size = fc::raw::pack_size(obj);
+      serializedObj.resize(size);
+      {
+         fc::datastream<char*> ds(serializedObj.data(), size);
+         fc::raw::pack(ds, obj);
+      }
+
+      id_slice_t idSlice(obj.id);
+      auto s = _writeBuffer.Put(_columnHandles[OPERATION_BY_ID], idSlice, Slice(serializedObj.data(), serializedObj.size()));
+      checkStatus(s);
+
+      // uint64_t location = ( (uint64_t) obj.trx_in_block << 32 ) | ( (uint64_t) obj.op_in_trx << 16 ) | ( obj.virtual_op );
+
+      int64_t encoded_id = obj.id;
+      if( obj.virtual_op > 0 )
+      {
+         encoded_id |= VIRTUAL_OP_FLAG;
+      }
+
+      op_by_block_num_slice_t blockLocSlice( block_op_id_pair( obj.block, encoded_id ) );
+      s = _writeBuffer.Put(_columnHandles[OPERATION_BY_BLOCK], blockLocSlice, idSlice);
+      checkStatus(s);
+
+      for(const auto& name : impacted)
+         buildAccountHistoryRecord( name, obj );
+
+      if(++_collectedOps >= _collectedOpsWriteLimit)
+         flushWriteBuffer();
+
+      ++_totalOps;
+}
+
+   void buildAccountHistoryRecord( const account_name_type& name, const rocksdb_operation_object& obj );
    void prunePotentiallyTooOldItems(account_history_info* ahInfo, const account_name_type& name,
       const fc::time_point_sec& now);
 
@@ -467,8 +548,8 @@ private:
       Slice opSeqIdName("OPERATION_SEQ_ID");
       Slice ahSeqIdName("AH_SEQ_ID");
 
-      PrimitiveTypeSlice<size_t> opId(_operationSeqId);
-      PrimitiveTypeSlice<size_t> ahId(_accountHistorySeqId);
+      id_slice_t opId(_operationSeqId);
+      id_slice_t ahId(_accountHistorySeqId);
 
       auto s = _writeBuffer.Put(opSeqIdName, opId);
       checkStatus(s);
@@ -486,11 +567,11 @@ private:
       std::string buffer;
       auto s = storageDb->Get(rOptions, opSeqIdName, &buffer);
       checkStatus(s);
-      _operationSeqId = PrimitiveTypeSlice<size_t>::unpackSlice(buffer);
+      _operationSeqId = id_slice_t::unpackSlice(buffer);
 
       s = storageDb->Get(rOptions, ahSeqIdName, &buffer);
       checkStatus(s);
-      _accountHistorySeqId = PrimitiveTypeSlice<size_t>::unpackSlice(buffer);
+      _accountHistorySeqId = id_slice_t::unpackSlice(buffer);
 
       ilog("Loaded OperationObject seqId: ${o}, AccountHistoryObject seqId: ${ah}.",
          ("o", _operationSeqId)("ah", _accountHistorySeqId));
@@ -527,7 +608,9 @@ private:
       }
    }
 
-   void on_pre_apply_operation(const operation_notification& opNote);
+   void on_post_apply_operation(const operation_notification& opNote);
+
+   void on_irreversible_block( uint32_t block_num );
 
    void collectOptions(const bpo::variables_map& options);
 
@@ -552,22 +635,6 @@ private:
    void storeOpFilteringParameters(const std::vector<std::string>& opList,
       flat_set<std::string>* storage) const;
 
-   enum
-   {
-      WRITE_BUFFER_FLUSH_LIMIT     = 100,
-      ACCOUNT_HISTORY_LENGTH_LIMIT = 30,
-      ACCOUNT_HISTORY_TIME_LIMIT   = 30,
-
-      VIRTUAL_OP_FLAG              = 0x80000000,
-      /** Because localtion_id_pair stores block_number paired with (VIRTUAL_OP_FLAG|operation_id),
-       *  max allowed operation-id is max_int (instead of max_uint).
-       */
-      MAX_OPERATION_ID             = std::numeric_limits<int>::max(),
-
-      STORE_MAJOR_VERSION          = 1,
-      STORE_MINOR_VERSION          = 0,
-   };
-
 /// Class attributes:
 private:
    typedef flat_map< account_name_type, account_name_type > account_name_range_index;
@@ -578,7 +645,10 @@ private:
    std::unique_ptr<DB>              _storage;
    std::vector<ColumnFamilyHandle*> _columnHandles;
    CachableWriteBatch               _writeBuffer;
-   boost::signals2::connection      _on_pre_apply_operation_connection;
+
+   boost::signals2::connection      _on_post_apply_operation_con;
+   boost::signals2::connection      _on_irreversible_block_conn;
+
    /// Helper member to be able to detect another incomming tx and increment tx-counter.
    transaction_id_type              _lastTx;
    size_t                           _txNo = 0;
@@ -589,8 +659,8 @@ private:
    /// Total number of accounts (impacted by ops) excluded from processing because of filtering.
    mutable size_t                   _excludedAccountCount = 0;
    /// IDs to be assigned to object.id field.
-   size_t                           _operationSeqId = 0;
-   size_t                           _accountHistorySeqId = 0;
+   uint64_t                         _operationSeqId = 0;
+   uint64_t                         _accountHistorySeqId = 0;
 
    /// Number of data-chunks for ops being stored inside _writeBuffer. To decide when to flush.
    unsigned int                     _collectedOps = 0;
@@ -604,6 +674,8 @@ private:
    account_name_range_index         _tracked_accounts;
    flat_set<std::string>            _op_list;
    flat_set<std::string>            _blacklisted_op_list;
+
+   bool                             _reindexing = false;
 
    bool                             _prune = false;
 };
@@ -637,7 +709,7 @@ inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account
    if(_tracked_accounts.empty())
       return true;
 
-   /// Code below is based on original contents of account_history_plugin_impl::on_pre_apply_operation
+   /// Code below is based on original contents of account_history_plugin_impl::on_post_apply_operation
    auto itr = _tracked_accounts.lower_bound(name);
 
    /*
@@ -740,9 +812,9 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
 {
    ReadOptions rOptions;
 
-   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+   ah_info_by_name_slice_t nameSlice(name.data);
    PinnableSlice buffer;
-   auto s = _storage->Get(rOptions, _columnHandles[3], nameSlice, &buffer);
+   auto s = _storage->Get(rOptions, _columnHandles[AH_INFO_BY_NAME], nameSlice, &buffer);
 
    if(s.IsNotFound())
       return;
@@ -752,16 +824,16 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
    account_history_info ahInfo;
    load(ahInfo, buffer.data(), buffer.size());
 
-   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> lowerBoundSlice(std::make_pair(ahInfo.id, ahInfo.oldestEntryId));
-   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> upperBoundSlice(std::make_pair(ahInfo.id, ahInfo.newestEntryId+1));
+   ah_op_by_id_slice_t lowerBoundSlice(std::make_pair(ahInfo.id, ahInfo.oldestEntryId));
+   ah_op_by_id_slice_t upperBoundSlice(std::make_pair(ahInfo.id, ahInfo.newestEntryId+1));
 
    rOptions.iterate_lower_bound = &lowerBoundSlice;
    rOptions.iterate_upper_bound = &upperBoundSlice;
 
-   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> key(std::make_pair(ahInfo.id, start));
-   PrimitiveTypeSlice<uint32_t> ahIdSlice(ahInfo.id);
+   ah_op_by_id_slice_t key(std::make_pair(ahInfo.id, start));
+   id_slice_t ahIdSlice(ahInfo.id);
 
-   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[4]));
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[AH_OPERATION_BY_ID]));
 
    it->SeekForPrev(key);
 
@@ -769,7 +841,7 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
       return;
 
    auto keySlice = it->key();
-   auto keyValue = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(keySlice);
+   auto keyValue = ah_op_by_id_slice_t::unpackSlice(keySlice);
 
    auto lowerBound = keyValue.second > limit ? keyValue.second - limit : 0;
 
@@ -779,15 +851,13 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
       if(keySlice.starts_with(ahIdSlice) == false)
          break;
 
-      keyValue = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(keySlice);
+      keyValue = ah_op_by_id_slice_t::unpackSlice(keySlice);
 
       auto valueSlice = it->value();
-      const auto& opId = PrimitiveTypeSlice<uint32_t>::unpackSlice(valueSlice);
+      const auto& opId = id_slice_t::unpackSlice(valueSlice);
       rocksdb_operation_object oObj;
       bool found = find_operation_object(opId, &oObj);
       FC_ASSERT(found, "Missing operation?");
-
-//      ilog("AH-info-id: ${a}, Entry: ${e}, OperationId: ${oid}", ("a", keyValue.first)("e", keyValue.second)("oid", oObj.id));
 
       processor(keyValue.second, oObj);
 
@@ -799,8 +869,8 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
 bool account_history_rocksdb_plugin::impl::find_operation_object(size_t opId, rocksdb_operation_object* op) const
 {
    std::string data;
-   PrimitiveTypeSlice<uint32_t> idSlice(opId);
-   ::rocksdb::Status s = _storage->Get(ReadOptions(), _columnHandles[1], idSlice, &data);
+   id_slice_t idSlice(opId);
+   ::rocksdb::Status s = _storage->Get(ReadOptions(), _columnHandles[OPERATION_BY_ID], idSlice, &data);
 
    if(s.ok())
    {
@@ -816,14 +886,14 @@ bool account_history_rocksdb_plugin::impl::find_operation_object(size_t opId, ro
 void account_history_rocksdb_plugin::impl::find_operations_by_block(size_t blockNum,
    std::function<void(const rocksdb_operation_object&)> processor) const
 {
-   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[2]));
-   PrimitiveTypeSlice<uint32_t> blockNumSlice(blockNum);
-   PrimitiveTypeSlice<location_id_pair> key(location_id_pair(blockNum, 0));
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(ReadOptions(), _columnHandles[OPERATION_BY_BLOCK]));
+   by_block_slice_t blockNumSlice(blockNum);
+   op_by_block_num_slice_t key(block_op_id_pair(blockNum, 0));
 
    for(it->Seek(key); it->Valid() && it->key().starts_with(blockNumSlice); it->Next())
    {
       auto valueSlice = it->value();
-      const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+      const auto& opId = id_slice_t::unpackSlice(valueSlice);
 
       rocksdb_operation_object op;
       bool found = find_operation_object(opId, &op);
@@ -838,27 +908,27 @@ uint32_t account_history_rocksdb_plugin::impl::enumVirtualOperationsFromBlockRan
 {
    FC_ASSERT(blockRangeEnd > blockRangeBegin, "Block range must be upward");
 
-   PrimitiveTypeSlice<location_id_pair> upperBoundSlice(location_id_pair(blockRangeEnd, 0));
+   op_by_block_num_slice_t upperBoundSlice(block_op_id_pair(blockRangeEnd, 0));
 
-   PrimitiveTypeSlice<location_id_pair> rangeBeginSlice(location_id_pair(blockRangeBegin, 0));
+   op_by_block_num_slice_t rangeBeginSlice(block_op_id_pair(blockRangeBegin, 0));
 
    ReadOptions rOptions;
    rOptions.iterate_upper_bound = &upperBoundSlice;
 
-   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[2]));
+   std::unique_ptr<::rocksdb::Iterator> it(_storage->NewIterator(rOptions, _columnHandles[OPERATION_BY_BLOCK]));
 
    uint32_t lastFoundBlock = 0;
 
    for(it->Seek(rangeBeginSlice); it->Valid(); it->Next())
    {
       auto keySlice = it->key();
-      const auto& key = PrimitiveTypeSlice<location_id_pair>::unpackSlice(keySlice);
+      const auto& key = op_by_block_num_slice_t::unpackSlice(keySlice);
 
       /// Accept only virtual operations
       if(key.second & VIRTUAL_OP_FLAG)
       {
          auto valueSlice = it->value();
-         const auto& opId = PrimitiveTypeSlice<size_t>::unpackSlice(valueSlice);
+         const auto& opId = id_slice_t::unpackSlice(valueSlice);
 
          rocksdb_operation_object op;
          bool found = find_operation_object(opId, &op);
@@ -869,16 +939,16 @@ uint32_t account_history_rocksdb_plugin::impl::enumVirtualOperationsFromBlockRan
       }
    }
 
-   PrimitiveTypeSlice<location_id_pair> lowerBoundSlice(location_id_pair(lastFoundBlock, 0));
+   op_by_block_num_slice_t lowerBoundSlice(block_op_id_pair(lastFoundBlock, 0));
    rOptions = ReadOptions();
    rOptions.iterate_lower_bound = &lowerBoundSlice;
-   it.reset(_storage->NewIterator(rOptions, _columnHandles[2]));
+   it.reset(_storage->NewIterator(rOptions, _columnHandles[OPERATION_BY_BLOCK]));
 
-   PrimitiveTypeSlice<location_id_pair> nextRangeBeginSlice(location_id_pair(lastFoundBlock + 1, 0));
+   op_by_block_num_slice_t nextRangeBeginSlice(block_op_id_pair(lastFoundBlock + 1, 0));
    for(it->Seek(nextRangeBeginSlice); it->Valid(); it->Next())
    {
       auto keySlice = it->key();
-      const auto& key = PrimitiveTypeSlice<location_id_pair>::unpackSlice(keySlice);
+      const auto& key = op_by_block_num_slice_t::unpackSlice(keySlice);
 
       if(key.second & VIRTUAL_OP_FLAG)
          return key.first;
@@ -897,17 +967,17 @@ account_history_rocksdb_plugin::impl::ColumnDefinitions account_history_rocksdb_
    auto& byIdColumn = columnDefs.back();
    byIdColumn.options.comparator = by_id_Comparator();
 
-   columnDefs.emplace_back("operation_by_location", ColumnFamilyOptions());
+   columnDefs.emplace_back("operation_by_block", ColumnFamilyOptions());
    auto& byLocationColumn = columnDefs.back();
-   byLocationColumn.options.comparator = by_location_Comparator();
+   byLocationColumn.options.comparator = op_by_block_num_Comparator();
 
    columnDefs.emplace_back("account_history_info_by_name", ColumnFamilyOptions());
    auto& byAccountNameColumn = columnDefs.back();
    byAccountNameColumn.options.comparator = by_account_name_Comparator();
 
-   columnDefs.emplace_back("ah_info_operation_by_ids", ColumnFamilyOptions());
+   columnDefs.emplace_back("ah_operation_by_id", ColumnFamilyOptions());
    auto& byAHInfoColumn = columnDefs.back();
-   byAHInfoColumn.options.comparator = by_ah_info_operation_Comparator();
+   byAHInfoColumn.options.comparator = ah_op_by_id_Comparator();
 
    return columnDefs;
 }
@@ -966,93 +1036,14 @@ bool account_history_rocksdb_plugin::impl::createDbSchema(const bfs::path& path)
    }
 }
 
-void account_history_rocksdb_plugin::impl::importOperation(uint32_t blockNum, const fc::time_point_sec& blockTime,
-   const transaction_id_type& txId, uint32_t txInBlock, const operation& op, uint16_t opInTx)
-{
-   if(_lastTx != txId)
-   {
-      ++_txNo;
-      _lastTx = txId;
-   }
-
-   if(blockNum % 10000 == 0 && txInBlock == 0 && opInTx == 0)
-   {
-      ilog("RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.\n"
-           " ${ep} operations have been filtered out due to configured options.\n"
-           " ${ea} accounts have been filtered out due to configured options.",
-         ("n", blockNum)
-         ("tx", _txNo)
-         ("op", _totalOps)
-         ("ep", _excludedOps)
-         ("ea", _excludedAccountCount)
-         );
-   }
-
-   auto impacted = getImpactedAccounts(op);
-
-   if(impacted.empty())
-      return; /// Ignore operations not impacting any account (according to original implementation)
-
-   FC_ASSERT(_operationSeqId < MAX_OPERATION_ID, "Operation id limit exceeded");
-
-   rocksdb_operation_object obj;
-   obj.id           = _operationSeqId++;
-   obj.trx_id       = txId;
-   obj.block        = blockNum;
-   obj.trx_in_block = txInBlock;
-   obj.timestamp    = blockTime;
-   auto size = fc::raw::pack_size(op);
-   obj.serialized_op.resize(size);
-   {
-      fc::datastream<char*> ds(obj.serialized_op.data(), size);
-      fc::raw::pack(ds, op);
-   }
-
-   serialize_buffer_t serializedObj;
-   size = fc::raw::pack_size(obj);
-   serializedObj.resize(size);
-   {
-      fc::datastream<char*> ds(serializedObj.data(), size);
-      fc::raw::pack(ds, obj);
-   }
-
-   PrimitiveTypeSlice<uint32_t> idSlice(obj.id);
-   auto s = _writeBuffer.Put(_columnHandles[1], idSlice, Slice(serializedObj.data(), serializedObj.size()));
-   checkStatus(s);
-
-   uint32_t encodedId = obj.id;
-   if(is_virtual_operation(op))
-      encodedId |= VIRTUAL_OP_FLAG;
-
-   PrimitiveTypeSlice<location_id_pair> blockNoIdSlice(location_id_pair(blockNum, encodedId));
-   s = _writeBuffer.Put(_columnHandles[2], blockNoIdSlice, idSlice);
-   checkStatus(s);
-
-   if(isTrackedOperation(op))
-   {
-      for(const auto& name : impacted)
-         buildAccountHistoryRecord(name, obj, op, blockTime);
-   }
-   else
-   {
-      ++_excludedOps;
-   }
-
-   if(++_collectedOps >= _collectedOpsWriteLimit)
-      flushWriteBuffer();
-
-   ++_totalOps;
-}
-
-void account_history_rocksdb_plugin::impl::buildAccountHistoryRecord(const account_name_type& name, const rocksdb_operation_object& obj,
-   const operation& op, const fc::time_point_sec& blockTime)
+void account_history_rocksdb_plugin::impl::buildAccountHistoryRecord( const account_name_type& name, const rocksdb_operation_object& obj )
 {
    std::string strName = name;
 
    ReadOptions rOptions;
    //rOptions.tailing = true;
 
-   PrimitiveTypeSlice<account_name_type::Storage> nameSlice(name.data);
+   ah_info_by_name_slice_t nameSlice(name.data);
 
    account_history_info ahInfo;
    bool found = _writeBuffer.getAHInfo(name, &ahInfo);
@@ -1062,31 +1053,18 @@ void account_history_rocksdb_plugin::impl::buildAccountHistoryRecord(const accou
       auto count = ahInfo.getAssociatedOpCount();
 
       if(_prune && count > ACCOUNT_HISTORY_LENGTH_LIMIT &&
-         ((blockTime - ahInfo.oldestEntryTimestamp) > fc::days(ACCOUNT_HISTORY_TIME_LIMIT)))
+         ((obj.timestamp - ahInfo.oldestEntryTimestamp) > fc::days(ACCOUNT_HISTORY_TIME_LIMIT)))
          {
-            prunePotentiallyTooOldItems(&ahInfo, name, blockTime);
+            prunePotentiallyTooOldItems(&ahInfo, name, obj.timestamp);
          }
 
       auto nextEntryId = ++ahInfo.newestEntryId;
        _writeBuffer.putAHInfo(name, ahInfo);
 
-      PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> ahInfoOpSlice(std::make_pair(ahInfo.id, nextEntryId));
-      PrimitiveTypeSlice<uint32_t> valueSlice(obj.id);
-      auto s = _writeBuffer.Put(_columnHandles[4], ahInfoOpSlice, valueSlice);
+      ah_op_by_id_slice_t ahInfoOpSlice(std::make_pair(ahInfo.id, nextEntryId));
+      id_slice_t valueSlice(obj.id);
+      auto s = _writeBuffer.Put(_columnHandles[AH_OPERATION_BY_ID], ahInfoOpSlice, valueSlice);
       checkStatus(s);
-
-   // if(strName == "blocktrades")
-   // {
-   //    ilog("Block: ${b}: Storing another AH entry ${e} for account: `${a}' (${ahID}). Operation block: ${ob}, Operation id: ${oid}",
-   //       ("b", _mainDb.head_block_num())
-   //       ("e", nextEntryId)
-   //       ("a", strName)
-   //       ("ahID", ahInfo.id)
-   //       ("ob", obj.block)
-   //       ("oid", obj.id)
-   //    );
-   // }
-
    }
    else
    {
@@ -1097,24 +1075,10 @@ void account_history_rocksdb_plugin::impl::buildAccountHistoryRecord(const accou
 
       _writeBuffer.putAHInfo(name, ahInfo);
 
-      PrimitiveTypeSlice<std::pair<unsigned int, unsigned int>> ahInfoOpSlice(std::make_pair(ahInfo.id, 0));
-      PrimitiveTypeSlice<unsigned int> valueSlice(obj.id);
-      auto s = _writeBuffer.Put(_columnHandles[4], ahInfoOpSlice, valueSlice);
+      ah_op_by_id_slice_t ahInfoOpSlice(std::make_pair(ahInfo.id, 0));
+      id_slice_t valueSlice(obj.id);
+      auto s = _writeBuffer.Put(_columnHandles[AH_OPERATION_BY_ID], ahInfoOpSlice, valueSlice);
       checkStatus(s);
-
-   // if(strName == "blocktrades")
-   // {
-   //    blocktrades_id = ahInfo.id;
-   //    ilog("Block: ${b}: Storing FIRST AH entry ${e} for account: `${a}' (${ahID}). Operation block: ${ob}, OPeration id: ${oid}",
-   //       ("b", _mainDb.head_block_num())
-   //       ("e", 0)
-   //       ("a", strName)
-   //       ("ahID", ahInfo.id)
-   //       ("ob", obj.block)
-   //       ("oid", obj.id)
-   //    );
-   // }
-
    }
 }
 
@@ -1125,22 +1089,22 @@ void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_h
 
    auto ageLimit =  fc::days(ACCOUNT_HISTORY_TIME_LIMIT);
 
-   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> oldestEntrySlice(
+   ah_op_by_id_slice_t oldestEntrySlice(
       std::make_pair(ahInfo->id, ahInfo->oldestEntryId));
    auto lookupUpperBound = std::make_pair(ahInfo->id + 1,
       ahInfo->newestEntryId - ACCOUNT_HISTORY_LENGTH_LIMIT + 1);
 
-   PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> newestEntrySlice(lookupUpperBound);
+   ah_op_by_id_slice_t newestEntrySlice(lookupUpperBound);
 
    ReadOptions rOptions;
    //rOptions.tailing = true;
    rOptions.iterate_lower_bound = &oldestEntrySlice;
    rOptions.iterate_upper_bound = &newestEntrySlice;
 
-   auto s = _writeBuffer.SingleDelete(_columnHandles[4], oldestEntrySlice);
+   auto s = _writeBuffer.SingleDelete(_columnHandles[AH_OPERATION_BY_ID], oldestEntrySlice);
    checkStatus(s);
 
-   std::unique_ptr<::rocksdb::Iterator> dataItr(_storage->NewIterator(rOptions, _columnHandles[4]));
+   std::unique_ptr<::rocksdb::Iterator> dataItr(_storage->NewIterator(rOptions, _columnHandles[AH_OPERATION_BY_ID]));
 
    /** To clean outdated records we have to iterate over all AH records having subsequent number greater than limit
     *  and additionally verify date of operation, to clean up only these exceeding a date limit.
@@ -1156,14 +1120,14 @@ void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_h
    for(; dataItr->Valid(); dataItr->Next())
    {
       auto key = dataItr->key();
-      auto foundEntry = PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>>::unpackSlice(key);
+      auto foundEntry = ah_op_by_id_slice_t::unpackSlice(key);
 
       if(foundEntry.first != ahInfo->id || foundEntry.second >= lookupUpperBound.second)
          break;
 
       auto value = dataItr->value();
 
-      auto pointedOpId = PrimitiveTypeSlice<uint32_t>::unpackSlice(value);
+      auto pointedOpId = id_slice_t::unpackSlice(value);
       rocksdb_operation_object op;
       find_operation_object(pointedOpId, &op);
 
@@ -1172,7 +1136,7 @@ void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_h
       if(age > ageLimit)
       {
          rightBoundary = foundEntry.second;
-         PrimitiveTypeSlice<std::pair<uint32_t, uint32_t>> rightBoundarySlice(
+         ah_op_by_id_slice_t rightBoundarySlice(
             std::make_pair(ahInfo->id, rightBoundary));
          s = _writeBuffer.SingleDelete(_columnHandles[4], rightBoundarySlice);
          checkStatus(s);
@@ -1208,6 +1172,7 @@ void account_history_rocksdb_plugin::impl::on_pre_reindex(const steem::chain::re
    _txNo = 0;
    _totalOps = 0;
    _excludedOps = 0;
+   _reindexing = true;
 
    ilog("onReindexStart request completed successfully.");
 }
@@ -1220,6 +1185,7 @@ void account_history_rocksdb_plugin::impl::on_post_reindex(const steem::chain::r
 
    flushStorage();
    _collectedOpsWriteLimit = 1;
+   _reindexing = false;
 
    printReport(finalBlock, "RocksDB data reindex finished. ");
 }
@@ -1275,7 +1241,23 @@ void account_history_rocksdb_plugin::impl::importData(unsigned int blockLimit)
          }
       }
 
-      importOperation(blockNo, prevBlockHeader.timestamp, tx.id(), txInBlock, op, opInTx);
+      auto impacted = getImpactedAccounts( op );
+
+      if( impacted.empty() )
+         return true;
+
+      rocksdb_operation_object obj;
+      obj.trx_id = tx.id();
+      obj.block = blockNo;
+      obj.trx_in_block = txInBlock;
+      obj.op_in_trx = opInTx;
+      obj.timestamp = _mainDb.head_block_time();
+      auto size = fc::raw::pack_size( op );
+      obj.serialized_op.resize( size );
+      fc::datastream< char* > ds( obj.serialized_op.data(), size );
+      fc::raw::pack( ds, op );
+
+      importOperation( obj, impacted );
 
       return true;
    }
@@ -1295,12 +1277,87 @@ void account_history_rocksdb_plugin::impl::importData(unsigned int blockLimit)
    printReport(blockNo, "RocksDB data import finished. ");
 }
 
-void account_history_rocksdb_plugin::impl::on_pre_apply_operation(const operation_notification& n)
+void account_history_rocksdb_plugin::impl::on_post_apply_operation(const operation_notification& n)
 {
-   if(_storage != nullptr)
+   if( n.block % 10000 == 0 && n.trx_in_block == 0 && n.op_in_trx == 0 && n.virtual_op == 0 )
    {
-      auto blockTime = _mainDb.head_block_time();
-      importOperation(n.block, blockTime, n.trx_id, n.trx_in_block, n.op, n.op_in_trx);
+      ilog("RocksDb data import processed blocks: ${n}, containing: ${tx} transactions and ${op} operations.\n"
+           " ${ep} operations have been filtered out due to configured options.\n"
+           " ${ea} accounts have been filtered out due to configured options.",
+         ("n", n.block)
+         ("tx", _txNo)
+         ("op", _totalOps)
+         ("ep", _excludedOps)
+         ("ea", _excludedAccountCount)
+         );
+   }
+
+   if( !isTrackedOperation(n.op) )
+   {
+      ++_excludedOps;
+      return;
+   }
+
+   auto impacted = getImpactedAccounts(n.op);
+
+   if( impacted.empty() )
+      return; // Ignore operations not impacting any account (according to original implementation)
+
+   if( _reindexing )
+   {
+      rocksdb_operation_object obj;
+      obj.trx_id = n.trx_id;
+      obj.block = n.block;
+      obj.trx_in_block = n.trx_in_block;
+      obj.op_in_trx = n.op_in_trx;
+      obj.virtual_op = n.virtual_op;
+      obj.timestamp = _mainDb.head_block_time();
+      auto size = fc::raw::pack_size( n.op );
+      obj.serialized_op.resize( size );
+      fc::datastream< char* > ds( obj.serialized_op.data(), size );
+      fc::raw::pack( ds, n.op );
+
+      importOperation( obj, impacted );
+   }
+   else
+   {
+      _mainDb.create< volatile_operation_object >( [&]( volatile_operation_object& o )
+      {
+         o.trx_id = n.trx_id;
+         o.block = n.block;
+         o.trx_in_block = n.trx_in_block;
+         o.op_in_trx = n.op_in_trx;
+         o.virtual_op = n.virtual_op;
+         o.timestamp = _mainDb.head_block_time();
+         auto size = fc::raw::pack_size( n.op );
+         o.serialized_op.resize( size );
+         fc::datastream< char* > ds( o.serialized_op.data(), size );
+         fc::raw::pack( ds, n.op );
+         o.impacted.insert( o.impacted.end(), impacted.begin(), impacted.end() );
+      });
+   }
+}
+
+void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block_num )
+{
+   if( _reindexing ) return;
+
+   const auto& volatile_idx = _mainDb.get_index< volatile_operation_index, by_block >();
+   auto itr = volatile_idx.begin();
+
+   vector< const volatile_operation_object* > to_delete;
+
+   while( itr != volatile_idx.end() && itr->block <= block_num )
+   {
+      rocksdb_operation_object obj( *itr );
+      importOperation( obj , itr->impacted );
+      to_delete.push_back( &(*itr) );
+      ++itr;
+   }
+
+   for( const volatile_operation_object* o : to_delete )
+   {
+      _mainDb.remove( *o );
    }
 }
 
@@ -1318,8 +1375,8 @@ void account_history_rocksdb_plugin::set_program_options(
    boost::program_options::options_description &cfg)
 {
    cfg.add_options()
-      ("account-history-rocksdb-path", bpo::value<bfs::path>()->default_value("account-history-rocksdb_storage"),
-         "Allows to specify path where rocksdb store will be located. If path is relative, actual directory is made as `shared-file-dir` subdirectory.")
+      ("account-history-rocksdb-path", bpo::value<bfs::path>()->default_value("blockchain/account-history-rocksdb-storage"),
+         "The location of the rocksdb database for account history. By default it is $DATA_DIR/blockchain/account-history-rocksdb-storage")
       ("account-history-rocksdb-track-account-range", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
       ("account-history-rocksdb-whitelist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly logged.")
       ("account-history-rocksdb-blacklist-ops", boost::program_options::value< std::vector<std::string> >()->composing(), "Defines a list of operations which will be explicitly ignored.")
@@ -1347,7 +1404,7 @@ void account_history_rocksdb_plugin::plugin_initialize(const boost::program_opti
 
    if(dbPath.is_absolute() == false)
    {
-      auto basePath = appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().state_storage_dir();
+      auto basePath = appbase::app().data_dir();
       auto actualPath = basePath / dbPath;
       dbPath = actualPath;
    }

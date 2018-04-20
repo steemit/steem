@@ -64,7 +64,7 @@ if [[ "$USE_RAMDISK" ]]; then
   if [[ "$IS_BROADCAST_NODE" ]]; then
     s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   elif [[ "$IS_AH_NODE" ]]; then
-    s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    s3cmd get s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' 'blockchain/*rocksdb-storage*' -C /mnt/ramdisk 'blockchain/shared*'
   else
     s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   fi

@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/plugins/account_history_rocksdb/account_history_rocksdb_objects.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
@@ -13,30 +14,7 @@ namespace plugins { namespace account_history_rocksdb {
 
 namespace bfs = boost::filesystem;
 
-typedef std::vector<char> serialize_buffer_t;
 
-/** Dedicated definition is needed because of conflict of BIP allocator
- *  against usage of this class as temporary object.
- *  The conflict appears in original serialized_op container type definition,
- *  which in BIP version needs an allocator during constructor call.
- */
-class rocksdb_operation_object
-{
-public:
-   uint32_t             id = 0;
-
-   chain::transaction_id_type  trx_id;
-   uint32_t             block = 0;
-   uint32_t             trx_in_block = 0;
-   /// Seems that this member is never used
-   //uint16_t             op_in_trx = 0;
-   /// Seems that this member is never modified
-   //uint64_t           virtual_op = 0;
-   uint64_t             get_virtual_op() const { return 0;}
-   time_point_sec       timestamp;
-   serialize_buffer_t   serialized_op;
-
-};
 
 class account_history_rocksdb_plugin final : public appbase::plugin< account_history_rocksdb_plugin >
 {
@@ -75,5 +53,3 @@ private:
 
 
 } } } // steem::plugins::account_history_rocksdb
-
-FC_REFLECT( steem::plugins::account_history_rocksdb::rocksdb_operation_object, (id)(trx_id)(block)(trx_in_block)(timestamp)(serialized_op) )

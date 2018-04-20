@@ -247,13 +247,16 @@ namespace steem { namespace chain {
          void notify_post_apply_operation( const operation_notification& note );
          void notify_pre_apply_block( const block_notification& note );
          void notify_post_apply_block( const block_notification& note );
+         void notify_irreversible_block( uint32_t block_num );
          void notify_pre_apply_transaction( const transaction_notification& note );
          void notify_post_apply_transaction( const transaction_notification& note );
 
          using apply_operation_handler_t = std::function< void(const operation_notification&) >;
          using apply_transaction_handler_t = std::function< void(const transaction_notification&) >;
          using apply_block_handler_t = std::function< void(const block_notification&) >;
+         using irreversible_block_handler_t = std::function< void(uint32_t) >;
          using reindex_handler_t = std::function< void(const reindex_notification&) >;
+
 
       private:
          template <typename TSignal,
@@ -267,14 +270,15 @@ namespace steem { namespace chain {
 
       public:
 
-         boost::signals2::connection add_pre_apply_operation_handler   ( const apply_operation_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_operation_handler  ( const apply_operation_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_transaction_handler ( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_transaction_handler( const apply_transaction_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_block_handler       ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_block_handler      ( const apply_block_handler_t&       func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_reindex_handler           ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_reindex_handler          ( const reindex_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_operation_handler   ( const apply_operation_handler_t&      func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_operation_handler  ( const apply_operation_handler_t&      func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_transaction_handler ( const apply_transaction_handler_t&    func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_transaction_handler( const apply_transaction_handler_t&    func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_block_handler       ( const apply_block_handler_t&          func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_block_handler      ( const apply_block_handler_t&          func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_irreversible_block_handler    ( const irreversible_block_handler_t&   func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_reindex_handler           ( const reindex_handler_t&              func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_reindex_handler          ( const reindex_handler_t&              func, const abstract_plugin& plugin, int32_t group = -1 );
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -558,6 +562,8 @@ namespace steem { namespace chain {
           *  released.
           */
          fc::signal<void(const block_notification&)>           _pre_apply_block_signal;
+
+         fc::signal<void(uint32_t)>                            _on_irreversible_block;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
