@@ -403,18 +403,18 @@ public:
 
          const auto& rocksdb_plugin = appbase::app().get_plugin< account_history_rocksdb_plugin >();
 
-         _on_post_apply_operation_connection = _mainDb.add_pre_apply_operation_handler(
+         _on_post_apply_operation_con = _mainDb.add_post_apply_operation_handler(
             [&]( const operation_notification& note )
             {
-               on_pre_apply_operation(note);
+               on_post_apply_operation(note);
             },
             rocksdb_plugin
          );
 
-         _on_irreversible_block_connection = _mainDb.add_irreversible_block_handler(
+         _on_irreversible_block_conn = _mainDb.add_irreversible_block_handler(
             [&]( uint32_t block_num )
             {
-               on_irreversible( block_num );
+               on_irreversible_block( block_num );
             },
             rocksdb_plugin
          );
@@ -445,8 +445,8 @@ public:
 
    void shutdownDb()
    {
-      chain::util::disconnect_signal(_on_post_apply_operation_connection);
-      chain::util::disconnect_signal(_on_irreversible_block_connection);
+      chain::util::disconnect_signal(_on_post_apply_operation_con);
+      chain::util::disconnect_signal(_on_irreversible_block_conn);
       flushStorage();
       cleanupColumnHandles();
       _storage.reset();
@@ -608,9 +608,9 @@ private:
       }
    }
 
-   void on_pre_apply_operation(const operation_notification& opNote);
+   void on_post_apply_operation(const operation_notification& opNote);
 
-   void on_irreversible( uint32_t block_num );
+   void on_irreversible_block( uint32_t block_num );
 
    void collectOptions(const bpo::variables_map& options);
 
@@ -646,8 +646,8 @@ private:
    std::vector<ColumnFamilyHandle*> _columnHandles;
    CachableWriteBatch               _writeBuffer;
 
-   boost::signals2::connection      _on_post_apply_operation_connection;
-   boost::signals2::connection      _on_irreversible_block_connection;
+   boost::signals2::connection      _on_post_apply_operation_con;
+   boost::signals2::connection      _on_irreversible_block_conn;
 
    /// Helper member to be able to detect another incomming tx and increment tx-counter.
    transaction_id_type              _lastTx;
@@ -711,7 +711,7 @@ inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account
    if(_tracked_accounts.empty())
       return true;
 
-   /// Code below is based on original contents of account_history_plugin_impl::on_pre_apply_operation
+   /// Code below is based on original contents of account_history_plugin_impl::on_post_apply_operation
    auto itr = _tracked_accounts.lower_bound(name);
 
    /*
@@ -1281,7 +1281,7 @@ void account_history_rocksdb_plugin::impl::importData(unsigned int blockLimit)
    printReport(blockNo, "RocksDB data import finished. ");
 }
 
-void account_history_rocksdb_plugin::impl::on_pre_apply_operation(const operation_notification& n)
+void account_history_rocksdb_plugin::impl::on_post_apply_operation(const operation_notification& n)
 {
    if( n.block % 10000 == 0 && n.trx_in_block == 0 && n.op_in_trx == 0 && n.virtual_op == 0 )
    {
@@ -1342,7 +1342,7 @@ void account_history_rocksdb_plugin::impl::on_pre_apply_operation(const operatio
    }
 }
 
-void account_history_rocksdb_plugin::impl::on_irreversible( uint32_t block_num )
+void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block_num )
 {
    if( _reindexing ) return;
 
