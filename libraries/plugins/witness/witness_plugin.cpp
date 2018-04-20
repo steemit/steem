@@ -52,6 +52,7 @@ namespace detail {
    public:
       witness_plugin_impl( boost::asio::io_service& io ) :
          _timer(io),
+         _chain_plugin( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       void on_pre_apply_transaction( const chain::transaction_notification& note );
@@ -72,7 +73,8 @@ namespace detail {
       std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                          _timer;
 
-      chain::database&     _db;
+      plugins::chain::chain_plugin& _chain_plugin;
+      chain::database&              _db;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -464,24 +466,23 @@ namespace detail {
 
    block_production_condition::block_production_condition_enum witness_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture)
    {
-      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       fc::time_point now_fine = fc::time_point::now();
       fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
       // If the next block production opportunity is in the present or future, we're synced.
       if( !_production_enabled )
       {
-         if( db.get_slot_time(1) >= now )
+         if( _db.get_slot_time(1) >= now )
             _production_enabled = true;
          else
             return block_production_condition::not_synced;
       }
 
       // is anyone scheduled to produce now or one second in the future?
-      uint32_t slot = db.get_slot_at_time( now );
+      uint32_t slot = _db.get_slot_at_time( now );
       if( slot == 0 )
       {
-         capture("next_time", db.get_slot_time(1));
+         capture("next_time", _db.get_slot_time(1));
          return block_production_condition::not_time_yet;
       }
 
@@ -493,9 +494,9 @@ namespace detail {
       // which would result in allowing a later block to have a timestamp
       // less than or equal to the previous block
       //
-      assert( now > db.head_block_time() );
+      assert( now > _db.head_block_time() );
 
-      chain::account_name_type scheduled_witness = db.get_scheduled_witness( slot );
+      chain::account_name_type scheduled_witness = _db.get_scheduled_witness( slot );
       // we must control the witness scheduled to produce the next block.
       if( _witnesses.find( scheduled_witness ) == _witnesses.end() )
       {
@@ -503,8 +504,8 @@ namespace detail {
          return block_production_condition::not_my_turn;
       }
 
-      fc::time_point_sec scheduled_time = db.get_slot_time( slot );
-      chain::public_key_type scheduled_key = db.get< chain::witness_object, chain::by_name >(scheduled_witness).signing_key;
+      fc::time_point_sec scheduled_time = _db.get_slot_time( slot );
+      chain::public_key_type scheduled_key = _db.get< chain::witness_object, chain::by_name >(scheduled_witness).signing_key;
       auto private_key_itr = _private_keys.find( scheduled_key );
 
       if( private_key_itr == _private_keys.end() )
@@ -514,7 +515,7 @@ namespace detail {
          return block_production_condition::no_private_key;
       }
 
-      uint32_t prate = db.witness_participation_rate();
+      uint32_t prate = _db.witness_participation_rate();
       if( prate < _required_witness_participation )
       {
          capture("pct", uint32_t(100*uint64_t(prate) / STEEM_1_PERCENT));
@@ -527,7 +528,7 @@ namespace detail {
          return block_production_condition::lag;
       }
 
-      auto block = db.generate_block(
+      auto block = _chain_plugin.generate_block(
          scheduled_time,
          scheduled_witness,
          private_key_itr->second,
@@ -594,6 +595,9 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    add_plugin_index< reserve_ratio_index     >( my->_db );
 
    appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
+
+   if( my->_witnesses.size() && my->_private_keys.size() )
+      my->_chain_plugin.set_write_lock_hold_time( -1 );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
