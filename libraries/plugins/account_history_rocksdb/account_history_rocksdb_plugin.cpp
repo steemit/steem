@@ -687,10 +687,8 @@ void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_o
 
    if(options.count("account-history-rocksdb-whitelist-ops"))
    {
-      wlog("");
       const auto& args = options.at("account-history-rocksdb-whitelist-ops").as<std::vector<std::string>>();
       storeOpFilteringParameters(args, &_op_list);
-      wdump( (_op_list) );
    }
 
    if(_op_list.empty() == false)
@@ -860,8 +858,6 @@ void account_history_rocksdb_plugin::impl::find_account_history_data(const accou
       rocksdb_operation_object oObj;
       bool found = find_operation_object(opId, &oObj);
       FC_ASSERT(found, "Missing operation?");
-
-//      ilog("AH-info-id: ${a}, Entry: ${e}, OperationId: ${oid}", ("a", keyValue.first)("e", keyValue.second)("oid", oObj.id));
 
       processor(keyValue.second, oObj);
 
