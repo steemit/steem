@@ -171,7 +171,7 @@ namespace steem { namespace chain {
                session = nullptr;
             }
 
-            session = new database::session( db.start_undo_session( true ) );
+            session = new database::session( db.start_undo_session() );
          }
 
          //Revert all changes.
