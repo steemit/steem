@@ -7,7 +7,7 @@ namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
 using namespace steem::chain;
-using chainbase::shared_vector;
+using chainbase::t_vector;
 
 #ifndef STEEM_FOLLOW_SPACE_ID
 #define STEEM_FOLLOW_SPACE_ID 8
@@ -63,7 +63,7 @@ class feed_object : public object< feed_object_type, feed_object >
          c( *this );
       }
 
-      typedef shared_vector<account_name_type> t_reblogged_by_container;
+      typedef t_vector<account_name_type> t_reblogged_by_container;
 
       id_type                    id;
 
