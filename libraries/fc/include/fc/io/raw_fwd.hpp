@@ -41,8 +41,10 @@ namespace fc {
 
 
 
-    template<typename Stream, typename T> inline void pack( Stream& s, const std::set<T>& value );
-    template<typename Stream, typename T> inline void unpack( Stream& s, std::set<T>& value );
+    template<typename Stream, typename... T> inline void pack( Stream& s, const std::set<T...>& value );
+    template<typename Stream, typename... T> inline void unpack( Stream& s, std::set<T...>& value );
+    template<typename Stream, typename... T> inline void pack( Stream& s, const std::multiset<T...>& value );
+    template<typename Stream, typename... T> inline void unpack( Stream& s, std::multiset<T...>& value );
     template<typename Stream, typename T> inline void pack( Stream& s, const std::unordered_set<T>& value );
     template<typename Stream, typename T> inline void unpack( Stream& s, std::unordered_set<T>& value );
 

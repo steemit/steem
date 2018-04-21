@@ -753,7 +753,7 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_chain_properties )
    {
       CHECK_ARG_SIZE( 0 )
-      return legacy_chain_properties( _database_api->get_witness_schedule( {} ).median_props );
+      return api_chain_properties( _database_api->get_witness_schedule( {} ).median_props );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_current_median_history_price )
@@ -1210,7 +1210,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       return _database_api->get_transaction_hex(
       {
-         args[0].as< signed_transaction >()
+         signed_transaction( args[0].as< legacy_signed_transaction >() )
       }).hex;
    }
 
@@ -1219,25 +1219,27 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
 
-      return _account_history_api->get_transaction( { args[0].as< transaction_id_type >() } );
+      return legacy_signed_transaction( _account_history_api->get_transaction( { args[0].as< transaction_id_type >() } ) );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_required_signatures )
    {
       CHECK_ARG_SIZE( 2 )
-      return _database_api->get_required_signatures( { args[0].as< signed_transaction >(), args[1].as< flat_set< public_key_type > >() } ).keys;
+      return _database_api->get_required_signatures( {
+         signed_transaction( args[0].as< legacy_signed_transaction >() ),
+         args[1].as< flat_set< public_key_type > >() } ).keys;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_potential_signatures )
    {
       CHECK_ARG_SIZE( 1 )
-      return _database_api->get_potential_signatures( { args[0].as< signed_transaction >() } ).keys;
+      return _database_api->get_potential_signatures( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } ).keys;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, verify_authority )
    {
       CHECK_ARG_SIZE( 1 )
-      return _database_api->verify_authority( { args[0].as< signed_transaction >() } ).valid;
+      return _database_api->verify_authority( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } ).valid;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, verify_account_authority )
@@ -1594,7 +1596,6 @@ namespace detail
    {
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
-
       return _network_broadcast_api->broadcast_transaction( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } );
    }
 

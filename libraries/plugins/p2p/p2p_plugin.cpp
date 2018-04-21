@@ -1,4 +1,5 @@
 #include <steem/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/p2p/p2p_default_seeds.hpp>
 
 #include <graphene/net/node.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -12,8 +13,13 @@
 
 #include <boost/range/algorithm/reverse.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <boost/any.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <future>
 
 using std::string;
 using std::vector;
@@ -71,7 +77,11 @@ class p2p_plugin_impl : public graphene::net::node_delegate
 public:
 
    p2p_plugin_impl( plugins::chain::chain_plugin& c )
-      : chain( c ) {}
+      : running(true), activeHandleBlock(false), activeHandleTx(false), chain( c )
+   {
+      handleBlockFinished.second = std::shared_future<void>(handleBlockFinished.first.get_future());
+      handleTxFinished.second = std::shared_future<void>(handleTxFinished.first.get_future());
+   }
    virtual ~p2p_plugin_impl() {}
 
    bool is_included_block(const block_id_type& block_id);
@@ -101,13 +111,46 @@ public:
    uint32_t max_connections = 0;
    bool force_validate = false;
    bool block_producer = false;
-   bool running = true;
+   std::atomic_bool   running;
+   std::atomic_bool   activeHandleBlock;
+   std::atomic_bool   activeHandleTx;
+   typedef std::pair<std::promise<void>, std::shared_future<void>> handler_state;
+
+   handler_state handleBlockFinished;
+   handler_state handleTxFinished;
 
    std::unique_ptr<graphene::net::node> node;
 
    plugins::chain::chain_plugin& chain;
 
    fc::thread p2p_thread;
+
+private:
+   class shutdown_helper final
+   {
+   public:
+      shutdown_helper(p2p_plugin_impl& impl, std::atomic_bool& activityFlag,
+         handler_state& barrier) :
+         _impl(impl), _barrier(barrier), _activityFlag(activityFlag)
+      {
+         _activityFlag.store(true);
+      }
+      ~shutdown_helper()
+      {
+         _activityFlag.store(false);
+         if(_impl.running.load() == false && _barrier.second.valid() == false)
+         {
+            ilog("Sending notification to shutdown barrier.");
+            _barrier.first.set_value();
+         }
+      }
+
+   private:
+      p2p_plugin_impl&    _impl;
+      handler_state&      _barrier;
+      std::atomic_bool&   _activityFlag;
+   };
+   
 };
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
@@ -128,8 +171,10 @@ bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
 { try {
-   if( running )
+   if( running.load() )
    {
+      shutdown_helper helper(*this, activeHandleBlock, handleBlockFinished);
+
       uint32_t head_block_num;
       chain.db().with_read_lock( [&]()
       {
@@ -183,15 +228,36 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
          throw;
       }
    }
+   else
+   {
+      ilog("Block ignored due to started p2p_plugin shutdown");
+      if(handleBlockFinished.second.valid() == false)
+         handleBlockFinished.first.set_value();
+      FC_THROW("Preventing further processing of ignored block...");
+   }
    return false;
 } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
 void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_msg )
 {
-   try
+   if(running.load())
    {
-      chain.accept_transaction( trx_msg.trx );
-   } FC_CAPTURE_AND_RETHROW( (trx_msg) )
+      try
+      {
+         shutdown_helper helper(*this, activeHandleTx, handleTxFinished);
+
+         chain.accept_transaction( trx_msg.trx );
+
+      } FC_CAPTURE_AND_RETHROW( (trx_msg) )
+   }
+   else
+   {
+      ilog("Transaction ignored due to started p2p_plugin shutdown");
+      if(handleTxFinished.second.valid() == false)
+         handleTxFinished.first.set_value();
+
+      FC_THROW("Preventing further processing of ignored transaction...");
+   }
 }
 
 void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_process )
@@ -476,12 +542,19 @@ p2p_plugin::p2p_plugin()
 
 p2p_plugin::~p2p_plugin() {}
 
-void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
+void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg)
+{
+   std::stringstream seed_ss;
+   for( auto& s : default_seeds )
+   {
+      seed_ss << s << ' ';
+   }
+
    cfg.add_options()
       ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint.")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
-      ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
+      ("p2p-seed-node", bpo::value<vector<string>>()->composing()->default_value( default_seeds, seed_ss.str() ), "The IP address and port of a remote peer to sync with.")
       ("p2p-parameters", bpo::value<string>(), ("P2P network parameters. (Default: " + fc::json::to_string(graphene::net::node_configuration()) + " )").c_str() )
       ;
    cli.add_options()
@@ -509,13 +582,23 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       {
          wlog( "Option seed-node is deprecated in favor of p2p-seed-node" );
          auto s = options.at("seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
+         for( auto& arg : s )
+         {
+            vector< string > addresses;
+            boost::split( addresses, arg, boost::is_any_of( " \t" ) );
+            seeds.insert( seeds.end(), addresses.begin(), addresses.end() );
+         }
       }
 
       if( options.count( "p2p-seed-node" ) )
       {
          auto s = options.at("p2p-seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
+         for( auto& arg : s )
+         {
+            vector< string > addresses;
+            boost::split( addresses, arg, boost::is_any_of( " \t" ) );
+            seeds.insert( seeds.end(), addresses.begin(), addresses.end() );
+         }
       }
 
       for( const string& endpoint_string : seeds )
@@ -591,15 +674,70 @@ void p2p_plugin::plugin_startup()
    ilog( "P2P Plugin started" );
 }
 
+const char* fStatus(std::future_status s)
+{
+   switch(s)
+   {
+      case std::future_status::ready:
+      return "ready";
+      case std::future_status::deferred:
+      return "deferred";
+      case std::future_status::timeout:
+      return "timeout";
+      default:
+      return "unknown";
+   }
+}
+
 void p2p_plugin::plugin_shutdown() {
    ilog("Shutting down P2P Plugin");
-   my->running = false;
+   my->running.store(false);
 
-   // Wait for outstanding calls to `handle_block` to be resolved
-   boost::this_thread::sleep_for( boost::chrono::milliseconds(200) );
+   ilog("P2P Plugin: checking handle_block and handle_transaction activity");
+   std::future_status bfState, tfState; 
+   do
+   {
+      if(my->activeHandleBlock.load())
+      {
+         bfState = my->handleBlockFinished.second.wait_for(std::chrono::milliseconds(100));
+         if(bfState != std::future_status::ready)
+         {
+            ilog("waiting for handle_block finish: ${s}, future status: ${fs}",
+             ("s", fStatus(bfState))
+             ("fs", std::to_string(my->handleBlockFinished.second.valid()))
+            );
+         }
+      }
+      else
+      {
+         bfState = std::future_status::ready;
+      }
 
+      if(my->activeHandleTx.load())
+      {
+         tfState = my->handleTxFinished.second.wait_for(std::chrono::milliseconds(100));
+         if(tfState != std::future_status::ready)
+         {
+            ilog("waiting for handle_transaction finish: ${s}, future status: ${fs}",
+             ("s", fStatus(tfState))
+             ("fs", std::to_string(my->handleTxFinished.second.valid()))
+            );
+         }
+      }
+      else
+      {
+         tfState = std::future_status::ready;
+      }
+   }
+   while(bfState != std::future_status::ready && tfState != std::future_status::ready);
+
+   ilog("P2P Plugin: checking handle_block and handle_transaction activity");
    my->node->close();
-   my->p2p_thread.quit();
+   fc::promise<void>::ptr quitDone(new fc::promise<void>("P2P thread quit"));
+   my->p2p_thread.quit(quitDone.get());
+   ilog("Waiting for p2p_thread quit");
+   quitDone->wait();
+   ilog("p2p_thread quit done");
    my->node.reset();
 }
 

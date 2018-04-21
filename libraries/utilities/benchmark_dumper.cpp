@@ -7,7 +7,7 @@ namespace steem { namespace utilities {
 
 typedef std::function<void(const char* key)> TScanErrorCallback;
 
-uint64_t read_u64_value_from(FILE* input, const char* key, unsigned key_length, TScanErrorCallback error_callback)
+unsigned long long read_u64_value_from(FILE* input, const char* key, unsigned key_length, TScanErrorCallback error_callback)
 {
    char line_buffer[PROC_STATUS_LINE_LENGTH];
    while( fgets(line_buffer, PROC_STATUS_LINE_LENGTH, input) != nullptr )
@@ -15,17 +15,9 @@ uint64_t read_u64_value_from(FILE* input, const char* key, unsigned key_length, 
       const char* found_pos = strstr(line_buffer, key);
       if( found_pos != nullptr )
       {
-         uint64_t result = 0;
+         unsigned long long result = 0;
 
-         /*
-          Clang thinks &result is an unsignged long long *
-          GCC thinks &result is a long unsigned int *
-          */
-#if defined( __clang__ )
          if( sscanf(found_pos+key_length, "%llu", &result) != 1 )
-#else
-         if( sscanf(found_pos+key_length, "%lu", &result) != 1 )
-#endif
          {
             error_callback(key);
          }

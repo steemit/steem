@@ -115,6 +115,8 @@ void database::open( const open_args& args )
             init_genesis( args.initial_supply );
          });
 
+      _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
+
       _block_log.open( args.data_dir / "block_log" );
 
       auto log_head = _block_log.head();
@@ -158,16 +160,15 @@ void database::open( const open_args& args )
 
 uint32_t database::reindex( const open_args& args )
 {
-   bool reindex_success = false;
-   uint32_t last_block_number = 0; // result
+   reindex_notification note;
 
-   BOOST_SCOPE_EXIT(this_,&reindex_success,&last_block_number) {
-      STEEM_TRY_NOTIFY(this_->_on_reindex_done, reindex_success, last_block_number);
+   BOOST_SCOPE_EXIT(this_,&note) {
+      STEEM_TRY_NOTIFY(this_->_post_reindex_signal, note);
    } BOOST_SCOPE_EXIT_END
 
    try
    {
-      STEEM_TRY_NOTIFY(_on_reindex_start);
+      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
       wipe( args.data_dir, args.shared_mem_dir, false );
@@ -217,10 +218,10 @@ uint32_t database::reindex( const open_args& args )
          }
 
          apply_block( itr.first, skip_flags );
-         last_block_number = itr.first.block_num();
+         note.last_block_number = itr.first.block_num();
 
-         if( (args.benchmark.first > 0) && (last_block_number % args.benchmark.first == 0) )
-            args.benchmark.second( last_block_number, get_abstract_index_cntr() );
+         if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
+            args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
       });
@@ -231,9 +232,9 @@ uint32_t database::reindex( const open_args& args )
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
 
-      reindex_success = true;
+      note.reindex_success = true;
 
-      return last_block_number;
+      return note.last_block_number;
    }
    FC_CAPTURE_AND_RETHROW( (args.data_dir)(args.shared_mem_dir) )
 
@@ -393,6 +394,65 @@ void database::set_chain_id( const std::string& _chain_id_name )
    steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
+void database::foreach_block(std::function<bool(const signed_block_header&, const signed_block&)> processor) const
+{
+   if(!_block_log.head())
+      return;
+
+   auto itr = _block_log.read_block( 0 );
+   auto last_block_num = _block_log.head()->block_num();
+   signed_block_header previousBlockHeader = itr.first;
+   while( itr.first.block_num() != last_block_num )
+   {
+      const signed_block& b = itr.first;
+      if(processor(previousBlockHeader, b) == false)
+         return;
+
+      previousBlockHeader = b;
+      itr = _block_log.read_block( itr.second );
+   }
+
+   processor(previousBlockHeader, itr.first);
+}
+
+void database::foreach_tx(std::function<bool(const signed_block_header&, const signed_block&,
+   const signed_transaction&, uint32_t)> processor) const
+{
+   foreach_block([&processor](const signed_block_header& prevBlockHeader, const signed_block& block) -> bool
+   {
+      uint32_t txInBlock = 0;
+      for( const auto& trx : block.transactions )
+      {
+         if(processor(prevBlockHeader, block, trx, txInBlock) == false)
+            return false;
+         ++txInBlock;
+      }
+
+      return true;
+   }
+   );
+}
+
+void database::foreach_operation(std::function<bool(const signed_block_header&,const signed_block&,
+   const signed_transaction&, uint32_t, const operation&, uint16_t)> processor) const
+{
+   foreach_tx([&processor](const signed_block_header& prevBlockHeader, const signed_block& block,
+      const signed_transaction& tx, uint32_t txInBlock) -> bool
+   {
+      uint16_t opInTx = 0;
+      for(const auto& op : tx.operations)
+      {
+         if(processor(prevBlockHeader, block, tx, txInBlock, op, opInTx) == false)
+            return false;
+         ++opInTx;
+      }
+
+      return true;
+   }
+   );
+}
+
+
 const witness_object& database::get_witness( const account_name_type& name ) const
 { try {
    return get< witness_object, by_name >( name );
@@ -423,6 +483,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
+#ifndef ENABLE_STD_ALLOCATOR
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 { try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
@@ -432,6 +493,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
 {
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
+#endif
 
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
 { try {
@@ -505,18 +567,6 @@ const time_point_sec database::calculate_discussion_payout_time( const comment_o
 const reward_fund_object& database::get_reward_fund( const comment_object& c ) const
 {
    return get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
-}
-
-#pragma message( "After HF20 passes, re-apply the commit titled 'Remove now-redundant sufficient funds checks #1811'" )
-void database::pay_fee( const account_object& account, asset fee )
-{
-   FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
-   if( fee.amount == 0 )
-      return;
-
-   FC_ASSERT( account.balance >= fee );
-   adjust_balance( account, -fee );
-   adjust_supply( -fee );
 }
 
 uint32_t database::witness_participation_rate()const
@@ -724,9 +774,6 @@ void database::_push_transaction( const signed_transaction& trx )
    notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
-
-   // notify anyone listening to pending transactions
-   notify_on_pending_transaction( trx );
 }
 
 signed_block database::generate_block(
@@ -913,21 +960,6 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-void database::notify_pre_apply_operation( operation_notification& note )
-{
-   note.trx_id       = _current_trx_id;
-   note.block        = _current_block_num;
-   note.trx_in_block = _current_trx_in_block;
-   note.op_in_trx    = _current_op_in_trx;
-
-   STEEM_TRY_NOTIFY( pre_apply_operation, note )
-}
-
-void database::notify_post_apply_operation( const operation_notification& note )
-{
-   STEEM_TRY_NOTIFY( post_apply_operation, note )
-}
-
 inline const void database::push_virtual_operation( const operation& op, bool force )
 {
    /*
@@ -941,28 +973,50 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
 
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
+   ++_current_virtual_op;
+   note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
    notify_post_apply_operation( note );
 }
 
-void database::notify_applied_block( const signed_block& block )
+void database::notify_pre_apply_operation( operation_notification& note )
 {
-   STEEM_TRY_NOTIFY( applied_block, block )
+   note.trx_id       = _current_trx_id;
+   note.block        = _current_block_num;
+   note.trx_in_block = _current_trx_in_block;
+   note.op_in_trx    = _current_op_in_trx;
+
+   STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
 }
 
-void database::notify_on_pending_transaction( const signed_transaction& tx )
+void database::notify_post_apply_operation( const operation_notification& note )
 {
-   STEEM_TRY_NOTIFY( on_pending_transaction, tx )
+   STEEM_TRY_NOTIFY( _post_apply_operation_signal, note )
 }
 
-void database::notify_on_pre_apply_transaction( const signed_transaction& tx )
+void database::notify_pre_apply_block( const block_notification& note )
 {
-   STEEM_TRY_NOTIFY( on_pre_apply_transaction, tx )
+   STEEM_TRY_NOTIFY( _pre_apply_block_signal, note )
 }
 
-void database::notify_on_applied_transaction( const signed_transaction& tx )
+void database::notify_irreversible_block( uint32_t block_num )
 {
-   STEEM_TRY_NOTIFY( on_applied_transaction, tx )
+   STEEM_TRY_NOTIFY( _on_irreversible_block, block_num )
+}
+
+void database::notify_post_apply_block( const block_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_block_signal, note )
+}
+
+void database::notify_pre_apply_transaction( const transaction_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_transaction_signal, note )
+}
+
+void database::notify_post_apply_transaction( const transaction_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_transaction_signal, note )
 }
 
 account_name_type database::get_scheduled_witness( uint32_t slot_num )const
@@ -1058,60 +1112,100 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
 
 /**
  * @param to_account - the account to receive the new vesting shares
- * @param STEEM - STEEM to be converted to vesting shares
+ * @param liquid     - STEEM or liquid SMT to be converted to vesting shares
  */
-asset database::create_vesting( const account_object& to_account, asset steem, bool to_reward_balance )
+asset database::create_vesting( const account_object& to_account, asset liquid, bool to_reward_balance )
 {
    try
    {
-      const auto& cprops = get_dynamic_global_properties();
-
-      /**
-       *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
-       *  change as the result of the user adding funds
-       *
-       *  V / C  = (V+Vn) / (C+Cn)
-       *
-       *  Simplifies to Vn = (V * Cn ) / C
-       *
-       *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
-       *  the user should receive.
-       *
-       *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
-       */
-      asset new_vesting = steem * ( to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price() );
-
-      modify( to_account, [&]( account_object& to )
-      {
-         if( to_reward_balance )
+      auto calculate_new_vesting = [ liquid ] ( price vesting_share_price ) -> asset
          {
-            to.reward_vesting_balance += new_vesting;
-            to.reward_vesting_steem += steem;
-         }
-         else
-            to.vesting_shares += new_vesting;
-      } );
+         /**
+          *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
+          *  change as the result of the user adding funds
+          *
+          *  V / C  = (V+Vn) / (C+Cn)
+          *
+          *  Simplifies to Vn = (V * Cn ) / C
+          *
+          *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
+          *  the user should receive.
+          *
+          *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
+          */
+         asset new_vesting = liquid * ( vesting_share_price );
+         return new_vesting;
+         };
 
+#ifdef STEEM_ENABLE_SMT
+      if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
+      {
+         FC_ASSERT( liquid.symbol.is_vesting() == false );
+         // Get share price.
+         const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
+         FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
+         price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
+         // Calculate new vesting from provided liquid using share price.
+         asset new_vesting = calculate_new_vesting( vesting_share_price );
+         // Add new vesting to owner's balance.
+         if( to_reward_balance )
+            adjust_reward_balance( to_account, liquid, new_vesting );
+         else
+            adjust_balance( to_account, new_vesting );
+         // Update global vesting pool numbers.
+         modify( smt, [&]( smt_token_object& smt_object )
+         {
+            if( to_reward_balance )
+            {
+               smt_object.pending_rewarded_vesting_shares += new_vesting.amount;
+               smt_object.pending_rewarded_vesting_smt += liquid.amount;
+            }
+            else
+            {
+               smt_object.total_vesting_fund_smt += liquid.amount;
+               smt_object.total_vesting_shares += new_vesting.amount;
+            }
+         } );
+
+         // NOTE that SMT vesting does not impact witness voting.
+
+         return new_vesting;
+      }
+#endif
+
+      FC_ASSERT( liquid.symbol == STEEM_SYMBOL );
+      // ^ A novelty, needed but risky in case someone managed to slip SBD/TESTS here in blockchain history.
+      // Get share price.
+      const auto& cprops = get_dynamic_global_properties();
+      price vesting_share_price = to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price();
+      // Calculate new vesting from provided liquid using share price.
+      asset new_vesting = calculate_new_vesting( vesting_share_price );
+      // Add new vesting to owner's balance.
+      if( to_reward_balance )
+         adjust_reward_balance( to_account, liquid, new_vesting );
+      else
+         adjust_balance( to_account, new_vesting );
+      // Update global vesting pool numbers.
       modify( cprops, [&]( dynamic_global_property_object& props )
       {
          if( to_reward_balance )
          {
             props.pending_rewarded_vesting_shares += new_vesting;
-            props.pending_rewarded_vesting_steem += steem;
+            props.pending_rewarded_vesting_steem += liquid;
          }
          else
          {
-            props.total_vesting_fund_steem += steem;
+            props.total_vesting_fund_steem += liquid;
             props.total_vesting_shares += new_vesting;
          }
       } );
-
+      // Update witness voting numbers.
       if( !to_reward_balance )
          adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
       return new_vesting;
    }
-   FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) )
+   FC_CAPTURE_AND_RETHROW( (to_account.name)(liquid) )
 }
 
 fc::sha256 database::get_pow_target()const
@@ -1512,6 +1606,17 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
  */
 share_type database::pay_curators( const comment_object& c, share_type& max_rewards )
 {
+   struct cmp
+   {
+      bool operator()( const comment_vote_object* obj, const comment_vote_object* obj2 ) const
+      {
+         if( obj->weight == obj2->weight )
+            return obj->voter < obj2->voter;
+         else
+            return obj->weight > obj2->weight;
+      }
+   };
+
    try
    {
       uint128_t total_weight( c.total_vote_weight );
@@ -1525,16 +1630,24 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
       }
       else if( c.total_vote_weight > 0 )
       {
-         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_weight_voter>();
+         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
          auto itr = cvidx.lower_bound( c.id );
+
+         std::set< const comment_vote_object*, cmp > proxy_set;
          while( itr != cvidx.end() && itr->comment == c.id )
          {
-            uint128_t weight( itr->weight );
+            proxy_set.insert( &( *itr ) );
+            ++itr;
+         }
+
+         for( auto& item : proxy_set )
+         {
+            uint128_t weight( item->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
-               const auto& voter = get(itr->voter);
+               const auto& voter = get( item->voter );
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
                push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
@@ -1546,7 +1659,6 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                   });
                #endif
             }
-            ++itr;
          }
       }
       max_rewards -= unclaimed_rewards;
@@ -1919,6 +2031,40 @@ void database::process_savings_withdraws()
      itr = idx.begin();
   }
 }
+
+#ifdef STEEM_ENABLE_SMT
+
+template< typename T, bool ALLOW_REMOVE >
+void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
+{
+   FC_ASSERT( db != nullptr );
+   const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
+   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+
+   while( itr != idx.end() && itr->phase == phase )
+   {
+      #pragma message( "TODO: Add virtual_operation." )
+
+      if( ALLOW_REMOVE )
+      {
+         const auto& old_itr = *itr;
+         ++itr;
+         db->remove( old_itr );
+      }
+      if( !ALLOW_REMOVE )
+         ++itr;
+   }
+}
+
+void database::process_smt_objects()
+{
+   process_smt_objects_internal< by_interval_gen_begin, false >( this, smt_phase::setup_completed );
+   process_smt_objects_internal< by_interval_gen_end, false >( this, smt_phase::contribution_begin_time_completed );
+   process_smt_objects_internal< by_interval_launch, false >( this, smt_phase::contribution_end_time_completed );
+   process_smt_objects_internal< by_interval_launch_exp, true >( this, smt_phase::launch_time_completed );
+}
+
+#endif
 
 asset database::get_liquidity_reward()const
 {
@@ -2327,6 +2473,7 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< smt_event_token_index                   >(*this);
    add_core_index< account_regular_balance_index           >(*this);
    add_core_index< account_rewards_balance_index           >(*this);
 #endif
@@ -2623,6 +2770,10 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
+#ifndef ENABLE_STD_ALLOCATOR
+   show_free_memory( false, next_block.block_num() );
+#endif
+
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
@@ -2666,10 +2817,23 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
-   uint32_t next_block_num = next_block.block_num();
-   //block_id_type next_block_id = next_block.id();
+   block_notification note( next_block );
+
+   notify_pre_apply_block( note );
+
+   const uint32_t next_block_num = note.block_num;
+
+   BOOST_SCOPE_EXIT( this_ )
+   {
+      this_->_currently_processing_block_id.reset();
+   } BOOST_SCOPE_EXIT_END
+   _currently_processing_block_id = note.block_id;
 
    uint32_t skip = get_node_properties().skip_flags;
+
+   _current_block_num    = next_block_num;
+   _current_trx_in_block = 0;
+   _current_virtual_op   = 0;
 
    if( BOOST_UNLIKELY( next_block_num == 1 ) )
    {
@@ -2728,9 +2892,6 @@ void database::_apply_block( const signed_block& next_block )
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
-   _current_block_num    = next_block_num;
-   _current_trx_in_block = 0;
-
    const auto& gprops = get_dynamic_global_properties();
    auto block_size = fc::raw::pack_size( next_block );
    if( has_hardfork( STEEM_HARDFORK_0_12 ) )
@@ -2776,6 +2937,10 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
+   _current_trx_in_block = -1;
+   _current_op_in_trx = 0;
+   _current_virtual_op = 0;
+
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
 
@@ -2806,7 +2971,7 @@ void database::_apply_block( const signed_block& next_block )
    process_hardforks();
 
    // notify observers that the block has been applied
-   notify_applied_block( next_block );
+   notify_post_apply_block( note );
 
    notify_changed_objects();
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -2942,12 +3107,15 @@ try {
 void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
    detail::with_skip_flags( *this, skip, [&]() { _apply_transaction(trx); });
-   notify_on_applied_transaction( trx );
 }
 
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
-   _current_trx_id = trx.id();
+   transaction_notification note(trx);
+   _current_trx_id = note.transaction_id;
+   const transaction_id_type& trx_id = note.transaction_id;
+   _current_virtual_op = 0;
+
    uint32_t skip = get_node_properties().skip_flags;
 
    if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
@@ -2955,7 +3123,6 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    auto& trx_idx = get_index<transaction_index>();
    const chain_id_type& chain_id = get_chain_id();
-   auto trx_id = trx.id();
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
@@ -3010,7 +3177,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       });
    }
 
-   notify_on_pre_apply_transaction( trx );
+   notify_pre_apply_transaction( note );
 
    //Finally process the operations
    _current_op_in_trx = 0;
@@ -3022,14 +3189,158 @@ void database::_apply_transaction(const signed_transaction& trx)
    }
    _current_trx_id = transaction_id_type();
 
+   notify_post_apply_transaction( note );
+
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::apply_operation(const operation& op)
 {
    operation_notification note(op);
    notify_pre_apply_operation( note );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
+
    notify_post_apply_operation( note );
+}
+
+
+template <typename TFunction> struct fcall {};
+
+template <typename TResult, typename... TArgs>
+struct fcall<TResult(TArgs...)>
+{
+   using TNotification = std::function<TResult(TArgs...)>;
+
+   fcall() = default;
+   fcall(const TNotification& func, util::advanced_benchmark_dumper& dumper,
+         const abstract_plugin& plugin, const std::string& item_name)
+         : _func(func), _benchmark_dumper(dumper)
+      {
+         _name = plugin.get_name() + item_name;
+      }
+
+   void operator () (TArgs&&... args)
+   {
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.begin();
+
+      _func(std::forward<TArgs>(args)...);
+
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.end(_name);
+   }
+
+private:
+   TNotification                    _func;
+   util::advanced_benchmark_dumper& _benchmark_dumper;
+   std::string                      _name;
+};
+
+template <typename TResult, typename... TArgs>
+struct fcall<std::function<TResult(TArgs...)>>
+   : public fcall<TResult(TArgs...)>
+{
+   typedef fcall<TResult(TArgs...)> TBase;
+   using TBase::TBase;
+};
+
+template <typename TSignal, typename TNotification>
+boost::signals2::connection database::connect_impl( TSignal& signal, const TNotification& func,
+   const abstract_plugin& plugin, int32_t group, const std::string& item_name )
+{
+   fcall<TNotification> fcall_wrapper(func,_benchmark_dumper,plugin,item_name);
+
+   return signal.connect(group, fcall_wrapper);
+}
+
+template< bool IS_PRE_OPERATION >
+boost::signals2::connection database::any_apply_operation_handler_impl( const apply_operation_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   auto complex_func = [this, func, &plugin]( const operation_notification& o )
+   {
+      std::string name;
+
+      if (_benchmark_dumper.is_enabled())
+      {
+         if( _my->_evaluator_registry.is_evaluator( o.op ) )
+            name = _benchmark_dumper.generate_desc< IS_PRE_OPERATION >( plugin.get_name(), _my->_evaluator_registry.get_evaluator( o.op ).get_name( o.op ) );
+         else
+            name = util::advanced_benchmark_dumper::get_virtual_operation_name();
+
+         _benchmark_dumper.begin();
+      }
+
+      func( o );
+
+      if (_benchmark_dumper.is_enabled())
+         _benchmark_dumper.end( name );
+   };
+
+   if( IS_PRE_OPERATION )
+      return _pre_apply_operation_signal.connect(group, complex_func);
+   else
+      return _post_apply_operation_signal.connect(group, complex_func);
+}
+
+boost::signals2::connection database::add_pre_apply_operation_handler( const apply_operation_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return any_apply_operation_handler_impl< true/*IS_PRE_OPERATION*/ >( func, plugin, group );
+}
+
+boost::signals2::connection database::add_post_apply_operation_handler( const apply_operation_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return any_apply_operation_handler_impl< false/*IS_PRE_OPERATION*/ >( func, plugin, group );
+}
+
+boost::signals2::connection database::add_pre_apply_transaction_handler( const apply_transaction_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_transaction_signal, func, plugin, group, "->transaction");
+}
+
+boost::signals2::connection database::add_post_apply_transaction_handler( const apply_transaction_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_transaction_signal, func, plugin, group, "<-transaction");
+}
+
+boost::signals2::connection database::add_pre_apply_block_handler( const apply_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_block_signal, func, plugin, group, "->block");
+}
+
+boost::signals2::connection database::add_post_apply_block_handler( const apply_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_block_signal, func, plugin, group, "<-block");
+}
+
+boost::signals2::connection database::add_irreversible_block_handler( const irreversible_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_irreversible_block, func, plugin, group, "<-irreversible");
+}
+
+boost::signals2::connection database::add_pre_reindex_handler(const reindex_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_reindex_signal, func, plugin, group, "->reindex");
+}
+
+boost::signals2::connection database::add_post_reindex_handler(const reindex_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3107,7 +3418,9 @@ void database::update_global_dynamic_data( const signed_block& b )
       }
 
       dgp.head_block_number = b.block_num();
-      dgp.head_block_id = b.id();
+      // Following FC_ASSERT should never fail, as _currently_processing_block_id is always set by caller
+      FC_ASSERT( _currently_processing_block_id.valid() );
+      dgp.head_block_id = *_currently_processing_block_id;
       dgp.time = b.timestamp;
       dgp.current_aslot += missed_blocks+1;
    } );
@@ -3161,6 +3474,7 @@ void database::update_signing_witness(const witness_object& signing_witness, con
 void database::update_last_irreversible_block()
 { try {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   auto old_last_irreversible = dpo.last_irreversible_block_num;
 
    /**
     * Prior to voting taking over, we must be more conservative...
@@ -3209,6 +3523,11 @@ void database::update_last_irreversible_block()
    }
 
    commit( dpo.last_irreversible_block_num );
+
+   for( uint32_t i = old_last_irreversible; i <= dpo.last_irreversible_block_num; ++i )
+   {
+      notify_irreversible_block( i );
+   }
 
    if( !( get_node_properties().skip_flags & skip_block_log ) )
    {
@@ -3487,11 +3806,12 @@ void database::clear_expired_delegations()
    }
 }
 #ifdef STEEM_ENABLE_SMT
-template< typename smt_balance_object_type >
-void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account )
+template< typename smt_balance_object_type, class balance_operator_type >
+void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account,
+   balance_operator_type balance_operator )
 {
-   const smt_balance_object_type* bo =
-      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple( name, delta.symbol ) );
+   asset_symbol_type liquid_symbol = delta.symbol.is_vesting() ? delta.symbol.get_paired_symbol() : delta.symbol;
+   const smt_balance_object_type* bo = find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -3506,25 +3826,31 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
 
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
+         smt_balance.clear_balance( liquid_symbol );
          smt_balance.owner = name;
-         smt_balance.balance = delta;
+         balance_operator.add_to_balance( smt_balance );
+         smt_balance.validate();
       } );
    }
    else
    {
-      asset result = bo->balance + delta;
+      bool is_all_zero = false;
+      int64_t result = balance_operator.get_combined_balance( bo, &is_all_zero );
       // Check result to avoid negative balance storing.
-      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
-      // Zero balance is the same as non object balance at all.
-      if( result.amount.value == 0 )
+      FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
+
+      // Exit if whole balance becomes zero.
+      if( is_all_zero )
       {
+         // Zero balance is the same as non object balance at all.
+         // Remove balance object if both liquid and vesting balances are zero.
          remove( *bo );
       }
       else
       {
          modify( *bo, [&]( smt_balance_object_type& smt_balance )
          {
-            smt_balance.balance = result;
+            balance_operator.add_to_balance( smt_balance );
          } );
       }
    }
@@ -3577,27 +3903,47 @@ void database::modify_balance( const account_object& a, const asset& delta, bool
                FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient SBD funds" );
             }
             break;
+         case STEEM_ASSET_NUM_VESTS:
+            acnt.vesting_shares += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.vesting_shares.amount.value >= 0, "Insufficient VESTS funds" );
+            }
+            break;
          default:
             FC_ASSERT( false, "invalid symbol" );
       }
    } );
 }
 
-void database::modify_reward_balance( const account_object& a, const asset& delta, bool check_balance )
+void database::modify_reward_balance( const account_object& a, const asset& value_delta, const asset& share_delta, bool check_balance )
 {
    modify( a, [&]( account_object& acnt )
    {
-      switch( delta.symbol.asset_num )
+      switch( value_delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
-            acnt.reward_steem_balance += delta;
-            if( check_balance )
+            if( share_delta.amount.value == 0 )
             {
-               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+               acnt.reward_steem_balance += value_delta;
+               if( check_balance )
+               {
+                  FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+               }
+            }
+            else
+            {
+               acnt.reward_vesting_steem += value_delta;
+               acnt.reward_vesting_balance += share_delta;
+               if( check_balance )
+               {
+                  FC_ASSERT( acnt.reward_vesting_balance.amount.value >= 0, "Insufficient reward VESTS funds" );
+               }
             }
             break;
          case STEEM_ASSET_NUM_SBD:
-            acnt.reward_sbd_balance += delta;
+            FC_ASSERT( share_delta.amount.value == 0 );
+            acnt.reward_sbd_balance += value_delta;
             if( check_balance )
             {
                FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
@@ -3609,6 +3955,61 @@ void database::modify_reward_balance( const account_object& a, const asset& delt
    });
 }
 
+#ifdef STEEM_ENABLE_SMT
+struct smt_regular_balance_operator
+{
+   smt_regular_balance_operator( const asset& delta ) : delta(delta), is_vesting(delta.symbol.is_vesting()) {}
+
+   void add_to_balance( account_regular_balance_object& smt_balance )
+   {
+      if( is_vesting )
+         smt_balance.vesting += delta;
+      else
+         smt_balance.liquid += delta;
+   }
+   int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero )
+   {
+      asset result = is_vesting ? bo->vesting + delta : bo->liquid + delta;
+      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting.amount.value) == 0;
+      return result.amount.value;
+   }
+
+   asset delta;
+   bool  is_vesting;
+};
+
+struct smt_reward_balance_operator
+{
+   smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
+      : value_delta(value_delta), share_delta(share_delta), is_vesting( share_delta.amount.value != 0 )
+   {
+       FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
+   }
+
+   void add_to_balance( account_rewards_balance_object& smt_balance )
+   {
+      if( is_vesting )
+      {
+         smt_balance.pending_vesting_value += value_delta;
+         smt_balance.pending_vesting_shares += share_delta;
+      }
+      else
+         smt_balance.pending_liquid += value_delta;
+   }
+   int64_t get_combined_balance( const account_rewards_balance_object* bo, bool* is_all_zero )
+   {
+      asset result = is_vesting ? bo->pending_vesting_value + value_delta : bo->pending_liquid + value_delta;
+      *is_all_zero = result.amount.value == 0 &&
+                     (is_vesting ? bo->pending_liquid.amount.value : bo->pending_vesting_value.amount.value) == 0;
+      return result.amount.value;
+   }
+
+   asset value_delta;
+   asset share_delta;
+   bool  is_vesting;
+};
+#endif
+
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
@@ -3618,7 +4019,8 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/ );
+      smt_regular_balance_operator balance_operator( delta );
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -3634,7 +4036,8 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/ );
+      smt_regular_balance_operator balance_operator( delta );
+      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/, balance_operator );
       return;
    }
 #endif
@@ -3696,40 +4099,45 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
    } );
 }
 
-
-void database::adjust_reward_balance( const account_object& a, const asset& delta )
+void database::adjust_reward_balance( const account_object& a, const asset& value_delta,
+                                      const asset& share_delta /*= asset(0,VESTS_SYMBOL)*/ )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+   FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_rewards_balance_object >( a.name, delta, false/*check_account*/ );
+      smt_reward_balance_operator balance_operator( value_delta, share_delta );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
       return;
    }
 #endif
 
-   modify_reward_balance(a, delta, check_balance);
+   modify_reward_balance(a, value_delta, share_delta, check_balance);
 }
 
-void database::adjust_reward_balance( const account_name_type& name, const asset& delta )
+void database::adjust_reward_balance( const account_name_type& name, const asset& value_delta,
+                                      const asset& share_delta /*= asset(0,VESTS_SYMBOL)*/ )
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+   FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_rewards_balance_object >( name, delta, false/*check_account*/ );
+      smt_reward_balance_operator balance_operator( value_delta, share_delta );
+      adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
       return;
    }
 #endif
 
    const auto& a = get_account( name );
-   modify_reward_balance(a, delta, check_balance);
+   modify_reward_balance(a, value_delta, share_delta, check_balance);
 }
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
@@ -3798,14 +4206,15 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 #ifdef STEEM_ENABLE_SMT
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
          const account_regular_balance_object* arbo =
-            find< account_regular_balance_object, by_owner_symbol >( boost::make_tuple(a.name, symbol) );
+            find< account_regular_balance_object, by_owner_liquid_symbol >(
+               boost::make_tuple(a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol ) );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
          }
          else
          {
-            return arbo->balance;
+            return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
          }
 #else
       FC_ASSERT( false, "invalid symbol" );
@@ -4372,19 +4781,15 @@ void database::validate_invariants()const
 #ifdef STEEM_ENABLE_SMT
 
 namespace {
-   typedef std::map< asset_symbol_type, asset > TTotalSupplyMap;
-
-   template <typename index_type>
-   void add_from_balance_index(const index_type& balance_idx, TTotalSupplyMap& theMap)
+   template <typename index_type, typename lambda>
+   void add_from_balance_index(const index_type& balance_idx, lambda callback )
    {
       auto it = balance_idx.begin();
       auto end = balance_idx.end();
       for( ; it != end; ++it )
       {
          const auto& balance = *it;
-         auto insertInfo = theMap.emplace( balance.balance.symbol, balance.balance );
-         if( insertInfo.second == false )
-            insertInfo.first->second += balance.balance;
+         callback( balance );
       }
    }
 }
@@ -4397,18 +4802,48 @@ void database::validate_smt_invariants()const
    try
    {
       // Get total balances.
-      TTotalSupplyMap theMap;
+      typedef struct {
+         asset liquid;
+         asset vesting;
+         asset pending_liquid;
+         asset pending_vesting_shares;
+         asset pending_vesting_value;
+      } TCombinedBalance;
+      typedef std::map< asset_symbol_type, TCombinedBalance > TCombinedSupplyMap;
+      TCombinedSupplyMap theMap;
 
-      // - Balances
+      // - Process regular balances, collecting SMT counterparts of 'balance' & 'vesting_shares'.
       const auto& balance_idx = get_index< account_regular_balance_index, by_id >();
-      add_from_balance_index( balance_idx, theMap );
+      add_from_balance_index( balance_idx, [ &theMap ] ( const account_regular_balance_object& regular )
+      {
+         asset zero_liquid = asset( 0, regular.liquid.symbol );
+         asset zero_vesting = asset( 0, regular.vesting.symbol );
+         auto insertInfo = theMap.emplace( regular.liquid.symbol,
+            TCombinedBalance( { regular.liquid, regular.vesting, zero_liquid, zero_vesting, zero_liquid } ) );
+         if( insertInfo.second == false )
+            {
+            TCombinedBalance& existing_balance = insertInfo.first->second;
+            existing_balance.liquid += regular.liquid;
+            existing_balance.vesting += regular.vesting;
+            }
+      });
 
-      // - Reward balances
+      // - Process reward balances, collecting SMT counterparts of 'reward_steem_balance', 'reward_vesting_balance' & 'reward_vesting_steem'.
       const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
-      add_from_balance_index( rewards_balance_idx, theMap );
-
-      // - Total vesting
-#pragma message( "TODO: Add SMT vesting support here once it is implemented." )
+      add_from_balance_index( rewards_balance_idx, [ &theMap ] ( const account_rewards_balance_object& rewards )
+      {
+         asset zero_liquid = asset( 0, rewards.pending_vesting_value.symbol );
+         asset zero_vesting = asset( 0, rewards.pending_vesting_shares.symbol );
+         auto insertInfo = theMap.emplace( rewards.pending_liquid.symbol, TCombinedBalance( { zero_liquid, zero_vesting,
+            rewards.pending_liquid, rewards.pending_vesting_shares, rewards.pending_vesting_value } ) );
+         if( insertInfo.second == false )
+            {
+            TCombinedBalance& existing_balance = insertInfo.first->second;
+            existing_balance.pending_liquid += rewards.pending_liquid;
+            existing_balance.pending_vesting_shares += rewards.pending_vesting_shares;
+            existing_balance.pending_vesting_value += rewards.pending_vesting_value;
+            }
+      });
 
       // - Market orders
       const auto& limit_order_idx = get_index< limit_order_index >().indices();
@@ -4417,9 +4852,12 @@ void database::validate_smt_invariants()const
          if( itr->sell_price.base.symbol.space() == asset_symbol_type::smt_nai_space )
          {
             asset a( itr->for_sale, itr->sell_price.base.symbol );
-            auto insertInfo = theMap.emplace( a.symbol, a );
+            FC_ASSERT( a.symbol.is_vesting() == false );
+            asset zero_liquid = asset( 0, a.symbol );
+            asset zero_vesting = asset( 0, a.symbol.get_paired_symbol() );
+            auto insertInfo = theMap.emplace( a.symbol, TCombinedBalance( { a, zero_vesting, zero_liquid, zero_vesting, zero_liquid } ) );
             if( insertInfo.second == false )
-               insertInfo.first->second += a;
+               insertInfo.first->second.liquid += a;
          }
       }
 
@@ -4434,10 +4872,27 @@ void database::validate_smt_invariants()const
       for( ; itr != end; ++itr )
       {
          const smt_token_object& smt = *itr;
+         asset_symbol_type vesting_symbol = smt.liquid_symbol.get_paired_symbol();
          auto totalIt = theMap.find( smt.liquid_symbol );
-         asset total_liquid_supply = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) : totalIt->second;
+         // Check liquid SMT supply.
+         asset total_liquid_supply = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) :
+            ( totalIt->second.liquid + totalIt->second.pending_liquid );
+         total_liquid_supply += asset( smt.total_vesting_fund_smt, smt.liquid_symbol )
+                             /*+ gpo.total_reward_fund_steem */
+                             + asset( smt.pending_rewarded_vesting_smt, smt.liquid_symbol );
+#pragma message( "TODO: Supplement ^ once SMT rewards are implemented" )
          FC_ASSERT( asset(smt.current_supply, smt.liquid_symbol) == total_liquid_supply,
                     "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
+         // Check vesting SMT supply.
+         asset total_vesting_supply = totalIt == theMap.end() ? asset(0, vesting_symbol) :
+            ( totalIt->second.vesting + totalIt->second.pending_vesting_shares );
+         asset smt_vesting_supply = asset(smt.total_vesting_shares + smt.pending_rewarded_vesting_shares, vesting_symbol);
+         FC_ASSERT( smt_vesting_supply == total_vesting_supply,
+                    "", ("smt vesting supply",smt_vesting_supply)("total_vesting_supply",total_vesting_supply) );
+         // Check pending_vesting_value
+         asset pending_vesting_value = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) : totalIt->second.pending_vesting_value;
+         FC_ASSERT( asset(smt.pending_rewarded_vesting_smt, smt.liquid_symbol) == pending_vesting_value, "",
+            ("smt pending_rewarded_vesting_smt", smt.pending_rewarded_vesting_smt)("pending_vesting_value", pending_vesting_value));
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );

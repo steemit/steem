@@ -23,15 +23,15 @@ class market_history_plugin_impl
        * This method is called as a callback after a block is applied
        * and will process/index all operations that were applied in the block.
        */
-      void update_market_histories( const operation_notification& o );
+      void on_post_apply_operation( const operation_notification& note );
 
       chain::database&     _db;
       flat_set<uint32_t>            _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
       int32_t                       _maximum_history_per_bucket_size = 1000;
-      boost::signals2::connection   post_apply_connection;
+      boost::signals2::connection   _post_apply_operation_conn;
 };
 
-void market_history_plugin_impl::update_market_histories( const operation_notification& o )
+void market_history_plugin_impl::on_post_apply_operation( const operation_notification& o )
 {
    if( o.op.which() == operation::tag< fill_order_operation >::value )
    {
@@ -165,7 +165,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
       my = std::make_unique< detail::market_history_plugin_impl >();
 
-      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
+      my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
       add_plugin_index< bucket_index        >( my->_db );
       add_plugin_index< order_history_index >( my->_db );
 
@@ -188,7 +188,7 @@ void market_history_plugin::plugin_startup() {}
 
 void market_history_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( my->post_apply_connection );
+   chain::util::disconnect_signal( my->_post_apply_operation_conn );
 }
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const

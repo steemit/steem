@@ -7,6 +7,7 @@ add_library( steem_chain
              database.cpp
 
              smt_evaluator.cpp
+             smt_objects/smt_market_maker.cpp
              steem_evaluator.cpp
              steem_objects.cpp
 
@@ -18,11 +19,13 @@ add_library( steem_chain
 
              util/reward.cpp
              util/impacted.cpp
+             util/advanced_benchmark_dumper.cpp
 
              ${HEADERS}
            )
 
-target_link_libraries( steem_chain steem_protocol fc chainbase steem_schema ${PATCH_MERGE_LIB} )
+target_link_libraries( steem_chain steem_jsonball steem_protocol fc chainbase steem_schema appbase
+                       ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 

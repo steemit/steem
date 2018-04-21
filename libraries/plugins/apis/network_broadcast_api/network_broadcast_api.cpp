@@ -1,7 +1,11 @@
+
 #include <steem/plugins/network_broadcast_api/network_broadcast_api.hpp>
 #include <steem/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 
 #include <appbase/application.hpp>
+
+#include <steem/chain/block_notification.hpp>
+#include <steem/chain/database.hpp>
 
 #include <boost/thread/future.hpp>
 #include <boost/thread/lock_guard.hpp>
@@ -17,8 +21,8 @@ namespace detail
             _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
          {
-            _on_applied_block_connection = _chain.db().applied_block.connect(
-               0, [&]( const signed_block& b ){ on_applied_block( b ); } );
+            _post_apply_block_conn = _chain.db().add_post_apply_block_handler(
+               [&]( const steem::chain::block_notification& note ){ on_post_apply_block( note ); }, _chain, 0 );
          }
 
          DECLARE_API_IMPL(
@@ -29,13 +33,13 @@ namespace detail
 
          bool check_max_block_age( int32_t max_block_age ) const;
 
-         void on_applied_block( const signed_block& b );
+         void on_post_apply_block( const steem::chain::block_notification& note );
 
          steem::plugins::p2p::p2p_plugin&                      _p2p;
          steem::plugins::chain::chain_plugin&                  _chain;
          map< transaction_id_type, confirmation_callback >     _callbacks;
          map< time_point_sec, vector< transaction_id_type > >  _callback_expirations;
-         boost::signals2::connection                           _on_applied_block_connection;
+         boost::signals2::connection                           _post_apply_block_conn;
 
          boost::mutex                                          _mtx;
    };
@@ -71,7 +75,7 @@ namespace detail
          /* It may look strange to call these without the lock and then lock again in the case of an exception,
           * but it is correct and avoids deadlock. accept_transaction is trained along with all other writes, including
           * pushing blocks. Pushing blocks do not originate from this code path and will never have this lock.
-          * However, it will trigger the on_applied_block callback and then attempt to acquire the lock. In this case,
+          * However, it will trigger the on_post_apply_block callback and then attempt to acquire the lock. In this case,
           * this thread will be waiting on accept_block so it can write and the block thread will be waiting on this
           * thread for the lock.
           */
@@ -86,7 +90,7 @@ namespace detail
          auto c_itr = _callbacks.find( txid );
          if( c_itr != _callbacks.end() ) _callbacks.erase( c_itr );
 
-         // We do not need to clean up _callback_expirations because on_applied_block handles this case.
+         // We do not need to clean up _callback_expirations because on_post_apply_block handles this case.
 
          throw e;
       }
@@ -127,8 +131,9 @@ namespace detail
       });
    }
 
-   void network_broadcast_api_impl::on_applied_block( const signed_block& b )
+   void network_broadcast_api_impl::on_post_apply_block( const steem::chain::block_notification& note )
    { try {
+      const signed_block& b = note.block;
       boost::lock_guard< boost::mutex > guard( _mtx );
       int32_t block_num = int32_t(b.block_num());
       if( _callbacks.size() )

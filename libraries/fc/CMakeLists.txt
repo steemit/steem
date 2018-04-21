@@ -239,6 +239,7 @@ set( fc_sources
      src/network/gntp.cpp
      src/compress/smaz.cpp
      src/compress/zlib.cpp
+     src/reflect/typename.cpp
      vendor/cyoencode-1.0.2/src/CyoDecode.c
      vendor/cyoencode-1.0.2/src/CyoEncode.c
      )

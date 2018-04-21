@@ -167,9 +167,11 @@ namespace steem { namespace protocol {
    void transfer_to_vesting_operation::validate() const
    {
       validate_account_name( from );
-      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ), "Amount must be STEEM" );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL ||
+                 ( amount.symbol.space() == asset_symbol_type::smt_nai_space && amount.symbol.is_vesting() == false ),
+                 "Amount must be STEEM or SMT liquid" );
       if ( to != account_name_type() ) validate_account_name( to );
-      FC_ASSERT( amount > asset( 0, STEEM_SYMBOL ), "Must transfer a nonzero amount" );
+      FC_ASSERT( amount.amount > 0, "Must transfer a nonzero amount" );
    }
 
    void withdraw_vesting_operation::validate() const

@@ -44,8 +44,6 @@ enum sort_order_type
    by_author_last_update,
    by_comment_voter,
    by_voter_comment,
-   by_voter_last_update,
-   by_comment_weight_voter,
    by_price
 };
 
@@ -597,8 +595,6 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_author_last_update)
    (by_comment_voter)
    (by_voter_comment)
-   (by_voter_last_update)
-   (by_comment_weight_voter)
    (by_price) )
 
 FC_REFLECT( steem::plugins::database_api::get_reward_funds_return,

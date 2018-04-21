@@ -1,0 +1,79 @@
+- Measure: pure blockchain operation iteration:
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 131894 ms (real), 130188 ms (cpu). Memory usage: 3374592 (current), 3616016 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88856821 transactions and 96427740 operations.
+
+- Measure: operations serialized, BUT NOT imported into dedicated storage:
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 305335 ms (real), 303436 ms (cpu). Memory usage: 3499116 (current), 3640656 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88855523 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for given key).
+   RocksDb data import - Performance report at block 14913029. Elapsed time: 766992 ms (real), 682429 ms (cpu). Memory usage: 2505148 (current), 2529812 (peak) kilobytes.
+   RocksDb data import finished. Processed blocks: 14913029, containing: 88859412 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+RocksDb data import - Performance report at block 14913029. Elapsed time: 497396 ms (real), 459409 ms (cpu). Memory usage: 2493344 (current), 2533348 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856369 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+           Implemented account-name => associated operations dump
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1181252 ms (real), 1112495 ms (cpu). Memory usage: 2539044 (current), 2588056 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856244 transactions and 96427740 operations.
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1100739 ms (real), 1065633 ms (cpu). Memory usage: 2515536 (current), 2597456 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856232 transactions and 96427740 operations.
+
+- Measure: operations SERIALIZED, and imported into dedicated storage. Data are NOT redundant (whole op put only into ID column, others store ID for
+           Every 100 records is written to the storage
+           Implemented account-name => associated operations dump
+
+           After MergeOp implemented (?)!!!!:
+
+RocksDb data import - Performance report at block 14913029. Elapsed time: 3011284 ms (real), 3438819 ms (cpu). Memory usage: 2576640 (current), 2617600 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856232 transactions and 96427740 operations.
+
+Commit: 77539d6:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 955790 ms (real), 1171250 ms (cpu). Memory usage: 2489404 (current), 2628668 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 88856289 transactions and 96427740 operations.
+
+Commit: 79269aff120821447c4ed430c90c55d1004f2092
+RocksDb data import - Performance report at block 14913029. Elapsed time: 953982 ms (real), 1176162 ms (cpu). Memory usage: 2507180 (current), 2638252 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 18.4 GB
+
+2066_supplement_ah_features
+RocksDb data import - Performance report at block 14913029. Elapsed time: 995820 ms (real), 1350470 ms (cpu). Memory usage: 10997572 (current), 11052188 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 20,6 GB
+
+After implementing lookup for last (max) written account-history chunk no.
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1048368 ms (real), 1090324 ms (cpu). Memory usage: 4540836 (current), 4671908 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 18.4 GB
+
+
+After redesigned data structures: AH-info holds range of stored ops and timestamp of oldest one:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1366821 ms (real), 1526248 ms (cpu). Memory usage: 4535408 (current), 4633712 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 18.8 GB
+
+Pruning enabled:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 3578533 ms (real), 3506124 ms (cpu). Memory usage: 4599196 (current), 4730268 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+Store size 17.3 GB
+
+3037635ms rocksdb_plugin.cpp:1160       importData           ] RocksDb data import - Performance report at block 14913029. Elapsed time: 3513151 ms (real), 3439952 ms (cpu). Memory usage: 4578448 (current), 4725904 (peak) kilobytes.
+3037635ms rocksdb_plugin.cpp:1170       importData           ] RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.
+
+
+2066_supplement_ah_features 626c777e531500d0a5ac5a35864eb2372e9d4e31
+No pruning
+RocksDb data import - Performance report at block 14913029. Elapsed time: 1380711 ms (real), 1491123 ms (cpu). Memory usage: 3474216 (current), 3621372 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations
+Store size 18.4 GB
+
+Pruning:
+RocksDb data import - Performance report at block 14913029. Elapsed time: 2965470 ms (real), 2858567 ms (cpu). Memory usage: 3481616 (current), 3620160 (peak) kilobytes.
+RocksDb data import finished. Processed blocks: 14913029, containing: 89218853 transactions and 96427740 operations.

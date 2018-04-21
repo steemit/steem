@@ -7,6 +7,16 @@
 
 namespace steem { namespace chain {
 
+enum class smt_phase : uint8_t
+{
+   account_elevated,
+   setup_completed,
+   contribution_begin_time_completed,
+   contribution_end_time_completed,
+   launch_time_completed,
+   launch_expiration_time_completed
+};
+
 /**Note that the object represents both liquid and vesting variant of SMT.
  * The same object is returned by indices when searched by liquid/vesting symbol/nai.
  */
@@ -15,11 +25,6 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    smt_token_object() = delete;
 
 public:
-   enum class smt_phase : unsigned char
-   {
-      account_elevated,
-      setup_completed,
-   };
 
    struct smt_market_maker_state
    {
@@ -40,6 +45,34 @@ public:
       return liquid_symbol.to_nai();
    }
 
+   price    one_vesting_to_one_liquid() const
+   {
+      int64_t one_smt = std::pow(10, liquid_symbol.decimals());
+      return price ( asset( one_smt, liquid_symbol.get_paired_symbol() ), asset( one_smt, liquid_symbol ) );
+      // ^ On the assumption that liquid and vesting SMT have the same precision. See issue 2212
+   }
+
+   price    get_vesting_share_price() const
+   {
+      if ( total_vesting_fund_smt == 0 || total_vesting_shares == 0 )
+         return one_vesting_to_one_liquid();
+         // ^ In original method of globa_property_object it was one liquid to one vesting which seems to be a bug.
+
+      return price( asset( total_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( total_vesting_fund_smt, liquid_symbol ) );
+   }
+
+   price    get_reward_vesting_share_price() const
+   {
+      share_type reward_vesting_shares = total_vesting_shares + pending_rewarded_vesting_shares;
+      share_type reward_vesting_smt = total_vesting_fund_smt + pending_rewarded_vesting_smt;
+
+      if( reward_vesting_shares == 0 || reward_vesting_smt == 0 )
+          return one_vesting_to_one_liquid();
+      // ^ Additional check not found in original get_reward_vesting_share_price. See issue 2212
+
+      return price( asset( reward_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( reward_vesting_smt, liquid_symbol ) );
+   }
+
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
@@ -50,7 +83,12 @@ public:
    account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
-   share_type              current_supply = 0;
+   share_type  current_supply = 0;
+   share_type  total_vesting_fund_smt = 0;
+   share_type  total_vesting_shares = 0;
+   share_type  pending_rewarded_vesting_shares = 0;
+   share_type  pending_rewarded_vesting_smt = 0;
+
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
@@ -83,6 +121,39 @@ public:
    uint32_t             lep_rel_amount_numerator = 0;
    uint32_t             rep_rel_amount_numerator = 0;
    uint8_t              rel_amount_denom_bits = 0;
+
+   ///parameters for 'smt_setup_operation'
+   int64_t                       max_supply = 0;
+   steem::protocol::
+   smt_capped_generation_policy  capped_generation_policy;
+   time_point_sec                generation_begin_time;
+   time_point_sec                generation_end_time;
+   time_point_sec                announced_launch_time;
+   time_point_sec                launch_expiration_time;
+};
+
+class smt_event_token_object : public object< smt_event_token_object_type, smt_event_token_object >
+{
+   smt_event_token_object() = delete;
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_event_token_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   // id_type is actually oid<smt_event_token_object>
+   id_type           id;
+
+   smt_token_id_type             parent;
+
+   smt_phase                     phase = smt_phase::setup_completed;
+
+   time_point_sec                generation_begin_time;
+   time_point_sec                generation_end_time;
+   time_point_sec                announced_launch_time;
+   time_point_sec                launch_expiration_time;
 };
 
 struct by_symbol;
@@ -123,11 +194,53 @@ typedef multi_index_container <
    allocator< smt_token_object >
 > smt_token_index;
 
+struct by_interval_gen_begin;
+struct by_interval_gen_end;
+struct by_interval_launch;
+struct by_interval_launch_exp;
+typedef multi_index_container <
+   smt_event_token_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id > >,
+
+      ordered_non_unique< tag< by_interval_gen_begin >,
+         composite_key< smt_event_token_object,
+            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_begin_time >
+         >
+      >,
+      ordered_non_unique< tag< by_interval_gen_end >,
+         composite_key< smt_event_token_object,
+            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_end_time >
+         >
+      >,
+      ordered_non_unique< tag< by_interval_launch >,
+         composite_key< smt_event_token_object,
+            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::announced_launch_time >
+         >
+      >,
+      ordered_non_unique< tag< by_interval_launch_exp >,
+         composite_key< smt_event_token_object,
+            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::launch_expiration_time >
+         >
+      >
+   >,
+   allocator< smt_event_token_object >
+> smt_event_token_index;
+
 } } // namespace steem::chain
 
-FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
-                 (account_elevated)
-                 (setup_completed)
+FC_REFLECT_ENUM( steem::chain::smt_phase,
+                  (account_elevated)
+                  (setup_completed)
+                  (contribution_begin_time_completed)
+                  (contribution_end_time_completed)
+                  (launch_time_completed)
+                  (launch_expiration_time_completed)
 )
 
 FC_REFLECT( steem::chain::smt_token_object::smt_market_maker_state,
@@ -142,6 +255,10 @@ FC_REFLECT( steem::chain::smt_token_object,
    (control_account)
    (phase)
    (current_supply)
+   (total_vesting_fund_smt)
+   (total_vesting_shares)
+   (pending_rewarded_vesting_shares)
+   (pending_rewarded_vesting_smt)
    (market_maker)
    (allow_voting)
    (allow_vesting)
@@ -156,8 +273,25 @@ FC_REFLECT( steem::chain::smt_token_object,
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
+   (max_supply)
+   (capped_generation_policy)
+   (generation_begin_time)
+   (generation_end_time)
+   (announced_launch_time)
+   (launch_expiration_time)
+)
+
+FC_REFLECT( steem::chain::smt_event_token_object,
+   (id)
+   (parent)
+   (phase)
+   (generation_begin_time)
+   (generation_end_time)
+   (announced_launch_time)
+   (launch_expiration_time)
 )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_event_token_object, steem::chain::smt_event_token_index )
 
 #endif

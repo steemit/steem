@@ -41,7 +41,14 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     STEEMD_PID=`pgrep -f p2p-endpoint`
     kill -SIGINT $STEEMD_PID
     echo steemdsync: waiting for steemd to exit cleanly
-    while [ -e /proc/$STEEMD_PID ]; do sleep 0.1; done
+
+    # wait 60 seconds for steemd to exit, to be safe.
+    let WAIT_TIME=0
+    while ( kill -0 $STEEMD_PID ) && [[ WAIT_TIME -le 60 ]]; do
+       sleep 1
+       let WAIT_TIME++
+    done
+
     echo steemdsync: starting a new blockchainstate upload operation
     cd ${COMPRESSPATH:-$HOME}
     echo steemdsync: compressing blockchainstate...
@@ -87,6 +94,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
       aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
       aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
+      aws s3api put-object-acl --bucket $S3_BUCKET --key block_log-latest --acl public-read
     fi
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation

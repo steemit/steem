@@ -53,15 +53,24 @@ application& reset() { return application::instance( true ); }
 
 void application::set_program_options()
 {
+   std::stringstream data_dir_ss;
+   data_dir_ss << "Directory containing configuration file config.ini. Default location: $HOME/." << app_name << " or CWD/. " << app_name;
+
+   std::stringstream plugins_ss;
+   for( auto& p : default_plugins )
+   {
+      plugins_ss << p << ' ';
+   }
+
    options_description app_cfg_opts( "Application Config Options" );
    options_description app_cli_opts( "Application Command Line Options" );
    app_cfg_opts.add_options()
-         ("plugin", bpo::value< vector<string> >()->composing(), "Plugin(s) to enable, may be specified multiple times");
+         ("plugin", bpo::value< vector<string> >()->composing()->default_value( default_plugins, plugins_ss.str() ), "Plugin(s) to enable, may be specified multiple times");
 
    app_cli_opts.add_options()
          ("help,h", "Print this help message and exit.")
          ("version,v", "Print version information.")
-         ("data-dir,d", bpo::value<bfs::path>()->default_value( "witness_node_data_dir" ), "Directory containing configuration file config.ini")
+         ("data-dir,d", bpo::value<bfs::path>(), data_dir_ss.str().c_str() )
          ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to data-dir");
 
    my->_cfg_options.add(app_cfg_opts);
@@ -99,12 +108,34 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
          return false;
       }
 
-      bfs::path data_dir = "data-dir";
+      bfs::path data_dir;
       if( my->_args.count("data-dir") )
       {
          data_dir = my->_args["data-dir"].as<bfs::path>();
          if( data_dir.is_relative() )
             data_dir = bfs::current_path() / data_dir;
+      }
+      else
+      {
+#ifdef WIN32
+         char* parent = getenv( "APPDATA" );
+#else
+         char* parent = getenv( "HOME" );
+#endif
+
+         if( parent != nullptr )
+         {
+            data_dir = std::string( parent );
+         }
+         else
+         {
+            data_dir = bfs::current_path();
+         }
+
+         std::stringstream app_dir;
+         app_dir << '.' << app_name;
+
+         data_dir = data_dir / app_dir.str();
       }
       my->_data_dir = data_dir;
 
@@ -167,6 +198,11 @@ void application::quit() {
 }
 
 void application::exec() {
+   /** To avoid killing process by broken pipe and continue regular app shutdown.
+    *  Useful for usecase: `steemd | tee steemd.log` and pressing Ctrl+C
+    **/
+   signal(SIGPIPE, SIG_IGN);
+
    std::shared_ptr<boost::asio::signal_set> sigint_set(new boost::asio::signal_set(*io_serv, SIGINT));
    sigint_set->async_wait([sigint_set,this](const boost::system::error_code& err, int num) {
      quit();
@@ -196,12 +232,21 @@ void application::write_default_config(const bfs::path& cfg_file) {
       boost::any store;
       if(!od->semantic()->apply_default(store))
          out_cfg << "# " << od->long_name() << " = \n";
-      else {
+      else
+      {
          auto example = od->format_parameter();
-         if(example.empty())
+         if( example.empty() )
+         {
             // This is a boolean switch
             out_cfg << od->long_name() << " = " << "false\n";
-         else {
+         }
+         else if( example.length() <= 7 )
+         {
+            // The string is formatted "arg"
+            out_cfg << "# " << od->long_name() << " = \n";
+         }
+         else
+         {
             // The string is formatted "arg (=<interesting part>)"
             example.erase(0, 6);
             example.erase(example.length()-1);

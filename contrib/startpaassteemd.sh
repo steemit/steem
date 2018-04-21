@@ -15,19 +15,7 @@ chown -R steemd:steemd $HOME
 # clean out data dir since it may be semi-persistent block storage on the ec2 with stale data
 rm -rf $HOME/*
 
-# seed nodes come from doc/seednodes.txt which is
-# installed by docker into /etc/steemd/seednodes.txt
-SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
-
 ARGS=""
-
-# if user did not pass in any desired
-# seed nodes, use the ones above:
-if [[ -z "$STEEMD_SEED_NODES" ]]; then
-    for NODE in $SEED_NODES ; do
-        ARGS+=" --p2p-seed-node=$NODE"
-    done
-fi
 
 # if user did pass in desired seed nodes, use
 # the ones the user specified:
@@ -83,7 +71,7 @@ if [[ "$USE_RAMDISK" ]]; then
     if [[ "$IS_BROADCAST_NODE" ]]; then
       aws s3 cp s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
     elif [[ "$IS_AH_NODE" ]]; then
-      aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+      aws s3 cp s3://$S3_BUCKET/ahnode-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' 'blockchain/*rocksdb-storage*' -C /mnt/ramdisk 'blockchain/shared*'
     else
       aws s3 cp s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
     fi
@@ -122,7 +110,12 @@ if [[ $finished == 0 ]]; then
     exit 1
   else
     echo notifysteemdsync steemdsync: shared memory file for $VERSION not found, creating a new one by replaying the blockchain
-    mkdir blockchain
+    if [[ "$USE_RAMDISK" ]]; then
+      mkdir -p /mnt/ramdisk/blockchain
+      chown -R steemd:steemd /mnt/ramdisk/blockchain
+    else
+      mkdir blockchain
+    fi
     aws s3 cp s3://$S3_BUCKET/block_log-latest blockchain/block_log
     if [[ $? -ne 0 ]]; then
       echo notifysteemdsync steemdsync: unable to pull latest block_log from S3, will sync from scratch.
