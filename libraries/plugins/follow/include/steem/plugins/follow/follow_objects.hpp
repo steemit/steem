@@ -7,8 +7,7 @@ namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
 using namespace steem::chain;
-
-using chainbase::t_vector;
+using chainbase::shared_vector;
 
 #ifndef STEEM_FOLLOW_SPACE_ID
 #define STEEM_FOLLOW_SPACE_ID 8
@@ -55,25 +54,26 @@ typedef oid< follow_object > follow_id_type;
 class feed_object : public object< feed_object_type, feed_object >
 {
    public:
-      typedef t_vector<account_name_type> t_reblogged_by_container;
-
       feed_object() = delete;
 
       template< typename Constructor, typename Allocator >
       feed_object( Constructor&& c, allocator< Allocator > a )
-      :reblogged_by( a )
+      :reblogged_by( a.get_segment_manager() )
       {
          c( *this );
       }
 
+      typedef shared_vector<account_name_type> t_reblogged_by_container;
+
       id_type                    id;
 
-      account_name_type                account;
-      t_reblogged_by_container         reblogged_by;
-      account_name_type                first_reblogged_by;
-      time_point_sec                   first_reblogged_on;
-      comment_id_type                  comment;
-      uint32_t                         account_feed_id = 0;
+      account_name_type          account;
+      t_reblogged_by_container   reblogged_by;
+      account_name_type          first_reblogged_by;
+      time_point_sec             first_reblogged_on;
+      comment_id_type            comment;
+      uint32_t                   reblogs;
+      uint32_t                   account_feed_id = 0;
 };
 
 typedef oid< feed_object > feed_id_type;
@@ -211,6 +211,7 @@ typedef chainbase::shared_multi_index_container<
 > blog_author_stats_index;
 
 struct by_feed;
+struct by_old_feed;
 struct by_account;
 struct by_comment;
 
@@ -225,19 +226,33 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
       >,
-      ordered_unique< tag< by_comment >,
+      ordered_unique< tag< by_old_feed >,
          composite_key< feed_object,
-            member< feed_object, comment_id_type, &feed_object::comment >,
+            member< feed_object, account_name_type, &feed_object::account >,
+            member< feed_object, uint32_t, &feed_object::account_feed_id >
+         >,
+         composite_key_compare< std::less< account_name_type >, std::less< uint32_t > >
+      >,
+      ordered_unique< tag< by_account >,
+         composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
             member< feed_object, feed_id_type, &feed_object::id >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::less< feed_id_type > >
+         composite_key_compare< std::less< account_name_type >, std::less< feed_id_type > >
+      >,
+      ordered_unique< tag< by_comment >,
+         composite_key< feed_object,
+            member< feed_object, comment_id_type, &feed_object::comment >,
+            member< feed_object, account_name_type, &feed_object::account >
+         >,
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
       >
    >,
    allocator< feed_object >
 > feed_index;
 
 struct by_blog;
+struct by_old_blog;
 
 typedef multi_index_container<
    blog_object,
@@ -250,22 +265,37 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
       >,
+      ordered_unique< tag< by_old_blog >,
+         composite_key< blog_object,
+            member< blog_object, account_name_type, &blog_object::account >,
+            member< blog_object, uint32_t, &blog_object::blog_feed_id >
+         >,
+         composite_key_compare< std::less< account_name_type >, std::less< uint32_t > >
+      >,
       ordered_unique< tag< by_comment >,
          composite_key< blog_object,
             member< blog_object, comment_id_type, &blog_object::comment >,
-            member< blog_object, account_name_type, &blog_object::account >,
-            member< blog_object, blog_id_type, &blog_object::id >
+            member< blog_object, account_name_type, &blog_object::account >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::less< blog_id_type > >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
       >
    >,
    allocator< blog_object >
 > blog_index;
 
+struct by_reputation;
+
 typedef multi_index_container<
    reputation_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< reputation_object, reputation_id_type, &reputation_object::id > >,
+      ordered_unique< tag< by_reputation >,
+         composite_key< reputation_object,
+            member< reputation_object, share_type, &reputation_object::reputation >,
+            member< reputation_object, account_name_type, &reputation_object::account >
+         >,
+         composite_key_compare< std::greater< share_type >, std::less< account_name_type > >
+      >,
       ordered_unique< tag< by_account >, member< reputation_object, account_name_type, &reputation_object::account > >
    >,
    allocator< reputation_object >
@@ -279,7 +309,21 @@ typedef multi_index_container<
    follow_count_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< follow_count_object, follow_count_id_type, &follow_count_object::id > >,
-      ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >
+      ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >,
+      ordered_unique< tag< by_followers >,
+         composite_key< follow_count_object,
+            member< follow_count_object, uint32_t, &follow_count_object::follower_count >,
+            member< follow_count_object, follow_count_id_type, &follow_count_object::id >
+         >,
+         composite_key_compare< std::greater< uint32_t >, std::less< follow_count_id_type > >
+      >,
+      ordered_unique< tag< by_following >,
+         composite_key< follow_count_object,
+            member< follow_count_object, uint32_t, &follow_count_object::following_count >,
+            member< follow_count_object, follow_count_id_type, &follow_count_object::id >
+         >,
+         composite_key_compare< std::greater< uint32_t >, std::less< follow_count_id_type > >
+      >
    >,
    allocator< follow_count_object >
 > follow_count_index;
@@ -291,7 +335,7 @@ FC_REFLECT_ENUM( steem::plugins::follow::follow_type, (undefined)(blog)(ignore) 
 FC_REFLECT( steem::plugins::follow::follow_object, (id)(follower)(following)(what) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins::follow::follow_index )
 
-FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(account_feed_id) )
+FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::feed_object, steem::plugins::follow::feed_index )
 
 FC_REFLECT( steem::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )
