@@ -122,20 +122,6 @@ namespace golos {
 
                 std::vector<account_name_type> get_miner_queue() const;
 
-                share_type get_account_reputation(const account_name_type& account) const {
-                    if (!_follow_api) {
-                        return 0;
-                    }
-
-                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
-                    auto itr = rep_idx.find(account);
-
-                    if (rep_idx.end() != itr) {
-                        return itr->reputation;
-                    }
-
-                    return 0;
-                }
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -434,12 +420,7 @@ namespace golos {
                     auto itr = idx.find(name);
                     if (itr != idx.end()) {
                         results.push_back(extended_account(*itr, _db));
-                        results.back().reputation = get_account_reputation(name);
                         auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
-                        while (vitr != vidx.end() && vitr->account == itr->id) {
-                            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
-                            ++vitr;
-                        }
                     }
                 }
 
