@@ -4,11 +4,23 @@ function echo(){ builtin echo $(basename $0 .sh): "$@"; }
 pushd () { command pushd "$@" > /dev/null; }
 popd () { command popd "$@" > /dev/null; }
 
-if [ $# -ne 6 ]
-then
-   echo Usage: jobs 1st_address 1st_port 2nd_address 2nd_port working_dir
-   echo Example: 100 127.0.0.1 8090 ec2-34-235-166-184.compute-1.amazonaws.com 8090 logs
+function print_help_and_quit {
+   echo Usage: jobs test_steemd_path ref_steemd_path test_work_path ref_work_path block_limit [--dont-copy-config]
+   echo Example: 16 ~/steemit/1/steemd ~/steemit/2/steemd ~/steemit/1/wdir ~/steemit/2/wdir 5000000
    exit -1
+}
+
+if [ $# -lt 6 -o $# -gt 7 ]
+then
+   print_help_and_quit
+fi
+
+COPY_CONFIG=$7
+
+if [ "$COPY_CONFIG" != "--dont-copy-config" -a "$COPY_CONFIG" != "" ]
+then
+   echo "Unknown option: " $7
+   print_help_and_quit
 fi
 
 SCRIPT_DIR=../scripts
@@ -35,8 +47,8 @@ REF_STEEMD_PID=-1
 export STEEMD_NODE_PID=-1
 
 function run_replay {
-   echo Running $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT
-   $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT
+   echo Running $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
+   $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
    [ $? -ne 0 ] && echo test group FAILED && exit -1
 }
 

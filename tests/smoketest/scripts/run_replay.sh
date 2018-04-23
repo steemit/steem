@@ -4,9 +4,11 @@ function echo(){ builtin echo $(basename $0 .sh): "$@"; }
 pushd () { command pushd "$@" > /dev/null; }
 popd () { command popd "$@" > /dev/null; }
 
-if [ $# -ne 5 ]
+if [ $# -lt 5 -o $# -gt 6 ]
 then
-   echo "Usage: path_to_tested_steemd path_to_reference_steemd path_to_test_blockchain_directory path_to_reference_blockchain_directory number_of_blocks_to_replay"
+   echo "Usage: path_to_tested_steemd path_to_reference_steemd"
+   echo "       path_to_test_blockchain_directory path_to_reference_blockchain_directory"
+   echo "       number_of_blocks_to_replay [--dont-copy-config]"
    echo "Example: ~/work/steemit/steem/build/programs/steemd/steemd ~/master/steemit/steem/build/programs/steemd/steemd ~/steemit/steem/work1 ~/steemit/steem/work2 2000000"
    echo "Note: Run this script from test group directory."
    exit -1
@@ -20,6 +22,7 @@ REF_STEEMD_PATH=$2
 TEST_WORK_PATH=$3
 REF_WORK_PATH=$4
 BLOCK_LIMIT=$5
+COPY_CONFIG=$6
 RET_VAL1=-1
 RET_VAL2=-1
 EXIT_CODE=0
@@ -67,8 +70,11 @@ function cleanup {
 
 trap cleanup SIGINT SIGPIPE
 
-copy_config $TEST_WORK_PATH $STEEMD_CONFIG_TEST
-copy_config $REF_WORK_PATH  $STEEMD_CONFIG_REF
+if [ "$COPY_CONFIG" != "--dont-copy-config" ]
+then
+   copy_config $TEST_WORK_PATH $STEEMD_CONFIG_TEST
+   copy_config $REF_WORK_PATH  $STEEMD_CONFIG_REF
+fi
 
 echo Running "test instance" replay of $BLOCK_LIMIT blocks
 ( $TEST_STEEMD_PATH --replay --stop-replay-at-block $BLOCK_LIMIT -d $TEST_WORK_PATH ) & REPLAY_PID1=$!

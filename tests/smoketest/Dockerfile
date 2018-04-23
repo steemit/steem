@@ -31,6 +31,7 @@ EXPOSE 8091
 
 #CMD pyresttest
 CMD cd $SMOKETEST && \
-   ./smoketest.sh /reference/steemd /tested/steemd /ref_blockchain /tested_blockchain $STOP_REPLAY_AT_BLOCK $JOBS || \
-   find ./ -type f -not -name logs -path */logs/* | cpio -pd /logs_dir && \
+   ./smoketest.sh /reference/steemd /tested/steemd /ref_blockchain /tested_blockchain $STOP_REPLAY_AT_BLOCK $JOBS $COPY_CONFIG 2>&1 | tee log.txt || \
+   find ./ -type f -path */logs/* -not -name logs | cpio -pd /logs_dir && \
+   cp log.txt /logs_dir && \
    chmod -R a+rw /logs_dir
