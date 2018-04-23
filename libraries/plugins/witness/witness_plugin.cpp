@@ -6,6 +6,7 @@
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/index.hpp>
+#include <steem/chain/util/impacted.hpp>
 
 #include <steem/utilities/key_conversion.hpp>
 #include <steem/utilities/plugin_utilities.hpp>
@@ -54,8 +55,10 @@ namespace detail {
          _timer(io),
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
+      void pre_apply_block( const steem::protocol::signed_block& blk );
       void pre_transaction( const steem::protocol::signed_transaction& trx );
       void pre_operation( const chain::operation_notification& note );
+      void post_operation( const chain::operation_notification& note );
       void on_block( const signed_block& b );
 
       void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
@@ -72,10 +75,14 @@ namespace detail {
       std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                          _timer;
 
+      std::set< steem::protocol::account_name_type >                     _dupe_customs;
+
       chain::database&     _db;
+      boost::signals2::connection   on_pre_apply_block_conn;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   applied_block_connection;
       boost::signals2::connection   on_pre_apply_transaction_connection;
+      boost::signals2::connection   on_post_apply_operation_conn;
    };
 
    struct comment_options_extension_visitor
@@ -216,12 +223,19 @@ namespace detail {
       }
    };
 
+   void witness_plugin_impl::pre_apply_block( const steem::protocol::signed_block& b )
+   {
+      _dupe_customs.clear();
+   }
+
    void witness_plugin_impl::pre_transaction( const steem::protocol::signed_transaction& trx )
    {
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
 
       auto trx_size = fc::raw::pack_size(trx);
+
+      STEEM_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
 
       for( const auto& auth : required )
       {
@@ -245,6 +259,28 @@ namespace detail {
       if( _db.is_producing() )
       {
          note.op.visit( operation_visitor( _db ) );
+      }
+   }
+
+   void witness_plugin_impl::post_operation( const chain::operation_notification& note )
+   {
+      switch( note.op.which() )
+      {
+         case operation::tag< custom_operation >::value:
+         case operation::tag< custom_json_operation >::value:
+         case operation::tag< custom_binary_operation >::value:
+         {
+            flat_set< account_name_type > impacted;
+            app::operation_get_impacted_accounts( note.op, impacted );
+
+            for( auto& account : impacted )
+               STEEM_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+                  "Account ${a} already submitted a custom json operation this block.",
+                  ("a", account) );
+         }
+            break;
+         default:
+            break;
       }
    }
 
@@ -321,6 +357,8 @@ namespace detail {
             }
          });
       }
+
+      _dupe_customs.clear();
    } FC_LOG_AND_RETHROW() }
    #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
 
@@ -583,6 +621,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( 0, [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
    my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->on_post_apply_operation_conn = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->post_operation( note ); } );
+   my->on_pre_apply_block_conn = my->_db.pre_apply_block.connect( 0, [&]( const signed_block& b ){ my->pre_apply_block( b ); } );
    my->applied_block_connection = my->_db.applied_block.connect( 0, [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
@@ -593,7 +633,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
 void witness_plugin::plugin_startup()
 { try {
-   ilog("witness plugin:  plugin_startup() begin");
+   ilog("witness plugin:  plugin_startup() begin" );
    chain::database& d = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
    if( !my->_witnesses.empty() )
@@ -615,9 +655,11 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
+      chain::util::disconnect_signal( my->on_post_apply_operation_conn );
       chain::util::disconnect_signal( my->pre_apply_connection );
       chain::util::disconnect_signal( my->applied_block_connection );
       chain::util::disconnect_signal( my->on_pre_apply_transaction_connection );
+      chain::util::disconnect_signal( my->on_pre_apply_block_conn );
 
       my->_timer.cancel();
    }
