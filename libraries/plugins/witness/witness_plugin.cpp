@@ -261,7 +261,13 @@ namespace detail
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
 
-      STEEMIT_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+      if( required.size() == 0 )
+      {
+         for( auto& o : trx.operations )
+            app::operation_get_impacted_accounts( o, required );
+
+         STEEMIT_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+      }
 
       auto trx_size = fc::raw::pack_size(trx);
 
