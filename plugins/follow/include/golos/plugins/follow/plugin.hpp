@@ -52,8 +52,7 @@ namespace golos {
                         (get_blog_authors))
 
                 std::vector<account_reputation> get_account_reputations_native(
-                        account_name_type account_lower_bound,
-                        uint32_t limit);
+                        std::vector < account_name_type > accounts );
 
                 plugin();
 
