@@ -638,23 +638,34 @@ namespace golos {
                 result.reserve(acc_count);
 
                 for (size_t i = 0; i < acc_count; i++) {
-                    auto acc_itr = acc_idx.lower_bound( accounts[i] );
-                    
-                    auto itr = rep_idx.find(acc_itr->name);
                     account_reputation rep;
+                    auto acc_itr = acc_idx.find( accounts[i] );
+
+                    // checking the presence of account with such name in database
+                    if ( acc_itr == acc_idx.end() ) {
+
+                        rep.account = accounts[i];
+                        rep.reputation = 0;
+                        result.push_back( rep );
+
+                        wlog("Follow plugin: No such account with name \"${name}\" in account index", ("name", accounts[i]) );
+                        continue;
+                    }
 
                     rep.account = acc_itr->name;
 
+                    auto itr = rep_idx.find(acc_itr->name);
+                    // same presence check in reputation idx
                     if ( itr != rep_idx.end() ) {
                         rep.reputation = itr->reputation;
                     }
                     else {
+                        wlog("Follow plugin: No such account with name \"${name}\" in reputation index", ("name", accounts[i]) );
                         rep.reputation = 0;
                     }
 
                     result.push_back(rep);
                 }
-
                 return result;
             }
 
