@@ -904,6 +904,11 @@ void database::notify_applied_block( const signed_block& block )
    STEEMIT_TRY_NOTIFY( applied_block, block )
 }
 
+void database::notify_pre_apply_block( const signed_block& block )
+{
+   STEEMIT_TRY_NOTIFY( pre_apply_block, block )
+}
+
 void database::notify_on_pending_transaction( const signed_transaction& tx )
 {
    STEEMIT_TRY_NOTIFY( on_pending_transaction, tx )
@@ -2582,6 +2587,8 @@ void database::show_free_memory( bool force )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
+   notify_pre_apply_block( next_block );
+
    uint32_t next_block_num = next_block.block_num();
    //block_id_type next_block_id = next_block.id();
 

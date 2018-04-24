@@ -32,6 +32,8 @@
 #include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
+#include <steemit/app/impacted.hpp>
+
 #include <fc/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -83,14 +85,18 @@ namespace detail
 
          void plugin_initialize();
 
+         void pre_apply_block( const steemit::protocol::signed_block& blk );
          void pre_transaction( const signed_transaction& trx );
          void pre_operation( const operation_notification& note );
+         void post_operation( const chain::operation_notification& note );
          void on_block( const signed_block& b );
 
          void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          witness_plugin& _self;
          std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
+
+         std::set< steemit::protocol::account_name_type >                     _dupe_customs;
    };
 
    void witness_plugin_impl::plugin_initialize()
@@ -118,6 +124,11 @@ namespace detail
             "Cannot specify more than 8 beneficiaries." );
       }
    };
+
+   void witness_plugin_impl::pre_apply_block( const steemit::protocol::signed_block& b )
+   {
+      _dupe_customs.clear();
+   }
 
    void check_memo( const string& memo, const account_object& account, const account_authority_object& auth )
    {
@@ -250,6 +261,8 @@ namespace detail
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
 
+      STEEMIT_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+
       auto trx_size = fc::raw::pack_size(trx);
 
       for( const auto& auth : required )
@@ -275,6 +288,28 @@ namespace detail
       if( _db.is_producing() )
       {
          note.op.visit( operation_visitor( _db ) );
+      }
+   }
+
+   void witness_plugin_impl::post_operation( const operation_notification& note )
+   {
+      switch( note.op.which() )
+      {
+         case operation::tag< custom_operation >::value:
+         case operation::tag< custom_json_operation >::value:
+         case operation::tag< custom_binary_operation >::value:
+         {
+            flat_set< account_name_type > impacted;
+            app::operation_get_impacted_accounts( note.op, impacted );
+
+            for( auto& account : impacted )
+               STEEMIT_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+                  "Account ${a} already submitted a custom json operation this block.",
+                  ("a", account) );
+         }
+            break;
+         default:
+            break;
       }
    }
 
@@ -352,6 +387,8 @@ namespace detail
             }
          });
       }
+
+      _dupe_customs.clear();
    }
 
    void witness_plugin_impl::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
@@ -473,6 +510,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    chain::database& db = database();
 
+   db.post_apply_operation.connect( [&]( const operation_notification& note ){ _my->post_operation( note ); } );
+   db.pre_apply_block.connect( [&]( const signed_block& b ){ _my->pre_apply_block( b ); } );
    db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
    db.pre_apply_operation.connect( [&]( const operation_notification& note ){ _my->pre_operation( note ); } );
    db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
