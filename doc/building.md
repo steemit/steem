@@ -179,6 +179,8 @@ Install Homebrew by following the instructions here: http://brew.sh/
         boost160 \
         libtool \
         openssl \
+        snappy \
+        zlib \
         python3
         
     pip3 install --user jinja2
@@ -204,6 +206,9 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
     export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
     export BOOST_ROOT=$(brew --prefix)/Cellar/boost@1.60/1.60.0/
+    export SNAPPY_LIBRARIES=$(brew --prefix)/Cellar/snappy/1.1.7_1/lib/
+    export SNAPPY_INCLUDE_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1/include/
+    export ZLIB_LIBRARIES=$(brew --prefix)/Cellar/zlib/1.2.11/lib/
     git checkout stable
     git submodule update --init --recursive
     mkdir build && cd build
