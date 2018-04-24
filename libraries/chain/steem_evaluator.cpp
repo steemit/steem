@@ -1531,6 +1531,9 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
 {
    database& d = db();
+   if( d.is_producing() )
+      FC_ASSERT( false, "custom_binary_operation is deprecated" );
+
    FC_ASSERT( d.has_hardfork( STEEMIT_HARDFORK_0_14__317 ) );
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
