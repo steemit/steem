@@ -627,7 +627,7 @@ namespace golos {
                     std::vector < account_name_type > accounts
                 ) {
 
-                FC_ASSERT(accounts.size() <= 1000, "Cannot retrieve more than 1000 account reputations at a time.");
+                FC_ASSERT(accounts.size() <= 100, "Cannot retrieve more than 100 account reputations at a time.");
 
                 const auto &acc_idx = database().get_index<account_index>().indices().get<by_name>();
                 const auto &rep_idx = database().get_index<reputation_index>().indices().get<by_account>();
@@ -646,7 +646,7 @@ namespace golos {
 
                         rep.account = accounts[i];
                         rep.reputation = 0;
-                        result.push_back( rep );
+                        result.push_back( std::move(rep) );
 
                         wlog("Follow plugin: No such account with name \"${name}\" in account index", ("name", accounts[i]) );
                         continue;
@@ -664,7 +664,7 @@ namespace golos {
                         rep.reputation = 0;
                     }
 
-                    result.push_back(rep);
+                    result.push_back( std::move(rep) );
                 }
                 return result;
             }
