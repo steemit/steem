@@ -235,7 +235,13 @@ namespace detail {
 
       auto trx_size = fc::raw::pack_size(trx);
 
-      STEEM_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+      if( required.size() == 0 )
+      {
+         for( auto& o : trx.operations )
+            app::operation_get_impacted_accounts( o, required );
+
+         STEEM_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+      }
 
       for( const auto& auth : required )
       {
