@@ -344,8 +344,7 @@ namespace golos {
                         uint32_t limit = 500);
 
                 std::vector<account_reputation> get_account_reputations(
-                        account_name_type account_lower_bound,
-                        uint32_t limit = 1000);
+                        std::vector < account_name_type > accounts);
 
                 follow_count_api_obj get_follow_count(account_name_type start);
 
@@ -625,30 +624,48 @@ namespace golos {
             }
 
             std::vector<account_reputation> plugin::impl::get_account_reputations(
-                    account_name_type account_lower_bound,
-                    uint32_t limit) {
-                FC_ASSERT(limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time.");
+                    std::vector < account_name_type > accounts
+                ) {
+
+                FC_ASSERT(accounts.size() <= 100, "Cannot retrieve more than 100 account reputations at a time.");
 
                 const auto &acc_idx = database().get_index<account_index>().indices().get<by_name>();
                 const auto &rep_idx = database().get_index<reputation_index>().indices().get<by_account>();
 
-                auto acc_itr = acc_idx.lower_bound(account_lower_bound);
+                size_t acc_count = accounts.size();
 
                 std::vector<account_reputation> result;
-                result.reserve(limit);
+                result.reserve(acc_count);
 
-                while (acc_itr != acc_idx.end() && result.size() < limit) {
-                    auto itr = rep_idx.find(acc_itr->name);
+                for (size_t i = 0; i < acc_count; i++) {
                     account_reputation rep;
+                    auto acc_itr = acc_idx.find( accounts[i] );
+
+                    // checking the presence of account with such name in database
+                    if ( acc_itr == acc_idx.end() ) {
+
+                        rep.account = accounts[i];
+                        rep.reputation = 0;
+                        result.push_back( std::move(rep) );
+
+                        wlog("Follow plugin: No such account with name \"${name}\" in account index", ("name", accounts[i]) );
+                        continue;
+                    }
 
                     rep.account = acc_itr->name;
-                    rep.reputation = itr != rep_idx.end() ? itr->reputation : 0;
 
-                    result.push_back(rep);
+                    auto itr = rep_idx.find(acc_itr->name);
+                    // same presence check in reputation idx
+                    if ( itr != rep_idx.end() ) {
+                        rep.reputation = itr->reputation;
+                    }
+                    else {
+                        wlog("Follow plugin: No such account with name \"${name}\" in reputation index", ("name", accounts[i]) );
+                        rep.reputation = 0;
+                    }
 
-                    ++acc_itr;
+                    result.push_back( std::move(rep) );
                 }
-
                 return result;
             }
 
@@ -750,11 +767,10 @@ namespace golos {
             }
 
             DEFINE_API(plugin, get_account_reputations) {
-                CHECK_ARG_SIZE(2)
-                auto lower_bound_name = args.args->at(0).as<account_name_type>();
-                auto limit = args.args->at(1).as<uint32_t>();
+                CHECK_ARG_SIZE(1)
+                auto accounts = args.args->at(0).as< std::vector < account_name_type > >();
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_account_reputations(lower_bound_name, limit);
+                    return pimpl->get_account_reputations( accounts );
                 });
             }
 
@@ -775,10 +791,11 @@ namespace golos {
             }
 
             std::vector<account_reputation> plugin::get_account_reputations_native(
-                    account_name_type account_lower_bound,
-                    uint32_t limit) {
+                    std::vector < account_name_type > accounts
+                ) {
+
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_account_reputations(account_lower_bound, limit);
+                    return pimpl->get_account_reputations( accounts );
                 });
             }
 
