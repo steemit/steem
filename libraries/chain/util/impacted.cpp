@@ -174,6 +174,11 @@ struct get_impacted_account_visitor
       _impacted.insert( op.delegatee );
    }
 
+   void operator()( const witness_set_properties_operation& op )
+   {
+      _impacted.insert( op.owner );
+   }
+
 
    // vops
 

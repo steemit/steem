@@ -945,6 +945,11 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
    notify_post_apply_operation( note );
 }
 
+void database::notify_pre_apply_block( const signed_block& block )
+{
+   STEEM_TRY_NOTIFY( pre_apply_block, block )
+}
+
 void database::notify_applied_block( const signed_block& block )
 {
    STEEM_TRY_NOTIFY( applied_block, block )
@@ -2666,6 +2671,8 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
+   notify_pre_apply_block( next_block );
+
    uint32_t next_block_num = next_block.block_num();
    //block_id_type next_block_id = next_block.id();
 
