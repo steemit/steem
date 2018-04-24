@@ -421,6 +421,13 @@ namespace golos {
                     if (itr != idx.end()) {
                         results.push_back(extended_account(*itr, _db));
                         auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
+                        while (vitr != vidx.end() && vitr->account == itr->id) {
+                            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
+                            ++vitr;
+                        }
+                    }
+                    else {
+                        wlog("database_api: No such account with name \"${name}\" in account index", ("name", name) );
                     }
                 }
 

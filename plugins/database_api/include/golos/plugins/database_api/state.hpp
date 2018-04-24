@@ -42,12 +42,7 @@ namespace golos {
                 }
 
                 asset vesting_balance; /// convert vesting_shares to vesting steem
-                optional<map<uint32_t, extended_limit_order>> open_orders;
-                optional<vector<string>> comments; /// permlinks for this user
-                optional<vector<string>> blog; /// blog posts for this user
-                optional<vector<string>> feed; /// feed posts for this user
-                optional<vector<string>> recent_replies; /// blog posts for this user
-                optional<vector<string>> recommended; /// posts recommened for this user
+                set<string> witness_votes;
             };
 
 
@@ -88,7 +83,9 @@ namespace golos {
 
 FC_REFLECT_DERIVED((golos::plugins::database_api::extended_account),
                    ((golos::plugins::database_api::account_api_object)),
-                   (vesting_balance)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended))
+                   (vesting_balance)
+                   (witness_votes)
+                   )
 
 
 
