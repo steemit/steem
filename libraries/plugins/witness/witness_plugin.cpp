@@ -240,7 +240,8 @@ namespace detail {
          for( auto& o : trx.operations )
             app::operation_get_impacted_accounts( o, required );
 
-         STEEM_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+         if( _db.is_producing() )
+            STEEM_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
       }
 
       for( const auto& auth : required )
@@ -280,9 +281,10 @@ namespace detail {
             app::operation_get_impacted_accounts( note.op, impacted );
 
             for( auto& account : impacted )
-               STEEM_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
-                  "Account ${a} already submitted a custom json operation this block.",
-                  ("a", account) );
+               if( _db.is_producing() )
+                  STEEM_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+                     "Account ${a} already submitted a custom json operation this block.",
+                     ("a", account) );
          }
             break;
          default:
