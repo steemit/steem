@@ -14,7 +14,7 @@ FC_TODO( "After we vendor fc, also vendor diff_match_patch and fix these warning
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic push
-#if !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
+#if defined( __clang__ ) && defined( __has_warning )
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 #include <diff_match_patch.h>
@@ -2209,7 +2209,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
    {
       if( token.amount == 0 )
          continue;
-         
+
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          _db.adjust_reward_balance( op.account, -token );
@@ -2227,7 +2227,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
          if( token.symbol == VESTS_SYMBOL)
          {
             FC_ASSERT( token <= a->reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
-               ("c", token)("a", a->reward_vesting_balance) );   
+               ("c", token)("a", a->reward_vesting_balance) );
 
             asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
             if( token == a->reward_vesting_balance )
