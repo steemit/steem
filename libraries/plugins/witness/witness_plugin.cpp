@@ -266,7 +266,8 @@ namespace detail
          for( auto& o : trx.operations )
             app::operation_get_impacted_accounts( o, required );
 
-         STEEMIT_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
+         if( _db.is_producing() )
+            STEEMIT_ASSERT( required.size() > 0, plugin_exception, "Operation must have an impacted account" );
       }
 
       auto trx_size = fc::raw::pack_size(trx);
@@ -299,6 +300,8 @@ namespace detail
 
    void witness_plugin_impl::post_operation( const operation_notification& note )
    {
+      const auto& db = _self.database();
+
       switch( note.op.which() )
       {
          case operation::tag< custom_operation >::value:
@@ -309,9 +312,10 @@ namespace detail
             app::operation_get_impacted_accounts( note.op, impacted );
 
             for( auto& account : impacted )
-               STEEMIT_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
-                  "Account ${a} already submitted a custom json operation this block.",
-                  ("a", account) );
+               if( db.is_producing() )
+                  STEEMIT_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+                     "Account ${a} already submitted a custom json operation this block.",
+                     ("a", account) );
          }
             break;
          default:
