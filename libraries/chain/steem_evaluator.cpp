@@ -1614,6 +1614,9 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
 {
    database& d = db();
+   if( d.is_producing() )
+      FC_ASSERT( false, "custom_binary_operation is deprecated" );
+
    FC_ASSERT( d.has_hardfork( STEEM_HARDFORK_0_14__317 ) );
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
@@ -2207,7 +2210,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
    {
       if( token.amount == 0 )
          continue;
-         
+
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          _db.adjust_reward_balance( op.account, -token );
@@ -2225,7 +2228,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
          if( token.symbol == VESTS_SYMBOL)
          {
             FC_ASSERT( token <= a->reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
-               ("c", token)("a", a->reward_vesting_balance) );   
+               ("c", token)("a", a->reward_vesting_balance) );
 
             asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
             if( token == a->reward_vesting_balance )
