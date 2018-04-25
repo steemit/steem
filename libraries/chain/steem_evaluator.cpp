@@ -209,8 +209,6 @@ namespace golos { namespace chain {
 
             const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
             const auto& median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
-            // auto target_delegation = golos_to_vshares(_db, median_fee) * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
-            // auto current_delegation = golos_to_vshares(_db, o.fee) * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO + o.delegation;
             auto target_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER *
                 median_fee * v_share_price;
             auto current_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * o.fee * v_share_price + o.delegation;
@@ -2256,10 +2254,16 @@ namespace golos { namespace chain {
 
             if (increasing) {
                 FC_ASSERT(delegator.available_vesting_shares(true) >= delta,
-                    "Account does not have enough vesting shares to delegate.");
+                    "Account does not have enough vesting shares to delegate.",
+                    ("available", delegator.available_vesting_shares(true))
+                    ("delta", delta)
+                    ("vesting_shares", delegator.vesting_shares)
+                    ("delegated_vesting_shares", delegator.delegated_vesting_shares)
+                    ("to_withdraw", delegator.to_withdraw)
+                    ("withdrawn", delegator.withdrawn));
                 if (!delegation) {
                     FC_ASSERT(op.vesting_shares >= min_delegation,
-                        "Account must delegate a minimum of ${v}", ("v",min_delegation));
+                        "Account must delegate a minimum of ${v}", ("v",min_delegation)("vesting_shares",op.vesting_shares));
                     _db.create<vesting_delegation_object>([&](vesting_delegation_object& o) {
                         o.delegator = op.delegator;
                         o.delegatee = op.delegatee;
@@ -2272,7 +2276,8 @@ namespace golos { namespace chain {
                 });
             } else {
                 FC_ASSERT(op.vesting_shares.amount == 0 || op.vesting_shares >= min_delegation,
-                    "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation));
+                    "Delegation must be removed or leave minimum delegation amount of ${v}",
+                    ("v",min_delegation)("vesting_shares",op.vesting_shares));
                 _db.create<vesting_delegation_expiration_object>([&](vesting_delegation_expiration_object& o) {
                     o.delegator = op.delegator;
                     o.vesting_shares = -delta;

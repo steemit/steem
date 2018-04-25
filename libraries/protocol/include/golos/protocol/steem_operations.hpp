@@ -37,7 +37,7 @@ namespace golos { namespace protocol {
             public_key_type memo_key;
             string json_metadata;
 
-            extensions_type extensions;     // Is it needed ?
+            extensions_type extensions;
 
             void validate() const;
             void get_required_active_authorities(flat_set<account_name_type>& a) const {

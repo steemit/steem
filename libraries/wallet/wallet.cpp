@@ -1211,7 +1211,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
 
 /**
- *  This method will genrate new owner, active, posting and memo keys for the new account
+ *  This method will generate new owner, active, posting and memo keys for the new account
  *  which will be controlable by this wallet.
  */
         annotated_signed_transaction wallet_api::create_account_delegated(
@@ -1607,7 +1607,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
 /**
- *  This method will genrate new owner, active, posting and memo keys for the new account
+ *  This method will generate new owner, active, posting and memo keys for the new account
  *  which will be controlable by this wallet.
  */
         annotated_signed_transaction wallet_api::create_account( string creator, string new_account_name, string json_meta, bool broadcast )
@@ -1625,7 +1625,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
 
 /**
- *  This method will genrate new owner, active, and memo keys for the new account which
+ *  This method will generate new owner, active, and memo keys for the new account which
  *  will be controlable by this wallet.
  */
 

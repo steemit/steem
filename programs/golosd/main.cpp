@@ -126,7 +126,7 @@ int main( int argc, char** argv ) {
         // auto& args = appbase::app().get_args();
 
         try {
-            fc::optional<fc::logging_config> logging_config = golos::utilities::load_logging_config(appbase::app().config_path());
+            auto logging_config = golos::utilities::load_logging_config(appbase::app().config_path());
             if (logging_config)
                 fc::configure_logging(*logging_config);
         } catch (const fc::exception&) {
