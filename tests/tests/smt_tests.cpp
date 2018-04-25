@@ -639,6 +639,10 @@ BOOST_AUTO_TEST_CASE( smt_refund_validate )
 
       op.amount = asset( 1, creator_symbol );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "0.000 TESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "-1.000 TESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.amount = ASSET( "1.000 TESTS" );
    }
    FC_LOG_AND_RETHROW()
@@ -661,6 +665,66 @@ BOOST_AUTO_TEST_CASE( smt_refund_authorities )
       BOOST_REQUIRE( auths == expected );
 
       expected.insert( "executor" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_contribute_validate )
+{
+   try
+   {
+      ACTORS( (creator)(contributor) )
+      generate_block();
+      asset_symbol_type creator_symbol = create_smt("creator", creator_private_key, 0);
+
+      smt_contribute_operation op;
+      op.contributor = "contributor";
+      op.symbol = creator_symbol;
+      op.contribution_id = 7;
+      op.amount_steem = ASSET( "100.000 TESTS" );
+      op.validate();
+
+      // Fail due to invalid contributor account name.
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.contributor = "contributor";
+
+      // Fail due to invalid SMT symbol.
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.symbol = creator_symbol;
+
+      // Fail due to invalid contribution amount or token.
+      op.amount_steem = ASSET( "0.000 TESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount_steem = ASSET( "-1.000 TESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount_steem = ASSET( "100.000 TBD" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount_steem = ASSET( "100.000 TESTS" );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_contribute_authorities )
+{
+   try
+   {
+      smt_contribute_operation op;
+      op.contributor = "contributor";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "contributor" );
       op.get_required_active_authorities( auths );
       BOOST_REQUIRE( auths == expected );
    }

@@ -173,6 +173,24 @@ struct smt_cap_reveal_operation : public smt_base_operation
    void validate()const;
 };
 
+/// Unlike most smt operations this one is not issued by smt creator, hence it inherits base_operation
+struct smt_contribute_operation : public base_operation
+{
+   /// Account that executes the operation.
+   account_name_type    contributor;
+   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
+   asset_symbol_type    symbol;
+   /// The id must be unique for given contributor and symbol pair.
+   contribution_id_type contribution_id;
+   /// Contributed amount (must be STEEM).
+   asset                amount_steem;
+   extensions_type      extensions;
+
+   void validate()const;
+   void get_required_active_authorities( flat_set< account_name_type >& a )const
+   { a.insert( contributor ); }
+};
+
 struct smt_refund_operation : public smt_executor_base_operation
 {
    account_name_type       contributor;
@@ -350,6 +368,15 @@ FC_REFLECT_DERIVED(
    (amount)
    (extensions)
    )
+
+FC_REFLECT(
+   steem::protocol::smt_contribute_operation,
+   (contributor)
+   (symbol)
+   (contribution_id)
+   (amount_steem)
+   (extensions)
+)
 
 FC_REFLECT(
    steem::protocol::smt_emissions_unit,
