@@ -52,6 +52,8 @@ namespace golos {
 
             id_type id;
 
+            comment_id_type   comment;
+
             shared_string title;
             shared_string body;
             shared_string json_metadata;
@@ -267,25 +269,20 @@ namespace golos {
         comment_index;
 
 
-        typedef multi_index_container <
-            comment_content_object,
-                indexed_by<ordered_unique <
-                member <comment_content_object, comment_content_object::id_type, &comment_content_object::id>>>,
-            allocator <comment_content_object>
-        >
-        comment_content_index;
-        /**
-         * @ingroup comment_content_index
-         */
-        typedef multi_index_container <
+    struct by_comment;
+
+    typedef multi_index_container<
         comment_content_object,
-            indexed_by<
-                ordered_unique < tag < by_id>,
-        member<comment_content_object, comment_content_object::id_type, &comment_content_object::id>>
-        >,
-        allocator <comment_content_object>
-        >
-        comment_content_index;
+        indexed_by<
+            ordered_unique<
+                tag< by_id >,
+                    member< comment_content_object, comment_content_id_type, &comment_content_object::id > >,
+                    ordered_unique<
+                tag< by_comment >,
+                    member< comment_content_object, comment_id_type, &comment_content_object::comment > > >,
+        allocator< comment_content_object >
+    >
+    comment_content_index;
 
     }
 } // golos::chain

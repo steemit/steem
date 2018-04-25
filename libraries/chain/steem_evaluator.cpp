@@ -544,7 +544,6 @@ namespace golos {
                             com.parent_author = parent->author;
                             com.parent_permlink = parent->permlink;
                             com.depth = parent->depth + 1;
-                            com.category = parent->category;
                             com.root_comment = parent->root_comment;
                             com.cashout_time = fc::time_point_sec::maximum();
                         }
@@ -553,31 +552,26 @@ namespace golos {
                             com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
                         }
 
-#ifndef IS_LOW_MEM
-                        from_string(com.title, o.title);
-                        if (o.body.size() < 1024 * 1024 * 128) {
-                            from_string(com.body, o.body);
-                        }
-                        from_string(com.json_metadata, o.json_metadata);
-#endif
                     });
 
-                    /** TODO move category behavior to a plugin, this is not part of consensus */
-                    const category_object *cat = _db.find_category(new_comment.category);
-                    if (!cat) {
-                        cat = &_db.create<category_object>([&](category_object &c) {
-                            c.name = new_comment.category;
-                            c.discussions = 1;
-                            c.last_update = _db.head_block_time();
-                        });
-                    } else {
-                        _db.modify(*cat, [&](category_object &c) {
-                            c.discussions++;
-                            c.last_update = _db.head_block_time();
-                        });
-                    }
-
                     id = new_comment.id;
+
+                    #ifndef IS_LOW_MEM
+                    _db.create< comment_content_object >( [&]( comment_content_object& con )
+                        {
+                            con.comment = id;
+
+                             from_string( con.title, o.title );
+                             if( o.body.size() < 1024*1024*128 )
+                             {
+                                    from_string( con.body, o.body );
+                                 }
+                             if( fc::is_utf8( o.json_metadata ) )
+                                from_string( con.json_metadata, o.json_metadata );
+                             else
+                             wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+                        });
+                    #endif
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
                     auto now = _db.head_block_time();
@@ -624,37 +618,39 @@ namespace golos {
                             FC_ASSERT(equal(com.parent_permlink, o.parent_permlink), "The permlink of a comment cannot change.");
                         }
 
+                    });
 #ifndef IS_LOW_MEM
-                        if (o.title.size()) {
-                            from_string(com.title, o.title);
+                    _db.modify( _db.get< comment_content_object, by_comment >( comment.id ), [&]( comment_content_object& con )
+                    {
+                        if( o.title.size() )
+                            from_string( con.title, o.title );
+                        if( o.json_metadata.size() ) {
+                            if( fc::is_utf8( o.json_metadata ) )
+                                from_string( con.json_metadata, o.json_metadata );
+                            else
+                                wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
                         }
-                        if (o.json_metadata.size()) {
-                            from_string(com.json_metadata, o.json_metadata);
-                        }
-
-                        if (o.body.size()) {
+                        if( o.body.size() ) {
                             try {
                                 diff_match_patch<std::wstring> dmp;
-                                auto patch = dmp.patch_fromText(utf8_to_wstring(o.body));
-                                if (patch.size()) {
-                                    auto result = dmp.patch_apply(patch, utf8_to_wstring(to_string(com.body)));
+                                auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
+                                if( patch.size() ) {
+                                    auto result = dmp.patch_apply( patch, utf8_to_wstring( to_string( con.body ) ) );
                                     auto patched_body = wstring_to_utf8(result.first);
-                                    if (!fc::is_utf8(patched_body)) {
+                                    if( !fc::is_utf8( patched_body ) ) {
                                         idump(("invalid utf8")(patched_body));
-                                        from_string(com.body, fc::prune_invalid_utf8(patched_body));
-                                    } else {
-                                        from_string(com.body, patched_body);
-                                    }
-                                } else { // replace
-                                    from_string(com.body, o.body);
+                                        from_string( con.body, fc::prune_invalid_utf8(patched_body) );
+                                    } else { from_string( con.body, patched_body ); }
                                 }
-                            } catch (...) {
-                                from_string(com.body, o.body);
+                                else { // replace
+                                    from_string( con.body, o.body );
+                                }
+                            } catch ( ... ) {
+                                from_string( con.body, o.body );
                             }
                         }
-#endif
-
                     });
+#endif
 
                 } // end EDIT case
 
