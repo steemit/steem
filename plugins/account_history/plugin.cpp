@@ -47,7 +47,7 @@ struct operation_visitor {
 
     template<typename Op>
     void operator()(Op &&) const {
-        const auto &hist_idx = _db.get_index<golos::chain::account_history_index>().indices().get<golos::chain::by_account>();
+        const auto &hist_idx = _db.get_index<account_history_index>().indices().get<by_account>();
         if (!new_obj) {
             new_obj = &_db.create<golos::chain::operation_object>([&](golos::chain::operation_object &obj) {
                 obj.trx_id = _note.trx_id;

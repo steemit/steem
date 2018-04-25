@@ -58,4 +58,4 @@ namespace golos {
 }
 
 FC_REFLECT( (golos::plugins::account_history::account_history_object), (id)(account)(sequence)(op) )
-CHAINBASE_SET_INDEX_TYPE( golos::plugins::account_history::account_history_object, golos::chain::account_history_index)
+CHAINBASE_SET_INDEX_TYPE( golos::plugins::account_history::account_history_object, golos::plugins::account_history::account_history_index)
