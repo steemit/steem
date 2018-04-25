@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/utilities/rocksdb_proxy.hpp>
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
@@ -15,21 +17,33 @@ namespace bfs = boost::filesystem;
 using bpo::options_description;
 using bpo::variables_map;
 
+namespace storage_configuration_helper
+{
+   void create_directory( const bfs::path& path );
+}
+
 class storage_configuration_plugin
 {
    private:
   
       const std::string name;
 
+      std::string version;
+
       bfs::path storage_path;
       bfs::path config_file;
 
+      rocksdb_types::column_definitions_preparer col_def_preparer;
+      rocksdb_types::slice_info_items slices;
+
    public:
 
-      storage_configuration_plugin( const std::string& _name );
+      storage_configuration_plugin( const std::string& _name, const rocksdb_types::column_definitions_preparer& _col_def_preparer, const rocksdb_types::slice_info_items& _slices );
       storage_configuration_plugin( const std::string& _name, const bfs::path& _storage_path, const bfs::path& _config_file );
 
       const std::string& get_name() const;
+
+      const std::string& get_version() const;
 
       void set_config_file( const bfs::path& src );
       const bfs::path& get_config_file() const;
@@ -37,6 +51,9 @@ class storage_configuration_plugin
 
       void set_storage_path( const bfs::path& src );
       const bfs::path& get_storage_path() const;
+
+      const rocksdb_types::column_definitions_preparer& get_column_definitions_preparer() const;
+      const rocksdb_types::slice_info_items& get_slices() const;
 
       void correct_path( const bfs::path& src );
 };
@@ -70,14 +87,19 @@ class storage_configuration_manager
       storage_configuration_manager();
 
       void initialize( int _argc, char** _argv );
-      void add_plugin( const std::string& plugin_name );
+      void add_plugin( const std::string& plugin_name, const rocksdb_types::column_definitions_preparer& _col_def_preparer, const rocksdb_types::slice_info_items& _slices );
 
       const bfs::path& get_storage_root_path() const;
+
+      const std::string get_version( const std::string& plugin_name ) const;
 
       const bfs::path get_config_file( const std::string& plugin_name ) const;
       const bool exist_config_file( const std::string& plugin_name ) const;
 
       const bfs::path get_storage_path( const std::string& plugin_name ) const;
+
+      rocksdb_types::column_definitions_preparer get_column_definitions_preparer( const std::string& plugin_name ) const;
+      rocksdb_types::slice_info_items get_slices( const std::string& plugin_name ) const;
 };
 
 } } // steem::utilities

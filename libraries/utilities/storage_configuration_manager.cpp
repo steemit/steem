@@ -4,19 +4,36 @@
 #include <boost/algorithm/string.hpp>
 
 #include<iostream>
+#include <sys/stat.h>
 
 namespace steem { namespace utilities {
 
+namespace storage_configuration_helper
+{
+   void create_directory( const bfs::path& path )
+   {
+      if( !bfs::exists( path ) )
+      {
+         mkdir( path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+         struct stat sb;
+         assert( stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode) );
+      }
+   }
+}
+
 //************************************storage_configuration_plugin************************************
 
-storage_configuration_plugin::storage_configuration_plugin( const std::string& _name )
-: name( _name ), storage_path( bfs::path() ), config_file( bfs::path() )
+storage_configuration_plugin::storage_configuration_plugin( const std::string& _name,
+                                                            const rocksdb_types::column_definitions_preparer& _col_def_preparer,
+                                                            const rocksdb_types::slice_info_items& _slices )
+:  name( _name ), version( "1.0"/*temporary!!!*/ ), storage_path( bfs::path() ), config_file( bfs::path() ),
+   col_def_preparer( _col_def_preparer ), slices( _slices )
 {
 
 }
 
 storage_configuration_plugin::storage_configuration_plugin( const std::string& _name, const bfs::path& _storage_path, const bfs::path& _config_file )
-: name( _name ), storage_path( _storage_path ), config_file( _config_file )
+: name( _name ), version( "1.0"/*temporary!!!*/ ), storage_path( _storage_path ), config_file( _config_file )
 {
 
 }
@@ -24,6 +41,11 @@ storage_configuration_plugin::storage_configuration_plugin( const std::string& _
 const std::string& storage_configuration_plugin::get_name() const
 {
    return name;
+}
+
+const std::string& storage_configuration_plugin::get_version() const
+{
+   return version;
 }
 
 void storage_configuration_plugin::set_config_file( const bfs::path& src )
@@ -51,10 +73,22 @@ const bfs::path& storage_configuration_plugin::get_storage_path() const
    return storage_path;
 }
 
+const rocksdb_types::column_definitions_preparer& storage_configuration_plugin::get_column_definitions_preparer() const
+{
+   return col_def_preparer;
+}
+
+const rocksdb_types::slice_info_items& storage_configuration_plugin::get_slices() const
+{
+   return slices;
+}
+
 void storage_configuration_plugin::correct_path( const bfs::path& src )
 {
    storage_path = src / storage_path;
    config_file = src / config_file;
+
+   storage_configuration_helper::create_directory( storage_path );
 }
 
 //************************************storage_configuration_manager************************************
@@ -227,6 +261,8 @@ void storage_configuration_manager::initialize_impl( int _argc, char** _argv )
 
 void storage_configuration_manager::correct_paths()
 {
+   storage_configuration_helper::create_directory( storage_root_path );
+
    action( [this]( storage_configuration_plugin& obj ){ obj.correct_path( storage_root_path ); } );
 }
 
@@ -237,14 +273,21 @@ void storage_configuration_manager::initialize( int _argc, char** _argv )
    correct_paths();
 }
 
-void storage_configuration_manager::add_plugin( const std::string& plugin_name )
+void storage_configuration_manager::add_plugin( const std::string& plugin_name,
+                                                const rocksdb_types::column_definitions_preparer& _col_def_preparer,
+                                                const rocksdb_types::slice_info_items& _slices )
 {
-   plugins.emplace( std::make_pair( plugin_name, storage_configuration_plugin( plugin_name ) ) );
+   plugins.emplace( std::make_pair( plugin_name, storage_configuration_plugin( plugin_name, _col_def_preparer, _slices ) ) );
 }
 
 const bfs::path& storage_configuration_manager::get_storage_root_path() const
 {
    return storage_root_path;
+}
+
+const std::string storage_configuration_manager::get_version( const std::string& plugin_name ) const
+{
+   return get_any_info< std::string >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_version(); } );
 }
 
 const bfs::path storage_configuration_manager::get_config_file( const std::string& plugin_name ) const
@@ -260,6 +303,16 @@ const bool storage_configuration_manager::exist_config_file( const std::string& 
 const bfs::path storage_configuration_manager::get_storage_path( const std::string& plugin_name ) const
 {
    return get_any_info< bfs::path >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_storage_path(); } );
+}
+
+rocksdb_types::column_definitions_preparer storage_configuration_manager::get_column_definitions_preparer( const std::string& plugin_name ) const
+{
+   return get_any_info< rocksdb_types::column_definitions_preparer >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_column_definitions_preparer(); } );
+}
+
+rocksdb_types::slice_info_items storage_configuration_manager::get_slices( const std::string& plugin_name ) const
+{
+   return get_any_info< rocksdb_types::slice_info_items >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_slices(); } );
 }
 
 } }

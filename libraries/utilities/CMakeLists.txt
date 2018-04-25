@@ -12,6 +12,8 @@ file(GLOB HEADERS "include/steem/utilities/*.hpp")
 set(sources
    benchmark_dumper.cpp
    storage_configuration_manager.cpp
+   persistent_storage.cpp
+   rocksdb_proxy.cpp
    key_conversion.cpp
    string_escape.cpp
    tempdir.cpp
@@ -25,9 +27,11 @@ list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 add_library( steem_utilities
              ${sources}
              ${HEADERS} )
-target_link_libraries( steem_utilities fc )
+target_link_libraries( steem_utilities fc rocksdb steem_protocol )
 target_include_directories( steem_utilities
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/rocksdb/include"
+                           )
 if (USE_PCH)
   set_target_properties(steem_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(steem_utilities)
