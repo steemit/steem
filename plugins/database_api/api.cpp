@@ -11,7 +11,6 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/plugins/follow/plugin.hpp>
 
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
@@ -57,7 +56,6 @@ namespace golos {
                 ~api_impl();
 
                 void startup() {
-                    _follow_api = appbase::app().find_plugin<golos::plugins::follow::plugin>();
                 }
 
                 // Subscriptions
@@ -163,7 +161,6 @@ namespace golos {
             private:
 
                 golos::chain::database &_db;
-                golos::plugins::follow::plugin *_follow_api = nullptr;
             };
 
 
