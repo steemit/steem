@@ -6215,6 +6215,43 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_SUITE(delegation)
 
+    BOOST_AUTO_TEST_CASE(account_create_with_delegation_validate) {
+        try {
+            account_create_with_delegation_operation op;
+            private_key_type priv_key = generate_private_key("temp_key");
+            op.delegation = ASSET_GESTS(100);
+            op.creator = "alice";
+            op.new_account_name = "bob";
+            op.owner = authority(1, priv_key.get_public_key(), 1);
+            op.active = authority(1, priv_key.get_public_key(), 1);
+            op.memo_key = priv_key.get_public_key();
+            op.json_metadata = "{\"foo\":\"bar\"}";
+
+            BOOST_TEST_MESSAGE("--- Test failing on negative fee");
+            op.fee = ASSET_GOLOS(-1);
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test failing on negative delegation");
+            op.fee = ASSET_GOLOS(10);
+            op.delegation = ASSET_GESTS(-1);
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test failing when delegation is not VESTS");
+            op.delegation = ASSET_GOLOS(100);
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test failing when fee is not GOLOS");
+            op.fee = ASSET_GBG(10);
+            op.delegation = ASSET_GESTS(100);
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test valid operation");
+            op.fee = ASSET_GOLOS(10);
+            op.validate();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
     BOOST_AUTO_TEST_CASE(account_create_with_delegation_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_authorities");
@@ -6307,12 +6344,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             auto min_fee = db->get_witness_schedule_object().median_props.account_creation_fee;
             auto required_fee = fee_mult * min_fee;
             auto required_gests = required_fee * gp.get_vesting_share_price();
-            BOOST_TEST_MESSAGE("    required_fee: " << variant(required_fee).as_string() << "; required_gests: " << variant(required_gests).as_string());
             op.fee = required_fee;
             op.delegation = ASSET_GESTS(0);
             op.new_account_name = "sam";
             fund("alice", op.fee);
-            BOOST_TEST_MESSAGE("    fee: " << variant(op.fee).as_string() << "; delegation: " << variant(op.delegation).as_string());
             push_tx_with_ops(tx, alice_private_key, op);
 
             BOOST_TEST_MESSAGE("--- Test success using minimum GOLOS fee");
@@ -6320,7 +6355,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.delegation = (required_fee - min_fee) * gp.get_vesting_share_price();
             op.new_account_name = "pam";
             fund("alice", op.fee);
-            BOOST_TEST_MESSAGE("    fee: " << variant(op.fee).as_string() << "; delegation: " << variant(op.delegation).as_string());
             push_tx_with_ops(tx, alice_private_key, op);
 
             BOOST_TEST_MESSAGE("--- Test success using both GESTS and GOLOS to reach target delegation");
@@ -6328,7 +6362,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.delegation = asset(required_gests.amount / 2 + 1, VESTS_SYMBOL);
             op.new_account_name = "ram";
             fund("alice", op.fee);
-            BOOST_TEST_MESSAGE("    fee: " << variant(op.fee).as_string() << "; delegation: " << variant(op.delegation).as_string());
             push_tx_with_ops(tx, alice_private_key, op);
 
             BOOST_TEST_MESSAGE("--- Test failure when insufficient funds to process transaction");
