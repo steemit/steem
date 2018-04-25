@@ -28,6 +28,7 @@ target_link_libraries (
     golos_chain_plugin
     golos_protocol
     appbase
+    golos_json_rpc
     graphene_time
     fc
 )

@@ -7,11 +7,12 @@
 #include <golos/plugins/database_api/api_objects/account_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/witness_api_object.hpp>
 #include "forward.hpp"
-#include <golos/plugins/database_api/applied_operation.hpp>
+#include <golos/chain/applied_operation.hpp>
 
 namespace golos {
     namespace plugins {
         namespace database_api {
+            using golos::chain::applied_operation;
             using std::string;
             using std::vector;
 

@@ -26,8 +26,10 @@ if(BUILD_SHARED_LIBRARIES)
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            applied_operation.cpp
 
             include/golos/chain/account_object.hpp
+            include/golos/chain/applied_operation.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
             include/golos/chain/comment_object.hpp
@@ -71,6 +73,7 @@ else()
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            applied_operation.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp

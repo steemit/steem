@@ -910,42 +910,6 @@ namespace golos {
 
 
 
-            std::map<uint32_t, applied_operation> plugin::api_impl::get_account_history(
-                std::string account,
-                uint64_t from,
-                uint32_t limit
-            ) const {
-                FC_ASSERT(limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l", limit));
-                FC_ASSERT(from >= limit, "From must be greater than limit");
-                //   idump((account)(from)(limit));
-                const auto &idx = database().get_index<account_history_index>().indices().get<by_account>();
-                auto itr = idx.lower_bound(boost::make_tuple(account, from));
-                //   if( itr != idx.end() ) idump((*itr));
-                auto end = idx.upper_bound(boost::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
-                //   if( end != idx.end() ) idump((*end));
-
-                std::map<uint32_t, applied_operation> result;
-                while (itr != end) {
-                    result[itr->sequence] = database().get(itr->op);
-                    ++itr;
-                }
-                return result;
-            }
-
-
-            DEFINE_API(plugin, get_account_history) {
-                CHECK_ARG_SIZE(3)
-                auto account = args.args->at(0).as<std::string>();
-                auto from = args.args->at(1).as<uint64_t>();
-                auto limit = args.args->at(2).as<uint32_t>();
-
-                return my->database().with_weak_read_lock([&]() {
-                    return my->get_account_history(account, from, limit);
-                });
-            }
-
-
-
             std::vector<account_name_type> plugin::api_impl::get_miner_queue() const {
                 std::vector<account_name_type> result;
                 const auto &pow_idx = database().get_index<witness_index>().indices().get<by_pow>();

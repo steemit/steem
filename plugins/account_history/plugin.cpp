@@ -8,6 +8,9 @@
 #include <boost/algorithm/string.hpp>
 #define STEEM_NAMESPACE_PREFIX "golos::protocol::"
 
+#define CHECK_ARG_SIZE(s) \
+   FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+
 namespace golos {
 namespace plugins {
 namespace account_history {
@@ -131,6 +134,9 @@ public:
         }
     }
 
+    std::map<uint32_t, applied_operation> get_account_history(std::string account, uint64_t from, uint32_t limit);
+
+
     flat_map<string, string> _tracked_accounts;
     bool _filter_content = false;
     uint32_t _start_block = 0;
@@ -140,7 +146,40 @@ public:
 };
 
 
+std::map<uint32_t, applied_operation> plugin::plugin_impl::get_account_history (
+    std::string account,
+    uint64_t from,
+    uint32_t limit
+) {
+    FC_ASSERT(limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l", limit));
+    FC_ASSERT(from >= limit, "From must be greater than limit");
+    //   idump((account)(from)(limit));
+    auto & db = database();
+    const auto &idx = db.get_index<account_history_index>().indices().get<by_account>();
+    auto itr = idx.lower_bound(boost::make_tuple(account, from));
+    //   if( itr != idx.end() ) idump((*itr));
+    auto end = idx.upper_bound(boost::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
+    //   if( end != idx.end() ) idump((*end));
 
+    std::map<uint32_t, applied_operation> result;
+    while (itr != end) {
+        result[itr->sequence] = db.get(itr->op);
+        ++itr;
+    }
+    return result;
+}
+
+
+DEFINE_API(plugin, get_account_history) {
+    CHECK_ARG_SIZE(3)
+    auto account = args.args->at(0).as<std::string>();
+    auto from = args.args->at(1).as<uint64_t>();
+    auto limit = args.args->at(2).as<uint32_t>();
+
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_account_history(account, from, limit);
+    });
+}
 
 
 struct get_impacted_account_visitor {

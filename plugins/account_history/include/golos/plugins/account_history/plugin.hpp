@@ -31,10 +31,16 @@
 
 #include <fc/thread/future.hpp>
 
+#include <golos/plugins/json_rpc/utility.hpp>
+#include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/chain/applied_operation.hpp>
+
+
 namespace golos {
 namespace plugins {
 namespace account_history {
 using namespace chain;
+using golos::chain::applied_operation;
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the
@@ -55,6 +61,15 @@ enum account_history_object_type {
     bucket_object_type = 1 ///< used in market_history_plugin
 };
 
+using get_account_history_return_type = std::map<uint32_t, applied_operation>;
+
+
+using plugins::json_rpc::void_type;
+using plugins::json_rpc::msg_pack;
+using plugins::json_rpc::msg_pack_transfer;
+
+DEFINE_API_ARGS(get_account_history, msg_pack, get_account_history_return_type);
+
 /**
 *  This plugin is designed to track a range of operations by account so that one node
 *  doesn't need to hold the full operation history in memory.
@@ -63,12 +78,16 @@ class plugin : public appbase::plugin<plugin> {
 public:
     constexpr static const char *plugin_name = "account_history";
 
-    APPBASE_PLUGIN_REQUIRES((chain::plugin))
+    APPBASE_PLUGIN_REQUIRES(
+        (json_rpc::plugin)
+        (chain::plugin)
+    )
 
     static const std::string &name() {
         static std::string name = plugin_name;
         return name;
     }
+
 
     plugin( );
     ~plugin( );
@@ -84,7 +103,16 @@ public:
     }
 
     flat_map<string, string> tracked_accounts() const; /// map start_range to end_range
-
+    /**
+     *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
+     *  returns operations in the range [from-limit, from]
+     *
+     *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
+     *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
+     */
+    DECLARE_API(
+        (get_account_history)
+    )
 private:
     struct plugin_impl;
 

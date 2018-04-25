@@ -9,7 +9,7 @@
 #include <fc/variant_object.hpp>
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/plugins/database_api/applied_operation.hpp>
+#include <golos/chain/applied_operation.hpp>
 #include <golos/plugins/database_api/state.hpp>
 #include <golos/plugins/database_api/api_objects/feed_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
@@ -110,8 +110,6 @@ namespace golos {
             };
 
 
-            using get_account_history_return_type = std::map<uint32_t, applied_operation>;
-
             using chain_properties_17 = chain_properties;
             using price_17 = price;
 
@@ -155,7 +153,6 @@ namespace golos {
             DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
             DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
-            DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
             DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
 
@@ -426,15 +423,6 @@ namespace golos {
                                      */
                                     (verify_account_authority)
 
-
-                                    /**
-                                     *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
-                                     *  returns operations in the range [from-limit, from]
-                                     *
-                                     *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
-                                     *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
-                                     */
-                                    (get_account_history)
 
                                     (get_database_info)
 
