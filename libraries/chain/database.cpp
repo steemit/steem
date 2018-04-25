@@ -2868,7 +2868,6 @@ namespace golos {
             add_core_index<convert_request_index>(*this);
             add_core_index<liquidity_reward_balance_index>(*this);
             add_core_index<operation_index>(*this);
-            add_core_index<account_history_index>(*this);
             add_core_index<category_index>(*this);
             add_core_index<hardfork_property_index>(*this);
             add_core_index<withdraw_vesting_route_index>(*this);

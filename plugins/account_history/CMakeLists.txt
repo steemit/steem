@@ -2,6 +2,7 @@ set(CURRENT_TARGET account_history)
 
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/account_history/plugin.hpp
+    include/golos/plugins/account_history/history_object.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
@@ -30,6 +31,7 @@ target_link_libraries (
     appbase
     golos_json_rpc
     graphene_time
+    chainbase
     fc
 )
 

@@ -395,6 +395,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
     my.reset(new plugin_impl);
     // auto & tmp_db_ref = appbase::app().get_plugin<chain::plugin>().db();
     my->database().pre_apply_operation.connect([&](const golos::chain::operation_notification &note) { my->on_operation(note); });
+    golos::chain::add_plugin_index<account_history_index>(db);
 
     typedef pair<string, string> pairstring;
     LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);

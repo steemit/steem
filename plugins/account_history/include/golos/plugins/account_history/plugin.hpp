@@ -34,6 +34,7 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/applied_operation.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 
 namespace golos {
