@@ -2798,6 +2798,7 @@ namespace golos {
         void database::initialize_evaluators() {
             _my->_evaluator_registry.register_evaluator<vote_evaluator>();
             _my->_evaluator_registry.register_evaluator<comment_evaluator>();
+            _my->_evaluator_registry.register_evaluator<comment_content_evaluator>();
             _my->_evaluator_registry.register_evaluator<comment_options_evaluator>();
             _my->_evaluator_registry.register_evaluator<delete_comment_evaluator>();
             _my->_evaluator_registry.register_evaluator<transfer_evaluator>();

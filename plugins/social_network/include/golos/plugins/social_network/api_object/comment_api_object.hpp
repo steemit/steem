@@ -10,12 +10,47 @@ namespace golos {
 
             using namespace golos::chain;
 
+            struct comment_content_api_object {
+                comment_content_api_object(const golos::chain::comment_content_object &o)
+                        : id(o.id),
+                          parent_author(o.parent_author),
+                          parent_permlink(to_string(o.parent_permlink)),
+                          author(o.author),
+                          permlink(to_string(o.permlink)),
+                          title(to_string(o.title)),
+                          body(to_string(o.body)),
+                          json_metadata(to_string(o.json_metadata)),
+                          last_update(o.last_update),
+                          created(o.created),
+                          active(o.active),
+                          last_payout(o.last_payout) {
+
+                }
+
+                comment_content_api_object() {
+                }
+
+                comment_object::id_type id;
+
+                std::string title;
+                std::string body;
+                std::string json_metadata;
+
+                account_name_type parent_author;
+                std::string parent_permlink;
+                account_name_type author;
+                std::string permlink;
+
+                time_point_sec last_update;
+                time_point_sec created;
+                time_point_sec active;
+                time_point_sec last_payout;
+
+            };
+
             struct comment_api_object {
-                comment_api_object(const golos::chain::comment_object &o) : id(o.id), category(to_string(o.category)),
-                        parent_author(o.parent_author), parent_permlink(to_string(o.parent_permlink)), author(o.author),
-                        permlink(to_string(o.permlink)), title(to_string(o.title)), body(to_string(o.body)),
-                        json_metadata(to_string(o.json_metadata)), last_update(o.last_update), created(o.created),
-                        active(o.active), last_payout(o.last_payout), depth(o.depth), children(o.children),
+                comment_api_object(const golos::chain::comment_object &o)
+                        : id(o.id), depth(o.depth), children(o.children),
                         children_rshares2(o.children_rshares2), net_rshares(o.net_rshares), abs_rshares(o.abs_rshares),
                         vote_rshares(o.vote_rshares), children_abs_rshares(o.children_abs_rshares),
                         cashout_time(o.cashout_time), max_cashout_time(o.max_cashout_time),
@@ -35,19 +70,6 @@ namespace golos {
                 }
 
                 comment_object::id_type id;
-                std::string category;
-                account_name_type parent_author;
-                std::string parent_permlink;
-                account_name_type author;
-                std::string permlink;
-
-                std::string title;
-                std::string body;
-                std::string json_metadata;
-                time_point_sec last_update;
-                time_point_sec created;
-                time_point_sec active;
-                time_point_sec last_payout;
 
                 uint8_t depth;
                 uint32_t children;
@@ -90,10 +112,15 @@ namespace golos {
 }
 
 FC_REFLECT((golos::plugins::social_network::comment_api_object),
-           (id)(author)(permlink)(category)(parent_author)(parent_permlink)(title)(body)(json_metadata)(last_update)(
-                   created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
+           (id)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
                    vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)(
                    reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(
                    mode)(root_comment)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(
                    allow_curation_rewards)(beneficiaries))
+
+FC_REFLECT((golos::plugins::social_network::comment_content_api_object),
+           (id)(author)(permlink)(category)(parent_author)(parent_permlink)(title)(body)
+                   (json_metadata)(last_update)(created)(active)(last_payout))
+
+
 #endif //GOLOS_COMMENT_API_OBJ_H
