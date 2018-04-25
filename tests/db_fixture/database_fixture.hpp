@@ -134,8 +134,8 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
 
-#define SMT_SYMBOL( name, decimal_places ) \
-   asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
+#define SMT_SYMBOL( name, decimal_places, db ) \
+   asset_symbol_type name ## _symbol = get_new_smt_symbol( decimal_places, db );
 
 #define ASSET( s ) \
    steem::plugins::condenser_api::legacy_asset::from_string( s ).to_asset()
@@ -205,7 +205,6 @@ struct database_fixture {
    virtual ~database_fixture() { appbase::reset(); }
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
-   static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
 #ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
 #endif
