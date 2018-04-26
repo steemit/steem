@@ -1136,7 +1136,7 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
          // Get share price.
-         const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
+         const auto& smt = get_smt( liquid.symbol );
          FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
@@ -4121,7 +4121,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
 #ifdef STEEM_ENABLE_SMT
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      const auto& smt = get< smt_token_object, by_symbol >( delta.symbol );
+      const auto& smt = get_smt( delta.symbol );
       auto smt_new_supply = smt.current_supply + delta.amount;
       FC_ASSERT( smt_new_supply >= 0 );
       modify( smt, [smt_new_supply]( smt_token_object& smt )
@@ -5063,6 +5063,23 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
 
    return vector< asset_symbol_type >( 1, new_symbol );
 }
+
+const smt_token_object& database::get_smt( const asset_symbol_type& symbol )const
+{ 
+   const smt_token_object* result = find_smt( symbol );
+   FC_ASSERT( result != nullptr, "Failed to find SMT with NAI ${nai}.", ("nai", symbol.to_nai() ) );
+   return *result;
+ }
+
+const smt_token_object* database::find_smt( const asset_symbol_type& symbol )const
+{
+   const auto& idx = get_index< smt_token_index >().indices().get< by_liquid_symbol >();
+   auto stripped_num = symbol.get_smt_stripped_num( true );
+   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_num ) );
+   return (it == idx.end()) || ( it->liquid_symbol.get_smt_stripped_num( true ) != stripped_num ) ?
+            nullptr : &(*it);
+}
+
 #endif
 
 } } //steem::chain

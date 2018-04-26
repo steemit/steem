@@ -47,6 +47,10 @@
 
 #define STEEM_ASSET_MAX_DECIMALS 12
 
+#define SMT_ASSET_NUM_PRECISION_MASK   0xF
+#define SMT_ASSET_NUM_CONTROL_MASK     0x10
+#define SMT_ASSET_NUM_VESTING_MASK     0x20
+
 namespace steem { namespace protocol {
 
 class asset_symbol_type
@@ -90,6 +94,15 @@ class asset_symbol_type
        * Returns back the SBD symbol if represents SBD.
        */
       asset_symbol_type get_paired_symbol() const;
+      /**Returns asset_num stripped of vesting bit, and (optionally) of precision holding bits too.
+       * \warning checking that it's SMT symbol is caller responsibility.
+       */
+      uint32_t get_smt_stripped_num( bool strip_precision_too = false ) const
+      { 
+         return strip_precision_too ? 
+            asset_num & ~( SMT_ASSET_NUM_PRECISION_MASK | SMT_ASSET_NUM_VESTING_MASK ) :
+            asset_num & ~SMT_ASSET_NUM_VESTING_MASK;
+      }
 
       asset_symbol_space space()const;
       uint8_t decimals()const

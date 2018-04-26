@@ -1253,7 +1253,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
          // Fund creator with SMTs
          FUND( "alice", asset( 10000, liquid_smt ) );
 
-         const auto& smt_object = db->get< smt_token_object, by_symbol >( liquid_smt );
+         const auto& smt_object = db->get_smt( liquid_smt );
 
          // Check pre-vesting balances
          FC_ASSERT( db->get_balance( "alice", liquid_smt ).amount == 10000, "SMT balance adjusting error" );

@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          fail_op.symbol = smt2;
          fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, fail_op.symbol );
          // TODO: Replace the code below with account setup operation execution once its implemented.
-         const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
+         const steem::chain::smt_token_object* smt = db->find_smt( fail_op.symbol );
          FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
          FC_ASSERT( smt->phase < steem::chain::smt_phase::setup_completed, "Who closed setup phase?!" );
          db->modify( *smt, [&]( steem::chain::smt_token_object& token )
@@ -919,19 +919,13 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
 
       asset_symbol_type liquid_symbol = create_smt("alice", alice_private_key, 6);
       // Use liquid symbol/NAI to confirm smt object was created.
-      auto liquid_object_by_symbol = db->find< smt_token_object, by_symbol >( liquid_symbol );
+      auto liquid_object_by_symbol = db->find_smt( liquid_symbol );
       FC_ASSERT( ( liquid_object_by_symbol != nullptr ) );
-      auto liquid_object_by_nai = db->find< smt_token_object, by_nai >( liquid_symbol.to_nai() );
-      FC_ASSERT( ( liquid_object_by_nai != nullptr ) );
-      FC_ASSERT( ( liquid_object_by_symbol == liquid_object_by_nai ) );
 
       asset_symbol_type vesting_symbol = liquid_symbol.get_paired_symbol();
       // Use vesting symbol/NAI to confirm smt object was created.
-      auto vesting_object_by_symbol = db->find< smt_token_object, by_symbol >( vesting_symbol );
+      auto vesting_object_by_symbol = db->find_smt( vesting_symbol );
       FC_ASSERT( ( vesting_object_by_symbol != nullptr ) );
-      auto vesting_object_by_nai = db->find< smt_token_object, by_nai >( vesting_symbol.to_nai() );
-      FC_ASSERT( ( vesting_object_by_nai != nullptr ) );
-      FC_ASSERT( ( vesting_object_by_symbol == vesting_object_by_nai ) );
 
       // Check that liquid and vesting objecta are the same one.
       FC_ASSERT( ( liquid_object_by_symbol == vesting_object_by_symbol ) );

@@ -464,6 +464,15 @@ namespace steem { namespace chain {
           * @return a list of available NAIs.
          */
          vector< asset_symbol_type > get_smt_next_identifier();
+         /**
+          * @return object representing smt with given symbol, regardless its precision or vesting bits.
+          */
+         const smt_token_object* find_smt( const asset_symbol_type& symbol )const;
+         /**
+          * @return object representing smt with given symbol, regardless its precision or vesting bits.
+          * Throws assert exceptions when object is not found.
+          */
+         const smt_token_object& get_smt( const asset_symbol_type& symbol )const;
 
          ///@}
 #endif
