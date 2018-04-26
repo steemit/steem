@@ -312,7 +312,7 @@ namespace golos {
             // Gota remove comment content from database
             const auto &content_idx = _db.get_index<comment_content_index>().indices().get<by_comment>();
 
-            auto content_itr = content_idx.lower_bound(comment_content_id_type(comment.id));
+            auto content_itr = content_idx.lower_bound(comment_id_type(comment.id));
             while (vote_itr != vote_idx.end() && vote_itr->comment == comment.id) {
                 const auto &content = *content_itr;
                 ++vote_itr;

@@ -329,7 +329,10 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         update_tags(op.author, op.permlink);
     }
 
-    comment_metadata get_metadata(const comment_api_object &c, database& db_) {
+    comment_metadata get_metadata(const comment_api_object &c) {
+
+        golos::chain::database& database_ = appbase::app().get_plugin<chain::plugin>().db();
+
         comment_metadata meta;
 
         const auto& idx = db_.get_index<comment_content_index>().indices().get<by_comment>();
