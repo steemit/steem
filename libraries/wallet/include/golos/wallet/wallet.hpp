@@ -955,9 +955,9 @@ namespace golos { namespace wallet {
 
             // Private message
             vector<extended_message_object> get_inbox(
-                    const std::string& to, time_point newest, uint16_t limit);
+                    const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset);
             vector<extended_message_object> get_outbox(
-                    const std::string& from, time_point newest, uint16_t limit);
+                    const std::string& from, time_point newest, uint16_t limit, std::uint64_t offset);
 
             message_body try_decrypt_message( const message_api_obj& mo );
         };
