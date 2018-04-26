@@ -59,7 +59,7 @@ using golos::chain::applied_operation;
 
 enum account_history_object_type {
     key_account_object_type = 0,
-    bucket_object_type = 1 ///< used in market_history_plugin
+    bucket_object_type = 1 
 };
 
 using get_account_history_return_type = std::map<uint32_t, applied_operation>;
