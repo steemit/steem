@@ -41,6 +41,7 @@ namespace golos {
                         savings_sbd_last_interest_payment(a.savings_sbd_last_interest_payment),
                         savings_withdraw_requests(a.savings_withdraw_requests), curation_rewards(a.curation_rewards),
                         posting_rewards(a.posting_rewards), vesting_shares(a.vesting_shares),
+                        delegated_vesting_shares(a.delegated_vesting_shares), received_vesting_shares(a.received_vesting_shares),
                         vesting_withdraw_rate(a.vesting_withdraw_rate),
                         next_vesting_withdrawal(a.next_vesting_withdrawal), withdrawn(a.withdrawn),
                         to_withdraw(a.to_withdraw), withdraw_routes(a.withdraw_routes),
