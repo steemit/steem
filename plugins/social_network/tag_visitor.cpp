@@ -3,6 +3,8 @@
 
 namespace golos { namespace plugins { namespace social_network { namespace tags {
 
+    using golos::chain::to_string;
+
     operation_visitor::operation_visitor(database& db)
         : db_(db) {
     }
@@ -327,12 +329,21 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         update_tags(op.author, op.permlink);
     }
 
-    comment_metadata get_metadata(const comment_api_object &c) {
+    comment_metadata get_metadata(const comment_api_object &c, database& db_) {
         comment_metadata meta;
 
-        if (!c.json_metadata.empty()) {
+        const auto& idx = db_.get_index<comment_content_index>().indices().get<by_id>();
+
+        auto itr = idx.find(c.id);
+        if (itr == idx.end()) {
+            // throw exception?
+        }
+
+        comment_content_object content = *itr;
+
+        if (!content.json_metadata.empty()) {
             try {
-                meta = fc::json::from_string(c.json_metadata).as<comment_metadata>();
+                meta = fc::json::from_string(to_string(content.json_metadata)).as<comment_metadata>();
             } catch (const fc::exception& e) {
                 // Do nothing on malformed json_metadata
             }

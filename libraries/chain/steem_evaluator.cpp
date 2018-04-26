@@ -544,6 +544,7 @@ namespace golos {
                             com.parent_author = parent->author;
                             com.parent_permlink = parent->permlink;
                             com.depth = parent->depth + 1;
+                            com.category = parent->category;
                             com.root_comment = parent->root_comment;
                             com.cashout_time = fc::time_point_sec::maximum();
                         }
@@ -553,6 +554,21 @@ namespace golos {
                         }
 
                     });
+
+                    /** TODO move category behavior to a plugin, this is not part of consensus */
+                    const category_object *cat = _db.find_category(new_comment.category);
+                    if (!cat) {
+                        cat = &_db.create<category_object>([&](category_object &c) {
+                            c.name = new_comment.category;
+                            c.discussions = 1;
+                            c.last_update = _db.head_block_time();
+                        });
+                        } else {
+                            _db.modify(*cat, [&](category_object &c) {
+                                c.discussions++;
+                                c.last_update = _db.head_block_time();
+                        });
+                    }
 
                     id = new_comment.id;
 

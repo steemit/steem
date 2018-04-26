@@ -92,6 +92,8 @@ namespace golos {
 
         class comment_object;
 
+        class comment_content_object;
+
         class comment_vote_object;
 
         class witness_vote_object;
@@ -137,6 +139,7 @@ namespace golos {
         typedef object_id<block_summary_object> block_summary_id_type;
         typedef object_id<witness_schedule_object> witness_schedule_id_type;
         typedef object_id<comment_object> comment_id_type;
+        typedef object_id<comment_content_object> comment_content_id_type;
         typedef object_id<comment_vote_object> comment_vote_id_type;
         typedef object_id<witness_vote_object> witness_vote_id_type;
         typedef object_id<limit_order_object> limit_order_id_type;

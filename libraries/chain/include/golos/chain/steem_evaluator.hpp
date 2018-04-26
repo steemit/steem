@@ -29,8 +29,6 @@ namespace golos {
 
         DEFINE_EVALUATOR(comment)
 
-        DEFINE_EVALUATOR(comment_content)
-
         DEFINE_EVALUATOR(comment_options)
 
         DEFINE_EVALUATOR(delete_comment)
