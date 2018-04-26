@@ -42,9 +42,9 @@ namespace golos {
                     return;
                 }
 
-                vector <message_api_obj> get_inbox(const std::string& to, time_point newest, uint16_t limit) const;
+                vector <message_api_obj> get_inbox(const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset) const;
 
-                vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit) const;
+                vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit, std::uint64_t offset) const;
 
 
                 ~private_message_plugin_impl() {};
@@ -57,12 +57,20 @@ namespace golos {
             };
 
             vector <message_api_obj> private_message_plugin::private_message_plugin_impl::get_inbox(
-                    const std::string& to, time_point newest, uint16_t limit) const {
+                    const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset) const {
                 FC_ASSERT(limit <= 100);
 
                 vector <message_api_obj> result;
                 const auto &idx = _db.get_index<message_index>().indices().get<by_to_date>();
                 auto itr = idx.lower_bound(std::make_tuple(to, newest));
+
+                if (idx.size() > offset) {
+                    while (itr != idx.end() && offset && itr->to == to) {
+                        ++itr;
+                        --offset;
+                    }
+                }
+
                 while (itr != idx.end() && limit && itr->to == to) {
                     result.push_back(*itr);
                     ++itr;
@@ -73,13 +81,21 @@ namespace golos {
             }
 
             vector <message_api_obj> private_message_plugin::private_message_plugin_impl::get_outbox(
-                    const std::string& from, time_point newest, uint16_t limit) const {
+                    const std::string& from, time_point newest, uint16_t limit, std::uint64_t offset) const {
                 FC_ASSERT(limit <= 100);
 
                 vector <message_api_obj> result;
                 const auto &idx = _db.get_index<message_index>().indices().get<by_from_date>();
 
                 auto itr = idx.lower_bound(std::make_tuple(from, newest));
+
+                if (idx.size() > offset) {
+                    while (itr != idx.end() && offset && itr->from == from) {
+                        ++itr;
+                        --offset;
+                    }
+                }
+
                 while (itr != idx.end() && limit && itr->from == from) {
                     result.push_back(*itr);
                     ++itr;
