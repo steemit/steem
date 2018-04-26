@@ -97,7 +97,7 @@ const rocksdb_types::key_value_items& storage_configuration_plugin::get_version(
 void storage_configuration_plugin::correct_path( const bfs::path& src )
 {
    storage_path = src / storage_path;
-   config_file = src / config_file;
+   config_file = storage_path / config_file;
 
    storage_configuration_helper::create_directory( storage_path );
 }

@@ -22,6 +22,8 @@ class abstract_persistent_storage
 
    public:
 
+      virtual ~abstract_persistent_storage() = default;
+
       virtual bool create() = 0;
       virtual bool open() = 0;
       virtual bool flush() = 0;

@@ -10,7 +10,7 @@
 
 using namespace steem::utilities;
 
-void prepare_directories( std::string main_dir, std::string root_dir )
+void prepare_directories( const std::string& main_dir, const std::string& root_dir )
 {
    const std::string config_ini_name = main_dir + "/config.ini";
 
@@ -20,6 +20,40 @@ void prepare_directories( std::string main_dir, std::string root_dir )
    storage_configuration_helper::create_directory( main_dir );
 
    std::ofstream f( config_ini_name );//config.ini is empty
+   f.close();
+}
+
+std::vector< std::string > prepare_correct_content_in_config_file()
+{
+   std::vector< std::string> v;
+
+   v.emplace_back("[Version]");
+   v.emplace_back("  rocksdb_version=4.3.0");
+   v.emplace_back("  options_file_version=1.1");
+
+   v.emplace_back("[DBOptions]");
+   v.emplace_back("  stats_dump_period_sec=667");
+
+   v.emplace_back("[CFOptions \"default\"]");
+   v.emplace_back("  num_levels=6");
+
+   v.emplace_back("[TableOptions/BlockBasedTable \"default\"]");
+   v.emplace_back("  format_version=2");
+
+   return v;
+}
+
+void prepare_config_file( const std::vector< std::string>& content, const bfs::path& root_dir, const bfs::path& plugin_dir, const bfs::path& config_file )
+{
+   storage_configuration_helper::create_directory( root_dir );
+   storage_configuration_helper::create_directory( root_dir / plugin_dir );
+
+   const bfs::path path = root_dir / plugin_dir / config_file;
+   std::ofstream f( path.c_str() );
+
+   for( auto& item : content )
+      f<< item << std::endl;
+
    f.close();
 }
 
@@ -139,6 +173,83 @@ BOOST_AUTO_TEST_CASE(persistent_storage_basic_tests)
       scm.initialize( 7, (char**)argv );
 
       BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      //================================================================
+   }
+
+   {
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "root",
+                     "--account_history-storage-path", "account_history_storage"
+                     };
+
+      storage_configuration_manager scm;
+
+      //================================================================
+      BOOST_TEST_MESSAGE( "Attempting to open, but database doesn't exist. Fail test" );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "OPERATION_SEQ_ID", "AH_SEQ_ID" ), ah_version( 5/*major*/, 10/*minor*/ ) );
+      scm.initialize( 7, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "account_history", scm ) );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      //================================================================
+   }
+
+   {
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "root",
+                     "--account_history-storage-path", "account_history_storage",
+                     "--account_history-configuration-file", "ah_config.ini"
+                     };
+
+      storage_configuration_manager scm;
+
+      //================================================================
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+      prepare_config_file( prepare_correct_content_in_config_file(), "root", "account_history_storage", "ah_config.ini" );
+
+      BOOST_TEST_MESSAGE( "Creating 1 database - options from config file" );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "_ID", "_ID_2" ), ah_version( 2/*major*/, 2/*minor*/ ) );
+      scm.initialize( 9, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "account_history", scm ) );
+      BOOST_REQUIRE( !storage->is_opened() );   
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+      BOOST_REQUIRE( storage->close() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      //================================================================
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+      prepare_config_file( {}, "root", "account_history_storage", "ah_config.ini" );
+
+      BOOST_TEST_MESSAGE( "Creating 1 database - config file is empty. Fail test" );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "_ID", "_ID_2" ), ah_version( 2/*major*/, 2/*minor*/ ) );
+      scm.initialize( 9, (char**)argv );
+
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      //================================================================
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+      prepare_config_file( { "[Version]" }, "root", "account_history_storage", "ah_config.ini" );
+
+      BOOST_TEST_MESSAGE( "Creating 1 database - config file is broken. Fail test" );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "_ID", "_ID_2" ), ah_version( 2/*major*/, 2/*minor*/ ) );
+      scm.initialize( 9, (char**)argv );
+
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
       BOOST_REQUIRE( !storage->open() );
       BOOST_REQUIRE( !storage->is_opened() );
       //================================================================
