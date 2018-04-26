@@ -1,6 +1,7 @@
 #ifndef STEEMIT_HARDFORK_0_18
 #define STEEMIT_HARDFORK_0_18 18
 #define STEEMIT_HARDFORK_0_18__220 (STEEMIT_HARDFORK_0_18) // Witness price feed expire
+#define STEEMIT_HARDFORK_0_18__535 (STEEMIT_HARDFORK_0_18) // Golos Power delegation
 #define STEEMIT_HARDFORK_0_18__536 (STEEMIT_HARDFORK_0_18) // Comments should be editable forever
 
 #ifdef STEEMIT_BUILD_TESTNET

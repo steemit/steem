@@ -549,8 +549,8 @@ namespace golos {
             void update_last_irreversible_block(uint32_t skip);
 
             void clear_expired_transactions();
-
             void clear_expired_orders();
+            void clear_expired_delegations();
 
             void process_header_extensions(const signed_block &next_block);
 

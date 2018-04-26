@@ -19,9 +19,7 @@
 
 #include "forward.hpp"
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
+namespace golos { namespace plugins { namespace database_api {
             using namespace golos::chain;
             using namespace golos::protocol;
             using fc::variant;
@@ -142,6 +140,10 @@ namespace golos {
             DEFINE_API_ARGS(get_account_bandwidth,            msg_pack, optional<account_bandwidth_api_object>)
             DEFINE_API_ARGS(get_savings_withdraw_from,        msg_pack, std::vector<savings_withdraw_api_object>)
             DEFINE_API_ARGS(get_savings_withdraw_to,          msg_pack, std::vector<savings_withdraw_api_object>)
+
+            DEFINE_API_ARGS(get_vesting_delegations,          msg_pack, vector<vesting_delegation_api_object>)
+            DEFINE_API_ARGS(get_expiring_vesting_delegations, msg_pack, vector<vesting_delegation_expiration_api_object>)
+
             DEFINE_API_ARGS(get_witnesses,                    msg_pack, std::vector<optional<witness_api_object> >)
             DEFINE_API_ARGS(get_conversion_requests,          msg_pack, std::vector<convert_request_api_object>)
             DEFINE_API_ARGS(get_witness_by_account,           msg_pack, optional<witness_api_object>)
@@ -344,6 +346,12 @@ namespace golos {
 
                                     (get_savings_withdraw_to)
 
+                                    (get_vesting_delegations)
+                                    (get_expiring_vesting_delegations)
+                                    // (list_vesting_delegations)
+                                    // (find_vesting_delegations)
+                                    // (list_vesting_delegation_expirations)
+                                    // (find_vesting_delegation_expirations)
 
                                     ///////////////
                                     // Witnesses //
@@ -449,9 +457,7 @@ namespace golos {
             inline void register_database_api(){
                 appbase::app().register_plugin<plugin>();
             }
-        }
-    }
-}
+} } } // golos::plugins::database_api
 
 
 
