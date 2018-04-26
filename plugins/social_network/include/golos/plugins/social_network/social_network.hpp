@@ -3,7 +3,6 @@
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/social_network/api_object/discussion.hpp>
-#include <golos/plugins/social_network/api_object/category_api_object.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/social_network/api_object/account_vote.hpp>
@@ -36,10 +35,6 @@ namespace golos { namespace plugins { namespace social_network {
     DEFINE_API_ARGS(get_discussions_by_promoted,           msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_replies_by_last_update,            msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_author_before_date, msg_pack, std::vector<discussion>)
-    DEFINE_API_ARGS(get_trending_categories,               msg_pack, std::vector<category_api_object>)
-    DEFINE_API_ARGS(get_active_categories,                 msg_pack, std::vector<category_api_object>)
-    DEFINE_API_ARGS(get_recent_categories,                 msg_pack, std::vector<category_api_object>)
-    DEFINE_API_ARGS(get_best_categories,                   msg_pack, std::vector<category_api_object>)
     DEFINE_API_ARGS(get_account_votes,                     msg_pack, std::vector<account_vote>)
     DEFINE_API_ARGS(get_active_votes,                      msg_pack, std::vector<vote_state>)
     DEFINE_API_ARGS(get_languages,                         msg_pack, get_languages_result);
@@ -55,14 +50,6 @@ namespace golos { namespace plugins { namespace social_network {
             */
             (get_replies_by_last_update)
             (get_trending_tags)
-
-            (get_trending_categories)
-
-            (get_best_categories)
-
-            (get_active_categories)
-
-            (get_recent_categories)
 
             /**
              * Used to retrieve the list of first payout discussions sorted by rshares^2 amount
