@@ -182,9 +182,10 @@ namespace golos {
                 auto to = args.args->at(0).as<std::string>();
                 auto newest = args.args->at(1).as<time_point>();
                 auto limit = args.args->at(2).as<uint16_t>();
+                auto offset = args.args->at(3).as<std::uint64_t>();
                 auto &db = my->_db;
                 return db.with_weak_read_lock([&]() {
-                    return my->get_inbox(to, newest, limit);
+                    return my->get_inbox(to, newest, limit, offset);
                 });
             }
 
@@ -192,9 +193,10 @@ namespace golos {
                 auto from = args.args->at(0).as<std::string>();
                 auto newest = args.args->at(1).as<time_point>();
                 auto limit = args.args->at(2).as<uint16_t>();
+                auto offset = args.args->at(3).as<std::uint64_t>();
                 auto &db = my->_db;
                 return db.with_weak_read_lock([&]() {
-                    return my->get_outbox(from, newest, limit);
+                    return my->get_outbox(from, newest, limit, offset);
                 });
             }
         }
