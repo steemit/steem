@@ -28,7 +28,6 @@ class abstract_persistent_storage
       virtual bool close() = 0;
 
       virtual bool is_opened() = 0;
-      virtual bool is_closed() = 0;
 
       virtual ptrDB& get_storage() = 0;
 };
@@ -38,6 +37,8 @@ class persistent_storage: public abstract_persistent_storage
    private:
 
       using t_cachable_write_batch = cachable_write_batch< any_info >;
+
+      bool opened = false;
 
       /// Number of data-chunks for ops being stored inside writeBuffer. To decide when to flush.
       unsigned int collectedOps = 0;
@@ -63,6 +64,9 @@ class persistent_storage: public abstract_persistent_storage
       void load_seq_identifiers();
       void flush_write_buffer( DB* _db = nullptr );
       void cleanup_column_handles();
+
+      void save_store_version_item( const rocksdb_types::key_value_pair& item );
+      void verify_store_version_item( const rocksdb_types::key_value_pair& item );
       void save_store_version();
       void verify_store_version();
 
@@ -84,7 +88,6 @@ class persistent_storage: public abstract_persistent_storage
       bool close() override;
 
       virtual bool is_opened() override;
-      virtual bool is_closed() override;
 
       ptrDB& get_storage() override;
 };

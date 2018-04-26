@@ -19,6 +19,7 @@ using bpo::variables_map;
 
 namespace storage_configuration_helper
 {
+   void remove_directory( const bfs::path& path );
    void create_directory( const bfs::path& path );
 }
 
@@ -41,6 +42,7 @@ class storage_configuration_plugin
                                     const rocksdb_types::column_definitions_preparer& _col_def_preparer,
                                     const rocksdb_types::key_value_items& _sequences,
                                     const rocksdb_types::key_value_items& _version );
+
       storage_configuration_plugin( const std::string& _name, const bfs::path& _storage_path, const bfs::path& _config_file );
 
       const std::string& get_name() const;
@@ -87,7 +89,10 @@ class storage_configuration_manager
 
       storage_configuration_manager();
 
+      void reset();
+
       void initialize( int _argc, char** _argv );
+
       void add_plugin(  const std::string& plugin_name,
                         const rocksdb_types::column_definitions_preparer& _col_def_preparer,
                         const rocksdb_types::key_value_items& _sequences = rocksdb_types::key_value_items(),

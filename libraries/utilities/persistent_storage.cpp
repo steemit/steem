@@ -55,28 +55,42 @@ void persistent_storage::load_seq_identifiers()
    std::for_each( sequences.begin(), sequences.end(), load );
 }
 
+void persistent_storage::save_store_version_item( const rocksdb_types::key_value_pair& item )
+{
+   primitive_type_slice<uint32_t> slice( item.second );
+   auto s = write_buffer.Put( Slice( item.first ), slice );
+   check_status(s);
+}
+
+void persistent_storage::verify_store_version_item( const rocksdb_types::key_value_pair& item )
+{
+   ReadOptions rOptions;
+   std::string buffer;
+
+   auto s = storage->Get(rOptions, item.first, &buffer );
+   check_status(s);
+   const auto value = primitive_type_slice<uint32_t>::unpackSlice( buffer );
+   FC_ASSERT( value == item.second, "Store version mismatch" );
+}
+
 void persistent_storage::save_store_version()
 {
+   //Save number elements of version.
+   save_store_version_item( rocksdb_types::key_value_pair( "VERSION-NUMBER_PARTS", version.size() ) );
+
    for( auto& item : version )
-   {
-      primitive_type_slice<uint32_t> slice( item.second );
-      auto s = write_buffer.Put( Slice( item.first ), slice );
-      check_status(s);
-   }
+      save_store_version_item( item );
 }
 
 void persistent_storage::verify_store_version()
 {
-   ReadOptions rOptions;
-
-   auto verify = [ this, &rOptions ]( rocksdb_types::key_value_pair& obj )
+   auto verify = [ this ]( rocksdb_types::key_value_pair& item )
    {
-      std::string buffer;
-      auto s = storage->Get(rOptions, obj.first, &buffer );
-      check_status(s);
-      const auto value = primitive_type_slice<uint32_t>::unpackSlice( buffer );
-      FC_ASSERT( value == obj.second, "Store version mismatch" );
+      verify_store_version_item( item );
    };
+
+   //Verify number elements of version.
+   verify_store_version_item( rocksdb_types::key_value_pair( "VERSION-NUMBER_PARTS", version.size() ) );
 
    std::for_each( version.begin(), version.end(), verify );
 }
@@ -93,11 +107,11 @@ void persistent_storage::flush_write_buffer( DB* _db )
    write_buffer.Clear();
    collectedOps = 0;
 }
-  
+
 bool persistent_storage::flush_storage()
 {
    if( storage == nullptr )
-      return false;
+      return true;
 
    /// If there are still not yet saved changes let's do it now.
    if( collectedOps != 0 )
@@ -124,11 +138,13 @@ void persistent_storage::cleanup_column_handles()
 bool persistent_storage::shutdown_db()
 {
    //chain::util::disconnect_signal(_on_pre_apply_operation_connection);
-   bool res = flush_storage();
+   flush_storage();
    cleanup_column_handles();
    storage.reset();
 
-   return res;
+   opened = false;
+
+   return true;
 }
 
 bool persistent_storage::create_db()
@@ -202,6 +218,8 @@ bool persistent_storage::create_db()
 
 bool persistent_storage::open_db()
 {
+   opened = false;
+
    rocksdb_types::ColumnDefinitions columnDefs;
 
    auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
@@ -220,7 +238,7 @@ bool persistent_storage::open_db()
    {
       std::vector<ColumnFamilyDescriptor> loaded_cf_descs;
       auto load_status = LoadOptionsFromFile( config_manager.get_config_file( plugin_name ).string(), Env::Default(), &db_options, &loaded_cf_descs );
-      assert( load_status.ok() );
+      FC_ASSERT( load_status.ok() );
    }
 
    /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
@@ -237,15 +255,15 @@ bool persistent_storage::open_db()
       verify_store_version();
       load_seq_identifiers();
 
-      return true;
+      opened = true;
    }
    else
    {
       elog("RocksDB cannot open database at location: `${p}'.\nReturned error: ${e}",
          ("p", strPath)("e", status.ToString()));
-
-      return false;
    }
+
+   return opened;
 }
 
 bool persistent_storage::action( std::function< bool() > call )
@@ -267,7 +285,12 @@ bool persistent_storage::create()
 
 bool persistent_storage::open()
 {
-   return action( [ this ](){ return open_db(); } );
+   bool res = action( [ this ](){ return shutdown_db(); } );
+
+   if( res )
+      return action( [ this ](){ return open_db(); } );
+   else
+      return false;
 }
 
 bool persistent_storage::flush()
@@ -282,17 +305,12 @@ bool persistent_storage::close()
 
 bool persistent_storage::is_opened()
 {
-   return storage != nullptr;
-}
-
-bool persistent_storage::is_closed()
-{
-   return storage == nullptr;
+   return opened;
 }
 
 abstract_persistent_storage::ptrDB& persistent_storage::get_storage()
 {
-   assert( !storage );
+   FC_ASSERT( !storage );
    return storage;
 }
 

@@ -5,11 +5,21 @@
 
 #include<iostream>
 #include <sys/stat.h>
+#include <stdlib.h>
 
 namespace steem { namespace utilities {
 
 namespace storage_configuration_helper
 {
+   void remove_directory( const bfs::path& path )
+   {
+      if( bfs::exists( path ) )
+      {
+         std::string command = "rm -r " + std::string( path.c_str() );
+         system( command.c_str() );
+      }
+   }
+
    void create_directory( const bfs::path& path )
    {
       if( !bfs::exists( path ) )
@@ -96,6 +106,12 @@ void storage_configuration_plugin::correct_path( const bfs::path& src )
 
 storage_configuration_manager::storage_configuration_manager()
 {
+}
+
+void storage_configuration_manager::reset()
+{
+   storage_root_path = bfs::path();
+   plugins.clear();
 }
 
 template< typename Result, typename Callable >
