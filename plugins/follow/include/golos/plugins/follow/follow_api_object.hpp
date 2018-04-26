@@ -4,6 +4,7 @@
 #include <golos/plugins/social_network/api_object/comment_api_object.hpp>
 #include <golos/plugins/follow/follow_objects.hpp>
 #include "follow_forward.hpp"
+
 namespace golos {
     namespace plugins {
         namespace follow {

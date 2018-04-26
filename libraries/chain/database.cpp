@@ -4190,14 +4190,15 @@ namespace golos {
             _hardfork_versions[STEEMIT_HARDFORK_0_18] = STEEMIT_HARDFORK_0_18_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
-            FC_ASSERT(hardforks.last_hardfork <=
-                      STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration",
-                      ("hardforks.last_hardfork", hardforks.last_hardfork)
-                      ("STEEMIT_NUM_HARDFORKS", STEEMIT_NUM_HARDFORKS));
-            FC_ASSERT(_hardfork_versions[hardforks.last_hardfork] <=
-                      STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork");
-            FC_ASSERT(STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ==
-                      _hardfork_versions[STEEMIT_NUM_HARDFORKS]);
+            FC_ASSERT(
+                hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS,
+                "Chain knows of more hardforks than configuration",
+                ("hardforks.last_hardfork", hardforks.last_hardfork)
+                ("STEEMIT_NUM_HARDFORKS", STEEMIT_NUM_HARDFORKS));
+            FC_ASSERT(
+                _hardfork_versions[hardforks.last_hardfork] <= STEEMIT_BLOCKCHAIN_VERSION,
+                "Blockchain version is older than last applied hardfork");
+            FC_ASSERT(STEEMIT_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions[STEEMIT_NUM_HARDFORKS]);
         }
 
         void database::reset_virtual_schedule_time() {
