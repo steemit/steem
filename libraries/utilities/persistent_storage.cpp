@@ -26,7 +26,7 @@ persistent_storage::~persistent_storage()
 
 void persistent_storage::store_sequence_ids()
 {
-   for( auto& item : slices )
+   for( auto& item : sequences )
    {
       Slice slice( item.first );
       PrimitiveTypeSlice<size_t> id( item.second );
@@ -40,7 +40,7 @@ void persistent_storage::load_seq_identifiers()
 {
    ReadOptions rOptions;
 
-   auto load = [ this, &rOptions ]( rocksdb_types::slice_info_pair& obj )
+   auto load = [ this, &rOptions ]( rocksdb_types::key_value_pair& obj )
    {
       Slice slice( obj.first );
 
@@ -52,7 +52,33 @@ void persistent_storage::load_seq_identifiers()
       ilog( "Loaded ${name}: ${o}", ( "name", obj.first )( "o", obj.second ) );
    };
 
-   std::for_each( slices.begin(), slices.end(), load );
+   std::for_each( sequences.begin(), sequences.end(), load );
+}
+
+void persistent_storage::save_store_version()
+{
+   for( auto& item : version )
+   {
+      primitive_type_slice<uint32_t> slice( item.second );
+      auto s = write_buffer.Put( Slice( item.first ), slice );
+      check_status(s);
+   }
+}
+
+void persistent_storage::verify_store_version()
+{
+   ReadOptions rOptions;
+
+   auto verify = [ this, &rOptions ]( rocksdb_types::key_value_pair& obj )
+   {
+      std::string buffer;
+      auto s = storage->Get(rOptions, obj.first, &buffer );
+      check_status(s);
+      const auto value = primitive_type_slice<uint32_t>::unpackSlice( buffer );
+      FC_ASSERT( value == obj.second, "Store version mismatch" );
+   };
+
+   std::for_each( version.begin(), version.end(), verify );
 }
 
 void persistent_storage::flush_write_buffer( DB* _db )
@@ -105,35 +131,6 @@ bool persistent_storage::shutdown_db()
    return res;
 }
 
-void persistent_storage::save_store_version()
-{
-   primitive_type_slice<uint32_t> majorVSlice(STORE_MAJOR_VERSION);
-   primitive_type_slice<uint32_t> minorVSlice(STORE_MINOR_VERSION);
-
-   auto s = write_buffer.Put(Slice("STORE_MAJOR_VERSION"), majorVSlice);
-   check_status(s);
-   s = write_buffer.Put(Slice("STORE_MINOR_VERSION"), minorVSlice);
-   check_status(s);
-}
-
-void persistent_storage::verify_store_version()
-{
-   ReadOptions rOptions;
-
-   std::string buffer;
-   auto s = storage->Get(rOptions, "STORE_MAJOR_VERSION", &buffer);
-   check_status(s);
-   const auto major = primitive_type_slice<uint32_t>::unpackSlice(buffer);
-
-   FC_ASSERT(major == STORE_MAJOR_VERSION, "Store major version mismatch");
-
-   s = storage->Get(rOptions, "STORE_MINOR_VERSION", &buffer);
-   check_status(s);
-   const auto minor = primitive_type_slice<uint32_t>::unpackSlice(buffer);
-
-   FC_ASSERT(minor == STORE_MINOR_VERSION, "Store minor version mismatch");
-}
-
 bool persistent_storage::create_db()
 {
    rocksdb_types::ColumnDefinitions columnDefs;
@@ -158,6 +155,8 @@ bool persistent_storage::create_db()
       return true; /// DB does not need data import.
    }
 
+   bool res;
+
    options.create_if_missing = true;
    s = DB::Open( options, strPath, &db );
 
@@ -169,23 +168,28 @@ bool persistent_storage::create_db()
       if( s.ok() )
       {
          ilog("RockDB column definitions created successfully.");
+
+         version = config_manager.get_version( plugin_name );
+         sequences = config_manager.get_sequences( plugin_name );
+
          save_store_version();
-
-         slices = config_manager.get_slices( plugin_name );
-
          /// Store initial values of Seq-IDs for held objects.
          flush_write_buffer( db );
          cleanup_column_handles();
 
-         return true;
+         res = true;
       }
       else
       {
          elog("RocksDB can not create column definitions at location: `${p}'.\nReturned error: ${e}",
             ("p", strPath)("e", s.ToString()));
 
-         return false;
+         res = false;
       }
+
+      delete db;
+
+      return res;
    }
    else
    {
@@ -203,7 +207,8 @@ bool persistent_storage::open_db()
    auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
    preparer( true, columnDefs );
 
-   slices = config_manager.get_slices( plugin_name );
+   sequences = config_manager.get_sequences( plugin_name );
+   version = config_manager.get_version( plugin_name );
 
    DB* storageDb = nullptr;
    auto strPath = config_manager.get_storage_path( plugin_name ).string();

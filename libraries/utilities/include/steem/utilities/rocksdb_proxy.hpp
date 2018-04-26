@@ -38,9 +38,6 @@ enum
     *  max allowed operation-id is max_int (instead of max_uint).
     */
    MAX_OPERATION_ID             = std::numeric_limits<int>::max(),
-
-   STORE_MAJOR_VERSION          = 1,
-   STORE_MINOR_VERSION          = 0,
 };
 
 struct any_info
@@ -249,8 +246,8 @@ namespace rocksdb_types
    using ColumnDefinitions = std::vector<ColumnFamilyDescriptor>;
    using column_definitions_preparer = std::function< void( bool, ColumnDefinitions& ) >;
    
-   using slice_info_pair = std::pair< std::string, size_t >;
-   using slice_info_items = std::list< slice_info_pair >;
+   using key_value_pair = std::pair< std::string, size_t >;
+   using key_value_items = std::list< key_value_pair >;
 
    const Comparator* by_id_Comparator();
    const Comparator* by_location_Comparator();

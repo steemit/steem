@@ -53,7 +53,8 @@ class persistent_storage: public abstract_persistent_storage
 
       t_cachable_write_batch write_buffer;
 
-      rocksdb_types::slice_info_items slices;
+      rocksdb_types::key_value_items sequences;
+      rocksdb_types::key_value_items version;
 
       const std::string& plugin_name;
       const storage_configuration_manager& config_manager;

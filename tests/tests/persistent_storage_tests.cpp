@@ -32,12 +32,20 @@ void ah_column_definitions( bool add_default_column, rocksdb_types::ColumnDefini
    byAHInfoColumn.options.comparator = rocksdb_types::by_ah_info_operation_Comparator();
 }
 
-void ah_slices( rocksdb_types::slice_info_items& slices )
+void ah_sequences( rocksdb_types::key_value_items& sequences )
 {
-   slices.clear();
+   sequences.clear();
 
-   slices.emplace_back( std::make_pair( "OPERATION_SEQ_ID", 0 ) );
-   slices.emplace_back( std::make_pair( "AH_SEQ_ID", 0 ) );
+   sequences.emplace_back( std::make_pair( "OPERATION_SEQ_ID", 0 ) );
+   sequences.emplace_back( std::make_pair( "AH_SEQ_ID", 0 ) );
+}
+
+void ah_version( rocksdb_types::key_value_items& version )
+{
+   version.clear();
+
+   version.emplace_back( std::make_pair( "AH_STORE_MAJOR_VERSION", 5 ) );
+   version.emplace_back( std::make_pair( "AH_STORE_MINOR_VERSION", 10 ) );
 }
 
 BOOST_AUTO_TEST_SUITE(persistent_storage_tests)
@@ -65,10 +73,12 @@ BOOST_AUTO_TEST_CASE(persistent_storage_basic_tests)
 
       rocksdb_types::column_definitions_preparer preparer = ah_column_definitions;
 
-      rocksdb_types::slice_info_items slices;
-      ah_slices( slices );
+      rocksdb_types::key_value_items seqs;
+      rocksdb_types::key_value_items version;
+      ah_sequences( seqs );
+      ah_version( version );
 
-      scm.add_plugin( "account_history", preparer, rocksdb_types::slice_info_items( slices ) );
+      scm.add_plugin( "account_history", preparer, seqs, version );
       scm.initialize( 7, (char**)argv );
 
       std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "account_history", scm ) );

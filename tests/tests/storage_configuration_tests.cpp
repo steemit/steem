@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
                      "--follow-storage-path", "storage_path_for_follow",
                      "--follow-configuration-file", "config_file_for_follow.ini"
                      };
-      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
+      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer() );
       scm.initialize( 9, (char**)argv );
 
       bfs::path storage_root_path = bfs::current_path() / "storage_path";
@@ -88,8 +88,8 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
                      "--storage-root-path", "storage_path",
                      "--p2p-storage-path", "storage_path_for_p2p",
                      };
-      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
-      scm.add_plugin( "p2p", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
+      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer() );
+      scm.add_plugin( "p2p", rocksdb_types::column_definitions_preparer() );
       scm.initialize( 7, (char**)argv );
 
       bfs::path storage_root_path = bfs::current_path() / "storage_path";
@@ -109,8 +109,8 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
       storage_configuration_manager scm;
 
       const char* argv[] = { "path", "-d", "storage_configuration_tests_directory", "--storage-root-path", "any_path" };
-      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
-      scm.add_plugin( "p2p", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
+      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer() );
+      scm.add_plugin( "p2p", rocksdb_types::column_definitions_preparer() );
       scm.initialize( 5, (char**)argv );
 
       bfs::path storage_root_path = bfs::current_path() / "any_path";
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(storage_configuration_basic_tests)
                               "--storage-root-path", "root_path",
                               "--xyz-storage-path", "storage_path_for_xyz"
                            };
-      scm.add_plugin( "xyz", rocksdb_types::column_definitions_preparer(), rocksdb_types::slice_info_items() );
+      scm.add_plugin( "xyz", rocksdb_types::column_definitions_preparer() );
       scm.initialize( 7, (char**)argv );
 
       bfs::path storage_root_path = bfs::current_path() / "root_path";

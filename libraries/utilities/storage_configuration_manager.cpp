@@ -25,15 +25,16 @@ namespace storage_configuration_helper
 
 storage_configuration_plugin::storage_configuration_plugin( const std::string& _name,
                                                             const rocksdb_types::column_definitions_preparer& _col_def_preparer,
-                                                            const rocksdb_types::slice_info_items& _slices )
-:  name( _name ), version( "1.0"/*temporary!!!*/ ), storage_path( bfs::path() ), config_file( bfs::path() ),
-   col_def_preparer( _col_def_preparer ), slices( _slices )
+                                                            const rocksdb_types::key_value_items& _sequences,
+                                                            const rocksdb_types::key_value_items& _version )
+:  name( _name ), storage_path( bfs::path() ), config_file( bfs::path() ),
+   col_def_preparer( _col_def_preparer ), sequences( _sequences ), version( _version )
 {
 
 }
 
 storage_configuration_plugin::storage_configuration_plugin( const std::string& _name, const bfs::path& _storage_path, const bfs::path& _config_file )
-: name( _name ), version( "1.0"/*temporary!!!*/ ), storage_path( _storage_path ), config_file( _config_file )
+: name( _name ), storage_path( _storage_path ), config_file( _config_file )
 {
 
 }
@@ -41,11 +42,6 @@ storage_configuration_plugin::storage_configuration_plugin( const std::string& _
 const std::string& storage_configuration_plugin::get_name() const
 {
    return name;
-}
-
-const std::string& storage_configuration_plugin::get_version() const
-{
-   return version;
 }
 
 void storage_configuration_plugin::set_config_file( const bfs::path& src )
@@ -78,9 +74,14 @@ const rocksdb_types::column_definitions_preparer& storage_configuration_plugin::
    return col_def_preparer;
 }
 
-const rocksdb_types::slice_info_items& storage_configuration_plugin::get_slices() const
+const rocksdb_types::key_value_items& storage_configuration_plugin::get_sequences() const
 {
-   return slices;
+   return sequences;
+}
+
+const rocksdb_types::key_value_items& storage_configuration_plugin::get_version() const
+{
+   return version;
 }
 
 void storage_configuration_plugin::correct_path( const bfs::path& src )
@@ -275,19 +276,15 @@ void storage_configuration_manager::initialize( int _argc, char** _argv )
 
 void storage_configuration_manager::add_plugin( const std::string& plugin_name,
                                                 const rocksdb_types::column_definitions_preparer& _col_def_preparer,
-                                                const rocksdb_types::slice_info_items& _slices )
+                                                const rocksdb_types::key_value_items& _sequences,
+                                                const rocksdb_types::key_value_items& _version )
 {
-   plugins.emplace( std::make_pair( plugin_name, storage_configuration_plugin( plugin_name, _col_def_preparer, _slices ) ) );
+   plugins.emplace( std::make_pair( plugin_name, storage_configuration_plugin( plugin_name, _col_def_preparer, _sequences, _version ) ) );
 }
 
 const bfs::path& storage_configuration_manager::get_storage_root_path() const
 {
    return storage_root_path;
-}
-
-const std::string storage_configuration_manager::get_version( const std::string& plugin_name ) const
-{
-   return get_any_info< std::string >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_version(); } );
 }
 
 const bfs::path storage_configuration_manager::get_config_file( const std::string& plugin_name ) const
@@ -310,9 +307,14 @@ rocksdb_types::column_definitions_preparer storage_configuration_manager::get_co
    return get_any_info< rocksdb_types::column_definitions_preparer >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_column_definitions_preparer(); } );
 }
 
-rocksdb_types::slice_info_items storage_configuration_manager::get_slices( const std::string& plugin_name ) const
+rocksdb_types::key_value_items storage_configuration_manager::get_sequences( const std::string& plugin_name ) const
 {
-   return get_any_info< rocksdb_types::slice_info_items >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_slices(); } );
+   return get_any_info< rocksdb_types::key_value_items >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_sequences(); } );
+}
+
+rocksdb_types::key_value_items storage_configuration_manager::get_version( const std::string& plugin_name ) const
+{
+   return get_any_info< rocksdb_types::key_value_items >( plugin_name, []( const storage_configuration_plugin& obj ){ return obj.get_version(); } );
 }
 
 } }
