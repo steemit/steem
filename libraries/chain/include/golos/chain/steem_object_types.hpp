@@ -61,7 +61,7 @@ namespace golos {
             liquidity_reward_balance_object_type,
             // old_operation_object_type,
             // old_account_history_object_type,
-            category_object_type,
+            // old_category_object_type,
             hardfork_property_object_type,
             withdraw_vesting_route_object_type,
             owner_authority_history_object_type,
