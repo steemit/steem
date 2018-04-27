@@ -37,7 +37,7 @@ storage_configuration_plugin::storage_configuration_plugin( const std::string& _
                                                             const rocksdb_types::column_definitions_preparer& _col_def_preparer,
                                                             const rocksdb_types::key_value_items& _sequences,
                                                             const rocksdb_types::key_value_items& _version )
-:  name( _name ), storage_path( bfs::path() ), config_file( bfs::path() ),
+:  name( _name ), storage_path( _name ), config_file( "config.ini" ),
    col_def_preparer( _col_def_preparer ), sequences( _sequences ), version( _version )
 {
 

@@ -74,6 +74,8 @@ class persistent_storage: public abstract_persistent_storage
 
       bool shutdown_db();
       bool flush_storage();
+
+      bool check( bool create_action );
       bool create_db();
       bool open_db();
 

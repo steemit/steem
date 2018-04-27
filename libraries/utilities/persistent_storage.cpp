@@ -147,12 +147,33 @@ bool persistent_storage::shutdown_db()
    return true;
 }
 
+bool persistent_storage::check( bool create_action )
+{
+   if( config_manager.get_storage_path( plugin_name ).string().empty() )
+   {
+      if( create_action )
+         elog("Storage path is empty for plugin `${p}'. Creating RockDB failed.",("p", plugin_name) );
+      else
+         elog("Storage path is empty for plugin `${p}'. Opening RockDB failed.",("p", plugin_name) );
+
+      return false;
+   }
+   else
+      return true;
+}
+
 bool persistent_storage::create_db()
 {
+   if( !check( true/*create_action*/ ) )
+      return false;
+  
    rocksdb_types::ColumnDefinitions columnDefs;
 
    auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
-   preparer( true, columnDefs );
+   if( preparer != nullptr )
+      preparer( true, columnDefs );
+   else
+      columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
 
    DB* db = nullptr;
    auto strPath = config_manager.get_storage_path( plugin_name ).string();
@@ -179,7 +200,9 @@ bool persistent_storage::create_db()
    if( s.ok() )
    {
       columnDefs.clear();
-      preparer( false, columnDefs );
+      if( preparer != nullptr )
+         preparer( false, columnDefs );
+
       s = db->CreateColumnFamilies( columnDefs, &columnHandles );
       if( s.ok() )
       {
@@ -220,10 +243,16 @@ bool persistent_storage::open_db()
 {
    opened = false;
 
+   if( !check( false/*create_action*/ ) )
+      return false;
+
    rocksdb_types::ColumnDefinitions columnDefs;
 
    auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
-   preparer( true, columnDefs );
+   if( preparer != nullptr )
+      preparer( true, columnDefs );
+   else
+      columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
 
    sequences = config_manager.get_sequences( plugin_name );
    version = config_manager.get_version( plugin_name );
@@ -280,7 +309,10 @@ bool persistent_storage::action( std::function< bool() > call )
 
 bool persistent_storage::create()
 {
-   return action( [ this ](){ return create_db(); } );
+   if( opened )
+      return true;
+   else
+      return action( [ this ](){ return create_db(); } );
 }
 
 bool persistent_storage::open()

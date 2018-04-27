@@ -57,6 +57,24 @@ void prepare_config_file( const std::vector< std::string>& content, const bfs::p
    f.close();
 }
 
+void any_definitions( bool add_default_column, rocksdb_types::ColumnDefinitions& columns )
+{
+   if( add_default_column )
+      columns.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
+
+   columns.emplace_back("operation_by_id", rocksdb_types::ColumnFamilyOptions());
+   auto& byIdColumn = columns.back();
+   byIdColumn.options.comparator = rocksdb_types::by_id_Comparator();
+
+   columns.emplace_back("operation_by_id2", rocksdb_types::ColumnFamilyOptions());
+   auto& byIdColumn2 = columns.back();
+   byIdColumn2.options.comparator = rocksdb_types::by_id_Comparator();
+
+   columns.emplace_back("operation_by_id3", rocksdb_types::ColumnFamilyOptions());
+   auto& byIdColumn3 = columns.back();
+   byIdColumn3.options.comparator = rocksdb_types::by_id_Comparator();
+}
+
 void ah_column_definitions( bool add_default_column, rocksdb_types::ColumnDefinitions& columns )
 {
    if( add_default_column )
@@ -100,6 +118,200 @@ rocksdb_types::key_value_items ah_version( int32_t major, int32_t minor )
 }
 
 BOOST_AUTO_TEST_SUITE(persistent_storage_tests)
+
+BOOST_AUTO_TEST_CASE(persistent_storage_min_tests)
+{
+   {
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+
+      storage_configuration_manager scm;
+
+      BOOST_TEST_MESSAGE( "Creating 1 database - manager hasn't any data. Fail test." );
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "account_history", scm ) );
+
+      BOOST_REQUIRE( !storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+   }
+
+   {
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory"
+                     "--storage-root-path", "root",
+                     "--account_history-storage-path", "account_history_storage"
+                     };
+
+      storage_configuration_manager scm;
+
+      BOOST_TEST_MESSAGE( "Creating 1 database - incorrect name of plugin. Fail test." );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "X", "X" ), ah_version( 1/*major*/, 2/*minor*/ ) );
+      scm.initialize( 7, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "follow", scm ) );
+
+      BOOST_REQUIRE( !storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+   }
+
+   {
+      prepare_directories( "storage_configuration_tests_directory", "witness_node_data_dir" );
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory"
+                     "--follow-storage-path", "_follow_storage"
+                     };
+
+      storage_configuration_manager scm;
+
+      BOOST_TEST_MESSAGE( "Creating 1 database for default directories." );
+      scm.add_plugin( "follow", ah_column_definitions, ah_sequences( "X", "X" ), ah_version( 1/*major*/, 2/*minor*/ ) );
+      scm.initialize( 5, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "follow", scm ) );
+
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+   }
+}
+
+BOOST_AUTO_TEST_CASE(persistent_storage_advanced_tests)
+{
+   {
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "root",
+                     "--account_history-storage-path", "account_history_storage"
+                     };
+
+      storage_configuration_manager scm;
+
+      BOOST_TEST_MESSAGE( "Creating 1 database" );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "X", "X" ), ah_version( 1/*major*/, 2/*minor*/ ) );
+      scm.initialize( 7, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage( new persistent_storage( "account_history", scm ) );
+
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( !storage->open() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+      BOOST_REQUIRE( storage->close() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->close() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->close() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+      BOOST_REQUIRE( storage->close() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( !storage->is_opened() );
+      BOOST_REQUIRE( storage->open() );
+      BOOST_REQUIRE( storage->is_opened() );
+      BOOST_REQUIRE( storage->create() );
+      BOOST_REQUIRE( storage->is_opened() );
+   }
+
+   {
+      prepare_directories( "storage_configuration_tests_directory", "root" );
+
+      const char* argv[] = {
+                     "path",
+                     "-d", "storage_configuration_tests_directory",
+                     "--storage-root-path", "root",
+                     "--account_history-storage-path", "account_history_storage",
+                     "--follow-storage-path", "follow_s",
+                     "--tag-storage-path", "_tag",
+                     "--any_plugin-storage-path", "_any_plugin_"
+                     };
+
+      storage_configuration_manager scm;
+
+      BOOST_TEST_MESSAGE( "Creating 4 databases" );
+      scm.add_plugin( "any_plugin", any_definitions, ah_sequences( "AP", "AP11" ), ah_version( 1000/*major*/, 1000/*minor*/ ) );
+      scm.add_plugin( "follow", rocksdb_types::column_definitions_preparer(), ah_sequences( "F", "F1" ), ah_version( 100/*major*/, 100/*minor*/ ) );
+      scm.add_plugin( "tag", rocksdb_types::column_definitions_preparer(), ah_sequences( "T", "T1" ), ah_version( 10/*major*/, 10/*minor*/ ) );
+      scm.add_plugin( "account_history", ah_column_definitions, ah_sequences( "AH", "AH1" ), ah_version( 1/*major*/, 1/*minor*/ ) );
+      scm.initialize( 13, (char**)argv );
+
+      std::unique_ptr< abstract_persistent_storage > storage1( new persistent_storage( "any_plugin", scm ) );
+      std::unique_ptr< abstract_persistent_storage > storage2( new persistent_storage( "follow", scm ) );
+      std::unique_ptr< abstract_persistent_storage > storage3( new persistent_storage( "tag", scm ) );
+      std::unique_ptr< abstract_persistent_storage > storage4( new persistent_storage( "account_history", scm ) );
+
+      BOOST_REQUIRE( !storage1->is_opened() );
+      BOOST_REQUIRE( !storage2->is_opened() );
+      BOOST_REQUIRE( !storage3->is_opened() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+
+      BOOST_REQUIRE( storage1->create() );
+      BOOST_REQUIRE( !storage1->is_opened() );
+      BOOST_REQUIRE( storage2->create() );
+      BOOST_REQUIRE( !storage2->is_opened() );
+      BOOST_REQUIRE( !storage3->is_opened() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+
+      BOOST_REQUIRE( storage1->open() );
+      BOOST_REQUIRE( storage1->is_opened() );
+      BOOST_REQUIRE( storage2->open() );
+      BOOST_REQUIRE( storage2->is_opened() );
+      BOOST_REQUIRE( !storage3->is_opened() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+
+      BOOST_REQUIRE( storage1->open() );
+      BOOST_REQUIRE( storage1->is_opened() );
+      BOOST_REQUIRE( storage2->close() );
+      BOOST_REQUIRE( !storage2->is_opened() );
+      BOOST_REQUIRE( storage3->create() );
+      BOOST_REQUIRE( storage3->open() );
+      BOOST_REQUIRE( storage3->is_opened() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+
+      BOOST_REQUIRE( storage1->close() );
+      BOOST_REQUIRE( !storage1->is_opened() );
+      BOOST_REQUIRE( storage2->close() );
+      BOOST_REQUIRE( !storage2->is_opened() );
+      BOOST_REQUIRE( storage3->open() );
+      BOOST_REQUIRE( storage3->is_opened() );
+      BOOST_REQUIRE( storage4->create() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+      BOOST_REQUIRE( storage4->open() );
+      BOOST_REQUIRE( storage4->is_opened() );
+      BOOST_REQUIRE( storage4->close() );
+      BOOST_REQUIRE( !storage4->is_opened() );
+
+      BOOST_REQUIRE( storage3->close() );
+      BOOST_REQUIRE( storage1->open() );
+      BOOST_REQUIRE( storage2->open() );
+      BOOST_REQUIRE( storage4->open() );
+      BOOST_REQUIRE( storage1->create() );
+      BOOST_REQUIRE( storage2->create() );
+      BOOST_REQUIRE( storage3->create() );
+      BOOST_REQUIRE( storage4->create() );
+   }
+}
 
 BOOST_AUTO_TEST_CASE(persistent_storage_basic_tests)
 {
