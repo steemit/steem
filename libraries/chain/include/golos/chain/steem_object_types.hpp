@@ -59,8 +59,8 @@ namespace golos {
             feed_history_object_type,
             convert_request_object_type,
             liquidity_reward_balance_object_type,
-            operation_object_type,
-            old_account_history_object_type,
+            // old_operation_object_type,
+            // old_account_history_object_type,
             category_object_type,
             hardfork_property_object_type,
             withdraw_vesting_route_object_type,
@@ -103,8 +103,6 @@ namespace golos {
 
         class liquidity_reward_balance_object;
 
-        class operation_object;
-
         class category_object;
 
         class hardfork_property_object;
@@ -140,7 +138,7 @@ namespace golos {
         typedef object_id<feed_history_object> feed_history_id_type;
         typedef object_id<convert_request_object> convert_request_id_type;
         typedef object_id<liquidity_reward_balance_object> liquidity_reward_balance_id_type;
-        typedef object_id<operation_object> operation_id_type;
+        // typedef object_id<operation_object> operation_id_type;
         // typedef object_id<account_history_object> account_history_id_type;
         typedef object_id<category_object> category_id_type;
         typedef object_id<hardfork_property_object> hardfork_property_id_type;
@@ -246,8 +244,8 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (feed_history_object_type)
                 (convert_request_object_type)
                 (liquidity_reward_balance_object_type)
-                (operation_object_type)
-                (old_account_history_object_type)
+                // (old_operation_object_type)
+                // (old_account_history_object_type)
                 (hardfork_property_object_type)
                 (withdraw_vesting_route_object_type)
                 (owner_authority_history_object_type)

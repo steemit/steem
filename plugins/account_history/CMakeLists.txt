@@ -3,10 +3,12 @@ set(CURRENT_TARGET account_history)
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/account_history/plugin.hpp
     include/golos/plugins/account_history/history_object.hpp
+    include/golos/plugins/account_history/applied_operation.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
     plugin.cpp
+    applied_operation.cpp
 )
 
 if (BUILD_SHARED_LIBRARIES)

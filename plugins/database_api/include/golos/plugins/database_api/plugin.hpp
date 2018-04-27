@@ -9,7 +9,6 @@
 #include <fc/variant_object.hpp>
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/chain/applied_operation.hpp>
 #include <golos/plugins/database_api/state.hpp>
 #include <golos/plugins/database_api/api_objects/feed_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
@@ -89,27 +88,6 @@ namespace golos {
             };
 
 
-            ///account_history_api
-            struct operation_api_object {
-                operation_api_object() {
-                }
-
-                operation_api_object(const golos::chain::operation_object &op_obj) : trx_id(op_obj.trx_id),
-                        block(op_obj.block), trx_in_block(op_obj.trx_in_block), virtual_op(op_obj.virtual_op),
-                        timestamp(op_obj.timestamp) {
-                    op = fc::raw::unpack<golos::protocol::operation>(op_obj.serialized_op);
-                }
-
-                golos::protocol::transaction_id_type trx_id;
-                uint32_t block = 0;
-                uint32_t trx_in_block = 0;
-                uint16_t op_in_trx = 0;
-                uint64_t virtual_op = 0;
-                fc::time_point_sec timestamp;
-                golos::protocol::operation op;
-            };
-
-
             using chain_properties_17 = chain_properties;
             using price_17 = price;
 
@@ -119,7 +97,6 @@ namespace golos {
             DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
             DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_block>)
-            DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
             DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
             DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
             DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
@@ -129,7 +106,6 @@ namespace golos {
             DEFINE_API_ARGS(get_witness_schedule,             msg_pack, witness_schedule_api_object)
             DEFINE_API_ARGS(get_hardfork_version,             msg_pack, hardfork_version)
             DEFINE_API_ARGS(get_next_scheduled_hardfork,      msg_pack, scheduled_hardfork)
-            DEFINE_API_ARGS(get_accounts,                     msg_pack, std::vector<extended_account>)
             DEFINE_API_ARGS(lookup_account_names,             msg_pack, std::vector<optional<account_api_object> >)
             DEFINE_API_ARGS(lookup_accounts,                  msg_pack, std::set<std::string>)
             DEFINE_API_ARGS(get_account_count,                msg_pack, uint64_t)
@@ -244,16 +220,7 @@ namespace golos {
                                      */
                                     (get_block)
 
-                                    /**
-                                     *  @brief Get sequence of operations included/generated within a particular block
-                                     *  @param block_num Height of the block whose generated virtual operations should be returned
-                                     *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
-                                     *  @return sequence of operations included/generated within the block
-                                     */
-                                    (get_ops_in_block)
-
-
-
+                                    
                                     /**
                                      * @brief Set callback which is triggered on each generated block
                                      * @param callback function which should be called
@@ -290,9 +257,6 @@ namespace golos {
                                     //////////////
                                     // Accounts //
                                     //////////////
-
-                                    (get_accounts)
-
                                     /**
                                      * @brief Get a list of accounts by name
                                      * @param account_names Names of the accounts to retrieve
@@ -398,8 +362,6 @@ namespace golos {
                                     /// @brief Get a hexdump of the serialized binary form of a transaction
                                     (get_transaction_hex)
 
-                                    (get_transaction)
-
                                     /**
                                      *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
                                      *  and return the minimal subset of public keys that should add signatures to the transaction.
@@ -457,9 +419,6 @@ FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 FC_REFLECT((golos::plugins::database_api::get_tags_used_by_author), (tags))
 
 FC_REFLECT((golos::plugins::database_api::signed_block_api_object), (block_id)(signing_key)(transaction_ids))
-
-FC_REFLECT((golos::plugins::database_api::operation_api_object),
-           (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
 
 FC_REFLECT((golos::plugins::database_api::database_index_info), (name)(record_count))
 FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(reserved_size)(used_size)(index_list))

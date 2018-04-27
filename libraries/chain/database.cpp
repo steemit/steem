@@ -11,7 +11,6 @@
 #include <golos/chain/database_exceptions.hpp>
 #include <golos/chain/db_with.hpp>
 #include <golos/chain/evaluator_registry.hpp>
-#include <golos/chain/history_object.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/chain/snapshot_state.hpp>
 #include <golos/chain/steem_evaluator.hpp>
@@ -2867,7 +2866,6 @@ namespace golos {
             add_core_index<feed_history_index>(*this);
             add_core_index<convert_request_index>(*this);
             add_core_index<liquidity_reward_balance_index>(*this);
-            add_core_index<operation_index>(*this);
             add_core_index<category_index>(*this);
             add_core_index<hardfork_property_index>(*this);
             add_core_index<withdraw_vesting_route_index>(*this);

@@ -76,15 +76,12 @@ namespace golos {
 
                 optional<signed_block> get_block(uint32_t block_num) const;
 
-                std::vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual) const;
-
                 // Globals
                 fc::variant_object get_config() const;
 
                 dynamic_global_property_api_object get_dynamic_global_properties() const;
 
                 // Accounts
-                std::vector<extended_account> get_accounts(std::vector<std::string> names) const;
 
                 std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
 
@@ -116,26 +113,10 @@ namespace golos {
 
                 std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
 
-                std::map<uint32_t, applied_operation> get_account_history(std::string account, uint64_t from, uint32_t limit) const;
 
                 std::vector<witness_api_object> get_witnesses_by_vote(std::string from, uint32_t limit) const;
 
                 std::vector<account_name_type> get_miner_queue() const;
-
-                share_type get_account_reputation(const account_name_type& account) const {
-                    if (!_follow_api) {
-                        return 0;
-                    }
-
-                    auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
-                    auto itr = rep_idx.find(account);
-
-                    if (rep_idx.end() != itr) {
-                        return itr->reputation;
-                    }
-
-                    return 0;
-                }
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -285,30 +266,6 @@ namespace golos {
                 return database().fetch_block_by_number(block_num);
             }
 
-            DEFINE_API(plugin, get_ops_in_block) {
-                CHECK_ARG_SIZE(2)
-                auto block_num = args.args->at(0).as<uint32_t>();
-                auto only_virtual = args.args->at(1).as<bool>();
-                return my->database().with_weak_read_lock([&]() {
-                    return my->get_ops_in_block(block_num, only_virtual);
-                });
-            }
-
-            std::vector<applied_operation> plugin::api_impl::get_ops_in_block(uint32_t block_num,  bool only_virtual) const {
-                const auto &idx = database().get_index<operation_index>().indices().get<by_location>();
-                auto itr = idx.lower_bound(block_num);
-                std::vector<applied_operation> result;
-                applied_operation temp;
-                while (itr != idx.end() && itr->block == block_num) {
-                    temp = *itr;
-                    if (!only_virtual || is_virtual_operation(temp.op)) {
-                        result.push_back(temp);
-                    }
-                    ++itr;
-                }
-                return result;
-            }
-
             DEFINE_API(plugin, set_block_applied_callback) {
                 CHECK_ARG_SIZE(1)
 
@@ -417,34 +374,6 @@ namespace golos {
             // Accounts                                                         //
             //                                                                  //
             //////////////////////////////////////////////////////////////////////
-
-            DEFINE_API(plugin, get_accounts) {
-                CHECK_ARG_SIZE(1)
-                return my->database().with_weak_read_lock([&]() {
-                    return my->get_accounts(args.args->at(0).as<vector<std::string> >());
-                });
-            }
-
-            std::vector<extended_account> plugin::api_impl::get_accounts(std::vector<std::string> names) const {
-                const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
-                const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
-                std::vector<extended_account> results;
-
-                for (auto name: names) {
-                    auto itr = idx.find(name);
-                    if (itr != idx.end()) {
-                        results.push_back(extended_account(*itr, _db));
-                        results.back().reputation = get_account_reputation(name);
-                        auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
-                        while (vitr != vidx.end() && vitr->account == itr->id) {
-                            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
-                            ++vitr;
-                        }
-                    }
-                }
-
-                return results;
-            }
 
 
             DEFINE_API(plugin, lookup_account_names) {
@@ -978,24 +907,6 @@ namespace golos {
                 });
             }
 
-            DEFINE_API(plugin, get_transaction) {
-                CHECK_ARG_SIZE(1)
-                auto id = args.args->at(0).as<transaction_id_type>();
-                return my->database().with_weak_read_lock([&]() {
-                    const auto &idx = my->database().get_index<operation_index>().indices().get<by_transaction_id>();
-                    auto itr = idx.lower_bound(id);
-                    if (itr != idx.end() && itr->trx_id == id) {
-                        auto blk = my->database().fetch_block_by_number(itr->block);
-                        FC_ASSERT(blk.valid());
-                        FC_ASSERT(blk->transactions.size() > itr->trx_in_block);
-                        annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
-                        result.block_num = itr->block;
-                        result.transaction_num = itr->trx_in_block;
-                        return result;
-                    }
-                    FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
-                });
-            }
 
             DEFINE_API(plugin, get_database_info) {
                 CHECK_ARG_SIZE(0);

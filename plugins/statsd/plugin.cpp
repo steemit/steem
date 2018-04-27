@@ -4,7 +4,6 @@
 
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/comment_object.hpp>
-#include <golos/chain/history_object.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
 #include <golos/protocol/block.hpp>

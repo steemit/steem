@@ -1,7 +1,7 @@
 #include <golos/plugins/account_history/plugin.hpp>
 
 #include <golos/chain/operation_notification.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -35,21 +35,24 @@ if( options.count(name) ) { \
 // 
 
 struct operation_visitor {
-    operation_visitor(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i)
+    operation_visitor(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::plugins::account_history::operation_object *&n, std::string i)
         : _db(db), _note(note), new_obj(n), item(i){};
 
     typedef void result_type;
 
     golos::chain::database &_db;
     const golos::chain::operation_notification &_note;
-    const golos::chain::operation_object *&new_obj;
+    const golos::plugins::account_history::operation_object *&new_obj;
     string item;
 
     template<typename Op>
     void operator()(Op &&) const {
         const auto &hist_idx = _db.get_index<account_history_index>().indices().get<by_account>();
         if (!new_obj) {
-            new_obj = &_db.create<golos::chain::operation_object>([&](golos::chain::operation_object &obj) {
+            new_obj = &_db.create<golos::plugins::account_history::operation_object>(
+                    [&](golos::plugins::account_history::operation_object &obj
+                ) {
+
                 obj.trx_id = _note.trx_id;
                 obj.block = _note.block;
                 obj.trx_in_block = _note.trx_in_block;
@@ -78,7 +81,7 @@ struct operation_visitor {
     }
 };
 struct operation_visitor_filter : operation_visitor {
-    operation_visitor_filter(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::chain::operation_object *&n, std::string i, const flat_set<string> &filter, bool blacklist, uint32_t start_block)
+    operation_visitor_filter(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::plugins::account_history::operation_object *&n, std::string i, const flat_set<string> &filter, bool blacklist, uint32_t start_block)
         : operation_visitor(db, note, n, i), _filter(filter), _blacklist(blacklist), _start_block(start_block) {
     }
 
@@ -118,7 +121,7 @@ public:
         flat_set<golos::chain::account_name_type> impacted;
         golos::chain::database &db = database();
 
-        const golos::chain::operation_object *new_obj = nullptr;
+        const golos::plugins::account_history::operation_object *new_obj = nullptr;
         operation_get_impacted_accounts(note.op, impacted);
 
         for (const auto &item : impacted) {
@@ -134,7 +137,16 @@ public:
         }
     }
 
-    std::map<uint32_t, applied_operation> get_account_history(std::string account, uint64_t from, uint32_t limit);
+    std::map<uint32_t, applied_operation> get_account_history(
+        std::string account,
+        uint64_t from,
+        uint32_t limit
+    );
+
+    std::vector<applied_operation> get_ops_in_block(
+        uint32_t block_num,
+        bool only_virtual
+    );
 
 
     flat_map<string, string> _tracked_accounts;
@@ -181,6 +193,48 @@ DEFINE_API(plugin, get_account_history) {
     });
 }
 
+std::vector<applied_operation> plugin::plugin_impl::get_ops_in_block(uint32_t block_num,  bool only_virtual) {
+    const auto &idx = database().get_index<operation_index>().indices().get<by_location>();
+    auto itr = idx.lower_bound(block_num);
+    std::vector<applied_operation> result;
+    applied_operation temp;
+    while (itr != idx.end() && itr->block == block_num) {
+        temp = *itr;
+        if (!only_virtual || golos::protocol::is_virtual_operation(temp.op)) {
+            result.push_back(temp);
+        }
+        ++itr;
+    }
+    return result;
+}
+
+DEFINE_API(plugin, get_ops_in_block) {
+    CHECK_ARG_SIZE(2)
+    auto block_num = args.args->at(0).as<uint32_t>();
+    auto only_virtual = args.args->at(1).as<bool>();
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_ops_in_block(block_num, only_virtual);
+    });
+}
+
+DEFINE_API(plugin, get_transaction) {
+    CHECK_ARG_SIZE(1)
+    auto id = args.args->at(0).as<transaction_id_type>();
+    return my->database().with_weak_read_lock([&]() {
+        const auto &idx = my->database().get_index<operation_index>().indices().get<by_transaction_id>();
+        auto itr = idx.lower_bound(id);
+        if (itr != idx.end() && itr->trx_id == id) {
+            auto blk = my->database().fetch_block_by_number(itr->block);
+            FC_ASSERT(blk.valid());
+            FC_ASSERT(blk->transactions.size() > itr->trx_in_block);
+            annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
+            result.block_num = itr->block;
+            result.transaction_num = itr->trx_in_block;
+            return result;
+        }
+        FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
+    });
+}
 
 struct get_impacted_account_visitor {
     flat_set<golos::chain::account_name_type> &_impacted;
@@ -395,7 +449,9 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
     my.reset(new plugin_impl);
     // auto & tmp_db_ref = appbase::app().get_plugin<chain::plugin>().db();
     my->database().pre_apply_operation.connect([&](const golos::chain::operation_notification &note) { my->on_operation(note); });
-    golos::chain::add_plugin_index<account_history_index>( my->database());
+
+    golos::chain::add_plugin_index<account_history_index>( my->database() );
+    golos::chain::add_plugin_index<operation_index>( my->database() );
 
     typedef pair<string, string> pairstring;
     LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
