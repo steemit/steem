@@ -61,57 +61,25 @@ namespace account_history {
             indexed_by<
                 ordered_unique <
                     tag < by_id >,
-                    member <
-                        operation_object,
-                        operation_id_type,
-                        &operation_object::id
-                        >
+                    member < operation_object, operation_id_type, &operation_object::id >
                     >,
                 ordered_unique <
                     tag < by_location >,
                     composite_key<
                         operation_object,
-                        member <
-                            operation_object,
-                            uint32_t,
-                            &operation_object::block
-                        >,
-                        member<
-                            operation_object,
-                            uint32_t,
-                            &operation_object::trx_in_block
-                        >,
-                        member<
-                            operation_object,
-                            uint16_t,
-                            &operation_object::op_in_trx
-                        >,
-                        member<
-                            operation_object,
-                            uint64_t,
-                            &operation_object::virtual_op
-                        >,
-                        member<
-                            operation_object,
-                            operation_id_type,
-                            &operation_object::id
-                        >
+                        member < operation_object, uint32_t, &operation_object::block >,
+                        member < operation_object, uint32_t, &operation_object::trx_in_block >,
+                        member < operation_object, uint16_t, &operation_object::op_in_trx >,
+                        member < operation_object, uint64_t, &operation_object::virtual_op >,
+                        member < operation_object, operation_id_type, &operation_object::id >
                     >
                 >,
                 ordered_unique <
                     tag <by_transaction_id>,
                     composite_key<
                         operation_object,
-                        member <
-                            operation_object,
-                            transaction_id_type,
-                            &operation_object::trx_id
-                        >,
-                        member <
-                            operation_object,
-                            operation_id_type,
-                            &operation_object::id
-                        >
+                        member < operation_object, transaction_id_type, &operation_object::trx_id >,
+                        member < operation_object, operation_id_type, &operation_object::id >
                     >
                 >
             >,
@@ -142,17 +110,12 @@ namespace account_history {
             indexed_by<
                     ordered_unique <
                         tag < by_id>,
-                        member<
-                            account_history_object,
-                            account_history_id_type,
-                            &account_history_object::id
-                        >
+                        member < account_history_object, account_history_id_type, &account_history_object::id >
                     >,
                     ordered_unique <tag<by_account>,
                     composite_key<account_history_object,
-                    member <
-                        account_history_object, account_name_type, &account_history_object::account>,
-                        member<account_history_object, uint32_t, &account_history_object::sequence>
+                        member < account_history_object, account_name_type, &account_history_object::account >,
+                        member < account_history_object, uint32_t, &account_history_object::sequence >
                     >,
                     composite_key_compare <std::less<account_name_type>, std::greater<uint32_t>>
                 >
