@@ -16,10 +16,10 @@
 
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+#define CHECK_ARGS_COUNT(min, max) \
+   FC_ASSERT(n_args >= min && n_args <= max, "Expected at least #min and up to #max arguments, got ${n}", ("n", n_args));
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
+namespace golos { namespace plugins { namespace database_api {
 
             struct block_applied_callback_info {
 
@@ -999,6 +999,50 @@ namespace golos {
                 });
             }
 
+            //vector<vesting_delegation_api_obj> get_vesting_delegations(string account, string from, uint32_t limit = 100) const;
+            DEFINE_API(plugin, get_vesting_delegations) {
+                size_t n_args = args.args->size();
+                CHECK_ARGS_COUNT(2, 3);
+                auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<string>();
+                uint32_t limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                FC_ASSERT(limit <= 1000);
+
+                return my->database().with_weak_read_lock([&]() {
+                    vector<vesting_delegation_api_object> result;
+                    result.reserve(limit);
+                    const auto& idx = my->database().get_index<vesting_delegation_index, by_delegation>();
+                    auto itr = idx.lower_bound(std::make_tuple(account, from));
+                    while (result.size() < limit && itr != idx.end() && itr->delegator == account) {
+                        result.push_back(*itr);
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
+
+            //vector<vesting_delegation_expiration_api_obj> get_expiring_vesting_delegations(string account, time_point_sec from, uint32_t limit = 100) const;
+            DEFINE_API(plugin, get_expiring_vesting_delegations) {
+                size_t n_args = args.args->size();
+                CHECK_ARGS_COUNT(2, 3);
+                auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<time_point_sec>();
+                uint32_t limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                FC_ASSERT(limit <= 1000);
+
+                return my->database().with_weak_read_lock([&]() {
+                    vector<vesting_delegation_expiration_api_object> result;
+                    result.reserve(limit);
+                    const auto& idx = my->database().get_index<vesting_delegation_expiration_index, by_account_expiration>();
+                    auto itr = idx.lower_bound(std::make_tuple(account, from));
+                    while (result.size() < limit && itr != idx.end() && itr->delegator == account) {
+                        result.push_back(*itr);
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
+
             DEFINE_API(plugin, get_transaction) {
                 CHECK_ARG_SIZE(1)
                 auto id = args.args->at(0).as<transaction_id_type>();
@@ -1053,6 +1097,5 @@ namespace golos {
             void plugin::plugin_startup() {
                 my->startup();
             }
-        }
-    }
-} // golos::plugins::database_api
+
+} } } // golos::plugins::database_api

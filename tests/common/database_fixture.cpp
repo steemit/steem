@@ -16,8 +16,7 @@
 
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using std::cout;
         using std::cerr;
@@ -246,7 +245,7 @@ namespace golos {
                         name,
                         STEEMIT_INIT_MINER_NAME,
                         init_account_priv_key,
-                        100,
+                        30*1e3,
                         key,
                         post_key,
                         "");
@@ -480,5 +479,4 @@ namespace golos {
 
         } // golos::chain::test
 
-    }
-} // golos::chain
+} } // golos::chain

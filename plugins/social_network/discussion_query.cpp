@@ -1,5 +1,3 @@
-
-
 #include <boost/algorithm/string.hpp>
 #include <golos/plugins/social_network/api_object/discussion_query.hpp>
 #include <golos/plugins/social_network/tag/tags_object.hpp>

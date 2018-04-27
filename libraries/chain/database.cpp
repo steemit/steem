@@ -492,16 +492,6 @@ namespace golos {
             return find<comment_object, by_permlink>(boost::make_tuple(author, permlink));
         }
 
-        const category_object &database::get_category(const shared_string &name) const {
-            try {
-                return get<category_object, by_name>(name);
-            } FC_CAPTURE_AND_RETHROW((name))
-        }
-
-        const category_object *database::find_category(const shared_string &name) const {
-            return find<category_object, by_name>(name);
-        }
-
         const escrow_object &database::get_escrow(const account_name_type &name, uint32_t escrow_id) const {
             try {
                 return get<escrow_object, by_from_id>(boost::make_tuple(name, escrow_id));
@@ -679,7 +669,7 @@ namespace golos {
                     b.last_bandwidth_update = head_block_time();
                 });
 
-                fc::uint128_t account_vshares(a.vesting_shares.amount.value);
+                fc::uint128_t account_vshares(a.effective_vesting_shares().amount.value);
                 fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
                 fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
                 fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
@@ -2142,8 +2132,6 @@ namespace golos {
 
         void database::cashout_comment_helper(const comment_object &comment) {
             try {
-                const auto &cat = get_category(comment.category);
-
                 if (comment.net_rshares > 0) {
                     uint128_t reward_tokens = uint128_t(
                          claim_rshare_reward(
@@ -2212,20 +2200,11 @@ namespace golos {
                         });
 #endif
 
-                        modify(cat, [&](category_object &c) {
-                            c.total_payouts += total_payout;
-                        });
-
                     }
 
                     fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value);
                     adjust_rshares2(comment, old_rshares2, 0);
                 }
-
-                modify(cat, [&](category_object &c) {
-                    c.abs_rshares -= comment.abs_rshares;
-                    c.last_update = head_block_time();
-                });
 
                 modify(comment, [&](comment_object &c) {
                     /**
@@ -2835,6 +2814,8 @@ namespace golos {
             _my->_evaluator_registry.register_evaluator<decline_voting_rights_evaluator>();
             _my->_evaluator_registry.register_evaluator<reset_account_evaluator>();
             _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
+            _my->_evaluator_registry.register_evaluator<account_create_with_delegation_evaluator>();
+            _my->_evaluator_registry.register_evaluator<delegate_vesting_shares_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -2869,7 +2850,6 @@ namespace golos {
             add_core_index<liquidity_reward_balance_index>(*this);
             add_core_index<operation_index>(*this);
             add_core_index<account_history_index>(*this);
-            add_core_index<category_index>(*this);
             add_core_index<hardfork_property_index>(*this);
             add_core_index<withdraw_vesting_route_index>(*this);
             add_core_index<owner_authority_history_index>(*this);
@@ -2878,6 +2858,8 @@ namespace golos {
             add_core_index<escrow_index>(*this);
             add_core_index<savings_withdraw_index>(*this);
             add_core_index<decline_voting_rights_request_index>(*this);
+            add_core_index<vesting_delegation_index>(*this);
+            add_core_index<vesting_delegation_expiration_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3313,6 +3295,7 @@ namespace golos {
                 create_block_summary(next_block);
                 clear_expired_transactions();
                 clear_expired_orders();
+                clear_expired_delegations();
                 update_witness_schedule();
 
                 update_median_feed();
@@ -3964,6 +3947,20 @@ namespace golos {
             while (itr != orders_by_exp.end() && itr->expiration < now) {
                 cancel_order(*itr);
                 itr = orders_by_exp.begin();
+            }
+        }
+
+        void database::clear_expired_delegations() {
+            auto now = head_block_time();
+            const auto& delegations_by_exp = get_index<vesting_delegation_expiration_index, by_expiration>();
+            auto itr = delegations_by_exp.begin();
+            while (itr != delegations_by_exp.end() && itr->expiration < now) {
+                modify(get_account(itr->delegator), [&](account_object& a) {
+                    a.delegated_vesting_shares -= itr->vesting_shares;
+                });
+                push_virtual_operation(return_vesting_delegation_operation(itr->delegator, itr->vesting_shares));
+                remove(*itr);
+                itr = delegations_by_exp.begin();
             }
         }
 
@@ -4622,17 +4619,6 @@ namespace golos {
                     if (c.net_rshares.value > 0) {
                         adjust_rshares2(c, 0, calculate_vshares(c.net_rshares.value));
                     }
-                }
-
-                // Update category rshares
-                const auto &cat_idx = get_index<category_index>().indices().get<by_name>();
-                auto cat_itr = cat_idx.begin();
-                while (cat_itr != cat_idx.end()) {
-                    modify(*cat_itr, [&](category_object &c) {
-                        c.abs_rshares *= magnitude;
-                    });
-
-                    ++cat_itr;
                 }
 
             }
