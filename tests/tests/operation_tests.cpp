@@ -6604,5 +6604,107 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_SUITE_END() // delegation
 
+    BOOST_AUTO_TEST_SUITE(account_metadata)
+
+    BOOST_AUTO_TEST_CASE(account_metadata_validate) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: account_metadata_validate");
+            account_metadata_operation op;
+            BOOST_TEST_MESSAGE("--- Test failure when bad account name passed");
+            op.account = "-bad-";
+            op.json_metadata = "{}";
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test failure when json_metadata is empty");
+            op.account = "alice";
+            op.json_metadata = "";
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::assert_exception);
+
+            BOOST_TEST_MESSAGE("--- Test failure when json_metadata is invalid JSON");
+            op.json_metadata = "{test:fail}";
+            STEEMIT_REQUIRE_THROW(op.validate(), fc::parse_error_exception);
+
+            BOOST_TEST_MESSAGE("--- Test success under normal conditions");
+            op.json_metadata = "{}";
+            op.validate();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(account_metadata_authorities) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: account_metadata_authorities");
+            account_metadata_operation op;
+            op.account = "alice";
+            op.json_metadata = "{}";
+            flat_set<account_name_type> auths;
+            flat_set<account_name_type> expected;
+
+            op.get_required_owner_authorities(auths);
+            BOOST_REQUIRE(auths == expected);
+
+            op.get_required_active_authorities(auths);
+            BOOST_REQUIRE(auths == expected);
+
+            op.get_required_posting_authorities(auths);
+            expected.insert("alice");
+            BOOST_REQUIRE(auths == expected);
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(account_metadata_apply) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: account_metadata_apply");
+            signed_transaction tx;
+            ACTOR(alice);
+
+            BOOST_TEST_MESSAGE("--- Test success under normal conditions");
+            generate_blocks(10);
+            const auto json = "{\"test\":1}";
+            auto now = db->head_block_time();
+            account_metadata_operation op;
+            op.account = "alice";
+            op.json_metadata = json;
+            push_tx_with_ops(tx, alice_private_key, op);
+            generate_blocks(10);
+
+            auto acc = db->get_account("alice");
+            auto meta = db->get<account_metadata_object, by_account>("alice");
+            BOOST_REQUIRE(meta.account == "alice");
+            BOOST_REQUIRE(meta.json_metadata == json);
+            BOOST_REQUIRE(acc.last_account_update == now);
+
+            BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create");
+            ACTOR(bob);                                             // create_account with json_metadata = ""
+            meta = db->get<account_metadata_object, by_account>("bob");
+            BOOST_REQUIRE(meta.account == "bob");
+            BOOST_REQUIRE(meta.json_metadata == "");
+
+            BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create_with_delegation");
+            generate_blocks(1);
+            fund("bob", ASSET_GOLOS(1000));
+            private_key_type priv_key = generate_private_key("temp_key");
+            account_create_with_delegation_operation cr;
+            cr.fee = ASSET_GOLOS(1000);
+            cr.delegation = ASSET_GESTS(0);
+            cr.creator = "bob";
+            cr.new_account_name = "sam";
+            cr.owner = authority(1, priv_key.get_public_key(), 1);
+            cr.active = authority(1, priv_key.get_public_key(), 1);
+            cr.memo_key = priv_key.get_public_key();
+            // op.json_metadata = "";                               // don't set
+            push_tx_with_ops(tx, bob_private_key, cr);
+
+            meta = db->get<account_metadata_object, by_account>("sam");
+            BOOST_REQUIRE(meta.account == "sam");
+            BOOST_REQUIRE(meta.json_metadata == "");
+            validate_database();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_SUITE_END() // account_metadata
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

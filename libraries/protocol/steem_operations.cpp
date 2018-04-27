@@ -62,6 +62,7 @@ namespace golos { namespace protocol {
 
         void account_metadata_operation::validate() const {
             validate_account_name(account);
+            FC_ASSERT(json_metadata.size() > 0, "json_metadata can't be empty");
             validate_account_json_metadata(json_metadata);
         }
 
@@ -101,8 +102,6 @@ namespace golos { namespace protocol {
             FC_ASSERT(beneficiaries.size(), "Must specify at least one beneficiary");
             FC_ASSERT(beneficiaries.size() < 128,
                       "Cannot specify more than 127 beneficiaries."); // Require size serializtion fits in one byte.
-
-            string_less str_cmp;
 
             validate_account_name(beneficiaries[0].account);
             FC_ASSERT(beneficiaries[0].weight <= STEEMIT_100_PERCENT,
