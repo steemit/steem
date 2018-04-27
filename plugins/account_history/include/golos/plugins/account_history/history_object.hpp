@@ -10,7 +10,6 @@
 #include <golos/chain/witness_objects.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
-#include <golos/plugins/account_history/applied_operation.hpp>
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
