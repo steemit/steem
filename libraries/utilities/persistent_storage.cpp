@@ -47,9 +47,9 @@ void persistent_storage::load_seq_identifiers()
       std::string buffer;
       auto s = storage->Get(rOptions, slice, &buffer );
       check_status(s);
-      obj.first = PrimitiveTypeSlice<size_t>::unpackSlice( buffer );
+      obj.second = PrimitiveTypeSlice<size_t>::unpackSlice( buffer );
 
-      ilog( "Loaded ${name}: ${o}", ( "name", obj.first )( "o", obj.second ) );
+      ilog( "Loaded sequence: '${n}': '${o}'", ( "n", obj.first )( "o", obj.second ) );
    };
 
    std::for_each( sequences.begin(), sequences.end(), load );
@@ -152,14 +152,30 @@ bool persistent_storage::check( bool create_action )
    if( config_manager.get_storage_path( plugin_name ).string().empty() )
    {
       if( create_action )
-         elog("Storage path is empty for plugin `${p}'. Creating RockDB failed.",("p", plugin_name) );
+         elog("Storage path is empty for plugin '${p}'. Creating RockDB failed.",("p", plugin_name) );
       else
-         elog("Storage path is empty for plugin `${p}'. Opening RockDB failed.",("p", plugin_name) );
+         elog("Storage path is empty for plugin '${p}'. Opening RockDB failed.",("p", plugin_name) );
 
       return false;
    }
    else
       return true;
+}
+
+void persistent_storage::prepare_columns( bool add_default_column, rocksdb_types::ColumnDefinitions& columns_defs )
+{
+   auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
+
+   if( preparer != nullptr )
+      preparer( add_default_column, columns_defs );
+   else
+   {
+      if( add_default_column )
+      {
+         columns_defs.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
+         ilog("None columns definition for plugin '${p}'. Creating default column.",("p", plugin_name) );
+      }
+   }
 }
 
 bool persistent_storage::create_db()
@@ -168,12 +184,7 @@ bool persistent_storage::create_db()
       return false;
   
    rocksdb_types::ColumnDefinitions columnDefs;
-
-   auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
-   if( preparer != nullptr )
-      preparer( true, columnDefs );
-   else
-      columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
+   prepare_columns( true/*add_default_column*/, columnDefs );
 
    DB* db = nullptr;
    auto strPath = config_manager.get_storage_path( plugin_name ).string();
@@ -200,8 +211,7 @@ bool persistent_storage::create_db()
    if( s.ok() )
    {
       columnDefs.clear();
-      if( preparer != nullptr )
-         preparer( false, columnDefs );
+      prepare_columns( false/*add_default_column*/, columnDefs );
 
       s = db->CreateColumnFamilies( columnDefs, &columnHandles );
       if( s.ok() )
@@ -220,7 +230,7 @@ bool persistent_storage::create_db()
       }
       else
       {
-         elog("RocksDB can not create column definitions at location: `${p}'.\nReturned error: ${e}",
+         elog("RocksDB can not create column definitions at location: '${p}'.\nReturned error: '${e}'",
             ("p", strPath)("e", s.ToString()));
 
          res = false;
@@ -232,7 +242,7 @@ bool persistent_storage::create_db()
    }
    else
    {
-      elog("RocksDB can not create storage at location: `${p}'.\nReturned error: ${e}",
+      elog("RocksDB can not create storage at location: '${p}'.\nReturned error: '${e}'",
          ("p", strPath)("e", s.ToString()));
 
       return false;
@@ -247,12 +257,7 @@ bool persistent_storage::open_db()
       return false;
 
    rocksdb_types::ColumnDefinitions columnDefs;
-
-   auto preparer = config_manager.get_column_definitions_preparer( plugin_name );
-   if( preparer != nullptr )
-      preparer( true, columnDefs );
-   else
-      columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, rocksdb_types::ColumnFamilyOptions());
+   prepare_columns( true/*add_default_column*/, columnDefs );
 
    sequences = config_manager.get_sequences( plugin_name );
    version = config_manager.get_version( plugin_name );
@@ -267,7 +272,13 @@ bool persistent_storage::open_db()
    {
       std::vector<ColumnFamilyDescriptor> loaded_cf_descs;
       auto load_status = LoadOptionsFromFile( config_manager.get_config_file( plugin_name ).string(), Env::Default(), &db_options, &loaded_cf_descs );
-      FC_ASSERT( load_status.ok() );
+      if( !load_status.ok() )
+      {
+         elog("RocksDB cannot open config file at location: '${p}'.\nReturned error: '${e}'",
+            ("p", config_manager.get_config_file( plugin_name ).string())("e", load_status.ToString()));
+
+         return false;
+      }
    }
 
    /// Optimize RocksDB. This is the easiest way to get RocksDB to perform well
@@ -277,7 +288,7 @@ bool persistent_storage::open_db()
 
    if( status.ok() )
    {
-      ilog("RocksDB opened successfully storage at location: `${p}'.", ("p", strPath));
+      ilog("RocksDB opened successfully storage at location: '${p}'.", ("p", strPath));
 
       storage.reset( storageDb );
 
@@ -288,7 +299,7 @@ bool persistent_storage::open_db()
    }
    else
    {
-      elog("RocksDB cannot open database at location: `${p}'.\nReturned error: ${e}",
+      elog("RocksDB cannot open database at location: '${p}'.\nReturned error: '${e}'",
          ("p", strPath)("e", status.ToString()));
    }
 
@@ -310,19 +321,30 @@ bool persistent_storage::action( std::function< bool() > call )
 bool persistent_storage::create()
 {
    if( opened )
+   {
+      ilog("RockDB for plugin '${p}' is already opened. Creating RockDB skipped.",("p", plugin_name) );
       return true;
+   }
    else
       return action( [ this ](){ return create_db(); } );
 }
 
 bool persistent_storage::open()
 {
-   bool res = action( [ this ](){ return shutdown_db(); } );
-
-   if( res )
-      return action( [ this ](){ return open_db(); } );
+   if( opened )
+   {
+      ilog("RockDB for plugin '${p}' is already opened. Opening RockDB skipped.",("p", plugin_name) );
+      return true;
+   }
    else
-      return false;
+   {
+      bool res = action( [ this ](){ return open_db(); } );
+
+      if( !res )
+         action( [ this ](){ return shutdown_db(); } );
+
+      return res;
+   }
 }
 
 bool persistent_storage::flush()
@@ -332,7 +354,13 @@ bool persistent_storage::flush()
 
 bool persistent_storage::close()
 {
-   return action( [ this ](){ return shutdown_db(); } );
+   if( !opened )
+   {
+      ilog("RockDB for plugin '${p}' is not opened. Closing RockDB skipped.",("p", plugin_name) );
+      return true;
+   }
+   else
+      return action( [ this ](){ return shutdown_db(); } );
 }
 
 bool persistent_storage::is_opened()

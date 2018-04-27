@@ -76,6 +76,7 @@ class persistent_storage: public abstract_persistent_storage
       bool flush_storage();
 
       bool check( bool create_action );
+      void prepare_columns( bool add_default_column, rocksdb_types::ColumnDefinitions& columns_defs );
       bool create_db();
       bool open_db();
 
