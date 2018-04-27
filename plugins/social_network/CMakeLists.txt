@@ -4,8 +4,6 @@ list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/social_network/social_network.hpp
         include/golos/plugins/social_network/tag/tags_object.hpp
         include/golos/plugins/social_network/tag/tag_visitor.hpp
-        include/golos/plugins/social_network/api_object/category_api_object.hpp
-        include/golos/plugins/social_network/api_object/category_index.hpp
         include/golos/plugins/social_network/api_object/comment_api_object.hpp
         include/golos/plugins/social_network/api_object/discussion.hpp
         include/golos/plugins/social_network/api_object/discussion_query.hpp

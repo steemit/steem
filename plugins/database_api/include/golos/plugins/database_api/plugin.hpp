@@ -18,9 +18,7 @@
 
 #include "forward.hpp"
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
+namespace golos { namespace plugins { namespace database_api {
             using namespace golos::chain;
             using namespace golos::protocol;
             using fc::variant;
@@ -116,6 +114,10 @@ namespace golos {
             DEFINE_API_ARGS(get_account_bandwidth,            msg_pack, optional<account_bandwidth_api_object>)
             DEFINE_API_ARGS(get_savings_withdraw_from,        msg_pack, std::vector<savings_withdraw_api_object>)
             DEFINE_API_ARGS(get_savings_withdraw_to,          msg_pack, std::vector<savings_withdraw_api_object>)
+
+            DEFINE_API_ARGS(get_vesting_delegations,          msg_pack, vector<vesting_delegation_api_object>)
+            DEFINE_API_ARGS(get_expiring_vesting_delegations, msg_pack, vector<vesting_delegation_expiration_api_object>)
+
             DEFINE_API_ARGS(get_witnesses,                    msg_pack, std::vector<optional<witness_api_object> >)
             DEFINE_API_ARGS(get_conversion_requests,          msg_pack, std::vector<convert_request_api_object>)
             DEFINE_API_ARGS(get_witness_by_account,           msg_pack, optional<witness_api_object>)
@@ -124,7 +126,6 @@ namespace golos {
             DEFINE_API_ARGS(get_open_orders,                  msg_pack, std::vector<extended_limit_order>)
             DEFINE_API_ARGS(get_witness_count,                msg_pack, uint64_t)
             DEFINE_API_ARGS(get_transaction_hex,              msg_pack, std::string)
-            DEFINE_API_ARGS(get_transaction,                  msg_pack, annotated_signed_transaction)
             DEFINE_API_ARGS(get_required_signatures,          msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
@@ -305,6 +306,12 @@ namespace golos {
 
                                     (get_savings_withdraw_to)
 
+                                    (get_vesting_delegations)
+                                    (get_expiring_vesting_delegations)
+                                    // (list_vesting_delegations)
+                                    // (find_vesting_delegations)
+                                    // (list_vesting_delegation_expirations)
+                                    // (find_vesting_delegation_expirations)
 
                                     ///////////////
                                     // Witnesses //
@@ -399,9 +406,7 @@ namespace golos {
             inline void register_database_api(){
                 appbase::app().register_plugin<plugin>();
             }
-        }
-    }
-}
+} } } // golos::plugins::database_api
 
 
 

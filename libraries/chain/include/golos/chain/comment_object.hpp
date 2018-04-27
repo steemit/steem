@@ -33,68 +33,6 @@ namespace golos {
             }
         };
 
-        /**
-         *  Used to track the trending categories
-         */
-        class category_object
-                : public object<category_object_type, category_object> {
-        public:
-            category_object() = delete;
-
-            template<typename Constructor, typename Allocator>
-            category_object(Constructor &&c, allocator <Allocator> a)
-                    :name(a) {
-                c(*this);
-            }
-
-            id_type id;
-
-            shared_string name;
-            share_type abs_rshares;
-            asset total_payouts = asset(0, SBD_SYMBOL);
-            uint32_t discussions = 0;
-            time_point_sec last_update;
-        };
-
-        struct by_name;
-        struct by_rshares;
-        struct by_total_payouts;
-        struct by_last_update;
-        typedef multi_index_container <
-        category_object,
-        indexed_by<
-                ordered_unique < tag <
-                by_id>, member<category_object, category_id_type, &category_object::id>>,
-        ordered_unique <tag<by_name>, member<category_object, shared_string, &category_object::name>, strcmp_less>,
-        ordered_unique <tag<by_rshares>,
-        composite_key<category_object,
-                member <
-                category_object, share_type, &category_object::abs_rshares>,
-        member<category_object, category_id_type, &category_object::id>
-        >,
-        composite_key_compare <std::greater<share_type>, std::less<category_id_type>>
-        >,
-        ordered_unique <tag<by_total_payouts>,
-        composite_key<category_object,
-                member <
-                category_object, asset, &category_object::total_payouts>,
-        member<category_object, category_id_type, &category_object::id>
-        >,
-        composite_key_compare <std::greater<asset>, std::less<category_id_type>>
-        >,
-        ordered_unique <tag<by_last_update>,
-        composite_key<category_object,
-                member <
-                category_object, time_point_sec, &category_object::last_update>,
-        member<category_object, category_id_type, &category_object::id>
-        >,
-        composite_key_compare <std::greater<time_point_sec>, std::less<category_id_type>>
-        >
-        >,
-        allocator <category_object>
-        >
-        category_index;
-
         enum comment_mode {
             first_payout,
             second_payout,
@@ -108,14 +46,13 @@ namespace golos {
 
             template<typename Constructor, typename Allocator>
             comment_object(Constructor &&c, allocator <Allocator> a)
-                    :category(a), parent_permlink(a), permlink(a), title(a),
+                    :parent_permlink(a), permlink(a), title(a),
                      body(a), json_metadata(a), beneficiaries(a) {
                 c(*this);
             }
 
             id_type id;
 
-            shared_string category;
             account_name_type parent_author;
             shared_string parent_permlink;
             account_name_type author;
@@ -249,15 +186,7 @@ namespace golos {
         struct by_permlink; /// author, perm
         struct by_root;
         struct by_parent;
-        struct by_active; /// parent_auth, active
-        struct by_pending_payout;
-        struct by_total_pending_payout;
         struct by_last_update; /// parent_auth, last_update
-        struct by_created; /// parent_auth, last_update
-        struct by_payout; /// parent_auth, last_update
-        struct by_blog;
-        struct by_votes;
-        struct by_responses;
         struct by_author_last_update;
 
         /**
@@ -334,7 +263,7 @@ FC_REFLECT_ENUM(golos::chain::comment_mode, (first_payout)(second_payout)(archiv
 
 FC_REFLECT((golos::chain::comment_object),
         (id)(author)(permlink)
-                (category)(parent_author)(parent_permlink)
+                (parent_author)(parent_permlink)
                 (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
                 (depth)(children)(children_rshares2)
                 (net_rshares)(abs_rshares)(vote_rshares)
@@ -350,8 +279,3 @@ FC_REFLECT((golos::chain::comment_vote_object),
         (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_vote_object, golos::chain::comment_vote_index)
-
-FC_REFLECT((golos::chain::category_object),
-        (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
-)
-CHAINBASE_SET_INDEX_TYPE(golos::chain::category_object, golos::chain::category_index)

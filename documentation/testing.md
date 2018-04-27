@@ -13,6 +13,16 @@ operation_time_tests // Tests of Golos operations that include a time based comp
 serialization_tests  // Tests related of serialization
 ```
 
+## Configuration (draft)
+
+Some config options:
+* `log_level` — allows setting the log level. Available values: `all`, `success`, `test_suite`, `message`, `warning`, . `error`, `cpp_exception`, `system_error`, `fatal_error`, `nothing`. Sample usage: `--log-level=test_suite`
+* `report_level` — allows setting the level of detailization for the testing results report. Available values: `no`, `confirm`, `short`, `detailed`. Sample usage: `--report_level=detailed`
+* `run_test` — specifies which test units to run. You can specify individual test (separated with comma) or test cases. Sample usage: `--run_test=operation_tests/delegation`
+
+For more info about runtime config check [Boost.Tests documentation](https://www.boost.org/doc/libs/1_58_0/libs/test/doc/html/utf/user-guide/runtime-config/reference.html).
+
+
 # Code Coverage Testing
 
 If you have not done so, install lcov `brew install lcov`

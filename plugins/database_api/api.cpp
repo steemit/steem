@@ -11,16 +11,15 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/plugins/follow/plugin.hpp>
 
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+#define CHECK_ARGS_COUNT(min, max) \
+   FC_ASSERT(n_args >= min && n_args <= max, "Expected at least #min and up to #max arguments, got ${n}", ("n", n_args));
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
+namespace golos { namespace plugins { namespace database_api {
 
             struct block_applied_callback_info {
 
@@ -57,7 +56,6 @@ namespace golos {
                 ~api_impl();
 
                 void startup() {
-                    _follow_api = appbase::app().find_plugin<golos::plugins::follow::plugin>();
                 }
 
                 // Subscriptions
@@ -98,8 +96,6 @@ namespace golos {
 
                 uint64_t get_witness_count() const;
 
-                // Balances
-
                 // Authority / validation
                 std::string get_transaction_hex(const signed_transaction &trx) const;
 
@@ -117,6 +113,7 @@ namespace golos {
                 std::vector<witness_api_object> get_witnesses_by_vote(std::string from, uint32_t limit) const;
 
                 std::vector<account_name_type> get_miner_queue() const;
+
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -158,7 +155,6 @@ namespace golos {
             private:
 
                 golos::chain::database &_db;
-                golos::plugins::follow::plugin *_follow_api = nullptr;
             };
 
 
@@ -374,7 +370,6 @@ namespace golos {
             // Accounts                                                         //
             //                                                                  //
             //////////////////////////////////////////////////////////////////////
-
 
             DEFINE_API(plugin, lookup_account_names) {
                 CHECK_ARG_SIZE(1)
@@ -907,6 +902,49 @@ namespace golos {
                 });
             }
 
+            //vector<vesting_delegation_api_obj> get_vesting_delegations(string account, string from, uint32_t limit = 100) const;
+            DEFINE_API(plugin, get_vesting_delegations) {
+                size_t n_args = args.args->size();
+                CHECK_ARGS_COUNT(2, 3);
+                auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<string>();
+                uint32_t limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                FC_ASSERT(limit <= 1000);
+
+                return my->database().with_weak_read_lock([&]() {
+                    vector<vesting_delegation_api_object> result;
+                    result.reserve(limit);
+                    const auto& idx = my->database().get_index<vesting_delegation_index, by_delegation>();
+                    auto itr = idx.lower_bound(std::make_tuple(account, from));
+                    while (result.size() < limit && itr != idx.end() && itr->delegator == account) {
+                        result.push_back(*itr);
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
+
+            //vector<vesting_delegation_expiration_api_obj> get_expiring_vesting_delegations(string account, time_point_sec from, uint32_t limit = 100) const;
+            DEFINE_API(plugin, get_expiring_vesting_delegations) {
+                size_t n_args = args.args->size();
+                CHECK_ARGS_COUNT(2, 3);
+                auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<time_point_sec>();
+                uint32_t limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                FC_ASSERT(limit <= 1000);
+
+                return my->database().with_weak_read_lock([&]() {
+                    vector<vesting_delegation_expiration_api_object> result;
+                    result.reserve(limit);
+                    const auto& idx = my->database().get_index<vesting_delegation_expiration_index, by_account_expiration>();
+                    auto itr = idx.lower_bound(std::make_tuple(account, from));
+                    while (result.size() < limit && itr != idx.end() && itr->delegator == account) {
+                        result.push_back(*itr);
+                        ++itr;
+                    }
+                    return result;
+                });
+            }
 
             DEFINE_API(plugin, get_database_info) {
                 CHECK_ARG_SIZE(0);
@@ -943,6 +981,5 @@ namespace golos {
             void plugin::plugin_startup() {
                 my->startup();
             }
-        }
-    }
-} // golos::plugins::database_api
+
+} } } // golos::plugins::database_api

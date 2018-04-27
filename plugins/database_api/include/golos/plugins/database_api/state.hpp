@@ -84,7 +84,7 @@ FC_REFLECT_DERIVED((golos::plugins::database_api::extended_account),
                    ((golos::plugins::database_api::account_api_object)),
                    (vesting_balance)
                    (witness_votes)
-)
+                   )
 
 
 

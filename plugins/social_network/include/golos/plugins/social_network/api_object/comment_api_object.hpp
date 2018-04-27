@@ -11,7 +11,7 @@ namespace golos {
             using namespace golos::chain;
 
             struct comment_api_object {
-                comment_api_object(const golos::chain::comment_object &o) : id(o.id), category(to_string(o.category)),
+                comment_api_object(const golos::chain::comment_object &o) : id(o.id),
                         parent_author(o.parent_author), parent_permlink(to_string(o.parent_permlink)), author(o.author),
                         permlink(to_string(o.permlink)), title(to_string(o.title)), body(to_string(o.body)),
                         json_metadata(to_string(o.json_metadata)), last_update(o.last_update), created(o.created),
@@ -35,7 +35,6 @@ namespace golos {
                 }
 
                 comment_object::id_type id;
-                std::string category;
                 account_name_type parent_author;
                 std::string parent_permlink;
                 account_name_type author;
@@ -90,7 +89,7 @@ namespace golos {
 }
 
 FC_REFLECT((golos::plugins::social_network::comment_api_object),
-           (id)(author)(permlink)(category)(parent_author)(parent_permlink)(title)(body)(json_metadata)(last_update)(
+           (id)(author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata)(last_update)(
                    created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)(
                    vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)(
                    reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(

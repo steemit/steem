@@ -21,8 +21,11 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-namespace golos {
-    namespace chain {
+#define ASSERT_NEED_HF(HF, FEATURE) \
+    FC_ASSERT(_db.has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
+
+
+namespace golos { namespace chain {
         using fc::uint128_t;
 
         inline void validate_permlink_0_1(const string &permlink) {
@@ -134,11 +137,12 @@ namespace golos {
                       o.fee, "Insufficient balance to create account.", ("creator.balance", creator.balance)("required", o.fee));
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
-                const witness_schedule_object &wso = _db.get_witness_schedule_object();
-                FC_ASSERT(o.fee >=
-                          wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
-                        ("f", wso.median_props.account_creation_fee)
-                                ("p", o.fee));
+                auto min_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_18__535)) {
+                    min_fee *= GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+                }
+                FC_ASSERT(o.fee >= min_fee,
+                    "Insufficient Fee: ${f} required, ${p} provided.", ("f", min_fee)("p", o.fee));
             }
 
             if (_db.is_producing() ||
@@ -173,7 +177,6 @@ namespace golos {
                     acc.recovery_account = o.creator;
                 }
 
-
 #ifndef IS_LOW_MEM
                 from_string(acc.json_metadata, o.json_metadata);
 #endif
@@ -192,6 +195,79 @@ namespace golos {
             }
         }
 
+        void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
+            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
+
+            const auto& creator = _db.get_account(o.creator);
+            FC_ASSERT(creator.balance >= o.fee, "Insufficient balance to create account.",
+                ("creator.balance", creator.balance)("required", o.fee));
+            FC_ASSERT(creator.available_vesting_shares(true) >= o.delegation,
+                "Insufficient vesting shares to delegate to new account.",
+                ("creator.vesting_shares", creator.vesting_shares)
+                ("creator.delegated_vesting_shares", creator.delegated_vesting_shares)
+                ("required", o.delegation));
+
+            const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
+            const auto& median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+            auto target_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER *
+                median_fee * v_share_price;
+            auto current_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * o.fee * v_share_price + o.delegation;
+
+            FC_ASSERT(current_delegation >= target_delegation,
+                "Inssufficient Delegation ${f} required, ${p} provided.",
+                ("f", target_delegation)("p", current_delegation)
+                ("account_creation_fee", median_fee)("o.fee", o.fee)("o.delegation", o.delegation));
+            FC_ASSERT(o.fee >= median_fee,
+                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_fee)("p", o.fee));
+
+            for (auto& a : o.owner.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : o.active.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : o.posting.account_auths) {
+                _db.get_account(a.first);
+            }
+
+            const auto now = _db.head_block_time();
+
+            _db.modify(creator, [&](account_object& c) {
+                c.balance -= o.fee;
+                c.delegated_vesting_shares += o.delegation;
+            });
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
+                acc.name = o.new_account_name;
+                acc.memo_key = o.memo_key;
+                acc.created = now;
+                acc.last_vote_time = now;
+                acc.mined = false;
+
+                acc.recovery_account = o.creator;
+                acc.received_vesting_shares = o.delegation;
+#ifndef IS_LOW_MEM
+                from_string(acc.json_metadata, o.json_metadata);
+#endif
+            });
+            _db.create<account_authority_object>([&](account_authority_object& auth) {
+                auth.account = o.new_account_name;
+                auth.owner = o.owner;
+                auth.active = o.active;
+                auth.posting = o.posting;
+                auth.last_owner_update = fc::time_point_sec::min();
+            });
+            if (o.delegation.amount > 0) {  // Is it needed to allow zero delegation in this method ?
+                _db.create<vesting_delegation_object>([&](vesting_delegation_object& d) {
+                    d.delegator = o.creator;
+                    d.delegatee = o.new_account_name;
+                    d.vesting_shares = o.delegation;
+                    d.min_delegation_time = now + GOLOS_CREATE_ACCOUNT_DELEGATION_TIME;
+                });
+            }
+            if (o.fee.amount > 0) {
+                _db.create_vesting(new_account, o.fee);
+            }
+        }
 
         void account_update_evaluator::do_apply(const account_update_operation &o) {
             database &_db = db();
@@ -329,13 +405,6 @@ namespace golos {
                     }
                 }
             }
-
-            /** TODO move category behavior to a plugin, this is not part of consensus */
-            const category_object *cat = _db.find_category(comment.category);
-            _db.modify(*cat, [&](category_object &c) {
-                c.discussions--;
-                c.last_update = _db.head_block_time();
-            });
 
             _db.remove(comment);
         }
@@ -533,7 +602,6 @@ namespace golos {
                         if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
                             com.parent_author = "";
                             from_string(com.parent_permlink, o.parent_permlink);
-                            from_string(com.category, o.parent_permlink);
                             com.root_comment = com.id;
                             com.cashout_time = _db.has_hardfork(STEEMIT_HARDFORK_0_12__177)
                                                ?
@@ -544,7 +612,6 @@ namespace golos {
                             com.parent_author = parent->author;
                             com.parent_permlink = parent->permlink;
                             com.depth = parent->depth + 1;
-                            com.category = parent->category;
                             com.root_comment = parent->root_comment;
                             com.cashout_time = fc::time_point_sec::maximum();
                         }
@@ -561,21 +628,6 @@ namespace golos {
                         from_string(com.json_metadata, o.json_metadata);
 #endif
                     });
-
-                    /** TODO move category behavior to a plugin, this is not part of consensus */
-                    const category_object *cat = _db.find_category(new_comment.category);
-                    if (!cat) {
-                        cat = &_db.create<category_object>([&](category_object &c) {
-                            c.name = new_comment.category;
-                            c.discussions = 1;
-                            c.last_update = _db.head_block_time();
-                        });
-                    } else {
-                        _db.modify(*cat, [&](category_object &c) {
-                            c.discussions++;
-                            c.last_update = _db.head_block_time();
-                        });
-                    }
 
                     id = new_comment.id;
 
@@ -872,10 +924,10 @@ namespace golos {
 
             const auto &account = _db.get_account(o.account);
 
-            FC_ASSERT(account.vesting_shares >=
-                      asset(0, VESTS_SYMBOL), "Account does not have sufficient Golos Power for withdraw.");
-            FC_ASSERT(account.vesting_shares >=
-                      o.vesting_shares, "Account does not have sufficient Golos Power for withdraw.");
+            FC_ASSERT(account.vesting_shares.amount >= 0,
+                "Account does not have sufficient Golos Power for withdraw.");
+            FC_ASSERT(account.available_vesting_shares() >= o.vesting_shares,
+                "Account does not have sufficient Golos Power for withdraw.");
 
             if (!account.mined && _db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto &props = _db.get_dynamic_global_properties();
@@ -1185,11 +1237,10 @@ namespace golos {
                           current_power, "Account does not have enough power to vote.");
 
                 int64_t abs_rshares = (
-                        (uint128_t(voter.vesting_shares.amount.value) *
-                         used_power) / (STEEMIT_100_PERCENT)).to_uint64();
-                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) &&
-                    abs_rshares == 0) {
-                        abs_rshares = 1;
+                    (uint128_t(voter.effective_vesting_shares().amount.value) * used_power) /
+                    (STEEMIT_100_PERCENT)).to_uint64();
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259) && abs_rshares == 0) {
+                    abs_rshares = 1;
                 }
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
@@ -1303,12 +1354,6 @@ namespace golos {
                     /// calculate rshares2 value
                     new_rshares = _db.calculate_vshares(new_rshares);
                     old_rshares = _db.calculate_vshares(old_rshares);
-
-                    const auto &cat = _db.get_category(comment.category);
-                    _db.modify(cat, [&](category_object &c) {
-                        c.abs_rshares += abs_rshares;
-                        c.last_update = _db.head_block_time();
-                    });
 
                     uint64_t max_vote_weight = 0;
 
@@ -2154,5 +2199,76 @@ namespace golos {
                 a.reset_account = op.reset_account;
             });
         }
-    }
-} // golos::chain
+
+        void delegate_vesting_shares_evaluator::do_apply(const delegate_vesting_shares_operation& op) {
+            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "delegate_vesting_shares_operation"); //TODO: Delete after hardfork
+
+            const auto& delegator = _db.get_account(op.delegator);
+            const auto& delegatee = _db.get_account(op.delegatee);
+            auto delegation = _db.find<vesting_delegation_object, by_delegation>(std::make_tuple(op.delegator, op.delegatee));
+
+            const auto median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+            const auto v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
+            auto min_delegation = median_fee * GOLOS_MIN_DELEGATION_MULTIPLIER * v_share_price;
+            auto min_update = median_fee * v_share_price;
+
+            auto delta = delegation ?
+                op.vesting_shares - delegation->vesting_shares :
+                op.vesting_shares;
+            auto increasing = delta.amount > 0;
+
+            FC_ASSERT((increasing ? delta : -delta) >= min_update,
+                "Delegation difference is not enough. min_update: ${min}", ("min", min_update));
+#ifdef STEEMIT_BUILD_TESTNET
+            // min_update depends on account_creation_fee, which can be 0 on testnet
+            FC_ASSERT(delta.amount != 0, "Delegation difference can't be 0");
+#endif
+
+            if (increasing) {
+                FC_ASSERT(delegator.available_vesting_shares(true) >= delta,
+                    "Account does not have enough vesting shares to delegate.",
+                    ("available", delegator.available_vesting_shares(true))
+                    ("delta", delta)
+                    ("vesting_shares", delegator.vesting_shares)
+                    ("delegated_vesting_shares", delegator.delegated_vesting_shares)
+                    ("to_withdraw", delegator.to_withdraw)
+                    ("withdrawn", delegator.withdrawn));
+                if (!delegation) {
+                    FC_ASSERT(op.vesting_shares >= min_delegation,
+                        "Account must delegate a minimum of ${v}", ("v",min_delegation)("vesting_shares",op.vesting_shares));
+                    _db.create<vesting_delegation_object>([&](vesting_delegation_object& o) {
+                        o.delegator = op.delegator;
+                        o.delegatee = op.delegatee;
+                        o.vesting_shares = op.vesting_shares;
+                        o.min_delegation_time = _db.head_block_time();
+                    });
+                }
+                _db.modify(delegator, [&](account_object& a) {
+                    a.delegated_vesting_shares += delta;
+                });
+            } else {
+                FC_ASSERT(op.vesting_shares.amount == 0 || op.vesting_shares >= min_delegation,
+                    "Delegation must be removed or leave minimum delegation amount of ${v}",
+                    ("v",min_delegation)("vesting_shares",op.vesting_shares));
+                _db.create<vesting_delegation_expiration_object>([&](vesting_delegation_expiration_object& o) {
+                    o.delegator = op.delegator;
+                    o.vesting_shares = -delta;
+                    o.expiration = std::max(_db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
+                });
+            }
+
+            _db.modify(delegatee, [&](account_object& a) {
+                a.received_vesting_shares += delta;
+            });
+            if (delegation) {
+                if (op.vesting_shares.amount > 0) {
+                    _db.modify(*delegation, [&](vesting_delegation_object& o) {
+                        o.vesting_shares = op.vesting_shares;
+                    });
+                } else {
+                    _db.remove(*delegation);
+                }
+            }
+        }
+
+} } // golos::chain
