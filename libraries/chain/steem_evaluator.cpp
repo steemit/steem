@@ -21,7 +21,7 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-#define ASSERT_NEED_HF(HF, FEATURE) \
+#define ASSERT_REQ_HF(HF, FEATURE) \
     FC_ASSERT(_db.has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
 
 
@@ -196,7 +196,7 @@ namespace golos { namespace chain {
         }
 
         void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
-            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
 
             const auto& creator = _db.get_account(o.creator);
             FC_ASSERT(creator.balance >= o.fee, "Insufficient balance to create account.",
@@ -349,6 +349,19 @@ namespace golos { namespace chain {
                 });
             }
 
+        }
+
+        void account_metadata_evaluator::do_apply(const account_metadata_operation& o) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__196, "account_metadata_operation"); //TODO: Delete after hardfork
+            const auto& account = _db.get_account(o.account);
+            _db.modify(account, [&](account_object& a) {
+                a.last_account_update = _db.head_block_time();
+#ifndef IS_LOW_MEM
+                if (o.json_metadata.size() > 0) {
+                    from_string(a.json_metadata, o.json_metadata);
+                }
+#endif
+            });
         }
 
 
@@ -2201,7 +2214,7 @@ namespace golos { namespace chain {
         }
 
         void delegate_vesting_shares_evaluator::do_apply(const delegate_vesting_shares_operation& op) {
-            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "delegate_vesting_shares_operation"); //TODO: Delete after hardfork
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__535, "delegate_vesting_shares_operation"); //TODO: Delete after hardfork
 
             const auto& delegator = _db.get_account(op.delegator);
             const auto& delegatee = _db.get_account(op.delegatee);

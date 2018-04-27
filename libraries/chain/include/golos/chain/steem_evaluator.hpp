@@ -9,6 +9,7 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(account_create)
         DEFINE_EVALUATOR(account_create_with_delegation)
         DEFINE_EVALUATOR(account_update)
+        DEFINE_EVALUATOR(account_metadata)
         DEFINE_EVALUATOR(transfer)
         DEFINE_EVALUATOR(transfer_to_vesting)
         DEFINE_EVALUATOR(witness_update)

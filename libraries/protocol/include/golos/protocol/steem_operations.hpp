@@ -69,6 +69,16 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct account_metadata_operation : public base_operation {
+            account_name_type account;
+            string json_metadata;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(account);
+            }
+        };
+
 
         struct comment_operation : public base_operation {
             account_name_type parent_author;
@@ -1082,6 +1092,8 @@ FC_REFLECT((golos::protocol::account_update_operation),
                 (posting)
                 (memo_key)
                 (json_metadata))
+
+FC_REFLECT((golos::protocol::account_metadata_operation), (account)(json_metadata))
 
 FC_REFLECT((golos::protocol::transfer_operation), (from)(to)(amount)(memo))
 FC_REFLECT((golos::protocol::transfer_to_vesting_operation), (from)(to)(amount))

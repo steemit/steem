@@ -61,6 +61,7 @@ namespace golos {
                 set_reset_account_operation,
                 delegate_vesting_shares_operation,
                 account_create_with_delegation_operation,
+                account_metadata_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
