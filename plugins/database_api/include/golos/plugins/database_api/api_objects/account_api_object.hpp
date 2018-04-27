@@ -6,9 +6,7 @@
 #include <golos/protocol/types.hpp>
 #include <golos/chain/steem_object_types.hpp>
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
+namespace golos { namespace plugins { namespace database_api {
 
             using protocol::asset;
             using protocol::share_type;
@@ -20,12 +18,13 @@ namespace golos {
             using protocol::public_key_type;
             using golos::chain::by_account_bandwidth_type;
             using golos::chain::account_authority_object;
+            using golos::chain::account_metadata_object;
             using golos::chain::bandwidth_type;
 
 
             struct account_api_object {
                 account_api_object(const golos::chain::account_object &a, const golos::chain::database &db) : id(a.id), name(a.name),
-                        memo_key(a.memo_key), json_metadata(golos::chain::to_string(a.json_metadata)), proxy(a.proxy),
+                        memo_key(a.memo_key), proxy(a.proxy),
                         last_account_update(a.last_account_update), created(a.created), mined(a.mined),
                         owner_challenged(a.owner_challenged), active_challenged(a.active_challenged),
                         last_owner_proved(a.last_owner_proved), last_active_proved(a.last_active_proved),
@@ -52,14 +51,17 @@ namespace golos {
                         proxied_vsf_votes.push_back(a.proxied_vsf_votes[i]);
                     }
 
-                    const auto &auth = db.get<account_authority_object, by_account>(name);
+                    const auto& auth = db.get<account_authority_object, by_account>(name);
                     owner = authority(auth.owner);
                     active = authority(auth.active);
                     posting = authority(auth.posting);
                     last_owner_update = auth.last_owner_update;
 
+                    const auto& meta = db.get<account_metadata_object, by_account>(name);
+                    json_metadata = golos::chain::to_string(meta.json_metadata);
+
                     auto old_forum = db.find<account_bandwidth_object, by_account_bandwidth_type>(
-                            boost::make_tuple(name, bandwidth_type::old_forum));
+                            std::make_tuple(name, bandwidth_type::old_forum));
                     if (old_forum != nullptr) {
                         average_bandwidth = old_forum->average_bandwidth;
                         lifetime_bandwidth = old_forum->lifetime_bandwidth;
@@ -67,27 +69,27 @@ namespace golos {
                     }
 
                     auto old_market = db.find<account_bandwidth_object, by_account_bandwidth_type>(
-                            boost::make_tuple(name, bandwidth_type::old_market));
+                            std::make_tuple(name, bandwidth_type::old_market));
                     if (old_market != nullptr) {
                         average_market_bandwidth = old_market->average_bandwidth;
                         last_market_bandwidth_update = old_market->last_bandwidth_update;
                     }
 
                     auto post = db.find<account_bandwidth_object, by_account_bandwidth_type>(
-                            boost::make_tuple(name, bandwidth_type::post));
+                            std::make_tuple(name, bandwidth_type::post));
                     if (post != nullptr) {
                         last_root_post = post->last_bandwidth_update;
                         post_bandwidth = post->average_bandwidth;
                     }
 
                     auto forum = db.find<account_bandwidth_object, by_account_bandwidth_type>(
-                            boost::make_tuple(name, bandwidth_type::forum));
+                            std::make_tuple(name, bandwidth_type::forum));
                     if (forum != nullptr) {
                         new_average_bandwidth = forum->average_bandwidth;
                     }
 
                     auto market = db.find<account_bandwidth_object, by_account_bandwidth_type>(
-                            boost::make_tuple(name, bandwidth_type::market));
+                            std::make_tuple(name, bandwidth_type::market));
                     if (market != nullptr) {
                         new_average_market_bandwidth = market->average_bandwidth;
                     }
@@ -171,9 +173,7 @@ namespace golos {
                 share_type new_average_bandwidth;
                 share_type new_average_market_bandwidth;
             };
-        }
-    }
-}
+} } } // golos::plugins::database_api
 
 
 FC_REFLECT((golos::plugins::database_api::account_api_object),

@@ -23,8 +23,7 @@ namespace golos { namespace chain {
             account_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            account_object(Constructor &&c, allocator<Allocator> a)
-                    :json_metadata(a) {
+            account_object(Constructor&& c, allocator<Allocator> a) {
                 c(*this);
             };
 
@@ -32,7 +31,6 @@ namespace golos { namespace chain {
 
             account_name_type name;
             public_key_type memo_key;
-            shared_string json_metadata;
             account_name_type proxy;
 
             time_point_sec last_account_update;
@@ -169,6 +167,20 @@ namespace golos { namespace chain {
             share_type average_bandwidth;
             share_type lifetime_bandwidth;
             time_point_sec last_bandwidth_update;
+        };
+
+        class account_metadata_object : public object<account_metadata_object_type, account_metadata_object> {
+        public:
+            account_metadata_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            account_metadata_object(Constructor&& c, allocator<Allocator> a) : json_metadata(a) {
+                c(*this);
+            }
+
+            id_type id;
+            account_name_type account;
+            shared_string json_metadata;
         };
 
         class vesting_delegation_object: public object<vesting_delegation_object_type, vesting_delegation_object> {
@@ -357,6 +369,20 @@ namespace golos { namespace chain {
         >
         owner_authority_history_index;
 
+
+        using account_metadata_index = multi_index_container<
+            account_metadata_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>, member<account_metadata_object, account_metadata_id_type, &account_metadata_object::id>
+                >,
+                ordered_unique<
+                    tag<by_account>, member<account_metadata_object, account_name_type, &account_metadata_object::account>
+                >
+            >,
+            allocator<account_metadata_object>
+        >;
+
         struct by_last_owner_update;
 
         typedef multi_index_container<
@@ -514,7 +540,7 @@ namespace golos { namespace chain {
 }
 
 FC_REFLECT((golos::chain::account_object),
-        (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
+        (id)(name)(memo_key)(proxy)(last_account_update)
                 (created)(mined)
                 (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
                 (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
@@ -539,6 +565,9 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::account_authority_object, golos::chain::a
 FC_REFLECT((golos::chain::account_bandwidth_object),
         (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_bandwidth_object, golos::chain::account_bandwidth_index)
+
+FC_REFLECT((golos::chain::account_metadata_object), (id)(account)(json_metadata))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_metadata_object, golos::chain::account_metadata_index)
 
 FC_REFLECT((golos::chain::vesting_delegation_object), (id)(delegator)(delegatee)(vesting_shares)(min_delegation_time))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_object, golos::chain::vesting_delegation_index)

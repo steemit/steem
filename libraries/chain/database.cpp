@@ -2861,6 +2861,7 @@ namespace golos {
             add_core_index<decline_voting_rights_request_index>(*this);
             add_core_index<vesting_delegation_index>(*this);
             add_core_index<vesting_delegation_expiration_index>(*this);
+            add_core_index<account_metadata_index>(*this);
 
             _plugin_index_signal();
         }

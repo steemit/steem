@@ -87,6 +87,24 @@ namespace golos { namespace chain {
             }
         };
 
+        void store_json_metadata(database& db, const account_name_type& account, const string& json_metadata) {
+            if (json_metadata.size() == 0)
+                return;
+
+            const auto& idx = db.get_index<account_metadata_index>().indices().get<by_account>();
+            auto itr = idx.find(account);
+            if (itr != idx.end()) {
+                db.modify(*itr, [&](account_metadata_object& a) {
+                    from_string(a.json_metadata, json_metadata);
+                });
+            } else {
+                db.create<account_metadata_object>([&](account_metadata_object& a) {
+                    a.account = account;
+                    from_string(a.json_metadata, json_metadata);
+                });
+            }
+        }
+
         void witness_update_evaluator::do_apply(const witness_update_operation &o) {
             database &_db = db();
             _db.get_account(o.owner); // verify owner exists
@@ -178,7 +196,7 @@ namespace golos { namespace chain {
                 }
 
 #ifndef IS_LOW_MEM
-                from_string(acc.json_metadata, o.json_metadata);
+                store_json_metadata(_db, acc.name, o.json_metadata);
 #endif
             });
 
@@ -246,7 +264,7 @@ namespace golos { namespace chain {
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
 #ifndef IS_LOW_MEM
-                from_string(acc.json_metadata, o.json_metadata);
+                store_json_metadata(_db, acc.name, o.json_metadata);
 #endif
             });
             _db.create<account_authority_object>([&](account_authority_object& auth) {
@@ -332,9 +350,7 @@ namespace golos { namespace chain {
                 acc.last_account_update = _db.head_block_time();
 
 #ifndef IS_LOW_MEM
-                if (o.json_metadata.size() > 0) {
-                    from_string(acc.json_metadata, o.json_metadata);
-                }
+                store_json_metadata(_db, account.name, o.json_metadata);
 #endif
             });
 
@@ -357,9 +373,7 @@ namespace golos { namespace chain {
             _db.modify(account, [&](account_object& a) {
                 a.last_account_update = _db.head_block_time();
 #ifndef IS_LOW_MEM
-                if (o.json_metadata.size() > 0) {
-                    from_string(a.json_metadata, o.json_metadata);
-                }
+                store_json_metadata(_db, o.account, o.json_metadata);
 #endif
             });
         }
