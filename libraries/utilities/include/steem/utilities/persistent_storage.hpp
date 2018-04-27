@@ -40,21 +40,13 @@ class persistent_storage: public abstract_persistent_storage
 
       using t_cachable_write_batch = cachable_write_batch< any_info >;
 
+   private:
+
+      //Current status for given storage.
       bool opened = false;
 
-      /// Number of data-chunks for ops being stored inside writeBuffer. To decide when to flush.
-      unsigned int collectedOps = 0;
-      /** Limit which value depends on block data source:
-       *    - if blocks come from network, there is no need for delaying write, because they appear quite rare (limit == 1)
-      *    - if reindex process or direct import has been spawned, this massive operation can need reduction of direct
-         writes (limit == WRITE_BUFFER_FLUSH_LIMIT).
-      */
-      unsigned int collectedOpsWriteLimit = 1;
-
-      ptrDB storage;
-      std::vector< ColumnFamilyHandle* > columnHandles;
-
       t_cachable_write_batch write_buffer;
+      std::vector< ColumnFamilyHandle* > columnHandles;
 
       rocksdb_types::key_value_items sequences;
       rocksdb_types::key_value_items version;
@@ -62,8 +54,11 @@ class persistent_storage: public abstract_persistent_storage
       const std::string& plugin_name;
       const storage_configuration_manager& config_manager;
 
+      ptrDB storage;
+
       void store_sequence_ids();
       void load_seq_identifiers();
+
       void flush_write_buffer( DB* _db = nullptr );
       void cleanup_column_handles();
 

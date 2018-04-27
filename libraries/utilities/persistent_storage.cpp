@@ -105,7 +105,6 @@ void persistent_storage::flush_write_buffer( DB* _db )
    auto s = db->Write( wOptions, write_buffer.GetWriteBatch() );
    check_status(s);
    write_buffer.Clear();
-   collectedOps = 0;
 }
 
 bool persistent_storage::flush_storage()
@@ -113,9 +112,7 @@ bool persistent_storage::flush_storage()
    if( storage == nullptr )
       return true;
 
-   /// If there are still not yet saved changes let's do it now.
-   if( collectedOps != 0 )
-      flush_write_buffer();
+   flush_write_buffer();
 
    ::rocksdb::FlushOptions fOptions;
    for( const auto& cf : columnHandles )

@@ -16,7 +16,8 @@ namespace storage_configuration_helper
       if( bfs::exists( path ) )
       {
          std::string command = "rm -r " + std::string( path.c_str() );
-         system( command.c_str() );
+         if( !system( command.c_str() ) )
+            ilog( "Problem with removing directory" );
       }
    }
 
@@ -25,8 +26,10 @@ namespace storage_configuration_helper
       if( !bfs::exists( path ) )
       {
          mkdir( path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+#ifdef _DEBUG
          struct stat sb;
          assert( stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode) );
+#endif
       }
    }
 }
