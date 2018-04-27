@@ -37,9 +37,7 @@
 #include <golos/plugins/account_history/history_object.hpp>
 
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+namespace golos { namespace plugins { namespace account_history {
 using namespace chain;
 
 using get_account_history_return_type = std::map<uint32_t, applied_operation>;
@@ -52,26 +50,6 @@ using plugins::json_rpc::msg_pack_transfer;
 DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
 DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
 DEFINE_API_ARGS(get_transaction,                  msg_pack, annotated_signed_transaction)
-
-///account_history_api
-struct operation_api_object {
-    operation_api_object() {
-    }
-
-    operation_api_object(const operation_object &op_obj) : trx_id(op_obj.trx_id),
-            block(op_obj.block), trx_in_block(op_obj.trx_in_block), virtual_op(op_obj.virtual_op),
-            timestamp(op_obj.timestamp) {
-        op = fc::raw::unpack<golos::protocol::operation>(op_obj.serialized_op);
-    }
-
-    golos::protocol::transaction_id_type trx_id;
-    uint32_t block = 0;
-    uint32_t trx_in_block = 0;
-    uint16_t op_in_trx = 0;
-    uint64_t virtual_op = 0;
-    fc::time_point_sec timestamp;
-    golos::protocol::operation op;
-};
 
 /**
 *  This plugin is designed to track a range of operations by account so that one node
@@ -133,11 +111,4 @@ private:
     std::unique_ptr<plugin_impl> my;
 };
 
-}
-}
-} // golos::plugins::account_history
-
-
-// FC_REFLECT((golos::plugins::account_history::operation_api_object),
-//            (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op)
-//            )
+} } } // golos::plugins::account_history

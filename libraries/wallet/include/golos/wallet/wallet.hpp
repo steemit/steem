@@ -2,7 +2,7 @@
 
 #include <golos/wallet/remote_node_api.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -127,7 +127,7 @@ namespace golos { namespace wallet {
              * @param block_num Block height of specified block
              * @param only_virtual Whether to only return virtual operations
              */
-            vector<operation_api_object> get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+            vector<golos::plugins::account_history::applied_operation> get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
             /** Return the current price feed history
              *
@@ -927,7 +927,7 @@ namespace golos { namespace wallet {
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
              */
-            map< uint32_t, golos::plugins::database_api::operation_api_object >
+            map< uint32_t, golos::plugins::account_history::applied_operation >
                 get_account_history( string account, uint32_t from, uint32_t limit );
 
 

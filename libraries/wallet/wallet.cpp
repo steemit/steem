@@ -893,7 +893,7 @@ namespace golos { namespace wallet {
             return my->_remote_database_api->get_block( num );
         }
 
-        vector< operation_api_object > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
+        vector< golos::plugins::account_history::applied_operation > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
             return my->_remote_database_api->get_ops_in_block( block_num, only_virtual );
         }
 
@@ -2071,7 +2071,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        map< uint32_t, operation_api_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+        map< uint32_t, golos::plugins::account_history::applied_operation> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
             auto result = my->_remote_database_api->get_account_history( account, from, limit );
             if( !is_locked() ) {
                 for( auto& item : result ) {

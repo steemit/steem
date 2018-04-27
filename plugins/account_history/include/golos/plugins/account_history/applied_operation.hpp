@@ -4,9 +4,7 @@
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/plugins/account_history/history_object.hpp>
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+namespace golos { namespace plugins { namespace account_history {
 
     struct applied_operation {
         applied_operation();
@@ -22,9 +20,7 @@ namespace account_history {
         golos::protocol::operation op;
     };
 
-}
-}
-}
+} } }
 
 FC_REFLECT((golos::plugins::account_history::applied_operation),
     (trx_id)

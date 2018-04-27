@@ -24,13 +24,11 @@
 //
 
 #ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
+#define ACCOUNT_HISTORY_SPACE_ID 12
 #endif
 
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+namespace golos { namespace plugins { namespace account_history {
 
     enum account_object_types {
         account_history_object_type = (ACCOUNT_HISTORY_SPACE_ID << 8),
@@ -73,7 +71,7 @@ namespace account_history {
                 ordered_unique <
                     tag < by_id >,
                     member < operation_object, operation_id_type, &operation_object::id >
-                    >,
+                >,
                 ordered_unique <
                     tag < by_location >,
                     composite_key<
@@ -83,19 +81,15 @@ namespace account_history {
                         member < operation_object, uint16_t, &operation_object::op_in_trx >,
                         member < operation_object, uint64_t, &operation_object::virtual_op >,
                         member < operation_object, operation_id_type, &operation_object::id >
-                    >
-                >,
+                > >,
                 ordered_unique <
                     tag <by_transaction_id>,
                     composite_key<
                         operation_object,
                         member < operation_object, transaction_id_type, &operation_object::trx_id >,
                         member < operation_object, operation_id_type, &operation_object::id >
-                    >
-                >
-            >,
-            allocator <operation_object>
-        >;
+                > > >,
+        allocator <operation_object> >;
 
 
     class account_history_object
@@ -119,25 +113,19 @@ namespace account_history {
     using account_history_index = multi_index_container <
         account_history_object,
             indexed_by<
-                    ordered_unique <
-                        tag < by_id>,
-                        member < account_history_object, account_history_id_type, &account_history_object::id >
-                    >,
-                    ordered_unique <tag<by_account>,
-                    composite_key<account_history_object,
-                        member < account_history_object, account_name_type, &account_history_object::account >,
-                        member < account_history_object, uint32_t, &account_history_object::sequence >
-                    >,
-                    composite_key_compare <std::less<account_name_type>, std::greater<uint32_t>>
-                >
-            >,
-            allocator <account_history_object>
-        >
-    ;
+                ordered_unique <
+                    tag < by_id>,
+                    member < account_history_object, account_history_id_type, &account_history_object::id >
+                >,
+                ordered_unique <tag<by_account>,
+                composite_key<account_history_object,
+                    member < account_history_object, account_name_type, &account_history_object::account >,
+                    member < account_history_object, uint32_t, &account_history_object::sequence >
+                >,
+                composite_key_compare <std::less<account_name_type>, std::greater<uint32_t>>
+        > >, allocator <account_history_object> > ;
 
-}
-}
-}
+} } } // golos::plugins::account_history
 
 FC_REFLECT((golos::plugins::account_history::operation_object), (id)(trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op))
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::account_history::operation_object, golos::plugins::account_history::operation_index)
