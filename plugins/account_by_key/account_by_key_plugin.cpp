@@ -36,8 +36,6 @@ namespace golos { namespace plugins { namespace account_by_key {
                         }
                     }
 
-                    // ?? account_metadata
-
                     void operator()(const recover_account_operation &op) const {
                         _plugin.my->clear_cache();
                         auto acct_itr = _plugin.my->database().find<account_authority_object, by_account>(

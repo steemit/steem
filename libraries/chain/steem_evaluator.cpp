@@ -102,7 +102,6 @@ namespace golos { namespace chain {
                 });
             } else {
                 // Note: this branch should be executed only on account creation.
-                // Maybe need tests to be sure new accounts have account_metadata object
                 db.create<account_metadata_object>([&](account_metadata_object& a) {
                     a.account = account;
                     from_string(a.json_metadata, json_metadata);
@@ -188,7 +187,7 @@ namespace golos { namespace chain {
                 c.balance -= o.fee;
             });
 
-            const auto &new_account = _db.create<account_object>([&](account_object &acc) {
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = o.new_account_name;
                 acc.memo_key = o.memo_key;
                 acc.created = props.time;
@@ -200,11 +199,8 @@ namespace golos { namespace chain {
                 } else {
                     acc.recovery_account = o.creator;
                 }
-
-#ifndef IS_LOW_MEM
-                store_account_json_metadata(_db, acc.name, o.json_metadata);
-#endif
             });
+            store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
 
             _db.create<account_authority_object>([&](account_authority_object &auth) {
                 auth.account = o.new_account_name;
@@ -266,13 +262,11 @@ namespace golos { namespace chain {
                 acc.created = now;
                 acc.last_vote_time = now;
                 acc.mined = false;
-
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
-#ifndef IS_LOW_MEM
-                store_account_json_metadata(_db, acc.name, o.json_metadata);
-#endif
             });
+            store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
+
             _db.create<account_authority_object>([&](account_authority_object& auth) {
                 auth.account = o.new_account_name;
                 auth.owner = o.owner;
@@ -347,18 +341,13 @@ namespace golos { namespace chain {
                 if (o.memo_key != public_key_type()) {
                     acc.memo_key = o.memo_key;
                 }
-
                 if ((o.active || o.owner) && acc.active_challenged) {
                     acc.active_challenged = false;
                     acc.last_active_proved = _db.head_block_time();
                 }
-
                 acc.last_account_update = _db.head_block_time();
-
-#ifndef IS_LOW_MEM
-                store_account_json_metadata(_db, account.name, o.json_metadata, true);
-#endif
             });
+            store_account_json_metadata(_db, account.name, o.json_metadata, true);
 
             if (o.active || o.posting) {
                 _db.modify(account_auth, [&](account_authority_object &auth) {
@@ -378,12 +367,9 @@ namespace golos { namespace chain {
             const auto& account = _db.get_account(o.account);
             _db.modify(account, [&](account_object& a) {
                 a.last_account_update = _db.head_block_time();
-#ifndef IS_LOW_MEM
-                store_account_json_metadata(_db, o.account, o.json_metadata);
-#endif
             });
+            store_account_json_metadata(_db, o.account, o.json_metadata);
         }
-
 
 /**
  *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
