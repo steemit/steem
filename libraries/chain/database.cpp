@@ -30,37 +30,33 @@
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128_t(uint64_t(-1)) )
 #define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128_t::max_value() )
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
-//namespace db2 = golos::db2;
+struct object_schema_repr {
+    std::pair<uint16_t, uint16_t> space_type;
+    std::string type;
+};
 
-        struct object_schema_repr {
-            std::pair<uint16_t, uint16_t> space_type;
-            std::string type;
-        };
+struct operation_schema_repr {
+    std::string id;
+    std::string type;
+};
 
-        struct operation_schema_repr {
-            std::string id;
-            std::string type;
-        };
+struct db_schema {
+    std::map<std::string, std::string> types;
+    std::vector<object_schema_repr> object_types;
+    std::string operation_type;
+    std::vector<operation_schema_repr> custom_operation_types;
+};
 
-        struct db_schema {
-            std::map<std::string, std::string> types;
-            std::vector<object_schema_repr> object_types;
-            std::string operation_type;
-            std::vector<operation_schema_repr> custom_operation_types;
-        };
-
-    }
-}
+} } // golos::chain
 
 FC_REFLECT((golos::chain::object_schema_repr), (space_type)(type))
 FC_REFLECT((golos::chain::operation_schema_repr), (id)(type))
 FC_REFLECT((golos::chain::db_schema), (types)(object_types)(operation_type)(custom_operation_types))
 
-namespace golos {
-    namespace chain {
+
+namespace golos { namespace chain {
 
         using boost::container::flat_set;
 
@@ -3018,14 +3014,18 @@ namespace golos {
 
                 snapshot_state snapshot = fc::json::from_file(snapshot_file).as<snapshot_state>();
                 for (account_summary &account : snapshot.accounts) {
-                    create<account_object>([&](account_object &a) {
+                    create<account_object>([&](account_object& a) {
                         a.name = account.name;
                         a.memo_key = account.keys.memo_key;
-                        a.json_metadata = "{created_at: 'GENESIS'}";
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
                     });
-
-                    create<account_authority_object>([&](account_authority_object &auth) {
+#ifndef IS_LOW_MEM
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = account.name;
+                        m.json_metadata = "{created_at: 'GENESIS'}";
+                    });
+#endif
+                    create<account_authority_object>([&](account_authority_object& auth) {
                         auth.account = account.name;
                         auth.owner.weight_threshold = 1;
                         auth.owner = account.keys.owner_key;
@@ -4717,5 +4717,4 @@ namespace golos {
                 }
             }
         }
-    }
-} //golos::chain
+} } //golos::chain

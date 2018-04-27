@@ -57,8 +57,10 @@ namespace golos { namespace plugins { namespace database_api {
                     posting = authority(auth.posting);
                     last_owner_update = auth.last_owner_update;
 
+#ifndef IS_LOW_MEM
                     const auto& meta = db.get<account_metadata_object, by_account>(name);
                     json_metadata = golos::chain::to_string(meta.json_metadata);
+#endif
 
                     auto old_forum = db.find<account_bandwidth_object, by_account_bandwidth_type>(
                             std::make_tuple(name, bandwidth_type::old_forum));

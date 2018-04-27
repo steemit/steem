@@ -87,8 +87,11 @@ namespace golos { namespace chain {
             }
         };
 
-        void store_json_metadata(database& db, const account_name_type& account, const string& json_metadata) {
-            if (json_metadata.size() == 0)
+        void store_account_json_metadata(
+            database& db, const account_name_type& account, const string& json_metadata, bool skip_empty = false
+        ) {
+#ifndef IS_LOW_MEM
+            if (skip_empty && json_metadata.size() == 0)
                 return;
 
             const auto& idx = db.get_index<account_metadata_index>().indices().get<by_account>();
@@ -98,11 +101,14 @@ namespace golos { namespace chain {
                     from_string(a.json_metadata, json_metadata);
                 });
             } else {
+                // Note: this branch should be executed only on account creation.
+                // Maybe need tests to be sure new accounts have account_metadata object
                 db.create<account_metadata_object>([&](account_metadata_object& a) {
                     a.account = account;
                     from_string(a.json_metadata, json_metadata);
                 });
             }
+#endif
         }
 
         void witness_update_evaluator::do_apply(const witness_update_operation &o) {
@@ -196,7 +202,7 @@ namespace golos { namespace chain {
                 }
 
 #ifndef IS_LOW_MEM
-                store_json_metadata(_db, acc.name, o.json_metadata);
+                store_account_json_metadata(_db, acc.name, o.json_metadata);
 #endif
             });
 
@@ -264,7 +270,7 @@ namespace golos { namespace chain {
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
 #ifndef IS_LOW_MEM
-                store_json_metadata(_db, acc.name, o.json_metadata);
+                store_account_json_metadata(_db, acc.name, o.json_metadata);
 #endif
             });
             _db.create<account_authority_object>([&](account_authority_object& auth) {
@@ -350,7 +356,7 @@ namespace golos { namespace chain {
                 acc.last_account_update = _db.head_block_time();
 
 #ifndef IS_LOW_MEM
-                store_json_metadata(_db, account.name, o.json_metadata);
+                store_account_json_metadata(_db, account.name, o.json_metadata, true);
 #endif
             });
 
@@ -369,11 +375,12 @@ namespace golos { namespace chain {
 
         void account_metadata_evaluator::do_apply(const account_metadata_operation& o) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__196, "account_metadata_operation"); //TODO: Delete after hardfork
+            FC_ASSERT(o.json_metadata.size() > 0, "json_metadata can't be empty");
             const auto& account = _db.get_account(o.account);
             _db.modify(account, [&](account_object& a) {
                 a.last_account_update = _db.head_block_time();
 #ifndef IS_LOW_MEM
-                store_json_metadata(_db, o.account, o.json_metadata);
+                store_account_json_metadata(_db, o.account, o.json_metadata);
 #endif
             });
         }
