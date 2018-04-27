@@ -43,7 +43,6 @@ target_link_libraries(
         golos::chain_plugin
         golos_protocol
         golos::json_rpc
-        golos::follow
         graphene_utilities
         appbase
         fc
