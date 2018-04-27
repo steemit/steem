@@ -501,7 +501,7 @@ namespace golos { namespace wallet {
              * @param json_meta The new JSON metadata for the account. This overrides existing metadata
              * @param broadcast ture if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account_meta( string account_name, string json_meta, bool broadcast );
+            annotated_signed_transaction update_account_meta(string account_name, string json_meta, bool broadcast);
 
             /**
              * This method updates the memo key of an account
@@ -511,7 +511,6 @@ namespace golos { namespace wallet {
              * @param broadcast true if you wish to broadcast the transaction
              */
             annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
-
 
             /**
              * This method delegates GESTS from one account to another.

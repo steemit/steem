@@ -1547,24 +1547,29 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::update_account_meta( string account_name, string json_meta, bool broadcast )
-        {
-            FC_ASSERT( !is_locked() );
-
-            auto accounts = my->_remote_database_api->get_accounts( { account_name } );
-            FC_ASSERT( accounts.size() == 1, "Account does not exist" );
-            FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
-
-            account_update_operation op;
-            op.account = account_name;
-            op.memo_key = accounts[0].memo_key;
-            op.json_metadata = json_meta;
+        annotated_signed_transaction wallet_api::update_account_meta(string account_name, string json_meta, bool broadcast) {
+            FC_ASSERT(!is_locked());
+            auto accounts = my->_remote_database_api->get_accounts({account_name});
+            FC_ASSERT(accounts.size() == 1, "Account does not exist");
+            FC_ASSERT(account_name == accounts[0].name, "Account name doesn't match?");
 
             signed_transaction tx;
-            tx.operations.push_back(op);
+            auto hf = my->_remote_database_api->get_hardfork_version();
+            if (hf < hardfork_version(0, STEEMIT_HARDFORK_0_18)) {
+                // TODO: remove this branch after HF 0.18
+                account_update_operation op;
+                op.account = account_name;
+                op.memo_key = accounts[0].memo_key;
+                op.json_metadata = json_meta;
+                tx.operations.push_back(op);
+            } else {
+                account_metadata_operation op;
+                op.account = account_name;
+                op.json_metadata = json_meta;
+                tx.operations.push_back(op);
+            }
             tx.validate();
-
-            return my->sign_transaction( tx, broadcast );
+            return my->sign_transaction(tx, broadcast);
         }
 
         annotated_signed_transaction wallet_api::update_account_memo_key( string account_name, public_key_type key, bool broadcast )
