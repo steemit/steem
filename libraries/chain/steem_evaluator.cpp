@@ -21,7 +21,7 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-#define ASSERT_NEED_HF(HF, FEATURE) \
+#define ASSERT_REQ_HF(HF, FEATURE) \
     FC_ASSERT(_db.has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
 
 
@@ -86,6 +86,29 @@ namespace golos { namespace chain {
                        std::strcmp(a.c_str(), b.c_str()) == 0;
             }
         };
+
+        void store_account_json_metadata(
+            database& db, const account_name_type& account, const string& json_metadata, bool skip_empty = false
+        ) {
+#ifndef IS_LOW_MEM
+            if (skip_empty && json_metadata.size() == 0)
+                return;
+
+            const auto& idx = db.get_index<account_metadata_index>().indices().get<by_account>();
+            auto itr = idx.find(account);
+            if (itr != idx.end()) {
+                db.modify(*itr, [&](account_metadata_object& a) {
+                    from_string(a.json_metadata, json_metadata);
+                });
+            } else {
+                // Note: this branch should be executed only on account creation.
+                db.create<account_metadata_object>([&](account_metadata_object& a) {
+                    a.account = account;
+                    from_string(a.json_metadata, json_metadata);
+                });
+            }
+#endif
+        }
 
         void witness_update_evaluator::do_apply(const witness_update_operation &o) {
             database &_db = db();
@@ -164,7 +187,7 @@ namespace golos { namespace chain {
                 c.balance -= o.fee;
             });
 
-            const auto &new_account = _db.create<account_object>([&](account_object &acc) {
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = o.new_account_name;
                 acc.memo_key = o.memo_key;
                 acc.created = props.time;
@@ -176,11 +199,8 @@ namespace golos { namespace chain {
                 } else {
                     acc.recovery_account = o.creator;
                 }
-
-#ifndef IS_LOW_MEM
-                from_string(acc.json_metadata, o.json_metadata);
-#endif
             });
+            store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
 
             _db.create<account_authority_object>([&](account_authority_object &auth) {
                 auth.account = o.new_account_name;
@@ -196,7 +216,7 @@ namespace golos { namespace chain {
         }
 
         void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
-            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__535, "Account creation with delegation");
 
             const auto& creator = _db.get_account(o.creator);
             FC_ASSERT(creator.balance >= o.fee, "Insufficient balance to create account.",
@@ -242,13 +262,11 @@ namespace golos { namespace chain {
                 acc.created = now;
                 acc.last_vote_time = now;
                 acc.mined = false;
-
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
-#ifndef IS_LOW_MEM
-                from_string(acc.json_metadata, o.json_metadata);
-#endif
             });
+            store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
+
             _db.create<account_authority_object>([&](account_authority_object& auth) {
                 auth.account = o.new_account_name;
                 auth.owner = o.owner;
@@ -323,20 +341,13 @@ namespace golos { namespace chain {
                 if (o.memo_key != public_key_type()) {
                     acc.memo_key = o.memo_key;
                 }
-
                 if ((o.active || o.owner) && acc.active_challenged) {
                     acc.active_challenged = false;
                     acc.last_active_proved = _db.head_block_time();
                 }
-
                 acc.last_account_update = _db.head_block_time();
-
-#ifndef IS_LOW_MEM
-                if (o.json_metadata.size() > 0) {
-                    from_string(acc.json_metadata, o.json_metadata);
-                }
-#endif
             });
+            store_account_json_metadata(_db, account.name, o.json_metadata, true);
 
             if (o.active || o.posting) {
                 _db.modify(account_auth, [&](account_authority_object &auth) {
@@ -351,6 +362,14 @@ namespace golos { namespace chain {
 
         }
 
+        void account_metadata_evaluator::do_apply(const account_metadata_operation& o) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__196, "account_metadata_operation"); //TODO: Delete after hardfork
+            const auto& account = _db.get_account(o.account);
+            _db.modify(account, [&](account_object& a) {
+                a.last_account_update = _db.head_block_time();
+            });
+            store_account_json_metadata(_db, o.account, o.json_metadata);
+        }
 
 /**
  *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
@@ -2201,7 +2220,7 @@ namespace golos { namespace chain {
         }
 
         void delegate_vesting_shares_evaluator::do_apply(const delegate_vesting_shares_operation& op) {
-            ASSERT_NEED_HF(STEEMIT_HARDFORK_0_18__535, "delegate_vesting_shares_operation"); //TODO: Delete after hardfork
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__535, "delegate_vesting_shares_operation"); //TODO: Delete after hardfork
 
             const auto& delegator = _db.get_account(op.delegator);
             const auto& delegatee = _db.get_account(op.delegatee);
