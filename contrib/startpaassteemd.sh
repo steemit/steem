@@ -57,13 +57,13 @@ cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
 echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4
+finished=0
+count=1
 if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
   # try five times to pull in shared memory file
-  finished=0
-  count=1
   while [[ $count -le 5 ]] && [[ $finished == 0 ]]
   do
     rm -rf $HOME/blockchain/*
