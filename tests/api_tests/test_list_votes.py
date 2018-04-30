@@ -25,6 +25,13 @@ wdir = Path()
 errors = 0
 nr_cycles = 3
 
+
+def future_end_cb(future):
+  global errors
+  if future.result() == False:
+    errors += 1
+
+
 def main():
   if len( sys.argv ) < 4 or len( sys.argv ) > 7:
     print( "Usage: __name__ jobs url1 url2 [nr_cycles [working_dir [comments_file]]]" )
@@ -84,16 +91,18 @@ def main():
   
   if jobs > 1:
     first = 0
-    last = length - 1
+    last = length
     comments_per_job = length // jobs
 
     with ProcessPoolExecutor(max_workers=jobs) as executor:
       for i in range(jobs-1):
-        executor.submit(compare_results, url1, url2, comments[first : first+comments_per_job-1])
+        future = executor.submit(compare_results, url1, url2, comments[first : first+comments_per_job])
+        future.add_done_callback(future_end_cb)
         first = first + comments_per_job
-      executor.submit(compare_results, url1, url2, comments[first : last])
+      future = executor.submit(compare_results, url1, url2, comments[first : last])
+      future.add_done_callback(future_end_cb)
   else:
-    compare_results(url1, url2, comments)
+    errors = (compare_results(url1, url2, comments) == False)
     
   exit( errors )
 
@@ -123,11 +132,11 @@ def compare_results(url1, url2, comments, max_tries=10, timeout=0.1):
       success = False; break
 
   print("Compare comments: [{}..{}] {}".format(comments[0], comments[ nr_cycles - 1 if nr_cycles > 0 else -1 ], "finished" if success else "break with error" ))
+  return success
 
 
 def list_votes(url1, url2, comment_line, max_tries=10, timeout=0.1):
   global wdir
-  global errors
   LIMIT = 1000
 
   comment_array = comment_line.split(';')
@@ -156,7 +165,6 @@ def list_votes(url1, url2, comment_line, max_tries=10, timeout=0.1):
     
     if status1 == False or status2 == False or json1 != json2:
       print("Comparison failed for permlink: {}; author: {}; limit: {}".format(permlink, author, LIMIT))
-      errors += 1
 
       filename = wdir / permlink
       try:    file = filename.open("w")

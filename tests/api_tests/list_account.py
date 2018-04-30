@@ -17,7 +17,7 @@ def list_accounts(url):
   accounts_count = 0
   accounts = []
   
-  while end == False:
+  while True:
     request = bytes( json.dumps( {
       "jsonrpc": "2.0",
       "id": 0,
@@ -38,15 +38,14 @@ def list_accounts(url):
       del account_list[0]
 
     if len( account_list ) == 0:
-      end = True
-      continue
+      break
 
     last_account = account_list[-1]["name"]
     accounts_count += len( accounts )
     for account in account_list:
       accounts.append( account["name"] )
 
-  # while end == False
+  # while True
   return accounts
   
 

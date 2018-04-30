@@ -16,7 +16,7 @@ def list_comments(url):
   end = False
   comments = []
   
-  while end == False:
+  while True:
     request = bytes( json.dumps( {
       "jsonrpc": "2.0",
       "id": 0,
@@ -32,18 +32,20 @@ def list_comments(url):
 
     comment_list = response["result"]["comments"]
 
+    if len(comment_list) == 0:
+       break
+
     actual_cashout_time = comment_list[-1]["cashout_time"]
 
     if actual_cashout_time == last_cashout_time:
-      end = True
-      continue
+      break
 
     last_cashout_time = actual_cashout_time
 
     for comment in comment_list:
       comments.append( comment["permlink"]+";"+comment["author"] +";"+comment["last_update"] )
 
-  # while end == False
+  # while True
   return comments
   
 
