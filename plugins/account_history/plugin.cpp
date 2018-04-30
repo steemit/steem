@@ -11,9 +11,7 @@
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+namespace golos { namespace plugins { namespace account_history {
 
 struct operation_visitor_filter;
 void operation_get_impacted_accounts(const operation &op, flat_set<golos::chain::account_name_type> &result);
@@ -80,6 +78,7 @@ struct operation_visitor {
         });
     }
 };
+
 struct operation_visitor_filter : operation_visitor {
     operation_visitor_filter(golos::chain::database &db, const golos::chain::operation_notification &note, const golos::plugins::account_history::operation_object *&n, std::string i, const flat_set<string> &filter, bool blacklist, uint32_t start_block)
         : operation_visitor(db, note, n, i), _filter(filter), _blacklist(blacklist), _start_block(start_block) {
@@ -512,12 +511,15 @@ void plugin::plugin_initialize(const boost::program_options::variables_map &opti
     ilog("account_history plugin: plugin_initialize() end");
     // init(options);
 }
+
 plugin::plugin ( ) {
 
 }
+
 plugin::~plugin ( ) {
 
 }
+
 void plugin::plugin_startup() {
     ilog("account_history plugin: plugin_startup() begin");
 

@@ -90,7 +90,6 @@ namespace golos {
         class feed_history_object;
         class convert_request_object;
         class liquidity_reward_balance_object;
-        class category_object;
         class hardfork_property_object;
         class withdraw_vesting_route_object;
         class owner_authority_history_object;
@@ -118,7 +117,6 @@ namespace golos {
         typedef object_id<feed_history_object> feed_history_id_type;
         typedef object_id<convert_request_object> convert_request_id_type;
         typedef object_id<liquidity_reward_balance_object> liquidity_reward_balance_id_type;
-        typedef object_id<category_object> category_id_type;
         typedef object_id<hardfork_property_object> hardfork_property_id_type;
         typedef object_id<withdraw_vesting_route_object> withdraw_vesting_route_id_type;
         typedef object_id<owner_authority_history_object> owner_authority_history_id_type;

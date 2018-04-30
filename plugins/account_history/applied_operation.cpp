@@ -1,8 +1,7 @@
 #include <golos/plugins/account_history/applied_operation.hpp>
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+namespace golos { namespace plugins { namespace account_history {
+
     applied_operation::applied_operation() {
     }
 
@@ -12,6 +11,5 @@ namespace account_history {
         //fc::raw::unpack( op_obj.serialized_op, op );     // g++ refuses to compile this as ambiguous
         op = fc::raw::unpack<protocol::operation>(op_obj.serialized_op);
     }
-}
-}
-}
+
+} } } // golos::plugins::account_history
