@@ -16,6 +16,13 @@ namespace golos { namespace protocol {
             FC_ASSERT(is_valid_account_name(name), "Account name ${n} is invalid", ("n", name));
         }
 
+        inline void validate_account_json_metadata(const string& json_metadata) {
+            if (json_metadata.size() > 0) {
+                FC_ASSERT(fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8");
+                FC_ASSERT(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+            }
+        }
+
         bool inline is_asset_type(asset asset, asset_symbol_type symbol) {
             return asset.symbol == symbol;
         }
@@ -25,13 +32,8 @@ namespace golos { namespace protocol {
             FC_ASSERT(is_asset_type(fee, STEEM_SYMBOL), "Account creation fee must be GOLOS");
             owner.validate();
             active.validate();
-
-            if (json_metadata.size() > 0) {
-                FC_ASSERT(fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8");
-                FC_ASSERT(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
-            }
-            FC_ASSERT(fee >=
-                      asset(0, STEEM_SYMBOL), "Account creation fee cannot be negative");
+            validate_account_json_metadata(json_metadata);
+            FC_ASSERT(fee >= asset(0, STEEM_SYMBOL), "Account creation fee cannot be negative");
         }
 
         void account_create_with_delegation_operation::validate() const {
@@ -44,11 +46,7 @@ namespace golos { namespace protocol {
             owner.validate();
             active.validate();
             posting.validate();
-
-            if (json_metadata.size() > 0) {
-                FC_ASSERT(fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8");
-                FC_ASSERT(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
-            }
+            validate_account_json_metadata(json_metadata);
         }
 
         void account_update_operation::validate() const {
@@ -59,11 +57,13 @@ namespace golos { namespace protocol {
                active->validate();
             if( posting )
                posting->validate();*/
+            validate_account_json_metadata(json_metadata);
+        }
 
-            if (json_metadata.size() > 0) {
-                FC_ASSERT(fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8");
-                FC_ASSERT(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
-            }
+        void account_metadata_operation::validate() const {
+            validate_account_name(account);
+            FC_ASSERT(json_metadata.size() > 0, "json_metadata can't be empty");
+            validate_account_json_metadata(json_metadata);
         }
 
         void comment_operation::validate() const {
@@ -102,8 +102,6 @@ namespace golos { namespace protocol {
             FC_ASSERT(beneficiaries.size(), "Must specify at least one beneficiary");
             FC_ASSERT(beneficiaries.size() < 128,
                       "Cannot specify more than 127 beneficiaries."); // Require size serializtion fits in one byte.
-
-            string_less str_cmp;
 
             validate_account_name(beneficiaries[0].account);
             FC_ASSERT(beneficiaries[0].weight <= STEEMIT_100_PERCENT,

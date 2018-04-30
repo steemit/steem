@@ -265,6 +265,10 @@ struct get_impacted_account_visitor {
         _impacted.insert(op.account);
     }
 
+    void operator()(const account_metadata_operation &op) {
+        _impacted.insert(op.account);
+    }
+
     void operator()(const comment_operation &op) {
         _impacted.insert(op.author);
         if (op.parent_author.size()) {

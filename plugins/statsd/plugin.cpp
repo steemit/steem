@@ -14,21 +14,18 @@
 
 
 
-namespace golos {
-namespace plugins {
-namespace statsd {
+namespace golos { namespace plugins { namespace statsd {
 
+std::vector<std::string> get_as_string (const runtime_bucket_object& b);
+std::vector<std::string> calculate_delta_with (const runtime_bucket_object& a, const runtime_bucket_object& b);
 
-std::vector < std::string > get_as_string (const runtime_bucket_object & b);
-std::vector < std::string > calculate_delta_with ( const runtime_bucket_object & a, const runtime_bucket_object & b);
-
-void increment_counter(std::vector < std::string > &result, std::string name, uint32_t value, std::string stat_type = "c") {
+void increment_counter(std::vector<std::string>& result, std::string name, uint32_t value, std::string stat_type = "c") {
     if (value != 0) {
         result.push_back(name + ":" + std::to_string(value) + "|" + stat_type);
     }
 }
 
-void increment_counter(std::vector < std::string > &result, std::string name, share_type value, std::string stat_type = "c") {
+void increment_counter(std::vector<std::string>& result, std::string name, share_type value, std::string stat_type = "c") {
     if (value != 0) {
         result.push_back(name + ":" + std::string(value) + "|" + stat_type);
     }
@@ -63,7 +60,7 @@ struct operation_process {
     database &_db;
     std::shared_ptr<statistics_sender> stat_sender;
 
-    operation_process(database &db, std::shared_ptr<statistics_sender> stat_sender) : 
+    operation_process(database &db, std::shared_ptr<statistics_sender> stat_sender) :
         _db(db), stat_sender(stat_sender) {
     }
 
@@ -158,7 +155,7 @@ struct operation_process {
 
     void operator()(const transfer_to_vesting_operation &op) const {
         stat_sender->current_bucket.transfers_to_vesting++;
-        stat_sender->current_bucket.steem_vested += op.amount.amount;        
+        stat_sender->current_bucket.steem_vested += op.amount.amount;
     }
 
     void operator()(const fill_vesting_withdraw_operation &op) const {
@@ -206,13 +203,13 @@ void plugin::plugin_impl::on_block(const signed_block &b) {
         stat_sender->current_bucket.blocks = 1;
     } else {
         stat_sender->current_bucket.blocks++;
-        
+
         if (!stat_sender->is_previous_bucket_set) {
             stat_sender->previous_bucket = stat_sender->current_bucket;
             stat_sender->is_previous_bucket_set = true;
         }
         else {
-            auto statistics_delta = calculate_delta_with( stat_sender->previous_bucket, stat_sender->current_bucket ); 
+            auto statistics_delta = calculate_delta_with( stat_sender->previous_bucket, stat_sender->current_bucket );
 
             for (auto delta : statistics_delta) {
                 stat_sender->push(delta);
@@ -292,32 +289,30 @@ plugin::plugin() {
 plugin::~plugin() {
 }
 
-void plugin::set_program_options( options_description& cli, options_description& cfg ) {
+void plugin::set_program_options(options_description& cli, options_description& cfg) {
     cli.add_options()
-            ("statsd-endpoints", boost::program_options::value<std::vector<std::string>>()->multitoken()->
-                    zero_tokens()->composing(), "StatsD endpoints that will receive the statistics in StatsD string format.")
-            ("statsd-default-port", boost::program_options::value<uint32_t>()->default_value(8125), "Default port for StatsD nodes.");
+        ("statsd-endpoints",
+            boost::program_options::value<std::vector<std::string>>()->multitoken()->zero_tokens()->composing(),
+            "StatsD endpoints that will receive the statistics in StatsD string format.")
+        ("statsd-default-port", boost::program_options::value<uint32_t>()->default_value(8125), "Default port for StatsD nodes.");
     cfg.add(cli);
 }
 
-void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
+void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
     try {
         ilog("statsd_plugin: plugin_initialize() begin");
 
         _my.reset(new plugin_impl());
         auto &db = _my -> database();
 
-        uint32_t statsd_default_port; // default port(8125) for statsd https://github.com/etsy/statsd
-
-        if (options.count("statsd-default-port")) {
-            statsd_default_port = options["statsd-default-port"].as<uint32_t>();
-        }
+        // default port(8125) for statsd https://github.com/etsy/statsd
+        uint32_t statsd_default_port = options["statsd-default-port"].as<uint32_t>();
         _my->stat_sender = std::shared_ptr<statistics_sender>(new statistics_sender(statsd_default_port) );
 
         db.applied_block.connect([&](const signed_block &b) {
             _my->on_block(b);
         });
-        
+
         db.pre_apply_operation.connect([&](const operation_notification &o) {
             _my->pre_operation(o);
         });
@@ -452,7 +447,7 @@ std::vector < std::string > calculate_delta_with (const runtime_bucket_object & 
     return result;
 }
 
-void runtime_bucket_object::operator=(const runtime_bucket_object & b) {   
+void runtime_bucket_object::operator=(const runtime_bucket_object & b) {
     seconds = b.seconds;
     blocks = b.blocks;
     bandwidth = b.bandwidth;
