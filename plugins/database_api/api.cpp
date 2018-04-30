@@ -80,6 +80,7 @@ namespace golos { namespace plugins { namespace database_api {
                 dynamic_global_property_api_object get_dynamic_global_properties() const;
 
                 // Accounts
+                std::vector<extended_account> get_accounts(std::vector<std::string> names) const;
 
                 std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
 
@@ -370,6 +371,36 @@ namespace golos { namespace plugins { namespace database_api {
             // Accounts                                                         //
             //                                                                  //
             //////////////////////////////////////////////////////////////////////
+
+            DEFINE_API(plugin, get_accounts) {
+                CHECK_ARG_SIZE(1)
+                return my->database().with_weak_read_lock([&]() {
+                    return my->get_accounts(args.args->at(0).as<vector<std::string> >());
+                });
+            }
+
+            std::vector<extended_account> plugin::api_impl::get_accounts(std::vector<std::string> names) const {
+                const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
+                const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
+                std::vector<extended_account> results;
+
+                for (auto name: names) {
+                    auto itr = idx.find(name);
+                    if (itr != idx.end()) {
+                        results.push_back(extended_account(*itr, _db));
+                        auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
+                        while (vitr != vidx.end() && vitr->account == itr->id) {
+                            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
+                            ++vitr;
+                        }
+                    }
+                    else {
+                        wlog("database_api: No such account with name \"${name}\" in account index", ("name", name) );
+                    }
+                }
+
+                return results;
+            }
 
             DEFINE_API(plugin, lookup_account_names) {
                 CHECK_ARG_SIZE(1)
