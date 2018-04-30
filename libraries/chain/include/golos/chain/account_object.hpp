@@ -13,8 +13,7 @@
 
 #include <numeric>
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using golos::protocol::authority;
 
@@ -24,8 +23,7 @@ namespace golos {
             account_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            account_object(Constructor &&c, allocator<Allocator> a)
-                    :json_metadata(a) {
+            account_object(Constructor&& c, allocator<Allocator> a) {
                 c(*this);
             };
 
@@ -33,7 +31,6 @@ namespace golos {
 
             account_name_type name;
             public_key_type memo_key;
-            shared_string json_metadata;
             account_name_type proxy;
 
             time_point_sec last_account_update;
@@ -90,6 +87,9 @@ namespace golos {
             share_type posting_rewards = 0;
 
             asset vesting_shares = asset(0, VESTS_SYMBOL); ///< total vesting shares held by this account, controls its voting power
+            asset delegated_vesting_shares = asset(0, VESTS_SYMBOL); ///<
+            asset received_vesting_shares = asset(0, VESTS_SYMBOL); ///<
+
             asset vesting_withdraw_rate = asset(0, VESTS_SYMBOL); ///< at the time this is updated it can be at most vesting_shares/104
             time_point_sec next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
             share_type withdrawn = 0; /// Track how many shares have been withdrawn
@@ -113,6 +113,17 @@ namespace golos {
                 return std::accumulate(proxied_vsf_votes.begin(),
                         proxied_vsf_votes.end(),
                         share_type());
+            }
+
+            /// vesting shares used in voting and bandwidth calculation
+            asset effective_vesting_shares() const {
+                return vesting_shares - delegated_vesting_shares + received_vesting_shares;
+            }
+
+            /// vesting shares, which can be used for delegation (incl. create account) and withdraw operations
+            asset available_vesting_shares(bool consider_withdrawal = false) const {
+                auto have = vesting_shares - delegated_vesting_shares;
+                return consider_withdrawal ? have - asset(to_withdraw - withdrawn, VESTS_SYMBOL) : have;
             }
         };
 
@@ -156,6 +167,53 @@ namespace golos {
             share_type average_bandwidth;
             share_type lifetime_bandwidth;
             time_point_sec last_bandwidth_update;
+        };
+
+        class account_metadata_object : public object<account_metadata_object_type, account_metadata_object> {
+        public:
+            account_metadata_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            account_metadata_object(Constructor&& c, allocator<Allocator> a) : json_metadata(a) {
+                c(*this);
+            }
+
+            id_type id;
+            account_name_type account;
+            shared_string json_metadata;
+        };
+
+        class vesting_delegation_object: public object<vesting_delegation_object_type, vesting_delegation_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            vesting_delegation_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            vesting_delegation_object() {
+            }
+
+            id_type id;
+            account_name_type delegator;
+            account_name_type delegatee;
+            asset vesting_shares;
+            time_point_sec min_delegation_time;
+        };
+
+        class vesting_delegation_expiration_object: public object<vesting_delegation_expiration_object_type, vesting_delegation_expiration_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            vesting_delegation_expiration_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            vesting_delegation_expiration_object() {
+            }
+
+            id_type id;
+            account_name_type delegator;
+            asset vesting_shares;
+            time_point_sec expiration;
         };
 
         class owner_authority_history_object
@@ -311,6 +369,20 @@ namespace golos {
         >
         owner_authority_history_index;
 
+
+        using account_metadata_index = multi_index_container<
+            account_metadata_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>, member<account_metadata_object, account_metadata_id_type, &account_metadata_object::id>
+                >,
+                ordered_unique<
+                    tag<by_account>, member<account_metadata_object, account_name_type, &account_metadata_object::account>
+                >
+            >,
+            allocator<account_metadata_object>
+        >;
+
         struct by_last_owner_update;
 
         typedef multi_index_container<
@@ -356,6 +428,59 @@ namespace golos {
         allocator<account_bandwidth_object>
         >
         account_bandwidth_index;
+
+        struct by_delegation;
+
+        using vesting_delegation_index = multi_index_container<
+            vesting_delegation_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<vesting_delegation_object, vesting_delegation_id_type, &vesting_delegation_object::id>>,
+                ordered_unique<
+                    tag<by_delegation>,
+                    composite_key<
+                        vesting_delegation_object,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator>,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee>
+                    >,
+                    composite_key_compare<protocol::string_less, protocol::string_less>
+                >
+            >,
+            allocator<vesting_delegation_object>
+        >;
+
+        struct by_expiration;
+        struct by_account_expiration;
+
+        using vesting_delegation_expiration_index = multi_index_container<
+            vesting_delegation_expiration_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>>,
+                ordered_unique<
+                    tag<by_expiration>,
+                    composite_key<
+                        vesting_delegation_expiration_object,
+                        member<vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration>,
+                        member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>
+                    >,
+                    composite_key_compare<std::less<time_point_sec>, std::less<vesting_delegation_expiration_id_type>>
+                >,
+                ordered_unique<
+                    tag<by_account_expiration>,
+                    composite_key<
+                        vesting_delegation_expiration_object,
+                        member<vesting_delegation_expiration_object, account_name_type, &vesting_delegation_expiration_object::delegator>,
+                        member<vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration>,
+                        member<vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id>
+                    >,
+                    composite_key_compare<std::less<account_name_type>, std::less<time_point_sec>, std::less<vesting_delegation_expiration_id_type>>
+                >
+            >,
+            allocator<vesting_delegation_expiration_object>
+        >;
 
         struct by_expiration;
 
@@ -415,7 +540,7 @@ namespace golos {
 }
 
 FC_REFLECT((golos::chain::account_object),
-        (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
+        (id)(name)(memo_key)(proxy)(last_account_update)
                 (created)(mined)
                 (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
                 (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
@@ -423,7 +548,8 @@ FC_REFLECT((golos::chain::account_object),
                 (savings_balance)
                 (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
                 (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
-                (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
+                (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
+                (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
                 (curation_rewards)
                 (posting_rewards)
                 (proxied_vsf_votes)(witnesses_voted_for)
@@ -439,6 +565,15 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::account_authority_object, golos::chain::a
 FC_REFLECT((golos::chain::account_bandwidth_object),
         (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_bandwidth_object, golos::chain::account_bandwidth_index)
+
+FC_REFLECT((golos::chain::account_metadata_object), (id)(account)(json_metadata))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_metadata_object, golos::chain::account_metadata_index)
+
+FC_REFLECT((golos::chain::vesting_delegation_object), (id)(delegator)(delegatee)(vesting_shares)(min_delegation_time))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_object, golos::chain::vesting_delegation_index)
+
+FC_REFLECT((golos::chain::vesting_delegation_expiration_object), (id)(delegator)(vesting_shares)(expiration))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_expiration_object, golos::chain::vesting_delegation_expiration_index)
 
 FC_REFLECT((golos::chain::owner_authority_history_object),
         (id)(account)(previous_owner_authority)(last_valid_time)

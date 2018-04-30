@@ -353,11 +353,6 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         }
 
         std::set<std::string> lower_tags;
-        auto category = boost::trim_copy(c.category);
-        if (!category.empty()) {
-            boost::to_lower(category);
-            meta.tags.insert(category);
-        }
 
         std::size_t tag_limit = 5;
         for (const auto& name : meta.tags) {

@@ -208,10 +208,6 @@ namespace golos { namespace plugins { namespace social_network {
                 d.body = fc::prune_invalid_utf8(d.body);
             }
 
-            if (!fc::is_utf8(d.category)) {
-                d.category = fc::prune_invalid_utf8(d.category);
-            }
-
             if (!fc::is_utf8(d.json_metadata)) {
                 d.json_metadata = fc::prune_invalid_utf8(d.json_metadata);
             }
@@ -286,10 +282,22 @@ namespace golos { namespace plugins { namespace social_network {
 
     void social_network::impl::set_url(discussion& d) const {
         const comment_api_object root(database().get<comment_object, by_id>(d.root_comment));
+
         const comment_content_api_object root_content(
                 database().get<comment_content_object, by_comment>(d.id));
-        d.url = std::string("/") + root.category + "/@" + root.author + "/" + root.permlink;
+
         d.root_title = root_content.title;
+
+        tags::comment_metadata meta = tags::get_metadata(root);
+
+        if(!meta.tags.empty()) {
+            d.url = "/" + *meta.tags.begin() + "/@" + root.author + "/" + root.permlink;
+        }
+        else {
+            d.url = "/@" + root.author + "/" + root.permlink;
+        }
+
+        d.root_title = root.title;
         if (root.id != d.id) {
             d.url += "#@" + d.author + "/" + d.permlink;
         }
@@ -411,72 +419,6 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         set_url(d);
-    }
-
-    DEFINE_API(social_network, get_trending_categories) {
-        CHECK_ARG_SIZE(2)
-        auto after = args.args->at(0).as<string>();
-        auto limit = args.args->at(1).as<uint32_t>();
-        auto& db = pimpl->database();
-        return db.with_weak_read_lock([&]() {
-            limit = std::min(limit, uint32_t(100));
-            std::vector<category_api_object> result;
-            result.reserve(limit);
-
-            const auto& nidx = db.get_index<golos::chain::category_index>().indices().get<by_name>();
-            const auto& ridx = db.get_index<golos::chain::category_index>().indices().get<by_rshares>();
-            auto itr = ridx.begin();
-            if (after != "" && nidx.size()) {
-                auto nitr = nidx.lower_bound(after);
-                if (nitr == nidx.end()) {
-                    itr = ridx.end();
-                } else {
-                    itr = ridx.iterator_to(*nitr);
-                }
-            }
-
-            while (itr != ridx.end() && result.size() < limit) {
-                result.emplace_back(category_api_object(*itr));
-                ++itr;
-            }
-            return result;
-        });
-    }
-
-    DEFINE_API(social_network, get_best_categories) {
-        CHECK_ARG_SIZE(2)
-        auto after = args.args->at(0).as<string>();
-        auto limit = args.args->at(1).as<uint32_t>();
-        return pimpl->database().with_weak_read_lock([&]() {
-            limit = std::min(limit, uint32_t(100));
-            std::vector<category_api_object> result;
-            result.reserve(limit);
-            return result;
-        });
-    }
-
-    DEFINE_API(social_network, get_active_categories) {
-        CHECK_ARG_SIZE(2)
-        auto after = args.args->at(0).as<string>();
-        auto limit = args.args->at(1).as<uint32_t>();
-        return pimpl->database().with_weak_read_lock([&]() {
-            limit = std::min(limit, uint32_t(100));
-            std::vector<category_api_object> result;
-            result.reserve(limit);
-            return result;
-        });
-    }
-
-    DEFINE_API(social_network, get_recent_categories) {
-        CHECK_ARG_SIZE(2)
-        auto after = args.args->at(0).as<string>();
-        auto limit = args.args->at(1).as<uint32_t>();
-        return pimpl->database().with_weak_read_lock([&]() {
-            limit = std::min(limit, uint32_t(100));
-            std::vector<category_api_object> result;
-            result.reserve(limit);
-            return result;
-        });
     }
 
     bool social_network::impl::filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const {

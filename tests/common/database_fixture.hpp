@@ -111,7 +111,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 #define PREP_ACTOR(name) \
    fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name));   \
-   fc::ecc::private_key name ## _post_key = generate_private_key(std::string( BOOST_PP_STRINGIZE(name) ) + "_post" ); \
+   fc::ecc::private_key name ## _post_key = generate_private_key(BOOST_PP_STRINGIZE(name) "_post"); \
    public_key_type name ## _public_key = name ## _private_key.get_public_key();
 
 #define ACTOR(name) \
@@ -122,15 +122,20 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #define GET_ACTOR(name) \
    fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
    const account_object& name = get_account(BOOST_PP_STRINGIZE(name)); \
-   account_id_type name ## _id = name.id; \
-   (void)name ##_id
+   account_id_type name ## _id = name.id; (void)name ## _id;
 
 #define ACTORS_IMPL(r, data, elem) ACTOR(elem)
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
 
-#define ASSET(s) \
-   asset::from_string( s )
+
+// Note: testnet and mainnet can have different asset names
+#define ASSET(s) asset::from_string(s)
+
+#define ASSET_GBG(x)   asset(int64_t((x)*1e3), SBD_SYMBOL)
+#define ASSET_GOLOS(x) asset(int64_t((x)*1e3), STEEM_SYMBOL)
+#define ASSET_GESTS(x) asset(int64_t((x)*1e6), VESTS_SYMBOL)
+
 
 // get_vesting_share_price() is a dynamic value which depends on funds,
 //   that is why comparision can be done only with some correction
@@ -146,8 +151,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 #  define STEEMIT_INIT_PRIVATE_KEY (fc::ecc::private_key::regenerate(fc::sha256::hash(BLOCKCHAIN_NAME)))
 #endif
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using namespace golos::protocol;
 
@@ -255,6 +259,33 @@ namespace golos {
             vector<operation> get_last_operations(uint32_t ops);
 
             void validate_database(void);
+
+
+            // helpers to remove boilerplate code
+        private:
+            void tx_push_ops(signed_transaction& tx, operation op) {
+                tx.operations.push_back(op);
+            }
+            template<typename... Ops>
+            void tx_push_ops(signed_transaction& tx, operation op, Ops... ops) {
+                tx.operations.push_back(op);
+                tx_push_ops(tx, ops...);
+            }
+
+        public:
+            template<typename... Ops>
+            void sign_tx_with_ops(signed_transaction& tx, const fc::ecc::private_key& k, Ops... ops) {
+                tx.clear();
+                tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                tx_push_ops(tx, ops...);
+                sign(tx, k);
+            }
+
+            template<typename... Ops>
+            void push_tx_with_ops(signed_transaction& tx, const fc::ecc::private_key& k, Ops... ops) {
+                sign_tx_with_ops(tx, k, ops...);
+                db->push_transaction(tx, 0);
+            }
         };
 
         struct clean_database_fixture : public database_fixture {
@@ -279,6 +310,5 @@ namespace golos {
             void _push_transaction(database &db, const signed_transaction &tx, uint32_t skip_flags = 0);
         }
 
-    }
-}
+} } // golos:chain
 #endif

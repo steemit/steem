@@ -42,23 +42,7 @@ namespace golos {
                 }
 
                 asset vesting_balance; /// convert vesting_shares to vesting steem
-                share_type reputation = 0;
-                map<uint64_t, applied_operation> transfer_history; /// transfer to/from vesting
-                map<uint64_t, applied_operation> market_history; /// limit order / cancel / fill
-                map<uint64_t, applied_operation> post_history;
-                map<uint64_t, applied_operation> vote_history;
-                map<uint64_t, applied_operation> other_history;
                 set<string> witness_votes;
-                vector<pair<string, uint32_t>> tags_usage;
-                vector<pair<account_name_type, uint32_t>> guest_bloggers;
-
-                optional<map<uint32_t, extended_limit_order>> open_orders;
-                optional<vector<string>> comments; /// permlinks for this user
-                optional<vector<string>> blog; /// blog posts for this user
-                optional<vector<string>> feed; /// feed posts for this user
-                optional<vector<string>> recent_replies; /// blog posts for this user
-                map<string, vector<string>> blog_category; /// blog posts for this user
-                optional<vector<string>> recommended; /// posts recommened for this user
             };
 
 
@@ -99,8 +83,9 @@ namespace golos {
 
 FC_REFLECT_DERIVED((golos::plugins::database_api::extended_account),
                    ((golos::plugins::database_api::account_api_object)),
-                   (vesting_balance)(reputation)
-                           (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(blog_category)(recommended))
+                   (vesting_balance)
+                   (witness_votes)
+                   )
 
 
 

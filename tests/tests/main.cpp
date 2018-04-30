@@ -23,6 +23,7 @@
  */
 #include <cstdlib>
 #include <iostream>
+#include <fc/log/logger_config.hpp>
 
 #ifdef BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE unit_tests
@@ -34,6 +35,8 @@
 // extern uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP;
 
 boost::unit_test::test_suite *init_unit_test_suite(int argc, char *argv[]) {
+    fc::configure_logging(fc::logging_config::default_config(fc::log_level::error));
+
     std::srand(time(NULL));
     std::cout << "Random number generator seeded to " << time(NULL)
               << std::endl;
