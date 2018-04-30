@@ -297,7 +297,6 @@ namespace golos { namespace plugins { namespace social_network {
             d.url = "/@" + root.author + "/" + root.permlink;
         }
 
-        d.root_title = root.title;
         if (root.id != d.id) {
             d.url += "#@" + d.author + "/" + d.permlink;
         }

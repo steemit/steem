@@ -331,7 +331,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
     comment_metadata get_metadata(const comment_api_object &c) {
 
-        golos::chain::database& database_ = appbase::app().get_plugin<chain::plugin>().db();
+        golos::chain::database& db_ = appbase::app().get_plugin<chain::plugin>().db();
 
         comment_metadata meta;
 

@@ -2839,6 +2839,7 @@ namespace golos { namespace chain {
             add_core_index<block_summary_index>(*this);
             add_core_index<witness_schedule_index>(*this);
             add_core_index<comment_index>(*this);
+            add_core_index<comment_content_index>(*this);
             add_core_index<comment_vote_index>(*this);
             add_core_index<witness_vote_index>(*this);
             add_core_index<limit_order_index>(*this);
