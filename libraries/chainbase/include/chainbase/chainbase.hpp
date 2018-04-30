@@ -21,6 +21,7 @@
 #include <boost/throw_exception.hpp>
 
 #include <chainbase/allocators.hpp>
+#include <chainbase/util/object_id.hpp>
 
 #include <array>
 #include <atomic>
@@ -110,23 +111,6 @@ namespace chainbase {
          {
             return std::strcmp( a, b ) < 0;
          }
-   };
-
-   /**
-    *  Object ID type that includes the type of the object it references
-    */
-   template<typename T>
-   class oid {
-      public:
-         oid( int64_t i = 0 ):_id(i){}
-
-         oid& operator++() { ++_id; return *this; }
-
-         friend bool operator < ( const oid& a, const oid& b ) { return a._id < b._id; }
-         friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
-         friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
-         friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
-         int64_t _id = 0;
    };
 
    template<uint16_t TypeNumber, typename Derived>
