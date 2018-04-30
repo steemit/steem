@@ -959,7 +959,9 @@ namespace golos { namespace plugins { namespace database_api {
                     vector<account_name_type> result;
                     result.reserve(n);
                     for (size_t i = 0; i < n; i++) {
-                        result.push_back(wso.current_shuffled_witnesses[i]);
+                        if (wso.current_shuffled_witnesses[i] != "") {
+                            result.push_back(wso.current_shuffled_witnesses[i]);
+                        }
                     }
                     return result;
                 });
