@@ -13,8 +13,9 @@ enum class smt_phase : uint8_t
    setup_completed,
    contribution_begin_time_completed,
    contribution_end_time_completed,
-   launch_time_completed,
-   launch_expiration_time_completed
+   launch_time_completed,              /// launch window opened
+   launch_failed,                      /// launch window closed with either not enough contributions or some cap not revealed
+   launch_success                      /// enough contributions were declared and caps revealed before launch windows closed
 };
 
 /**Note that the object represents both liquid and vesting variant of SMT.
@@ -130,6 +131,10 @@ public:
    time_point_sec                generation_end_time;
    time_point_sec                announced_launch_time;
    time_point_sec                launch_expiration_time;
+
+   // smt_cap_reveal
+   share_type  steem_units_min_cap = -1;
+   share_type  steem_units_hard_cap = -1;
 };
 
 class smt_event_token_object : public object< smt_event_token_object_type, smt_event_token_object >
@@ -240,7 +245,8 @@ FC_REFLECT_ENUM( steem::chain::smt_phase,
                   (contribution_begin_time_completed)
                   (contribution_end_time_completed)
                   (launch_time_completed)
-                  (launch_expiration_time_completed)
+                  (launch_failed)
+                  (launch_success)
 )
 
 FC_REFLECT( steem::chain::smt_token_object::smt_market_maker_state,
@@ -279,6 +285,8 @@ FC_REFLECT( steem::chain::smt_token_object,
    (generation_end_time)
    (announced_launch_time)
    (launch_expiration_time)
+   (steem_units_min_cap)
+   (steem_units_hard_cap)
 )
 
 FC_REFLECT( steem::chain::smt_event_token_object,
