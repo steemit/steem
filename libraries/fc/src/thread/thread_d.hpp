@@ -483,7 +483,7 @@ namespace fc {
               auto self = static_cast<thread_d*>(p->first);
               p->second->my_context = my.fctx;
 #else
-           static void start_process_tasks( fc::context::transfer_t my )
+           static void start_process_tasks( intptr_t my )
            {
               thread_d* self = (thread_d*)my;
 #endif
