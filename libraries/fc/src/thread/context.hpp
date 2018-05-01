@@ -11,7 +11,15 @@
 
 #include <boost/version.hpp>
 
-#if BOOST_VERSION >= 105400
+#define BOOST_COROUTINES_NO_DEPRECATION_WARNING // Boost 1.61
+#define BOOST_COROUTINE_NO_DEPRECATION_WARNING // Boost 1.62
+
+#if BOOST_VERSION >= 106100
+  #include <boost/coroutine/stack_allocator.hpp>
+  namespace bc  = boost::context::detail;
+  namespace bco = boost::coroutines;
+  typedef bco::stack_allocator stack_allocator;
+#elif BOOST_VERSION >= 105400
 # include <boost/coroutine/stack_context.hpp>
   namespace bc  = boost::context;
   namespace bco = boost::coroutines;
@@ -53,12 +61,12 @@ namespace fc {
 #endif
 
 #if BOOST_VERSION >= 106100
-    typedef bc::detail::transfer_t transfer_t;
+    using context_fn = void (*)(bc::transfer_t);
 #else
-    typedef intptr_t transfer_t;
+    using context_fn = void(*)(intptr_t);
 #endif
 
-    context( void (*sf)(transfer_t), stack_allocator& alloc, fc::thread* t )
+    context( context_fn sf, stack_allocator& alloc, fc::thread* t )
     : caller_context(0),
       stack_alloc(&alloc),
       next_blocked(0),
@@ -73,13 +81,7 @@ namespace fc {
       cur_task(0),
       context_posted_num(0)
     {
-#if BOOST_VERSION >= 106100
-     //  std::cerr<< "HERE: "<< BOOST_VERSION <<"\n";
-     //my_context = new bc::execution_context<intptr_t>( [=]( bc::execution_context<intptr_t> sink, intptr_t self  ){ std::cerr<<"in ex\n"; sf(self);  std::cerr<<"exit ex\n"; return sink; } );
-     size_t stack_size = FC_CONTEXT_STACK_SIZE;
-     alloc.allocate(stack_ctx, stack_size);
-     my_context = bc::detail::make_fcontext( stack_ctx.sp, stack_ctx.size, sf );
-#elif BOOST_VERSION >= 105600
+#if BOOST_VERSION >= 105600
      size_t stack_size = FC_CONTEXT_STACK_SIZE;
      alloc.allocate(stack_ctx, stack_size);
      my_context = bc::make_fcontext( stack_ctx.sp, stack_ctx.size, sf);
@@ -118,21 +120,10 @@ namespace fc {
      complete(false),
      cur_task(0),
      context_posted_num(0)
-    {
-
-#if BOOST_VERSION >= 106100
-       /*
-        bc::execution_context<intptr_t> tmp(  [=]( bc::execution_context<intptr_t> sink, intptr_t ) { std::cerr<<"get current\n"; return sink; } );
-        auto result = tmp(0);
-        my_context = new bc::execution_context<intptr_t>( std::move( std::get<0>(result) ) );
-        */
-#endif
-    }
+    {}
 
     ~context() {
-#if BOOST_VERSION >= 106100
-      // delete my_context;
-#elif BOOST_VERSION >= 105600
+#if BOOST_VERSION >= 105600
       if(stack_alloc)
         stack_alloc->deallocate( stack_ctx );
 #elif BOOST_VERSION >= 105400
@@ -237,10 +228,7 @@ namespace fc {
 
 
 
-#if BOOST_VERSION >= 106100
-    //bc::execution_context<intptr_t>*   my_context;
-    bc::detail::fcontext_t       my_context;
-#elif BOOST_VERSION >= 105300 && BOOST_VERSION < 105600
+#if BOOST_VERSION >= 105300 && BOOST_VERSION < 105600
     bc::fcontext_t*              my_context;
 #else
     bc::fcontext_t               my_context;
