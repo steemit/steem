@@ -37,7 +37,6 @@ namespace detail
    {
       public:
          condenser_api_impl() :
-            _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
             _db( _chain.db() )
          {
@@ -141,7 +140,6 @@ namespace detail
 
          void on_post_apply_block( const signed_block& b );
 
-         steem::plugins::p2p::p2p_plugin&                                  _p2p;
          steem::plugins::chain::chain_plugin&                              _chain;
 
          chain::database&                                                  _db;
@@ -151,6 +149,7 @@ namespace detail
          std::shared_ptr< account_history::account_history_api >           _account_history_api;
          std::shared_ptr< account_by_key::account_by_key_api >             _account_by_key_api;
          std::shared_ptr< network_broadcast_api::network_broadcast_api >   _network_broadcast_api;
+         p2p::p2p_plugin*                                                  _p2p = nullptr;
          std::shared_ptr< tags::tags_api >                                 _tags_api;
          std::shared_ptr< follow::follow_api >                             _follow_api;
          std::shared_ptr< market_history::market_history_api >             _market_history_api;
@@ -1628,6 +1627,7 @@ namespace detail
    {
       CHECK_ARG_SIZE( 1 )
       FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
+      FC_ASSERT( _p2p != nullptr, "p2p_plugin not enabled." );
 
       signed_transaction trx = args[0].as< legacy_signed_transaction >();
       auto txid = trx.id();
@@ -1652,7 +1652,7 @@ namespace detail
           * thread for the lock.
           */
          _chain.accept_transaction( trx );
-         _p2p.broadcast_transaction( trx );
+         _p2p->broadcast_transaction( trx );
       }
       catch( fc::exception& e )
       {
@@ -2013,6 +2013,10 @@ void condenser_api::api_startup()
    auto network_broadcast = appbase::app().find_plugin< network_broadcast_api::network_broadcast_api_plugin >();
    if( network_broadcast != nullptr )
       my->_network_broadcast_api = network_broadcast->api;
+
+   auto p2p = appbase::app().find_plugin< p2p::p2p_plugin >();
+   if( p2p != nullptr )
+      my->_p2p = p2p;
 
    auto tags = appbase::app().find_plugin< tags::tags_api_plugin >();
    if( tags != nullptr )
