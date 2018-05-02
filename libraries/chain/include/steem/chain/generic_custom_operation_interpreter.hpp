@@ -24,6 +24,49 @@ using protocol::account_name_type;
 
 class database;
 
+struct get_operation_name
+{
+   string& name;
+   get_operation_name( string& dv )
+      : name( dv ) {}
+
+   typedef void result_type;
+   template< typename T > void operator()( const T& v )const
+   {
+      name = fc::get_typename< T >::name();
+   }
+};
+
+template< typename CustomOperationType >
+void legacy_from_variant( const fc::variant& var, CustomOperationType& vo )
+{
+   static std::map<string,int64_t> to_tag = []()
+   {
+      std::map<string,int64_t> name_map;
+      for( int i = 0; i < CustomOperationType::count(); ++i )
+      {
+         CustomOperationType tmp;
+         tmp.set_which(i);
+         string n;
+         tmp.visit( get_operation_name(n) );
+         name_map[n] = i;
+      }
+      return name_map;
+   }();
+
+   auto ar = var.get_array();
+   if( ar.size() < 2 ) return;
+   if( ar[0].is_uint64() )
+      vo.set_which( ar[0].as_uint64() );
+   else
+   {
+      auto itr = to_tag.find(ar[0].as_string());
+      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
+      vo.set_which( itr->second );
+   }
+   vo.visit( fc::to_static_variant( ar[1] ) );
+}
+
 template< typename CustomOperationType >
 class generic_custom_operation_interpreter
    : public custom_operation_interpreter, public evaluator_registry< CustomOperationType >
@@ -72,18 +115,23 @@ class generic_custom_operation_interpreter
       {
          try
          {
+            FC_TODO( "Add new serialization/should we hardfork out old serialization?" )
             fc::variant v = fc::json::from_string( outer_o.json );
 
             std::vector< CustomOperationType > custom_operations;
             if( v.is_array() && v.size() > 0 && v.get_array()[0].is_array() )
             {
                // it looks like a list
-               from_variant( v, custom_operations );
+               for( auto& o : v.get_array() )
+               {
+                  custom_operations.emplace_back();
+                  legacy_from_variant( o, custom_operations.back() );
+               }
             }
             else
             {
                custom_operations.emplace_back();
-               from_variant( v, custom_operations[0] );
+               legacy_from_variant( v, custom_operations[0] );
             }
 
             apply_operations( custom_operations, operation( outer_o ) );
