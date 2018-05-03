@@ -41,7 +41,6 @@ if(BUILD_SHARED_LIBRARIES)
             include/golos/chain/fork_database.hpp
             include/golos/chain/generic_custom_operation_interpreter.hpp
             include/golos/chain/global_property_object.hpp
-            include/golos/chain/history_object.hpp
             include/golos/chain/immutable_chain_parameters.hpp
             include/golos/chain/index.hpp
             include/golos/chain/node_property_object.hpp
@@ -86,7 +85,6 @@ else()
             include/golos/chain/fork_database.hpp
             include/golos/chain/generic_custom_operation_interpreter.hpp
             include/golos/chain/global_property_object.hpp
-            include/golos/chain/history_object.hpp
             include/golos/chain/immutable_chain_parameters.hpp
             include/golos/chain/index.hpp
             include/golos/chain/node_property_object.hpp

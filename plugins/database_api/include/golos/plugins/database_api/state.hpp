@@ -7,7 +7,6 @@
 #include <golos/plugins/database_api/api_objects/account_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/witness_api_object.hpp>
 #include "forward.hpp"
-#include <golos/plugins/database_api/applied_operation.hpp>
 
 namespace golos {
     namespace plugins {

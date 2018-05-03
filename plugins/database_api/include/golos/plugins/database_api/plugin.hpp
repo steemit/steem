@@ -9,7 +9,6 @@
 #include <fc/variant_object.hpp>
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/plugins/database_api/applied_operation.hpp>
 #include <golos/plugins/database_api/state.hpp>
 #include <golos/plugins/database_api/api_objects/feed_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
@@ -87,29 +86,6 @@ namespace golos { namespace plugins { namespace database_api {
             };
 
 
-            ///account_history_api
-            struct operation_api_object {
-                operation_api_object() {
-                }
-
-                operation_api_object(const golos::chain::operation_object &op_obj) : trx_id(op_obj.trx_id),
-                        block(op_obj.block), trx_in_block(op_obj.trx_in_block), virtual_op(op_obj.virtual_op),
-                        timestamp(op_obj.timestamp) {
-                    op = fc::raw::unpack<golos::protocol::operation>(op_obj.serialized_op);
-                }
-
-                golos::protocol::transaction_id_type trx_id;
-                uint32_t block = 0;
-                uint32_t trx_in_block = 0;
-                uint16_t op_in_trx = 0;
-                uint64_t virtual_op = 0;
-                fc::time_point_sec timestamp;
-                golos::protocol::operation op;
-            };
-
-
-            using get_account_history_return_type = std::map<uint32_t, applied_operation>;
-
             using chain_properties_17 = chain_properties;
             using price_17 = price;
 
@@ -119,7 +95,6 @@ namespace golos { namespace plugins { namespace database_api {
             DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
             DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_block>)
-            DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
             DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
             DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
             DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
@@ -152,12 +127,10 @@ namespace golos { namespace plugins { namespace database_api {
             DEFINE_API_ARGS(get_open_orders,                  msg_pack, std::vector<extended_limit_order>)
             DEFINE_API_ARGS(get_witness_count,                msg_pack, uint64_t)
             DEFINE_API_ARGS(get_transaction_hex,              msg_pack, std::string)
-            DEFINE_API_ARGS(get_transaction,                  msg_pack, annotated_signed_transaction)
             DEFINE_API_ARGS(get_required_signatures,          msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
             DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
             DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
-            DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
             DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
 
@@ -249,16 +222,7 @@ namespace golos { namespace plugins { namespace database_api {
                                      */
                                     (get_block)
 
-                                    /**
-                                     *  @brief Get sequence of operations included/generated within a particular block
-                                     *  @param block_num Height of the block whose generated virtual operations should be returned
-                                     *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
-                                     *  @return sequence of operations included/generated within the block
-                                     */
-                                    (get_ops_in_block)
-
-
-
+                                    
                                     /**
                                      * @brief Set callback which is triggered on each generated block
                                      * @param callback function which should be called
@@ -297,7 +261,6 @@ namespace golos { namespace plugins { namespace database_api {
                                     //////////////
 
                                     (get_accounts)
-
                                     /**
                                      * @brief Get a list of accounts by name
                                      * @param account_names Names of the accounts to retrieve
@@ -409,8 +372,6 @@ namespace golos { namespace plugins { namespace database_api {
                                     /// @brief Get a hexdump of the serialized binary form of a transaction
                                     (get_transaction_hex)
 
-                                    (get_transaction)
-
                                     /**
                                      *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
                                      *  and return the minimal subset of public keys that should add signatures to the transaction.
@@ -434,15 +395,6 @@ namespace golos { namespace plugins { namespace database_api {
                                      */
                                     (verify_account_authority)
 
-
-                                    /**
-                                     *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
-                                     *  returns operations in the range [from-limit, from]
-                                     *
-                                     *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
-                                     *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
-                                     */
-                                    (get_account_history)
 
                                     (get_database_info)
 
@@ -475,9 +427,6 @@ FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 FC_REFLECT((golos::plugins::database_api::get_tags_used_by_author), (tags))
 
 FC_REFLECT((golos::plugins::database_api::signed_block_api_object), (block_id)(signing_key)(transaction_ids))
-
-FC_REFLECT((golos::plugins::database_api::operation_api_object),
-           (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
 
 FC_REFLECT((golos::plugins::database_api::database_index_info), (name)(record_count))
 FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(reserved_size)(used_size)(index_list))

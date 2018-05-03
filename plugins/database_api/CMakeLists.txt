@@ -1,7 +1,6 @@
 set(CURRENT_TARGET database_api)
 
 list(APPEND ${CURRENT_TARGET}_HEADERS
-     include/golos/plugins/database_api/applied_operation.hpp
      include/golos/plugins/database_api/state.hpp
      include/golos/plugins/database_api/plugin.hpp
 
@@ -19,7 +18,6 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
      api.cpp
-     applied_operation.cpp
 )
 
 if(BUILD_SHARED_LIBRARIES)

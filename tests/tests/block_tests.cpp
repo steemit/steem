@@ -29,8 +29,8 @@
 
 #include <golos/chain/database.hpp>
 #include <golos/chain/steem_objects.hpp>
-#include <golos/chain/history_object.hpp>
 
+#include <golos/plugins/account_history/history_object.hpp>
 #include <golos/plugins/account_history/plugin.hpp>
 
 #include <graphene/utilities/tempdir.hpp>
@@ -718,7 +718,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             generate_blocks(2);
 
             string op_msg = "Testnet: Hardfork applied";
-            auto itr = db->get_index<account_history_index>().indices().get<by_id>().end();
+            auto itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
             BOOST_REQUIRE(db->has_hardfork(0));
@@ -731,7 +731,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             BOOST_TEST_MESSAGE("Testing hardfork is only applied once");
             generate_block();
 
-            itr = db->get_index<account_history_index>().indices().get<by_id>().end();
+            itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
             BOOST_REQUIRE(db->has_hardfork(0));

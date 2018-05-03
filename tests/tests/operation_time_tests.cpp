@@ -7,7 +7,7 @@
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/database.hpp>
 #include <golos/chain/hardfork.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 #include <golos/chain/steem_objects.hpp>
 
 #include <golos/plugins/debug_node/plugin.hpp>
