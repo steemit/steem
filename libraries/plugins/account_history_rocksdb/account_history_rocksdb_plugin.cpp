@@ -230,7 +230,7 @@ typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_
  *  by some unique part (ie ID).
  *
  */
-typedef std::pair< uint32_t, int64_t > block_op_id_pair;
+typedef std::pair< uint32_t, uint64_t > block_op_id_pair;
 typedef PrimitiveTypeComparatorImpl< block_op_id_pair > op_by_block_num_ComparatorImpl;
 
 /// Compares account_history_info::id and rocksdb_operation_object::id pair
@@ -491,7 +491,7 @@ private:
 
       // uint64_t location = ( (uint64_t) obj.trx_in_block << 32 ) | ( (uint64_t) obj.op_in_trx << 16 ) | ( obj.virtual_op );
 
-      int64_t encoded_id = obj.id;
+      uint64_t encoded_id = (uint64_t) obj.id;
       if( obj.virtual_op > 0 )
       {
          encoded_id |= VIRTUAL_OP_FLAG;
