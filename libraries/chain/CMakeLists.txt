@@ -27,6 +27,7 @@ if(BUILD_SHARED_LIBRARIES)
             #        transaction_object.cpp
             block_log.cpp
             proposal_object.cpp
+            proposal_evaluator.cpp
             database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
@@ -74,6 +75,7 @@ else()
             #        transaction_object.cpp
             block_log.cpp
             proposal_object.cpp
+            proposal_evaluator.cpp
             database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
