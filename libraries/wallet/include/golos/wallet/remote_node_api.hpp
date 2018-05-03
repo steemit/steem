@@ -81,6 +81,7 @@ struct remote_database_api {
     optional< database_api::witness_api_object > get_witness_by_account( account_name_type );
     vector< account_name_type > get_miner_queue();
     database_api::database_info get_database_info();
+    std::vector<proposal_api_object> get_proposed_transactions(account_name_type);
 };
 
 /**
@@ -224,6 +225,7 @@ FC_API( golos::wallet::remote_database_api,
         (get_witness_by_account)
         (get_miner_queue)
         (get_database_info)
+        (get_proposed_transactions)
 )
 
 /**

@@ -21,6 +21,17 @@ namespace golos { namespace wallet {
 
         typedef uint16_t transaction_handle_type;
 
+        struct approval_delta {
+            vector<string> active_approvals_to_add;
+            vector<string> active_approvals_to_remove;
+            vector<string> owner_approvals_to_add;
+            vector<string> owner_approvals_to_remove;
+            vector<string> posting_approvals_to_add;
+            vector<string> posting_approvals_to_remove;
+            vector<string> key_approvals_to_add;
+            vector<string> key_approvals_to_remove;
+        };
+
         struct memo_data {
 
             static optional<memo_data> from_string( string str ) {
@@ -113,6 +124,73 @@ namespace golos { namespace wallet {
              * @returns compile time info and client and dependencies versions
              */
             variant_object                      about() const;
+
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            transaction_handle_type begin_builder_transaction();
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void add_operation_to_builder_transaction(transaction_handle_type handle, const operation& op);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void replace_operation_in_builder_transaction(
+                transaction_handle_type handle, unsigned op_index, const operation& op
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            transaction preview_builder_transaction(transaction_handle_type handle);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            signed_transaction sign_builder_transaction(transaction_handle_type handle, bool broadcast = true);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            signed_transaction propose_builder_transaction(
+                transaction_handle_type handle,
+                std::string author,
+                std::string title,
+                std::string memo,
+                time_point_sec expiration = time_point::now() + fc::minutes(1),
+                time_point_sec review_period_time = time_point::min(),
+                bool broadcast = true
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void remove_builder_transaction(transaction_handle_type handle);
+
+            /**
+             * Approve or disapprove a proposal.
+             *
+             * @param author The author of the proposal
+             * @param title The proposal to modify.
+             * @param delta Members contain approvals to create or remove.  In JSON you can leave empty members undefined.
+             * @param broadcast true if you wish to broadcast the transaction
+             * @return the signed version of the transaction
+             */
+            signed_transaction approve_proposal(
+                const std::string& author,
+                const std::string& title,
+                const approval_delta& delta,
+                bool broadcast /* = false */
+            );
+
+            /**
+             * Returns proposals for the account
+             */
+             std::vector<database_api::proposal_api_object> get_proposed_transactions(std::string account);
 
             /** Returns the information about a block
              *
