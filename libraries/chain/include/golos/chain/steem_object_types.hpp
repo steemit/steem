@@ -70,7 +70,8 @@ namespace golos {
             block_stats_object_type,
             vesting_delegation_object_type,
             vesting_delegation_expiration_object_type,
-            account_metadata_object_type
+            account_metadata_object_type,
+            proposal_object_type
         };
 
         class dynamic_global_property_object;
@@ -81,6 +82,7 @@ namespace golos {
         class transaction_object;
         class block_summary_object;
         class witness_schedule_object;
+        class proposal_object;
         class comment_object;
         class comment_vote_object;
         class witness_vote_object;
@@ -100,6 +102,7 @@ namespace golos {
         class vesting_delegation_object;
         class vesting_delegation_expiration_object;
         class account_metadata_object;
+        class proposal_object;
 
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
@@ -128,6 +131,7 @@ namespace golos {
         typedef object_id<vesting_delegation_object> vesting_delegation_id_type;
         typedef object_id<vesting_delegation_expiration_object> vesting_delegation_expiration_id_type;
         typedef object_id<account_metadata_object> account_metadata_id_type;
+        typedef object_id<proposal_object> proposal_object_id_type;
 
         enum bandwidth_type {
             post,    ///< Rate limiting posting reward eligibility over time
@@ -233,6 +237,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (vesting_delegation_object_type)
                 (vesting_delegation_expiration_object_type)
                 (account_metadata_object_type)
+                (proposal_object_type)
 )
 
 FC_REFLECT_TYPENAME((golos::chain::shared_string))

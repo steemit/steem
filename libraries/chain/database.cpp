@@ -18,6 +18,7 @@
 #include <golos/chain/transaction_object.hpp>
 #include <golos/chain/shared_db_merkle.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/chain/proposal_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -2855,6 +2856,7 @@ namespace golos { namespace chain {
             add_core_index<vesting_delegation_index>(*this);
             add_core_index<vesting_delegation_expiration_index>(*this);
             add_core_index<account_metadata_index>(*this);
+            add_core_index<proposal_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3292,6 +3294,7 @@ namespace golos { namespace chain {
                 update_last_irreversible_block(skip);
 
                 create_block_summary(next_block);
+                clear_expired_proposals();
                 clear_expired_transactions();
                 clear_expired_orders();
                 clear_expired_delegations();
