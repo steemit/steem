@@ -211,22 +211,6 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
    return fc::ecc::private_key::regenerate( fc::sha256::hash( seed ) );
 }
 
-asset_symbol_type database_fixture::name_to_asset_symbol( const std::string& name, uint8_t decimal_places )
-{
-   // Deterministically turn a name into an asset symbol
-   // Example:
-   // alice -> sha256(alice) -> 2bd806c9... -> 2bd806c9 -> low 27 bits is 64489161 -> add check digit -> @@644891612
-
-   uint32_t h0 = (boost::endian::native_to_big( fc::sha256::hash( name )._hash[0] ) >> 32) & 0x7FFFFFF;
-   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
-   while( h0 > SMT_MAX_NAI )
-      h0 -= SMT_MAX_NAI;
-   while( h0 < SMT_MIN_NAI )
-      h0 += SMT_MIN_NAI;
-   uint32_t asset_num = (h0 << 5) | 0x10 | decimal_places;
-   return asset_symbol_type::from_asset_num( asset_num );
-}
-
 #ifdef STEEM_ENABLE_SMT
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
@@ -741,10 +725,21 @@ smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const unit
 }
 
 template< typename T >
-smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type amount )
+smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type amount, uint128_t nonce )
 {
    smt_cap_commitment ret;
-   ret.fillin_nonhidden_value( amount );
+   if( nonce == 0)
+      ret.fillin_nonhidden_value( amount );
+   else
+   {
+      smt_revealed_cap reveal;
+      reveal.amount = amount;
+      reveal.nonce = nonce;
+
+      ret.hash = fc::sha256::hash( reveal );
+      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy::validate
+      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
+   }
 
    return ret;
 }
@@ -786,7 +781,7 @@ template void t_smt_database_fixture< clean_database_fixture >::create_conflicti
 template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
 
 template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
-template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount );
+template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount, uint128_t nonce );
 template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,

@@ -24,6 +24,12 @@ wdir = Path()
 errors = 0
 
 
+def future_end_cb(future):
+  global errors
+  if future.result() == False:
+    errors += 1
+
+
 def main():
   if len( sys.argv ) < 4 or len( sys.argv ) > 6:
     print( "Usage: __name__ jobs url1 url2 [working_dir [accounts_file]]" )
@@ -78,17 +84,19 @@ def main():
   
   if jobs > 1:
     first = 0
-    last = length - 1
+    last = length
     accounts_per_job = length // jobs
 
     with ProcessPoolExecutor(max_workers=jobs) as executor:
       for i in range(jobs-1):
-        executor.submit(compare_results, url1, url2, accounts[first : first+accounts_per_job-1])
+        future = executor.submit(compare_results, url1, url2, accounts[first : first+accounts_per_job])
+        future.add_done_callback(future_end_cb)
         first = first + accounts_per_job
-      executor.submit(compare_results, url1, url2, accounts[first : last])
+      future = executor.submit(compare_results, url1, url2, accounts[first : last])
+      future.add_done_callback(future_end_cb)
   else:
-    compare_results(url1, url2, accounts)
-    
+    errors = (compare_results(url1, url2, accounts) == False)
+
   exit( errors )
 
   
@@ -112,11 +120,11 @@ def compare_results(url1, url2, accounts, max_tries=10, timeout=0.1):
       success = False; break
 
   print("Compare accounts: [{}..{}] {}".format(accounts[0], accounts[-1], "finished" if success else "break with error" ))
+  return success
 
 
 def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
   global wdir
-  global errors
   START = -1
   HARD_LIMIT = 10000
   LIMIT = HARD_LIMIT
@@ -140,20 +148,20 @@ def get_account_history(url1, url2, account, max_tries=10, timeout=0.1):
     
     if status1 == False or status2 == False or json1 != json2:
       print("Comparison failed for account: {}; start: {}; limit: {}".format(account, START, LIMIT))
-      errors += 1
 
-      filename = wdir / account
-      try:    file = filename.open("w")
-      except: print("Cannot open file:", filename); return False
+      filename1 = wdir / (account + "_ref")
+      filename2 = wdir / (account + "_tested")
+      try:    file1 = filename1.open("w")
+      except: print("Cannot open file:", filename1); return False
+      try:    file2 = filename2.open("w")
+      except: print("Cannot open file:", filename2); return False
       
-      file.write("Comparison failed:\n")
-      file.write("{} response:\n".format(url1))
-      json.dump(json1, file, indent=2, sort_keys=True)
-      file.write("\n")
-      file.write("{} response:\n".format(url2))
-      json.dump(json2, file, indent=2, sort_keys=True)
-      file.write("\n")
-      file.close()
+      file1.write("{} response:\n".format(url1))
+      json.dump(json1, file1, indent=2, sort_keys=True)
+      file1.close()
+      file2.write("{} response:\n".format(url2))
+      json.dump(json2, file2, indent=2, sort_keys=True)
+      file2.close()
       return False
 
     history = json1["result"]["history"]

@@ -138,12 +138,14 @@ struct smt_setup_evaluator_visitor
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-
-   const auto* _token = _db.find< smt_token_object, by_control_account >( o.control_account );
+#pragma message ("TODO: Adjust assertion below and add/modify negative tests appropriately.")
+   const auto* _token = _db.find< smt_token_object, by_symbol >( o.symbol );
    FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
 
    _db.modify(  *_token, [&]( smt_token_object& token )
    {
+#pragma message ("TODO: Add/modify test to check the token phase correctly set.")
+      token.phase = smt_phase::setup_completed;
       token.control_account = o.control_account;
       token.max_supply = o.max_supply;
 
@@ -187,7 +189,38 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   // TODO: Check whether some impostor tries to hijack SMT operation.
+
+   const smt_token_object& smt = get_controlled_smt( _db, o.control_account, o.symbol );
+   // Check whether it's not too early to reveal a cap.
+   FC_ASSERT( smt.phase >= smt_phase::setup_completed, "SMT setup operation must succeed before cap reveal operaton is allowed" );
+   // Check whether it's not too late to reveal a cap.
+   FC_ASSERT( smt.phase < smt_phase::launch_failed, "Cap reveal operaton is allowed only until SMT ICO is concluded" );
+
+   // As there's no information in cap reveal operation about which cap it reveals,
+   // we'll check both, unless they are already revealed.
+   FC_ASSERT( smt.steem_units_min_cap < 0 || smt.steem_units_hard_cap < 0, "Both min cap and max hard cap have already been revealed" );
+
+   if( smt.steem_units_min_cap < 0 )
+      try
+      {
+         o.cap.validate( smt.capped_generation_policy.min_steem_units_commitment );
+         _db.modify( smt, [&]( smt_token_object& smt_object )
+         {
+            smt_object.steem_units_min_cap = o.cap.amount;
+         });
+         return;
+      }
+      catch( const fc::exception& e )
+      {
+         if( smt.steem_units_hard_cap >= 0 )
+            throw;
+      }
+
+   o.cap.validate( smt.capped_generation_policy.hard_cap_steem_units_commitment );
+   _db.modify( smt, [&]( smt_token_object& smt_object )
+   {
+      smt_object.steem_units_hard_cap = o.cap.amount;
+   });
 }
 
 void smt_refund_evaluator::do_apply( const smt_refund_operation& o )

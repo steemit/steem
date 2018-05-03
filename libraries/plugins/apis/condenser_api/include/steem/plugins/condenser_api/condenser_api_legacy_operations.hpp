@@ -340,7 +340,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          new_owner_key( op.new_owner_key )
       {
          op.work.visit( convert_to_legacy_static_variant< legacy_pow2_work >( work ) );
-         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< true >() );
+         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< false >() );
          props.maximum_block_size = op.props.maximum_block_size;
          props.sbd_interest_rate = op.props.sbd_interest_rate;
       }
@@ -413,7 +413,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          block_signing_key( op.block_signing_key ),
          fee( legacy_asset::from_asset( op.fee ) )
       {
-         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< true >() );
+         props.account_creation_fee = legacy_asset::from_asset( op.props.account_creation_fee.to_asset< false >() );
          props.maximum_block_size = op.props.maximum_block_size;
          props.sbd_interest_rate = op.props.sbd_interest_rate;
       }

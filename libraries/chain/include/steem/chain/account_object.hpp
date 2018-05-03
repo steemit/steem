@@ -118,8 +118,6 @@ namespace steem { namespace chain {
                                     proxied_vsf_votes.end(),
                                     share_type() );
          }
-
-         asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
@@ -419,6 +417,7 @@ FC_REFLECT( steem::chain::account_object,
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)(post_bandwidth)
           )
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
 
 FC_REFLECT( steem::chain::account_authority_object,

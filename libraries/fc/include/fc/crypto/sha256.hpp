@@ -7,7 +7,7 @@
 namespace fc
 {
 
-class sha256 
+class sha256
 {
   public:
     sha256();
@@ -25,14 +25,14 @@ class sha256
     static sha256 hash( const sha256& );
 
     template<typename T>
-    static sha256 hash( const T& t ) 
-    { 
-      sha256::encoder e; 
+    static sha256 hash( const T& t )
+    {
+      sha256::encoder e;
       fc::raw::pack(e,t);
-      return e.result(); 
-    } 
+      return e.result();
+    }
 
-    class encoder 
+    class encoder
     {
       public:
         encoder();
@@ -65,15 +65,15 @@ class sha256
     friend bool   operator != ( const sha256& h1, const sha256& h2 );
     friend sha256 operator ^  ( const sha256& h1, const sha256& h2 );
     friend bool   operator >= ( const sha256& h1, const sha256& h2 );
-    friend bool   operator >  ( const sha256& h1, const sha256& h2 ); 
-    friend bool   operator <  ( const sha256& h1, const sha256& h2 ); 
+    friend bool   operator >  ( const sha256& h1, const sha256& h2 );
+    friend bool   operator <  ( const sha256& h1, const sha256& h2 );
 
     uint32_t pop_count()const
     {
        return (uint32_t)(__builtin_popcountll(_hash[0]) +
                          __builtin_popcountll(_hash[1]) +
                          __builtin_popcountll(_hash[2]) +
-                         __builtin_popcountll(_hash[3])); 
+                         __builtin_popcountll(_hash[3]));
     }
 
     /**
@@ -104,7 +104,7 @@ class sha256
   void to_variant( const sha256& bi, variant& v );
   void from_variant( const variant& v, sha256& bi );
 
-  uint64_t hash64(const char* buf, size_t len);    
+  uint64_t hash64(const char* buf, size_t len);
 
 } // fc
 namespace std
@@ -119,6 +119,7 @@ namespace std
     };
 }
 
+/*
 namespace boost
 {
     template<>
@@ -126,9 +127,11 @@ namespace boost
     {
        size_t operator()( const fc::sha256& s )const
        {
-           return  s._hash[3];//*((size_t*)&s);
+           return  s._hash[3];// *((size_t*)&s);
        }
     };
 }
+*/
+
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT_TYPENAME( fc::sha256 )
