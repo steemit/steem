@@ -1525,7 +1525,6 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
 
       if( !c.allow_curation_rewards )
       {
-         unclaimed_rewards = 0;
          max_rewards = 0;
       }
       else if( c.total_vote_weight > 0 )
