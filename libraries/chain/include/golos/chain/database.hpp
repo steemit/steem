@@ -39,6 +39,8 @@ namespace golos {
 
             ~database();
 
+            using chainbase::database::remove;
+
             bool is_producing() const {
                 return _is_producing;
             }
@@ -225,6 +227,8 @@ namespace golos {
             bool is_authorized_to_execute(const proposal_object&) const;
 
             void push_proposal(const proposal_object&);
+
+            void remove(const proposal_object&);
 
             void clear_expired_proposals();
 

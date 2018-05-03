@@ -45,6 +45,23 @@ namespace golos { namespace chain {
         remove(proposal);
     } FC_CAPTURE_AND_RETHROW((proposal.author)(proposal.title)) }
 
+    void database::remove(const proposal_object& p) {
+        flat_set<account_name_type> required_total;
+        required_total.insert(p.required_active_approvals.begin(), p.required_active_approvals.end());
+        required_total.insert(p.required_owner_approvals.begin(), p.required_owner_approvals.end());
+        required_total.insert(p.required_posting_approvals.begin(), p.required_posting_approvals.end());
+
+        auto& idx = get_index<required_approval_index>().indices().get<by_account>();
+        for (const auto& account: required_total) {
+            auto itr = idx.find(std::make_tuple(account, p.id));
+            if (idx.end() != itr) {
+                remove(*itr);
+            }
+        }
+
+        chainbase::database::remove(p);
+    }
+
     void database::clear_expired_proposals() {
         const auto& proposal_expiration_index = get_index<proposal_index>().indices().get<by_expiration>();
         const auto now = head_block_time();

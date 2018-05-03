@@ -80,6 +80,26 @@ namespace golos { namespace chain {
         std::vector<protocol::operation> operations() const;
     };
 
+    /**
+     *  @brief Tracks all of the proposal objects that requrie approval of an individual account.
+     *  @ingroup objects
+     *  @ingroup protocol
+     */
+    class required_approval_object: public object<required_approval_object_type, required_approval_object> {
+    public:
+        required_approval_object() = default;
+
+        template <typename Constructor, typename Allocator>
+        required_approval_object(Constructor&& c, allocator <Allocator>) {
+            c(*this);
+        }
+
+        id_type id;
+
+        account_name_type account;
+        proposal_object_id_type proposal;
+    };
+
     struct by_account;
     struct by_expiration;
 
@@ -103,6 +123,21 @@ namespace golos { namespace chain {
                 member<proposal_object, time_point_sec, &proposal_object::expiration_time>>>,
         allocator<proposal_object>>;
 
+    using required_approval_index = boost::multi_index_container<
+        required_approval_object,
+        indexed_by<
+            ordered_unique<
+                tag<by_id>,
+                member<required_approval_object, required_approval_object_id_type, &required_approval_object::id>>,
+            ordered_unique<
+                tag<by_account>,
+                composite_key<
+                    required_approval_object,
+                    member<required_approval_object, account_name_type, &required_approval_object::account>,
+                    member<required_approval_object, proposal_object_id_type, &required_approval_object::proposal>>>>,
+        allocator<required_approval_object>>;
+
 } } // golos::chain
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::proposal_object, golos::chain::proposal_index);
+CHAINBASE_SET_INDEX_TYPE(golos::chain::required_approval_object, golos::chain::required_approval_index);

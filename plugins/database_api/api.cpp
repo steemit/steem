@@ -115,6 +115,7 @@ namespace golos { namespace plugins { namespace database_api {
 
                 std::vector<account_name_type> get_miner_queue() const;
 
+                std::vector<proposal_api_object> get_proposed_transactions(const std::string& name) const;
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -999,6 +1000,31 @@ namespace golos { namespace plugins { namespace database_api {
                 }
 
                 return info;
+            }
+
+            std::vector<proposal_api_object> plugin::api_impl::get_proposed_transactions(const std::string& a) const {
+                std::vector<proposal_api_object> result;
+                result.reserve(10);
+
+                auto& idx = database().get_index<required_approval_index>().indices().get<by_account>();
+                auto& pidx = database().get_index<proposal_index>().indices().get<by_id>();
+                auto itr = idx.lower_bound(a);
+
+                for (; idx.end() != itr && itr->account == a; ++itr) {
+                    auto pitr = pidx.find(itr->proposal);
+                    if (pidx.end() != pitr) {
+                        result.emplace_back(*pitr);
+                    }
+                }
+                return result;
+            }
+
+            DEFINE_API(plugin, get_proposed_transactions) {
+                CHECK_ARG_SIZE(1);
+                auto account = args.args->at(0).as<string>();
+                return my->database().with_weak_read_lock([&]() {
+                    return my->get_proposed_transactions(account);
+                });
             }
 
             void plugin::plugin_initialize(const boost::program_options::variables_map &options) {

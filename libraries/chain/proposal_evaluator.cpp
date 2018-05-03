@@ -86,6 +86,13 @@ namespace golos { namespace chain {
             p.required_owner_approvals.insert(required_owner.begin(), required_owner.end());
             p.required_posting_approvals.insert(required_posting.begin(), required_posting.end());
         });
+
+        for (const auto& account: required_total) {
+            db().create<required_approval_object>([&](required_approval_object& o){
+                o.account = account;
+                o.proposal = proposal.id;
+            });
+        }
     } FC_CAPTURE_AND_RETHROW((o)) }
 
     void proposal_update_evaluator::do_apply(const proposal_update_operation& o) { try {
