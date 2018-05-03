@@ -24,23 +24,39 @@ using protocol::account_name_type;
 
 class database;
 
-struct get_operation_name
+std::string legacy_custom_name_from_type( const std::string& type_name );
+
+struct get_legacy_custom_operation_name
 {
    string& name;
-   get_operation_name( string& dv )
+   get_legacy_custom_operation_name( string& dv )
       : name( dv ) {}
 
    typedef void result_type;
    template< typename T > void operator()( const T& v )const
    {
-      name = fc::get_typename< T >::name();
+      name = legacy_custom_name_from_type( fc::get_typename< T >::name() );
+   }
+};
+
+struct get_custom_operation_name
+{
+   string& name;
+   get_custom_operation_name( string& n )
+      : name( n ) {}
+
+   typedef void result_type;
+
+   template< typename T > void operator()( const T& v )const
+   {
+      name = fc::trim_typename_namespace( fc::get_typename< T >::name() );
    }
 };
 
 template< typename CustomOperationType >
-void legacy_from_variant( const fc::variant& var, CustomOperationType& vo )
+void custom_op_from_variant( const fc::variant& var, CustomOperationType& vo )
 {
-   static std::map<string,int64_t> to_tag = []()
+   static std::map<string,int64_t> to_legacy_tag = []()
    {
       std::map<string,int64_t> name_map;
       for( int i = 0; i < CustomOperationType::count(); ++i )
@@ -48,23 +64,64 @@ void legacy_from_variant( const fc::variant& var, CustomOperationType& vo )
          CustomOperationType tmp;
          tmp.set_which(i);
          string n;
-         tmp.visit( get_operation_name(n) );
+         tmp.visit( get_legacy_custom_operation_name(n) );
          name_map[n] = i;
       }
       return name_map;
    }();
 
-   auto ar = var.get_array();
-   if( ar.size() < 2 ) return;
-   if( ar[0].is_uint64() )
-      vo.set_which( ar[0].as_uint64() );
-   else
+   static std::map< string, int64_t > to_tag = []()
    {
-      auto itr = to_tag.find(ar[0].as_string());
-      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
-      vo.set_which( itr->second );
+      std::map< string, int64_t > name_map;
+      for( int i = 0; i < CustomOperationType::count(); ++i )
+      {
+         CustomOperationType tmp;
+         tmp.set_which(i);
+         string n;
+         tmp.visit( get_custom_operation_name( n ) );
+         name_map[n] = i;
+      }
+      return name_map;
+   }();
+
+   if( var.is_array() ) // legacy serialization
+   {
+      auto ar = var.get_array();
+      if( ar.size() < 2 ) return;
+      if( ar[0].is_uint64() )
+         vo.set_which( ar[0].as_uint64() );
+      else
+      {
+         auto itr = to_legacy_tag.find(ar[0].as_string());
+         FC_ASSERT( itr != to_legacy_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
+         vo.set_which( itr->second );
+      }
+      vo.visit( fc::to_static_variant( ar[1] ) );
    }
-   vo.visit( fc::to_static_variant( ar[1] ) );
+   else // new serialization
+   {
+      FC_ASSERT( var.is_object(), "Input data have to treated as object." );
+      auto v_object = var.get_object();
+
+      FC_ASSERT( v_object.contains( "type" ), "Type field doesn't exist." );
+      FC_ASSERT( v_object.contains( "value" ), "Value field doesn't exist." );
+
+      int64_t which = -1;
+
+      if( v_object[ "type" ].is_integer() )
+      {
+         which = v_object[ "type" ].as_int64();
+      }
+      else
+      {
+         auto itr = to_tag.find( v_object[ "type" ].as_string() );
+         FC_ASSERT( itr != to_tag.end(), "Invalid object name: ${n}", ("n", v_object[ "type" ]) );
+         which = itr->second;
+      }
+
+      vo.set_which( which );
+      vo.visit( fc::to_static_variant( v_object[ "value" ] ) );
+   }
 }
 
 template< typename CustomOperationType >
@@ -115,7 +172,7 @@ class generic_custom_operation_interpreter
       {
          try
          {
-            FC_TODO( "Add new serialization/should we hardfork out old serialization?" )
+            FC_TODO( "Should we hardfork out old serialization?" )
             fc::variant v = fc::json::from_string( outer_o.json );
 
             std::vector< CustomOperationType > custom_operations;
@@ -125,13 +182,13 @@ class generic_custom_operation_interpreter
                for( auto& o : v.get_array() )
                {
                   custom_operations.emplace_back();
-                  legacy_from_variant( o, custom_operations.back() );
+                  custom_op_from_variant( o, custom_operations.back() );
                }
             }
             else
             {
                custom_operations.emplace_back();
-               legacy_from_variant( v, custom_operations[0] );
+               custom_op_from_variant( v, custom_operations[0] );
             }
 
             apply_operations( custom_operations, operation( outer_o ) );
