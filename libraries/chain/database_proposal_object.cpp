@@ -19,8 +19,6 @@ namespace golos { namespace chain {
     }
 
     bool database::is_authorized_to_execute(const proposal_object& proposal) const {
-        static const chain_id_type chain_id = STEEMIT_CHAIN_ID;
-
         auto get_active = [&](const string& name) {
             return authority(get<account_authority_object, by_account>(name).active);
         };
@@ -33,8 +31,7 @@ namespace golos { namespace chain {
             return authority(get<account_authority_object, by_account>(name).posting);
         };
 
-        return proposal.is_authorized_to_execute(
-            chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH);
+        return proposal.is_authorized_to_execute(get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH);
     }
 
     void database::push_proposal(const proposal_object& proposal) { try {

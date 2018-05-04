@@ -23,7 +23,6 @@ namespace golos { namespace chain {
     }
 
     bool proposal_object::is_authorized_to_execute(
-        const chain_id_type& chain_id,
         const protocol::authority_getter& get_active,
         const protocol::authority_getter& get_owner,
         const protocol::authority_getter& get_posting,
