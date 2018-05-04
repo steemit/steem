@@ -1004,18 +1004,40 @@ namespace golos { namespace plugins { namespace database_api {
 
             std::vector<proposal_api_object> plugin::api_impl::get_proposed_transactions(const std::string& a) const {
                 std::vector<proposal_api_object> result;
-                result.reserve(10);
+                fc::flat_set<proposal_object_id_type> id_set;
+                result.reserve(100);
+                id_set.reserve(100);
 
-                auto& idx = database().get_index<required_approval_index>().indices().get<by_account>();
-                auto& pidx = database().get_index<proposal_index>().indices().get<by_id>();
-                auto itr = idx.lower_bound(a);
+                // list of published proposals
+                {
+                    auto& idx = database().get_index<proposal_index>().indices().get<by_account>();
+                    auto itr = idx.lower_bound(a);
 
-                for (; idx.end() != itr && itr->account == a; ++itr) {
-                    auto pitr = pidx.find(itr->proposal);
-                    if (pidx.end() != pitr) {
-                        result.emplace_back(*pitr);
+                    for (; idx.end() != itr && itr->author == a; ++itr) {
+                        if (!id_set.count(itr->id)) {
+                            id_set.insert(itr->id);
+                            result.emplace_back(*itr);
+                        }
                     }
                 }
+
+                // list of requested proposals
+                {
+                    auto& idx = database().get_index<required_approval_index>().indices().get<by_account>();
+                    auto& pidx = database().get_index<proposal_index>().indices().get<by_id>();
+                    auto itr = idx.lower_bound(a);
+
+                    for (; idx.end() != itr && itr->account == a; ++itr) {
+                        if (!id_set.count(itr->proposal)) {
+                            id_set.insert(itr->proposal);
+                            auto pitr = pidx.find(itr->proposal);
+                            if (pidx.end() != pitr) {
+                                result.emplace_back(*pitr);
+                            }
+                        }
+                    }
+                }
+
                 return result;
             }
 
