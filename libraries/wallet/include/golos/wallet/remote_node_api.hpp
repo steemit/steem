@@ -3,6 +3,7 @@
 #include <golos/plugins/database_api/plugin.hpp>
 #include <golos/plugins/database_api/forward.hpp>
 #include <golos/plugins/database_api/state.hpp>
+#include <golos/plugins/account_history/applied_operation.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
@@ -16,6 +17,7 @@
 #include <golos/plugins/follow/follow_api_object.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/api/account_api_object.hpp>
+
 
 namespace golos { namespace wallet {
 
@@ -43,7 +45,7 @@ struct remote_database_api {
     vector< account_name_type > get_active_witnesses();
     optional< database_api::signed_block > get_block( uint32_t );
     optional< block_header > get_block_header( uint32_t );
-    vector< operation_api_object > get_ops_in_block( uint32_t, bool only_virtual = true );
+    vector< golos::plugins::account_history::applied_operation > get_ops_in_block( uint32_t, bool only_virtual = true );
     fc::variant_object get_config();
     database_api::dynamic_global_property_object get_dynamic_global_properties();
     chain_properties get_chain_properties();
@@ -76,10 +78,11 @@ struct remote_database_api {
     bool verify_authority( signed_transaction );
     bool verify_account_authority( string, flat_set< public_key_type > );
     vector< golos::api::account_api_object > get_accounts( vector< account_name_type > );
-    map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
+    map<uint32_t, golos::plugins::account_history::applied_operation> get_account_history( account_name_type, uint64_t, uint32_t );
     optional< database_api::witness_api_object > get_witness_by_account( account_name_type );
     vector< account_name_type > get_miner_queue();
     database_api::database_info get_database_info();
+    std::vector<proposal_api_object> get_proposed_transactions(account_name_type, uint32_t, uint32_t);
 };
 
 /**
@@ -223,6 +226,7 @@ FC_API( golos::wallet::remote_database_api,
         (get_witness_by_account)
         (get_miner_queue)
         (get_database_info)
+        (get_proposed_transactions)
 )
 
 /**

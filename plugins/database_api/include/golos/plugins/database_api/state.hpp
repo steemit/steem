@@ -9,8 +9,6 @@
 #include <golos/plugins/database_api/applied_operation.hpp>
 #include <golos/api/extended_account.hpp>
 
-
-
 namespace golos {
     namespace plugins {
         namespace database_api {

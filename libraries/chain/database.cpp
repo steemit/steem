@@ -11,7 +11,6 @@
 #include <golos/chain/database_exceptions.hpp>
 #include <golos/chain/db_with.hpp>
 #include <golos/chain/evaluator_registry.hpp>
-#include <golos/chain/history_object.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/chain/snapshot_state.hpp>
 #include <golos/chain/steem_evaluator.hpp>
@@ -19,6 +18,7 @@
 #include <golos/chain/transaction_object.hpp>
 #include <golos/chain/shared_db_merkle.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/chain/proposal_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -2813,6 +2813,9 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
             _my->_evaluator_registry.register_evaluator<account_create_with_delegation_evaluator>();
             _my->_evaluator_registry.register_evaluator<delegate_vesting_shares_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_create_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_update_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_delete_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -2845,8 +2848,6 @@ namespace golos { namespace chain {
             add_core_index<feed_history_index>(*this);
             add_core_index<convert_request_index>(*this);
             add_core_index<liquidity_reward_balance_index>(*this);
-            add_core_index<operation_index>(*this);
-            add_core_index<account_history_index>(*this);
             add_core_index<hardfork_property_index>(*this);
             add_core_index<withdraw_vesting_route_index>(*this);
             add_core_index<owner_authority_history_index>(*this);
@@ -2858,6 +2859,8 @@ namespace golos { namespace chain {
             add_core_index<vesting_delegation_index>(*this);
             add_core_index<vesting_delegation_expiration_index>(*this);
             add_core_index<account_metadata_index>(*this);
+            add_core_index<proposal_index>(*this);
+            add_core_index<required_approval_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3295,6 +3298,7 @@ namespace golos { namespace chain {
                 update_last_irreversible_block(skip);
 
                 create_block_summary(next_block);
+                clear_expired_proposals();
                 clear_expired_transactions();
                 clear_expired_orders();
                 clear_expired_delegations();

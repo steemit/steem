@@ -74,8 +74,6 @@ namespace golos { namespace plugins { namespace database_api {
 
                 optional<signed_block> get_block(uint32_t block_num) const;
 
-                std::vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual) const;
-
                 // Globals
                 fc::variant_object get_config() const;
 
@@ -99,8 +97,6 @@ namespace golos { namespace plugins { namespace database_api {
 
                 uint64_t get_witness_count() const;
 
-                // Balances
-
                 // Authority / validation
                 std::string get_transaction_hex(const signed_transaction &trx) const;
 
@@ -114,12 +110,12 @@ namespace golos { namespace plugins { namespace database_api {
 
                 std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
 
-                std::map<uint32_t, applied_operation> get_account_history(std::string account, uint64_t from, uint32_t limit) const;
 
                 std::vector<witness_api_object> get_witnesses_by_vote(std::string from, uint32_t limit) const;
 
                 std::vector<account_name_type> get_miner_queue() const;
 
+                std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -268,30 +264,6 @@ namespace golos { namespace plugins { namespace database_api {
                 return database().fetch_block_by_number(block_num);
             }
 
-            DEFINE_API(plugin, get_ops_in_block) {
-                CHECK_ARG_SIZE(2)
-                auto block_num = args.args->at(0).as<uint32_t>();
-                auto only_virtual = args.args->at(1).as<bool>();
-                return my->database().with_weak_read_lock([&]() {
-                    return my->get_ops_in_block(block_num, only_virtual);
-                });
-            }
-
-            std::vector<applied_operation> plugin::api_impl::get_ops_in_block(uint32_t block_num,  bool only_virtual) const {
-                const auto &idx = database().get_index<operation_index>().indices().get<by_location>();
-                auto itr = idx.lower_bound(block_num);
-                std::vector<applied_operation> result;
-                applied_operation temp;
-                while (itr != idx.end() && itr->block == block_num) {
-                    temp = *itr;
-                    if (!only_virtual || is_virtual_operation(temp.op)) {
-                        result.push_back(temp);
-                    }
-                    ++itr;
-                }
-                return result;
-            }
-
             DEFINE_API(plugin, set_block_applied_callback) {
                 CHECK_ARG_SIZE(1)
 
@@ -430,7 +402,6 @@ namespace golos { namespace plugins { namespace database_api {
 
                 return results;
             }
-
 
             DEFINE_API(plugin, lookup_account_names) {
                 CHECK_ARG_SIZE(1)
@@ -895,42 +866,6 @@ namespace golos { namespace plugins { namespace database_api {
 
 
 
-            std::map<uint32_t, applied_operation> plugin::api_impl::get_account_history(
-                std::string account,
-                uint64_t from,
-                uint32_t limit
-            ) const {
-                FC_ASSERT(limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l", limit));
-                FC_ASSERT(from >= limit, "From must be greater than limit");
-                //   idump((account)(from)(limit));
-                const auto &idx = database().get_index<account_history_index>().indices().get<by_account>();
-                auto itr = idx.lower_bound(boost::make_tuple(account, from));
-                //   if( itr != idx.end() ) idump((*itr));
-                auto end = idx.upper_bound(boost::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
-                //   if( end != idx.end() ) idump((*end));
-
-                std::map<uint32_t, applied_operation> result;
-                while (itr != end) {
-                    result[itr->sequence] = database().get(itr->op);
-                    ++itr;
-                }
-                return result;
-            }
-
-
-            DEFINE_API(plugin, get_account_history) {
-                CHECK_ARG_SIZE(3)
-                auto account = args.args->at(0).as<std::string>();
-                auto from = args.args->at(1).as<uint64_t>();
-                auto limit = args.args->at(2).as<uint32_t>();
-
-                return my->database().with_weak_read_lock([&]() {
-                    return my->get_account_history(account, from, limit);
-                });
-            }
-
-
-
             std::vector<account_name_type> plugin::api_impl::get_miner_queue() const {
                 std::vector<account_name_type> result;
                 const auto &pow_idx = database().get_index<witness_index>().indices().get<by_pow>();
@@ -1045,25 +980,6 @@ namespace golos { namespace plugins { namespace database_api {
                 });
             }
 
-            DEFINE_API(plugin, get_transaction) {
-                CHECK_ARG_SIZE(1)
-                auto id = args.args->at(0).as<transaction_id_type>();
-                return my->database().with_weak_read_lock([&]() {
-                    const auto &idx = my->database().get_index<operation_index>().indices().get<by_transaction_id>();
-                    auto itr = idx.lower_bound(id);
-                    if (itr != idx.end() && itr->trx_id == id) {
-                        auto blk = my->database().fetch_block_by_number(itr->block);
-                        FC_ASSERT(blk.valid());
-                        FC_ASSERT(blk->transactions.size() > itr->trx_in_block);
-                        annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
-                        result.block_num = itr->block;
-                        result.transaction_num = itr->trx_in_block;
-                        return result;
-                    }
-                    FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
-                });
-            }
-
             DEFINE_API(plugin, get_database_info) {
                 CHECK_ARG_SIZE(0);
 
@@ -1084,6 +1000,58 @@ namespace golos { namespace plugins { namespace database_api {
                 }
 
                 return info;
+            }
+
+            std::vector<proposal_api_object> plugin::api_impl::get_proposed_transactions(
+                const std::string& a, uint32_t from, uint32_t limit
+            ) const {
+                std::vector<proposal_api_object> result;
+                std::set<proposal_object_id_type> id_set;
+                result.reserve(limit);
+
+                // list of published proposals
+                {
+                    auto& idx = database().get_index<proposal_index>().indices().get<by_account>();
+                    auto itr = idx.lower_bound(a);
+
+                    for (; idx.end() != itr && itr->author == a && result.size() < limit; ++itr) {
+                        id_set.insert(itr->id);
+                        if (id_set.size() >= from) {
+                            result.emplace_back(*itr);
+                        }
+                    }
+                }
+
+                // list of requested proposals
+                if (result.size() < limit) {
+                    auto& idx = database().get_index<required_approval_index>().indices().get<by_account>();
+                    auto& pidx = database().get_index<proposal_index>().indices().get<by_id>();
+                    auto itr = idx.lower_bound(a);
+
+                    for (; idx.end() != itr && itr->account == a && result.size() < limit; ++itr) {
+                        if (!id_set.count(itr->proposal)) {
+                            id_set.insert(itr->proposal);
+                            auto pitr = pidx.find(itr->proposal);
+                            if (pidx.end() != pitr && id_set.size() >= from) {
+                                result.emplace_back(*pitr);
+                            }
+                        }
+                    }
+                }
+
+                return result;
+            }
+
+            DEFINE_API(plugin, get_proposed_transactions) {
+                CHECK_ARG_SIZE(3);
+                auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
+                FC_ASSERT(limit <= 100);
+
+                return my->database().with_weak_read_lock([&]() {
+                    return my->get_proposed_transactions(account, from, limit);
+                });
             }
 
             void plugin::plugin_initialize(const boost::program_options::variables_map &options) {

@@ -21,9 +21,6 @@ std::string wstring_to_utf8(const std::wstring &str) {
 
 #endif
 
-#define ASSERT_REQ_HF(HF, FEATURE) \
-    FC_ASSERT(_db.has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
-
 
 namespace golos { namespace chain {
         using fc::uint128_t;
