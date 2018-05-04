@@ -2937,6 +2937,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_MINER_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_MINER_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_MINER_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -2946,6 +2951,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_NULL_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_NULL_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_NULL_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -2955,6 +2965,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_TEMP_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_TEMP_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_TEMP_ACCOUNT;
                     auth.owner.weight_threshold = 0;
@@ -2962,25 +2977,26 @@ namespace golos { namespace chain {
                 });
 
                 for (int i = 0; i < STEEMIT_NUM_INIT_MINERS; ++i) {
+                    const auto& name = STEEMIT_INIT_MINER_NAME + (i ? fc::to_string(i) : std::string());
                     create<account_object>([&](account_object &a) {
-                        a.name = STEEMIT_INIT_MINER_NAME +
-                                 (i ? fc::to_string(i) : std::string());
+                        a.name = name;
                         a.memo_key = init_public_key;
                         a.balance = asset(i ? 0 : init_supply, STEEM_SYMBOL);
                     });
-
+#ifndef IS_LOW_MEM
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = name;
+                    });
+#endif
                     create<account_authority_object>([&](account_authority_object &auth) {
-                        auth.account = STEEMIT_INIT_MINER_NAME +
-                                       (i ? fc::to_string(i) : std::string());
+                        auth.account = name;
                         auth.owner.add_authority(init_public_key, 1);
                         auth.owner.weight_threshold = 1;
                         auth.active = auth.owner;
                         auth.posting = auth.active;
                     });
-
                     create<witness_object>([&](witness_object &w) {
-                        w.owner = STEEMIT_INIT_MINER_NAME +
-                                  (i ? fc::to_string(i) : std::string());
+                        w.owner = name;
                         w.signing_key = init_public_key;
                         w.schedule = witness_object::miner;
                     });

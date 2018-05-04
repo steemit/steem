@@ -1655,12 +1655,12 @@ namespace golos { namespace chain {
                 }
             }
 
-            const auto &accounts_by_name = db.get_index<account_index>().indices().get<by_name>();
-
-            auto itr = accounts_by_name.find(o.get_worker_account());
+            const auto& name = o.get_worker_account();
+            const auto& accounts_by_name = db.get_index<account_index>().indices().get<by_name>();
+            auto itr = accounts_by_name.find(name);
             if (itr == accounts_by_name.end()) {
                 db.create<account_object>([&](account_object &acc) {
-                    acc.name = o.get_worker_account();
+                    acc.name = name;
                     acc.memo_key = o.work.worker;
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
@@ -1671,17 +1671,18 @@ namespace golos { namespace chain {
                         acc.recovery_account = "";
                     } /// highest voted witness at time of recovery
                 });
+                store_account_json_metadata(db, name, "");
 
                 db.create<account_authority_object>([&](account_authority_object &auth) {
-                    auth.account = o.get_worker_account();
+                    auth.account = name;
                     auth.owner = authority(1, o.work.worker, 1);
                     auth.active = auth.owner;
                     auth.posting = auth.owner;
                 });
             }
 
-            const auto &worker_account = db.get_account(o.get_worker_account()); // verify it exists
-            const auto &worker_auth = db.get<account_authority_object, by_account>(o.get_worker_account());
+            const auto &worker_account = db.get_account(name); // verify it exists
+            const auto &worker_auth = db.get<account_authority_object, by_account>(name);
             FC_ASSERT(worker_auth.active.num_auths() ==
                       1, "Miners can only have one key authority. ${a}", ("a", worker_auth.active));
             FC_ASSERT(worker_auth.active.key_auths.size() ==
@@ -1716,7 +1717,7 @@ namespace golos { namespace chain {
                 });
             } else {
                 db.create<witness_object>([&](witness_object &w) {
-                    w.owner = o.get_worker_account();
+                    w.owner = name;
                     w.props = o.props;
                     w.signing_key = o.work.worker;
                     w.pow_worker = dgp.total_pow;
@@ -1790,6 +1791,7 @@ namespace golos { namespace chain {
                     acc.last_vote_time = dgp.time;
                     acc.recovery_account = ""; /// highest voted witness at time of recovery
                 });
+                store_account_json_metadata(db, worker_account, "");
 
                 db.create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = worker_account;
