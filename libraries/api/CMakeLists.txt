@@ -1,8 +1,8 @@
 set(CURRENT_TARGET api)
 
 list(APPEND CURRENT_TARGET_HEADERS
-    include/golos/api/objects/extended_account.hpp
-    include/golos/api/objects/account_api_object.hpp
+    include/golos/api/extended_account.hpp
+    include/golos/api/account_api_object.hpp
 
 )
 

@@ -7,6 +7,20 @@
 namespace golos {
     namespace plugins {
         namespace database_api {
+            
+            using protocol::asset;
+            using protocol::share_type;
+            using golos::chain::account_bandwidth_object;
+            using golos::chain::by_account;
+            using golos::chain::account_object;
+            using protocol::authority;
+            using protocol::account_name_type;
+            using protocol::public_key_type;
+            using golos::chain::by_account_bandwidth_type;
+            using golos::chain::account_authority_object;
+            using golos::chain::account_metadata_object;
+            using golos::chain::bandwidth_type;
+
             using golos::protocol::asset;
             using golos::protocol::price;
             using golos::protocol::account_name_type;

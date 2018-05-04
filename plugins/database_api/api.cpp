@@ -82,7 +82,7 @@ namespace golos { namespace plugins { namespace database_api {
                 dynamic_global_property_api_object get_dynamic_global_properties() const;
 
                 // Accounts
-                std::vector<extended_account> get_accounts(std::vector<std::string> names) const;
+                std::vector<account_api_object> get_accounts(std::vector<std::string> names) const;
 
                 std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
 
@@ -408,15 +408,15 @@ namespace golos { namespace plugins { namespace database_api {
                 });
             }
 
-            std::vector<extended_account> plugin::api_impl::get_accounts(std::vector<std::string> names) const {
+            std::vector<account_api_object> plugin::api_impl::get_accounts(std::vector<std::string> names) const {
                 const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
                 const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
-                std::vector<extended_account> results;
+                std::vector<account_api_object> results;
 
                 for (auto name: names) {
                     auto itr = idx.find(name);
                     if (itr != idx.end()) {
-                        results.push_back(extended_account(*itr, _db));
+                        results.push_back(account_api_object(*itr, _db));
                         auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
                         while (vitr != vidx.end() && vitr->account == itr->id) {
                             results.back().witness_votes.insert(_db.get(vitr->witness).owner);

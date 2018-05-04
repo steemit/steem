@@ -6,7 +6,7 @@
 #include <golos/protocol/types.hpp>
 #include <golos/chain/steem_object_types.hpp>
 
-namespace golos { namespace api { namespace objects {
+namespace golos { namespace api {
 
     using protocol::asset;
     using protocol::share_type;
@@ -174,6 +174,7 @@ namespace golos { namespace api { namespace objects {
 
         share_type new_average_bandwidth;
         share_type new_average_market_bandwidth;
+        set<string> witness_votes;
     };
 } } // golos::api
 
@@ -189,5 +190,7 @@ FC_REFLECT((golos::api::account_api_object),
                    vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)(
                    curation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)(average_bandwidth)(
                    lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(last_market_bandwidth_update)(
-                   last_post)(last_root_post)(post_bandwidth)(new_average_bandwidth)(new_average_market_bandwidth))
+                   last_post)(last_root_post)(post_bandwidth)(new_average_bandwidth)(new_average_market_bandwidth)(
+                   witness_votes)
+    )
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP
