@@ -514,10 +514,6 @@ namespace golos { namespace plugins { namespace social_network {
             return false;
         }
 
-        if (query.start_author && !query.is_good_author(*query.start_author)) {
-            return false;
-        }
-
         return true;
     }
 
@@ -541,7 +537,6 @@ namespace golos { namespace plugins { namespace social_network {
         std::set<comment_object::id_type> id_set;
         auto aitr = query.select_authors.begin();
         if (query.has_start_comment()) {
-            aitr = query.select_authors.lower_bound(*query.start_author);
             can_add = false;
         }
 
@@ -643,7 +638,9 @@ namespace golos { namespace plugins { namespace social_network {
         auto& db = database();
 
         db.with_weak_read_lock([&]() {
-            if (!filter_query(query)) {
+            if (!filter_query(query) ||
+                (query.has_start_comment() && !query.is_good_author(*query.start_author))
+            ) {
                 return false;
             }
 
