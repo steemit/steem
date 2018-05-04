@@ -463,8 +463,10 @@ namespace golos { namespace wallet {
                     return sign_transaction(tx, broadcast);
                 }
 
-                std::vector<database_api::proposal_api_object> get_proposed_transactions(std::string account) {
-                    return _remote_database_api->get_proposed_transactions(account);
+                std::vector<database_api::proposal_api_object> get_proposed_transactions(
+                    std::string account, uint32_t from, uint32_t limit
+                ) {
+                    return _remote_database_api->get_proposed_transactions(account, from, limit);
                 }
 
                 database_api::account_api_object get_account( string account_name ) const {
@@ -1269,8 +1271,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->approve_proposal(author, title, delta, broadcast);
         }
 
-        std::vector<database_api::proposal_api_object> wallet_api::get_proposed_transactions(std::string account) {
-            return my->get_proposed_transactions(account);
+        std::vector<database_api::proposal_api_object> wallet_api::get_proposed_transactions(
+            std::string account, uint32_t from, uint32_t limit
+        ) {
+            return my->get_proposed_transactions(account, from, limit);
         }
 
         void wallet_api::lock() {

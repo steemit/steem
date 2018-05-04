@@ -115,7 +115,7 @@ namespace golos { namespace plugins { namespace database_api {
 
                 std::vector<account_name_type> get_miner_queue() const;
 
-                std::vector<proposal_api_object> get_proposed_transactions(const std::string& name) const;
+                std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
                 template<typename T>
                 void subscribe_to_item(const T &i) const {
@@ -1002,36 +1002,37 @@ namespace golos { namespace plugins { namespace database_api {
                 return info;
             }
 
-            std::vector<proposal_api_object> plugin::api_impl::get_proposed_transactions(const std::string& a) const {
+            std::vector<proposal_api_object> plugin::api_impl::get_proposed_transactions(
+                const std::string& a, uint32_t from, uint32_t limit
+            ) const {
                 std::vector<proposal_api_object> result;
-                fc::flat_set<proposal_object_id_type> id_set;
-                result.reserve(100);
-                id_set.reserve(100);
+                std::set<proposal_object_id_type> id_set;
+                result.reserve(limit);
 
                 // list of published proposals
                 {
                     auto& idx = database().get_index<proposal_index>().indices().get<by_account>();
                     auto itr = idx.lower_bound(a);
 
-                    for (; idx.end() != itr && itr->author == a; ++itr) {
-                        if (!id_set.count(itr->id)) {
-                            id_set.insert(itr->id);
+                    for (; idx.end() != itr && itr->author == a && result.size() < limit; ++itr) {
+                        id_set.insert(itr->id);
+                        if (id_set.size() >= from) {
                             result.emplace_back(*itr);
                         }
                     }
                 }
 
                 // list of requested proposals
-                {
+                if (result.size() < limit) {
                     auto& idx = database().get_index<required_approval_index>().indices().get<by_account>();
                     auto& pidx = database().get_index<proposal_index>().indices().get<by_id>();
                     auto itr = idx.lower_bound(a);
 
-                    for (; idx.end() != itr && itr->account == a; ++itr) {
+                    for (; idx.end() != itr && itr->account == a && result.size() < limit; ++itr) {
                         if (!id_set.count(itr->proposal)) {
                             id_set.insert(itr->proposal);
                             auto pitr = pidx.find(itr->proposal);
-                            if (pidx.end() != pitr) {
+                            if (pidx.end() != pitr && id_set.size() >= from) {
                                 result.emplace_back(*pitr);
                             }
                         }
@@ -1042,10 +1043,14 @@ namespace golos { namespace plugins { namespace database_api {
             }
 
             DEFINE_API(plugin, get_proposed_transactions) {
-                CHECK_ARG_SIZE(1);
+                CHECK_ARG_SIZE(3);
                 auto account = args.args->at(0).as<string>();
+                auto from = args.args->at(1).as<uint32_t>();
+                auto limit = args.args->at(2).as<uint32_t>();
+                FC_ASSERT(limit <= 100);
+
                 return my->database().with_weak_read_lock([&]() {
-                    return my->get_proposed_transactions(account);
+                    return my->get_proposed_transactions(account, from, limit);
                 });
             }
 

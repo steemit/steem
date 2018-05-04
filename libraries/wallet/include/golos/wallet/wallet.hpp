@@ -190,7 +190,9 @@ namespace golos { namespace wallet {
             /**
              * Returns proposals for the account
              */
-             std::vector<database_api::proposal_api_object> get_proposed_transactions(std::string account);
+             std::vector<database_api::proposal_api_object> get_proposed_transactions(
+                 std::string account, uint32_t from, uint32_t limit
+            );
 
             /** Returns the information about a block
              *
