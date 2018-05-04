@@ -15,7 +15,7 @@
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
-
+#include <golos/api/account_api_object.hpp>
 
 namespace golos { namespace wallet {
 
@@ -52,7 +52,7 @@ struct remote_database_api {
     database_api::witness_schedule_api_object get_witness_schedule();
     hardfork_version get_hardfork_version();
     database_api::scheduled_hardfork get_next_scheduled_hardfork();
-    vector< optional< database_api::account_api_object > > lookup_account_names( vector< account_name_type > );
+    vector< optional< golos::api::account_api_object > > lookup_account_names( vector< account_name_type > );
     vector< account_name_type > lookup_accounts( account_name_type, uint32_t );
 
     uint64_t get_account_count();
@@ -75,7 +75,7 @@ struct remote_database_api {
     set< public_key_type > get_potential_signatures( signed_transaction );
     bool verify_authority( signed_transaction );
     bool verify_account_authority( string, flat_set< public_key_type > );
-    vector< database_api::extended_account > get_accounts( vector< account_name_type > );
+    vector< golos::api::account_api_object > get_accounts( vector< account_name_type > );
     map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
     optional< database_api::witness_api_object > get_witness_by_account( account_name_type );
     vector< account_name_type > get_miner_queue();
