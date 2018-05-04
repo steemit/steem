@@ -6,7 +6,6 @@
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/plugins/database_api/api_objects/witness_api_object.hpp>
 #include "forward.hpp"
-#include <golos/plugins/database_api/applied_operation.hpp>
 #include <golos/api/extended_account.hpp>
 
 namespace golos {
