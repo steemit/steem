@@ -592,9 +592,8 @@ namespace golos { namespace plugins { namespace social_network {
         Exit&& exit,
         Order&& order
     ) const {
-        const uint32_t limit = result.size() + query.limit;
         auto& db = database();
-        for (; itr != etr && result.size() < limit && !exit(*itr); ++itr) {
+        for (; itr != etr && !exit(*itr); ++itr) {
             if (id_set.count(itr->comment)) {
                 continue;
             }
