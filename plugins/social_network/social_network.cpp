@@ -1075,10 +1075,10 @@ namespace golos { namespace plugins { namespace social_network {
                 uint32_t count = 0;
                 const auto& didx = db.get_index<comment_index>().indices().get<by_author_last_update>();
 
-                auto itr = didx.lower_bound(std::make_tuple(author, time_point_sec::maximum()));
+                auto itr = didx.lower_bound(std::make_tuple(author, before_date));
                 if (start_permlink.size()) {
                     const auto& comment = db.get_comment(author, start_permlink);
-                    if (comment.created < before_date) {
+                    if (comment.last_update < before_date) {
                         itr = didx.iterator_to(comment);
                     }
                 }
