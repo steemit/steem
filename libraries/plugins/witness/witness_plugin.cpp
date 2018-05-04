@@ -64,8 +64,8 @@ namespace detail {
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
       block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
-      bool _production_enabled = false;
 
+      bool _production_enabled = false;
       uint32_t _required_witness_participation = 33 * STEEM_1_PERCENT;
       uint32_t _production_skip_flags = chain::database::skip_nothing;
 
