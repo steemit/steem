@@ -141,8 +141,9 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
          bfs::path old_dir = bfs::current_path() / "witness_node_data_dir";
          if( bfs::exists( old_dir ) )
          {
-            std::cerr << "The default data directory is now " << data_dir << " instead of " << old_dir << ".\n";
-            std::cerr << "Please move you data directory.\n";
+            std::cerr << "The default data directory is now '" << data_dir.string() << "' instead of '" << old_dir.string() << "'.\n";
+            std::cerr << "Please move you data directory to '" << data_dir.string() << "' or specificy '--data-dir=" << old_dir.string() <<
+               "' to continue using the current data directory.\n";
             exit(1);
          }
       }
