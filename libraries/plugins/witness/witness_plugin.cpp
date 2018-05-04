@@ -64,14 +64,7 @@ namespace detail {
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
       block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
-
-      bool is_production_enabled() const { return _production_enabled; }
-
-      void enable_production()
-      {
-         _production_enabled = true;
-         appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
-      }
+      bool _production_enabled = false;
 
       uint32_t _required_witness_participation = 33 * STEEM_1_PERCENT;
       uint32_t _production_skip_flags = chain::database::skip_nothing;
@@ -85,9 +78,6 @@ namespace detail {
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
-
-   private:
-      bool _production_enabled = false;
    };
 
    struct comment_options_extension_visitor
@@ -480,10 +470,10 @@ namespace detail {
       fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
       // If the next block production opportunity is in the present or future, we're synced.
-      if( !is_production_enabled() )
+      if( !_production_enabled )
       {
          if( _db.get_slot_time(1) >= now )
-            enable_production();
+            _production_enabled = true;
          else
             return block_production_condition::not_synced;
       }
@@ -587,8 +577,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       }
    }
 
-   if ( options.at( "enable-stale-production" ).as< bool >())
-      my->enable_production();
+   my->_production_enabled = options.at( "enable-stale-production" ).as< bool >();
 
    if( options.count( "required-participation" ) )
    {
@@ -617,7 +606,8 @@ void witness_plugin::plugin_startup()
    if( !my->_witnesses.empty() )
    {
       ilog( "Launching block production for ${n} witnesses.", ("n", my->_witnesses.size()) );
-      if( my->is_production_enabled() )
+      appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
+      if( my->_production_enabled )
       {
          if( d.head_block_num() == 0 )
             new_chain_banner( d );
