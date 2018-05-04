@@ -136,6 +136,16 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
          app_dir << '.' << app_name;
 
          data_dir = data_dir / app_dir.str();
+
+         #pragma message( "TODO: Remove this check for Steem release 0.20.1+" )
+         bfs::path old_dir = bfs::current_path() / "witness_node_data_dir";
+         if( bfs::exists( old_dir ) )
+         {
+            std::cerr << "The default data directory is now '" << data_dir.string() << "' instead of '" << old_dir.string() << "'.\n";
+            std::cerr << "Please move your data directory to '" << data_dir.string() << "' or specify '--data-dir=" << old_dir.string() <<
+               "' to continue using the current data directory.\n";
+            exit(1);
+         }
       }
       my->_data_dir = data_dir;
 

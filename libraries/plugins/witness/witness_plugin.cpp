@@ -594,8 +594,6 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
 
-   appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
-
    if( my->_witnesses.size() && my->_private_keys.size() )
       my->_chain_plugin.set_write_lock_hold_time( -1 );
 } FC_LOG_AND_RETHROW() }
@@ -608,6 +606,7 @@ void witness_plugin::plugin_startup()
    if( !my->_witnesses.empty() )
    {
       ilog( "Launching block production for ${n} witnesses.", ("n", my->_witnesses.size()) );
+      appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
       if( my->_production_enabled )
       {
          if( d.head_block_num() == 0 )

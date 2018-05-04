@@ -579,7 +579,7 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    FC_ASSERT( vested_symbol.is_vesting() );
 
 #pragma message( "TODO: Update the code below when delegation is modified to support SMTs." )
-   const account_regular_balance_object* bo = find< account_regular_balance_object, by_owner_liquid_symbol >( 
+   const account_regular_balance_object* bo = find< account_regular_balance_object, by_owner_liquid_symbol >(
       boost::make_tuple( account.name, vested_symbol.get_paired_symbol() ) );
    if( bo == nullptr )
       return asset( 0, vested_symbol );
@@ -840,64 +840,61 @@ signed_block database::_generate_block(
 
    signed_block pending_block;
 
-   with_write_lock( [&]()
+   //
+   // The following code throws away existing pending_tx_session and
+   // rebuilds it by re-applying pending transactions.
+   //
+   // This rebuild is necessary because pending transactions' validity
+   // and semantics may have changed since they were received, because
+   // time-based semantics are evaluated based on the current block
+   // time.  These changes can only be reflected in the database when
+   // the value of the "when" variable is known, which means we need to
+   // re-apply pending transactions in this method.
+   //
+   _pending_tx_session.reset();
+   _pending_tx_session = start_undo_session();
+
+   uint64_t postponed_tx_count = 0;
+   // pop pending state (reset to head block state)
+   for( const signed_transaction& tx : _pending_tx )
    {
-      //
-      // The following code throws away existing pending_tx_session and
-      // rebuilds it by re-applying pending transactions.
-      //
-      // This rebuild is necessary because pending transactions' validity
-      // and semantics may have changed since they were received, because
-      // time-based semantics are evaluated based on the current block
-      // time.  These changes can only be reflected in the database when
-      // the value of the "when" variable is known, which means we need to
-      // re-apply pending transactions in this method.
-      //
-      _pending_tx_session.reset();
-      _pending_tx_session = start_undo_session();
+      // Only include transactions that have not expired yet for currently generating block,
+      // this should clear problem transactions and allow block production to continue
 
-      uint64_t postponed_tx_count = 0;
-      // pop pending state (reset to head block state)
-      for( const signed_transaction& tx : _pending_tx )
+      if( tx.expiration < when )
+         continue;
+
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+
+      // postpone transaction if it would make block too big
+      if( new_total_size >= maximum_block_size )
       {
-         // Only include transactions that have not expired yet for currently generating block,
-         // this should clear problem transactions and allow block production to continue
-
-         if( tx.expiration < when )
-            continue;
-
-         uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
-
-         // postpone transaction if it would make block too big
-         if( new_total_size >= maximum_block_size )
-         {
-            postponed_tx_count++;
-            continue;
-         }
-
-         try
-         {
-            auto temp_session = start_undo_session();
-            _apply_transaction( tx );
-            temp_session.squash();
-
-            total_block_size += fc::raw::pack_size( tx );
-            pending_block.transactions.push_back( tx );
-         }
-         catch ( const fc::exception& e )
-         {
-            // Do nothing, transaction will not be re-applied
-            //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-            //wlog( "The transaction was ${t}", ("t", tx) );
-         }
-      }
-      if( postponed_tx_count > 0 )
-      {
-         wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+         postponed_tx_count++;
+         continue;
       }
 
-      _pending_tx_session.reset();
-   });
+      try
+      {
+         auto temp_session = start_undo_session();
+         _apply_transaction( tx );
+         temp_session.squash();
+
+         total_block_size += fc::raw::pack_size( tx );
+         pending_block.transactions.push_back( tx );
+      }
+      catch ( const fc::exception& e )
+      {
+         // Do nothing, transaction will not be re-applied
+         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+         //wlog( "The transaction was ${t}", ("t", tx) );
+      }
+   }
+   if( postponed_tx_count > 0 )
+   {
+      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+   }
+
+   _pending_tx_session.reset();
 
    // We have temporarily broken the invariant that
    // _pending_tx_session is the result of applying _pending_tx, as
@@ -3998,7 +3995,7 @@ struct smt_regular_balance_operator
 struct smt_reward_balance_operator
 {
    smt_reward_balance_operator( const asset& value_delta, const asset& share_delta )
-      : value_delta(value_delta), share_delta(share_delta), is_vesting(share_delta.amount.value != 0) 
+      : value_delta(value_delta), share_delta(share_delta), is_vesting(share_delta.amount.value != 0)
    {
        FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
    }

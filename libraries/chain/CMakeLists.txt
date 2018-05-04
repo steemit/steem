@@ -18,6 +18,7 @@ add_library( steem_chain
              block_log.cpp
 
              voting_helper.cpp
+             generic_custom_operation_interpreter.cpp
 
              util/reward.cpp
              util/impacted.cpp
