@@ -1,0 +1,5 @@
+{
+   "plugin_name": "account_history_rocksdb",
+   "plugin_namespace": "account_history_rocksdb",
+   "plugin_project": "account_history_rocksdb_plugin"
+}

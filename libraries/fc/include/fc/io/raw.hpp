@@ -500,8 +500,8 @@ namespace fc {
       }
     }
 
-    template<typename Stream, typename T>
-    inline void pack( Stream& s, const std::set<T>& value ) {
+    template<typename Stream, typename... T>
+    inline void pack( Stream& s, const std::set<T...>& value ) {
       fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
       auto itr = value.begin();
       auto end = value.end();
@@ -511,12 +511,34 @@ namespace fc {
       }
     }
 
-    template<typename Stream, typename T>
-    inline void unpack( Stream& s, std::set<T>& value ) {
+    template<typename Stream, typename... T>
+    inline void unpack( Stream& s, std::set<T...>& value ) {
       unsigned_int size; fc::raw::unpack( s, size );
       for( uint64_t i = 0; i < size.value; ++i )
       {
-        T tmp;
+        typename std::set<T...>::value_type tmp;
+        fc::raw::unpack( s, tmp );
+        value.insert( std::move(tmp) );
+      }
+    }
+
+    template<typename Stream, typename... T>
+    inline void pack( Stream& s, const std::multiset<T...>& value ) {
+      fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+      auto itr = value.begin();
+      auto end = value.end();
+      while( itr != end ) {
+        fc::raw::pack( s, *itr );
+        ++itr;
+      }
+    }
+
+    template<typename Stream, typename... T>
+    inline void unpack( Stream& s, std::multiset<T...>& value ) {
+      unsigned_int size; fc::raw::unpack( s, size );
+      for( uint64_t i = 0; i < size.value; ++i )
+      {
+        typename std::multiset<T...>::value_type tmp;
         fc::raw::unpack( s, tmp );
         value.insert( std::move(tmp) );
       }

@@ -1,4 +1,5 @@
 add_subdirectory(db_fixture)
+add_subdirectory(bmic_objects)
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )

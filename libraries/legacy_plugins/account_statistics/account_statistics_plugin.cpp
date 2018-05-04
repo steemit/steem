@@ -75,7 +75,7 @@ void account_statistics_plugin::plugin_initialize( const boost::program_options:
    {
       ilog( "account_stats plugin: plugin_initialize() begin" );
 
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->on_operation( o ); } );
+      database().post_apply_operation_proxy( [&]( const operation_notification& o ){ _my->on_operation( o ); } );
 
       ilog( "account_stats plugin: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()

@@ -110,7 +110,7 @@ namespace fc {
        *
        *  @todo make quit non-blocking of the calling thread by eliminating the call to <code>boost::thread::join</code>
        */
-      void quit();
+      void quit(fc::promise<void>* quitDone = nullptr);
      
       /**
        *  @return true unless quit() has been called.

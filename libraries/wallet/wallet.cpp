@@ -516,7 +516,7 @@ public:
          if( broadcast )
          {
             //_remote_api->broadcast_transaction( tx );
-            auto result = _remote_api->broadcast_transaction_synchronous( tx );
+            auto result = _remote_api->broadcast_transaction_synchronous( condenser_api::legacy_signed_transaction( tx ) );
             FC_UNUSED(result);
          }
          return tx;
@@ -693,7 +693,7 @@ public:
 
       if( broadcast ) {
          try {
-            auto result = _remote_api->broadcast_transaction_synchronous( tx );
+            auto result = _remote_api->broadcast_transaction_synchronous( condenser_api::legacy_signed_transaction( tx ) );
             annotated_signed_transaction rtrx(tx);
             rtrx.block_num = result.block_num;
             rtrx.transaction_num = result.trx_num;

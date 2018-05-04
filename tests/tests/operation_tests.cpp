@@ -6313,8 +6313,8 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
       auto itr = vote_idx.find( std::make_tuple( alice_comment.id, bob_acc.id ) );
-      BOOST_REQUIRE( alice_comment.net_rshares.value == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD);
-      BOOST_REQUIRE( itr->rshares == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
+      BOOST_REQUIRE( alice_comment.net_rshares.value == db->get_effective_vesting_shares(bob_acc, VESTS_SYMBOL).amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD);
+      BOOST_REQUIRE( itr->rshares == db->get_effective_vesting_shares(bob_acc, VESTS_SYMBOL).amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
 
 
       generate_block();

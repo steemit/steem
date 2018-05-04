@@ -13,12 +13,14 @@
 namespace steem { namespace plugins { namespace account_history {
 
 
-namespace detail { class account_history_api_impl; }
+namespace detail { class abstract_account_history_api_impl; }
 
 struct api_operation_object
 {
    api_operation_object() {}
-   api_operation_object( const steem::chain::operation_object& op_obj ) :
+
+   template< typename T >
+   api_operation_object( const T& op_obj ) :
       trx_id( op_obj.trx_id ),
       block( op_obj.block ),
       trx_in_block( op_obj.trx_in_block ),
@@ -31,10 +33,15 @@ struct api_operation_object
    steem::protocol::transaction_id_type trx_id;
    uint32_t                               block = 0;
    uint32_t                               trx_in_block = 0;
-   uint16_t                               op_in_trx = 0;
-   uint64_t                               virtual_op = 0;
+   uint32_t                               op_in_trx = 0;
+   uint32_t                               virtual_op = 0;
    fc::time_point_sec                     timestamp;
    steem::protocol::operation             op;
+
+   bool operator<( const api_operation_object& obj ) const
+   {
+      return std::tie( block, trx_in_block, op_in_trx, virtual_op ) < std::tie( obj.block, obj.trx_in_block, obj.op_in_trx, obj.virtual_op );
+   }
 };
 
 
@@ -46,7 +53,7 @@ struct get_ops_in_block_args
 
 struct get_ops_in_block_return
 {
-   vector< api_operation_object > ops;
+   std::multiset< api_operation_object > ops;
 };
 
 
@@ -70,6 +77,22 @@ struct get_account_history_return
    std::map< uint32_t, api_operation_object > history;
 };
 
+/** Allows to specify range of blocks to retrieve virtual operations for.
+ *  \param block_range_begin - starting block number (inclusive) to search for virtual operations
+ *  \param block_range_end   - last block number (exclusive) to search for virtual operations
+ */
+struct enum_virtual_ops_args
+{
+   uint32_t block_range_begin = 1;
+   uint32_t block_range_end = 2;
+};
+
+struct enum_virtual_ops_return
+{
+   vector<api_operation_object> ops;
+   uint32_t                     next_block_range_begin = 0;
+};
+
 
 class account_history_api
 {
@@ -81,10 +104,11 @@ class account_history_api
          (get_ops_in_block)
          (get_transaction)
          (get_account_history)
+         (enum_virtual_ops)
       )
 
    private:
-      std::unique_ptr< detail::account_history_api_impl > my;
+      std::unique_ptr< detail::abstract_account_history_api_impl > my;
 };
 
 } } } // steem::plugins::account_history
@@ -106,3 +130,9 @@ FC_REFLECT( steem::plugins::account_history::get_account_history_args,
 
 FC_REFLECT( steem::plugins::account_history::get_account_history_return,
    (history) )
+
+FC_REFLECT( steem::plugins::account_history::enum_virtual_ops_args,
+   (block_range_begin)(block_range_end) )
+
+FC_REFLECT( steem::plugins::account_history::enum_virtual_ops_return,
+   (ops)(next_block_range_begin) )

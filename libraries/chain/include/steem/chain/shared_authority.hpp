@@ -1,5 +1,6 @@
 #pragma once
 #include <steem/protocol/authority.hpp>
+#include <chainbase/chainbase.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
 namespace steem { namespace chain {
@@ -8,7 +9,8 @@ namespace steem { namespace chain {
    using steem::protocol::account_name_type;
    using steem::protocol::weight_type;
 
-   namespace bip = boost::interprocess;
+   using chainbase::t_flat_map;
+   using chainbase::t_allocator_pair;
 
    /**
     *  The purpose of this class is to represent an authority object in a manner compatiable with
@@ -24,8 +26,8 @@ namespace steem { namespace chain {
 
       template< typename Allocator >
       shared_authority( const authority& a, const Allocator& alloc ) :
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) )
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) )
       {
          account_auths.reserve( a.account_auths.size() );
          key_auths.reserve( a.key_auths.size() );
@@ -42,14 +44,14 @@ namespace steem { namespace chain {
 
       template< typename Allocator >
       shared_authority( const Allocator& alloc ) :
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) ) {}
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) ) {}
 
       template< typename Allocator, class ...Args >
       shared_authority( const Allocator& alloc, uint32_t weight_threshold, Args... auths ) :
          weight_threshold( weight_threshold ),
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) )
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) )
       {
          add_authorities( auths... );
       }
@@ -81,17 +83,15 @@ namespace steem { namespace chain {
       void     clear();
       void     validate()const;
 
-      typedef bip::allocator< shared_authority, bip::managed_mapped_file::segment_manager >                                allocator_type;
+      using account_pair_allocator_type = t_allocator_pair< account_name_type, weight_type >;
+      using key_pair_allocator_type = t_allocator_pair< public_key_type, weight_type >;
 
-      typedef bip::allocator< std::pair< account_name_type, weight_type >, bip::managed_mapped_file::segment_manager >     account_pair_allocator_type;
-      typedef bip::allocator< std::pair< public_key_type, weight_type >, bip::managed_mapped_file::segment_manager >       key_pair_allocator_type;
+      typedef t_flat_map< account_name_type, weight_type> account_authority_map;
+      typedef t_flat_map< public_key_type, weight_type> key_authority_map;
 
-      typedef bip::flat_map< account_name_type, weight_type, std::less< account_name_type >, account_pair_allocator_type > account_authority_map;
-      typedef bip::flat_map< public_key_type, weight_type, std::less< public_key_type >, key_pair_allocator_type >         key_authority_map;
-
-      uint32_t                                                                                                             weight_threshold = 0;
-      account_authority_map                                                                                                account_auths;
-      key_authority_map                                                                                                    key_auths;
+      uint32_t                                                                weight_threshold = 0;
+      account_authority_map                                                   account_auths;
+      key_authority_map                                                       key_auths;
    };
 
    bool operator == ( const shared_authority& a, const shared_authority& b );

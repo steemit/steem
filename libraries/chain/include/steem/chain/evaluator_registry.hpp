@@ -21,18 +21,54 @@ class evaluator_registry
          _op_evaluators[ OperationType::template tag< typename EvaluatorType::operation_type >::value ].reset( new EvaluatorType(_db, args...) );
       }
 
-      evaluator<OperationType>& get_evaluator( const OperationType& op )
+   private:
+      template< bool CHECK >
+      unique_ptr< evaluator<OperationType> >& get_evaluator_impl( const OperationType& op )
       {
+         static unique_ptr< evaluator<OperationType> > empty;
+
          int i_which = op.which();
          uint64_t u_which = uint64_t( i_which );
+
          if( i_which < 0 )
-            assert( "Negative operation tag" && false );
+         {
+            if( CHECK )
+               return empty;
+            else
+               assert( "Negative operation tag" && false );
+         }
+
          if( u_which >= _op_evaluators.size() )
-            assert( "No registered evaluator for this operation" && false );
+         {
+            if( CHECK )
+               return empty;
+            else
+               assert( "No registered evaluator for this operation" && false );
+         }
+
          unique_ptr< evaluator<OperationType> >& eval = _op_evaluators[ u_which ];
+
          if( !eval )
-            assert( "No registered evaluator for this operation" && false );
-         return *eval;
+         {
+            if( CHECK )
+               return empty;
+            else
+               assert( "No registered evaluator for this operation" && false );
+         }
+
+         return eval;
+      }
+
+   public:
+
+      bool is_evaluator( const OperationType& op )
+      {
+         return get_evaluator_impl< true/*CHECK*/ >( op ).get() != nullptr;
+      }
+
+      evaluator<OperationType>& get_evaluator( const OperationType& op )
+      {
+         return *get_evaluator_impl< false/*CHECK*/ >( op );
       }
 
       std::vector< std::unique_ptr< evaluator<OperationType> > > _op_evaluators;

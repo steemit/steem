@@ -174,61 +174,61 @@ BOOST_AUTO_TEST_CASE( asset_test )
       fc::string s;
 
       BOOST_CHECK_EQUAL( asset().symbol.decimals(), 3 );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset() ), "[\"0\",3,\"@@000000021\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset() ), "{\"amount\":\"0\",\"precision\":3,\"nai\":\"@@000000021\"}" );
 
-      asset steem = fc::json::from_string( "[\"123456\",    3, \"@@000000021\"]" ).as< asset >();
-      asset sbd =   fc::json::from_string( "[\"654321\",    3, \"@@000000013\"]" ).as< asset >();
-      asset vests = fc::json::from_string( "[\"123456789\", 6, \"@@000000037\"]" ).as< asset >();
-      asset tmp =   fc::json::from_string( "[\"456\",       3, \"@@000000021\"]" ).as< asset >();
+      asset steem = fc::json::from_string( "{\"amount\":\"123456\",    \"precision\":3, \"nai\":\"@@000000021\"}" ).as< asset >();
+      asset sbd =   fc::json::from_string( "{\"amount\":\"654321\",    \"precision\":3, \"nai\":\"@@000000013\"}" ).as< asset >();
+      asset vests = fc::json::from_string( "{\"amount\":\"123456789\", \"precision\":6, \"nai\":\"@@000000037\"}" ).as< asset >();
+      asset tmp =   fc::json::from_string( "{\"amount\":\"456\",       \"precision\":3, \"nai\":\"@@000000021\"}" ).as< asset >();
       BOOST_CHECK_EQUAL( tmp.amount.value, 456 );
-      tmp = fc::json::from_string( "[\"56\", 3, \"@@000000021\"]" ).as< asset >();
+      tmp = fc::json::from_string( "{\"amount\":\"56\", \"precision\":3, \"nai\":\"@@000000021\"}" ).as< asset >();
       BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
 
       BOOST_CHECK_EQUAL( steem.amount.value, 123456 );
       BOOST_CHECK_EQUAL( steem.symbol.decimals(), 3 );
-      BOOST_CHECK_EQUAL( fc::json::to_string( steem ), "[\"123456\",3,\"@@000000021\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( steem ), "{\"amount\":\"123456\",\"precision\":3,\"nai\":\"@@000000021\"}" );
       BOOST_CHECK( steem.symbol.asset_num == STEEM_ASSET_NUM_STEEM );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, STEEM_SYMBOL ) ), "[\"50\",3,\"@@000000021\"]" );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, STEEM_SYMBOL ) ), "[\"50000\",3,\"@@000000021\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, STEEM_SYMBOL ) ), "{\"amount\":\"50\",\"precision\":3,\"nai\":\"@@000000021\"}" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, STEEM_SYMBOL ) ), "{\"amount\":\"50000\",\"precision\":3,\"nai\":\"@@000000021\"}" );
 
       BOOST_CHECK_EQUAL( sbd.amount.value, 654321 );
       BOOST_CHECK_EQUAL( sbd.symbol.decimals(), 3 );
-      BOOST_CHECK_EQUAL( fc::json::to_string( sbd ), "[\"654321\",3,\"@@000000013\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( sbd ), "{\"amount\":\"654321\",\"precision\":3,\"nai\":\"@@000000013\"}" );
       BOOST_CHECK( sbd.symbol.asset_num == STEEM_ASSET_NUM_SBD );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, SBD_SYMBOL ) ), "[\"50\",3,\"@@000000013\"]" );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, SBD_SYMBOL ) ), "[\"50000\",3,\"@@000000013\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, SBD_SYMBOL ) ), "{\"amount\":\"50\",\"precision\":3,\"nai\":\"@@000000013\"}" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, SBD_SYMBOL ) ), "{\"amount\":\"50000\",\"precision\":3,\"nai\":\"@@000000013\"}" );
 
       BOOST_CHECK_EQUAL( vests.amount.value, 123456789 );
       BOOST_CHECK_EQUAL( vests.symbol.decimals(), 6 );
-      BOOST_CHECK_EQUAL( fc::json::to_string( vests ), "[\"123456789\",6,\"@@000000037\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( vests ), "{\"amount\":\"123456789\",\"precision\":6,\"nai\":\"@@000000037\"}" );
       BOOST_CHECK( vests.symbol.asset_num == STEEM_ASSET_NUM_VESTS );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, VESTS_SYMBOL ) ), "[\"50\",6,\"@@000000037\"]" );
-      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, VESTS_SYMBOL ) ), "[\"50000\",6,\"@@000000037\"]" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50, VESTS_SYMBOL ) ), "{\"amount\":\"50\",\"precision\":6,\"nai\":\"@@000000037\"}" );
+      BOOST_CHECK_EQUAL( fc::json::to_string( asset( 50000, VESTS_SYMBOL ) ), "{\"amount\":\"50000\",\"precision\":6,\"nai\":\"@@000000037\"}" );
 
       // amount overflow
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"9223372036854775808\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"9223372036854775808\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
       // amount underflow
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"-1\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"-1\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
 
       // precision overflow
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",256,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"10\",\"precision\":256,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
       // precision underflow
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"10\",-1,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"10\",\"precision\":-1,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
 
       // Check wrong size tuple
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"0\",3]" ).as< asset >(), fc::exception );
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"0\",3,\"@@000000021\",1]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"0\",3]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"0\",\"precision\":3,\"nai\":\"@@000000021\",1}" ).as< asset >(), fc::exception );
 
       // Check non-numeric characters in amount
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"foobar\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"10a\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"10a00\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"foobar\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"10a\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"10a00\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
 
       // Check hex value
-      BOOST_CHECK_THROW( fc::json::from_string( "[\"0x8000\",3,\"@@000000021\"]" ).as< asset >(), fc::exception );
+      BOOST_CHECK_THROW( fc::json::from_string( "{\"amount\":\"0x8000\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >(), fc::exception );
 
       // Check octal value
-      BOOST_CHECK_EQUAL( fc::json::from_string( "[\"08000\",3,\"@@000000021\"]" ).as< asset >().amount.value, 8000 );
+      BOOST_CHECK_EQUAL( fc::json::from_string( "{\"amount\":\"08000\",\"precision\":3,\"nai\":\"@@000000021\"}" ).as< asset >().amount.value, 8000 );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -546,6 +546,62 @@ BOOST_AUTO_TEST_CASE( legacy_signed_transaction )
    signed_transaction tx2 = signed_transaction( fc::json::from_string( "{\"ref_block_num\":4000,\"ref_block_prefix\":4000000000,\"expiration\":\"2018-01-01T00:00:00\",\"operations\":[[\"vote\",{\"voter\":\"alice\",\"author\":\"bob\",\"permlink\":\"foobar\",\"weight\":10000}]],\"extensions\":[],\"signatures\":[\"\"]}" ).as< legacy_signed_transaction >() );
 
    BOOST_REQUIRE( tx.id() == tx2.id() );
+}
+
+BOOST_AUTO_TEST_CASE( static_variant_json_test )
+{
+   try
+   {
+      typedef static_variant<
+                  transfer_operation,
+                  comment_operation
+               > test_operation;
+
+      test_operation op;
+      op = transfer_operation();
+
+      auto json_str = fc::json::to_string( op );
+      BOOST_CHECK_EQUAL( json_str, "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"\",\"to\":\"\",\"amount\":{\"amount\":\"0\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}" );
+
+      json_str = "{\"type\":\"transfer_operation\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":{\"amount\":\"1000\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}";
+      from_variant( fc::json::from_string( json_str ), op );
+      BOOST_CHECK_EQUAL( op.which(), 0 );
+
+      transfer_operation t = op.get< transfer_operation >();
+      BOOST_CHECK( t.from == "foo" );
+      BOOST_CHECK( t.to == "bar" );
+      BOOST_CHECK( t.amount == asset( 1000, STEEM_SYMBOL ) );
+      BOOST_CHECK( t.memo == "" );
+
+      json_str = "{\"type\":1,\"value\":{\"parent_author\":\"foo\",\"parent_permlink\":\"bar\",\"author\":\"foo1\",\"permlink\":\"bar1\",\"title\":\"\",\"body\":\"\",\"json_metadata\":\"\"}}";
+
+      from_variant( fc::json::from_string( json_str ), op );
+      BOOST_CHECK_EQUAL( op.which(), 1 );
+
+      comment_operation c = op.get< comment_operation >();
+      BOOST_CHECK( c.parent_author == "foo" );
+      BOOST_CHECK( c.parent_permlink == "bar" );
+      BOOST_CHECK( c.author == "foo1" );
+      BOOST_CHECK( c.permlink == "bar1" );
+      BOOST_CHECK( c.title == "" );
+      BOOST_CHECK( c.body == "" );
+      BOOST_CHECK( c.json_metadata == "" );
+
+      json_str = "{\"type\":\"not_a_type\",\"value\":{\"from\":\"foo\",\"to\":\"bar\",\"amount\":{\"amount\":\"1000\",\"precision\":3,\"nai\":\"@@000000021\"},\"memo\":\"\"}}";
+      STEEM_REQUIRE_THROW( from_variant( fc::json::from_string( json_str ), op ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( legacy_operation_test )
+{
+   try
+   {
+      auto v = fc::json::from_string( "{\"ref_block_num\": 41047, \"ref_block_prefix\": 4089157749, \"expiration\": \"2018-03-28T19:05:47\", \"operations\": [[\"witness_update\", {\"owner\": \"test\", \"url\": \"foo\", \"block_signing_key\": \"TST1111111111111111111111111111111114T1Anm\", \"props\": {\"account_creation_fee\": \"0.500 TESTS\", \"maximum_block_size\": 65536, \"sbd_interest_rate\": 0}, \"fee\": \"0.000 TESTS\"}]], \"extensions\": [], \"signatures\": [\"1f1b2d47427a46513777ae9ed032b761b504423b18350e673beb991a1b52d2381c26c36368f9cc4a72c9de3cc16bca83b269c2ea1960e28647caf151e17c35bf3f\"]}" );
+      auto ls = v.as< steem::plugins::condenser_api::legacy_signed_transaction >();
+      // not throwing an error here is success
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()

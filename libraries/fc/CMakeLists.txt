@@ -184,7 +184,6 @@ set( fc_sources
      src/io/varint.cpp
      src/io/console.cpp
      src/filesystem.cpp
-     src/interprocess/process.cpp
      src/interprocess/signals.cpp
      src/interprocess/file_mapping.cpp
      src/interprocess/mmap_struct.cpp
@@ -239,6 +238,7 @@ set( fc_sources
      src/network/gntp.cpp
      src/compress/smaz.cpp
      src/compress/zlib.cpp
+     src/reflect/typename.cpp
      vendor/cyoencode-1.0.2/src/CyoDecode.c
      vendor/cyoencode-1.0.2/src/CyoEncode.c
      )
@@ -366,7 +366,6 @@ target_include_directories(fc
     "${readline_includes}"
 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/boost_1.51/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cyoencode-1.0.2/src
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/secp256k1-zkp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/equihash

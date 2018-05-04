@@ -148,13 +148,13 @@ namespace fc {
 
    void          thread::debug( const fc::string& d ) { /*my->debug(d);*/ }
 
-  void thread::quit()
+  void thread::quit(fc::promise<void>* quitDone /*= nullptr*/)
   {
     //if quitting from a different thread, start quit task on thread.
     //If we have and know our attached boost thread, wait for it to finish, then return.
     if( &current() != this )
     {
-      async( [=](){quit();}, "thread::quit" );//.wait();
+      async( [=](){quit(quitDone);}, "thread::quit" );//.wait();
       if( my->boost_thread )
       {
         //wlog("destroying boost thread ${tid}",("tid",(uintptr_t)my->boost_thread->native_handle()));
@@ -225,11 +225,23 @@ namespace fc {
     // let them all quit.
     while (!my->ready_heap.empty())
     {
-      my->start_next_fiber(true);
+      try
+      {
+         my->start_next_fiber(true);
+      }
+      catch(const fc::canceled_exception&)
+      {
+         /// Ignore it as effect of execution in just cancelled context
+         ilog("Ignoring fc::canceled_exception during thread quitting");
+      }
+
       my->check_for_timeouts();
     }
     my->clear_free_list();
     my->cleanup_thread_specific_data();
+
+    if(quitDone != nullptr)
+      quitDone->set_value();
   }
 
    void thread::exec()

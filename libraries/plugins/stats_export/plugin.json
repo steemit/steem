@@ -1,0 +1,5 @@
+{
+   "plugin_name": "stats_export",
+   "plugin_namespace": "stats_export",
+   "plugin_project": "stats_export_plugin"
+}

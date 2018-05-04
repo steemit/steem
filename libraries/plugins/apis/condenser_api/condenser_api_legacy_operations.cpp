@@ -55,15 +55,28 @@ void to_variant( const steem::plugins::condenser_api::legacy_operation& var,  fc
 
 void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy_operation& vo )
 {
-   static std::map<string,uint32_t> to_tag = []()
+   static std::map<string,int64_t> to_tag = []()
    {
-      std::map<string,uint32_t> name_map;
+      std::map<string,int64_t> name_map;
       for( int i = 0; i < steem::plugins::condenser_api::legacy_operation::count(); ++i )
       {
          steem::plugins::condenser_api::legacy_operation tmp;
          tmp.set_which(i);
          string n;
          tmp.visit( get_operation_name(n) );
+         name_map[n] = i;
+      }
+      return name_map;
+   }();
+   static std::map<string,int64_t> to_full_tag = []()
+   {
+      std::map<string,int64_t> name_map;
+      for( int i = 0; i < steem::plugins::condenser_api::legacy_operation::count(); ++i )
+      {
+         steem::plugins::condenser_api::legacy_operation tmp;
+         tmp.set_which(i);
+         string n;
+         tmp.visit( get_static_variant_name(n) );
          name_map[n] = i;
       }
       return name_map;
@@ -76,10 +89,34 @@ void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy
    else
    {
       auto itr = to_tag.find(ar[0].as_string());
-      FC_ASSERT( itr != to_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
-      vo.set_which( to_tag[ar[0].as_string()] );
+      if( itr == to_tag.end() )
+      {
+          itr = to_full_tag.find(ar[0].as_string());
+          FC_ASSERT( itr != to_full_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
+      }
+      vo.set_which( itr->second );
    }
-      vo.visit( fc::to_static_variant( ar[1] ) );
+   vo.visit( fc::to_static_variant( ar[1] ) );
+}
+
+void to_variant( const steem::plugins::condenser_api::legacy_comment_options_extensions& sv, fc::variant& v )
+{
+   old_sv_to_variant( sv, v );
+}
+
+void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_comment_options_extensions& sv )
+{
+   old_sv_from_variant( v, sv );
+}
+
+void to_variant( const steem::plugins::condenser_api::legacy_pow2_work& sv, fc::variant& v )
+{
+   old_sv_to_variant( sv, v );
+}
+
+void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_pow2_work& sv )
+{
+   old_sv_from_variant( v, sv );
 }
 
 } // fc

@@ -18,7 +18,7 @@ namespace fc {
     class thread_d {
 
         public:
-           fc::context* prev_ctx = nullptr;
+           using context_pair = std::pair<thread_d*, fc::context*>;
 
            thread_d(fc::thread& s)
             :self(s), boost_thread(0),
@@ -32,9 +32,9 @@ namespace fc {
 #ifndef NDEBUG
              ,non_preemptable_scope_count(0)
 #endif
-            { 
+            {
               static boost::atomic<int> cnt(0);
-              name = fc::string("th_") + char('a'+cnt++); 
+              name = fc::string("th_") + char('a'+cnt++);
 //              printf("thread=%p\n",this);
             }
 
@@ -93,7 +93,7 @@ namespace fc {
            // values for thread specific data objects for this thread
            std::vector<detail::specific_data_info> thread_specific_data;
            // values for task_specific data for code executing on a thread that's
-           // not a task launched by async (usually the default task on the main 
+           // not a task launched by async (usually the default task on the main
            // thread in a process)
            std::vector<detail::specific_data_info> non_task_specific_data;
            unsigned next_unused_task_storage_slot;
@@ -114,7 +114,7 @@ namespace fc {
               fc::context* c = ready_head;
               while( c ) {
                 fc::cerr<<"    "<<c;
-                if( c->cur_task ) fc::cerr<<'('<<c->cur_task->get_desc()<<')'; 
+                if( c->cur_task ) fc::cerr<<'('<<c->cur_task->get_desc()<<')';
                 fc::context* p = c->caller_context;
                 while( p ) {
                   fc::cerr<<"  ->  "<<p;
@@ -126,12 +126,12 @@ namespace fc {
               fc::cerr<<"  Blocked\n";
               c = blocked;
               while( c ) {
-                fc::cerr<<"   ctx: "<< c; 
-                if( c->cur_task ) fc::cerr<<'('<<c->cur_task->get_desc()<<')'; 
+                fc::cerr<<"   ctx: "<< c;
+                if( c->cur_task ) fc::cerr<<'('<<c->cur_task->get_desc()<<')';
                 fc::cerr << " blocked on prom: ";
                 for( uint32_t i = 0; i < c->blocking_prom.size(); ++i ) {
                   fc::cerr<<c->blocking_prom[i].prom<<'('<<c->blocking_prom[i].prom->get_desc()<<')';
-                  if( i + 1 < c->blocking_prom.size() ) { 
+                  if( i + 1 < c->blocking_prom.size() ) {
                     fc::cerr<<",";
                   }
                 }
@@ -148,17 +148,17 @@ namespace fc {
            }
 #endif
             // insert at from of blocked linked list
-           inline void add_to_blocked( fc::context* c ) 
+           inline void add_to_blocked( fc::context* c )
            {
               c->next_blocked = blocked;
               blocked = c;
            }
 
-           void pt_push_back(fc::context* c) 
+           void pt_push_back(fc::context* c)
            {
               c->next = pt_head;
               pt_head = c;
-              /* 
+              /*
               fc::context* n = pt_head;
               int i = 0;
               while( n ) {
@@ -169,14 +169,14 @@ namespace fc {
               */
            }
 
-          fc::context::ptr ready_pop_front() 
+          fc::context::ptr ready_pop_front()
           {
             fc::context* highest_priority_context = ready_heap.front();
             std::pop_heap(ready_heap.begin(), ready_heap.end(), task_priority_less());
             ready_heap.pop_back();
             return highest_priority_context;
           }
-           
+
            void add_context_to_ready_list(context* context_to_add, bool at_end = false)
            {
 
@@ -185,43 +185,43 @@ namespace fc {
              std::push_heap(ready_heap.begin(), ready_heap.end(), task_priority_less());
            }
 
-          struct task_priority_less 
+          struct task_priority_less
           {
             bool operator()(const task_base* a, const task_base* b) const
             {
-              return a->_prio.value < b->_prio.value ? true : 
-                                                       (a->_prio.value > b->_prio.value ? false : 
+              return a->_prio.value < b->_prio.value ? true :
+                                                       (a->_prio.value > b->_prio.value ? false :
                                                                                           a->_posted_num > b->_posted_num);
             }
             bool operator()(const task_base* a, const context* b) const
             {
-              return a->_prio.value < b->prio.value ? true : 
-                                                      (a->_prio.value > b->prio.value ? false : 
+              return a->_prio.value < b->prio.value ? true :
+                                                      (a->_prio.value > b->prio.value ? false :
                                                                                         a->_posted_num > b->context_posted_num);
             }
             bool operator()(const context* a, const task_base* b) const
             {
-              return a->prio.value < b->_prio.value ? true : 
-                                                      (a->prio.value > b->_prio.value ? false : 
+              return a->prio.value < b->_prio.value ? true :
+                                                      (a->prio.value > b->_prio.value ? false :
                                                                                         a->context_posted_num > b->_posted_num);
             }
             bool operator()(const context* a, const context* b) const
             {
-              return a->prio.value < b->prio.value ? true : 
-                                                     (a->prio.value > b->prio.value ? false : 
+              return a->prio.value < b->prio.value ? true :
+                                                     (a->prio.value > b->prio.value ? false :
                                                                                       a->context_posted_num > b->context_posted_num);
             }
           };
 
-          struct task_when_less 
+          struct task_when_less
           {
-            bool operator()( task_base* a, task_base* b ) 
+            bool operator()( task_base* a, task_base* b )
             {
               return a->_when > b->_when;
             }
           };
 
-           void enqueue( task_base* t ) 
+           void enqueue( task_base* t )
            {
               time_point now = time_point::now();
               task_base* cur = t;
@@ -265,7 +265,7 @@ namespace fc {
           {
             BOOST_ASSERT(this == thread::current().my);
 
-            // first, if there are any new tasks on 'task_in_queue', which is tasks that 
+            // first, if there are any new tasks on 'task_in_queue', which is tasks that
             // have been just been async or scheduled, but we haven't processed them.
             // move them into the task_sch_queue or task_pqueue, as appropriate
 
@@ -292,7 +292,7 @@ namespace fc {
             }
           }
 
-           task_base* dequeue() 
+           task_base* dequeue()
            {
                 // get a new task
                 BOOST_ASSERT( this == thread::current().my );
@@ -322,40 +322,40 @@ namespace fc {
                  ++task_itr;
               }
 
-              if( canceled_task )  
+              if( canceled_task )
                  std::make_heap( task_sch_queue.begin(), task_sch_queue.end(), task_when_less() );
 
               return canceled_task;
            }
-           
+
            /**
             * This should be before or after a context switch to
             * detect quit/cancel operations and throw an exception.
             */
-           void check_fiber_exceptions() 
+           void check_fiber_exceptions()
            {
-              if( current && current->canceled ) 
+              if( current && current->canceled )
               {
 #ifdef NDEBUG
                 FC_THROW_EXCEPTION( canceled_exception, "" );
 #else
                 FC_THROW_EXCEPTION( canceled_exception, "cancellation reason: ${reason}", ("reason", current->cancellation_reason ? current->cancellation_reason : "[none given]"));
 #endif
-              } 
-              else if( done )  
+              }
+              else if( done )
               {
                 ilog( "throwing canceled exception" );
-                FC_THROW_EXCEPTION( canceled_exception, "cancellation reason: thread quitting" ); 
+                FC_THROW_EXCEPTION( canceled_exception, "cancellation reason: thread quitting" );
                 // BOOST_THROW_EXCEPTION( thread_quit() );
               }
            }
-           
+
            /**
             *   Find the next available context and switch to it.
             *   If none are available then create a new context and
             *   have it wait for something to do.
             */
-           bool start_next_fiber( bool reschedule = false ) 
+           bool start_next_fiber( bool reschedule = false )
            {
               /* If this assert fires, it means you are executing an operation that is causing
                * the current task to yield, but there is a ASSERT_TASK_NOT_PREEMPTED() in effect
@@ -366,13 +366,13 @@ namespace fc {
                * in the middle of handling an exception.  The boost::context library's behavior
                * is not well-defined in this case, and this has the potential to corrupt the
                * exception stack, often resulting in a crash very soon after this */
-              /* NB: At least on Win64, this only catches a yield while in the body of 
-               * a catch block; it fails to catch a yield while unwinding the stack, which 
+              /* NB: At least on Win64, this only catches a yield while in the body of
+               * a catch block; it fails to catch a yield while unwinding the stack, which
                * is probably just as likely to cause crashes */
               assert(std::current_exception() == std::exception_ptr());
 
               check_for_timeouts();
-              if( !current ) 
+              if( !current )
                 current = new fc::context( &fc::thread::current() );
 
               priority original_priority = current->prio;
@@ -398,12 +398,11 @@ namespace fc {
                   add_context_to_ready_list(prev, true);
                 }
                 // slog( "jump to %p from %p", next, prev );
-                // fc_dlog( logger::get("fc_context"), "from ${from} to ${to}", ( "from", int64_t(prev) )( "to", int64_t(next) ) ); 
+                // fc_dlog( logger::get("fc_context"), "from ${from} to ${to}", ( "from", int64_t(prev) )( "to", int64_t(next) ) );
 #if BOOST_VERSION >= 106100
-                prev_ctx = prev;
-                std::cerr<<"start jumping to existing context...\n";
-                bc::detail::jump_fcontext( next->my_context, this );
-                std::cerr<<"back from jumping to existing context\n";
+                auto p = context_pair{nullptr, prev};
+                auto t = bc::jump_fcontext( next->my_context, &p );
+                static_cast<context_pair*>(t.data)->second->my_context = t.fctx;
 #elif BOOST_VERSION >= 105600
                 bc::jump_fcontext( &prev->my_context, next->my_context, 0 );
 #elif BOOST_VERSION >= 105300
@@ -414,31 +413,31 @@ namespace fc {
                 BOOST_ASSERT( current );
                 BOOST_ASSERT( current == prev );
                 //current = prev;
-              } 
-              else 
-              { 
-                // all contexts are blocked, create a new context 
+              }
+              else
+              {
+                // all contexts are blocked, create a new context
                 // that will process posted tasks...
                 fc::context* prev = current;
 
                 fc::context* next = nullptr;
-                if( pt_head ) 
-                { 
+                if( pt_head )
+                {
                   // grab cached context
                   next = pt_head;
                   pt_head = pt_head->next;
                   next->next = 0;
                   next->reinitialize();
-                } 
-                else 
-                { 
+                }
+                else
+                {
                   // create new context.
                   next = new fc::context( &thread_d::start_process_tasks, stack_alloc,
                                           &fc::thread::current() );
                 }
 
                 current = next;
-                if( reschedule )  
+                if( reschedule )
                 {
                   current->prio = priority::_internal__priority_for_short_sleeps();
                   add_context_to_ready_list(prev, true);
@@ -447,14 +446,9 @@ namespace fc {
                 // slog( "jump to %p from %p", next, prev );
                 // fc_dlog( logger::get("fc_context"), "from ${from} to ${to}", ( "from", int64_t(prev) )( "to", int64_t(next) ) );
 #if BOOST_VERSION >= 106100
-                //(*next->my_context)( (intptr_t)this );
-                //bc::detail::transfer_t tran; tran.data = this;
-                std::cerr << "start prev->my_context = " << prev->my_context <<"... \n";
-                std::cerr << "jumping to next context... \n";
-                prev_ctx = prev;
-                auto result = bc::detail::jump_fcontext( next->my_context, this );
-                std::cerr << "end prev->my_context = " << prev->my_context <<"... \n";
-                std::cerr << result.fctx <<" <--- result \n";
+                auto p = context_pair{this, prev};
+                auto t = bc::jump_fcontext( next->my_context, &p );
+                static_cast<context_pair*>(t.data)->second->my_context = t.fctx;
 #elif BOOST_VERSION >= 105600
                 bc::jump_fcontext( &prev->my_context, next->my_context, (intptr_t)this );
 #elif BOOST_VERSION >= 105300
@@ -470,7 +464,7 @@ namespace fc {
               if (reschedule)
                 current->prio = original_priority;
 
-              if( current->canceled ) 
+              if( current->canceled )
               {
                 //current->canceled = false;
 #ifdef NDEBUG
@@ -482,33 +476,27 @@ namespace fc {
 
               return true;
            }
-
-           static void start_process_tasks( fc::context::transfer_t my ) 
-           {
 #if BOOST_VERSION >= 106100
-              std::cerr<<"my data: "<<my.data<<"\n";
-              std::cerr<<"my from: "<<my.fctx<<"\n";
-              thread_d* self = (thread_d*)my.data;
-              if( self->prev_ctx )
-              {
-                 std::cerr << "setting prev_ctx to " << int64_t(my.fctx) << "\n";
-                 self->prev_ctx->my_context = my.fctx;
-              }
-              std::cerr<<"start process tasks\n" << int64_t(self)<<"\n";
-              assert( self != 0 );
+           static void start_process_tasks( bc::transfer_t my )
+           {
+              auto p = static_cast<context_pair*>(my.data);
+              auto self = static_cast<thread_d*>(p->first);
+              p->second->my_context = my.fctx;
 #else
+           static void start_process_tasks( intptr_t my )
+           {
               thread_d* self = (thread_d*)my;
 #endif
-              try 
+              try
               {
                 self->process_tasks();
-              } 
+              }
               catch ( canceled_exception& ) { /* allowed exception */  }
-              catch ( ... ) 
+              catch ( ... )
               {
                 elog( "fiber ${name} exited with uncaught exception: ${e}", ("e",fc::except_str())("name", self->name) );
                 // assert( !"fiber exited with uncaught exception" );
-                //TODO replace errror           fc::cerr<<"fiber exited with uncaught exception:\n "<< 
+                //TODO replace errror           fc::cerr<<"fiber exited with uncaught exception:\n "<<
                 // boost::current_exception_diagnostic_information() <<std::endl;
               }
               self->free_list.push_back(self->current);
@@ -516,7 +504,7 @@ namespace fc {
               std::cerr << "existing start process tasks \n ";
            }
 
-           void run_next_task() 
+           void run_next_task()
            {
               task_base* next = dequeue();
 
@@ -529,7 +517,7 @@ namespace fc {
               current->reinitialize();
            }
 
-           bool has_next_task() 
+           bool has_next_task()
            {
              if( task_pqueue.size() ||
                  (task_sch_queue.size() && task_sch_queue.front()->_when <= time_point::now()) ||
@@ -538,16 +526,16 @@ namespace fc {
              return false;
            }
 
-           void clear_free_list() 
+           void clear_free_list()
            {
-              for( uint32_t i = 0; i < free_list.size(); ++i ) 
+              for( uint32_t i = 0; i < free_list.size(); ++i )
                 delete free_list[i];
               free_list.clear();
            }
 
-           void process_tasks() 
+           void process_tasks()
            {
-              while( !done || blocked ) 
+              while( !done || blocked )
               {
                 // move all new tasks to the task_pqueue
                 move_newly_scheduled_tasks_to_task_pqueue();
@@ -578,31 +566,31 @@ namespace fc {
                 // if I have something else to do other than
                 // process tasks... do it.
                 if (!ready_heap.empty())
-                { 
-                   pt_push_back( current ); 
-                   start_next_fiber(false);  
+                {
+                   pt_push_back( current );
+                   start_next_fiber(false);
                    continue;
                 }
 
-                if( process_canceled_tasks() ) 
+                if( process_canceled_tasks() )
                   continue;
 
                 clear_free_list();
 
                 { // lock scope
                   boost::unique_lock<boost::mutex> lock(task_ready_mutex);
-                  if( has_next_task() ) 
+                  if( has_next_task() )
                     continue;
                   time_point timeout_time = check_for_timeouts();
-                  
-                  if( done ) 
+
+                  if( done )
                     return;
-                  if( timeout_time == time_point::maximum() ) 
+                  if( timeout_time == time_point::maximum() )
                     task_ready.wait( lock );
-                  else if( timeout_time != time_point::min() ) 
+                  else if( timeout_time != time_point::min() )
                   {
                      // there may be tasks that have been canceled we should filter them out now
-                     // rather than waiting... 
+                     // rather than waiting...
 
 
                     /* This bit is kind of sloppy -- this wait was originally implemented as a wait
@@ -610,18 +598,18 @@ namespace fc {
                      * if you were to do a:
                      *   fc::usleep(fc::seconds(60));
                      * and then set your system's clock back a month, it would sleep for a month
-                     * plus a minute before waking back up (this happened on Linux, it seems 
+                     * plus a minute before waking back up (this happened on Linux, it seems
                      * Windows' behavior in this case was less unexpected).
                      *
-                     * Boost Chrono's steady_clock will always increase monotonically so it will 
+                     * Boost Chrono's steady_clock will always increase monotonically so it will
                      * avoid this behavior.
                      *
                      * Right now we don't really have a way to distinguish when a timeout_time is coming
                      * from a function that takes a relative time like fc::usleep() vs something
                      * that takes an absolute time like fc::promise::wait_until(), so we can't always
                      * do the right thing here.
-                     */ 
-                    task_ready.wait_until( lock, boost::chrono::steady_clock::now() + 
+                     */
+                    task_ready.wait_until( lock, boost::chrono::steady_clock::now() +
                                                  boost::chrono::microseconds(timeout_time.time_since_epoch().count() - time_point::now().time_since_epoch().count()) );
                   }
                 }
@@ -632,9 +620,9 @@ namespace fc {
      *    Retunn system_clock::time_point::max() if there are no scheduled tasks
      *    Return the time the next task needs to be run if there is anything scheduled.
      */
-    time_point check_for_timeouts() 
+    time_point check_for_timeouts()
     {
-        if( !sleep_pqueue.size() && !task_sch_queue.size() ) 
+        if( !sleep_pqueue.size() && !task_sch_queue.size() )
         {
           // ilog( "no timeouts ready" );
           return time_point::maximum();
@@ -651,20 +639,20 @@ namespace fc {
           return next;
 
         // move all expired sleeping tasks to the ready queue
-        while( sleep_pqueue.size() && sleep_pqueue.front()->resume_time < now ) 
+        while( sleep_pqueue.size() && sleep_pqueue.front()->resume_time < now )
         {
           fc::context::ptr c = sleep_pqueue.front();
           std::pop_heap(sleep_pqueue.begin(), sleep_pqueue.end(), sleep_priority_less() );
           // ilog( "sleep pop back..." );
           sleep_pqueue.pop_back();
 
-          if( c->blocking_prom.size() ) 
+          if( c->blocking_prom.size() )
           {
             // ilog( "timeout blocking prom" );
             c->timeout_blocking_promises();
           }
-          else 
-          { 
+          else
+          {
             // ilog( "..." );
             // ilog( "ready_push_front" );
             if (c != current)
@@ -674,9 +662,9 @@ namespace fc {
         return time_point::min();
     }
 
-        void unblock( fc::context* c ) 
+        void unblock( fc::context* c )
         {
-          if( fc::thread::current().my != this ) 
+          if( fc::thread::current().my != this )
           {
             self.async( [=](){ unblock(c); }, "thread_d::unblock" );
             return;
@@ -689,13 +677,13 @@ namespace fc {
         void yield_until( const time_point& tp, bool reschedule ) {
           check_fiber_exceptions();
 
-          if( tp <= (time_point::now()+fc::microseconds(10000)) ) 
+          if( tp <= (time_point::now()+fc::microseconds(10000)) )
             return;
 
-          FC_ASSERT(std::current_exception() == std::exception_ptr(), 
+          FC_ASSERT(std::current_exception() == std::exception_ptr(),
                     "Attempting to yield while processing an exception");
 
-          if( !current ) 
+          if( !current )
             current = new fc::context(&fc::thread::current());
 
           current->resume_time = tp;
@@ -704,13 +692,13 @@ namespace fc {
           sleep_pqueue.push_back(current);
           std::push_heap( sleep_pqueue.begin(),
                           sleep_pqueue.end(), sleep_priority_less()   );
-          
+
           start_next_fiber(reschedule);
 
           // clear current context from sleep queue...
-          for( uint32_t i = 0; i < sleep_pqueue.size(); ++i ) 
+          for( uint32_t i = 0; i < sleep_pqueue.size(); ++i )
           {
-            if( sleep_pqueue[i] == current ) 
+            if( sleep_pqueue[i] == current )
             {
               sleep_pqueue[i] = sleep_pqueue.back();
               sleep_pqueue.pop_back();
@@ -725,28 +713,28 @@ namespace fc {
         }
 
         void wait( const promise_base::ptr& p, const time_point& timeout ) {
-          if( p->ready() ) 
+          if( p->ready() )
             return;
 
-          FC_ASSERT(std::current_exception() == std::exception_ptr(), 
+          FC_ASSERT(std::current_exception() == std::exception_ptr(),
                     "Attempting to yield while processing an exception");
 
-          if( timeout < time_point::now() ) 
+          if( timeout < time_point::now() )
             FC_THROW_EXCEPTION( timeout_exception, "" );
-          
-          if( !current ) 
-            current = new fc::context(&fc::thread::current()); 
-          
+
+          if( !current )
+            current = new fc::context(&fc::thread::current());
+
           // slog( "                                 %1% blocking on %2%", current, p.get() );
           current->add_blocking_promise(p.get(),true);
 
           // if not max timeout, added to sleep pqueue
-          if( timeout != time_point::maximum() ) 
+          if( timeout != time_point::maximum() )
           {
             current->resume_time = timeout;
             sleep_pqueue.push_back(current);
             std::push_heap( sleep_pqueue.begin(),
-                            sleep_pqueue.end(), 
+                            sleep_pqueue.end(),
                             sleep_priority_less()   );
           }
 
@@ -795,7 +783,7 @@ namespace fc {
           {
             if ((*sleep_iter)->canceled)
             {
-              bool already_on_ready_list = std::find(ready_heap.begin(), ready_heap.end(), 
+              bool already_on_ready_list = std::find(ready_heap.begin(), ready_heap.end(),
                                                      *sleep_iter) != ready_heap.end();
               if (!already_on_ready_list)
                 add_context_to_ready_list(*sleep_iter);

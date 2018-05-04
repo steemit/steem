@@ -10,19 +10,7 @@ fi
 
 chown -R steemd:steemd $HOME
 
-# seed nodes come from doc/seednodes.txt which is
-# installed by docker into /etc/steemd/seednodes.txt
-SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
-
 ARGS=""
-
-# if user did not pass in any desired
-# seed nodes, use the ones above:
-if [[ -z "$STEEMD_SEED_NODES" ]]; then
-    for NODE in $SEED_NODES ; do
-        ARGS+=" --p2p-seed-node=$NODE"
-    done
-fi
 
 # if user did pass in desired seed nodes, use
 # the ones the user specified:
@@ -96,6 +84,18 @@ cd $HOME
 if [[ "$USE_PUBLIC_SHARED_MEMORY" ]]; then
   echo steemd: Downloading and uncompressing blockchain-$VERSION-latest.tar.lz4 - this may take awhile.
   wget -qO- https://s3.amazonaws.com/steemit-dev-blockchainstate/blockchain-$VERSION-latest.tar.lz4 | lz4 -d | tar x
+fi
+
+if [[ "$USE_PUBLIC_BLOCKLOG" ]]; then
+  if [[ ! -e $HOME/blockchain/block_log ]]; then
+    if [[ ! -d $HOME/blockchain ]]; then
+      mkdir -p $HOME/blockchain
+    fi
+    echo "steemd: Downloading a block_log and replaying the blockchain"
+    echo "This may take a little while..."
+    wget -O $HOME/blockchain/block_log https://s3.amazonaws.com/steemit-dev-blockchainstate/block_log-latest
+    ARGS+=" --replay-blockchain"
+  fi
 fi
 
 # slow down restart loop if flapping

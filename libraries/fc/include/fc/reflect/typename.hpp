@@ -33,41 +33,41 @@ namespace fc {
   template<> struct get_typename<value>    { static const char* name()   { return "value";   } };
   template<> struct get_typename<fc::exception>   { static const char* name()   { return "fc::exception";   } };
   template<> struct get_typename<std::vector<char>>   { static const char* name()   { return "std::vector<char>";   } };
-  template<typename T> struct get_typename<std::vector<T>>   
-  { 
-     static const char* name()  { 
-         static std::string n = std::string("std::vector<") + get_typename<T>::name() + ">"; 
-         return n.c_str();  
-     } 
+  template<typename T> struct get_typename<std::vector<T>>
+  {
+     static const char* name()  {
+         static std::string n = std::string("std::vector<") + get_typename<T>::name() + ">";
+         return n.c_str();
+     }
   };
-  template<typename T> struct get_typename<flat_set<T>>   
-  { 
-     static const char* name()  { 
-         static std::string n = std::string("flat_set<") + get_typename<T>::name() + ">"; 
-         return n.c_str();  
-     } 
+  template<typename T> struct get_typename<flat_set<T>>
+  {
+     static const char* name()  {
+         static std::string n = std::string("flat_set<") + get_typename<T>::name() + ">";
+         return n.c_str();
+     }
   };
   template<typename T> struct get_typename< std::deque<T> >
   {
      static const char* name()
      {
-        static std::string n = std::string("std::deque<") + get_typename<T>::name() + ">"; 
-        return n.c_str();  
+        static std::string n = std::string("std::deque<") + get_typename<T>::name() + ">";
+        return n.c_str();
      }
   };
-  template<typename T> struct get_typename<optional<T>>   
-  { 
-     static const char* name()  { 
-         static std::string n = std::string("optional<") + get_typename<T>::name() + ">"; 
-         return n.c_str();  
-     } 
+  template<typename T> struct get_typename<optional<T>>
+  {
+     static const char* name()  {
+         static std::string n = std::string("optional<") + get_typename<T>::name() + ">";
+         return n.c_str();
+     }
   };
-  template<typename K,typename V> struct get_typename<std::map<K,V>>   
-  { 
-     static const char* name()  { 
-         static std::string n = std::string("std::map<") + get_typename<K>::name() + ","+get_typename<V>::name()+">"; 
-         return n.c_str();  
-     } 
+  template<typename K,typename V> struct get_typename<std::map<K,V>>
+  {
+     static const char* name()  {
+         static std::string n = std::string("std::map<") + get_typename<K>::name() + ","+get_typename<V>::name()+">";
+         return n.c_str();
+     }
   };
 
   struct signed_int;
@@ -75,4 +75,5 @@ namespace fc {
   template<> struct get_typename<signed_int>   { static const char* name()   { return "signed_int";   } };
   template<> struct get_typename<unsigned_int>   { static const char* name()   { return "unsigned_int";   } };
 
+   std::string trim_typename_namespace( const std::string& n );
 }
