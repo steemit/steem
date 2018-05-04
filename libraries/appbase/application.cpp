@@ -142,7 +142,7 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
          if( bfs::exists( old_dir ) )
          {
             std::cerr << "The default data directory is now '" << data_dir.string() << "' instead of '" << old_dir.string() << "'.\n";
-            std::cerr << "Please move you data directory to '" << data_dir.string() << "' or specificy '--data-dir=" << old_dir.string() <<
+            std::cerr << "Please move your data directory to '" << data_dir.string() << "' or specificy '--data-dir=" << old_dir.string() <<
                "' to continue using the current data directory.\n";
             exit(1);
          }
