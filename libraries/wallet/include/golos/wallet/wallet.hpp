@@ -236,7 +236,7 @@ namespace golos { namespace wallet {
             /**
              *  Gets the account information for all accounts for which this wallet has a private key
              */
-            vector< database_api::account_api_object > list_my_accounts();
+            vector< golos::api::account_api_object > list_my_accounts();
 
             /** Lists all accounts registered in the blockchain.
              * This returns a list of all account names and their account ids, sorted by account name.
@@ -265,7 +265,7 @@ namespace golos { namespace wallet {
              * @param account_name the name of the account to provide information about
              * @returns the public account data stored in the blockchain
              */
-            database_api::account_api_object get_account( string account_name ) const;
+            golos::api::account_api_object get_account( string account_name ) const;
 
             /** Returns the current wallet filename.
              *
@@ -1036,7 +1036,7 @@ namespace golos { namespace wallet {
             /**
              * Checks memos against private keys on account and imported in wallet
              */
-            void check_memo( const string& memo, const database_api::account_api_object& account )const;
+            void check_memo( const string& memo, const golos::api::account_api_object& account )const;
 
             /**
              *  Returns the encrypted memo if memo starts with '#' otherwise returns memo

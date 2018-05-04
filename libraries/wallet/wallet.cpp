@@ -469,7 +469,7 @@ namespace golos { namespace wallet {
                     return _remote_database_api->get_proposed_transactions(account, from, limit);
                 }
 
-                database_api::account_api_object get_account( string account_name ) const {
+                golos::api::account_api_object get_account( string account_name ) const {
                     auto accounts = _remote_database_api->get_accounts( { account_name } );
                     FC_ASSERT( !accounts.empty(), "Unknown account" );
                     return accounts.front();
@@ -491,7 +491,7 @@ namespace golos { namespace wallet {
                 }
 
 
-                fc::ecc::private_key get_private_key_for_account(const database_api::account_api_object& account)const {
+                fc::ecc::private_key get_private_key_for_account(const golos::api::account_api_object& account)const {
                     vector<public_key_type> active_keys = account.active.get_keys();
                     if (active_keys.size() != 1)
                         FC_THROW("Expecting a simple authority with one active key");
@@ -681,9 +681,9 @@ namespace golos { namespace wallet {
 
                     FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
 
-                    flat_map< string, database_api::account_api_object > approving_account_lut;
+                    flat_map< string, golos::api::account_api_object > approving_account_lut;
                     size_t i = 0;
-                    for( const optional< database_api::account_api_object >& approving_acct : approving_account_objects ) {
+                    for( const optional< golos::api::account_api_object >& approving_acct : approving_account_objects ) {
                         if( !approving_acct.valid() ) {
                             wlog( "operation_get_required_auths said approval of non-existing account ${name} was needed",
                                   ("name", v_approving_account_names[i]) );
@@ -693,7 +693,7 @@ namespace golos { namespace wallet {
                         approving_account_lut[ approving_acct->name ] =  *approving_acct;
                         i++;
                     }
-                    auto get_account_from_lut = [&]( const std::string& name ) -> const database_api::account_api_object& {
+                    auto get_account_from_lut = [&]( const std::string& name ) -> const golos::api::account_api_object& {
                         auto it = approving_account_lut.find( name );
                         FC_ASSERT( it != approving_account_lut.end() );
                         return it->second;
@@ -704,7 +704,7 @@ namespace golos { namespace wallet {
                         const auto it = approving_account_lut.find( acct_name );
                         if( it == approving_account_lut.end() )
                             continue;
-                        const database_api::account_api_object& acct = it->second;
+                        const golos::api::account_api_object& acct = it->second;
                         vector<public_key_type> v_approving_keys = acct.active.get_keys();
                         wdump((v_approving_keys));
                         for( const public_key_type& approving_key : v_approving_keys ) {
@@ -717,7 +717,7 @@ namespace golos { namespace wallet {
                         const auto it = approving_account_lut.find( acct_name );
                         if( it == approving_account_lut.end() )
                             continue;
-                        const database_api::account_api_object& acct = it->second;
+                        const golos::api::account_api_object& acct = it->second;
                         vector<public_key_type> v_approving_keys = acct.posting.get_keys();
                         wdump((v_approving_keys));
                         for( const public_key_type& approving_key : v_approving_keys )
@@ -731,7 +731,7 @@ namespace golos { namespace wallet {
                         const auto it = approving_account_lut.find( acct_name );
                         if( it == approving_account_lut.end() )
                             continue;
-                        const database_api::account_api_object& acct = it->second;
+                        const golos::api::account_api_object& acct = it->second;
                         vector<public_key_type> v_approving_keys = acct.owner.get_keys();
                         for( const public_key_type& approving_key : v_approving_keys ) {
                             wdump((approving_key));
@@ -811,7 +811,7 @@ namespace golos { namespace wallet {
                     m["list_my_accounts"] = [](variant result, const fc::variants& a ) {
                         std::stringstream out;
 
-                        auto accounts = result.as<vector<database_api::account_api_object>>();
+                        auto accounts = result.as<vector<golos::api::account_api_object>>();
                         asset total_steem;
                         asset total_vest(0, VESTS_SYMBOL );
                         asset total_sbd(0, SBD_SYMBOL );
@@ -1010,9 +1010,9 @@ namespace golos { namespace wallet {
             return my->_remote_database_api->get_ops_in_block( block_num, only_virtual );
         }
 
-        vector< database_api::account_api_object > wallet_api::list_my_accounts() {
+        vector< golos::api::account_api_object > wallet_api::list_my_accounts() {
             FC_ASSERT( !is_locked(), "Wallet must be unlocked to list accounts" );
-            vector<database_api::account_api_object> result;
+            vector<golos::api::account_api_object> result;
 
             vector<public_key_type> pub_keys;
             pub_keys.reserve( my->_keys.size() );
@@ -1083,7 +1083,7 @@ namespace golos { namespace wallet {
         }
 
 
-        database_api::account_api_object wallet_api::get_account( string account_name ) const {
+        golos::api::account_api_object wallet_api::get_account( string account_name ) const {
             return my->get_account( account_name );
         }
 
@@ -1846,7 +1846,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 return my->sign_transaction( tx, broadcast );
             } FC_CAPTURE_AND_RETHROW( (voting_account)(witness_to_vote_for)(approve)(broadcast) ) }
 
-        void wallet_api::check_memo( const string& memo, const database_api::account_api_object& account )const
+        void wallet_api::check_memo( const string& memo, const golos::api::account_api_object& account )const
         {
             vector< public_key_type > keys;
 

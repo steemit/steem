@@ -5,7 +5,6 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
      include/golos/plugins/database_api/plugin.hpp
 
 
-     include/golos/plugins/database_api/api_objects/account_api_object.hpp
      include/golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp
      include/golos/plugins/database_api/api_objects/feed_history_api_object.hpp
      include/golos/plugins/database_api/forward.hpp
@@ -46,6 +45,7 @@ target_link_libraries(
         graphene_utilities
         appbase
         fc
+        golos::api
 )
 target_include_directories(golos_${CURRENT_TARGET} PUBLIC "include")
 
