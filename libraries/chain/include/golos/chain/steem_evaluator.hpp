@@ -1,7 +1,11 @@
 #pragma once
 
 #include <golos/protocol/steem_operations.hpp>
+#include <golos/protocol/proposal_operations.hpp>
 #include <golos/chain/evaluator.hpp>
+
+#define ASSERT_REQ_HF(HF, FEATURE) \
+    FC_ASSERT(db().has_hardfork(HF), FEATURE " is not enabled until HF " BOOST_PP_STRINGIZE(HF));
 
 namespace golos { namespace chain {
         using namespace golos::protocol;
@@ -48,5 +52,8 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(reset_account)
         DEFINE_EVALUATOR(set_reset_account)
         DEFINE_EVALUATOR(delegate_vesting_shares)
+        DEFINE_EVALUATOR(proposal_create)
+        DEFINE_EVALUATOR(proposal_update)
+        DEFINE_EVALUATOR(proposal_delete)
 
 } } // golos::chain

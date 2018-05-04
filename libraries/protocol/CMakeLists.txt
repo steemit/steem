@@ -12,6 +12,7 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/operation_util.hpp
         include/golos/protocol/operation_util_impl.hpp
         include/golos/protocol/operations.hpp
+        include/golos/protocol/proposal_operations.hpp
         include/golos/protocol/protocol.hpp
         include/golos/protocol/sign_state.hpp
         include/golos/protocol/steem_operations.hpp
@@ -28,6 +29,7 @@ list(APPEND ${CURRENT_TARGET}_SOURCES
         get_config.cpp
         operation_util_impl.cpp
         operations.cpp
+        proposal_operations.cpp
         sign_state.cpp
         steem_operations.cpp
         transaction.cpp

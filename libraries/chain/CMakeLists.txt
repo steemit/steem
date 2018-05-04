@@ -26,11 +26,15 @@ if(BUILD_SHARED_LIBRARIES)
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            proposal_object.cpp
+            proposal_evaluator.cpp
+            database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
             include/golos/chain/comment_object.hpp
+            include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp
             include/golos/chain/custom_operation_interpreter.hpp
             include/golos/chain/database.hpp
@@ -70,11 +74,15 @@ else()
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            proposal_object.cpp
+            proposal_evaluator.cpp
+            database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
             include/golos/chain/comment_object.hpp
+            include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp
             include/golos/chain/custom_operation_interpreter.hpp
             include/golos/chain/database.hpp

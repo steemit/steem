@@ -14,6 +14,7 @@
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
+#include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
 #include "forward.hpp"
@@ -133,6 +134,7 @@ namespace golos { namespace plugins { namespace database_api {
             DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
             DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
             DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
+            DEFINE_API_ARGS(get_proposed_transactions,        msg_pack, std::vector<proposal_api_object>)
 
 
             /**
@@ -398,6 +400,7 @@ namespace golos { namespace plugins { namespace database_api {
 
                                     (get_database_info)
 
+                                    (get_proposed_transactions)
                 )
 
             private:

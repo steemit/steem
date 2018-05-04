@@ -439,6 +439,23 @@ struct get_impacted_account_visitor {
     void operator()(const return_vesting_delegation_operation& op) {
         _impacted.insert(op.account);
     }
+
+    void operator()(const proposal_create_operation& op) {
+        _impacted.insert(op.author);
+    }
+
+    void operator()(const proposal_update_operation& op) {
+        _impacted.insert(op.active_approvals_to_add.begin(), op.active_approvals_to_add.end());
+        _impacted.insert(op.owner_approvals_to_add.begin(), op.owner_approvals_to_add.end());
+        _impacted.insert(op.posting_approvals_to_add.begin(), op.posting_approvals_to_add.end());
+        _impacted.insert(op.active_approvals_to_remove.begin(), op.active_approvals_to_remove.end());
+        _impacted.insert(op.owner_approvals_to_remove.begin(), op.owner_approvals_to_remove.end());
+        _impacted.insert(op.posting_approvals_to_remove.begin(), op.posting_approvals_to_remove.end());
+    }
+
+    void operator()(const proposal_delete_operation& op) {
+        _impacted.insert(op.requester);
+    }
     //void operator()( const operation& op ){}
 };
 
