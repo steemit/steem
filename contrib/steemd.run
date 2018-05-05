@@ -91,13 +91,16 @@ if [[ "$USE_PUBLIC_SHARED_MEMORY" ]]; then
 fi
 
 if [[ "$USE_PUBLIC_BLOCKLOG" ]]; then
+  if [[ "$USE_PUBLIC_BLOCKLOG" = "1" ]]; then
+    USE_PUBLIC_BLOCKLOG="https://s3.amazonaws.com/steemit-dev-blockchainstate/block_log-latest"
+  fi
   if [[ ! -e $HOME/blockchain/block_log ]]; then
     if [[ ! -d $HOME/blockchain ]]; then
       mkdir -p $HOME/blockchain
     fi
     echo "steemd: Downloading a block_log and replaying the blockchain"
     echo "This may take a little while..."
-    wget -O $HOME/blockchain/block_log https://s3.amazonaws.com/steemit-dev-blockchainstate/block_log-latest
+    wget -O $HOME/blockchain/block_log $USE_PUBLIC_BLOCKLOG 
     ARGS+=" --replay-blockchain"
   fi
 fi
