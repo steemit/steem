@@ -430,6 +430,7 @@ namespace golos { namespace chain {
         account_bandwidth_index;
 
         struct by_delegation;
+        struct by_received;
 
         using vesting_delegation_index = multi_index_container<
             vesting_delegation_object,
@@ -443,6 +444,15 @@ namespace golos { namespace chain {
                         vesting_delegation_object,
                         member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator>,
                         member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee>
+                    >,
+                    composite_key_compare<protocol::string_less, protocol::string_less>
+                >,
+                ordered_unique<
+                    tag<by_received>,
+                    composite_key<
+                        vesting_delegation_object,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee>,
+                        member<vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator>
                     >,
                     composite_key_compare<protocol::string_less, protocol::string_less>
                 >
@@ -536,8 +546,8 @@ namespace golos { namespace chain {
         allocator<change_recovery_account_request_object>
         >
         change_recovery_account_request_index;
-    }
-}
+
+} } // golos::chain
 
 FC_REFLECT((golos::chain::account_object),
         (id)(name)(memo_key)(proxy)(last_account_update)

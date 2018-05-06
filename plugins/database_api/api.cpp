@@ -17,7 +17,7 @@
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
 #define CHECK_ARGS_COUNT(min, max) \
-   FC_ASSERT(n_args >= min && n_args <= max, "Expected at least #min and up to #max arguments, got ${n}", ("n", n_args));
+   FC_ASSERT(n_args >= min && n_args <= max, "Expected #min-#max arguments, got ${n}", ("n", n_args));
 
 namespace golos { namespace plugins { namespace database_api {
 
@@ -52,7 +52,6 @@ namespace golos { namespace plugins { namespace database_api {
             struct plugin::api_impl final {
             public:
                 api_impl();
-
                 ~api_impl();
 
                 void startup() {
@@ -60,61 +59,41 @@ namespace golos { namespace plugins { namespace database_api {
 
                 // Subscriptions
                 void set_subscribe_callback(std::function<void(const variant &)> cb, bool clear_filter);
-
                 void set_pending_transaction_callback(std::function<void(const variant &)> cb);
-
                 void set_block_applied_callback(block_applied_callback cb);
-
                 void clear_block_applied_callback();
-
                 void cancel_all_subscriptions();
 
                 // Blocks and transactions
                 optional<block_header> get_block_header(uint32_t block_num) const;
-
                 optional<signed_block> get_block(uint32_t block_num) const;
 
                 // Globals
                 fc::variant_object get_config() const;
-
                 dynamic_global_property_api_object get_dynamic_global_properties() const;
 
                 // Accounts
                 std::vector<account_api_object> get_accounts(std::vector<std::string> names) const;
-
                 std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
-
                 std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
-
                 uint64_t get_account_count() const;
 
                 // Witnesses
                 std::vector<optional<witness_api_object>> get_witnesses(const std::vector<witness_object::id_type> &witness_ids) const;
-
                 fc::optional<witness_api_object> get_witness_by_account(std::string account_name) const;
-
                 std::set<account_name_type> lookup_witness_accounts(const std::string &lower_bound_name, uint32_t limit) const;
-
                 uint64_t get_witness_count() const;
 
                 // Authority / validation
                 std::string get_transaction_hex(const signed_transaction &trx) const;
-
                 std::set<public_key_type> get_required_signatures(const signed_transaction &trx, const flat_set<public_key_type> &available_keys) const;
-
                 std::set<public_key_type> get_potential_signatures(const signed_transaction &trx) const;
-
                 bool verify_authority(const signed_transaction &trx) const;
-
                 bool verify_account_authority(const std::string &name_or_id, const flat_set<public_key_type> &signers) const;
 
                 std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
-
-
                 std::vector<witness_api_object> get_witnesses_by_vote(std::string from, uint32_t limit) const;
-
                 std::vector<account_name_type> get_miner_queue() const;
-
                 std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
                 template<typename T>
@@ -126,7 +105,7 @@ namespace golos { namespace plugins { namespace database_api {
 
                     if (!is_subscribed_to_item(i)) {
                         idump((i));
-                        _subscribe_filter.insert(vec.data(), vec.size());//(vecconst char*)&i, sizeof(i) );
+                        _subscribe_filter.insert(vec.data(), vec.size());
                     }
                 }
 
@@ -865,7 +844,6 @@ namespace golos { namespace plugins { namespace database_api {
             }
 
 
-
             std::vector<account_name_type> plugin::api_impl::get_miner_queue() const {
                 std::vector<account_name_type> result;
                 const auto &pow_idx = database().get_index<witness_index>().indices().get<by_pow>();
@@ -903,7 +881,6 @@ namespace golos { namespace plugins { namespace database_api {
             }
 
 
-
             DEFINE_API(plugin, get_savings_withdraw_from) {
                 CHECK_ARG_SIZE(1)
                 auto account = args.args->at(0).as<string>();
@@ -936,24 +913,30 @@ namespace golos { namespace plugins { namespace database_api {
                 });
             }
 
-            //vector<vesting_delegation_api_obj> get_vesting_delegations(string account, string from, uint32_t limit = 100) const;
+            //vector<vesting_delegation_api_obj> get_vesting_delegations(string account, string from, uint32_t limit, delegations_type type = delegated) const;
             DEFINE_API(plugin, get_vesting_delegations) {
                 size_t n_args = args.args->size();
-                CHECK_ARGS_COUNT(2, 3);
+                CHECK_ARGS_COUNT(2, 4);
                 auto account = args.args->at(0).as<string>();
                 auto from = args.args->at(1).as<string>();
-                uint32_t limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                auto limit = n_args >= 3 ? args.args->at(2).as<uint32_t>() : 100;
+                auto type = n_args >= 4 ? args.args->at(3).as<delegations_type>() : delegated;
+                bool sent = type == delegated;
                 FC_ASSERT(limit <= 1000);
 
+                vector<vesting_delegation_api_object> result;
+                result.reserve(limit);
                 return my->database().with_weak_read_lock([&]() {
-                    vector<vesting_delegation_api_object> result;
-                    result.reserve(limit);
-                    const auto& idx = my->database().get_index<vesting_delegation_index, by_delegation>();
-                    auto itr = idx.lower_bound(std::make_tuple(account, from));
-                    while (result.size() < limit && itr != idx.end() && itr->delegator == account) {
-                        result.push_back(*itr);
-                        ++itr;
-                    }
+                    auto fill_result = [&](const auto& idx) {
+                        auto i = idx.lower_bound(std::make_tuple(account, from));
+                        while (result.size() < limit && i != idx.end() && account == (sent ? i->delegator : i->delegatee)) {
+                            result.push_back(*i++);
+                        }
+                    };
+                    if (sent)
+                        fill_result(my->database().get_index<vesting_delegation_index, by_delegation>());
+                    else
+                        fill_result(my->database().get_index<vesting_delegation_index, by_received>());
                     return result;
                 });
             }

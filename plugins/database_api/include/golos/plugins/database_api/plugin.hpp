@@ -58,6 +58,10 @@ namespace golos { namespace plugins { namespace database_api {
                 incoming, outgoing, all
             };
 
+            enum delegations_type {
+                delegated, received
+            };
+
 
             struct tag_count_object {
                 string tag;
@@ -224,7 +228,6 @@ namespace golos { namespace plugins { namespace database_api {
                                      */
                                     (get_block)
 
-                                    
                                     /**
                                      * @brief Set callback which is triggered on each generated block
                                      * @param callback function which should be called
@@ -416,14 +419,11 @@ namespace golos { namespace plugins { namespace database_api {
 
 
 
-
-
-
-
 FC_REFLECT((golos::plugins::database_api::scheduled_hardfork), (hf_version)(live_time))
 FC_REFLECT((golos::plugins::database_api::withdraw_route), (from_account)(to_account)(percent)(auto_vest))
 
 FC_REFLECT_ENUM(golos::plugins::database_api::withdraw_route_type, (incoming)(outgoing)(all))
+FC_REFLECT_ENUM(golos::plugins::database_api::delegations_type, (delegated)(received))
 
 FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 
