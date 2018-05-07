@@ -777,10 +777,10 @@ namespace golos { namespace plugins { namespace social_network {
 
             for (; itr != idx.end() && itr->author == *query.start_author && result.size() < query.limit; ++itr) {
                 if (itr->parent_author.size() > 0) {
-                    if (!query.is_good_tags(db.get<comment_object>(itr->root_comment))) {
+                    if (!query.is_good_tags(discussion(db.get<comment_object>(itr->root_comment), db))) {
                         continue;
                     }
-                    result.emplace_back(*itr);
+                    result.emplace_back(discussion(*itr, db));
                     pimpl->fill_discussion(result.back(), query);
                 }
             }

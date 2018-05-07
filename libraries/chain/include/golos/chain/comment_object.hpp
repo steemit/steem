@@ -277,25 +277,9 @@ namespace golos {
 
 FC_REFLECT_ENUM(golos::chain::comment_mode, (first_payout)(second_payout)(archived))
 
-FC_REFLECT((golos::chain::comment_object),
-        (id)(author)(permlink)
-                (parent_author)(parent_permlink)
-                (last_update)(created)(active)(last_payout)
-                (depth)(children)(children_rshares2)
-                (net_rshares)(abs_rshares)(vote_rshares)
-                (children_abs_rshares)(cashout_time)(max_cashout_time)
-                (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)
-                (author_rewards)(net_votes)(root_comment)(mode)
-                (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
-                (beneficiaries)
-)
-
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_object, golos::chain::comment_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_content_object, golos::chain::comment_content_index)
 
-FC_REFLECT((golos::chain::comment_vote_object),
-        (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
-)
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_vote_object, golos::chain::comment_vote_index)
 

@@ -2267,7 +2267,7 @@ namespace golos { namespace chain {
                         }
                     }
                 }
-            } FC_CAPTURE_AND_RETHROW((comment))
+            } FC_CAPTURE_AND_RETHROW()
         }
 
         void database::process_comment_cashout() {

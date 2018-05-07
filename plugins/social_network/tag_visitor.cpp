@@ -235,7 +235,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
             if (comment.parent_author.size()) {
                 update_tags(comment.parent_author, to_string(comment.parent_permlink));
             }
-        } FC_CAPTURE_LOG_AND_RETHROW((comment))
+        } FC_CAPTURE_LOG_AND_RETHROW(())
     }
 
     void operation_visitor::operator()(const transfer_operation& op) const {
