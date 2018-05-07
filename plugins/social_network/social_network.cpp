@@ -178,9 +178,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     discussion social_network::impl::create_discussion(const comment_object& o) const {
-        comment_content_object content_obj = database_.get_comment_content(o.id);
-
-        return discussion(o, content_obj);
+        return discussion(o, database_);
     }
 
     void social_network::impl::fill_discussion(discussion& d, const discussion_query& query) const {
@@ -274,7 +272,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     void social_network::impl::set_url(discussion& d) const {
-        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment));
+        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment), database());
 
         d.root_title = root.title;
 

@@ -2,6 +2,7 @@
 #define GOLOS_COMMENT_API_OBJ_H
 
 #include <golos/chain/comment_object.hpp>
+#include <golos/chain/database.hpp>
 #include <vector>
 
 namespace golos {
@@ -11,7 +12,8 @@ namespace golos {
             using namespace golos::chain;
 
             struct comment_api_object {
-                comment_api_object(const golos::chain::comment_object &o) : id(o.id),
+                comment_api_object(const golos::chain::comment_object &o, const golos::chain::database &db) :
+                        id(o.id),
                         parent_author(o.parent_author), parent_permlink(to_string(o.parent_permlink)), author(o.author),
                         permlink(to_string(o.permlink)), last_update(o.last_update), created(o.created),
                         active(o.active), last_payout(o.last_payout), depth(o.depth), children(o.children),
@@ -28,6 +30,11 @@ namespace golos {
                     for (auto& route : o.beneficiaries) {
                         beneficiaries.push_back(route);
                     }
+                    auto content = db.get_comment_content(o.id);
+
+                    title = to_string(content.title);
+                    body = to_string(content.body);
+                    json_metadata = to_string(content.json_metadata);
                 }
 
                 comment_api_object() {
