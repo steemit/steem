@@ -72,7 +72,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
-   // therefore we use a method that strips the symbol from precision (and vesting) info when searching.
+   // therefore we use a method that strips the symbol from precision info when searching.
    const auto& idx = _db.get_index< smt_token_index >().indices().get< by_symbol >();
    auto stripped_symbol_num = o.symbol.get_stripped_precision_smt_num();
    auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );

@@ -5063,7 +5063,6 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
 
    return vector< asset_symbol_type >( 1, new_symbol );
 }
-
 #endif
 
 } } //steem::chain

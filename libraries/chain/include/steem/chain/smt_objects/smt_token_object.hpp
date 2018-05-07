@@ -155,8 +155,8 @@ struct by_symbol;
 struct by_control_account;
 
 /**Comparison operators that allow to return the same object representation
-- * for both liquid and vesting symbol/nai.
-- */
+ * for both liquid and vesting symbol/nai.
+ */
 struct vesting_liquid_less
 {
    bool operator ()( const asset_symbol_type& lhs, const asset_symbol_type& rhs ) const
