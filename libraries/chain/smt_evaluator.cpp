@@ -17,13 +17,14 @@ namespace {
 /// Return SMT token object controlled by this account identified by its symbol. Throws assert exception when not found!
 inline const smt_token_object& get_controlled_smt( const database& db, const account_name_type& control_account, const asset_symbol_type& smt_symbol )
 {
+   const smt_token_object* smt = db.find< smt_token_object, by_symbol >( smt_symbol );
    // The SMT is supposed to be found.
-   const smt_token_object& smt = db.get_smt( smt_symbol );
+   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", smt_symbol.to_nai()) );
    // Check against unotherized account trying to access (and alter) SMT. Unotherized means "other than the one that created the SMT".
-   FC_ASSERT( smt.control_account == control_account, "The account ${account} does NOT control the SMT ${smt}",
+   FC_ASSERT( smt->control_account == control_account, "The account ${account} does NOT control the SMT ${smt}",
       ("account", control_account)("smt", smt_symbol.to_nai()) );
    
-   return smt;
+   return *smt;
 }
    
 }
@@ -72,7 +73,11 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
    // therefore we use a method that strips the symbol from precision (and vesting) info when searching.
-   FC_ASSERT( (_db.find_smt( o.symbol ) == nullptr), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   const auto& idx = _db.get_index< smt_token_index >().indices().get< by_symbol >();
+   auto stripped_symbol_num = o.symbol.get_stripped_precision_smt_num();
+   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
+   FC_ASSERT( (it == idx.end()) || (it->liquid_symbol.get_stripped_precision_smt_num() != stripped_symbol_num),
+              "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
 
    asset effective_elevation_fee;
 
