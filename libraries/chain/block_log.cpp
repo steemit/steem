@@ -95,7 +95,7 @@ namespace golos { namespace chain {
             }
 
             void create_nonexist_file(const std::string& path) const {
-                if (!boost::filesystem::is_regular_file(path)) {
+                if (!boost::filesystem::is_regular_file(path) || boost::filesystem::file_size(path) == 0) {
                     std::ofstream stream(path, std::ios::out|std::ios::binary);
                     stream << '\0';
                     stream.close();
