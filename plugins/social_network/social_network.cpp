@@ -178,14 +178,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     discussion social_network::impl::create_discussion(const comment_object& o) const {
-        const auto& idx = database_.get_index<comment_content_index>().indices().get<by_comment>();
-
-        auto itr = idx.find(o.id);
-        if (itr == idx.end()) {
-            // throw exception?
-        }
-
-        comment_content_object content_obj = *itr;
+        comment_content_object content_obj = database_.get_comment_content(o.id);
 
         return discussion(o, content_obj);
     }

@@ -653,22 +653,20 @@ namespace golos { namespace chain {
                     });
                     id = new_comment.id;
 
-                    #ifndef IS_LOW_MEM
-                    _db.create< comment_content_object >( [&]( comment_content_object& con )
-                        {
-                            con.comment = id;
+#ifndef IS_LOW_MEM
+                    _db.create< comment_content_object >( [&]( comment_content_object& con ) {
+                        con.comment = id;
 
-                             from_string( con.title, o.title );
-                             if( o.body.size() < 1024*1024*128 )
-                             {
-                                    from_string( con.body, o.body );
-                                 }
-                             if( fc::is_utf8( o.json_metadata ) )
-                                from_string( con.json_metadata, o.json_metadata );
-                             else
-                             wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
-                        });
-                    #endif
+                         from_string(con.title, o.title);
+                         if (o.body.size() < 1024*1024*128) {
+                             from_string(con.body, o.body);
+                         }
+                         if (fc::is_utf8(o.json_metadata))
+                             from_string(con.json_metadata, o.json_metadata);
+                         else
+                         wlog("Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink));
+                    });
+#endif
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
                     auto now = _db.head_block_time();
@@ -717,33 +715,35 @@ namespace golos { namespace chain {
 
                     });
 #ifndef IS_LOW_MEM
-                    _db.modify( _db.get< comment_content_object, by_comment >( comment.id ), [&]( comment_content_object& con )
-                    {
-                        if( o.title.size() )
-                            from_string( con.title, o.title );
-                        if( o.json_metadata.size() ) {
-                            if( fc::is_utf8( o.json_metadata ) )
-                                from_string( con.json_metadata, o.json_metadata );
+                    _db.modify(_db.get< comment_content_object, by_comment >( comment.id ), [&]( comment_content_object& con ) {
+                        if (o.title.size())
+                            from_string(con.title, o.title);
+                        if (o.json_metadata.size()) {
+                            if (fc::is_utf8(o.json_metadata))
+                                from_string(con.json_metadata, o.json_metadata );
                             else
-                                wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+                                wlog("Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink));
                         }
-                        if( o.body.size() ) {
+                        if (o.body.size()) {
                             try {
                                 diff_match_patch<std::wstring> dmp;
-                                auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
-                                if( patch.size() ) {
-                                    auto result = dmp.patch_apply( patch, utf8_to_wstring( to_string( con.body ) ) );
+                                auto patch = dmp.patch_fromText(utf8_to_wstring(o.body));
+                                if (patch.size()) {
+                                    auto result = dmp.patch_apply(patch, utf8_to_wstring(to_string(con.body)));
                                     auto patched_body = wstring_to_utf8(result.first);
-                                    if( !fc::is_utf8( patched_body ) ) {
+                                    if(!fc::is_utf8(patched_body)) {
                                         idump(("invalid utf8")(patched_body));
-                                        from_string( con.body, fc::prune_invalid_utf8(patched_body) );
-                                    } else { from_string( con.body, patched_body ); }
+                                        from_string(con.body, fc::prune_invalid_utf8(patched_body));
+                                    }
+                                    else {
+                                        from_string(con.body, patched_body);
+                                    }
                                 }
                                 else { // replace
-                                    from_string( con.body, o.body );
+                                    from_string(con.body, o.body);
                                 }
                             } catch ( ... ) {
-                                from_string( con.body, o.body );
+                                from_string(con.body, o.body);
                             }
                         }
                     });

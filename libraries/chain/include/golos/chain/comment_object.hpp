@@ -292,9 +292,6 @@ FC_REFLECT((golos::chain::comment_object),
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_object, golos::chain::comment_index)
 
-FC_REFLECT((golos::chain::comment_content_object),
-           (id)(title)(body)(json_metadata))
-
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_content_object, golos::chain::comment_content_index)
 
 FC_REFLECT((golos::chain::comment_vote_object),

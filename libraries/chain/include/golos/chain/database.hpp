@@ -153,6 +153,10 @@ namespace golos {
 
             const comment_object *find_comment(const account_name_type &author, const string &permlink) const;
 
+            const comment_content_object &get_comment_content(const comment_id_type &comment) const;
+
+            const comment_content_object *find_comment_content(const comment_id_type &comment) const;
+
             const escrow_object &get_escrow(const account_name_type &name, uint32_t escrow_id) const;
 
             const escrow_object *find_escrow(const account_name_type &name, uint32_t escrow_id) const;

@@ -8,19 +8,11 @@ namespace golos { namespace plugins { namespace social_network {
 
     struct discussion: public comment_api_object {
         discussion(const comment_object& o, const comment_content_object& content)
-                : comment_api_object(o) ,
-                  title(to_string(content.title)) ,
-                  body(to_string(content.body)) ,
-                  json_metadata(to_string(content.json_metadata)) {
+                : comment_api_object(o) {
         }
 
         discussion() {
         }
-
-        // Members from comment content object
-        std::string title;
-        std::string body;
-        std::string json_metadata;
 
         string url; /// /category/@rootauthor/root_permlink#author/permlink
         string root_title;

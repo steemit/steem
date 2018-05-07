@@ -488,6 +488,17 @@ namespace golos { namespace chain {
             return find<comment_object, by_permlink>(boost::make_tuple(author, permlink));
         }
 
+
+        const comment_content_object &database::get_comment_content(const comment_id_type &comment) const {
+            try {
+                return get<comment_content_object, by_comment>(comment);
+            } FC_CAPTURE_AND_RETHROW((comment))
+        }
+
+        const comment_content_object *database::find_comment_content(const comment_id_type &comment) const {
+            return find<comment_content_object, by_comment>(comment);
+        }
+
         const escrow_object &database::get_escrow(const account_name_type &name, uint32_t escrow_id) const {
             try {
                 return get<escrow_object, by_from_id>(boost::make_tuple(name, escrow_id));
