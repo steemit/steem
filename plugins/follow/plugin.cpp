@@ -25,6 +25,17 @@ namespace golos {
             using golos::chain::account_index;
             using golos::chain::by_name;
 
+            share_type get_account_reputation(const account_name_type& account) {
+                auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                auto itr = rep_idx.find(account);
+
+                if (rep_idx.end() != itr) {
+                    return itr->reputation;
+                }
+
+                return 0;
+            }
+
             struct pre_operation_visitor {
                 plugin &_plugin;
                 golos::chain::database &db;
@@ -353,6 +364,8 @@ namespace golos {
                         std::string permlink);
 
                 blog_authors_r get_blog_authors(account_name_type );
+
+                std::vector<extended_account> get_accounts( std::vector<std::string> names ) ;
 
                 golos::chain::database &database_;
 
@@ -696,6 +709,38 @@ namespace golos {
                 return result;
             }
 
+
+            std::vector<extended_account> plugin::impl::get_accounts(std::vector<std::string> names) {
+                auto &db = database();
+
+                const auto &idx = db.get_index<account_index>().indices().get<by_name>();
+                const auto &vidx = db.get_index<golos::chain::witness_vote_index>().indices().get<golos::chain::by_account_witness>();
+                std::vector<extended_account> results;
+
+                for (auto name : names) {   
+                    auto itr = idx.find(name);
+                    if (itr != idx.end()) {
+                        results.push_back(extended_account(*itr, db));
+                        results.back().reputation = get_account_reputation(name);
+                        auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, golos::chain::witness_id_type()));
+                        while (vitr != vidx.end() && vitr->account == itr->id) {
+                            results.back().witness_votes.insert(db.get(vitr->witness).owner);
+                            ++vitr;
+                        }
+                    }
+                    else {
+                        wlog("database_api: No such account with name \"${name}\" in account index", ("name", name) );
+                    }
+                }
+                return results;
+            }
+
+            DEFINE_API(plugin, get_accounts) {
+                CHECK_ARG_SIZE(1)
+                return pimpl->database().with_weak_read_lock([&]() {
+                    return pimpl->get_accounts(args.args->at(0).as<vector<std::string> >());
+                });
+            }
 
             DEFINE_API(plugin, get_followers) {
                 CHECK_ARG_SIZE(4)

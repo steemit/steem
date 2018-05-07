@@ -80,8 +80,12 @@ namespace golos { namespace plugins { namespace social_network {
             return !has_author_selector() || select_authors.count(name);
         }
 
+        bool has_parent_comment() const {
+            return !!parent_author;
+        }
+
         bool is_good_parent(const comment_object::id_type& id) const {
-            return !!parent_author || id == parent_comment.id;
+            return has_parent_comment() || id == parent_comment.id;
         }
 
         bool has_start_comment() const {

@@ -28,6 +28,7 @@
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <golos/plugins/account_history/applied_operation.hpp>
 
 #include <map>
 

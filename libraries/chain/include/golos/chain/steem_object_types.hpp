@@ -60,8 +60,6 @@ namespace golos {
             feed_history_object_type,
             convert_request_object_type,
             liquidity_reward_balance_object_type,
-            operation_object_type,
-            account_history_object_type,
             hardfork_property_object_type,
             withdraw_vesting_route_object_type,
             owner_authority_history_object_type,
@@ -73,7 +71,9 @@ namespace golos {
             block_stats_object_type,
             vesting_delegation_object_type,
             vesting_delegation_expiration_object_type,
-            account_metadata_object_type
+            account_metadata_object_type,
+            proposal_object_type,
+            required_approval_object_type
         };
 
         class dynamic_global_property_object;
@@ -84,6 +84,8 @@ namespace golos {
         class transaction_object;
         class block_summary_object;
         class witness_schedule_object;
+        class proposal_object;
+        class required_approval_object;
         class comment_object;
         class comment_content_object;
         class comment_vote_object;
@@ -92,8 +94,6 @@ namespace golos {
         class feed_history_object;
         class convert_request_object;
         class liquidity_reward_balance_object;
-        class operation_object;
-        class account_history_object;
         class hardfork_property_object;
         class withdraw_vesting_route_object;
         class owner_authority_history_object;
@@ -106,6 +106,7 @@ namespace golos {
         class vesting_delegation_object;
         class vesting_delegation_expiration_object;
         class account_metadata_object;
+        class proposal_object;
 
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
@@ -123,8 +124,6 @@ namespace golos {
         typedef object_id<feed_history_object> feed_history_id_type;
         typedef object_id<convert_request_object> convert_request_id_type;
         typedef object_id<liquidity_reward_balance_object> liquidity_reward_balance_id_type;
-        typedef object_id<operation_object> operation_id_type;
-        typedef object_id<account_history_object> account_history_id_type;
         typedef object_id<hardfork_property_object> hardfork_property_id_type;
         typedef object_id<withdraw_vesting_route_object> withdraw_vesting_route_id_type;
         typedef object_id<owner_authority_history_object> owner_authority_history_id_type;
@@ -137,6 +136,8 @@ namespace golos {
         typedef object_id<vesting_delegation_object> vesting_delegation_id_type;
         typedef object_id<vesting_delegation_expiration_object> vesting_delegation_expiration_id_type;
         typedef object_id<account_metadata_object> account_metadata_id_type;
+        typedef object_id<proposal_object> proposal_object_id_type;
+        typedef object_id<required_approval_object> required_approval_object_id_type;
 
         enum bandwidth_type {
             post,    ///< Rate limiting posting reward eligibility over time
@@ -231,8 +232,6 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (feed_history_object_type)
                 (convert_request_object_type)
                 (liquidity_reward_balance_object_type)
-                (operation_object_type)
-                (account_history_object_type)
                 (hardfork_property_object_type)
                 (withdraw_vesting_route_object_type)
                 (owner_authority_history_object_type)
@@ -245,6 +244,8 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (vesting_delegation_object_type)
                 (vesting_delegation_expiration_object_type)
                 (account_metadata_object_type)
+                (proposal_object_type)
+                (required_approval_object_type)
 )
 
 FC_REFLECT_TYPENAME((golos::chain::shared_string))

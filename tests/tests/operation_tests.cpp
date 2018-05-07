@@ -6297,7 +6297,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- Test failure when GESTS are powering down");
             withdraw_vesting_operation withdraw;
-            withdraw.account = "alice";	
+            withdraw.account = "alice";
             withdraw.vesting_shares = db->get_account("alice").vesting_shares;
 
             account_create_with_delegation_operation op;

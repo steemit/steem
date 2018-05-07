@@ -3,6 +3,7 @@
 #include <golos/plugins/database_api/plugin.hpp>
 #include <golos/plugins/database_api/forward.hpp>
 #include <golos/plugins/database_api/state.hpp>
+#include <golos/plugins/account_history/applied_operation.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <golos/plugins/social_network/api_object/tag_api_object.hpp>
@@ -15,6 +16,7 @@
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
+#include <golos/api/account_api_object.hpp>
 
 
 namespace golos { namespace wallet {
@@ -43,7 +45,7 @@ struct remote_database_api {
     vector< account_name_type > get_active_witnesses();
     optional< database_api::signed_block > get_block( uint32_t );
     optional< block_header > get_block_header( uint32_t );
-    vector< operation_api_object > get_ops_in_block( uint32_t, bool only_virtual = true );
+    vector< golos::plugins::account_history::applied_operation > get_ops_in_block( uint32_t, bool only_virtual = true );
     fc::variant_object get_config();
     database_api::dynamic_global_property_object get_dynamic_global_properties();
     chain_properties get_chain_properties();
@@ -52,7 +54,7 @@ struct remote_database_api {
     database_api::witness_schedule_api_object get_witness_schedule();
     hardfork_version get_hardfork_version();
     database_api::scheduled_hardfork get_next_scheduled_hardfork();
-    vector< optional< database_api::account_api_object > > lookup_account_names( vector< account_name_type > );
+    vector< optional< golos::api::account_api_object > > lookup_account_names( vector< account_name_type > );
     vector< account_name_type > lookup_accounts( account_name_type, uint32_t );
 
     uint64_t get_account_count();
@@ -75,11 +77,12 @@ struct remote_database_api {
     set< public_key_type > get_potential_signatures( signed_transaction );
     bool verify_authority( signed_transaction );
     bool verify_account_authority( string, flat_set< public_key_type > );
-    vector< database_api::extended_account > get_accounts( vector< account_name_type > );
-    map<uint32_t, operation_api_object> get_account_history( account_name_type, uint64_t, uint32_t );
+    vector< golos::api::account_api_object > get_accounts( vector< account_name_type > );
+    map<uint32_t, golos::plugins::account_history::applied_operation> get_account_history( account_name_type, uint64_t, uint32_t );
     optional< database_api::witness_api_object > get_witness_by_account( account_name_type );
     vector< account_name_type > get_miner_queue();
     database_api::database_info get_database_info();
+    std::vector<proposal_api_object> get_proposed_transactions(account_name_type, uint32_t, uint32_t);
 };
 
 /**
@@ -166,8 +169,8 @@ struct remote_market_history {
  * Class is used by wallet to send formatted API calls to market_history plugin on remote node.
  */
 struct remote_private_message {
-    vector <message_api_obj> get_inbox(const std::string& to, time_point newest, uint16_t limit) const;
-    vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit) const;
+    vector <message_api_obj> get_inbox(const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset) const;
+    vector <message_api_obj> get_outbox(const std::string& from, time_point newest, uint16_t limit, std::uint64_t offset) const;
 };
 
 /**
@@ -223,6 +226,7 @@ FC_API( golos::wallet::remote_database_api,
         (get_witness_by_account)
         (get_miner_queue)
         (get_database_info)
+        (get_proposed_transactions)
 )
 
 /**

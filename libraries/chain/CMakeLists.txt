@@ -26,11 +26,15 @@ if(BUILD_SHARED_LIBRARIES)
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            proposal_object.cpp
+            proposal_evaluator.cpp
+            database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
             include/golos/chain/comment_object.hpp
+            include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp
             include/golos/chain/custom_operation_interpreter.hpp
             include/golos/chain/database.hpp
@@ -41,7 +45,6 @@ if(BUILD_SHARED_LIBRARIES)
             include/golos/chain/fork_database.hpp
             include/golos/chain/generic_custom_operation_interpreter.hpp
             include/golos/chain/global_property_object.hpp
-            include/golos/chain/history_object.hpp
             include/golos/chain/immutable_chain_parameters.hpp
             include/golos/chain/index.hpp
             include/golos/chain/node_property_object.hpp
@@ -71,11 +74,15 @@ else()
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            proposal_object.cpp
+            proposal_evaluator.cpp
+            database_proposal_object.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
             include/golos/chain/comment_object.hpp
+            include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp
             include/golos/chain/custom_operation_interpreter.hpp
             include/golos/chain/database.hpp
@@ -86,7 +93,6 @@ else()
             include/golos/chain/fork_database.hpp
             include/golos/chain/generic_custom_operation_interpreter.hpp
             include/golos/chain/global_property_object.hpp
-            include/golos/chain/history_object.hpp
             include/golos/chain/immutable_chain_parameters.hpp
             include/golos/chain/index.hpp
             include/golos/chain/node_property_object.hpp

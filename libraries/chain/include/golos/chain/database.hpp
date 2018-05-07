@@ -39,6 +39,8 @@ namespace golos {
 
             ~database();
 
+            using chainbase::database::remove;
+
             bool is_producing() const {
                 return _is_producing;
             }
@@ -145,6 +147,10 @@ namespace golos {
 
             const account_object *find_account(const account_name_type &name) const;
 
+            const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
+
+            const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
+
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
             const comment_object *find_comment(const account_name_type &author, const shared_string &permlink) const;
@@ -221,6 +227,14 @@ namespace golos {
             bool _push_block(const signed_block &b, uint32_t skip);
 
             void _push_transaction(const signed_transaction &trx, uint32_t skip);
+
+            bool is_authorized_to_execute(const proposal_object&) const;
+
+            void push_proposal(const proposal_object&);
+
+            void remove(const proposal_object&);
+
+            void clear_expired_proposals();
 
             signed_block generate_block(
                     const fc::time_point_sec when,

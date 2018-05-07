@@ -31,29 +31,25 @@
 
 #include <fc/thread/future.hpp>
 
-namespace golos {
-namespace plugins {
-namespace account_history {
+#include <golos/plugins/json_rpc/utility.hpp>
+#include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/plugins/account_history/applied_operation.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
+
+
+namespace golos { namespace plugins { namespace account_history {
 using namespace chain;
-//
-// Plugins should #define their SPACE_ID's so plugins with
-// conflicting SPACE_ID assignments can be compiled into the
-// same binary (by simply re-assigning some of the conflicting #defined
-// SPACE_ID's in a build script).
-//
-// Assignment of SPACE_ID's cannot be done at run-time because
-// various template automagic depends on them being known at compile
-// time.
-//
 
-#ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
-#endif
+using get_account_history_return_type = std::map<uint32_t, applied_operation>;
 
-enum account_history_object_type {
-    key_account_object_type = 0,
-    bucket_object_type = 1 ///< used in market_history_plugin
-};
+
+using plugins::json_rpc::void_type;
+using plugins::json_rpc::msg_pack;
+using plugins::json_rpc::msg_pack_transfer;
+
+DEFINE_API_ARGS(get_account_history,              msg_pack, get_account_history_return_type)
+DEFINE_API_ARGS(get_ops_in_block,                 msg_pack, std::vector<applied_operation>)
+DEFINE_API_ARGS(get_transaction,                  msg_pack, annotated_signed_transaction)
 
 /**
 *  This plugin is designed to track a range of operations by account so that one node
@@ -63,12 +59,16 @@ class plugin : public appbase::plugin<plugin> {
 public:
     constexpr static const char *plugin_name = "account_history";
 
-    APPBASE_PLUGIN_REQUIRES((chain::plugin))
+    APPBASE_PLUGIN_REQUIRES(
+        (json_rpc::plugin)
+        (chain::plugin)
+    )
 
     static const std::string &name() {
         static std::string name = plugin_name;
         return name;
     }
+
 
     plugin( );
     ~plugin( );
@@ -84,13 +84,31 @@ public:
     }
 
     flat_map<string, string> tracked_accounts() const; /// map start_range to end_range
+    DECLARE_API(
+        /**
+         *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
+         *  returns operations in the range [from-limit, from]
+         *
+         *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
+         *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
+         */
+        (get_account_history)
 
+        /**
+         *  @brief Get sequence of operations included/generated within a particular block
+         *  @param block_num Height of the block whose generated virtual operations should be returned
+         *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
+         *  @return sequence of operations included/generated within the block
+         */
+        (get_ops_in_block)
+        
+        (get_transaction)
+
+    )
 private:
     struct plugin_impl;
 
     std::unique_ptr<plugin_impl> my;
 };
 
-}
-}
-} // golos::plugins::account_history
+} } } // golos::plugins::account_history

@@ -5,7 +5,7 @@
 #include <graphene/utilities/tempdir.hpp>
 
 #include <golos/chain/steem_objects.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -447,7 +447,7 @@ namespace golos { namespace chain {
 
         vector<operation> database_fixture::get_last_operations(uint32_t num_ops) {
             vector<operation> ops;
-            const auto &acc_hist_idx = db->get_index<account_history_index>().indices().get<by_id>();
+            const auto &acc_hist_idx = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>();
             auto itr = acc_hist_idx.end();
 
             while (itr != acc_hist_idx.begin() && ops.size() < num_ops) {

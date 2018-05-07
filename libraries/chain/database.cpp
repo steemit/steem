@@ -11,7 +11,6 @@
 #include <golos/chain/database_exceptions.hpp>
 #include <golos/chain/db_with.hpp>
 #include <golos/chain/evaluator_registry.hpp>
-#include <golos/chain/history_object.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/chain/snapshot_state.hpp>
 #include <golos/chain/steem_evaluator.hpp>
@@ -19,6 +18,7 @@
 #include <golos/chain/transaction_object.hpp>
 #include <golos/chain/shared_db_merkle.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/chain/proposal_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -2824,6 +2824,9 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
             _my->_evaluator_registry.register_evaluator<account_create_with_delegation_evaluator>();
             _my->_evaluator_registry.register_evaluator<delegate_vesting_shares_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_create_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_update_evaluator>();
+            _my->_evaluator_registry.register_evaluator<proposal_delete_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -2857,8 +2860,6 @@ namespace golos { namespace chain {
             add_core_index<feed_history_index>(*this);
             add_core_index<convert_request_index>(*this);
             add_core_index<liquidity_reward_balance_index>(*this);
-            add_core_index<operation_index>(*this);
-            add_core_index<account_history_index>(*this);
             add_core_index<hardfork_property_index>(*this);
             add_core_index<withdraw_vesting_route_index>(*this);
             add_core_index<owner_authority_history_index>(*this);
@@ -2870,6 +2871,8 @@ namespace golos { namespace chain {
             add_core_index<vesting_delegation_index>(*this);
             add_core_index<vesting_delegation_expiration_index>(*this);
             add_core_index<account_metadata_index>(*this);
+            add_core_index<proposal_index>(*this);
+            add_core_index<required_approval_index>(*this);
 
             _plugin_index_signal();
         }
@@ -2946,6 +2949,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_MINER_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_MINER_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_MINER_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -2955,6 +2963,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_NULL_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_NULL_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_NULL_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -2964,6 +2977,11 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_TEMP_ACCOUNT;
                 });
+#ifndef IS_LOW_MEM
+                create<account_metadata_object>([&](account_metadata_object& m) {
+                    m.account = STEEMIT_TEMP_ACCOUNT;
+                });
+#endif
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_TEMP_ACCOUNT;
                     auth.owner.weight_threshold = 0;
@@ -2971,25 +2989,26 @@ namespace golos { namespace chain {
                 });
 
                 for (int i = 0; i < STEEMIT_NUM_INIT_MINERS; ++i) {
+                    const auto& name = STEEMIT_INIT_MINER_NAME + (i ? fc::to_string(i) : std::string());
                     create<account_object>([&](account_object &a) {
-                        a.name = STEEMIT_INIT_MINER_NAME +
-                                 (i ? fc::to_string(i) : std::string());
+                        a.name = name;
                         a.memo_key = init_public_key;
                         a.balance = asset(i ? 0 : init_supply, STEEM_SYMBOL);
                     });
-
+#ifndef IS_LOW_MEM
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = name;
+                    });
+#endif
                     create<account_authority_object>([&](account_authority_object &auth) {
-                        auth.account = STEEMIT_INIT_MINER_NAME +
-                                       (i ? fc::to_string(i) : std::string());
+                        auth.account = name;
                         auth.owner.add_authority(init_public_key, 1);
                         auth.owner.weight_threshold = 1;
                         auth.active = auth.owner;
                         auth.posting = auth.active;
                     });
-
                     create<witness_object>([&](witness_object &w) {
-                        w.owner = STEEMIT_INIT_MINER_NAME +
-                                  (i ? fc::to_string(i) : std::string());
+                        w.owner = name;
                         w.signing_key = init_public_key;
                         w.schedule = witness_object::miner;
                     });
@@ -3307,6 +3326,7 @@ namespace golos { namespace chain {
                 update_last_irreversible_block(skip);
 
                 create_block_summary(next_block);
+                clear_expired_proposals();
                 clear_expired_transactions();
                 clear_expired_orders();
                 clear_expired_delegations();

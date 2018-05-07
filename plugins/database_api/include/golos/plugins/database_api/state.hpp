@@ -4,14 +4,15 @@
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/steem_object_types.hpp>
-#include <golos/plugins/database_api/api_objects/account_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/witness_api_object.hpp>
 #include "forward.hpp"
-#include <golos/plugins/database_api/applied_operation.hpp>
+#include <golos/api/extended_account.hpp>
 
 namespace golos {
     namespace plugins {
         namespace database_api {
+
+            using golos::api::account_api_object;
             using std::string;
             using std::vector;
 
@@ -25,24 +26,6 @@ namespace golos {
 
                 double real_price = 0;
                 bool rewarded = false;
-            };
-
-
-
-
-            /**
-             *  Convert's vesting shares
-             */
-            struct extended_account : public account_api_object {
-                extended_account() {
-                }
-
-                extended_account(const account_object &a, const golos::chain::database &db)
-                        : account_api_object(a, db) {
-                }
-
-                asset vesting_balance; /// convert vesting_shares to vesting steem
-                set<string> witness_votes;
             };
 
 
@@ -80,13 +63,6 @@ namespace golos {
         }
     }
 }
-
-FC_REFLECT_DERIVED((golos::plugins::database_api::extended_account),
-                   ((golos::plugins::database_api::account_api_object)),
-                   (vesting_balance)
-                   (witness_votes)
-                   )
-
 
 
 //FC_REFLECT((golos::plugins::database_api::state), (current_route)(props)(category_idx)(tag_idx)(categories)(tags)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data))
