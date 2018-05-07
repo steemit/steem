@@ -13,9 +13,7 @@ namespace golos {
             struct comment_api_object {
                 comment_api_object(const golos::chain::comment_object &o) : id(o.id),
                         parent_author(o.parent_author), parent_permlink(to_string(o.parent_permlink)), author(o.author),
-                        permlink(to_string(o.permlink)), title(to_string(o.title)), body(to_string(o.body)),
-                        json_metadata(to_string(o.json_metadata)),
-                        last_update(o.last_update), created(o.created),
+                        permlink(to_string(o.permlink)), last_update(o.last_update), created(o.created),
                         active(o.active), last_payout(o.last_payout), depth(o.depth), children(o.children),
                         children_rshares2(o.children_rshares2), net_rshares(o.net_rshares), abs_rshares(o.abs_rshares),
                         vote_rshares(o.vote_rshares), children_abs_rshares(o.children_abs_rshares),

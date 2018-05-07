@@ -334,7 +334,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
         if (!c.json_metadata.empty()) {
             try {
-                meta = fc::json::from_string(to_string(c.json_metadata)).as<comment_metadata>();
+                meta = fc::json::from_string(c.json_metadata).as<comment_metadata>();
             } catch (const fc::exception& e) {
                 // Do nothing on malformed json_metadata
             }

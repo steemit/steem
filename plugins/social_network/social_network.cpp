@@ -276,10 +276,7 @@ namespace golos { namespace plugins { namespace social_network {
     void social_network::impl::set_url(discussion& d) const {
         const comment_api_object root(database().get<comment_object, by_id>(d.root_comment));
 
-        const comment_content_api_object root_content(
-                database().get<comment_content_object, by_comment>(d.id));
-
-        d.root_title = root_content.title;
+        d.root_title = root.title;
 
         tags::comment_metadata meta = tags::get_metadata(root);
 
