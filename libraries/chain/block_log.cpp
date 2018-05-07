@@ -23,6 +23,16 @@ namespace golos { namespace chain {
             boost::iostreams::mapped_file index_mapped_file;
             read_write_mutex mutex;
 
+            bool has_block_records() const {
+                auto size = block_mapped_file.size();
+                return (size > min_valid_file_size);
+            }
+
+            bool has_index_records() const {
+                auto size = index_mapped_file.size();
+                return (size >= min_valid_file_size);
+            }
+
             std::size_t get_mapped_size(const boost::iostreams::mapped_file& mapped_file) const {
                 auto size = mapped_file.size();
                 if (size < min_valid_file_size) {
@@ -150,12 +160,12 @@ namespace golos { namespace chain {
                  *  - If the index file head is in the log, but not up to date, replay from index head.
                  */
 
-                if (block_mapped_file.size() > min_valid_file_size) {
+                if (has_block_records()) {
                     ilog("Log is nonempty");
                     head = read_head();
                     head_id = head->id();
 
-                    if (index_mapped_file.size() >= min_valid_file_size) {
+                    if (has_index_records()) {
                         ilog("Index is nonempty");
 
                         auto block_pos = get_last_uint64(block_mapped_file);
@@ -169,7 +179,7 @@ namespace golos { namespace chain {
                         ilog("Index is empty");
                         construct_index();
                     }
-                } else if (index_mapped_file.size() < min_valid_file_size) {
+                } else if (has_index_records()) {
                     ilog("Index is nonempty, remove and recreate it");
                     index_mapped_file.close();
                     block_mapped_file.close();
