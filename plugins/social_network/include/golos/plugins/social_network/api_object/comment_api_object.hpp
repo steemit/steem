@@ -2,6 +2,7 @@
 #define GOLOS_COMMENT_API_OBJ_H
 
 #include <golos/chain/comment_object.hpp>
+#include <golos/chain/database.hpp>
 #include <vector>
 
 namespace golos {
@@ -11,10 +12,10 @@ namespace golos {
             using namespace golos::chain;
 
             struct comment_api_object {
-                comment_api_object(const golos::chain::comment_object &o) : id(o.id),
+                comment_api_object(const golos::chain::comment_object &o, const golos::chain::database &db) :
+                        id(o.id),
                         parent_author(o.parent_author), parent_permlink(to_string(o.parent_permlink)), author(o.author),
-                        permlink(to_string(o.permlink)), title(to_string(o.title)), body(to_string(o.body)),
-                        json_metadata(to_string(o.json_metadata)), last_update(o.last_update), created(o.created),
+                        permlink(to_string(o.permlink)), last_update(o.last_update), created(o.created),
                         active(o.active), last_payout(o.last_payout), depth(o.depth), children(o.children),
                         children_rshares2(o.children_rshares2), net_rshares(o.net_rshares), abs_rshares(o.abs_rshares),
                         vote_rshares(o.vote_rshares), children_abs_rshares(o.children_abs_rshares),
@@ -29,20 +30,27 @@ namespace golos {
                     for (auto& route : o.beneficiaries) {
                         beneficiaries.push_back(route);
                     }
+                    auto content = db.get_comment_content(o.id);
+
+                    title = to_string(content.title);
+                    body = to_string(content.body);
+                    json_metadata = to_string(content.json_metadata);
                 }
 
                 comment_api_object() {
                 }
 
                 comment_object::id_type id;
+
+                std::string title;
+                std::string body;
+                std::string json_metadata;
+
                 account_name_type parent_author;
                 std::string parent_permlink;
                 account_name_type author;
                 std::string permlink;
 
-                std::string title;
-                std::string body;
-                std::string json_metadata;
                 time_point_sec last_update;
                 time_point_sec created;
                 time_point_sec active;
@@ -95,4 +103,6 @@ FC_REFLECT((golos::plugins::social_network::comment_api_object),
                    reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(
                    mode)(root_comment)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(
                    allow_curation_rewards)(beneficiaries))
+
+
 #endif //GOLOS_COMMENT_API_OBJ_H

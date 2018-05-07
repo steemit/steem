@@ -154,13 +154,15 @@ namespace golos { namespace plugins { namespace social_network {
         discussion get_content(std::string author, std::string permlink, uint32_t limit) const;
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit) const {
-            discussion d(c);
+            discussion d = create_discussion(c);
             set_url(d);
             set_pending_payout(d);
             select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
             return d;
         }
 
+        discussion create_discussion(const comment_object& o) const;
+        discussion create_discussion(const comment_object& o, const discussion_query& query) const;
         void fill_discussion(discussion& d, const discussion_query& query) const;
 
         get_languages_result get_languages();
@@ -177,6 +179,10 @@ namespace golos { namespace plugins { namespace social_network {
             result.languages.insert(itr->name);
         }
         return result;
+    }
+
+    discussion social_network::impl::create_discussion(const comment_object& o) const {
+        return discussion(o, database_);
     }
 
     void social_network::impl::fill_discussion(discussion& d, const discussion_query& query) const {
@@ -201,6 +207,14 @@ namespace golos { namespace plugins { namespace social_network {
                 d.json_metadata = fc::prune_invalid_utf8(d.json_metadata);
             }
         }
+    }
+
+    discussion social_network::impl::create_discussion(const comment_object& o, const discussion_query& query) const {
+
+        discussion d = create_discussion(o);
+        fill_discussion(d, query);
+
+        return d;
     }
 
     DEFINE_API(social_network, get_languages) {
@@ -262,7 +276,9 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     void social_network::impl::set_url(discussion& d) const {
-        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment));
+        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment), database());
+
+        d.root_title = root.title;
 
         tags::comment_metadata meta = tags::get_metadata(root);
 
@@ -273,7 +289,6 @@ namespace golos { namespace plugins { namespace social_network {
             d.url = "/@" + root.author + "/" + root.permlink;
         }
 
-        d.root_title = root.title;
         if (root.id != d.id) {
             d.url += "#@" + d.author + "/" + d.permlink;
         }
@@ -439,8 +454,7 @@ namespace golos { namespace plugins { namespace social_network {
             if (!comment) {
                 return false;
             }
-            query.start_comment = discussion(*comment);
-            fill_discussion(query.start_comment, query);
+            query.start_comment = create_discussion(*comment, query);
         }
         return true;
     }
@@ -454,8 +468,7 @@ namespace golos { namespace plugins { namespace social_network {
             if (comment) {
                 return false;
             }
-            query.parent_comment = discussion(*comment);
-            fill_discussion(query.parent_comment, query);
+            query.parent_comment = create_discussion(*comment, query);
         }
         return true;
     }
@@ -520,7 +533,7 @@ namespace golos { namespace plugins { namespace social_network {
                     continue;
                 }
 
-                discussion d(*comment);
+                discussion d = create_discussion(*comment);
                 if (!query.is_good_tags(d)) {
                     continue;
                 }
@@ -562,7 +575,7 @@ namespace golos { namespace plugins { namespace social_network {
                 continue;
             }
 
-            discussion d(*comment);
+            discussion d = create_discussion(*comment);
             if (!select(d) || !query.is_good_tags(d)) {
                 continue;
             }
@@ -764,10 +777,10 @@ namespace golos { namespace plugins { namespace social_network {
 
             for (; itr != idx.end() && itr->author == *query.start_author && result.size() < query.limit; ++itr) {
                 if (itr->parent_author.size() > 0) {
-                    if (!query.is_good_tags(db.get<comment_object>(itr->root_comment))) {
+                    if (!query.is_good_tags(discussion(db.get<comment_object>(itr->root_comment), db))) {
                         continue;
                     }
-                    result.emplace_back(*itr);
+                    result.emplace_back(discussion(*itr, db));
                     pimpl->fill_discussion(result.back(), query);
                 }
             }

@@ -3,6 +3,7 @@
 
 namespace golos { namespace plugins { namespace social_network { namespace tags {
 
+
     operation_visitor::operation_visitor(database& db)
         : db_(db) {
     }
@@ -181,7 +182,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
             const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
 
             if (parse_tags) {
-                auto meta = get_metadata(comment);
+                auto meta = get_metadata(comment_api_object(comment, db_));
                 auto citr = comment_idx.lower_bound(comment.id);
                 const tag_object* language_tag = nullptr;
 
@@ -234,7 +235,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
             if (comment.parent_author.size()) {
                 update_tags(comment.parent_author, to_string(comment.parent_permlink));
             }
-        } FC_CAPTURE_LOG_AND_RETHROW((comment))
+        } FC_CAPTURE_LOG_AND_RETHROW(())
     }
 
     void operation_visitor::operator()(const transfer_operation& op) const {
@@ -286,7 +287,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         const auto& comment = db_.get_comment(op.author, op.permlink);
         const auto& author = db_.get_account(op.author).id;
 
-        auto meta = get_metadata(comment);
+        auto meta = get_metadata(comment_api_object(comment, db_));
         const auto& stats_idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
         const auto& auth_idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
 
@@ -328,6 +329,7 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
     }
 
     comment_metadata get_metadata(const comment_api_object &c) {
+
         comment_metadata meta;
 
         if (!c.json_metadata.empty()) {

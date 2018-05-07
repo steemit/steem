@@ -551,7 +551,7 @@ namespace golos {
                 while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_feed_entry entry;
-                    entry.comment = comment;
+                    entry.comment = social_network::comment_api_object(comment, db);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
                         //entry.reblog_by = itr->first_reblogged_by;
@@ -623,7 +623,7 @@ namespace golos {
                 while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_blog_entry entry;
-                    entry.comment = comment;
+                    entry.comment = social_network::comment_api_object(comment, db);
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;

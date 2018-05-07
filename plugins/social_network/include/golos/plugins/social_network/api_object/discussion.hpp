@@ -7,7 +7,8 @@
 namespace golos { namespace plugins { namespace social_network {
 
     struct discussion: public comment_api_object {
-        discussion(const comment_object& o): comment_api_object(o) {
+        discussion(const comment_object& o, const golos::chain::database &db)
+                : comment_api_object(o, db) {
         }
 
         discussion() {
