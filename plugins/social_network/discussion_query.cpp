@@ -32,10 +32,6 @@ namespace golos { namespace plugins { namespace social_network {
         for (auto& itr : filter_languages) {
             FC_ASSERT(select_languages.find(itr) == select_languages.end());
         }
-
-        FC_ASSERT(start_author.valid() == start_permlink.valid());
-
-        FC_ASSERT(parent_author.valid() == parent_permlink.valid());
     }
 
     bool discussion_query::is_good_tags(const discussion& d) const {
