@@ -930,7 +930,8 @@ DEFINE_API(plugin, get_vesting_delegations) {
         auto fill_result = [&](const auto& idx) {
             auto i = idx.lower_bound(std::make_tuple(account, from));
             while (result.size() < limit && i != idx.end() && account == (sent ? i->delegator : i->delegatee)) {
-                result.push_back(*i++);
+                result.push_back(*i);
+                ++i;
             }
         };
         if (sent)
