@@ -31,9 +31,9 @@ fi
 
 if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     if [[ ! "$USE_WAY_TOO_MUCH_RAM" ]]; then
-        ARGS+=" --plugin=account_history"
+        ARGS+=" --plugin=account_history_rocksdb --plugin=account_history_api"
     fi
-    ARGS+=" --account-history-track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
+    ARGS+=" --account-history-rocksdb-track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
 if [[ ! "$DISABLE_BLOCK_API" ]]; then
