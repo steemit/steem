@@ -41,13 +41,13 @@ namespace golos {
 
             ~block_log();
 
-            void open(const fc::path &file);
+            void open(const fc::path& file);
 
             void close();
 
             bool is_open() const;
 
-            uint64_t append(const signed_block &b);
+            uint64_t append(const signed_block& b);
 
             void flush();
 
@@ -62,13 +62,11 @@ namespace golos {
 
             signed_block read_head() const;
 
-            const optional <signed_block> &head() const;
+            const optional <signed_block>& head() const;
 
             static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
         private:
-            void construct_index();
-
             std::unique_ptr<detail::block_log_impl> my;
         };
 
