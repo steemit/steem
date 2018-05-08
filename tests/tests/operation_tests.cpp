@@ -433,6 +433,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
 
             const comment_object &alice_comment = db->get_comment("alice", string("lorem"));
+            const comment_content_object& alice_content = db->get_comment_content(alice_comment.id);
 
             BOOST_REQUIRE(alice_comment.author == op.author);
             BOOST_REQUIRE(to_string(alice_comment.permlink) == op.permlink);
@@ -445,13 +446,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                           fc::time_point_sec(db->head_block_time() + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS)));
 
 #ifndef IS_LOW_MEM
-            BOOST_REQUIRE( to_string( alice_comment.title ) == op.title );
-            BOOST_REQUIRE( to_string( alice_comment.body ) == op.body );
-            //BOOST_REQUIRE( alice_comment.json_metadata == op.json_metadata );
+            BOOST_REQUIRE( to_string( alice_content.title ) == op.title );
+            BOOST_REQUIRE( to_string( alice_content.body ) == op.body );
+            //BOOST_REQUIRE( alice_content.json_metadata == op.json_metadata );
 #else
-            BOOST_REQUIRE(to_string(alice_comment.title) == "");
-            BOOST_REQUIRE(to_string(alice_comment.body) == "");
-            //BOOST_REQUIRE( alice_comment.json_metadata == "" );
+            BOOST_REQUIRE(to_string(alice_content.title) == "");
+            BOOST_REQUIRE(to_string(alice_content.body) == "");
+            //BOOST_REQUIRE( alice_content.json_metadata == "" );
 #endif
 
             validate_database();
