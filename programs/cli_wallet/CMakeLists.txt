@@ -33,6 +33,7 @@ target_link_libraries(
         golos::private_message
         golos::follow
         golos::network_broadcast_api
+        golos::witness_api
         fc
         ${readline_libraries}
         ${CMAKE_DL_LIBS}
