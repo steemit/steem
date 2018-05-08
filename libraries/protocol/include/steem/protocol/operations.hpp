@@ -62,15 +62,14 @@ namespace steem { namespace protocol {
             reset_account_operation,
             set_reset_account_operation,
             claim_reward_balance_operation,
-#ifdef STEEM_ENABLE_SMT
-            claim_reward_balance2_operation,
-#endif
             delegate_vesting_shares_operation,
             account_create_with_delegation_operation,
             witness_set_properties_operation,
 
 #ifdef STEEM_ENABLE_SMT
             /// SMT operations
+            claim_reward_balance2_operation,
+
             smt_setup_operation,
             smt_cap_reveal_operation,
             smt_refund_operation,

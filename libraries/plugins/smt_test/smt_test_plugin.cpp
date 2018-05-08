@@ -19,8 +19,8 @@ class smt_test_plugin_impl
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
-      void pre_operation( const operation_notification& op_obj );
-      void post_operation( const operation_notification& op_obj );
+      void on_pre_apply_operation( const operation_notification& op_obj );
+      void on_post_apply_operation( const operation_notification& op_obj );
       void clear_cache();
       void cache_auths( const account_authority_object& a );
       void update_key_lookup( const account_authority_object& a );
@@ -54,12 +54,12 @@ struct post_operation_visitor
    void operator()( const T& )const {}
 };
 
-void smt_test_plugin_impl::pre_operation( const operation_notification& note )
+void smt_test_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
    note.op.visit( pre_operation_visitor( *this ) );
 }
 
-void smt_test_plugin_impl::post_operation( const operation_notification& note )
+void smt_test_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
    note.op.visit( post_operation_visitor( *this ) );
 }
@@ -105,8 +105,6 @@ void test_alpha()
    setup_op.generation_begin_time = fc::variant( "2017-08-10T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-08-17T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-08-21T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 
@@ -162,8 +160,6 @@ void test_beta()
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
 
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
-
    setup_op.validate();
 
    smt_cap_reveal_operation reveal_min_op;
@@ -214,8 +210,6 @@ void test_delta()
    setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 
@@ -269,8 +263,8 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
       ilog( "Initializing smt_test plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
+      db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
       // add_plugin_index< key_lookup_index >(db);
    }

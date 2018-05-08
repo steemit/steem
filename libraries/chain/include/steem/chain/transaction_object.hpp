@@ -9,6 +9,7 @@
 namespace steem { namespace chain {
 
    using steem::protocol::signed_transaction;
+   using chainbase::t_vector;
 
    /**
     * The purpose of this object is to enable the detection of duplicate transactions. When a transaction is included

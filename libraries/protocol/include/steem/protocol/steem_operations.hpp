@@ -364,16 +364,15 @@ namespace steem { namespace protocol {
 
 
    /**
-    *  This operation converts STEEM into VFS (Vesting Fund Shares) at
-    *  the current exchange rate. With this operation it is possible to
-    *  give another account vesting shares so that faucets can
-    *  pre-fund new accounts with vesting shares.
+    *  This operation converts liquid token (STEEM or liquid SMT) into VFS (Vesting Fund Shares,
+    *  VESTS or vesting SMT) at the current exchange rate. With this operation it is possible to
+    *  give another account vesting shares so that faucets can pre-fund new accounts with vesting shares.
     */
    struct transfer_to_vesting_operation : public base_operation
    {
       account_name_type from;
-      account_name_type to; ///< if null, then same as from
-      asset             amount; ///< must be STEEM
+      account_name_type to;      ///< if null, then same as from
+      asset             amount;  ///< must be STEEM or liquid variant of SMT
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(from); }

@@ -134,8 +134,8 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
 
-#define SMT_SYMBOL( name, decimal_places ) \
-   asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
+#define SMT_SYMBOL( name, decimal_places, db ) \
+   asset_symbol_type name ## _symbol = get_new_smt_symbol( decimal_places, db );
 
 #define ASSET( s ) \
    steem::plugins::condenser_api::legacy_asset::from_string( s ).to_asset()
@@ -205,7 +205,6 @@ struct database_fixture {
    virtual ~database_fixture() { appbase::reset(); }
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
-   static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
 #ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
 #endif
@@ -294,6 +293,8 @@ struct live_database_fixture : public database_fixture
 template< typename T >
 struct t_smt_database_fixture : public T
 {
+   using units = flat_map< account_name_type, uint16_t >;
+
    using database_fixture::set_price_feed;
    using database_fixture::fund;
    using database_fixture::convert;
@@ -310,6 +311,20 @@ struct t_smt_database_fixture : public T
    void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
    /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
    void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
+
+   //smt_setup_operation
+   smt_generation_unit get_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
+   smt_cap_commitment get_cap_commitment( share_type amount = 0, uint128_t nonce = 0 );
+   smt_capped_generation_policy get_capped_generation_policy
+   (
+      const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
+      const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
+      const smt_cap_commitment& min_steem_units_commitment = smt_cap_commitment(),
+      const smt_cap_commitment& hard_cap_steem_units_commitment = smt_cap_commitment(),
+      uint16_t soft_cap_percent = 0,
+      uint32_t min_unit_ratio = 0,
+      uint32_t max_unit_ratio = 0
+   );
 };
 
 using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;

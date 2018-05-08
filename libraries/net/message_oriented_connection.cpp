@@ -81,7 +81,7 @@ namespace graphene { namespace net {
 
       void send_message(const message& message_to_send);
       void close_connection();
-      void destroy_connection();
+      void destroy_connection(const char* caller);
 
       uint64_t get_total_bytes_sent() const;
       uint64_t get_total_bytes_received() const;
@@ -107,7 +107,7 @@ namespace graphene { namespace net {
     message_oriented_connection_impl::~message_oriented_connection_impl()
     {
       VERIFY_CORRECT_THREAD();
-      destroy_connection();
+      destroy_connection(__FUNCTION__);
     }
 
     fc::tcp_socket& message_oriented_connection_impl::get_socket()
@@ -128,7 +128,7 @@ namespace graphene { namespace net {
     {
       VERIFY_CORRECT_THREAD();
       _sock.connect_to(remote_endpoint);
-      assert(!_read_loop_done.valid()); // check to be sure we never launch two read loops
+      FC_ASSERT(!_read_loop_done.valid()); // check to be sure we never launch two read loops
       _read_loop_done = fc::async([=](){ read_loop(); }, "message read_loop");
     }
 
@@ -281,14 +281,14 @@ namespace graphene { namespace net {
       _sock.close();
     }
 
-    void message_oriented_connection_impl::destroy_connection()
+    void message_oriented_connection_impl::destroy_connection(const char* caller)
     {
       VERIFY_CORRECT_THREAD();
 
       fc::optional<fc::ip::endpoint> remote_endpoint;
       if (_sock.get_socket().is_open())
         remote_endpoint = _sock.get_socket().remote_endpoint();
-      ilog( "in destroy_connection() for ${endpoint}", ("endpoint", remote_endpoint) );
+      ilog( "in destroy_connection(${caller}) for `${endpoint}'", ("caller", caller)("endpoint", remote_endpoint) );
 
       if (_send_message_in_progress)
         elog("Error: message_oriented_connection is being destroyed while a send_message is in progress.  "
@@ -381,9 +381,9 @@ namespace graphene { namespace net {
     my->close_connection();
   }
 
-  void message_oriented_connection::destroy_connection()
+  void message_oriented_connection::destroy_connection(const char* caller)
   {
-    my->destroy_connection();
+    my->destroy_connection(caller);
   }
 
   uint64_t message_oriented_connection::get_total_bytes_sent() const

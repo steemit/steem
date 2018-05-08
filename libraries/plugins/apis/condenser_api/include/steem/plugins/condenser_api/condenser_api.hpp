@@ -87,8 +87,8 @@ struct api_operation_object
    transaction_id_type  trx_id;
    uint32_t             block = 0;
    uint32_t             trx_in_block = 0;
-   uint16_t             op_in_trx = 0;
-   uint64_t             virtual_op = 0;
+   uint32_t             op_in_trx = 0;
+   uint32_t             virtual_op = 0;
    fc::time_point_sec   timestamp;
    legacy_operation     op;
 };
@@ -319,20 +319,6 @@ struct extended_dynamic_global_properties
    uint128_t         max_virtual_bandwidth = 0;
 };
 
-struct legacy_chain_properties
-{
-   legacy_chain_properties() {}
-   legacy_chain_properties( const chain::chain_properties& c ) :
-      account_creation_fee( legacy_asset::from_asset( c.account_creation_fee ) ),
-      maximum_block_size( c.maximum_block_size ),
-      sbd_interest_rate( c.sbd_interest_rate )
-   {}
-
-   legacy_asset   account_creation_fee;
-   uint32_t       maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
-   uint16_t       sbd_interest_rate = STEEM_DEFAULT_SBD_INTEREST_RATE;
-};
-
 struct api_witness_object
 {
    api_witness_object() {}
@@ -368,7 +354,7 @@ struct api_witness_object
    uint64_t                last_confirmed_block_num = 0;
    uint64_t                pow_worker;
    public_key_type         signing_key;
-   legacy_chain_properties props;
+   api_chain_properties    props;
    legacy_price            sbd_exchange_rate;
    time_point_sec          last_sbd_exchange_update;
    share_type              votes;
@@ -412,7 +398,7 @@ struct api_witness_schedule_object
    uint8_t                       timeshare_weight = 5;
    uint8_t                       miner_weight = 1;
    uint32_t                      witness_pay_normalization_factor = 25;
-   legacy_chain_properties       median_props;
+   api_chain_properties          median_props;
    version                       majority_version;
    uint8_t                       max_voted_witnesses           = STEEM_MAX_VOTED_WITNESSES_HF0;
    uint8_t                       max_miner_witnesses           = STEEM_MAX_MINER_WITNESSES_HF0;
@@ -779,6 +765,20 @@ struct get_version_return
 
 typedef map< uint32_t, api_operation_object > get_account_history_return_type;
 
+typedef vector< variant > broadcast_transaction_synchronous_args;
+
+struct broadcast_transaction_synchronous_return
+{
+   broadcast_transaction_synchronous_return() {}
+   broadcast_transaction_synchronous_return( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
+   : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
+
+   transaction_id_type   id;
+   int32_t               block_num = 0;
+   int32_t               trx_num   = 0;
+   bool                  expired   = false;
+};
+
 struct ticker
 {
    ticker() {}
@@ -869,7 +869,7 @@ DEFINE_API_ARGS( get_block,                              vector< variant >,   op
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< api_operation_object > )
 DEFINE_API_ARGS( get_config,                             vector< variant >,   fc::variant_object )
 DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   extended_dynamic_global_properties )
-DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   legacy_chain_properties )
+DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   api_chain_properties )
 DEFINE_API_ARGS( get_current_median_history_price,       vector< variant >,   legacy_price )
 DEFINE_API_ARGS( get_feed_history,                       vector< variant >,   api_feed_history_object )
 DEFINE_API_ARGS( get_witness_schedule,                   vector< variant >,   api_witness_schedule_object )
@@ -899,7 +899,7 @@ DEFINE_API_ARGS( lookup_witness_accounts,                vector< variant >,   ve
 DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< api_limit_order_object > )
 DEFINE_API_ARGS( get_witness_count,                      vector< variant >,   uint64_t )
 DEFINE_API_ARGS( get_transaction_hex,                    vector< variant >,   string )
-DEFINE_API_ARGS( get_transaction,                        vector< variant >,   annotated_signed_transaction )
+DEFINE_API_ARGS( get_transaction,                        vector< variant >,   legacy_signed_transaction )
 DEFINE_API_ARGS( get_required_signatures,                vector< variant >,   set< public_key_type > )
 DEFINE_API_ARGS( get_potential_signatures,               vector< variant >,   set< public_key_type > )
 DEFINE_API_ARGS( verify_authority,                       vector< variant >,   bool )
@@ -926,7 +926,6 @@ DEFINE_API_ARGS( get_replies_by_last_update,             vector< variant >,   ve
 DEFINE_API_ARGS( get_discussions_by_author_before_date,  vector< variant >,   vector< discussion > )
 DEFINE_API_ARGS( get_account_history,                    vector< variant >,   get_account_history_return_type )
 DEFINE_API_ARGS( broadcast_transaction,                  vector< variant >,   json_rpc::void_type )
-DEFINE_API_ARGS( broadcast_transaction_synchronous,      vector< variant >,   network_broadcast_api::broadcast_transaction_synchronous_return )
 DEFINE_API_ARGS( broadcast_block,                        vector< variant >,   json_rpc::void_type )
 DEFINE_API_ARGS( get_followers,                          vector< variant >,   vector< follow::api_follow_object > )
 DEFINE_API_ARGS( get_following,                          vector< variant >,   vector< follow::api_follow_object > )
@@ -1097,10 +1096,6 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(vote_power_reserve_rate)
             (average_block_size)(current_reserve_ratio)(max_virtual_bandwidth) )
 
-FC_REFLECT( steem::plugins::condenser_api::legacy_chain_properties,
-            (account_creation_fee)(maximum_block_size)(sbd_interest_rate)
-          )
-
 FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
              (id)
              (owner)
@@ -1204,6 +1199,9 @@ FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(
 
 FC_REFLECT( steem::plugins::condenser_api::get_version_return,
             (blockchain_version)(steem_revision)(fc_revision) )
+
+FC_REFLECT( steem::plugins::condenser_api::broadcast_transaction_synchronous_return,
+            (id)(block_num)(trx_num)(expired) )
 
 FC_REFLECT( steem::plugins::condenser_api::ticker,
             (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )
