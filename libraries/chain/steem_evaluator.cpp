@@ -401,17 +401,6 @@ namespace golos { namespace chain {
                 _db.remove(cur_vote);
             }
 
-            // Gota remove comment content from database
-            const auto &content_idx = _db.get_index<comment_content_index>().indices().get<by_comment>();
-
-            auto content_itr = content_idx.lower_bound(comment_id_type(comment.id));
-            while (vote_itr != vote_idx.end() && vote_itr->comment == comment.id) {
-                const auto &content = *content_itr;
-                ++vote_itr;
-                _db.remove(content);
-            }
-
-
             /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_6__80) &&
                 comment.parent_author != STEEMIT_ROOT_POST_PARENT) {
@@ -433,6 +422,11 @@ namespace golos { namespace chain {
                 }
             }
 
+            auto* content = _db.find_comment_content(comment.id);
+
+            if (content) {
+                _db.remove(*content);
+            }
             _db.remove(comment);
         }
 
@@ -650,20 +644,21 @@ namespace golos { namespace chain {
                     });
                     id = new_comment.id;
 
-#ifndef IS_LOW_MEM
-                    _db.create< comment_content_object >( [&]( comment_content_object& con ) {
+                    _db.create<comment_content_object>([&](comment_content_object& con) {
                         con.comment = id;
-
-                         from_string(con.title, o.title);
-                         if (o.body.size() < 1024*1024*128) {
-                             from_string(con.body, o.body);
-                         }
-                         if (fc::is_utf8(o.json_metadata))
-                             from_string(con.json_metadata, o.json_metadata);
-                         else
-                         wlog("Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink));
-                    });
+#ifndef IS_LOW_MEM
+                        from_string(con.title, o.title);
+                        if (o.body.size() < 1024*1024*128) {
+                            from_string(con.body, o.body);
+                        }
+                        if (fc::is_utf8(o.json_metadata)) {
+                            from_string(con.json_metadata, o.json_metadata);
+                        } else {
+                            wlog("Comment ${a}/${p} contains invalid UTF-8 metadata",
+                                 ("a", o.author)("p", o.permlink));
+                        }
 #endif
+                    });
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
                     auto now = _db.head_block_time();
@@ -2252,6 +2247,7 @@ namespace golos { namespace chain {
             auto min_delegation = median_fee * GOLOS_MIN_DELEGATION_MULTIPLIER * v_share_price;
             auto min_update = median_fee * v_share_price;
 
+            auto now = _db.head_block_time();
             auto delta = delegation ?
                 op.vesting_shares - delegation->vesting_shares :
                 op.vesting_shares;
@@ -2265,14 +2261,20 @@ namespace golos { namespace chain {
 #endif
 
             if (increasing) {
+                auto delegated = delegator.delegated_vesting_shares;
                 FC_ASSERT(delegator.available_vesting_shares(true) >= delta,
                     "Account does not have enough vesting shares to delegate.",
                     ("available", delegator.available_vesting_shares(true))
-                    ("delta", delta)
-                    ("vesting_shares", delegator.vesting_shares)
-                    ("delegated_vesting_shares", delegator.delegated_vesting_shares)
-                    ("to_withdraw", delegator.to_withdraw)
-                    ("withdrawn", delegator.withdrawn));
+                    ("delta", delta)("vesting_shares", delegator.vesting_shares)("delegated", delegated)
+                    ("to_withdraw", delegator.to_withdraw)("withdrawn", delegator.withdrawn));
+                auto elapsed_seconds = (now - delegator.last_vote_time).to_seconds();
+                auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
+                auto current_power = std::min<int64_t>(delegator.voting_power + regenerated_power, STEEMIT_100_PERCENT);
+                auto max_allowed = delegator.vesting_shares * current_power / STEEMIT_100_PERCENT;
+                FC_ASSERT(delegated + delta <= max_allowed,
+                    "Account allowed to delegate a maximum of ${v} with current voting power = ${p}",
+                    ("v",max_allowed)("p",current_power)("delegated",delegated)("delta",delta));
+
                 if (!delegation) {
                     FC_ASSERT(op.vesting_shares >= min_delegation,
                         "Account must delegate a minimum of ${v}", ("v",min_delegation)("vesting_shares",op.vesting_shares));
@@ -2280,7 +2282,7 @@ namespace golos { namespace chain {
                         o.delegator = op.delegator;
                         o.delegatee = op.delegatee;
                         o.vesting_shares = op.vesting_shares;
-                        o.min_delegation_time = _db.head_block_time();
+                        o.min_delegation_time = now;
                     });
                 }
                 _db.modify(delegator, [&](account_object& a) {
@@ -2293,7 +2295,7 @@ namespace golos { namespace chain {
                 _db.create<vesting_delegation_expiration_object>([&](vesting_delegation_expiration_object& o) {
                     o.delegator = op.delegator;
                     o.vesting_shares = -delta;
-                    o.expiration = std::max(_db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
+                    o.expiration = std::max(now + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
                 });
             }
 

@@ -76,7 +76,7 @@ namespace golos { namespace chain {
 
                 const auto* ptr = block_mapped_file.data() + pos;
                 const auto available_size = file_size - pos;
-                const auto max_block_size = std::min(available_size, std::size_t(STEEMIT_MAX_BLOCK_SIZE));
+                const auto max_block_size = std::min<std::size_t>(available_size, STEEMIT_MAX_BLOCK_SIZE);
 
                 fc::datastream<const char*> ds(ptr, max_block_size);
                 fc::raw::unpack(ds, block);

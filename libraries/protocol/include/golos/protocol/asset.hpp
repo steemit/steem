@@ -47,8 +47,15 @@ namespace golos { namespace protocol {
                 amount *= x;
                 return *this;
             }
+            asset& operator/=(int x) {
+                amount /= x;
+                return *this;
+            }
             asset operator*(int x) const {
                 return asset(amount * x, symbol);
+            }
+            asset operator/(int x) const {
+                return asset(amount / x, symbol);
             }
 
             asset operator-() const {
