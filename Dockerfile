@@ -62,6 +62,7 @@ RUN \
         -DSKIP_BY_TX_ID=ON \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    cd .. && chmod -R a-w build && cd build && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     ./programs/util/test_fixed_string && \
@@ -86,6 +87,7 @@ RUN \
         -DENABLE_SMT_SUPPORT=ON \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    cd .. && chmod -R a-w build && cd build && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     ./programs/util/test_fixed_string && \
@@ -111,6 +113,7 @@ RUN \
         -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
+    cd .. && chmod -R a-w build && cd build && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     mkdir -p /var/cobertura && \
