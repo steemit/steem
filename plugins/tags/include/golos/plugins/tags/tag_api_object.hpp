@@ -1,10 +1,10 @@
 #ifndef GOLOS_TAG_API_OBJ_HPP
 #define GOLOS_TAG_API_OBJ_HPP
 
-#include <golos/plugins/social_network/tag/tags_object.hpp>
+#include <golos/plugins/tags/tags_object.hpp>
 #include <golos/protocol/asset.hpp>
 
-namespace golos { namespace plugins { namespace social_network {
+namespace golos { namespace plugins { namespace tags {
     struct tag_api_object {
         tag_api_object(const tags::tag_stats_object& o)
             : name(o.name),
@@ -24,10 +24,10 @@ namespace golos { namespace plugins { namespace social_network {
         uint32_t top_posts = 0;
         uint32_t comments = 0;
     };
-} } }
+} } } // golos::plugins::tags
 
 
-FC_REFLECT(
-    (golos::plugins::social_network::tag_api_object),
-    (name)(total_children_rshares2)(total_payouts)(net_votes)(top_posts)(comments))
+FC_REFLECT((golos::plugins::tags::tag_api_object),
+    (name)(total_children_rshares2)(total_payouts)(net_votes)(top_posts)(comments)
+)
 #endif //GOLOS_TAG_API_OBJ_HPP

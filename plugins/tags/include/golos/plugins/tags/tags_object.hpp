@@ -5,13 +5,17 @@
 #include <golos/chain/account_object.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <appbase/application.hpp>
-#include <golos/plugins/social_network/api_object/comment_api_object.hpp>
-#include <golos/plugins/social_network/tag/social_network_sort.hpp>
+#include <golos/api/comment_api_object.hpp>
+#include <golos/plugins/tags/tags_sort.hpp>
 
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 
-namespace golos { namespace plugins { namespace social_network { namespace tags {
+namespace golos { namespace plugins { namespace tags {
+    using golos::api::discussion;
+    using golos::api::comment_object;
+    using golos::api::comment_api_object;
+
     using namespace golos::chain;
     using namespace boost::multi_index;
     using chainbase::object;
@@ -389,22 +393,22 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
 
     comment_metadata get_metadata(const comment_api_object &c);
 
-} } } } // golos::plugins::social_network::tags
+} } } // golos::plugins::tags::tags
 
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::social_network::tags::tag_object, golos::plugins::social_network::tags::tag_index)
+    golos::plugins::tags::tag_object, golos::plugins::tags::tag_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::social_network::tags::tag_stats_object, golos::plugins::social_network::tags::tag_stats_index)
+    golos::plugins::tags::tag_stats_object, golos::plugins::tags::tag_stats_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::social_network::tags::author_tag_stats_object,
-    golos::plugins::social_network::tags::author_tag_stats_index)
+    golos::plugins::tags::author_tag_stats_object,
+    golos::plugins::tags::author_tag_stats_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::social_network::tags::language_object,
-    golos::plugins::social_network::tags::language_index)
+    golos::plugins::tags::language_object,
+    golos::plugins::tags::language_index)
 
-FC_REFLECT((golos::plugins::social_network::tags::comment_metadata), (tags)(language))
+FC_REFLECT((golos::plugins::tags::comment_metadata), (tags)(language))
 

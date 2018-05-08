@@ -1,14 +1,13 @@
 #include <boost/program_options/options_description.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
-#include <golos/plugins/social_network/tag/tags_object.hpp>
 #include <golos/chain/index.hpp>
-#include <golos/plugins/social_network/api_object/discussion.hpp>
-#include <golos/plugins/social_network/api_object/discussion_query.hpp>
-#include <golos/plugins/social_network/api_object/vote_state.hpp>
+#include <golos/api/discussion.hpp>
+#include <golos/api/vote_state.hpp>
 #include <golos/chain/steem_objects.hpp>
 
 // These visitors creates additional tables, we don't really need them in LOW_MEM mode
-#include <golos/plugins/social_network/tag/tag_visitor.hpp>
+#include <golos/plugins/tags/tag_visitor.hpp>
+#include <golos/plugins/tags/discussion_query.hpp>
 #include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(_S)                                 \
@@ -31,6 +30,7 @@
 namespace golos { namespace plugins { namespace social_network {
 
     using golos::chain::feed_history_object;
+    using golos::plugins::tags::discussion_query;
 
     struct social_network::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {}
@@ -99,33 +99,6 @@ namespace golos { namespace plugins { namespace social_network {
             }
         }
 
-        bool filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const;
-
-        bool filter_authors(discussion_query& query) const;
-
-        bool filter_start_comment(discussion_query& query) const;
-
-        bool filter_parent_comment(discussion_query& query) const;
-
-        bool filter_query(discussion_query& query) const;
-
-        template<typename DatabaseIndex, typename DiscussionIndex>
-        std::vector<discussion> select_unordered_discussions(discussion_query& query) const;
-
-        template<typename Iterator, typename Order, typename Select, typename Exit>
-        void select_discussions(
-            std::set<comment_object::id_type>& id_set,
-            std::vector<discussion>& result,
-            const discussion_query& query,
-            Iterator itr, Iterator etr,
-            Select&& select,
-            Exit&& exit,
-            Order&& order
-        ) const;
-
-        template<typename DiscussionOrder, typename Selector>
-        std::vector<discussion> select_ordered_discussions(discussion_query&, Selector&&) const;
-
         void select_content_replies(
             std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
         ) const;
@@ -137,10 +110,6 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<discussion> get_all_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit
         ) const;
-
-        std::vector<tag_api_object> get_trending_tags(std::string after, uint32_t limit) const;
-
-        std::vector<std::pair<std::string, uint32_t>> get_tags_used_by_author(const std::string& author) const;
 
         void set_pending_payout(discussion& d) const;
 
@@ -165,21 +134,10 @@ namespace golos { namespace plugins { namespace social_network {
         discussion create_discussion(const comment_object& o, const discussion_query& query) const;
         void fill_discussion(discussion& d, const discussion_query& query) const;
 
-        get_languages_result get_languages();
-
     private:
         golos::chain::database& database_;
     };
 
-
-    get_languages_result social_network::impl::get_languages() {
-        auto& idx = database().get_index<tags::language_index>().indices().get<tags::by_tag>();
-        get_languages_result result;
-        for (auto itr = idx.begin(); idx.end() != itr; ++itr) {
-            result.languages.insert(itr->name);
-        }
-        return result;
-    }
 
     discussion social_network::impl::create_discussion(const comment_object& o) const {
         return discussion(o, database_);
@@ -215,12 +173,6 @@ namespace golos { namespace plugins { namespace social_network {
         fill_discussion(d, query);
 
         return d;
-    }
-
-    DEFINE_API(social_network, get_languages) {
-        return pimpl->database().with_weak_read_lock([&]() {
-            return pimpl->get_languages();
-        });
     }
 
     void social_network::plugin_startup() {
@@ -261,19 +213,6 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     social_network::~social_network() = default;
-
-    DEFINE_API(social_network, get_active_votes) {
-        CHECK_ARG_MIN_SIZE(2, 3)
-        auto author = args.args->at(0).as<string>();
-        auto permlink = args.args->at(1).as<string>();
-        auto limit = GET_OPTIONAL_ARG(2, uint32_t, DEFAULT_VOTE_LIMIT);
-        return pimpl->database().with_weak_read_lock([&]() {
-            std::vector<vote_state> result;
-            uint32_t total_count;
-            pimpl->select_active_votes(result, total_count, author, permlink, limit);
-            return result;
-        });
-    }
 
     void social_network::impl::set_url(discussion& d) const {
         const comment_api_object root(database().get<comment_object, by_id>(d.root_comment), database());
@@ -412,528 +351,6 @@ namespace golos { namespace plugins { namespace social_network {
         set_url(d);
     }
 
-    bool social_network::impl::filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const {
-        if (select_tags.empty()) {
-            return true;
-        }
-
-        auto& db = database();
-        auto& idx = db.get_index<tags::tag_index>().indices().get<tags::by_tag>();
-        auto src_tags = std::move(select_tags);
-        for (const auto& name: src_tags) {
-            if (idx.find(std::make_tuple(name, type)) != idx.end()) {
-                select_tags.insert(name);
-            }
-        }
-        return !select_tags.empty();
-    }
-
-    bool social_network::impl::filter_authors(discussion_query& query) const {
-        if (query.select_authors.empty()) {
-            return true;
-        }
-
-        auto& db = database();
-        auto select_authors = std::move(query.select_authors);
-        for (auto& name: select_authors) {
-            auto* author = db.find_account(name);
-            if (author) {
-                query.select_author_ids.insert(author->id);
-                query.select_authors.insert(name);
-            }
-        }
-        return query.has_author_selector();
-    }
-
-    bool social_network::impl::filter_start_comment(discussion_query& query) const {
-        if (query.has_start_comment()) {
-            if (!query.start_permlink.valid()) {
-                return false;
-            }
-            auto* comment = database().find_comment(*query.start_author, *query.start_permlink);
-            if (!comment) {
-                return false;
-            }
-            query.start_comment = create_discussion(*comment, query);
-        }
-        return true;
-    }
-
-    bool social_network::impl::filter_parent_comment(discussion_query& query) const {
-        if (query.has_parent_comment()) {
-            if (!query.parent_permlink) {
-                return false;
-            }
-            auto* comment = database().find_comment(*query.parent_author, *query.parent_permlink);
-            if (comment) {
-                return false;
-            }
-            query.parent_comment = create_discussion(*comment, query);
-        }
-        return true;
-    }
-
-    bool social_network::impl::filter_query(discussion_query& query) const {
-        if (!filter_tags(tags::tag_type::language, query.select_languages) ||
-            !filter_tags(tags::tag_type::tag, query.select_tags) ||
-            !filter_authors(query)
-        ) {
-            return false;
-        }
-
-        return true;
-    }
-
-    template<
-        typename DatabaseIndex,
-        typename DiscussionIndex>
-    std::vector<discussion> social_network::impl::select_unordered_discussions(discussion_query& query) const {
-        std::vector<discussion> result;
-
-        if (!filter_start_comment(query) || !filter_query(query)) {
-            return result;
-        }
-
-        auto& db = database();
-        const auto& idx = db.get_index<DatabaseIndex>().indices().template get<DiscussionIndex>();
-        auto etr = idx.end();
-        bool can_add = true;
-
-        result.reserve(query.limit);
-
-        std::set<comment_object::id_type> id_set;
-        auto aitr = query.select_authors.begin();
-        if (query.has_start_comment()) {
-            can_add = false;
-        }
-
-        for (; query.select_authors.end() != aitr && result.size() < query.limit; ++aitr) {
-            auto itr = idx.lower_bound(*aitr);
-            for (; itr != etr && itr->account == *aitr && result.size() < query.limit; ++itr) {
-                if (id_set.count(itr->comment)) {
-                    continue;
-                }
-                id_set.insert(itr->comment);
-
-                if (query.has_start_comment() && !can_add) {
-                    can_add = (query.is_good_start(itr->comment));
-                    if (!can_add) {
-                        continue;
-                    }
-                }
-
-                const auto* comment = db.find(itr->comment);
-                if (!comment) {
-                    continue;
-                }
-
-                if ((query.parent_author && *query.parent_author != comment->parent_author) ||
-                    (query.parent_permlink && *query.parent_permlink != to_string(comment->parent_permlink))
-                ) {
-                    continue;
-                }
-
-                discussion d = create_discussion(*comment);
-                if (!query.is_good_tags(d)) {
-                    continue;
-                }
-
-                fill_discussion(d, query);
-                result.push_back(d);
-            }
-        }
-        return result;
-    }
-
-    template<
-        typename Iterator,
-        typename Order,
-        typename Select,
-        typename Exit>
-    void social_network::impl::select_discussions(
-        std::set<comment_object::id_type>& id_set,
-        std::vector<discussion>& result,
-        const discussion_query& query,
-        Iterator itr, Iterator etr,
-        Select&& select,
-        Exit&& exit,
-        Order&& order
-    ) const {
-        auto& db = database();
-        for (; itr != etr && !exit(*itr); ++itr) {
-            if (id_set.count(itr->comment)) {
-                continue;
-            }
-            id_set.insert(itr->comment);
-
-            if (!query.is_good_parent(itr->parent) || !query.is_good_author(itr->author)) {
-                continue;
-            }
-
-            const auto* comment = db.find(itr->comment);
-            if (!comment) {
-                continue;
-            }
-
-            discussion d = create_discussion(*comment);
-            if (!select(d) || !query.is_good_tags(d)) {
-                continue;
-            }
-
-            fill_discussion(d, query);
-            d.promoted = itr->promoted_balance;
-            d.hot = itr->hot;
-            d.trending = itr->trending;
-
-            if (query.has_start_comment() && !query.is_good_start(d.id) && !order(query.start_comment, d)) {
-                continue;
-            }
-
-            result.push_back(std::move(d));
-        }
-    }
-
-    template<
-        typename DiscussionOrder,
-        typename Selector>
-    std::vector<discussion> social_network::impl::select_ordered_discussions(
-        discussion_query& query,
-        Selector&& selector
-    ) const {
-        std::vector<discussion> unordered;
-        auto& db = database();
-
-        db.with_weak_read_lock([&]() {
-            if (!filter_query(query) || !filter_start_comment(query) || !filter_parent_comment(query) ||
-                (query.has_start_comment() && !query.is_good_author(*query.start_author))
-            ) {
-                return false;
-            }
-
-            std::set<comment_object::id_type> id_set;
-            if (query.has_tags_selector()) { // seems to have a least complexity
-                const auto& idx = db.get_index<tags::tag_index>().indices().get<tags::by_tag>();
-                auto etr = idx.end();
-                unordered.reserve(query.select_tags.size() * query.limit);
-
-                for (auto& name: query.select_tags) {
-                    select_discussions(
-                        id_set, unordered, query, idx.lower_bound(std::make_tuple(name, tags::tag_type::tag)), etr,
-                        selector,
-                        [&](const tags::tag_object& tag){
-                            return tag.name != name || tag.type != tags::tag_type::tag;
-                        },
-                        DiscussionOrder());
-                }
-            } else if (query.has_author_selector()) { // a more complexity
-                const auto& idx = db.get_index<tags::tag_index>().indices().get<tags::by_author_comment>();
-                auto etr = idx.end();
-                unordered.reserve(query.select_author_ids.size() * query.limit);
-
-                for (auto& id: query.select_author_ids) {
-                    select_discussions(
-                        id_set, unordered, query, idx.lower_bound(id), etr,
-                        selector,
-                        [&](const tags::tag_object& tag){
-                            return tag.author != id;
-                        },
-                        DiscussionOrder());
-                }
-            } else if (query.has_language_selector()) { // the most complexity
-                const auto& idx = db.get_index<tags::tag_index>().indices().get<tags::by_tag>();
-                auto etr = idx.end();
-                unordered.reserve(query.select_languages.size() * query.limit);
-
-                for (auto& name: query.select_languages) {
-                    select_discussions(
-                        id_set, unordered, query, idx.lower_bound(std::make_tuple(name, tags::tag_type::language)), etr,
-                        selector,
-                        [&](const tags::tag_object& tag){
-                            return tag.name != name || tag.type != tags::tag_type::language;
-                        },
-                        DiscussionOrder());
-                }
-            } else {
-                const auto& indices = db.get_index<tags::tag_index>().indices();
-                const auto& idx = indices.get<DiscussionOrder>();
-                auto itr = idx.begin();
-
-                if (query.has_start_comment()) {
-                    const auto& cidx = indices.get<tags::by_comment>();
-                    const auto citr = cidx.find(query.start_comment.id);
-                    if (citr != cidx.end()) {
-                        return false;
-                    }
-
-                    query.reset_start_comment();
-                    itr = idx.iterator_to(*citr);
-                }
-
-                unordered.reserve(query.limit);
-
-                select_discussions(
-                    id_set, unordered, query, itr, idx.end(), selector,
-                    [&](const tags::tag_object& tag){
-                        return unordered.size() >= query.limit;
-                    },
-                    [&](const auto&, const auto&) {
-                        return true;
-                    });
-            }
-            return true;
-        });
-
-        std::vector<discussion> result;
-        if (unordered.empty()) {
-            return result;
-        }
-
-        auto it = unordered.begin();
-        const auto et = unordered.end();
-        std::sort(it, et, DiscussionOrder());
-
-        if (query.has_start_comment()) {
-            for (; et != it && it->id != query.start_comment.id; ++it);
-            if (et == it) {
-                return result;
-            }
-        }
-
-        for (uint32_t idx = 0; idx < query.limit && et != it; ++it, ++idx) {
-            result.push_back(std::move(*it));
-        }
-
-        return result;
-    }
-
-    DEFINE_API(social_network, get_discussions_by_blog) {
-        CHECK_ARG_SIZE(1)
-        std::vector<discussion> result;
-
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-        FC_ASSERT(query.select_authors.size(), "No such author to select blog from");
-
-
-#ifndef IS_LOW_MEM
-        auto& db = pimpl->database();
-        FC_ASSERT(db.has_index<follow::feed_index>(), "Node is not running the follow plugin");
-
-        return db.with_weak_read_lock([&]() {
-            return pimpl->select_unordered_discussions<follow::blog_index, follow::by_blog>(query);
-        });
-#endif
-        return result;
-    }
-
-    DEFINE_API(social_network, get_discussions_by_feed) {
-        CHECK_ARG_SIZE(1)
-        std::vector<discussion> result;
-
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-        FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
-
-#ifndef IS_LOW_MEM
-        auto& db = pimpl->database();
-        FC_ASSERT(db.has_index<follow::feed_index>(), "Node is not running the follow plugin");
-
-        return db.with_weak_read_lock([&]() {
-            return pimpl->select_unordered_discussions<follow::feed_index, follow::by_feed>(query);
-        });
-#endif
-        return result;
-    }
-
-    DEFINE_API(social_network, get_discussions_by_comments) {
-        CHECK_ARG_SIZE(1)
-        std::vector<discussion> result;
-#ifndef IS_LOW_MEM
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-        FC_ASSERT(!!query.start_author, "Must get comments for a specific author");
-
-        auto& db = pimpl->database();
-        return db.with_weak_read_lock([&]() {
-            const auto &idx = db.get_index<comment_index>().indices().get<by_author_last_update>();
-            auto itr = idx.lower_bound(*query.start_author);
-            FC_ASSERT(itr != idx.end(), "Author doesn't have any comment.");
-
-            if (!!query.start_permlink) {
-                const auto &lidx = db.get_index<comment_index>().indices().get<by_permlink>();
-                auto litr = lidx.find(std::make_tuple(*query.start_author, *query.start_permlink));
-                FC_ASSERT(litr != lidx.end(), "Comment is not in account's comments");
-                itr = idx.iterator_to(*litr);
-            }
-
-            if (!pimpl->filter_query(query)) {
-                return result;
-            }
-
-            result.reserve(query.limit);
-
-            for (; itr != idx.end() && itr->author == *query.start_author && result.size() < query.limit; ++itr) {
-                if (itr->parent_author.size() > 0) {
-                    if (!query.is_good_tags(discussion(db.get<comment_object>(itr->root_comment), db))) {
-                        continue;
-                    }
-                    result.emplace_back(discussion(*itr, db));
-                    pimpl->fill_discussion(result.back(), query);
-                }
-            }
-            return result;
-        });
-#endif
-        return result;
-    }
-
-    DEFINE_API(social_network, get_discussions_by_trending) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_trending>(
-            query,
-            [&](const discussion& d) -> bool {
-                return d.net_rshares > 0;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_promoted) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_promoted>(
-            query,
-            [&](const discussion& d) -> bool {
-                return d.promoted.amount > 0;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_created) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_created>(
-            query,
-            [&](const discussion& d) -> bool {
-                return true;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_active) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_active>(
-            query,
-            [&](const discussion& d) -> bool {
-                return true;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_cashout) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_cashout>(
-            query,
-            [&](const discussion& d) -> bool {
-                return d.net_rshares > 0;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_payout) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_net_rshares>(
-            query,
-            [&](const discussion& d) -> bool {
-                return d.net_rshares > 0;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_votes) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_net_votes>(
-            query,
-            [&](const discussion& d) -> bool {
-                return true;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_children) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_children>(
-            query,
-            [&](const discussion& d) -> bool {
-                return true;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
-    DEFINE_API(social_network, get_discussions_by_hot) {
-        CHECK_ARG_SIZE(1)
-        auto query = args.args->at(0).as<discussion_query>();
-        query.prepare();
-        query.validate();
-#ifndef IS_LOW_MEM
-        return pimpl->select_ordered_discussions<sort::by_hot>(
-            query,
-            [&](const discussion& d) -> bool {
-                return d.net_rshares > 0;
-            }
-        );
-#endif
-        return std::vector<discussion>();
-    }
-
     DEFINE_API(social_network, get_account_votes) {
         CHECK_ARG_SIZE(1)
         account_name_type voter = args.args->at(0).as<account_name_type>();
@@ -962,128 +379,6 @@ namespace golos { namespace plugins { namespace social_network {
         });
     }
 
-    std::vector<tag_api_object>
-    social_network::impl::get_trending_tags(std::string after, uint32_t limit) const {
-        limit = std::min(limit, uint32_t(1000));
-        std::vector<tag_api_object> result;
-#ifndef IS_LOW_MEM
-        result.reserve(limit);
-
-        const auto& nidx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
-        const auto& ridx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_trending>();
-        auto itr = ridx.begin();
-        if (after != "" && nidx.size()) {
-            auto nitr = nidx.lower_bound(std::make_tuple(tags::tag_type::tag, after));
-            if (nitr == nidx.end()) {
-                itr = ridx.end();
-            } else {
-                itr = ridx.iterator_to(*nitr);
-            }
-        }
-
-        for (; itr->type == tags::tag_type::tag && itr != ridx.end() && result.size() < limit; ++itr) {
-            tag_api_object push_object = tag_api_object(*itr);
-
-            if (!fc::is_utf8(push_object.name)) {
-                push_object.name = fc::prune_invalid_utf8(push_object.name);
-            }
-
-            result.emplace_back(push_object);
-        }
-#endif
-        return result;
-    }
-
-    DEFINE_API(social_network, get_trending_tags) {
-        CHECK_ARG_SIZE(2)
-        auto after = args.args->at(0).as<string>();
-        auto limit = args.args->at(1).as<uint32_t>();
-
-        return pimpl->database().with_weak_read_lock([&]() {
-            return pimpl->get_trending_tags(after, limit);
-        });
-    }
-
-    std::vector<std::pair<std::string, uint32_t>> social_network::impl::get_tags_used_by_author(
-        const std::string& author
-    ) const {
-        std::vector<std::pair<std::string, uint32_t>> result;
-#ifndef IS_LOW_MEM
-        auto& db = database();
-        const auto* acnt = db.find_account(author);
-        FC_ASSERT(acnt != nullptr);
-        const auto& tidx = db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
-        auto itr = tidx.lower_bound(std::make_tuple(acnt->id, tags::tag_type::tag));
-        for (;itr != tidx.end() && itr->author == acnt->id && result.size() < 1000; ++itr) {
-            if (itr->type == tags::tag_type::tag) {
-                if (!fc::is_utf8(itr->name)) {
-                    result.emplace_back(std::make_pair(fc::prune_invalid_utf8(itr->name), itr->total_posts));
-                } else {
-                    result.emplace_back(std::make_pair(itr->name, itr->total_posts));
-                }
-            }
-        }
-#endif
-        return result;
-    }
-
-    DEFINE_API(social_network, get_tags_used_by_author) {
-        CHECK_ARG_SIZE(1)
-        auto author = args.args->at(0).as<string>();
-        return pimpl->database().with_weak_read_lock([&]() {
-            return pimpl->get_tags_used_by_author(author);
-        });
-    }
-
-    DEFINE_API(social_network, get_discussions_by_author_before_date) {
-        std::vector<discussion> result;
-
-        CHECK_ARG_MIN_SIZE(4, 5)
-#ifndef IS_LOW_MEM
-        auto author = args.args->at(0).as<std::string>();
-        auto start_permlink = args.args->at(1).as<std::string>();
-        auto before_date = args.args->at(2).as<time_point_sec>();
-        auto limit = args.args->at(3).as<uint32_t>();
-        auto vote_limit = GET_OPTIONAL_ARG(4, uint32_t, DEFAULT_VOTE_LIMIT);
-
-        FC_ASSERT(limit <= 100);
-
-        result.reserve(limit);
-
-        if (before_date == time_point_sec()) {
-            before_date = time_point_sec::maximum();
-        }
-
-        auto& db = pimpl->database();
-
-        return db.with_weak_read_lock([&]() {
-            try {
-                uint32_t count = 0;
-                const auto& didx = db.get_index<comment_index>().indices().get<by_author_last_update>();
-
-                auto itr = didx.lower_bound(std::make_tuple(author, before_date));
-                if (start_permlink.size()) {
-                    const auto& comment = db.get_comment(author, start_permlink);
-                    if (comment.last_update < before_date) {
-                        itr = didx.iterator_to(comment);
-                    }
-                }
-
-                while (itr != didx.end() && itr->author == author && count < limit) {
-                    if (itr->parent_author.size() == 0) {
-                        result.push_back(pimpl->get_discussion(*itr, vote_limit));
-                        ++count;
-                    }
-                    ++itr;
-                }
-
-                return result;
-            } FC_CAPTURE_AND_RETHROW((author)(start_permlink)(before_date)(limit))
-        });
-#endif
-        return result;
-    }
-
     discussion social_network::impl::get_content(std::string author, std::string permlink, uint32_t limit) const {
         const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_permlink>();
         auto itr = by_permlink_idx.find(std::make_tuple(author, permlink));
@@ -1103,53 +398,16 @@ namespace golos { namespace plugins { namespace social_network {
         });
     }
 
-    std::vector<discussion> social_network::impl::get_replies_by_last_update(
-        account_name_type start_parent_author,
-        std::string start_permlink,
-        uint32_t limit,
-        uint32_t vote_limit
-    ) const {
-        std::vector<discussion> result;
-#ifndef IS_LOW_MEM
-        auto& db = database();
-        const auto& last_update_idx = db.get_index<comment_index>().indices().get<by_last_update>();
-        auto itr = last_update_idx.begin();
-        const account_name_type* parent_author = &start_parent_author;
-
-        if (start_permlink.size()) {
-            const auto& comment = db.get_comment(start_parent_author, start_permlink);
-            itr = last_update_idx.iterator_to(comment);
-            parent_author = &comment.parent_author;
-        } else if (start_parent_author.size()) {
-            itr = last_update_idx.lower_bound(start_parent_author);
-        }
-
-        result.reserve(limit);
-
-        while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
-            result.emplace_back(get_discussion(*itr, vote_limit));
-            ++itr;
-        }
-#endif
-        return result;
-    }
-
-
-    /**
-     *  This method can be used to fetch replies to an account.
-     *
-     *  The first call should be (account_to_retrieve replies, "", limit)
-     *  Subsequent calls should be (last_author, last_permlink, limit)
-     */
-    DEFINE_API(social_network, get_replies_by_last_update) {
-        CHECK_ARG_MIN_SIZE(3, 4)
-        auto start_parent_author = args.args->at(0).as<account_name_type>();
-        auto start_permlink = args.args->at(1).as<string>();
-        auto limit = args.args->at(2).as<uint32_t>();
-        auto vote_limit = GET_OPTIONAL_ARG(3, uint32_t, DEFAULT_VOTE_LIMIT);
-        FC_ASSERT(limit <= 100);
+    DEFINE_API(social_network, get_active_votes) {
+        CHECK_ARG_MIN_SIZE(2, 3)
+        auto author = args.args->at(0).as<string>();
+        auto permlink = args.args->at(1).as<string>();
+        auto limit = GET_OPTIONAL_ARG(2, uint32_t, DEFAULT_VOTE_LIMIT);
         return pimpl->database().with_weak_read_lock([&]() {
-            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit);
+            std::vector<vote_state> result;
+            uint32_t total_count;
+            pimpl->select_active_votes(result, total_count, author, permlink, limit);
+            return result;
         });
     }
 

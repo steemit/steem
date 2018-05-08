@@ -1,8 +1,17 @@
 #pragma once
 
-#include <golos/plugins/social_network/api_object/discussion.hpp>
+#include <golos/api/discussion.hpp>
 
-namespace golos { namespace plugins { namespace social_network { namespace sort {
+namespace golos { namespace plugins { namespace tags { namespace sort {
+    using golos::api::discussion;
+    using golos::api::comment_object;
+    using golos::chain::account_object;
+    using protocol::asset;
+    using protocol::share_type;
+    using protocol::authority;
+    using protocol::account_name_type;
+    using protocol::public_key_type;
+    
     struct by_trending {
         bool operator()(const discussion& first, const discussion& second) const {
             if (std::greater<double>()(first.trending, second.trending)) {
@@ -113,4 +122,4 @@ namespace golos { namespace plugins { namespace social_network { namespace sort 
         }
     };
 
-} } } } // golos::plugins::social_network::sort
+} } } }  // golos::plugins::tags::sort

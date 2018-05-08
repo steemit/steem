@@ -1,12 +1,12 @@
 #pragma once
 
-#include <golos/plugins/social_network/api_object/vote_state.hpp>
-#include <golos/plugins/social_network/api_object/comment_api_object.hpp>
+#include <golos/api/vote_state.hpp>
+#include <golos/api/comment_api_object.hpp>
 
 
-namespace golos { namespace plugins { namespace social_network {
+namespace golos { namespace api {
 
-    struct discussion: public comment_api_object {
+    struct discussion : public comment_api_object {
         discussion(const comment_object& o, const golos::chain::database &db)
                 : comment_api_object(o, db) {
         }
@@ -31,9 +31,8 @@ namespace golos { namespace plugins { namespace social_network {
         optional <time_point_sec> first_reblogged_on;
     };
 
-} } } // golos::plugins::social_network
+} } // golos::api
 
-FC_REFLECT_DERIVED((
-    golos::plugins::social_network::discussion), ((golos::plugins::social_network::comment_api_object)),
+FC_REFLECT_DERIVED( (golos::api::discussion), ((golos::api::comment_api_object)),
         (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(active_votes_count)(replies)
         (author_reputation)(promoted)(body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on))

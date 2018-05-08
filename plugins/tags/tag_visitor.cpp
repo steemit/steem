@@ -1,8 +1,7 @@
 #include <boost/algorithm/string.hpp>
-#include <golos/plugins/social_network/tag/tag_visitor.hpp>
+#include <golos/plugins/tags/tag_visitor.hpp>
 
-namespace golos { namespace plugins { namespace social_network { namespace tags {
-
+namespace golos { namespace plugins { namespace tags {
 
     operation_visitor::operation_visitor(database& db)
         : db_(db) {
@@ -363,4 +362,4 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         return meta;
     }
 
-} } } } // golos::plugins::social_network::tags
+} } } // golos::plugins::tags
