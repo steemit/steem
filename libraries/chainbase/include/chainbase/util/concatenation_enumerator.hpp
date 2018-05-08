@@ -4,6 +4,7 @@
 
 #include <boost/operators.hpp>
 #include <boost/multi_index/detail/bidir_node_iterator.hpp>
+#include <chainbase/util/concatenation_transform.hpp>
 
 using namespace boost::multi_index;
 
@@ -260,6 +261,8 @@ namespace ce
                         >;
 
          using pitem = typename abstract_sub_enumerator< OBJECT >::pself;
+
+         modifier _modifier;
 
       public:
 
@@ -522,13 +525,42 @@ namespace ce
             action( iterators[ idx.current ] );
          }
 
-         template< Direction DIRECTION >
+         template< int32_t position, Direction DIRECTION >
+         void reorder()
+         {
+            if( idx.current == position )
+               return;
+
+            assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
+
+            _modifier.start( iterators[ idx.current ], idx.current );
+
+            for( size_t i = 0 ; i < iterators.size(); ++i )
+            {
+               if
+               (
+                  static_cast< int32_t >( i ) != idx.current &&
+                  (
+                     ( DIRECTION == Direction::next && !iterators[ i ]->is_inactive() ) ||
+                     ( DIRECTION == Direction::prev && !iterators[ i ]->end() ) 
+                  )
+               )
+                  _modifier.run( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
+            }
+
+            _modifier.end();
+         }
+
+         template< Direction DIRECTION, bool REORDER >
          void move()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
             if( DIRECTION == Direction::next )
             {
+               if( REORDER )
+                  reorder< pos_begin, DIRECTION >();
+
                if( !change_direction< Direction::next >() )
                   move_impl< pos_end >( []( const pitem& item ){ ++( *item ); } );
             }
@@ -568,10 +600,10 @@ namespace ce
 
          std::vector< pitem > iterators;
 
-         template< Direction DIRECTION >
+         template< Direction DIRECTION, bool REORDER >
          void action()
          {
-            move< DIRECTION >();
+            move< DIRECTION, REORDER >();
             find< DIRECTION >();
          }
 
@@ -629,6 +661,11 @@ namespace ce
             return ret;
          }
 
+         modifier& get_modifier()
+         {
+            return _modifier;
+         }
+
          reference operator*()
          {
             assert( idx.current != pos_begin && idx.current != pos_end );
@@ -644,12 +681,12 @@ namespace ce
          pointer operator->() const
          {
             assert( idx.current != pos_begin && idx.current != pos_end );
-            return &( *( iterators[ idx.current ] ) );
+            return &( *( *( iterators[ idx.current ] ) ) );
          }
 
          concatenation_iterator& operator++()
          {
-            action< Direction::next >();
+            action< Direction::next, true/*REORDER*/ >();
 
             return *this;
          }
@@ -658,14 +695,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< Direction::next >();
+            action< Direction::next, true/*REORDER*/ >();
 
             return tmp;
          }
 
          concatenation_iterator& operator--()
          {
-            action< Direction::prev >();
+            action< Direction::prev, true/*REORDER*/ >();
 
             return *this;
          }
@@ -674,7 +711,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< Direction::prev >();
+            action< Direction::prev, true/*REORDER*/ >();
 
             return tmp;
          }
@@ -739,7 +776,7 @@ namespace ce
          concatenation_reverse_iterator( const concatenation_iterator< OBJECT, CMP >& obj )
          : base_class( obj )
          {
-            this-> template action< Direction::prev >();
+            this-> template action< Direction::prev, false/*REORDER*/ >();
          }
 
          template< typename... ELEMENTS >
@@ -748,7 +785,7 @@ namespace ce
          {
             base_class::prepare( *this, false/*status*/, Direction::next, base_class::pos_end, elements... );
 
-            this-> template action< Direction::prev >();
+            this-> template action< Direction::prev, false/*REORDER*/ >();
          }
 
          template< typename... ELEMENTS >
@@ -762,7 +799,7 @@ namespace ce
 
          concatenation_reverse_iterator& operator++()
          {
-            this-> template action< Direction::prev >();
+            this-> template action< Direction::prev, true/*REORDER*/ >();
 
             return *this;
          }
@@ -771,14 +808,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< Direction::prev >();
+            this-> template action< Direction::prev, true/*REORDER*/ >();
 
             return tmp;
          }
 
          concatenation_reverse_iterator& operator--()
          {
-            this-> template action< Direction::next >();
+            this-> template action< Direction::next, true/*REORDER*/ >();
 
             return *this;
          }
@@ -787,7 +824,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< Direction::next >();
+            this-> template action< Direction::next, true/*REORDER*/ >();
 
             return tmp;
          }
@@ -866,7 +903,7 @@ namespace ce
                if( !find_with_key_search_impl( key ) )
                   break;
             
-               this-> template action< DIRECTION >();
+               this-> template action< DIRECTION, false/*REORDER*/ >();
             }
          }
 
@@ -904,7 +941,7 @@ namespace ce
          template< Direction DIRECTION, int32_t position >
          void action_ex()
          {
-            this-> template action< DIRECTION >();
+            this-> template action< DIRECTION, true/*REORDER*/ >();
             find_with_key_search< DIRECTION, position >();
          }
 
