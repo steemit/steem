@@ -6681,11 +6681,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_blocks(10);
 
             auto acc = db->get_account("alice");
+#ifndef IS_LOW_MEM
             auto meta = db->get<account_metadata_object, by_account>("alice");
             BOOST_REQUIRE(meta.account == "alice");
             BOOST_REQUIRE(meta.json_metadata == json);
+#endif
             BOOST_REQUIRE(acc.last_account_update == now);
 
+#ifndef IS_LOW_MEM
             BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create");
             ACTOR(bob);                                             // create_account with json_metadata = ""
             meta = db->get<account_metadata_object, by_account>("bob");
@@ -6704,12 +6707,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             cr.owner = authority(1, priv_key.get_public_key(), 1);
             cr.active = authority(1, priv_key.get_public_key(), 1);
             cr.memo_key = priv_key.get_public_key();
-            // op.json_metadata = "";                               // don't set
+            // cr.json_metadata = "";                               // don't set
             push_tx_with_ops(tx, bob_private_key, cr);
 
             meta = db->get<account_metadata_object, by_account>("sam");
             BOOST_REQUIRE(meta.account == "sam");
             BOOST_REQUIRE(meta.json_metadata == "");
+#endif
             validate_database();
         }
         FC_LOG_AND_RETHROW()
