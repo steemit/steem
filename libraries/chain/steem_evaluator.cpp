@@ -2252,6 +2252,7 @@ namespace golos { namespace chain {
             auto min_delegation = median_fee * GOLOS_MIN_DELEGATION_MULTIPLIER * v_share_price;
             auto min_update = median_fee * v_share_price;
 
+            auto now = _db.head_block_time();
             auto delta = delegation ?
                 op.vesting_shares - delegation->vesting_shares :
                 op.vesting_shares;
@@ -2265,14 +2266,20 @@ namespace golos { namespace chain {
 #endif
 
             if (increasing) {
+                auto delegated = delegator.delegated_vesting_shares;
                 FC_ASSERT(delegator.available_vesting_shares(true) >= delta,
                     "Account does not have enough vesting shares to delegate.",
                     ("available", delegator.available_vesting_shares(true))
-                    ("delta", delta)
-                    ("vesting_shares", delegator.vesting_shares)
-                    ("delegated_vesting_shares", delegator.delegated_vesting_shares)
-                    ("to_withdraw", delegator.to_withdraw)
-                    ("withdrawn", delegator.withdrawn));
+                    ("delta", delta)("vesting_shares", delegator.vesting_shares)("delegated", delegated)
+                    ("to_withdraw", delegator.to_withdraw)("withdrawn", delegator.withdrawn));
+                auto elapsed_seconds = (now - delegator.last_vote_time).to_seconds();
+                auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
+                auto current_power = std::min<int64_t>(delegator.voting_power + regenerated_power, STEEMIT_100_PERCENT);
+                auto max_allowed = delegator.vesting_shares * current_power / STEEMIT_100_PERCENT;
+                FC_ASSERT(delegated + delta <= max_allowed,
+                    "Account allowed to delegate a maximum of ${v} with current voting power = ${p}",
+                    ("v",max_allowed)("p",current_power)("delegated",delegated)("delta",delta));
+
                 if (!delegation) {
                     FC_ASSERT(op.vesting_shares >= min_delegation,
                         "Account must delegate a minimum of ${v}", ("v",min_delegation)("vesting_shares",op.vesting_shares));
@@ -2280,7 +2287,7 @@ namespace golos { namespace chain {
                         o.delegator = op.delegator;
                         o.delegatee = op.delegatee;
                         o.vesting_shares = op.vesting_shares;
-                        o.min_delegation_time = _db.head_block_time();
+                        o.min_delegation_time = now;
                     });
                 }
                 _db.modify(delegator, [&](account_object& a) {
@@ -2293,7 +2300,7 @@ namespace golos { namespace chain {
                 _db.create<vesting_delegation_expiration_object>([&](vesting_delegation_expiration_object& o) {
                     o.delegator = op.delegator;
                     o.vesting_shares = -delta;
-                    o.expiration = std::max(_db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
+                    o.expiration = std::max(now + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
                 });
             }
 
