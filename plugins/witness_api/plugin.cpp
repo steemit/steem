@@ -1,8 +1,6 @@
 #include <golos/plugins/witness_api/plugin.hpp>
 #include <golos/chain/operation_notification.hpp>
 
-#include <fc/smart_ref_impl.hpp>
-#include <boost/algorithm/string.hpp>
 
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
@@ -212,7 +210,11 @@ void plugin::set_program_options(
 void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
     ilog("witness_api plugin: plugin_initialize() begin");
 
-    my.reset(new witness_plugin_impl);
+    try {
+        my.reset(new witness_plugin_impl);
+
+        JSON_RPC_REGISTER_API ( name() ) ;
+    } FC_CAPTURE_AND_RETHROW()
 
     ilog("witness_api plugin: plugin_initialize() end");
 }
@@ -226,9 +228,9 @@ plugin::~plugin() {
 }
 
 void plugin::plugin_startup() {
-    ilog("account_history plugin: plugin_startup() begin");
+    ilog("witness_api plugin: plugin_startup() begin");
 
-    ilog("account_history plugin: plugin_startup() end");
+    ilog("witness_api plugin: plugin_startup() end");
 }
 
 

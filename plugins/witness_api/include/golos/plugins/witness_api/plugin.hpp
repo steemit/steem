@@ -29,23 +29,17 @@
 #include <golos/plugins/witness_api/api_objects/witness_api_object.hpp>
 
 #include <golos/chain/database.hpp>
-#include <boost/program_options.hpp>
 
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <libraries/protocol/include/golos/protocol/asset.hpp>
-#include <libraries/protocol/include/golos/protocol/types.hpp>
 #include <boost/optional.hpp>
 
 
 namespace golos { namespace plugins { namespace witness_api {
+
 using namespace chain;
-
-
-using plugins::json_rpc::void_type;
-using plugins::json_rpc::msg_pack;
-using plugins::json_rpc::msg_pack_transfer;
 using namespace golos::protocol;
+using plugins::json_rpc::msg_pack;
 
 
 DEFINE_API_ARGS(get_current_median_history_price, msg_pack, price)

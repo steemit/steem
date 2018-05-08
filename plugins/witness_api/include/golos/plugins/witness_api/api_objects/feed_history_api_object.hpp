@@ -2,14 +2,14 @@
 #define GOLOS_FEED_HISTORY_WITNESS_API_OBJ_HPP
 
 #include <golos/chain/steem_objects.hpp>
-#include <golos/protocol/asset.hpp>
 
 namespace golos { namespace plugins { namespace witness_api {
 
-            using golos::chain::feed_history_id_type;
+            using namespace golos::chain;
+            using namespace golos::protocol;
 
             struct feed_history_api_object {
-                feed_history_api_object(const golos::chain::feed_history_object &f) :
+                feed_history_api_object(const feed_history_object &f) :
                         id(f.id),
                         current_median_history(f.current_median_history),
                         price_history(f.price_history.begin(), f.price_history.end()) {
@@ -19,8 +19,8 @@ namespace golos { namespace plugins { namespace witness_api {
                 }
 
                 feed_history_id_type id;
-                golos::protocol::price current_median_history;
-                deque<golos::protocol::price> price_history;
+                price current_median_history;
+                deque<price> price_history;
             };
         }
     }
