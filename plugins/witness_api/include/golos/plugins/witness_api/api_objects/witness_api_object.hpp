@@ -4,10 +4,8 @@
 #include <golos/chain/witness_objects.hpp>
 #include <golos/chain/steem_object_types.hpp>
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
-            
+namespace golos { namespace plugins { namespace witness_api {
+
             using protocol::asset;
             using protocol::share_type;
             using golos::chain::account_bandwidth_object;
@@ -77,7 +75,7 @@ namespace golos {
 
 
 
-FC_REFLECT((golos::plugins::database_api::witness_api_object),
+FC_REFLECT((golos::plugins::witness_api::witness_api_object),
            (id)(owner)(created)(url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(
                    total_missed)(last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)(props)(
                    sbd_exchange_rate)(last_sbd_exchange_update)(last_work)(running_version)(hardfork_version_vote)(
