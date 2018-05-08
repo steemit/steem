@@ -401,17 +401,6 @@ namespace golos { namespace chain {
                 _db.remove(cur_vote);
             }
 
-            // Gota remove comment content from database
-            const auto &content_idx = _db.get_index<comment_content_index>().indices().get<by_comment>();
-
-            auto content_itr = content_idx.lower_bound(comment_id_type(comment.id));
-            while (vote_itr != vote_idx.end() && vote_itr->comment == comment.id) {
-                const auto &content = *content_itr;
-                ++vote_itr;
-                _db.remove(content);
-            }
-
-
             /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_6__80) &&
                 comment.parent_author != STEEMIT_ROOT_POST_PARENT) {
@@ -433,6 +422,11 @@ namespace golos { namespace chain {
                 }
             }
 
+            auto* content = _db.find_comment_content(comment.id);
+
+            if (content) {
+                _db.remove(*content);
+            }
             _db.remove(comment);
         }
 
