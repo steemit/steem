@@ -6469,6 +6469,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             generate_block();
             vest("alice", ASSET_GOLOS(10000));
+            vest("bob", ASSET_GOLOS(1000));
             generate_block();
             db_plugin->debug_update([=](database& db) {
                 db.modify(db.get_witness_schedule_object(), [&](witness_schedule_object& w) {
@@ -6532,6 +6533,16 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 (old_voting_power - bob_acc.voting_power) / STEEMIT_100_PERCENT;
             BOOST_REQUIRE(rshares == itr->rshares);
             BOOST_REQUIRE(rshares == alice_comment.net_rshares.value);
+
+            BOOST_TEST_MESSAGE("--- Test that delegation limited by current voting power");
+            auto max_allowed = bob_acc.vesting_shares * bob_acc.voting_power / STEEMIT_100_PERCENT;
+            op.delegator = "bob";
+            op.delegatee = "alice";
+            op.vesting_shares = asset(max_allowed.amount + 1, VESTS_SYMBOL);
+            sign_tx_with_ops(tx, bob_private_key, op);
+            STEEMIT_REQUIRE_THROW(db->push_transaction(tx), fc::assert_exception);
+            op.vesting_shares = max_allowed;
+            push_tx_with_ops(tx, bob_private_key, op);
 
             generate_block();
             ACTORS((sam)(dave))
