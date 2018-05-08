@@ -1,5 +1,4 @@
-#ifndef GOLOS_FEED_HISTORY_WITNESS_API_OBJ_HPP
-#define GOLOS_FEED_HISTORY_WITNESS_API_OBJ_HPP
+#pragma once
 
 #include <golos/chain/steem_objects.hpp>
 
@@ -27,4 +26,3 @@ namespace golos { namespace plugins { namespace witness_api {
 }
 
 FC_REFLECT((golos::plugins::witness_api::feed_history_api_object), (id)(current_median_history)(price_history))
-#endif //GOLOS_FEED_HISTORY_API_OBJ_HPP
