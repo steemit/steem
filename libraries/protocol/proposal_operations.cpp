@@ -16,6 +16,7 @@ namespace golos { namespace protocol {
         validate_account_name(author);
 
         FC_ASSERT(!title.empty(), "Title is empty");
+        FC_ASSERT(title.size() < 256, "Title larger than size limit");
         FC_ASSERT(fc::is_utf8(title), "Title not formatted in UTF8");
 
         FC_ASSERT(!proposed_operations.empty());
@@ -24,6 +25,7 @@ namespace golos { namespace protocol {
         }
 
         if (memo.size() > 0) {
+            FC_ASSERT(memo.size() < 4096, "Memo larger than size limit");
             FC_ASSERT(fc::is_utf8(memo), "Memo not formatted in UTF8");
         }
     }
