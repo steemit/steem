@@ -60,6 +60,7 @@ target_link_libraries(
         golos::private_message
         golos::follow
         golos::account_by_key
+        golos::witness_api
         golos_protocol
         graphene_utilities
         fc
