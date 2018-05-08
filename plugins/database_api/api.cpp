@@ -11,7 +11,6 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
-#include <golos/plugins/witness_api/api_objects/witness_api_object.hpp>
 
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
@@ -22,8 +21,6 @@
 
 
 namespace golos { namespace plugins { namespace database_api {
-
-    using namespace golos::plugins::witness_api;
 
 struct block_applied_callback_info {
     using ptr = std::shared_ptr<block_applied_callback_info>;
@@ -80,8 +77,6 @@ public:
     std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
     std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
     uint64_t get_account_count() const;
-
-    std::vector<optional<witness_api::witness_api_object>> get_witnesses(const std::vector<witness_object::id_type> &witness_ids) const;
 
     // Authority / validation
     std::string get_transaction_hex(const signed_transaction &trx) const;
@@ -545,26 +540,6 @@ DEFINE_API(plugin, get_account_bandwidth) {
     return result;
 }
 
-//////////////////////////////////////////////////////////////////////
-//                                                                  //
-// Witnesses                                                        //
-//                                                                  //
-//////////////////////////////////////////////////////////////////////
-
-std::vector<optional<witness_api_object>> plugin::api_impl::get_witnesses(
-    const std::vector<witness_object::id_type> &witness_ids
-) const {
-    std::vector<optional<witness_api_object>> result;
-    result.reserve(witness_ids.size());
-    std::transform(witness_ids.begin(), witness_ids.end(), std::back_inserter(result),
-                    [this](witness_object::id_type id) -> optional<witness_api_object> {
-                        if (auto o = database().find(id)) {
-                            return *o;
-                        }
-                        return {};
-                    });
-    return result;
-}
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //

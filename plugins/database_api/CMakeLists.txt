@@ -40,7 +40,6 @@ target_link_libraries(
         golos::chain_plugin
         golos_protocol
         golos::json_rpc
-        golos::witness_api
         graphene_utilities
         appbase
         fc
