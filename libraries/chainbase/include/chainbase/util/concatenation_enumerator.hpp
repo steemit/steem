@@ -98,7 +98,7 @@ namespace ce
          virtual int32_t get_tag() const = 0;
    };
 
-   template< typename ITERATOR, typename OBJECT, typename CMP >
+   template< typename COLLECTION_POINTER, typename ITERATOR, typename OBJECT, typename CMP >
    class sub_enumerator: public abstract_sub_enumerator< OBJECT >
    {
       public:
@@ -111,17 +111,19 @@ namespace ce
          bool inactive;
          const int32_t tag;
 
+         const COLLECTION_POINTER collection;
+
       protected:
 
          void dec() override
          {
-            assert( it != it_begin );
+            assert( it != collection->begin() );
             --it;
          }
 
          void inc() override
          {
-            assert( it != it_end );
+            assert( it != collection->end() );
             ++it;
 
             if( inactive )
@@ -132,20 +134,17 @@ namespace ce
 
          ITERATOR it;
 
-         ITERATOR it_begin;
-         ITERATOR it_end;
-
          const CMP cmp;
 
-         sub_enumerator( bool _inactive, int32_t _tag, const ITERATOR& _it, const ITERATOR& _begin, const ITERATOR& _end, const CMP& _cmp )
-         : inactive( _inactive ), tag( _tag ), it_begin( _begin ), it_end( _end ), cmp( _cmp )
+         sub_enumerator( bool _inactive, int32_t _tag, const ITERATOR& _it, const COLLECTION_POINTER _collection, const CMP& _cmp )
+         : inactive( _inactive ), tag( _tag ), collection( _collection ), cmp( _cmp )
          {
             it = _it;
          }
 
          size_t get_id() const override
          {
-            assert( it != it_end );
+            assert( it != collection->end() );
             return size_t( it->id );
          }
 
@@ -163,13 +162,13 @@ namespace ce
 
          reference operator*() const override
          {
-            assert( it != it_end );
+            assert( it != collection->end() );
             return *it;
          }
 
          pointer operator->() const override
          {
-            assert( it != it_end );
+            assert( it != collection->end() );
             return &( *it );
          }
 
@@ -190,12 +189,12 @@ namespace ce
 
          bool begin() const override
          {
-            return it == it_begin;
+            return it == collection->begin();
          }
 
          bool end() const override
          {
-            return it == it_end;
+            return it == collection->end();
          }
 
          void change_status( bool val ) override
@@ -210,7 +209,7 @@ namespace ce
 
          abstract_sub_enumerator< OBJECT >* create() override
          {
-            return new sub_enumerator( inactive, tag, it, it_begin, it_end, cmp );
+            return new sub_enumerator( inactive, tag, it, collection, cmp );
          }
 
          int32_t get_tag() const{ return tag; };
@@ -286,7 +285,10 @@ namespace ce
          template< bool INACTIVE, bool POSITION, typename TUPLE, typename... ELEMENTS >
          void add( const TUPLE& tuple, ELEMENTS... elements )
          {
-            using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
+            using t_collection_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple ) ) >::type;
+            using t_collection_without_ref_const = typename std::remove_const< t_collection_without_ref >::type;
+
+            using t_without_ref = typename std::remove_reference< decltype( std::get<0>( tuple )->begin() ) >::type;
             using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
 
             /*
@@ -294,9 +296,9 @@ namespace ce
                POSITION == false:   iterator is set on 'end()' at the start
             */
             if( POSITION )
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<0>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_collection_without_ref_const, t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<0>( tuple )->begin(), std::get<0>( tuple ), cmp ) ) );
             else
-               iterators.push_back( pitem( new sub_enumerator< t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<1>( tuple ), std::get<0>( tuple ), std::get<1>( tuple ), cmp ) ) );
+               iterators.push_back( pitem( new sub_enumerator< t_collection_without_ref_const, t_without_ref_const , OBJECT, CMP >( INACTIVE, iterators.size(), std::get<0>( tuple )->end(), std::get<0>( tuple ), cmp ) ) );
 
             add< INACTIVE, POSITION >( elements... );
          }
@@ -856,10 +858,10 @@ namespace ce
          template< typename TUPLE, typename... ELEMENTS >
          void add( const TUPLE& tuple, ELEMENTS... elements )
          {
-            using t_without_ref = typename std::remove_reference< decltype( std::get<2>( tuple ) ) >::type;
+            using t_without_ref = typename std::remove_reference< decltype( std::get<1>( tuple ) ) >::type;
             using t_without_ref_const = typename std::remove_const< t_without_ref >::type;
 
-            containers.push_back( pitem( new sub_checker< t_without_ref_const >( std::get<2>( tuple ) ) ) );
+            containers.push_back( pitem( new sub_checker< t_without_ref_const >( std::get<1>( tuple ) ) ) );
 
             add( elements... );
          }

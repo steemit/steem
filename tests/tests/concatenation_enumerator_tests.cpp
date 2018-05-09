@@ -15,8 +15,8 @@ void basic_test()
    Collection s1;
    Collection s2;
 
-   auto p1 = std::make_tuple( s1.begin(), s1.end() );
-   auto p2 = std::make_tuple( s2.begin(), s2.end() );
+   auto p1 = std::make_tuple( &s1 );
+   auto p2 = std::make_tuple( &s2 );
 
    BOOST_TEST_MESSAGE( "1 empty source" );
    cnt = 0;
@@ -43,8 +43,8 @@ void basic_test()
 
    BOOST_TEST_MESSAGE( "1 filled source" );
    ce_tests::fill1< Object >( s1 );
-   Iterator it03( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
-   Iterator it_end_03 = Iterator::create_end( ce_tests::cmp1(), std::make_tuple( s1.begin(), s1.end() ) );
+   Iterator it03( ce_tests::cmp1(), std::make_tuple( &s1 ) );
+   Iterator it_end_03 = Iterator::create_end( ce_tests::cmp1(), std::make_tuple( &s1 ) );
    auto it_src03 = s1.begin();
    while( it03 != it_end_03 )
    {
@@ -57,13 +57,13 @@ void basic_test()
    BOOST_TEST_MESSAGE( "2 filled sources: one has content, second is empty" );
    ce_tests::fill1< Object >( s1 );
    Iterator it04 (  ce_tests::cmp1(),
-                     std::make_tuple( s1.begin(), s1.end() ),
-                     std::make_tuple( s2.begin(), s2.end() )
+                     std::make_tuple( &s1 ),
+                     std::make_tuple( &s2 )
                   );
 
    Iterator it_end_04 = Iterator::create_end( ce_tests::cmp1(),
-                                                std::make_tuple( s1.begin(), s1.end() ),
-                                                std::make_tuple( s2.begin(), s2.end() )
+                                                std::make_tuple( &s1 ),
+                                                std::make_tuple( &s2 )
                                              );
    auto it_src04_1 = s1.begin();
    while( it04 != it_end_04 )
@@ -78,12 +78,12 @@ void basic_test()
    ce_tests::fill1< Object >( s1 );
    ce_tests::fill1< Object >( s2 );
    Iterator it05 ( ce_tests::cmp1(),
-                     std::make_tuple( s1.begin(), s1.end() ),
-                     std::make_tuple( s2.begin(), s2.end() )
+                     std::make_tuple( &s1 ),
+                     std::make_tuple( &s2 )
                   );
    Iterator it_end_05 = Iterator::create_end( ce_tests::cmp1(),
-                           std::make_tuple( s1.begin(), s1.end() ),
-                           std::make_tuple( s2.begin(), s2.end() )
+                           std::make_tuple( &s1 ),
+                           std::make_tuple( &s2 )
                         );
    auto it_src05_1 = s1.begin();
    auto it_src05_2 = s2.begin();
@@ -101,12 +101,12 @@ void basic_test()
    ce_tests::fill2< Object >( s1 );
    ce_tests::fill2a< Object >( s2 );
    Iterator it06 ( ce_tests::cmp1(),
-                     std::make_tuple( s1.begin(), s1.end() ),
-                     std::make_tuple( s2.begin(), s2.end() )
+                     std::make_tuple( &s1 ),
+                     std::make_tuple( &s2 )
                   );
    Iterator it_end_06 = Iterator::create_end( ce_tests::cmp1(),
-                        std::make_tuple( s1.begin(), s1.end() ),
-                        std::make_tuple( s2.begin(), s2.end() )
+                        std::make_tuple( &s1 ),
+                        std::make_tuple( &s2 )
                      );
    cnt = 0;
    while( it06 != it_end_06 )
@@ -138,9 +138,9 @@ void test_different_sources( const SortedCollection& sorted )
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end() );
-   auto p3 = std::make_tuple( s1.begin(), s1.end() );
+   auto p1 = std::make_tuple( &idx1 );
+   auto p2 = std::make_tuple( &idx2 );
+   auto p3 = std::make_tuple( &s1 );
 
    using Iterator = ce::concatenation_iterator< Object, Cmp >;
 
@@ -174,8 +174,8 @@ void test_with_sub_index( Call1& call1, Call2& call2, const SortedCollection& so
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+   auto p1 = std::make_tuple( &idx1, &id_idx1 );
+   auto p2 = std::make_tuple( &idx2, &id_idx2 );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
 
@@ -214,9 +214,9 @@ void test_with_sub_index_3_sources( const SortedCollection& sorted )
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
-   auto p3 = std::make_tuple( s.begin(), s.end(), &s_helper );
+   auto p1 = std::make_tuple( &idx1, &id_idx1 );
+   auto p2 = std::make_tuple( &idx2, &id_idx2 );
+   auto p3 = std::make_tuple( &s, &s_helper );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
 
@@ -343,8 +343,8 @@ void benchmark_test_2_sources()
    const auto& idx2 = bmic2.template get< Index >();
    const auto& idx_sorted = sorted.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), Is_Another_Source?(&idx_another):(&id_idx1) );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), Is_Another_Source?(&idx_another):(&id_idx2) );
+   auto p1 = std::make_tuple( &idx1, Is_Another_Source?(&idx_another):(&id_idx1) );
+   auto p2 = std::make_tuple( &idx2, Is_Another_Source?(&idx_another):(&id_idx2) );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
    using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
@@ -443,9 +443,9 @@ void benchmark_test_3_sources()
    const auto& idx3 = bmic2.template get< Index >();
    const auto& idx_sorted = sorted.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), Is_Another_Source?(&idx_another):(&id_idx1) );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), Is_Another_Source?(&idx_another):(&id_idx2) );
-   auto p3 = std::make_tuple( idx3.begin(), idx3.end(), Is_Another_Source?(&idx_another):(&id_idx3) );
+   auto p1 = std::make_tuple( &idx1, Is_Another_Source?(&idx_another):(&id_idx1) );
+   auto p2 = std::make_tuple( &idx2, Is_Another_Source?(&idx_another):(&id_idx2) );
+   auto p3 = std::make_tuple( &idx3, Is_Another_Source?(&idx_another):(&id_idx3) );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
    using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, Cmp >;
@@ -535,8 +535,8 @@ void test_with_sub_index_2_sources_many_objects_without_id_repeat()
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+   auto p1 = std::make_tuple( &idx1, &id_idx1 );
+   auto p2 = std::make_tuple( &idx2, &id_idx2 );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
 
@@ -615,8 +615,8 @@ void test_with_sub_index_2_sources_many_objects_with_id_repeat()
    const auto& idx1 = bmic1.template get< Index >();
    const auto& idx2 = bmic2.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
+   auto p1 = std::make_tuple( &idx1, &id_idx1 );
+   auto p2 = std::make_tuple( &idx2, &id_idx2 );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
 
@@ -710,9 +710,9 @@ void test_with_sub_index_3_sources_many_objects_with_id_repeat()
    const auto& idx2 = bmic2.template get< Index >();
    const auto& idx3 = bmic3.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 );
-   auto p2 = std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 );
-   auto p3 = std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 );
+   auto p1 = std::make_tuple( &idx1, &id_idx1 );
+   auto p2 = std::make_tuple( &idx2, &id_idx2 );
+   auto p3 = std::make_tuple( &idx3, &id_idx3 );
 
    using Iterator = ce::concatenation_iterator_ex< Object, Cmp >;
 
@@ -739,7 +739,7 @@ void different_test( Filler&& filler )
 
    const auto& idx1 = bmic1.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
+   auto p1 = std::make_tuple( &idx1 );
 
    {
       Iterator it( Cmp(), p1 );
@@ -895,27 +895,27 @@ void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& fill
 
    {
       Iterator it( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
       Iterator it_begin( it );
       Iterator it_end = Iterator::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
       ReverseIterator it_r( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
       ReverseIterator it_r_begin( it_r );
       ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
       while( it != it_end )
@@ -969,22 +969,22 @@ void different_test_sub_index( Filler1& filler1, Filler2& filler2, Filler3& fill
 
    {
       ReverseIterator it_r_end = ReverseIterator::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
       ReverseIterator it_r( Iterator::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          ) );
       decltype( comparer_idx.rbegin() ) it_r_comparer( comparer_idx.end() );
 
       BOOST_REQUIRE( it_r == ReverseIterator( Cmp(), 
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 ) ) );
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 ) ) );
       BOOST_REQUIRE( *it_r == *it_r_comparer );
 
       while( it_r != it_r_end )
@@ -1007,7 +1007,7 @@ void inc_dec_basic_reverse_test( Filler&& filler )
 
    const auto& idx1 = bmic1.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
+   auto p1 = std::make_tuple( &idx1 );
    ReverseIterator it_r( Cmp(), p1 );
    ReverseIterator it_end_r = ReverseIterator::create_end( Cmp(), p1 );
 
@@ -1042,7 +1042,7 @@ void inc_dec_basic_1_source_test( Filler&& filler )
 
    const auto& idx1 = bmic1.template get< Index >();
 
-   auto p1 = std::make_tuple( idx1.begin(), idx1.end() );
+   auto p1 = std::make_tuple( &idx1 );
    Iterator it( Cmp(), p1 );
    ReverseIterator it_r( Cmp(), p1 );
    ReverseIterator it_end_r = ReverseIterator::create_end( Cmp(), p1 );
@@ -1176,9 +1176,9 @@ void inc_dec_basic_3_sources_test( Filler1& filler1, Filler2& filler2, Filler3& 
    const auto& idx3 = bmic3.template get< Index >();
 
    ce::concatenation_iterator< Object, Cmp > it( Cmp(),
-                                                   std::make_tuple( idx1.begin(), idx1.end() ),
-                                                   std::make_tuple( idx2.begin(), idx2.end() ),
-                                                   std::make_tuple( idx3.begin(), idx3.end() )
+                                                   std::make_tuple( &idx1 ),
+                                                   std::make_tuple( &idx2 ),
+                                                   std::make_tuple( &idx3 )
                                                 );
 
    auto it_comparer = comparer.begin();
@@ -1314,12 +1314,12 @@ void inc_dec_basic_6_sources_test( Filler1& f1, Filler2& f2, Filler3& f3, Filler
    const auto& idx6 = bmic6.template get< Index >();
 
    ce::concatenation_iterator< Object, Cmp > it( Cmp(),
-                                                   std::make_tuple( idx1.begin(), idx1.end() ),
-                                                   std::make_tuple( idx2.begin(), idx2.end() ),
-                                                   std::make_tuple( idx3.begin(), idx3.end() ),
-                                                   std::make_tuple( idx4.begin(), idx4.end() ),
-                                                   std::make_tuple( idx5.begin(), idx5.end() ),
-                                                   std::make_tuple( idx6.begin(), idx6.end() )
+                                                   std::make_tuple( &idx1 ),
+                                                   std::make_tuple( &idx2 ),
+                                                   std::make_tuple( &idx3 ),
+                                                   std::make_tuple( &idx4 ),
+                                                   std::make_tuple( &idx5 ),
+                                                   std::make_tuple( &idx6 )
                                                 );
 
    auto it_comparer = comparer.begin();
@@ -1470,15 +1470,15 @@ void inc_dec_basic_3_sources_sub_index_test( Filler1& f1, Filler2& f2, Filler3& 
    const auto& idx3 = bmic3.template get< Index >();
 
    Iterator it( Cmp(),
-                  std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-                  std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-                  std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+                  std::make_tuple( &idx1, &id_idx1 ),
+                  std::make_tuple( &idx2, &id_idx2 ),
+                  std::make_tuple( &idx3, &id_idx3 )
                );
 
    ReverseIterator it_r( Cmp(),
-                           std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-                           std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-                           std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+                           std::make_tuple( &idx1, &id_idx1 ),
+                           std::make_tuple( &idx2, &id_idx2 ),
+                           std::make_tuple( &idx3, &id_idx3 )
                         );
 
    const auto& comparer_idx = comparer.template get< Index >();
@@ -1700,15 +1700,15 @@ void comparision_assignment_test( Filler1& filler1, Filler2& filler2, Filler3& f
    using _t = Iterator;
 
    _t _it( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end() ),
-            std::make_tuple( idx2.begin(), idx2.end() ),
-            std::make_tuple( idx3.begin(), idx3.end() )
+            std::make_tuple( &idx1 ),
+            std::make_tuple( &idx2 ),
+            std::make_tuple( &idx3 )
          );
 
    _t it_end = _t::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end() ),
-            std::make_tuple( idx2.begin(), idx2.end() ),
-            std::make_tuple( idx3.begin(), idx3.end() )
+            std::make_tuple( &idx1 ),
+            std::make_tuple( &idx2 ),
+            std::make_tuple( &idx3 )
          );
 
    _t it_begin( _it );
@@ -1796,15 +1796,15 @@ void comparision_assignment_sub_index_test( Filler1& filler1, Filler2& filler2, 
    const auto& idx3 = bmic3.template get< Index >();
 
    _t _it( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
    _t it_end = _t::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
    _t it_begin( _it );
@@ -1894,15 +1894,15 @@ void misc_operations_sub_index_test( Filler1& filler1, Filler2& filler2, Filler3
    const auto& idx3 = bmic3.template get< Index >();
 
    _t begin( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
    _t end = _t::create_end( Cmp(),
-            std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-            std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-            std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+            std::make_tuple( &idx1, &id_idx1 ),
+            std::make_tuple( &idx2, &id_idx2 ),
+            std::make_tuple( &idx3, &id_idx3 )
          );
 
    const auto& comparer_idx = comparer.template get< Index >();
@@ -2079,9 +2079,9 @@ void modification_test_1()
    const auto& idx3 = bmic3.template get< Index >();
 
    Iterator it( CMP(),
-               std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-               std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-               std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 ),
+               std::make_tuple( &idx3, &id_idx3 )
             );
    
    auto& id_comparer_idx = comparer.template get< ID_Index >();
@@ -2179,9 +2179,9 @@ void modification_test_2()
    const auto& idx3 = bmic3.template get< Index >();
 
    Iterator it( CMP(),
-               std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-               std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-               std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 ),
+               std::make_tuple( &idx3, &id_idx3 )
             );
    
    auto& id_comparer_idx = comparer.template get< ID_Index >();
@@ -2273,9 +2273,9 @@ void modification_test_3()
    const auto& idx3 = bmic3.template get< Index >();
 
    Iterator it( CMP(),
-               std::make_tuple( idx1.begin(), idx1.end(), &id_idx1 ),
-               std::make_tuple( idx2.begin(), idx2.end(), &id_idx2 ),
-               std::make_tuple( idx3.begin(), idx3.end(), &id_idx3 )
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 ),
+               std::make_tuple( &idx3, &id_idx3 )
             );
    
    auto& id_comparer_idx = comparer.template get< ID_Index >();
