@@ -39,21 +39,26 @@ namespace detail
          void timing(    const std::string& ns, const std::string& stat, const std::string& key, const uint32_t ms,    const float frequency ) const noexcept;
 
 
-         bool                                   _filter_stats = false;
-         bool                                   _blacklist    = false;
-         bool                                   _log_replay   = false;
+         bool                                               _filter_stats = false;
+         bool                                               _blacklist    = false;
+         bool                                               _started      = false;
 
-         set< std::string >                     _stat_namespaces;
-         map< std::string, set< std::string > > _stat_list;
+         std::set< std::string >                            _stat_namespaces;
+         std::map< std::string, std::set< std::string > >   _stat_list;
 
-         fc::optional< fc::ip::endpoint >       _statsd_endpoint;
-         uint32_t                               _statsd_batchsize = 1;
+         fc::optional< fc::ip::endpoint >                   _statsd_endpoint;
+         uint32_t                                           _statsd_batchsize = 1;
 
-         std::unique_ptr< StatsdClient >        _statsd;
+         std::unique_ptr< StatsdClient >                    _statsd;
    };
 
    void statsd_plugin_impl::start()
    {
+      if( _started )
+      {
+         return;
+      }
+
       std::string host;
       uint32_t port = 0;
 
@@ -64,6 +69,7 @@ namespace detail
       }
 
       _statsd.reset( new StatsdClient( host, port, "steemd", _statsd_batchsize ) );
+      _started = true;
    }
 
    void statsd_plugin_impl::shutdown()
@@ -212,26 +218,21 @@ void statsd_plugin::plugin_initialize( const boost::program_options::variables_m
          }
       }
    }
-
-   my->_log_replay = options.at( "statsd-record-on-replay" ).as< bool >();
-
-   if( my->_log_replay )
-   {
-      my->start();
-   }
 }
 
 void statsd_plugin::plugin_startup()
 {
-   if( !my->_log_replay )
-   {
-      my->start();
-   }
+   start_logging();
 }
 
 void statsd_plugin::plugin_shutdown()
 {
    my->shutdown();
+}
+
+void statsd_plugin::start_logging()
+{
+   my->start();
 }
 
 void statsd_plugin::increment( const std::string& ns, const std::string& stat, const std::string& key, const float frequency ) const noexcept

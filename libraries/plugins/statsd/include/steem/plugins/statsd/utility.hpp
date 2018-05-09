@@ -4,7 +4,9 @@
 #include <fc/optional.hpp>
 #include <fc/time.hpp>
 
-namespace steem { namespace plugin { namespace statsd { namespace util {
+namespace steem { namespace plugins { namespace statsd { namespace util {
+
+using steem::plugins::statsd::statsd_plugin;
 
 bool statsd_enabled()
 {
@@ -21,7 +23,7 @@ const statsd_plugin& get_statsd()
 class statsd_timer_helper
 {
    public:
-      statsd_timer_helper( const std::string& ns, const std::string& stat, const std::string& key, float freq, const std::statsd_plugin& statsd ) :
+      statsd_timer_helper( const std::string& ns, const std::string& stat, const std::string& key, float freq, const statsd_plugin& statsd ) :
          _ns( ns ),
          _stat( stat ),
          _key( key ),
@@ -41,19 +43,19 @@ class statsd_timer_helper
          fc::time_point stop = fc::time_point::now();
          if( !_recorded )
          {
-            _statsd.timing( _ns, _stat, _key, (stop - start) / 1000, _freq );
-            _recroded = true;
+            _statsd.timing( _ns, _stat, _key, (stop - _start).count() / 1000 , _freq );
+            _recorded = true;
          }
       }
 
    private:
-      std::string    _ns;
-      std::string    _stat;
-      std::string    _key;
-      float          _freq = 1.0f;
-      fc::time_point _start;
-      statsd_plugin& _statsd;
-      bool           _recorded = false;
+      std::string          _ns;
+      std::string          _stat;
+      std::string          _key;
+      float                _freq = 1.0f;
+      fc::time_point       _start;
+      const statsd_plugin& _statsd;
+      bool                 _recorded = false;
 };
 
 } } } } // steem::plugin::statsd::util
@@ -95,7 +97,7 @@ fc::optional< steem::plugin::statsd::util::statsd_timer_helper > NAMESPACE ## ST
 if( steem::plugin::statsd::util::statsd_enabled )                                                     \
 {                                                                                                     \
    NAMESPACE ## STAT ## KEY ## _timer = steem::plugin::statsd::util::statsd_timer_helper(             \
-      NAMESPACE#, STAT#, KEY#, FREQ, steem::plugin::statsd::util::get_statsd()                        \
+      #NAMESPACE, #STAT, #KEY, FREQ, steem::plugin::statsd::util::get_statsd()                        \
    );                                                                                                 \
 }
 

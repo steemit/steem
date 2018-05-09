@@ -2,8 +2,6 @@
 
 #include <appbase/application.hpp>
 
-#include <steem/plugins/chain/chain_plugin.hpp>
-
 #include <boost/config.hpp>
 
 #define STEEM_STATSD_PLUGIN_NAME "statsd"
@@ -23,7 +21,6 @@ class statsd_plugin : public appbase::plugin< statsd_plugin >
       statsd_plugin();
       virtual ~statsd_plugin();
 
-      APPBASE_PLUGIN_REQUIRES( (steem::plugins::chain::chain_plugin) );
       virtual void set_program_options( options_description&, options_description& ) override;
 
       static const std::string& name() { static std::string name = STEEM_STATSD_PLUGIN_NAME; return name; }
@@ -32,6 +29,9 @@ class statsd_plugin : public appbase::plugin< statsd_plugin >
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
+      // Starts statsd logging early, potentially before plugin_startup
+      void start_logging();
+
       void increment( const std::string& ns, const std::string& stat, const std::string& key,                       const float frequency = 1.0f ) const noexcept;
       void decrement( const std::string& ns, const std::string& stat, const std::string& key,                       const float frequency = 1.0f ) const noexcept;
       void count(     const std::string& ns, const std::string& stat, const std::string& key, const int64_t delta,  const float frequency = 1.0f ) const noexcept;
@@ -39,7 +39,7 @@ class statsd_plugin : public appbase::plugin< statsd_plugin >
       void timing(    const std::string& ns, const std::string& stat, const std::string& key, const uint32_t ms,    const float frequency = 1.0f ) const noexcept;
 
    private:
-      unique_ptr< detail::statsd_plugin_impl > my;
+      std::unique_ptr< detail::statsd_plugin_impl > my;
 };
 
 } } } // steem::plugins::statsd
