@@ -111,6 +111,8 @@ namespace ce
          bool inactive;
          const int32_t tag;
 
+         ITERATOR it;
+         ITERATOR it_end;
          const COLLECTION_POINTER collection;
 
       protected:
@@ -123,7 +125,7 @@ namespace ce
 
          void inc() override
          {
-            assert( it != collection->end() );
+            assert( it != it_end );
             ++it;
 
             if( inactive )
@@ -132,19 +134,17 @@ namespace ce
 
       public:
 
-         ITERATOR it;
-
          const CMP cmp;
 
          sub_enumerator( bool _inactive, int32_t _tag, const ITERATOR& _it, const COLLECTION_POINTER _collection, const CMP& _cmp )
-         : inactive( _inactive ), tag( _tag ), collection( _collection ), cmp( _cmp )
+         : inactive( _inactive ), tag( _tag ), it_end( _collection->end() ), collection( _collection ), cmp( _cmp )
          {
             it = _it;
          }
 
          size_t get_id() const override
          {
-            assert( it != collection->end() );
+            assert( it != it_end );
             return size_t( it->id );
          }
 
@@ -162,13 +162,13 @@ namespace ce
 
          reference operator*() const override
          {
-            assert( it != collection->end() );
+            assert( it != it_end );
             return *it;
          }
 
          pointer operator->() const override
          {
-            assert( it != collection->end() );
+            assert( it != it_end );
             return &( *it );
          }
 
@@ -194,7 +194,7 @@ namespace ce
 
          bool end() const override
          {
-            return it == collection->end();
+            return it == it_end;
          }
 
          void change_status( bool val ) override
@@ -270,10 +270,6 @@ namespace ce
 
          using reference = typename abstract_sub_enumerator< OBJECT >::reference;
          using pointer = typename abstract_sub_enumerator< OBJECT >::pointer;
-
-      protected:
-
-         enum class Direction : bool { prev, next };
 
       private:
 
@@ -535,7 +531,8 @@ namespace ce
 
             assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
 
-            _modifier.start( iterators[ idx.current ], idx.current );
+            if( !_modifier.start( iterators[ idx.current ], idx.current ) )
+               return;
 
             for( size_t i = 0 ; i < iterators.size(); ++i )
             {
@@ -547,7 +544,7 @@ namespace ce
                      ( DIRECTION == Direction::prev && !iterators[ i ]->end() ) 
                   )
                )
-                  _modifier.run( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
+                  _modifier.run< DIRECTION >( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
             }
 
             _modifier.end();
@@ -568,6 +565,9 @@ namespace ce
             }
             else
             {
+               if( REORDER )
+                  reorder< pos_end, DIRECTION >();
+
                if( !change_direction< Direction::prev >() )
                   move_impl< pos_begin >( []( const pitem& item )
                                                    {
@@ -760,8 +760,6 @@ namespace ce
 
       protected:
 
-         using Direction = typename base_class::Direction;
-
          concatenation_reverse_iterator( const CMP& _cmp )
          : base_class( _cmp )
          {
@@ -838,10 +836,6 @@ namespace ce
       private:
 
          using base_class = CONCATENATION_ITERATOR< OBJECT, CMP >;
-
-      protected:
-
-         using Direction = typename base_class::Direction;
 
       private:
 
@@ -967,7 +961,6 @@ namespace ce
       protected:
 
          using base_class = concatenation_iterator_proxy< OBJECT, CMP, concatenation_iterator >;
-         using Direction = typename base_class::Direction;
          using base_class::base_class;
 
       public:
@@ -1017,7 +1010,6 @@ namespace ce
       protected:
 
          using base_class = concatenation_iterator_proxy< OBJECT, CMP, concatenation_reverse_iterator >;
-         using Direction = typename base_class::Direction;
          using base_class::base_class;
 
       public:

@@ -11,10 +11,8 @@ namespace chainbase
 
 namespace ce
 {
-   class abstract_transformation
-   {
-      public:
-   };
+
+   enum class Direction : bool { prev, next };
 
    class modifier
    {
@@ -44,24 +42,30 @@ namespace ce
          template< typename ITEM >
          bool allowed( const ITEM& item, uint32_t level )
          {
-            if( items.empty() )
-               return false;
-
             return exists( item, level );
          }
 
-         template< typename CMP, typename ITEM >
+         template< Direction DIRECTION, typename CMP, typename ITEM >
          void dec( CMP& cmp, const ITEM& item, const ITEM& current_item )
          {
             bool _cmp = true;
+            bool done = false;
 
-            while( _cmp && !item->begin() )
+            while( _cmp && !done )
             {
-               --( *item );
                _cmp = !cmp( *( *item ), *( *current_item ) );
+               if( _cmp )
+               {
+                  if( item->begin() )
+                  {
+                     if( DIRECTION == Direction::prev )
+                        item->change_status( true );
+                     done = true;
+                  }
+                  else
+                     --( *item );
+               }
             }
-            if( !_cmp )
-               ++( *item );
          }
 
          template< typename CMP, typename ITEM >
@@ -84,19 +88,24 @@ namespace ce
          }
 
          template< typename ITEM >
-         void start( const ITEM& current_item, uint32_t current_level )
+         bool start( const ITEM& current_item, uint32_t current_level )
          {
+            if( items.empty() )
+               return false;
+
             current_level_is_active = allowed( current_item, current_level );
+
+            return true;
          }
 
-         template< typename CMP, typename ITEM >
+         template< Direction DIRECTION, typename CMP, typename ITEM >
          void run( CMP& cmp, const ITEM& item, const ITEM& current_item, uint32_t level, uint32_t current_level )
          {
             bool res = allowed( item, level );
 
             if( current_level_is_active )
             {
-               dec( cmp, item, current_item );
+               dec< DIRECTION >( cmp, item, current_item );
                inc( cmp, item, current_item );
             }
  
