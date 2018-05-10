@@ -41,11 +41,6 @@ public:
       c( *this );
    }
 
-   uint32_t get_liquid_nai() const
-   {
-      return liquid_symbol.to_nai();
-   }
-
    price    one_vesting_to_one_liquid() const
    {
       int64_t one_smt = std::pow(10, liquid_symbol.decimals());
@@ -162,7 +157,6 @@ public:
 };
 
 struct by_symbol;
-struct by_nai;
 struct by_control_account;
 
 /**Comparison operators that allow to return the same object representation
@@ -191,8 +185,6 @@ typedef multi_index_container <
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
          member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol >, vesting_liquid_less >,
-      ordered_unique< tag< by_nai >,
-         const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_liquid_nai >, vesting_liquid_less >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,

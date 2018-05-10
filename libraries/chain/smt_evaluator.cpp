@@ -72,9 +72,12 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
-   // therefore we can't use 'by_symbol' index here, as we need to strip the symbol from precision info.
-   FC_ASSERT( (_db.find< smt_token_object, by_nai >( o.symbol.to_nai() ) == nullptr),
-      "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   // therefore we use a method that strips the symbol from precision info when searching.
+   const auto& idx = _db.get_index< smt_token_index >().indices().get< by_symbol >();
+   auto stripped_symbol_num = o.symbol.get_stripped_precision_smt_num();
+   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
+   FC_ASSERT( (it == idx.end()) || (it->liquid_symbol.get_stripped_precision_smt_num() != stripped_symbol_num),
+              "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
 
    asset effective_elevation_fee;
 

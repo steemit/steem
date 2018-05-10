@@ -903,17 +903,11 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
       // Use liquid symbol/NAI to confirm smt object was created.
       auto liquid_object_by_symbol = db->find< smt_token_object, by_symbol >( liquid_symbol );
       FC_ASSERT( ( liquid_object_by_symbol != nullptr ) );
-      auto liquid_object_by_nai = db->find< smt_token_object, by_nai >( liquid_symbol.to_nai() );
-      FC_ASSERT( ( liquid_object_by_nai != nullptr ) );
-      FC_ASSERT( ( liquid_object_by_symbol == liquid_object_by_nai ) );
 
       asset_symbol_type vesting_symbol = liquid_symbol.get_paired_symbol();
       // Use vesting symbol/NAI to confirm smt object was created.
       auto vesting_object_by_symbol = db->find< smt_token_object, by_symbol >( vesting_symbol );
       FC_ASSERT( ( vesting_object_by_symbol != nullptr ) );
-      auto vesting_object_by_nai = db->find< smt_token_object, by_nai >( vesting_symbol.to_nai() );
-      FC_ASSERT( ( vesting_object_by_nai != nullptr ) );
-      FC_ASSERT( ( vesting_object_by_symbol == vesting_object_by_nai ) );
 
       // Check that liquid and vesting objecta are the same one.
       FC_ASSERT( ( liquid_object_by_symbol == vesting_object_by_symbol ) );
