@@ -4,36 +4,14 @@
 #include <golos/chain/witness_objects.hpp>
 #include <golos/chain/steem_object_types.hpp>
 
-namespace golos {
-    namespace plugins {
-        namespace database_api {
-            
-            using protocol::asset;
-            using protocol::share_type;
-            using golos::chain::account_bandwidth_object;
-            using golos::chain::by_account;
-            using golos::chain::account_object;
-            using protocol::authority;
-            using protocol::account_name_type;
-            using protocol::public_key_type;
-            using golos::chain::by_account_bandwidth_type;
-            using golos::chain::account_authority_object;
-            using golos::chain::account_metadata_object;
-            using golos::chain::bandwidth_type;
+namespace golos { namespace plugins { namespace witness_api {
 
-            using golos::protocol::asset;
-            using golos::protocol::price;
-            using golos::protocol::account_name_type;
-            using golos::chain::witness_object;
-            using golos::chain::chain_properties;
-            using golos::chain::hardfork_version;
-            using golos::chain::digest_type;
-            using golos::chain::version;
-
+            using namespace golos::chain;
+            using namespace golos::protocol;
 
             struct witness_api_object {
-                witness_api_object(const golos::chain::witness_object &w) : id(w.id), owner(w.owner), created(w.created),
-                        url(golos::chain::to_string(w.url)), total_missed(w.total_missed), last_aslot(w.last_aslot),
+                witness_api_object(const witness_object &w) : id(w.id), owner(w.owner), created(w.created),
+                        url(to_string(w.url)), total_missed(w.total_missed), last_aslot(w.last_aslot),
                         last_confirmed_block_num(w.last_confirmed_block_num), pow_worker(w.pow_worker),
                         signing_key(w.signing_key), props(w.props), sbd_exchange_rate(w.sbd_exchange_rate),
                         last_sbd_exchange_update(w.last_sbd_exchange_update), votes(w.votes),
@@ -70,14 +48,10 @@ namespace golos {
 
         }
     }
-} // golos::application
+} // golos::plugins::witness_api
 
 
-
-
-
-
-FC_REFLECT((golos::plugins::database_api::witness_api_object),
+FC_REFLECT((golos::plugins::witness_api::witness_api_object),
            (id)(owner)(created)(url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(
                    total_missed)(last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)(props)(
                    sbd_exchange_rate)(last_sbd_exchange_update)(last_work)(running_version)(hardfork_version_vote)(

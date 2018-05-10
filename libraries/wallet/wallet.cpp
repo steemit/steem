@@ -214,7 +214,8 @@ namespace golos { namespace wallet {
                     _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
                     _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
                     _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) ),
-                    _remote_account_by_key( con.get_remote_api< golos::wallet::remote_account_by_key>( 0, "account_by_key" ) )
+                    _remote_account_by_key( con.get_remote_api< golos::wallet::remote_account_by_key>( 0, "account_by_key" ) ) ,
+                    _remote_witness_api( con.get_remote_api< golos::wallet::remote_witness_api >( 0, "witness_api" ) )
                 {
                     init_prototype_ops();
 
@@ -271,7 +272,7 @@ namespace golos { namespace wallet {
                     auto dynamic_props = _remote_database_api->get_dynamic_global_properties();
                     fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
                     result["witness_majority_version"] =
-                        std::string(_remote_database_api->get_witness_schedule().majority_version);
+                        std::string(_remote_witness_api->get_witness_schedule().majority_version);
                     result["hardfork_version"] =
                         std::string(_remote_database_api->get_hardfork_version());
                     result["head_block_num"] = dynamic_props.head_block_number;
@@ -281,7 +282,7 @@ namespace golos { namespace wallet {
                             dynamic_props.time, time_point_sec(time_point::now()), " old");
                     result["participation"] =
                         (100 * dynamic_props.recent_slots_filled.popcount()) / 128.0;
-                    result["median_sbd_price"] = _remote_database_api->get_current_median_history_price();
+                    result["median_sbd_price"] = _remote_witness_api->get_current_median_history_price();
                     result["account_creation_fee"] = _remote_database_api->get_chain_properties().account_creation_fee;
 
                     return result;
@@ -640,8 +641,8 @@ namespace golos { namespace wallet {
                         return sign_transaction( tx, broadcast );
                     } FC_CAPTURE_AND_RETHROW( (account_to_modify)(proxy)(broadcast) ) }
 
-                optional< database_api::witness_api_object > get_witness( string owner_account ) {
-                    return _remote_database_api->get_witness_by_account( owner_account );
+                optional< witness_api::witness_api_object > get_witness( string owner_account ) {
+                    return _remote_witness_api->get_witness_by_account( owner_account );
                 }
 
                 void set_transaction_expiration( uint32_t tx_expiration_seconds ) {
@@ -973,6 +974,7 @@ namespace golos { namespace wallet {
                 fc::api< remote_market_history >        _remote_market_history;
                 fc::api< remote_private_message >       _remote_private_message;
                 fc::api< remote_account_by_key >        _remote_account_by_key;
+                fc::api< remote_witness_api >           _remote_witness_api;
                 uint32_t                                _tx_expiration_seconds = 30;
 
                 flat_map<string, operation>             _prototype_ops;
@@ -1039,11 +1041,11 @@ namespace golos { namespace wallet {
         }
 
         vector< account_name_type > wallet_api::get_active_witnesses()const {
-            return my->_remote_database_api->get_active_witnesses();
+            return my->_remote_witness_api->get_active_witnesses();
         }
 
         vector<account_name_type> wallet_api::get_miner_queue()const {
-            return my->_remote_database_api->get_miner_queue();
+            return my->_remote_witness_api->get_miner_queue();
         }
 
         brain_key_info wallet_api::suggest_brain_key()const {
@@ -1135,10 +1137,10 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
         vector< account_name_type > wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
         {
-            return my->_remote_database_api->lookup_witness_accounts( lowerbound, limit );
+            return my->_remote_witness_api->lookup_witness_accounts( lowerbound, limit );
         }
 
-        optional< database_api::witness_api_object > wallet_api::get_witness(string owner_account)
+        optional< witness_api::witness_api_object > wallet_api::get_witness(string owner_account)
         {
             return my->get_witness(owner_account);
         }
@@ -1336,8 +1338,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             }
         }
 
-        database_api::feed_history_api_object wallet_api::get_feed_history()const {
-            return my->_remote_database_api->get_feed_history();
+        witness_api::feed_history_api_object wallet_api::get_feed_history()const {
+            return my->_remote_witness_api->get_feed_history();
         }
 
 /**
@@ -1810,7 +1812,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             witness_update_operation op;
 
-            optional< database_api::witness_api_object > wit = my->_remote_database_api->get_witness_by_account( witness_account_name );
+            optional< witness_api::witness_api_object > wit = my->_remote_witness_api->get_witness_by_account( witness_account_name );
             if( !wit.valid() ) {
                 op.url = url;
             } else {

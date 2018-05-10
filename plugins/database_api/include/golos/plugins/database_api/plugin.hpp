@@ -10,7 +10,6 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/database_api/state.hpp>
-#include <golos/plugins/database_api/api_objects/feed_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
@@ -98,16 +97,12 @@ using price_17 = price;
 using block_applied_callback = std::function<void(const variant &block_header)>;
 
 ///               API,                                    args,                return
-DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_name_type>)
 DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
 DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_block>)
 DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
 DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
 DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
 DEFINE_API_ARGS(get_chain_properties,             msg_pack, chain_properties_17)
-DEFINE_API_ARGS(get_current_median_history_price, msg_pack, price_17)
-DEFINE_API_ARGS(get_feed_history,                 msg_pack, feed_history_api_object)
-DEFINE_API_ARGS(get_witness_schedule,             msg_pack, witness_schedule_api_object)
 DEFINE_API_ARGS(get_hardfork_version,             msg_pack, hardfork_version)
 DEFINE_API_ARGS(get_next_scheduled_hardfork,      msg_pack, scheduled_hardfork)
 DEFINE_API_ARGS(get_accounts,                     msg_pack, std::vector<account_api_object>)
@@ -125,19 +120,13 @@ DEFINE_API_ARGS(get_savings_withdraw_to,          msg_pack, std::vector<savings_
 DEFINE_API_ARGS(get_vesting_delegations,          msg_pack, vector<vesting_delegation_api_object>)
 DEFINE_API_ARGS(get_expiring_vesting_delegations, msg_pack, vector<vesting_delegation_expiration_api_object>)
 
-DEFINE_API_ARGS(get_witnesses,                    msg_pack, std::vector<optional<witness_api_object> >)
 DEFINE_API_ARGS(get_conversion_requests,          msg_pack, std::vector<convert_request_api_object>)
-DEFINE_API_ARGS(get_witness_by_account,           msg_pack, optional<witness_api_object>)
-DEFINE_API_ARGS(get_witnesses_by_vote,            msg_pack, std::vector<witness_api_object>)
-DEFINE_API_ARGS(lookup_witness_accounts,          msg_pack, std::set<account_name_type>)
 DEFINE_API_ARGS(get_open_orders,                  msg_pack, std::vector<extended_limit_order>)
-DEFINE_API_ARGS(get_witness_count,                msg_pack, uint64_t)
 DEFINE_API_ARGS(get_transaction_hex,              msg_pack, std::string)
 DEFINE_API_ARGS(get_required_signatures,          msg_pack, std::set<public_key_type>)
 DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
 DEFINE_API_ARGS(verify_authority,                 msg_pack, bool)
 DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
-DEFINE_API_ARGS(get_miner_queue,                  msg_pack, std::vector<account_name_type>)
 DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
 DEFINE_API_ARGS(get_proposed_transactions,        msg_pack, std::vector<proposal_api_object>)
 
@@ -204,10 +193,6 @@ public:
          */
 
 
-        (get_active_witnesses)
-
-        (get_miner_queue)
-
         /////////////////////////////
         // Blocks and transactions //
         /////////////////////////////
@@ -247,12 +232,6 @@ public:
         (get_dynamic_global_properties)
 
         (get_chain_properties)
-
-        (get_current_median_history_price)
-
-        (get_feed_history)
-
-        (get_witness_schedule)
 
         (get_hardfork_version)
 
@@ -319,47 +298,8 @@ public:
         // (list_vesting_delegation_expirations)
         // (find_vesting_delegation_expirations)
 
-        ///////////////
-        // Witnesses //
-        ///////////////
-
-        /**
-         * @brief Get a list of witnesses by ID
-         * @param witness_ids IDs of the witnesses to retrieve
-         * @return The witnesses corresponding to the provided IDs
-         *
-         * This function has semantics identical to @ref get_objects
-         */
-        (get_witnesses)
 
         (get_conversion_requests)
-
-        /**
-         * @brief Get the witness owned by a given account
-         * @param account The name of the account whose witness should be retrieved
-         * @return The witness object, or null if the account does not have a witness
-         */
-        (get_witness_by_account)
-
-        /**
-         *  This method is used to fetch witnesses with pagination.
-         *
-         *  @return an array of `count` witnesses sorted by total votes after witness `from` with at most `limit' results.
-         */
-        (get_witnesses_by_vote)
-
-        /**
-         * @brief Get names and IDs for registered witnesses
-         * @param lower_bound_name Lower bound of the first name to return
-         * @param limit Maximum number of results to return -- must not exceed 1000
-         * @return Map of witness names to corresponding IDs
-         */
-        (lookup_witness_accounts)
-
-        /**
-         * @brief Get the total number of witnesses registered with the blockchain
-         */
-        (get_witness_count)
 
         ////////////
         // Assets //

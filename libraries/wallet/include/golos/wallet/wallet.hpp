@@ -213,7 +213,7 @@ namespace golos { namespace wallet {
              *
              * @returns Price feed history data on the blockchain
              */
-            database_api::feed_history_api_object get_feed_history()const;
+            witness_api::feed_history_api_object get_feed_history()const;
 
             /**
              * Returns the list of witnesses producing blocks in the current round (21 Blocks)
@@ -627,7 +627,7 @@ namespace golos { namespace wallet {
              * @param owner_account the name or id of the witness account owner, or the id of the witness
              * @returns the information about the witness stored in the block chain
              */
-            optional< database_api::witness_api_object > get_witness(string owner_account);
+            optional< witness_api::witness_api_object > get_witness(string owner_account);
 
             /** Returns conversion requests by an account
              *

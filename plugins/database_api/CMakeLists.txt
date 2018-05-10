@@ -6,11 +6,9 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
 
 
      include/golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp
-     include/golos/plugins/database_api/api_objects/feed_history_api_object.hpp
      include/golos/plugins/database_api/forward.hpp
      include/golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp
      include/golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp
-     include/golos/plugins/database_api/api_objects/witness_api_object.hpp
      include/golos/plugins/database_api/api_objects/proposal_api_object.hpp
 
 
