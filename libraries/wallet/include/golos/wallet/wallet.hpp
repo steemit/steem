@@ -1152,6 +1152,15 @@ FC_API( golos::wallet::wallet_api,
                 (decline_voting_rights)
 
                 /// helper api
+                (begin_builder_transaction)
+                (add_operation_to_builder_transaction)
+                (replace_operation_in_builder_transaction)
+                (preview_builder_transaction)
+                (sign_builder_transaction)
+                (propose_builder_transaction)
+                (remove_builder_transaction)
+                (approve_proposal)
+                (get_proposed_transactions)
                 (get_prototype_operation)
                 (serialize_transaction)
                 (sign_transaction)
@@ -1164,3 +1173,9 @@ FC_API( golos::wallet::wallet_api,
 )
 
 FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )
+FC_REFLECT(
+    (golos::wallet::approval_delta),
+    (active_approvals_to_add)(active_approvals_to_remove)
+    (owner_approvals_to_add)(owner_approvals_to_remove)
+    (posting_approvals_to_add)(posting_approvals_to_remove)
+    (key_approvals_to_add)(key_approvals_to_remove) )
