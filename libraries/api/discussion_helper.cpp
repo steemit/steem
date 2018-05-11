@@ -51,12 +51,12 @@ namespace golos { namespace api {
         return result;
     }
 
-
     struct discussion_helper::impl final {
     public:
         impl () = delete;
         impl ( golos::chain::database& db ) : database_( db ) {
         }
+        ~impl() = default;
 
         discussion create_discussion(const comment_object& o) const ;
 
@@ -234,5 +234,13 @@ namespace golos { namespace api {
     discussion discussion_helper::create_discussion(const comment_object& o) const {
         return pimpl->create_discussion(o);
     }
+
+    discussion_helper::discussion_helper ( golos::chain::database& db ) {
+        pimpl = std::make_unique<impl>(db);
+    } 
+    discussion_helper::~discussion_helper ( ) {
+        pimpl.reset();
+    }
+
 //
 } } // golos::api

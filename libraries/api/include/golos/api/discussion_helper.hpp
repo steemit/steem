@@ -14,9 +14,8 @@ namespace golos { namespace api {
     class discussion_helper {
     public:
         discussion_helper () = delete;
-        discussion_helper ( golos::chain::database& db ) {
-            pimpl = std::make_unique<impl>(db);
-        }
+        discussion_helper ( golos::chain::database& db ) ;
+        ~discussion_helper (  ) ;
 
 
         void set_pending_payout(discussion& d,

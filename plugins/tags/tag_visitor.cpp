@@ -181,7 +181,7 @@ namespace golos { namespace plugins { namespace tags {
             const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
 
             if (parse_tags) {
-                auto meta = get_metadata(comment_api_object(comment, db_), fill_promoted);
+                auto meta = get_metadata(comment_api_object(comment, db_));
                 auto citr = comment_idx.lower_bound(comment.id);
                 const tag_object* language_tag = nullptr;
 
@@ -286,7 +286,7 @@ namespace golos { namespace plugins { namespace tags {
         const auto& comment = db_.get_comment(op.author, op.permlink);
         const auto& author = db_.get_account(op.author).id;
 
-        auto meta = get_metadata(comment_api_object(comment, db_), fill_promoted);
+        auto meta = get_metadata(comment_api_object(comment, db_));
         const auto& stats_idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
         const auto& auth_idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
 

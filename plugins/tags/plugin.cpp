@@ -63,8 +63,7 @@ namespace golos { namespace plugins { namespace tags {
 
         void select_active_votes(
             std::vector<vote_state>& result, uint32_t& total_count,
-            const std::string& author, const std::string& permlink, uint32_t limit,
-            std::function<share_type(const account_name_type&)> callback_func
+            const std::string& author, const std::string& permlink, uint32_t limit
         ) const ;
 
         bool filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const;
@@ -94,10 +93,6 @@ namespace golos { namespace plugins { namespace tags {
         template<typename DiscussionOrder, typename Selector>
         std::vector<discussion> select_ordered_discussions(discussion_query&, Selector&&) const;
 
-        void select_content_replies(
-            std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
-        ) const;
-
         std::vector<tag_api_object> get_trending_tags(std::string after, uint32_t limit) const;
 
         std::vector<std::pair<std::string, uint32_t>> get_tags_used_by_author(const std::string& author) const;
@@ -124,15 +119,14 @@ namespace golos { namespace plugins { namespace tags {
         std::unique_ptr<discussion_helper> helper;
     };
 
-    void discussion_helper::impl::select_active_votes(
+    void tags_plugin::impl::select_active_votes(
         std::vector<vote_state>& result, uint32_t& total_count,
-        const std::string& author, const std::string& permlink, uint32_t limit,
-        std::function<share_type(const account_name_type&)> callback_func
+        const std::string& author, const std::string& permlink, uint32_t limit
     ) const {
         helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
     }
 
-    discussion discussion_helper::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
+    discussion tags_plugin::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
         discussion d = create_discussion(c);
         set_url(d);
         set_pending_payout(d);
@@ -150,7 +144,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     discussion tags_plugin::impl::create_discussion(const comment_object& o) const {
-        return discussion(o, database_);
+        return helper->create_discussion(o);
     }
 
     void tags_plugin::impl::fill_discussion(discussion& d, const discussion_query& query) const {
@@ -192,9 +186,11 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void tags_plugin::plugin_startup() {
+        wlog("tags plugin: plugin_startup()");
     }
 
     void tags_plugin::plugin_shutdown() {
+        wlog("tags plugin: plugin_shutdown(()");
     }
 
     const std::string& tags_plugin::name() {
@@ -231,38 +227,7 @@ namespace golos { namespace plugins { namespace tags {
     tags_plugin::~tags_plugin() = default;
 
     void tags_plugin::impl::set_url(discussion& d) const {
-        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment), database());
-
-        d.root_title = root.title;
-
-        tags::comment_metadata meta = tags::get_metadata(root);
-
-        if(!meta.tags.empty()) {
-            d.url = "/" + *meta.tags.begin() + "/@" + root.author + "/" + root.permlink;
-        }
-        else {
-            d.url = "/@" + root.author + "/" + root.permlink;
-        }
-
-        if (root.id != d.id) {
-            d.url += "#@" + d.author + "/" + d.permlink;
-        }
-    }
-
-    void tags_plugin::impl::select_content_replies(
-        std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
-    ) const {
-        account_name_type acc_name = account_name_type(author);
-        const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
-        auto itr = by_permlink_idx.find(std::make_tuple(acc_name, permlink));
-        while (
-            itr != by_permlink_idx.end() &&
-            itr->parent_author == author &&
-            to_string(itr->parent_permlink) == permlink
-        ) {
-            result.emplace_back(get_discussion(*itr, limit));
-            ++itr;
-        }
+        helper->set_url( d );
     }
 
     boost::multiprecision::uint256_t to256(const fc::uint128_t& t) {

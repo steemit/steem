@@ -37,7 +37,11 @@ namespace golos { namespace plugins { namespace tags {
 
     class tags_plugin final: public appbase::plugin<tags_plugin> {
     public:
-        APPBASE_PLUGIN_REQUIRES((chain::plugin)(follow::plugin))
+        APPBASE_PLUGIN_REQUIRES(
+            (chain::plugin)
+            (follow::plugin)
+            (json_rpc::plugin)
+        )
 
         DECLARE_API(
            /**
