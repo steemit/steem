@@ -86,9 +86,37 @@ namespace golos { namespace api {
             return database_;
         }
 
+        discussion get_discussion(
+            const comment_object& c, uint32_t vote_limit,
+            std::function<share_type(const account_name_type&)> callback_func,
+            std::function<void(discussion&, golos::chain::database&)> fill_promoted 
+        ) const ;
     private:
         golos::chain::database& database_;
     };
+
+
+
+//  get_discussion
+    discussion discussion_helper::impl::get_discussion(
+            const comment_object& c, uint32_t vote_limit,
+            std::function<share_type(const account_name_type&)> callback_func,
+            std::function<void(discussion&, golos::chain::database&)> fill_promoted 
+    ) const {
+        discussion d = create_discussion(c);
+        set_url(d);
+        set_pending_payout(d, callback_func, fill_promoted);
+        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit, callback_func);
+        return d;
+    }
+
+    discussion discussion_helper::get_discussion(
+        const comment_object& c, uint32_t vote_limit,
+        std::function<share_type(const account_name_type&)> callback_func,
+        std::function<void(discussion&, golos::chain::database&)> fill_promoted 
+    ) const  {
+        return pimpl->get_discussion( c, vote_limit, callback_func, fill_promoted );
+    }    
 
 
 // get_account_reputation

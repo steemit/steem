@@ -33,6 +33,12 @@ namespace golos { namespace api {
 
         discussion create_discussion(const comment_object& o) const;
 
+        discussion get_discussion(
+            const comment_object& c, uint32_t vote_limit,
+            std::function<share_type(const account_name_type&)> callback_func,
+            std::function<void(discussion&, golos::chain::database&)> fill_promoted 
+        ) const ;
+
         share_type get_account_reputation (
             std::function<share_type(const account_name_type&)> callback_func,
             const account_name_type& account

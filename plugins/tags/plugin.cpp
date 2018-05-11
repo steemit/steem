@@ -33,6 +33,9 @@ namespace golos { namespace plugins { namespace tags {
     using golos::chain::feed_history_object;
     using golos::api::discussion_helper;
 
+
+
+
     struct tags_plugin::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
             helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );
@@ -127,11 +130,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     discussion tags_plugin::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
-        discussion d = create_discussion(c);
-        set_url(d);
-        set_pending_payout(d);
-        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
-        return d;
+        return helper->get_discussion(c, vote_limit, follow::get_account_reputation, fill_promoted);
     }
 
     get_languages_result tags_plugin::impl::get_languages() {
