@@ -421,12 +421,10 @@ namespace golos { namespace chain {
                     }
                 }
             }
-
-            auto* content = _db.find_comment_content(comment.id);
-
-            if (content) {
-                _db.remove(*content);
-            }
+#ifndef IS_LOW_MEM
+            auto& content = _db.get_comment_content(comment.id);
+            _db.remove(content);
+#endif
             _db.remove(comment);
         }
 
@@ -643,10 +641,9 @@ namespace golos { namespace chain {
 
                     });
                     id = new_comment.id;
-
+#ifndef IS_LOW_MEM
                     _db.create<comment_content_object>([&](comment_content_object& con) {
                         con.comment = id;
-#ifndef IS_LOW_MEM
                         from_string(con.title, o.title);
                         if (o.body.size() < 1024*1024*128) {
                             from_string(con.body, o.body);
@@ -657,9 +654,8 @@ namespace golos { namespace chain {
                             wlog("Comment ${a}/${p} contains invalid UTF-8 metadata",
                                  ("a", o.author)("p", o.permlink));
                         }
-#endif
                     });
-
+#endif
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
                     auto now = _db.head_block_time();
                     while (parent) {
