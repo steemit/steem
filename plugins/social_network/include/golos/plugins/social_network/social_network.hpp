@@ -3,12 +3,10 @@
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/api/discussion.hpp>
-#include <golos/plugins/tags/tag_api_object.hpp>
+// #include <golos/plugins/tags/tag_api_object.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/api/account_vote.hpp>
 #include <golos/api/vote_state.hpp>
-#include <golos/api/discussion.hpp>
-
 
 namespace golos { namespace plugins { namespace social_network {
     using plugins::json_rpc::msg_pack;
@@ -26,7 +24,11 @@ namespace golos { namespace plugins { namespace social_network {
 
     class social_network final: public appbase::plugin<social_network> {
     public:
-        APPBASE_PLUGIN_REQUIRES((chain::plugin)(follow::plugin))
+        APPBASE_PLUGIN_REQUIRES (
+            (chain::plugin)
+            (follow::plugin)
+            (json_rpc::plugin)
+        )
 
         DECLARE_API(
             (get_content)

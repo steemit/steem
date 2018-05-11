@@ -1,13 +1,12 @@
 #include <boost/program_options/options_description.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
 #include <golos/chain/index.hpp>
-#include <golos/api/discussion.hpp>
 #include <golos/api/vote_state.hpp>
 #include <golos/chain/steem_objects.hpp>
-
+#include <golos/plugins/tags/discussion_query.hpp>
+#include <golos/api/discussion_helper.hpp>
 // These visitors creates additional tables, we don't really need them in LOW_MEM mode
 #include <golos/plugins/tags/tag_visitor.hpp>
-#include <golos/plugins/tags/discussion_query.hpp>
 #include <golos/chain/operation_notification.hpp>
 
 #define CHECK_ARG_SIZE(_S)                                 \
@@ -31,9 +30,14 @@ namespace golos { namespace plugins { namespace social_network {
 
     using golos::chain::feed_history_object;
     using golos::plugins::tags::discussion_query;
+    using golos::plugins::tags::fill_promoted;
+    using golos::api::discussion_helper;
+
 
     struct social_network::impl final {
-        impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {}
+        impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
+            helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );
+        }
 
         ~impl() {}
 
@@ -58,46 +62,11 @@ namespace golos { namespace plugins { namespace social_network {
             return database_;
         }
 
-        share_type get_account_reputation(const account_name_type& account) const {
-            auto& db = database();
 
-            if (!db.has_index<follow::reputation_index>()) {
-                return 0;
-            }
-
-            auto& rep_idx = db.get_index<follow::reputation_index>().indices().get<follow::by_account>();
-            auto itr = rep_idx.find(account);
-
-            if (rep_idx.end() != itr) {
-                return itr->reputation;
-            }
-
-            return 0;
-        }
-
-        void select_active_votes(
+        void select_active_votes (
             std::vector<vote_state>& result, uint32_t& total_count,
             const std::string& author, const std::string& permlink, uint32_t limit
-        ) const {
-            const auto& comment = database().get_comment(author, permlink);
-            const auto& idx = database().get_index<comment_vote_index>().indices().get<by_comment_voter>();
-            comment_object::id_type cid(comment.id);
-            total_count = 0;
-            result.clear();
-            for (auto itr = idx.lower_bound(cid); itr != idx.end() && itr->comment == cid; ++itr, ++total_count) {
-                if (result.size() < limit) {
-                    const auto& vo = database().get(itr->voter);
-                    vote_state vstate;
-                    vstate.voter = vo.name;
-                    vstate.weight = itr->weight;
-                    vstate.rshares = itr->rshares;
-                    vstate.percent = itr->vote_percent;
-                    vstate.time = itr->last_update;
-                    vstate.reputation = get_account_reputation(vo.name);
-                    result.emplace_back(vstate);
-                }
-            }
-        }
+        ) const ;
 
         void select_content_replies(
             std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
@@ -122,13 +91,9 @@ namespace golos { namespace plugins { namespace social_network {
 
         discussion get_content(std::string author, std::string permlink, uint32_t limit) const;
 
-        discussion get_discussion(const comment_object& c, uint32_t vote_limit) const {
-            discussion d = create_discussion(c);
-            set_url(d);
-            set_pending_payout(d);
-            select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
-            return d;
-        }
+        discussion get_discussion(const comment_object& c, uint32_t vote_limit) const ;
+        share_type get_account_reputation ( const account_name_type& account ) const ;
+
 
         discussion create_discussion(const comment_object& o) const;
         discussion create_discussion(const comment_object& o, const discussion_query& query) const;
@@ -136,11 +101,23 @@ namespace golos { namespace plugins { namespace social_network {
 
     private:
         golos::chain::database& database_;
+        std::unique_ptr<discussion_helper> helper;
     };
 
 
-    discussion social_network::impl::create_discussion(const comment_object& o) const {
-        return discussion(o, database_);
+    discussion social_network::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
+        return helper->get_discussion(c, vote_limit, follow::get_account_reputation, fill_promoted);
+    }
+
+    share_type social_network::impl::get_account_reputation ( const account_name_type& account ) const {
+        return helper->get_account_reputation(follow::get_account_reputation, account);
+    }
+
+    void social_network::impl::select_active_votes(
+        std::vector<vote_state>& result, uint32_t& total_count,
+        const std::string& author, const std::string& permlink, uint32_t limit
+    ) const {
+        helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
     }
 
     void social_network::impl::fill_discussion(discussion& d, const discussion_query& query) const {
@@ -167,6 +144,10 @@ namespace golos { namespace plugins { namespace social_network {
         }
     }
 
+    discussion social_network::impl::create_discussion(const comment_object& o) const {
+        return helper->create_discussion(o);
+    }
+
     discussion social_network::impl::create_discussion(const comment_object& o, const discussion_query& query) const {
 
         discussion d = create_discussion(o);
@@ -176,9 +157,11 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     void social_network::plugin_startup() {
+        wlog("social_network plugin: plugin_startup()");
     }
 
     void social_network::plugin_shutdown() {
+        wlog("social_network plugin: plugin_shutdown()");
     }
 
     const std::string& social_network::name() {
@@ -203,10 +186,6 @@ namespace golos { namespace plugins { namespace social_network {
         db.post_apply_operation.connect([&](const operation_notification& note) {
             pimpl->on_operation(note);
         });
-        add_plugin_index<tags::tag_index>(db);
-        add_plugin_index<tags::tag_stats_index>(db);
-        add_plugin_index<tags::author_tag_stats_index>(db);
-        add_plugin_index<tags::language_index>(db);
 #endif
         JSON_RPC_REGISTER_API (name());
 
@@ -215,22 +194,7 @@ namespace golos { namespace plugins { namespace social_network {
     social_network::~social_network() = default;
 
     void social_network::impl::set_url(discussion& d) const {
-        const comment_api_object root(database().get<comment_object, by_id>(d.root_comment), database());
-
-        d.root_title = root.title;
-
-        tags::comment_metadata meta = tags::get_metadata(root);
-
-        if(!meta.tags.empty()) {
-            d.url = "/" + *meta.tags.begin() + "/@" + root.author + "/" + root.permlink;
-        }
-        else {
-            d.url = "/@" + root.author + "/" + root.permlink;
-        }
-
-        if (root.id != d.id) {
-            d.url += "#@" + d.author + "/" + d.permlink;
-        }
+        helper->set_url(d);
     }
 
     void social_network::impl::select_content_replies(
