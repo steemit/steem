@@ -123,6 +123,7 @@ namespace golos { namespace chain {
             }
 
             ch_plugin = &appbase::app().register_plugin<golos::plugins::chain::plugin>();
+            oh_plugin = &appbase::app().register_plugin<operation_history::plugin>();
             ah_plugin = &appbase::app().register_plugin<account_history::plugin>();
             db_plugin = &appbase::app().register_plugin<debug_node::plugin>();
 
@@ -157,6 +158,7 @@ namespace golos { namespace chain {
                                STEEMIT_MIN_PRODUCER_REWARD.amount);
             }
 
+            oh_plugin->plugin_startup();
             ah_plugin->plugin_startup();
             db_plugin->plugin_startup();
 

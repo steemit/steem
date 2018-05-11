@@ -168,6 +168,7 @@ namespace golos { namespace chain {
 
             golos::plugins::chain::plugin *ch_plugin = nullptr;
             golos::plugins::debug_node::plugin *db_plugin = nullptr;
+            golos::plugins::operation_history::plugin *oh_plugin = nullptr;
             golos::plugins::account_history::plugin *ah_plugin = nullptr;
 
             optional<fc::temp_directory> data_dir;

@@ -3,7 +3,7 @@
 #include <golos/plugins/database_api/plugin.hpp>
 #include <golos/plugins/database_api/forward.hpp>
 #include <golos/plugins/database_api/state.hpp>
-#include <golos/plugins/account_history/applied_operation.hpp>
+#include <golos/plugins/operation_history/applied_operation.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <golos/plugins/tags/tag_api_object.hpp>
@@ -46,7 +46,6 @@ using namespace plugins::witness_api;
 struct remote_database_api {
     optional< database_api::signed_block > get_block( uint32_t );
     optional< block_header > get_block_header( uint32_t );
-    vector< golos::plugins::account_history::applied_operation > get_ops_in_block( uint32_t, bool only_virtual = true );
     fc::variant_object get_config();
     database_api::dynamic_global_property_object get_dynamic_global_properties();
     chain_properties get_chain_properties();
@@ -66,15 +65,30 @@ struct remote_database_api {
     vector< database_api::convert_request_api_object > get_conversion_requests( account_name_type );
     vector< database_api::extended_limit_order > get_open_orders( account_name_type );
     string get_transaction_hex( signed_transaction );
-    annotated_signed_transaction get_transaction( transaction_id_type );
     set< public_key_type > get_required_signatures( signed_transaction, flat_set< public_key_type > );
     set< public_key_type > get_potential_signatures( signed_transaction );
     bool verify_authority( signed_transaction );
     bool verify_account_authority( string, flat_set< public_key_type > );
     vector< golos::api::account_api_object > get_accounts( vector< account_name_type > );
-    map<uint32_t, golos::plugins::account_history::applied_operation> get_account_history( account_name_type, uint64_t, uint32_t );
     database_api::database_info get_database_info();
     std::vector<proposal_api_object> get_proposed_transactions(account_name_type, uint32_t, uint32_t);
+};
+
+/**
+ * This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
+ * Class is used by wallet to send formatted API calls to operation_history plugin on remote node.
+ */
+struct remote_operation_history {
+    vector< golos::plugins::operation_history::applied_operation > get_ops_in_block( uint32_t, bool only_virtual = true );
+    annotated_signed_transaction get_transaction( transaction_id_type );
+};
+
+/**
+ * This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
+ * Class is used by wallet to send formatted API calls to operation_history plugin on remote node.
+ */
+struct remote_account_history {
+    map<uint32_t, golos::plugins::operation_history::applied_operation> get_account_history( account_name_type, uint64_t, uint32_t );
 };
 
 /**
@@ -198,7 +212,6 @@ struct remote_witness_api {
 FC_API( golos::wallet::remote_database_api,
         (get_block)
         (get_block_header)
-        (get_ops_in_block)
         (get_config)
         (get_dynamic_global_properties)
         (get_chain_properties)
@@ -217,15 +230,28 @@ FC_API( golos::wallet::remote_database_api,
         (get_conversion_requests)
         (get_open_orders)
         (get_transaction_hex)
-        (get_transaction)
         (get_required_signatures)
         (get_potential_signatures)
         (verify_authority)
         (verify_account_authority)
         (get_accounts)
-        (get_account_history)
         (get_database_info)
         (get_proposed_transactions)
+)
+
+/**
+ * Declaration of remote API formatter to operation_history plugin on remote node
+ */
+FC_API( golos::wallet::remote_operation_history,
+        (get_ops_in_block)
+        (get_transaction)
+)
+
+/**
+ * Declaration of remote API formatter to account_history plugin on remote node
+ */
+FC_API( golos::wallet::remote_account_history,
+        (get_account_history)
 )
 
 /**

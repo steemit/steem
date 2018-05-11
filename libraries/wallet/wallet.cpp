@@ -208,14 +208,16 @@ namespace golos { namespace wallet {
                 wallet_api& self;
                 wallet_api_impl( wallet_api& s, const wallet_data& initial_data, const golos::protocol::chain_id_type& _steem_chain_id, fc::api_connection& con ):
                     self( s ),
-                    _remote_database_api( con.get_remote_api< golos::wallet::remote_database_api >( 0, "database_api" ) ),
-                    _remote_social_network( con.get_remote_api< golos::wallet::remote_social_network >( 0, "social_network" ) ),
-                    _remote_network_broadcast_api( con.get_remote_api< golos::wallet::remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
-                    _remote_follow( con.get_remote_api< golos::wallet::remote_follow >( 0, "follow" ) ),
-                    _remote_market_history( con.get_remote_api< golos::wallet::remote_market_history >( 0, "market_history" ) ),
-                    _remote_private_message( con.get_remote_api< golos::wallet::remote_private_message>( 0, "private_message" ) ),
-                    _remote_account_by_key( con.get_remote_api< golos::wallet::remote_account_by_key>( 0, "account_by_key" ) ) ,
-                    _remote_witness_api( con.get_remote_api< golos::wallet::remote_witness_api >( 0, "witness_api" ) )
+                    _remote_database_api( con.get_remote_api< remote_database_api >( 0, "database_api" ) ),
+                    _remote_operation_history( con.get_remote_api< remote_operation_history >( 0, "operation_history" ) ),
+                    _remote_account_history( con.get_remote_api< remote_account_history >( 0, "account_history" ) ),
+                    _remote_social_network( con.get_remote_api< remote_social_network >( 0, "social_network" ) ),
+                    _remote_network_broadcast_api( con.get_remote_api< remote_network_broadcast_api >( 0, "network_broadcast_api" ) ),
+                    _remote_follow( con.get_remote_api< remote_follow >( 0, "follow" ) ),
+                    _remote_market_history( con.get_remote_api< remote_market_history >( 0, "market_history" ) ),
+                    _remote_private_message( con.get_remote_api< remote_private_message>( 0, "private_message" ) ),
+                    _remote_account_by_key( con.get_remote_api< remote_account_by_key>( 0, "account_by_key" ) ) ,
+                    _remote_witness_api( con.get_remote_api< remote_witness_api >( 0, "witness_api" ) )
                 {
                     init_prototype_ops();
 
@@ -982,6 +984,8 @@ namespace golos { namespace wallet {
                 map<public_key_type,string>             _keys;
                 fc::sha512                              _checksum;
                 fc::api< remote_database_api >          _remote_database_api;
+                fc::api< remote_operation_history >     _remote_operation_history;
+                fc::api< remote_account_history >       _remote_account_history;
                 fc::api< remote_social_network >        _remote_social_network;
                 fc::api< remote_network_broadcast_api>  _remote_network_broadcast_api;
                 fc::api< remote_follow >                _remote_follow;
@@ -1022,8 +1026,8 @@ namespace golos { namespace wallet {
             return my->_remote_database_api->get_block( num );
         }
 
-        vector< golos::plugins::account_history::applied_operation > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
-            return my->_remote_database_api->get_ops_in_block( block_num, only_virtual );
+        vector< golos::plugins::operation_history::applied_operation > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual) {
+            return my->_remote_operation_history->get_ops_in_block( block_num, only_virtual );
         }
 
         vector< golos::api::account_api_object > wallet_api::list_my_accounts() {
@@ -2265,8 +2269,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        map< uint32_t, golos::plugins::account_history::applied_operation> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
-            auto result = my->_remote_database_api->get_account_history( account, from, limit );
+        map< uint32_t, golos::plugins::operation_history::applied_operation> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+            auto result = my->_remote_account_history->get_account_history( account, from, limit );
             if( !is_locked() ) {
                 for( auto& item : result ) {
                     if( item.second.op.which() == operation::tag<transfer_operation>::value ) {
@@ -2369,7 +2373,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         }
 
         annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
-            return my->_remote_database_api->get_transaction( id );
+            return my->_remote_operation_history->get_transaction( id );
         }
 
         vector<extended_message_object> wallet_api::get_inbox(const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset) {
