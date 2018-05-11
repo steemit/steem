@@ -21,6 +21,7 @@
 #include <golos/plugins/raw_block/plugin.hpp>
 #include <golos/plugins/block_info/plugin.hpp>
 #include <golos/plugins/tags/plugin.hpp>
+#include <golos/plugins/witness_api/plugin.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <fc/log/console_appender.hpp>
@@ -58,6 +59,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::p2p::p2p_plugin>();
             appbase::app().register_plugin<golos::plugins::webserver::webserver_plugin>();
             appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
+            appbase::app().register_plugin<golos::plugins::witness_api::plugin>();
             appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
             golos::plugins::database_api::register_database_api();
             appbase::app().register_plugin<golos::plugins::social_network::social_network>();

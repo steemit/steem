@@ -18,6 +18,7 @@
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/api/account_api_object.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
+#include <golos/plugins/witness_api/plugin.hpp>
 
 namespace golos { namespace wallet {
 
@@ -36,23 +37,19 @@ using namespace plugins::market_history;
 using namespace plugins::network_broadcast_api;
 using namespace plugins::private_message;
 using namespace golos::api;
-//using namespace plugins::witness_plugin;
+using namespace plugins::witness_api;
 
 /**
  * This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
  * Class is used by wallet to send formatted API calls to database_api plugin on remote node.
  */
 struct remote_database_api {
-    vector< account_name_type > get_active_witnesses();
     optional< database_api::signed_block > get_block( uint32_t );
     optional< block_header > get_block_header( uint32_t );
     vector< golos::plugins::account_history::applied_operation > get_ops_in_block( uint32_t, bool only_virtual = true );
     fc::variant_object get_config();
     database_api::dynamic_global_property_object get_dynamic_global_properties();
     chain_properties get_chain_properties();
-    price get_current_median_history_price();
-    database_api::feed_history_api_object get_feed_history();
-    database_api::witness_schedule_api_object get_witness_schedule();
     hardfork_version get_hardfork_version();
     database_api::scheduled_hardfork get_next_scheduled_hardfork();
     vector< optional< golos::api::account_api_object > > lookup_account_names( vector< account_name_type > );
@@ -66,11 +63,7 @@ struct remote_database_api {
     optional< account_bandwidth_api_object > get_account_bandwidth( account_name_type, bandwidth_type);
     vector< database_api::savings_withdraw_api_object > get_savings_withdraw_from( account_name_type );
     vector< database_api::savings_withdraw_api_object > get_savings_withdraw_to( account_name_type );
-    vector< optional< database_api::witness_api_object > > get_witnesses( vector< witness_id_type > );
     vector< database_api::convert_request_api_object > get_conversion_requests( account_name_type );
-    vector< database_api::witness_api_object > get_witnesses_by_vote( account_name_type, uint32_t );
-    vector< account_name_type > lookup_witness_accounts( string, uint32_t );
-    uint64_t get_witness_count();
     vector< database_api::extended_limit_order > get_open_orders( account_name_type );
     string get_transaction_hex( signed_transaction );
     annotated_signed_transaction get_transaction( transaction_id_type );
@@ -80,8 +73,6 @@ struct remote_database_api {
     bool verify_account_authority( string, flat_set< public_key_type > );
     vector< golos::api::account_api_object > get_accounts( vector< account_name_type > );
     map<uint32_t, golos::plugins::account_history::applied_operation> get_account_history( account_name_type, uint64_t, uint32_t );
-    optional< database_api::witness_api_object > get_witness_by_account( account_name_type );
-    vector< account_name_type > get_miner_queue();
     database_api::database_info get_database_info();
     std::vector<proposal_api_object> get_proposed_transactions(account_name_type, uint32_t, uint32_t);
 };
@@ -182,22 +173,35 @@ struct remote_private_message {
      vector< vector< account_name_type > > get_key_references( vector< public_key_type > );
  };
 
+/**
+* This is a dummy class exists only to provide method signature information to fc::api, not to execute calls.
+* Class is used by wallet to send formatted API calls to witness_api plugin on remote node.
+*/
+struct remote_witness_api {
+    price get_current_median_history_price();
+    feed_history_api_object get_feed_history();
+    vector< account_name_type > get_miner_queue();
+    vector< account_name_type > get_active_witnesses();
+    golos::chain::witness_schedule_object get_witness_schedule();
+    vector< optional< witness_api::witness_api_object > > get_witnesses( vector< witness_id_type > );
+    vector< witness_api::witness_api_object > get_witnesses_by_vote( account_name_type, uint32_t );
+    optional< witness_api::witness_api_object > get_witness_by_account( account_name_type );
+    vector< account_name_type > lookup_witness_accounts( string, uint32_t );
+    uint64_t get_witness_count();
+};
+
 } }
 
 /**
  * Declaration of remote API formatter to database_api plugin on remote node
  */
 FC_API( golos::wallet::remote_database_api,
-        (get_active_witnesses)
         (get_block)
         (get_block_header)
         (get_ops_in_block)
         (get_config)
         (get_dynamic_global_properties)
         (get_chain_properties)
-        (get_current_median_history_price)
-        (get_feed_history)
-        (get_witness_schedule)
         (get_hardfork_version)
         (get_next_scheduled_hardfork)
         (lookup_account_names)
@@ -210,11 +214,7 @@ FC_API( golos::wallet::remote_database_api,
         (get_account_bandwidth)
         (get_savings_withdraw_from)
         (get_savings_withdraw_to)
-        (get_witnesses)
         (get_conversion_requests)
-        (get_witnesses_by_vote)
-        (lookup_witness_accounts)
-        (get_witness_count)
         (get_open_orders)
         (get_transaction_hex)
         (get_transaction)
@@ -224,8 +224,6 @@ FC_API( golos::wallet::remote_database_api,
         (verify_account_authority)
         (get_accounts)
         (get_account_history)
-        (get_witness_by_account)
-        (get_miner_queue)
         (get_database_info)
         (get_proposed_transactions)
 )
@@ -307,4 +305,20 @@ FC_API( golos::wallet::remote_private_message,
  */
 FC_API( golos::wallet::remote_account_by_key,
         (get_key_references)
+)
+
+/**
+ * Declaration of remote API formatter to witness_api plugin on remote node
+ */
+FC_API( golos::wallet::remote_witness_api,
+        (get_current_median_history_price)
+        (get_feed_history)
+        (get_miner_queue)
+        (get_active_witnesses)
+        (get_witness_schedule)
+        (get_witnesses)
+        (get_witnesses_by_vote)
+        (get_witness_count)
+        (get_witness_by_account)
+        (lookup_witness_accounts)
 )

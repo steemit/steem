@@ -213,7 +213,7 @@ namespace golos { namespace wallet {
              *
              * @returns Price feed history data on the blockchain
              */
-            database_api::feed_history_api_object get_feed_history()const;
+            witness_api::feed_history_api_object get_feed_history()const;
 
             /**
              * Returns the list of witnesses producing blocks in the current round (21 Blocks)
@@ -627,7 +627,7 @@ namespace golos { namespace wallet {
              * @param owner_account the name or id of the witness account owner, or the id of the witness
              * @returns the information about the witness stored in the block chain
              */
-            optional< database_api::witness_api_object > get_witness(string owner_account);
+            optional< witness_api::witness_api_object > get_witness(string owner_account);
 
             /** Returns conversion requests by an account
              *
@@ -1152,6 +1152,15 @@ FC_API( golos::wallet::wallet_api,
                 (decline_voting_rights)
 
                 /// helper api
+                (begin_builder_transaction)
+                (add_operation_to_builder_transaction)
+                (replace_operation_in_builder_transaction)
+                (preview_builder_transaction)
+                (sign_builder_transaction)
+                (propose_builder_transaction)
+                (remove_builder_transaction)
+                (approve_proposal)
+                (get_proposed_transactions)
                 (get_prototype_operation)
                 (serialize_transaction)
                 (sign_transaction)
@@ -1164,3 +1173,9 @@ FC_API( golos::wallet::wallet_api,
 )
 
 FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )
+FC_REFLECT(
+    (golos::wallet::approval_delta),
+    (active_approvals_to_add)(active_approvals_to_remove)
+    (owner_approvals_to_add)(owner_approvals_to_remove)
+    (posting_approvals_to_add)(posting_approvals_to_remove)
+    (key_approvals_to_add)(key_approvals_to_remove) )

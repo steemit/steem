@@ -7,6 +7,8 @@ namespace golos {
     namespace plugins {
         namespace database_api {
 
+            using protocol::authority;
+            using golos::protocol::account_name_type;
             using golos::chain::owner_authority_history_object;
 
             struct owner_authority_history_api_object {

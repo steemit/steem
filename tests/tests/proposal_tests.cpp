@@ -394,10 +394,10 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
  *
  * Complex corporate accounts:
  *
- * Mega Corp.       Well 30, Yes 30                     T=40
+ * Mega Corp.       Well 30, Yaya 30                    T=40
  * Nova Ltd.        Alice 10, Well 10                   T=20
- * Odle Intl.       Dan 10, Yes 10, Zyzz 10             T=20
- * Poxx LLC         Well 10, Xylo 10, Yes 20, Zyzz 20   T=40
+ * Odle Intl.       Dan 10, Yaya 10, Zyzz 10            T=20
+ * Poxx LLC         Well 10, Xylo 10, Yaya 20, Zyzz 20  T=40
  */
 BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     BOOST_TEST_MESSAGE("--- Multiple signatures");
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     flat_set< public_key_type > all_keys{
         alice_public_key, bob_public_key, cindy_public_key, dan_public_key, edy_public_key
     };
-            
+
     auto check = [&](const transfer_operation& op, set<public_key_type> ref_set) {
         signed_transaction tx;
         tx.operations.push_back(op);
