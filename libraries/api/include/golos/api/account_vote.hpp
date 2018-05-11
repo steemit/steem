@@ -11,7 +11,7 @@ namespace api {
         uint64_t weight = 0;
         int64_t rshares = 0;
         int16_t percent = 0;
-        time_point_sec time;
+        fc::time_point_sec time;
     };
 
 } } // golos::api

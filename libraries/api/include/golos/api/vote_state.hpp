@@ -1,8 +1,9 @@
 #pragma once
+#include <golos/protocol/types.hpp>
 #include <fc/reflect/reflect.hpp>
 
 namespace golos { namespace api {
-    using golos::chain::share_type;
+    using golos::protocol::share_type;
     struct vote_state {
         string voter;
         uint64_t weight = 0;

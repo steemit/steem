@@ -26,6 +26,10 @@ namespace golos {
             using golos::chain::by_name;
 
             share_type get_account_reputation(const account_name_type& account) {
+                if (!database().has_index<follow::reputation_index>()) {
+                    return 0;
+                }
+
                 auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
                 auto itr = rep_idx.find(account);
 

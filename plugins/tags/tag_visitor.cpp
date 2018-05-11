@@ -181,7 +181,7 @@ namespace golos { namespace plugins { namespace tags {
             const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
 
             if (parse_tags) {
-                auto meta = get_metadata(comment_api_object(comment, db_));
+                auto meta = get_metadata(comment_api_object(comment, db_), fill_promoted);
                 auto citr = comment_idx.lower_bound(comment.id);
                 const tag_object* language_tag = nullptr;
 
@@ -286,7 +286,7 @@ namespace golos { namespace plugins { namespace tags {
         const auto& comment = db_.get_comment(op.author, op.permlink);
         const auto& author = db_.get_account(op.author).id;
 
-        auto meta = get_metadata(comment_api_object(comment, db_));
+        auto meta = get_metadata(comment_api_object(comment, db_), fill_promoted);
         const auto& stats_idx = db_.get_index<tag_stats_index>().indices().get<by_tag>();
         const auto& auth_idx = db_.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
 
@@ -325,41 +325,6 @@ namespace golos { namespace plugins { namespace tags {
 
     void operation_visitor::operator()(const comment_payout_update_operation& op) const {
         update_tags(op.author, op.permlink);
-    }
-
-    comment_metadata get_metadata(const comment_api_object &c) {
-
-        comment_metadata meta;
-
-        if (!c.json_metadata.empty()) {
-            try {
-                meta = fc::json::from_string(c.json_metadata).as<comment_metadata>();
-            } catch (const fc::exception& e) {
-                // Do nothing on malformed json_metadata
-            }
-        }
-
-        std::set<std::string> lower_tags;
-
-        std::size_t tag_limit = 5;
-        for (const auto& name : meta.tags) {
-            if (lower_tags.size() > tag_limit) {
-                break;
-            }
-            auto value = boost::trim_copy(name);
-            if (value.empty()) {
-                continue;
-            }
-            boost::to_lower(value);
-            lower_tags.insert(value);
-        }
-
-        meta.tags.swap(lower_tags);
-
-        boost::trim(meta.language);
-        boost::to_lower(meta.language);
-
-        return meta;
     }
 
 } } } // golos::plugins::tags

@@ -6,7 +6,7 @@
 #include <golos/plugins/tags/discussion_query.hpp>
 #include <golos/api/vote_state.hpp>
 #include <golos/chain/steem_objects.hpp>
-
+#include <golos/api/discussion_helper.hpp>
 // These visitors creates additional tables, we don't really need them in LOW_MEM mode
 #include <golos/plugins/tags/tag_visitor.hpp>
 #include <golos/chain/operation_notification.hpp>
@@ -31,9 +31,12 @@
 namespace golos { namespace plugins { namespace tags {
 
     using golos::chain::feed_history_object;
+    using golos::api::discussion_helper;
 
     struct tags_plugin::impl final {
-        impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {}
+        impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
+            helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );
+        }
 
         ~impl() {}
 
@@ -58,46 +61,11 @@ namespace golos { namespace plugins { namespace tags {
             return database_;
         }
 
-        share_type get_account_reputation(const account_name_type& account) const {
-            auto& db = database();
-
-            if (!db.has_index<follow::reputation_index>()) {
-                return 0;
-            }
-
-            auto& rep_idx = db.get_index<follow::reputation_index>().indices().get<follow::by_account>();
-            auto itr = rep_idx.find(account);
-
-            if (rep_idx.end() != itr) {
-                return itr->reputation;
-            }
-
-            return 0;
-        }
-
         void select_active_votes(
             std::vector<vote_state>& result, uint32_t& total_count,
-            const std::string& author, const std::string& permlink, uint32_t limit
-        ) const {
-            const auto& comment = database().get_comment(author, permlink);
-            const auto& idx = database().get_index<comment_vote_index>().indices().get<by_comment_voter>();
-            comment_object::id_type cid(comment.id);
-            total_count = 0;
-            result.clear();
-            for (auto itr = idx.lower_bound(cid); itr != idx.end() && itr->comment == cid; ++itr, ++total_count) {
-                if (result.size() < limit) {
-                    const auto& vo = database().get(itr->voter);
-                    vote_state vstate;
-                    vstate.voter = vo.name;
-                    vstate.weight = itr->weight;
-                    vstate.rshares = itr->rshares;
-                    vstate.percent = itr->vote_percent;
-                    vstate.time = itr->last_update;
-                    vstate.reputation = get_account_reputation(vo.name);
-                    result.emplace_back(vstate);
-                }
-            }
-        }
+            const std::string& author, const std::string& permlink, uint32_t limit,
+            std::function<share_type(const account_name_type&)> callback_func
+        ) const ;
 
         bool filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const;
 
@@ -143,13 +111,7 @@ namespace golos { namespace plugins { namespace tags {
             uint32_t limit, uint32_t vote_limit
         ) const;
 
-        discussion get_discussion(const comment_object& c, uint32_t vote_limit) const {
-            discussion d = create_discussion(c);
-            set_url(d);
-            set_pending_payout(d);
-            select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
-            return d;
-        }
+        discussion get_discussion(const comment_object& c, uint32_t vote_limit) const ;
 
         discussion create_discussion(const comment_object& o) const;
         discussion create_discussion(const comment_object& o, const discussion_query& query) const;
@@ -159,8 +121,24 @@ namespace golos { namespace plugins { namespace tags {
 
     private:
         golos::chain::database& database_;
+        std::unique_ptr<discussion_helper> helper;
     };
 
+    void discussion_helper::impl::select_active_votes(
+        std::vector<vote_state>& result, uint32_t& total_count,
+        const std::string& author, const std::string& permlink, uint32_t limit,
+        std::function<share_type(const account_name_type&)> callback_func
+    ) const {
+        helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
+    }
+
+    discussion discussion_helper::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
+        discussion d = create_discussion(c);
+        set_url(d);
+        set_pending_payout(d);
+        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
+        return d;
+    }
 
     get_languages_result tags_plugin::impl::get_languages() {
         auto& idx = database().get_index<tags::language_index>().indices().get<tags::by_tag>();
@@ -295,53 +273,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void tags_plugin::impl::set_pending_payout(discussion& d) const {
-        auto& db = database();
-#ifndef IS_LOW_MEM
-        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
-        auto itr = cidx.lower_bound(d.id);
-        if (itr != cidx.end() && itr->comment == d.id) {
-            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
-        }
-#endif
-        const auto& props = db.get_dynamic_global_properties();
-        const auto& hist = db.get_feed_history();
-        asset pot = props.total_reward_fund_steem;
-        if (!hist.current_median_history.is_null()) {
-            pot = pot * hist.current_median_history;
-        }
-
-        u256 total_r2 = to256(props.total_reward_shares2);
-
-        if (props.total_reward_shares2 > 0) {
-            auto vshares = db.calculate_vshares(d.net_rshares.value > 0 ? d.net_rshares.value : 0);
-
-            u256 r2 = to256(vshares); //to256(abs_net_rshares);
-            r2 *= pot.amount.value;
-            r2 /= total_r2;
-
-            u256 tpp = to256(d.children_rshares2);
-            tpp *= pot.amount.value;
-            tpp /= total_r2;
-
-            d.pending_payout_value = asset(static_cast<uint64_t>(r2), pot.symbol);
-            d.total_pending_payout_value = asset(static_cast<uint64_t>(tpp), pot.symbol);
-
-            d.author_reputation = get_account_reputation(d.author);
-
-        }
-
-        if (d.parent_author != STEEMIT_ROOT_POST_PARENT) {
-            d.cashout_time = db.calculate_discussion_payout_time(db.get<comment_object>(d.id));
-        }
-
-        if (d.body.size() > 1024 * 128) {
-            d.body = "body pruned due to size";
-        }
-        if (d.parent_author.size() > 0 && d.body.size() > 1024 * 16) {
-            d.body = "comment pruned due to size";
-        }
-
-        set_url(d);
+        helper->set_pending_payout(d, follow::get_account_reputation, fill_promoted);
     }
 
     bool tags_plugin::impl::filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const {

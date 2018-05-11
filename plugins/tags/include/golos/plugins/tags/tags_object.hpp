@@ -10,11 +10,14 @@
 
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/api/discussion_helper.hpp>
 
 namespace golos { namespace plugins { namespace tags {
     using golos::api::discussion;
     using golos::api::comment_object;
     using golos::api::comment_api_object;
+
+    using golos::api::get_metadata;
 
     using namespace golos::chain;
     using namespace boost::multi_index;
@@ -391,7 +394,14 @@ namespace golos { namespace plugins { namespace tags {
         std::string language;
     };
 
-    comment_metadata get_metadata(const comment_api_object &c);
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout
+    void fill_promoted( discussion & d, golos::chain::database& db) { 
+        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+        auto itr = cidx.lower_bound(d.id);
+        if (itr != cidx.end() && itr->comment == d.id) {
+            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
+        }
+    }
 
 } } } // golos::plugins::tags::tags
 
