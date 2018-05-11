@@ -412,7 +412,9 @@ namespace golos { namespace wallet {
                     op.title = title;
                     op.memo = memo;
                     op.expiration_time = expiration;
-                    signed_transaction& trx = _builder_transactions[handle];
+
+                    // copy tx to avoid malforming if sign_transaction fails
+                    signed_transaction trx = _builder_transactions[handle];
                     std::transform(
                         trx.operations.begin(), trx.operations.end(), std::back_inserter(op.proposed_operations),
                         [](const operation& op) -> operation_wrapper { return op; });
@@ -422,8 +424,8 @@ namespace golos { namespace wallet {
                     }
 
                     trx.operations = {op};
-
-                    return trx = sign_transaction(trx, broadcast);
+                    trx = sign_transaction(trx, broadcast);
+                    return _builder_transactions[handle] = trx;
                 }
 
                 void remove_builder_transaction(transaction_handle_type handle) {
@@ -478,14 +480,14 @@ namespace golos { namespace wallet {
 
                 string get_wallet_filename() const { return _wallet_filename; }
 
-                optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const {
+                optional<fc::ecc::private_key> try_get_private_key(const public_key_type& id)const {
                     auto it = _keys.find(id);
                     if( it != _keys.end() )
                         return wif_to_key( it->second );
                     return optional<fc::ecc::private_key>();
                 }
 
-                fc::ecc::private_key              get_private_key(const public_key_type& id)const {
+                fc::ecc::private_key get_private_key(const public_key_type& id)const {
                     auto has_key = try_get_private_key( id );
                     FC_ASSERT( has_key );
                     return *has_key;
@@ -1932,7 +1934,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             }
         }
 
-        annotated_signed_transaction wallet_api::transfer(string from, string to, asset amount, string memo, bool broadcast )
+        annotated_signed_transaction wallet_api::transfer(string from, string to, asset amount, string memo, bool broadcast)
         { try {
                 FC_ASSERT( !is_locked() );
                 check_memo( memo, get_account( from ) );
