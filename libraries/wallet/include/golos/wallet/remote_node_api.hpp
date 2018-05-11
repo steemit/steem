@@ -6,18 +6,18 @@
 #include <golos/plugins/account_history/applied_operation.hpp>
 #include <fc/api.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <golos/plugins/social_network/api_object/tag_api_object.hpp>
-#include <golos/plugins/social_network/api_object/discussion.hpp>
-#include <golos/plugins/social_network/api_object/discussion_query.hpp>
-#include <golos/plugins/social_network/api_object/account_vote.hpp>
-#include <golos/plugins/social_network/api_object/vote_state.hpp>
+#include <golos/plugins/tags/tag_api_object.hpp>
+#include <golos/api/discussion.hpp>
+#include <golos/plugins/tags/discussion_query.hpp>
+#include <golos/api/account_vote.hpp>
+#include <golos/api/vote_state.hpp>
 
 #include <golos/plugins/market_history/market_history_objects.hpp>
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/follow/follow_api_object.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/api/account_api_object.hpp>
-
+#include <golos/plugins/social_network/social_network.hpp>
 
 namespace golos { namespace wallet {
 
@@ -31,10 +31,11 @@ using namespace plugins;
 using namespace plugins::database_api;
 using namespace plugins::follow;
 using namespace plugins::social_network;
+using namespace plugins::tags;
 using namespace plugins::market_history;
-using namespace plugins::social_network;
 using namespace plugins::network_broadcast_api;
 using namespace plugins::private_message;
+using namespace golos::api;
 //using namespace plugins::witness_plugin;
 
 /**
@@ -95,7 +96,7 @@ struct remote_social_network {
     vector< tag_count_object > get_tags_used_by_author( account_name_type );
 
     vector< vote_state > get_active_votes( account_name_type, string );
-    vector< social_network::account_vote > get_account_votes( account_name_type );
+    vector< account_vote > get_account_votes( account_name_type );
 
     discussion get_content( account_name_type, string );
     vector< discussion > get_content_replies( account_name_type, string );
