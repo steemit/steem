@@ -185,8 +185,11 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     DEFINE_API(social_network, get_account_votes) {
-        CHECK_ARG_SIZE(1)
+        CHECK_ARG_MIN_SIZE(1, 3)
         account_name_type voter = args.args->at(0).as<account_name_type>();
+        auto from = GET_OPTIONAL_ARG(1, uint32_t, 0);
+        auto limit = GET_OPTIONAL_ARG(2, uint64_t, DEFAULT_VOTE_LIMIT);
+
         auto& db = pimpl->database();
         return db.with_weak_read_lock([&]() {
             std::vector<account_vote> result;
@@ -197,7 +200,13 @@ namespace golos { namespace plugins { namespace social_network {
             account_object::id_type aid(voter_acnt.id);
             auto itr = idx.lower_bound(aid);
             auto end = idx.upper_bound(aid);
-            while (itr != end) {
+
+            limit += from;
+            for (uint32_t i = 0; itr != end && i < limit; ++itr, ++i) {
+                if (i < from) {
+                    continue;
+                }
+
                 const auto& vo = db.get(itr->comment);
                 account_vote avote;
                 avote.authorperm = vo.author + "/" + to_string(vo.permlink);
@@ -206,7 +215,6 @@ namespace golos { namespace plugins { namespace social_network {
                 avote.percent = itr->vote_percent;
                 avote.time = itr->last_update;
                 result.emplace_back(avote);
-                ++itr;
             }
             return result;
         });
