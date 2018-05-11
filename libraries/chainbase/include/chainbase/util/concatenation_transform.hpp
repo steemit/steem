@@ -23,7 +23,7 @@ namespace ce
 
       private:
 
-         bool current_level_is_active = false;
+         bool current_is_invalidated = false;
          t_items items;
 
          template< typename ITEM >
@@ -37,12 +37,6 @@ namespace ce
 
             auto found = _found->second.find( level );
             return found != _found->second.end();
-         }
-
-         template< typename ITEM >
-         bool allowed( const ITEM& item, uint32_t level )
-         {
-            return exists( item, level );
          }
 
          template< Direction DIRECTION, typename CMP, typename ITEM >
@@ -87,13 +81,18 @@ namespace ce
          {
          }
 
+         bool empty() const
+         {
+            return items.empty();
+         }
+
          template< typename ITEM >
          bool start( const ITEM& current_item, uint32_t current_level )
          {
-            if( items.empty() )
+            if( empty() )
                return false;
 
-            current_level_is_active = allowed( current_item, current_level );
+            current_is_invalidated = exists( current_item, current_level );
 
             return true;
          }
@@ -101,16 +100,14 @@ namespace ce
          template< Direction DIRECTION, typename CMP, typename ITEM >
          void run( CMP& cmp, const ITEM& item, const ITEM& current_item, uint32_t level, uint32_t current_level )
          {
-            bool res = allowed( item, level );
-
-            if( current_level_is_active )
+            if( current_is_invalidated )
             {
                dec< DIRECTION >( cmp, item, current_item );
                inc( cmp, item, current_item );
             }
- 
-            if( res )
-               inc( cmp, item, current_item );
+            else
+               if( DIRECTION == Direction::next )
+                  inc( cmp, item, current_item );
          }
 
          void end()
@@ -126,6 +123,14 @@ namespace ce
                items.insert( std::make_pair( id, levels( { current_level } ) ) );
             else
                found->second.insert( current_level );
+         }
+         
+         modifier& operator=( const modifier& obj )
+         {
+            current_is_invalidated = obj.current_is_invalidated;
+            items = obj.items;
+
+            return *this;
          }
    };
 

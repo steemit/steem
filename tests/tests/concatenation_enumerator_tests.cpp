@@ -2524,7 +2524,7 @@ void modification_test_4()
       id = 1;  val = 19; val2 = 2;  val3 = 1;   (10)
       id = 0;  val = 20; val2 = 1;  val3 = 0;   X
    */
-   BOOST_TEST_MESSAGE( "modifying 4 elements for id:<1-4>" );
+   BOOST_TEST_MESSAGE( "modifying 4 elements for id<1-4>" );
    for( int32_t i = 1; i <= 4; ++i )
    {
       modify< Object >( i/*id*/, id_idx1, [&]( Object& obj ){ obj.val = i * 10; } );
@@ -2568,7 +2568,7 @@ void modification_test_4()
       id = 3;  val = 30; val2 = 4;  val3 = 3;
       id = 4;  val = 40; val2 = 5;  val3 = 4;
    */
-   BOOST_TEST_MESSAGE( "modifying 1 element for id:6" );
+   BOOST_TEST_MESSAGE( "modifying 1 element for id<6>" );
    modify< Object >( 6/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 2; obj.val2 = 0; } );
    modify< Object >( 6/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 2; obj.val2 = 0; } );
    it.get_modifier().add_modify( 6, 1 );
@@ -2592,6 +2592,328 @@ void modification_test_4()
    --it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
    BOOST_REQUIRE( size_t( it->id ) == 11 && it->val == 1 && it->val2 == 12 && it->val3 == 11 );
+
+   /*
+      id = 11; val = 1; val2 = 12; val3 = 11;   (21)  X
+      id = 6;  val = 2; val2 = 0; val3 = 6;     (17)
+      id = 10; val = 3; val2 = 11; val3 = 10;   (13)
+      id = 9;  val = 5; val2 = 10; val3 = 9;    (10)
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 7;  val = 9; val2 = 8;  val3 = 7;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+      id = 4;  val = 40; val2 = 5;  val3 = 4;
+   */
+   BOOST_TEST_MESSAGE( "modifying 4 elements for id<11,6,10,9>" );
+   int id_set[]={ 11, 6, 10, 9 };
+   for( int32_t i = 0; i < 4; ++i )
+   {
+      modify< Object >( id_set[i]/*id*/, id_idx2, [&]( Object& obj ){ obj.val = obj.val + 20 - 5*i; } );
+      modify< Object >( id_set[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = obj.val + 20 - 5*i; } );
+      it.get_modifier().add_modify( id_set[i], 1 );
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+   /*
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 7;  val = 9; val2 = 8;  val3 = 7;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 9;  val = 10; val2 = 10; val3 = 9;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;
+      id = 11; val = 21; val2 = 12; val3 = 11;     X
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+      id = 4;  val = 40; val2 = 5;  val3 = 4;
+   */
+
+   ++it;
+   ++it_comparer;
+   BOOST_REQUIRE( *it == *it_comparer );
+   BOOST_REQUIRE( size_t( it->id ) == 3 && it->val == 30 && it->val2 == 4 && it->val3 == 3 );
+
+   ++it;
+   ++it_comparer;
+   BOOST_REQUIRE( *it == *it_comparer );
+   BOOST_REQUIRE( size_t( it->id ) == 4 && it->val == 40 && it->val2 == 5 && it->val3 == 4 );
+
+   ++it;
+   ++it_comparer;
+   BOOST_REQUIRE( it == it_end );
+   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
+
+   it--;
+   it_comparer--;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   /*
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 7;  val = 9; val2 = 8;  val3 = 7;       (0)
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 9;  val = 10; val2 = 10; val3 = 9;      (0)
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;
+      id = 11; val = 21; val2 = 12; val3 = 11;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+      id = 4;  val = 40; val2 = 5;  val3 = 4;      (0)X
+   */
+   BOOST_TEST_MESSAGE( "modifying 3 elements for id<4,7,9>" );
+   int id_set2[]={ 4, 7, 9 };
+   for( int32_t i = 0; i < 3; ++i )
+   {
+      modify< Object >( id_set2[i]/*id*/, i==0?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 0; } );
+      modify< Object >( id_set2[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 0; } );
+      it.get_modifier().add_modify( id_set2[i], i==0?0:1 );
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;       X
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;
+      id = 11; val = 21; val2 = 12; val3 = 11;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( *it == *it_comparer );
+      ++it;
+      ++it_comparer;
+   }
+   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
+
+   it--;
+   it_comparer--;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   it--;
+   it_comparer--;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   it--;
+   it_comparer--;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;         X
+      id = 11; val = 21; val2 = 12; val3 = 11;  (19)
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+   BOOST_TEST_MESSAGE( "modifying 1 elements for id<11> and change direction from '--' to '++'" );
+   modify< Object >( 11/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 19; } );
+   modify< Object >( 11/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 19; } );
+   it.get_modifier().add_modify( 11, 1 );
+   BOOST_REQUIRE( *it == *it_comparer );
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;   X
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+
+   it++;
+   it_comparer++;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 2;  val = 20; val2 = 3;  val3 = 2;   (5)
+      id = 3;  val = 30; val2 = 4;  val3 = 3;         X
+   */
+   BOOST_TEST_MESSAGE( "modifying 1 elements for id<2> and change direction from '++' to '--'" );
+   modify< Object >( 2/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 5; } );
+   modify< Object >( 2/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 5; } );
+   it.get_modifier().add_modify( 2, 0 );
+   BOOST_REQUIRE( *it == *it_comparer );
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 2;  val = 5; val2 = 3;  val3 = 2;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+
+   for( int i = 0; i < 10; i++ )
+   {
+      --it;
+      it_comparer--;
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+
+   /*
+      id = 4;  val = 0; val2 = 5;  val3 = 4;    (4)
+      id = 7;  val = 0; val2 = 8;  val3 = 7;          X
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 2;  val = 5; val2 = 3;  val3 = 2;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+   BOOST_TEST_MESSAGE( "modifying 1 elements for id<4> and change direction from '--' to '++'" );
+   modify< Object >( 4/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 4; } );
+   modify< Object >( 4/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 4; } );
+   it.get_modifier().add_modify( 4, 0 );
+   BOOST_REQUIRE( *it == *it_comparer );
+   /*
+      id = 7;  val = 0; val2 = 8;  val3 = 7;          X
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 4;  val = 4; val2 = 5;  val3 = 4;
+      id = 2;  val = 5; val2 = 3;  val3 = 2;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+   for( int i = 0; i < 5; i++ )
+   {
+      it++;
+      ++it_comparer;
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
+
+   /*
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 4;  val = 4; val2 = 5;  val3 = 4;
+      id = 2;  val = 5; val2 = 3;  val3 = 2;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 1;  val = 10; val2 = 2;  val3 = 1;      (0)    X
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+   BOOST_TEST_MESSAGE( "modifying 1 elements for id<1>" );
+   modify< Object >( 1/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 0; } );
+   modify< Object >( 1/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 0; } );
+   it.get_modifier().add_modify( 1, 0 );
+   BOOST_REQUIRE( *it == *it_comparer );
+   /*
+      id = 1;  val = 0; val2 = 2;  val3 = 1;       X
+      id = 7;  val = 0; val2 = 8;  val3 = 7;
+      id = 9;  val = 0; val2 = 10; val3 = 9;
+      id = 4;  val = 4; val2 = 5;  val3 = 4;
+      id = 2;  val = 5; val2 = 3;  val3 = 2;
+      id = 8;  val = 7; val2 = 9;  val3 = 8;
+      id = 10; val = 13; val2 = 11; val3 = 10;
+      id = 5;  val = 15; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 19; val2 = 12; val3 = 11;
+      id = 0;  val = 20; val2 = 1;  val3 = 0;
+      id = 3;  val = 30; val2 = 4;  val3 = 3;
+   */
+
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( *it == *it_comparer );
+      it++;
+      ++it_comparer;
+   }
+   BOOST_REQUIRE( it == it_end );
+   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
+
+   /*
+      id = 1;  val = 0; val2 = 2;  val3 = 1;    (40)
+      id = 7;  val = 0; val2 = 8;  val3 = 7;    (39)
+      id = 9;  val = 0; val2 = 10; val3 = 9;    (38)
+      id = 4;  val = 4; val2 = 5;  val3 = 4;    (37)
+      id = 2;  val = 5; val2 = 3;  val3 = 2;    (36)
+      id = 8;  val = 7; val2 = 9;  val3 = 8;    (35)
+      id = 10; val = 13; val2 = 11; val3 = 10;  (34)
+      id = 5;  val = 15; val2 = 6; val3 = 5;    (33)
+      id = 6;  val = 17; val2 = 0; val3 = 6;    (32)
+      id = 11; val = 19; val2 = 12; val3 = 11;  (31)
+      id = 0;  val = 20; val2 = 1;  val3 = 0;   (30)
+      id = 3;  val = 30; val2 = 4;  val3 = 3;   (29)
+                                                   X
+   */
+   BOOST_TEST_MESSAGE( "modifying all elements" );
+   int id_set3[]={ 1, 7, 9, 4, 2, 8, 10, 5, 6, 11, 0, 3 };
+   for( int32_t i = 0; i < 12; ++i )
+   {
+      modify< Object >( id_set3[i]/*id*/, ( id_set3[i] < 6 )?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 40 - i; } );
+      modify< Object >( id_set3[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 40 - i; } );
+      it.get_modifier().add_modify( id_set3[i], ( id_set3[i] < 6 )?0:1 );
+   }
+   /*
+      id = 3;  val = 29; val2 = 4;  val3 = 3;
+      id = 0;  val = 30; val2 = 1;  val3 = 0;
+      id = 11; val = 31; val2 = 12; val3 = 11;
+      id = 6;  val = 32; val2 = 0; val3 = 6;
+      id = 5;  val = 33; val2 = 6; val3 = 5;
+      id = 10; val = 34; val2 = 11; val3 = 10;
+      id = 8;  val = 35; val2 = 9;  val3 = 8;
+      id = 2;  val = 36; val2 = 3;  val3 = 2;
+      id = 4;  val = 37; val2 = 5;  val3 = 4;
+      id = 9;  val = 38; val2 = 10; val3 = 9;
+      id = 7;  val = 39; val2 = 8;  val3 = 7;
+      id = 1;  val = 40; val2 = 2;  val3 = 1;
+                                                   X
+   */
+
+   for( int i = 0; i < 12; i++ )
+   {
+      --it;
+      --it_comparer;
+      BOOST_REQUIRE( *it == *it_comparer );
+   }
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)

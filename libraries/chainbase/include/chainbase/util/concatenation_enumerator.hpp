@@ -96,6 +96,8 @@ namespace ce
          virtual abstract_sub_enumerator* create() = 0;
 
          virtual int32_t get_tag() const = 0;
+
+         virtual void set_iterator( bool begin_pos ) = 0;
    };
 
    template< typename COLLECTION_POINTER, typename ITERATOR, typename OBJECT, typename CMP >
@@ -202,7 +204,7 @@ namespace ce
             inactive = val;
          }
 
-         bool is_inactive() const
+         bool is_inactive() const override
          {
             return inactive;
          }
@@ -213,6 +215,14 @@ namespace ce
          }
 
          int32_t get_tag() const{ return tag; };
+
+         void set_iterator( bool begin_pos ) override
+         {
+            if( begin_pos )
+               it = collection->begin();
+            else
+               it = it_end;
+         }
    };
 
    template< typename CMP, typename DIRECTION >
@@ -358,13 +368,21 @@ namespace ce
          }
 
          template< Direction DIRECTION >
-         bool change_direction()
+         bool is_changed()
          {
             //Direction is still the same.
             if( direction == DIRECTION )
                return false;
 
             direction = DIRECTION;
+
+            return true;
+         }
+
+         template< Direction DIRECTION >
+         void change_direction()
+         {
+            assert( direction == DIRECTION );
 
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
@@ -388,7 +406,6 @@ namespace ce
                                              return *item == *item2;
                                        }
                                     );
-               return true;
             }
             else if( DIRECTION == Direction::next )
             {
@@ -413,10 +430,7 @@ namespace ce
                                              return *item == *item2;
                                        }
                                     );
-               return true;
             }
-
-            return false;
          }
 
          template< int32_t position, typename COLLECTION >
@@ -427,7 +441,7 @@ namespace ce
 
             if( row.size() < 2 )
             {
-               idx.current = ( row.size() == 0 ) ? position : ( ( *row.begin() )->get_tag() );
+               idx.current = ( row.empty() ) ? position : ( ( *row.begin() )->get_tag() );
                return;
             }
 
@@ -527,7 +541,17 @@ namespace ce
          void reorder()
          {
             if( idx.current == position )
+            {
+               if( !_modifier.empty() )
+               {
+                  for( size_t i = 0 ; i < iterators.size(); ++i )
+                     iterators[ i ]->set_iterator( position == pos_begin );
+
+                  _modifier.end();
+               }
+
                return;
+            }
 
             assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
 
@@ -536,14 +560,7 @@ namespace ce
 
             for( size_t i = 0 ; i < iterators.size(); ++i )
             {
-               if
-               (
-                  static_cast< int32_t >( i ) != idx.current &&
-                  (
-                     ( DIRECTION == Direction::next && !iterators[ i ]->is_inactive() ) ||
-                     ( DIRECTION == Direction::prev && !iterators[ i ]->end() ) 
-                  )
-               )
+               if( static_cast< int32_t >( i ) != idx.current )
                   _modifier.run< DIRECTION >( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
             }
 
@@ -555,20 +572,24 @@ namespace ce
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
+            bool changed = is_changed< DIRECTION >();
+
             if( DIRECTION == Direction::next )
             {
                if( REORDER )
                   reorder< pos_begin, DIRECTION >();
 
-               if( !change_direction< Direction::next >() )
+               if( !changed )
                   move_impl< pos_end >( []( const pitem& item ){ ++( *item ); } );
+               else
+                  change_direction< Direction::next >();
             }
             else
             {
                if( REORDER )
                   reorder< pos_end, DIRECTION >();
 
-               if( !change_direction< Direction::prev >() )
+               if( !changed )
                   move_impl< pos_begin >( []( const pitem& item )
                                                    {
                                                       if( item->begin() )
@@ -577,6 +598,8 @@ namespace ce
                                                          --( *item );
                                                    }
                                                 );
+               else
+                  change_direction< Direction::prev >();
             }
          }
 
@@ -746,6 +769,8 @@ namespace ce
             idx.current = obj.idx.current;
 
             copy_iterators( obj );
+
+            _modifier = obj._modifier;
 
             return *this;
          }
