@@ -394,15 +394,6 @@ namespace golos { namespace plugins { namespace tags {
         std::string language;
     };
 
-    // Needed for correct work of golos::api::discussion_helper::set_pending_payout
-    void fill_promoted( discussion & d, golos::chain::database& db) { 
-        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
-        auto itr = cidx.lower_bound(d.id);
-        if (itr != cidx.end() && itr->comment == d.id) {
-            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
-        }
-    }
-
 } } } // golos::plugins::tags::tags
 
 

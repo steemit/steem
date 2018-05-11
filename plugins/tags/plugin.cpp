@@ -33,9 +33,6 @@ namespace golos { namespace plugins { namespace tags {
     using golos::chain::feed_history_object;
     using golos::api::discussion_helper;
 
-
-
-
     struct tags_plugin::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
             helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );

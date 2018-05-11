@@ -71,4 +71,8 @@ namespace golos { namespace plugins { namespace tags {
         } /// ignore all other ops
     };
 
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout
+    void fill_promoted( discussion & d, golos::chain::database& db);
+    
+
 } } } // golos::plugins::tags
