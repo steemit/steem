@@ -5,7 +5,7 @@
 #include <golos/chain/account_object.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace golos { namespace plugins { namespace social_network { namespace tags {
+namespace golos { namespace plugins { namespace tags {
 
     struct operation_visitor {
         operation_visitor(database& db);
@@ -71,4 +71,8 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         } /// ignore all other ops
     };
 
-} } } } // golos::plugins::social_network::tags
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout
+    void fill_promoted( discussion & d, golos::chain::database& db);
+    
+
+} } } // golos::plugins::tags

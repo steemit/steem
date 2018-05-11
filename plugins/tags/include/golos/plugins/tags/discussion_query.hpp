@@ -14,15 +14,18 @@
 #include <golos/chain/comment_object.hpp>
 #include <golos/chain/account_object.hpp>
 
-#include <golos/plugins/social_network/api_object/discussion.hpp>
+#include <golos/api/discussion.hpp>
 
 #ifndef DEFAULT_VOTE_LIMIT
 #  define DEFAULT_VOTE_LIMIT 10000
 #endif
 
-namespace golos { namespace plugins { namespace social_network {
+namespace golos { namespace plugins { namespace tags {
     using golos::chain::account_object;
     using golos::chain::comment_object;
+    using golos::api::comment_api_object;
+    using golos::api::discussion;
+    
     /**
      * @class discussion_query
      * @brief The discussion_query structure implements the RPC API param set.
@@ -101,12 +104,12 @@ namespace golos { namespace plugins { namespace social_network {
         }
     };
 
-} } } // golos::plugins::social_network
+} } } // golos::plugins::tags
 
-FC_REFLECT(
-    (golos::plugins::social_network::discussion_query),
+FC_REFLECT((golos::plugins::tags::discussion_query),
         (select_tags)(filter_tags)(select_authors)(truncate_body)(vote_limit)
         (start_author)(start_permlink)(parent_author)
-        (parent_permlink)(limit)(select_languages)(filter_languages));
+        (parent_permlink)(limit)(select_languages)(filter_languages)
+);
 
 #endif //GOLOS_DISCUSSION_QUERY_H

@@ -26,6 +26,10 @@ namespace golos {
             using golos::chain::by_name;
 
             share_type get_account_reputation(const account_name_type& account) {
+                if (!database().has_index<follow::reputation_index>()) {
+                    return 0;
+                }
+
                 auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
                 auto itr = rep_idx.find(account);
 
@@ -551,7 +555,7 @@ namespace golos {
                 while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_feed_entry entry;
-                    entry.comment = social_network::comment_api_object(comment, db);
+                    entry.comment = comment_api_object(comment, db);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
                         //entry.reblog_by = itr->first_reblogged_by;
@@ -623,7 +627,7 @@ namespace golos {
                 while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_blog_entry entry;
-                    entry.comment = social_network::comment_api_object(comment, db);
+                    entry.comment = comment_api_object(comment, db);
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;

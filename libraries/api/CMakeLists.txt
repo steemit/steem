@@ -3,11 +3,17 @@ set(CURRENT_TARGET api)
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/api/extended_account.hpp
     include/golos/api/account_api_object.hpp
-
+    include/golos/api/comment_api_object.hpp
+    include/golos/api/discussion.hpp
+    include/golos/api/vote_state.hpp
+    include/golos/api/account_vote.hpp
+    include/golos/api/discussion_helper.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
     account_api_object.cpp
+    discussion_helper.cpp
+
 )
 
 if(BUILD_SHARED_LIBRARIES)

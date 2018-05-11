@@ -1,8 +1,8 @@
 #include <boost/algorithm/string.hpp>
-#include <golos/plugins/social_network/api_object/discussion_query.hpp>
-#include <golos/plugins/social_network/tag/tags_object.hpp>
+#include <golos/plugins/tags/discussion_query.hpp>
+#include <golos/plugins/tags/tags_object.hpp>
 
-namespace golos { namespace plugins { namespace social_network {
+namespace golos { namespace plugins { namespace tags {
 
     void tags_to_lower(std::set<std::string>& tags) {
         auto src = std::move(tags);
@@ -58,5 +58,5 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
-} } } // golos::plugins::social_network
+} } } // golos::plugins::tags
 

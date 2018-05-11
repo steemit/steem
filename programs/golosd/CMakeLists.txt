@@ -26,6 +26,7 @@ target_link_libraries(
         golos::database_api
         golos::test_api_plugin
         golos::social_network
+        golos::tags
         golos::market_history
         golos::statsd
         golos::account_by_key

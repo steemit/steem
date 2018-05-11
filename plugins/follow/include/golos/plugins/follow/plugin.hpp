@@ -11,6 +11,8 @@ namespace golos { namespace plugins { namespace follow {
     using golos::api::extended_account;
     using golos::api::account_api_object;
 
+    share_type get_account_reputation(const account_name_type& account);
+    
     ///               API,                          args,       return
     DEFINE_API_ARGS(get_followers,           msg_pack, std::vector<follow_api_object>)
     DEFINE_API_ARGS(get_following,           msg_pack, std::vector<follow_api_object>)

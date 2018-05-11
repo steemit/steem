@@ -1,8 +1,16 @@
 #include <boost/algorithm/string.hpp>
-#include <golos/plugins/social_network/tag/tag_visitor.hpp>
+#include <golos/plugins/tags/tag_visitor.hpp>
 
-namespace golos { namespace plugins { namespace social_network { namespace tags {
+namespace golos { namespace plugins { namespace tags {
 
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout and etc api methods
+    void fill_promoted( discussion & d, golos::chain::database& db) { 
+        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+        auto itr = cidx.lower_bound(d.id);
+        if (itr != cidx.end() && itr->comment == d.id) {
+            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
+        }
+    }
 
     operation_visitor::operation_visitor(database& db)
         : db_(db) {
@@ -328,39 +336,4 @@ namespace golos { namespace plugins { namespace social_network { namespace tags 
         update_tags(op.author, op.permlink);
     }
 
-    comment_metadata get_metadata(const comment_api_object &c) {
-
-        comment_metadata meta;
-
-        if (!c.json_metadata.empty()) {
-            try {
-                meta = fc::json::from_string(c.json_metadata).as<comment_metadata>();
-            } catch (const fc::exception& e) {
-                // Do nothing on malformed json_metadata
-            }
-        }
-
-        std::set<std::string> lower_tags;
-
-        std::size_t tag_limit = 5;
-        for (const auto& name : meta.tags) {
-            if (lower_tags.size() > tag_limit) {
-                break;
-            }
-            auto value = boost::trim_copy(name);
-            if (value.empty()) {
-                continue;
-            }
-            boost::to_lower(value);
-            lower_tags.insert(value);
-        }
-
-        meta.tags.swap(lower_tags);
-
-        boost::trim(meta.language);
-        boost::to_lower(meta.language);
-
-        return meta;
-    }
-
-} } } } // golos::plugins::social_network::tags
+} } } // golos::plugins::tags
