@@ -139,6 +139,13 @@ namespace golos { namespace wallet {
             /**
              * @ingroup Transaction Builder API
              */
+            void add_operation_copy_to_builder_transaction(
+                transaction_handle_type src_handle, transaction_handle_type dst_handle, uint32_t op_index
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
             void replace_operation_in_builder_transaction(
                 transaction_handle_type handle, unsigned op_index, const operation& op
             );
@@ -1154,6 +1161,7 @@ FC_API( golos::wallet::wallet_api,
                 /// helper api
                 (begin_builder_transaction)
                 (add_operation_to_builder_transaction)
+                (add_operation_copy_to_builder_transaction)
                 (replace_operation_in_builder_transaction)
                 (preview_builder_transaction)
                 (sign_builder_transaction)

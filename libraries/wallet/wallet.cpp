@@ -375,6 +375,19 @@ namespace golos { namespace wallet {
                     _builder_transactions[handle].operations.emplace_back(op);
                 }
 
+                void add_operation_copy_to_builder_transaction(
+                    transaction_handle_type src_handle,
+                    transaction_handle_type dst_handle,
+                    uint32_t op_index
+                ) {
+                    FC_ASSERT(_builder_transactions.count(src_handle));
+                    FC_ASSERT(_builder_transactions.count(dst_handle));
+                    signed_transaction& trx = _builder_transactions[src_handle];
+                    FC_ASSERT(op_index < trx.operations.size());
+                    const auto op = trx.operations[op_index];
+                    _builder_transactions[dst_handle].operations.emplace_back(op);
+                }
+
                 void replace_operation_in_builder_transaction(
                     transaction_handle_type handle,
                     uint32_t op_index,
@@ -393,7 +406,6 @@ namespace golos { namespace wallet {
 
                 signed_transaction sign_builder_transaction(transaction_handle_type handle, bool broadcast) {
                     FC_ASSERT(_builder_transactions.count(handle));
-
                     return _builder_transactions[handle] = sign_transaction(_builder_transactions[handle], broadcast);
                 }
 
@@ -1234,6 +1246,13 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
         void wallet_api::add_operation_to_builder_transaction(transaction_handle_type handle, const operation& op) {
             my->add_operation_to_builder_transaction(handle, op);
+        }
+        void wallet_api::add_operation_copy_to_builder_transaction(
+            transaction_handle_type src_handle,
+            transaction_handle_type dst_handle,
+            uint32_t op_index
+        ) {
+            my->add_operation_copy_to_builder_transaction(src_handle, dst_handle, op_index);
         }
 
         void wallet_api::replace_operation_in_builder_transaction(
