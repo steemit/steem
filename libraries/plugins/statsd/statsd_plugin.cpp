@@ -62,13 +62,13 @@ namespace detail
       std::string host;
       uint32_t port = 0;
 
-      if( _statsd_endpoint )
+      if( _statsd_endpoint.valid() )
       {
          host = std::string( _statsd_endpoint->get_address() );
          port = _statsd_endpoint->port();
       }
 
-      _statsd.reset( new StatsdClient( host, port, "steemd", _statsd_batchsize ) );
+      _statsd.reset( new StatsdClient( host, port, "steemd.", _statsd_batchsize ) );
       _started = true;
    }
 

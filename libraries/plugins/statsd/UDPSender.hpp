@@ -158,6 +158,9 @@ UDPSender::UDPSender(const std::string &host,
                      const uint16_t port,
                      const fc::optional<uint64_t> batchsize) noexcept
     : m_host(host), m_port(port) {
+
+    m_disable_udp = ( host == "" ) || ( port == 0 );
+
     // If batching is on, use a dedicated thread to send every now and then
     if (batchsize.valid()) {
         // Thread' sleep duration between batches
@@ -207,7 +210,7 @@ void UDPSender::setConfig(const std::string &host, const uint16_t port) noexcept
 
     m_isInitialized = false;
 
-    m_disable_udp = host == "" || port == 0;
+    m_disable_udp = ( host == "" ) || ( port == 0 );
 
     if (m_socket >= 0) {
         close(m_socket);

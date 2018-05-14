@@ -61,43 +61,43 @@ class statsd_timer_helper
 } } } } // steem::plugins::statsd::util
 
 #define STATSD_INCREMENT( NAMESPACE, STAT, KEY, FREQ )   \
-if( steem::plugins::statsd::util::statsd_enabled )        \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
 {                                                        \
-   steem::plugins::statsd::util::get_statsd().increment(  \
+   steem::plugins::statsd::util::get_statsd().increment( \
       #NAMESPACE, #STAT, #KEY, FREQ                      \
    );                                                    \
 }
 
 #define STATSD_DECREMENT( NAMESPACE, STAT, KEY, FREQ )   \
-if( steem::plugins::statsd::util::statsd_enabled )        \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
 {                                                        \
-   steem::plugins::statsd::util::get_statsd().decrement(  \
+   steem::plugins::statsd::util::get_statsd().decrement( \
       #NAMESPACE, #STAT, #KEY, FREQ                      \
    );                                                    \
 }
 
 #define STATSD_COUNT( NAMESPACE, STAT, KEY, VAL, FREQ )  \
-if( steem::plugins::statsd::util::statsd_enabled )        \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
 {                                                        \
-   steem::plugins::statsd::util::get_statsd().count(      \
+   steem::plugins::statsd::util::get_statsd().count(     \
       #NAMESPACE, #STAT, #KEY, VAL, FREQ                 \
    );                                                    \
 }
 
 #define STATSD_GAUGE( NAMESPACE, STAT, KEY, VAL, FREQ )  \
-if( steem::plugins::statsd::util::statsd_enabled )        \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
 {                                                        \
-   steem::plugins::statsd::util::get_statsd().gauge(      \
+   steem::plugins::statsd::util::get_statsd().gauge(     \
       #NAMESPACE, #STAT, #KEY, VAL, FREQ                 \
    );                                                    \
 }
 
 #define STATSD_START_TIMER( NAMESPACE, STAT, KEY, FREQ )                                              \
-fc::optional< steem::plugins::statsd::util::statsd_timer_helper > NAMESPACE ## STAT ## KEY ## _timer;  \
-if( steem::plugins::statsd::util::statsd_enabled )                                                     \
+fc::optional< steem::plugins::statsd::util::statsd_timer_helper > NAMESPACE ## STAT ## KEY ## _timer; \
+if( steem::plugins::statsd::util::statsd_enabled() )                                                  \
 {                                                                                                     \
-   NAMESPACE ## STAT ## KEY ## _timer = steem::plugins::statsd::util::statsd_timer_helper(             \
-      #NAMESPACE, #STAT, #KEY, FREQ, steem::plugins::statsd::util::get_statsd()                        \
+   NAMESPACE ## STAT ## KEY ## _timer = steem::plugins::statsd::util::statsd_timer_helper(            \
+      #NAMESPACE, #STAT, #KEY, FREQ, steem::plugins::statsd::util::get_statsd()                       \
    );                                                                                                 \
 }
 
