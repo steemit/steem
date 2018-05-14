@@ -250,7 +250,7 @@ void verify_authority_accounts_exist(
 }
 
 void initialize_account_object( account_object& acc, const account_name_type& name, const public_key_type& key,
-   const dynamic_global_property_object& props, bool mined, const account_name_type& recovery_account )
+   const dynamic_global_property_object& props, bool mined, const account_name_type& recovery_account, uint32_t hardfork )
 {
    acc.name = name;
    acc.memo_key = key;
@@ -258,10 +258,10 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.last_vote_time = props.time;
    acc.mined = mined;
 
-   if( _db.has_hardfork( STEEM_HARDFORK_0_11 ) )
+   if( hardfork >= STEEM_HARDFORK_0_11 )
    {
       FC_TODO( "If after HF 20, there are no temp account creations, the HF check can be removed." )
-      if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1782 ) || o.creator != STEEM_TEMP_ACCOUNT )
+      if( ( hardfork < STEEM_HARDFORK_0_20__1782 ) || ( recovery_account != STEEM_TEMP_ACCOUNT ) )
       {
          acc.recovery_account = recovery_account;
       }
@@ -308,7 +308,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
-      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator );
+      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
       #ifndef IS_LOW_MEM
          from_string( acc.json_metadata, o.json_metadata );
       #endif
@@ -381,7 +381,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
-      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator );
+      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
       acc.received_vesting_shares = o.delegation;
 
       #ifndef IS_LOW_MEM
@@ -1579,7 +1579,7 @@ void pow_apply( database& db, Operation o )
    {
       db.create< account_object >( [&]( account_object& acc )
       {
-         initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/, account_name_type() );
+         initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/, account_name_type(), db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
 
@@ -1692,7 +1692,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       FC_ASSERT( o.new_owner_key.valid(), "New owner key is not valid." );
       db.create< account_object >( [&]( account_object& acc )
       {
-         initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, account_name_type() );
+         initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, account_name_type(), _db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
 

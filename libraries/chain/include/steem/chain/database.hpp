@@ -439,6 +439,8 @@ namespace steem { namespace chain {
 
          bool has_hardfork( uint32_t hardfork )const;
 
+         uint32_t get_hardfork()const;
+
          /* For testing and debugging only. Given a hardfork
             with id N, applies all hardforks with id <= N */
          void set_hardfork( uint32_t hardfork, bool process_now = true );
@@ -468,7 +470,7 @@ namespace steem { namespace chain {
           * @return a list of available NAIs.
          */
          vector< asset_symbol_type > get_smt_next_identifier();
-         
+
          ///@}
 #endif
 
