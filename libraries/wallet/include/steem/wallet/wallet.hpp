@@ -206,7 +206,7 @@ class wallet_api
       /**
        * Returns transaction by ID.
        */
-      annotated_signed_transaction get_transaction( transaction_id_type trx_id )const;
+      condenser_api::legacy_signed_transaction get_transaction( transaction_id_type trx_id )const;
 
       /** Checks whether the wallet has just been created and has not yet had a password set.
        *

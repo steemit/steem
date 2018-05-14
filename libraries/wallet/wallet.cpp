@@ -2195,7 +2195,7 @@ void wallet_api::set_transaction_expiration(uint32_t seconds)
    my->set_transaction_expiration(seconds);
 }
 
-annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
+condenser_api::legacy_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_api->get_transaction( id );
 }
 
