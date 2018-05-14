@@ -7,8 +7,7 @@ namespace golos { namespace api {
     *  Convert's vesting shares
     */
     struct extended_account : public account_api_object {
-        extended_account() {
-        }
+        extended_account() = default;
 
         extended_account(const account_object &a, const golos::chain::database &db)
                 : account_api_object(a, db) {
@@ -19,7 +18,7 @@ namespace golos { namespace api {
 
 } } // golos::api
 
-FC_REFLECT_DERIVED((golos::api::extended_account),
-        ((golos::api::account_api_object)),
-        (reputation)
-   )
+FC_REFLECT_DERIVED(
+    (golos::api::extended_account),
+    ((golos::api::account_api_object)),
+    (reputation))

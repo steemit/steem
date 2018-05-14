@@ -250,7 +250,7 @@ namespace golos { namespace plugins { namespace account_by_key {
                     my.reset(new account_by_key_plugin_impl(*this));
                     golos::chain::database &db = appbase::app().get_plugin<golos::plugins::chain::plugin>().db();
 
-                    db.pre_apply_operation.connect([&](const operation_notification &o) { my->pre_operation(o); });
+                    db.pre_apply_operation.connect([&](operation_notification &o) { my->pre_operation(o); });
                     db.post_apply_operation.connect([&](const operation_notification &o) { my->post_operation(o); });
 
                     add_plugin_index<key_lookup_index>(db);

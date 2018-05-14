@@ -13,7 +13,7 @@ list(APPEND CURRENT_TARGET_HEADERS
 list(APPEND CURRENT_TARGET_SOURCES
     account_api_object.cpp
     discussion_helper.cpp
-
+    comment_api_object.cpp
 )
 
 if(BUILD_SHARED_LIBRARIES)

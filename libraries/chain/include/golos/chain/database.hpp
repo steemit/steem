@@ -274,7 +274,7 @@ namespace golos {
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
              */
-            fc::signal<void(const operation_notification &)> pre_apply_operation;
+            fc::signal<void(operation_notification &)> pre_apply_operation;
             fc::signal<void(const operation_notification &)> post_apply_operation;
 
             /**

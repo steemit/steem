@@ -12,6 +12,8 @@ namespace golos {
             operation_notification(const operation &o) : op(o) {
             }
 
+            bool stored_in_db = false;
+            int64_t db_id = 0;
             transaction_id_type trx_id;
             uint32_t block = 0;
             uint32_t trx_in_block = 0;

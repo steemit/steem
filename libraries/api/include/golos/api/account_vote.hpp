@@ -3,8 +3,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/time.hpp>
 
-namespace golos {
-namespace api {
+namespace golos { namespace api {
 
     struct account_vote {
         std::string authorperm;

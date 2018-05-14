@@ -31,7 +31,6 @@ namespace golos { namespace plugins { namespace tags {
     DEFINE_API_ARGS(get_discussions_by_blog,               msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_comments,           msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_promoted,           msg_pack, std::vector<discussion>)
-    DEFINE_API_ARGS(get_replies_by_last_update,            msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_author_before_date, msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_languages,                         msg_pack, get_languages_result);
 
@@ -48,7 +47,6 @@ namespace golos { namespace plugins { namespace tags {
             *  Return the active discussions with the highest cumulative pending payouts without respect to category,
             *  total pending payout means the pending payout of all children as well.
             */
-            (get_replies_by_last_update)
             (get_trending_tags)
 
             /**
@@ -173,6 +171,9 @@ namespace golos { namespace plugins { namespace tags {
         struct impl;
         std::unique_ptr<impl> pimpl;
     };
+
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout
+    void fill_promoted(discussion& d, golos::chain::database& db);
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::get_languages_result), (languages))

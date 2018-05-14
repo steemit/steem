@@ -398,7 +398,7 @@ namespace golos {
                     auto &db = pimpl->database();
                     pimpl->plugin_initialize(*this);
 
-                    db.pre_apply_operation.connect([&](const operation_notification &o) {
+                    db.pre_apply_operation.connect([&](operation_notification &o) {
                         pimpl->pre_operation(o, *this);
                     });
                     db.post_apply_operation.connect([&](const operation_notification &o) {

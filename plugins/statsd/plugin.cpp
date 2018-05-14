@@ -313,7 +313,7 @@ void plugin::plugin_initialize(const boost::program_options::variables_map& opti
             _my->on_block(b);
         });
 
-        db.pre_apply_operation.connect([&](const operation_notification &o) {
+        db.pre_apply_operation.connect([&](operation_notification &o) {
             _my->pre_operation(o);
         });
 

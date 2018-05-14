@@ -3,11 +3,9 @@
 #include <golos/chain/index.hpp>
 #include <golos/api/vote_state.hpp>
 #include <golos/chain/steem_objects.hpp>
-#include <golos/plugins/tags/discussion_query.hpp>
 #include <golos/api/discussion_helper.hpp>
 // These visitors creates additional tables, we don't really need them in LOW_MEM mode
-#include <golos/plugins/tags/tag_visitor.hpp>
-#include <golos/chain/operation_notification.hpp>
+#include <golos/plugins/tags/plugin.hpp>
 
 #define CHECK_ARG_SIZE(_S)                                 \
    FC_ASSERT(                                              \
@@ -26,33 +24,20 @@
    (args.args->at(_I).as<_T>()) :      \
    static_cast<_T>(_D)
 
-namespace golos { namespace plugins { namespace social_network {
+#ifndef DEFAULT_VOTE_LIMIT
+#  define DEFAULT_VOTE_LIMIT 10000
+#endif
 
-    using golos::chain::feed_history_object;
-    using golos::plugins::tags::discussion_query;
+namespace golos { namespace plugins { namespace social_network {
     using golos::plugins::tags::fill_promoted;
     using golos::api::discussion_helper;
 
-
     struct social_network::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
-            helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );
+            helper = std::make_unique<discussion_helper>(database_);
         }
 
-        ~impl() {}
-
-        void on_operation(const operation_notification& note) {
-#ifndef IS_LOW_MEM
-            try {
-                /// plugins shouldn't ever throw
-                note.op.visit(tags::operation_visitor(database()));
-            } catch (const fc::exception& e) {
-                edump((e.to_detail_string()));
-            } catch (...) {
-                elog("unhandled exception");
-            }
-#endif
-        }
+        ~impl() = default;
 
         golos::chain::database& database() {
             return database_;
@@ -61,7 +46,6 @@ namespace golos { namespace plugins { namespace social_network {
         golos::chain::database& database() const {
             return database_;
         }
-
 
         void select_active_votes (
             std::vector<vote_state>& result, uint32_t& total_count,
@@ -80,10 +64,6 @@ namespace golos { namespace plugins { namespace social_network {
             const std::string& author, const std::string& permlink, uint32_t vote_limit
         ) const;
 
-        void set_pending_payout(discussion& d) const;
-
-        void set_url(discussion& d) const;
-
         std::vector<discussion> get_replies_by_last_update(
             account_name_type start_parent_author, std::string start_permlink,
             uint32_t limit, uint32_t vote_limit
@@ -93,11 +73,6 @@ namespace golos { namespace plugins { namespace social_network {
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit) const ;
         share_type get_account_reputation ( const account_name_type& account ) const ;
-
-
-        discussion create_discussion(const comment_object& o) const;
-        discussion create_discussion(const comment_object& o, const discussion_query& query) const;
-        void fill_discussion(discussion& d, const discussion_query& query) const;
 
     private:
         golos::chain::database& database_;
@@ -120,42 +95,6 @@ namespace golos { namespace plugins { namespace social_network {
         helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
     }
 
-    void social_network::impl::fill_discussion(discussion& d, const discussion_query& query) const {
-        set_url(d);
-        set_pending_payout(d);
-        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, query.vote_limit);
-        d.body_length = static_cast<uint32_t>(d.body.size());
-        if (query.truncate_body) {
-            if (d.body.size() > query.truncate_body) {
-                d.body.erase(query.truncate_body);
-            }
-
-            if (!fc::is_utf8(d.title)) {
-                d.title = fc::prune_invalid_utf8(d.title);
-            }
-
-            if (!fc::is_utf8(d.body)) {
-                d.body = fc::prune_invalid_utf8(d.body);
-            }
-
-            if (!fc::is_utf8(d.json_metadata)) {
-                d.json_metadata = fc::prune_invalid_utf8(d.json_metadata);
-            }
-        }
-    }
-
-    discussion social_network::impl::create_discussion(const comment_object& o) const {
-        return helper->create_discussion(o);
-    }
-
-    discussion social_network::impl::create_discussion(const comment_object& o, const discussion_query& query) const {
-
-        discussion d = create_discussion(o);
-        fill_discussion(d, query);
-
-        return d;
-    }
-
     void social_network::plugin_startup() {
         wlog("social_network plugin: plugin_startup()");
     }
@@ -165,12 +104,11 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     const std::string& social_network::name() {
-        static std::string name = "social_network";
+        static const std::string name = "social_network";
         return name;
     }
 
-    social_network::social_network() {
-    }
+    social_network::social_network() = default;
 
     void social_network::set_program_options(
         boost::program_options::options_description&,
@@ -179,23 +117,11 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     void social_network::plugin_initialize(const boost::program_options::variables_map& options) {
-        pimpl.reset(new impl());
-// Disable index creation for tag visitor
-#ifndef IS_LOW_MEM
-        auto& db = pimpl->database();
-        db.post_apply_operation.connect([&](const operation_notification& note) {
-            pimpl->on_operation(note);
-        });
-#endif
-        JSON_RPC_REGISTER_API (name());
-
+        pimpl = std::make_unique<impl>();
+        JSON_RPC_REGISTER_API(name());
     }
 
     social_network::~social_network() = default;
-
-    void social_network::impl::set_url(discussion& d) const {
-        helper->set_url(d);
-    }
 
     void social_network::impl::select_content_replies(
         std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
@@ -258,66 +184,12 @@ namespace golos { namespace plugins { namespace social_network {
         });
     }
 
-    boost::multiprecision::uint256_t to256(const fc::uint128_t& t) {
-        boost::multiprecision::uint256_t result(t.high_bits());
-        result <<= 65;
-        result += t.low_bits();
-        return result;
-    }
-
-    void social_network::impl::set_pending_payout(discussion& d) const {
-        auto& db = database();
-#ifndef IS_LOW_MEM
-        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
-        auto itr = cidx.lower_bound(d.id);
-        if (itr != cidx.end() && itr->comment == d.id) {
-            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
-        }
-#endif
-        const auto& props = db.get_dynamic_global_properties();
-        const auto& hist = db.get_feed_history();
-        asset pot = props.total_reward_fund_steem;
-        if (!hist.current_median_history.is_null()) {
-            pot = pot * hist.current_median_history;
-        }
-
-        u256 total_r2 = to256(props.total_reward_shares2);
-
-        if (props.total_reward_shares2 > 0) {
-            auto vshares = db.calculate_vshares(d.net_rshares.value > 0 ? d.net_rshares.value : 0);
-
-            u256 r2 = to256(vshares); //to256(abs_net_rshares);
-            r2 *= pot.amount.value;
-            r2 /= total_r2;
-
-            u256 tpp = to256(d.children_rshares2);
-            tpp *= pot.amount.value;
-            tpp /= total_r2;
-
-            d.pending_payout_value = asset(static_cast<uint64_t>(r2), pot.symbol);
-            d.total_pending_payout_value = asset(static_cast<uint64_t>(tpp), pot.symbol);
-
-            d.author_reputation = get_account_reputation(d.author);
-
-        }
-
-        if (d.parent_author != STEEMIT_ROOT_POST_PARENT) {
-            d.cashout_time = db.calculate_discussion_payout_time(db.get<comment_object>(d.id));
-        }
-
-        if (d.body.size() > 1024 * 128) {
-            d.body = "body pruned due to size";
-        }
-        if (d.parent_author.size() > 0 && d.body.size() > 1024 * 16) {
-            d.body = "comment pruned due to size";
-        }
-
-        set_url(d);
-    }
-
     DEFINE_API(social_network, get_account_votes) {
-        CHECK_ARG_SIZE(1)
+        CHECK_ARG_MIN_SIZE(1, 3)
         account_name_type voter = args.args->at(0).as<account_name_type>();
+        auto from = GET_OPTIONAL_ARG(1, uint32_t, 0);
+        auto limit = GET_OPTIONAL_ARG(2, uint64_t, DEFAULT_VOTE_LIMIT);
+
         auto& db = pimpl->database();
         return db.with_weak_read_lock([&]() {
             std::vector<account_vote> result;
@@ -328,7 +200,13 @@ namespace golos { namespace plugins { namespace social_network {
             account_object::id_type aid(voter_acnt.id);
             auto itr = idx.lower_bound(aid);
             auto end = idx.upper_bound(aid);
-            while (itr != end) {
+
+            limit += from;
+            for (uint32_t i = 0; itr != end && i < limit; ++itr, ++i) {
+                if (i < from) {
+                    continue;
+                }
+
                 const auto& vo = db.get(itr->comment);
                 account_vote avote;
                 avote.authorperm = vo.author + "/" + to_string(vo.permlink);
@@ -337,7 +215,6 @@ namespace golos { namespace plugins { namespace social_network {
                 avote.percent = itr->vote_percent;
                 avote.time = itr->last_update;
                 result.emplace_back(avote);
-                ++itr;
             }
             return result;
         });
@@ -372,6 +249,55 @@ namespace golos { namespace plugins { namespace social_network {
             uint32_t total_count;
             pimpl->select_active_votes(result, total_count, author, permlink, limit);
             return result;
+        });
+    }
+
+    std::vector<discussion> social_network::impl::get_replies_by_last_update(
+        account_name_type start_parent_author,
+        std::string start_permlink,
+        uint32_t limit,
+        uint32_t vote_limit
+    ) const {
+        std::vector<discussion> result;
+#ifndef IS_LOW_MEM
+        auto& db = database();
+        const auto& last_update_idx = db.get_index<comment_index>().indices().get<by_last_update>();
+        auto itr = last_update_idx.begin();
+        const account_name_type* parent_author = &start_parent_author;
+
+        if (start_permlink.size()) {
+            const auto& comment = db.get_comment(start_parent_author, start_permlink);
+            itr = last_update_idx.iterator_to(comment);
+            parent_author = &comment.parent_author;
+        } else if (start_parent_author.size()) {
+            itr = last_update_idx.lower_bound(start_parent_author);
+        }
+
+        result.reserve(limit);
+
+        while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
+            result.emplace_back(get_discussion(*itr, vote_limit));
+            ++itr;
+        }
+#endif
+        return result;
+    }
+
+    /**
+     *  This method can be used to fetch replies to an account.
+     *
+     *  The first call should be (account_to_retrieve replies, "", limit)
+     *  Subsequent calls should be (last_author, last_permlink, limit)
+     */
+    DEFINE_API(social_network, get_replies_by_last_update) {
+        CHECK_ARG_MIN_SIZE(3, 4)
+        auto start_parent_author = args.args->at(0).as<account_name_type>();
+        auto start_permlink = args.args->at(1).as<string>();
+        auto limit = args.args->at(2).as<uint32_t>();
+        auto vote_limit = GET_OPTIONAL_ARG(3, uint32_t, DEFAULT_VOTE_LIMIT);
+        FC_ASSERT(limit <= 100);
+        return pimpl->database().with_weak_read_lock([&]() {
+            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit);
         });
     }
 

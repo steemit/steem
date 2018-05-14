@@ -35,7 +35,7 @@ namespace golos { namespace plugins { namespace tags {
 
     struct tags_plugin::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
-            helper.reset( new discussion_helper( appbase::app().get_plugin<chain::plugin>().db()) );
+            helper = std::make_unique<discussion_helper>(database_);
         }
 
         ~impl() {}
@@ -881,54 +881,13 @@ namespace golos { namespace plugins { namespace tags {
         return result;
     }
 
-    std::vector<discussion> tags_plugin::impl::get_replies_by_last_update(
-        account_name_type start_parent_author,
-        std::string start_permlink,
-        uint32_t limit,
-        uint32_t vote_limit
-    ) const {
-        std::vector<discussion> result;
-#ifndef IS_LOW_MEM
-        auto& db = database();
-        const auto& last_update_idx = db.get_index<comment_index>().indices().get<by_last_update>();
-        auto itr = last_update_idx.begin();
-        const account_name_type* parent_author = &start_parent_author;
-
-        if (start_permlink.size()) {
-            const auto& comment = db.get_comment(start_parent_author, start_permlink);
-            itr = last_update_idx.iterator_to(comment);
-            parent_author = &comment.parent_author;
-        } else if (start_parent_author.size()) {
-            itr = last_update_idx.lower_bound(start_parent_author);
+    // Needed for correct work of golos::api::discussion_helper::set_pending_payout and etc api methods
+    void fill_promoted( discussion & d, golos::chain::database& db) {
+        const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+        auto itr = cidx.lower_bound(d.id);
+        if (itr != cidx.end() && itr->comment == d.id) {
+            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
         }
-
-        result.reserve(limit);
-
-        while (itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
-            result.emplace_back(get_discussion(*itr, vote_limit));
-            ++itr;
-        }
-#endif
-        return result;
-    }
-
-
-    /**
-     *  This method can be used to fetch replies to an account.
-     *
-     *  The first call should be (account_to_retrieve replies, "", limit)
-     *  Subsequent calls should be (last_author, last_permlink, limit)
-     */
-    DEFINE_API(tags_plugin, get_replies_by_last_update) {
-        CHECK_ARG_MIN_SIZE(3, 4)
-        auto start_parent_author = args.args->at(0).as<account_name_type>();
-        auto start_permlink = args.args->at(1).as<string>();
-        auto limit = args.args->at(2).as<uint32_t>();
-        auto vote_limit = GET_OPTIONAL_ARG(3, uint32_t, DEFAULT_VOTE_LIMIT);
-        FC_ASSERT(limit <= 100);
-        return pimpl->database().with_weak_read_lock([&]() {
-            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit);
-        });
     }
 
 } } } // golos::plugins::tags
