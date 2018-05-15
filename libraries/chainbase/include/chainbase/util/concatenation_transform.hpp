@@ -45,7 +45,7 @@ namespace ce
             bool _cmp = true;
             bool done = false;
 
-            while( _cmp && !done )
+            while( _cmp && !done && !item->end() )
             {
                _cmp = !cmp( *( *item ), *( *current_item ) );
                if( _cmp )
@@ -106,8 +106,12 @@ namespace ce
                inc( cmp, item, current_item );
             }
             else
+            {
                if( DIRECTION == Direction::next )
                   inc( cmp, item, current_item );
+               else
+                  dec< DIRECTION >( cmp, item, current_item );
+            }
          }
 
          void end()

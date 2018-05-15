@@ -4,6 +4,7 @@
 #include <chainbase/util/concatenation_enumerator.hpp>
 
 #include <chrono>
+#include <type_traits>
 
 using namespace chainbase;
 
@@ -1187,36 +1188,34 @@ void inc_dec_basic_3_sources_test( Filler1& filler1, Filler2& filler2, Filler3& 
 
    ++it;
    ++it_comparer;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
-
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it;
    ++it_comparer;
-
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it;
    ++it_comparer;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
-
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it;
    ++it_comparer;
-
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it;
    ++it_comparer;
+   BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    --it;
    --it_comparer;
-
    BOOST_REQUIRE( ( *it ) == ( *it_comparer ) );
 
    ++it;
@@ -2059,7 +2058,43 @@ void fill_for_modification_tests( Collection& c1, Collection& c2, Collection& c3
    comparer.emplace( Object ( c6_, std::allocator< Object >() ) );
 }
 
-template< typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+template< typename Collection, typename Index >
+using t_index_type = decltype( std::declval< Collection >().template get< Index >() );
+
+template< typename Collection, typename Index >
+using _type_forward = decltype( std::declval< t_index_type< Collection, Index > >().begin() );
+
+template< typename Collection, typename Index >
+using _type_reverse = decltype( std::declval< t_index_type< Collection, Index > >().rbegin() );
+
+template< bool Forward, typename Collection, typename Index >
+using t_direction = typename std::conditional< Forward, _type_forward< Collection, Index >, _type_reverse< Collection, Index > >::type;
+
+template< typename Collection, typename Index, typename Result >
+class helper_iterator
+{
+   Result get_begin( t_index_type< Collection, Index >& idx );
+};
+
+template< typename Collection, typename Index >
+struct helper_iterator< Collection, Index, _type_forward< Collection, Index > >
+{
+   _type_forward< Collection, Index > get_begin( t_index_type< Collection, Index >& idx )
+   {
+      return idx.begin();
+   }
+};
+
+template< typename Collection, typename Index >
+struct helper_iterator< Collection, Index, _type_reverse< Collection, Index > >
+{
+   _type_reverse< Collection, Index > get_begin( t_index_type< Collection, Index >& idx )
+   {
+      return idx.rbegin();
+   }
+};
+
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
 void modification_test_1()
 {
    Collection bmic1;
@@ -2083,10 +2118,12 @@ void modification_test_1()
                std::make_tuple( &idx2, &id_idx2 ),
                std::make_tuple( &idx3, &id_idx3 )
             );
-   
+
    auto& id_comparer_idx = comparer.template get< ID_Index >();
-   const auto& comparer_idx = comparer.template get< Index >();
-   auto it_comparer = comparer_idx.begin();
+   auto& comparer_idx = comparer.template get< Index >();
+ 
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
 
    BOOST_TEST_MESSAGE( "2 elements forward" );
 
@@ -2160,7 +2197,7 @@ void modification_test_1()
    BOOST_REQUIRE( *it == *it_comparer );
 }
 
-template< typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
 void modification_test_2()
 {
    Collection bmic1;
@@ -2186,8 +2223,10 @@ void modification_test_2()
             );
    
    auto& id_comparer_idx = comparer.template get< ID_Index >();
-   const auto& comparer_idx = comparer.template get< Index >();
-   auto it_comparer = comparer_idx.begin();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
 
    BOOST_TEST_MESSAGE( "2 elements forward" );
    ++it;
@@ -2220,6 +2259,7 @@ void modification_test_2()
       id = 3; val = 9; val2 = 4; val3 = 3;
    */
    BOOST_REQUIRE( *it == *it_comparer );
+
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
@@ -2256,7 +2296,7 @@ void modification_test_2()
    BOOST_REQUIRE( *it == *it_comparer );
 }
 
-template< typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
 void modification_test_3()
 {
    Collection bmic1;
@@ -2288,8 +2328,10 @@ void modification_test_3()
             );
 
    auto& id_comparer_idx = comparer.template get< ID_Index >();
-   const auto& comparer_idx = comparer.template get< Index >();
-   auto it_comparer = comparer_idx.begin();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
 
    /*
       id = 4; val = 0; val2 = 6; val3 = 10;  X
@@ -2426,7 +2468,108 @@ void fill_for_modification_tests( Collection& c1, Collection& c2, Collection& co
    comparer.emplace( Object ( c11_, std::allocator< Object >() ) );
 }
 
-template< typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+template< typename Object, typename Collection >
+void simple_fill_for_modification_tests( Collection& c1, Collection& comparer )
+{
+   //bmic1
+   auto c0_a = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+   auto c1_a = []( Object& obj ){ obj.id = 1; obj.val = 8; obj.val2 = 4; obj.val3 = 2; };
+   auto c2_a = []( Object& obj ){ obj.id = 2; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+   c1.emplace( Object ( c0_a, std::allocator< Object >() ) );
+   c1.emplace( Object ( c1_a, std::allocator< Object >() ) );
+   c1.emplace( Object ( c2_a, std::allocator< Object >() ) );
+
+   //comparer
+   auto c0_ = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+   auto c1_ = []( Object& obj ){ obj.id = 1; obj.val = 8; obj.val2 = 4; obj.val3 = 2; };
+   auto c2_ = []( Object& obj ){ obj.id = 2; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+
+   comparer.emplace( Object ( c0_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c1_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c2_, std::allocator< Object >() ) );
+}
+
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+void modification_test_forward()
+{
+   Collection bmic1;
+   Collection bmic2;
+
+   Collection comparer;
+
+   simple_fill_for_modification_tests< Object >( bmic1, comparer );
+
+   auto& id_idx1 = bmic1.template get< ID_Index >();
+   auto& id_idx2 = bmic2.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+
+   Iterator it( CMP(),
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 )
+            );
+
+   auto& id_comparer_idx = comparer.template get< ID_Index >();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
+
+/*
+   id = 0; val = 5; val2 = 1; val3 = 0;
+   id = 1; val = 8; val2 = 4; val3 = 2;
+   id = 2; val = 9; val2 = 4; val3 = 3;
+*/
+   BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
+   modify< Object >( 2/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 4; } );
+   modify< Object >( 2/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 4; } );
+   it.get_modifier().add_modify( 0, 0 );
+
+   BOOST_REQUIRE( *it == *it_comparer );
+}
+
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+void modification_test_reverse()
+{
+   Collection bmic1;
+   Collection bmic2;
+
+   Collection comparer;
+
+   simple_fill_for_modification_tests< Object >( bmic1, comparer );
+
+   auto& id_idx1 = bmic1.template get< ID_Index >();
+   auto& id_idx2 = bmic2.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+
+   Iterator it( CMP(),
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 )
+            );
+
+   auto& id_comparer_idx = comparer.template get< ID_Index >();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
+
+/*
+   id = 0; val = 5; val2 = 1; val3 = 0;
+   id = 1; val = 8; val2 = 4; val3 = 2;
+   id = 2; val = 9; val2 = 4; val3 = 3;
+*/
+   BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
+   modify< Object >( 0/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 13; } );
+   modify< Object >( 0/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 13; } );
+   it.get_modifier().add_modify( 0, 0 );
+
+   BOOST_REQUIRE( *it == *it_comparer );
+}
+
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
 void modification_test_4()
 {
    Collection bmic1;
@@ -2453,8 +2596,10 @@ void modification_test_4()
             );
 
    auto& id_comparer_idx = comparer.template get< ID_Index >();
-   const auto& comparer_idx = comparer.template get< Index >();
-   auto it_comparer = comparer_idx.begin();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
 
    ++it;
    ++it_comparer;
@@ -2552,7 +2697,6 @@ void modification_test_4()
       --it;
       --it_comparer;
   }
-  BOOST_REQUIRE( size_t( it->id ) == 6 && it->val == 11 && it->val2 == 7 && it->val3 == 6 );
 
    /*
       id = 11; val = 1; val2 = 12; val3 = 11;
@@ -2591,7 +2735,6 @@ void modification_test_4()
    --it;
    --it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
-   BOOST_REQUIRE( size_t( it->id ) == 11 && it->val == 1 && it->val2 == 12 && it->val3 == 11 );
 
    /*
       id = 11; val = 1; val2 = 12; val3 = 11;   (21)  X
@@ -2634,17 +2777,14 @@ void modification_test_4()
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
-   BOOST_REQUIRE( size_t( it->id ) == 3 && it->val == 30 && it->val2 == 4 && it->val3 == 3 );
 
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
-   BOOST_REQUIRE( size_t( it->id ) == 4 && it->val == 40 && it->val2 == 5 && it->val3 == 4 );
 
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( it == it_end );
-   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
 
    it--;
    it_comparer--;
@@ -2693,7 +2833,7 @@ void modification_test_4()
       ++it;
       ++it_comparer;
    }
-   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
+   BOOST_REQUIRE( it == it_end );
 
    it--;
    it_comparer--;
@@ -2759,6 +2899,7 @@ void modification_test_4()
       id = 2;  val = 20; val2 = 3;  val3 = 2;   (5)
       id = 3;  val = 30; val2 = 4;  val3 = 3;         X
    */
+
    BOOST_TEST_MESSAGE( "modifying 1 elements for id<2> and change direction from '++' to '--'" );
    modify< Object >( 2/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 5; } );
    modify< Object >( 2/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 5; } );
@@ -2867,7 +3008,6 @@ void modification_test_4()
       ++it_comparer;
    }
    BOOST_REQUIRE( it == it_end );
-   BOOST_REQUIRE( it_comparer == comparer_idx.end() );
 
    /*
       id = 1;  val = 0; val2 = 2;  val3 = 1;    (40)
@@ -2914,11 +3054,70 @@ void modification_test_4()
       --it_comparer;
       BOOST_REQUIRE( *it == *it_comparer );
    }
+
+   /*
+      id = 3;  val = 29; val2 = 4;  val3 = 3;      (20)X
+      id = 0;  val = 30; val2 = 1;  val3 = 0;      (19)
+      id = 11; val = 31; val2 = 12; val3 = 11;     (18)
+      id = 6;  val = 32; val2 = 0; val3 = 6;       (17)
+      id = 5;  val = 33; val2 = 6; val3 = 5;       (16)
+      id = 10; val = 34; val2 = 11; val3 = 10;     (15)
+      id = 8;  val = 35; val2 = 9;  val3 = 8;      (14)
+      id = 2;  val = 36; val2 = 3;  val3 = 2;      (13)
+      id = 4;  val = 37; val2 = 5;  val3 = 4;      (12)
+      id = 9;  val = 38; val2 = 10; val3 = 9;      (11)
+      id = 7;  val = 39; val2 = 8;  val3 = 7;      (10)
+      id = 1;  val = 40; val2 = 2;  val3 = 1;      (09)
+   */
+   BOOST_TEST_MESSAGE( "modifying all elements" );
+   int id_set4[]={ 3, 0, 11, 6, 5, 10, 8, 2, 4, 9, 7, 1 };
+   for( int32_t i = 0; i < 12; ++i )
+   {
+      modify< Object >( id_set4[i]/*id*/, ( id_set4[i] < 6 )?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 20 - i; } );
+      modify< Object >( id_set4[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 20 - i; } );
+      it.get_modifier().add_modify( id_set4[i], ( id_set4[i] < 6 )?0:1 );
+   }
+   /*
+      id = 1;  val = 09; val2 = 2;  val3 = 1;
+      id = 7;  val = 10; val2 = 8;  val3 = 7;
+      id = 9;  val = 11; val2 = 10; val3 = 9;
+      id = 4;  val = 12; val2 = 5;  val3 = 4;
+      id = 2;  val = 13; val2 = 3;  val3 = 2;
+      id = 8;  val = 14; val2 = 9;  val3 = 8;
+      id = 10; val = 15; val2 = 11; val3 = 10;
+      id = 5;  val = 16; val2 = 6; val3 = 5;
+      id = 6;  val = 17; val2 = 0; val3 = 6;
+      id = 11; val = 18; val2 = 12; val3 = 11;
+      id = 0;  val = 19; val2 = 1;  val3 = 0;
+      id = 3;  val = 20; val2 = 4;  val3 = 3;         X
+   */
+   while( it != it_end )
+   {
+      BOOST_REQUIRE( *it == *it_comparer );
+      it++;
+      ++it_comparer;
+   }
+   BOOST_REQUIRE( it == it_end );
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
 
-BOOST_AUTO_TEST_CASE(modification_tests)
+BOOST_AUTO_TEST_CASE(modification_tests_others)
+{
+   using Object = ce_tests::test_object;
+   using CMP = ce_tests::cmp2;
+   using ID_Index = ce_tests::OrderedIndex;
+   using Index = ce_tests::CompositeOrderedIndexA;
+   using Collection = ce_tests::test_object_index;
+
+   using Iterator = ce::concatenation_iterator_ex< Object, CMP >;
+   //using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, CMP >;
+
+   modification_test_forward< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
+   //modification_test_reverse< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+}
+
+BOOST_AUTO_TEST_CASE(modification_tests_forward)
 {
    using Object = ce_tests::test_object;
    using CMP = ce_tests::cmp2;
@@ -2928,10 +3127,26 @@ BOOST_AUTO_TEST_CASE(modification_tests)
 
    using Iterator = ce::concatenation_iterator_ex< Object, CMP >;
 
-   modification_test_1< Object, CMP, ID_Index, Index, Collection, Iterator >();
-   modification_test_2< Object, CMP, ID_Index, Index, Collection, Iterator >();
-   modification_test_3< Object, CMP, ID_Index, Index, Collection, Iterator >();
-   modification_test_4< Object, CMP, ID_Index, Index, Collection, Iterator >();
+   modification_test_1< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
+   modification_test_2< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
+   modification_test_3< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
+   modification_test_4< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
+}
+
+BOOST_AUTO_TEST_CASE(modification_tests_reverse)
+{
+   using Object = ce_tests::test_object;
+   using CMP = ce_tests::cmp2;
+   using ID_Index = ce_tests::OrderedIndex;
+   using Index = ce_tests::CompositeOrderedIndexA;
+   using Collection = ce_tests::test_object_index;
+
+   using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, CMP >;
+
+   modification_test_1< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   modification_test_2< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   // modification_test_3< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   //modification_test_4< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
 }
 
 BOOST_AUTO_TEST_CASE(benchmark_tests)

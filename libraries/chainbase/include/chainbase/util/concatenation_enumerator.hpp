@@ -228,15 +228,16 @@ namespace ce
    template< typename CMP, typename DIRECTION >
    struct t_complex_sorter
    {
+      bool equal_allowed;
       CMP cmp;
       DIRECTION direction;
 
-      t_complex_sorter( CMP _cmp, DIRECTION _direction ): cmp( _cmp ), direction( _direction ) {}
+      t_complex_sorter( bool _equal_allowed, CMP _cmp, DIRECTION _direction ): equal_allowed( _equal_allowed ), cmp( _cmp ), direction( _direction ) {}
 
       template< typename T >
       bool operator()( const T& a, const T& b )
       {
-         if( *a == *b )
+         if( equal_allowed && ( *a == *b ) )
             return false;
          else
          {
@@ -476,7 +477,7 @@ namespace ce
             assert( !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
          }
 
-         template< Direction DIRECTION, int32_t position >
+         template< Direction DIRECTION, int32_t position, bool EQUAL_ALLOWED, template< typename... > typename COLLECTION >
          void find_impl()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
@@ -498,29 +499,29 @@ namespace ce
             {
                if( DIRECTION == Direction::prev )
                {
-                  static std::set< pitem, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::prev ) );
+                  static COLLECTION< pitem, _t_complex_sorter > row( _t_complex_sorter( EQUAL_ALLOWED, cmp, Direction::prev ) );
                   generate_idx< position >( row );
                }
                else
                {
-                  static std::set< pitem, _t_complex_sorter > row( _t_complex_sorter( cmp, Direction::next ) );
+                  static COLLECTION< pitem, _t_complex_sorter > row( _t_complex_sorter( EQUAL_ALLOWED, cmp, Direction::next ) );
                   generate_idx< position >( row );
                }
             }
          }
 
-         template< Direction DIRECTION >
+         template< Direction DIRECTION, bool EQUAL_ALLOWED, template< typename... > typename COLLECTION >
          void find()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
 
             if( DIRECTION == Direction::next )
-               find_impl< Direction::next, pos_end >();
+               find_impl< Direction::next, pos_end, EQUAL_ALLOWED, COLLECTION >();
             else
-               find_impl< Direction::prev, pos_begin >();
+               find_impl< Direction::prev, pos_begin, EQUAL_ALLOWED, COLLECTION >();
          }
 
-         template< int32_t position, typename ACTION >
+         template< bool MOVE_ALL, int32_t position, typename ACTION >
          void move_impl( ACTION&& action )
          {
             if( idx.current == position )
@@ -528,11 +529,12 @@ namespace ce
 
             assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
 
-            for( size_t i = 0 ; i < iterators.size(); ++i )
-            {
-               if( static_cast< int32_t >( i ) != idx.current && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx.current ] ) )
-                  action( iterators[ i ] );
-            }
+            if( MOVE_ALL )
+               for( size_t i = 0 ; i < iterators.size(); ++i )
+               {
+                  if( static_cast< int32_t >( i ) != idx.current && !iterators[ i ]->end() && !iterators[ i ]->is_inactive() && ( *iterators[ i ] ) == ( *iterators[ idx.current ] ) )
+                     action( iterators[ i ] );
+               }
             //Move current iterator at the end, because it is used to comparison.
             action( iterators[ idx.current ] );
          }
@@ -567,7 +569,7 @@ namespace ce
             _modifier.end();
          }
 
-         template< Direction DIRECTION, bool REORDER >
+         template< bool MOVE_ALL, Direction DIRECTION, bool REORDER >
          void move()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
@@ -580,7 +582,7 @@ namespace ce
                   reorder< pos_begin, DIRECTION >();
 
                if( !changed )
-                  move_impl< pos_end >( []( const pitem& item ){ ++( *item ); } );
+                  move_impl< MOVE_ALL, pos_end >( []( const pitem& item ){ ++( *item ); } );
                else
                   change_direction< Direction::next >();
             }
@@ -590,7 +592,7 @@ namespace ce
                   reorder< pos_end, DIRECTION >();
 
                if( !changed )
-                  move_impl< pos_begin >( []( const pitem& item )
+                  move_impl< MOVE_ALL, pos_begin >( []( const pitem& item )
                                                    {
                                                       if( item->begin() )
                                                          item->change_status( true );
@@ -625,11 +627,11 @@ namespace ce
 
          std::vector< pitem > iterators;
 
-         template< Direction DIRECTION, bool REORDER >
+         template< bool MOVE_ALL, bool EQUAL_ALLOWED, template< typename... > typename COLLECTION, Direction DIRECTION, bool REORDER >
          void action()
          {
-            move< DIRECTION, REORDER >();
-            find< DIRECTION >();
+            move< MOVE_ALL, DIRECTION, REORDER >();
+            find< DIRECTION, EQUAL_ALLOWED, COLLECTION >();
          }
 
          concatenation_iterator( const CMP& _cmp )
@@ -674,7 +676,7 @@ namespace ce
          {
             add< false/*INACTIVE*/, true/*POSITION*/ >( elements... );
 
-            find< Direction::next >();
+            find< Direction::next, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/ >();
          }
 
          template< typename... ELEMENTS >
@@ -711,7 +713,7 @@ namespace ce
 
          concatenation_iterator& operator++()
          {
-            action< Direction::next, true/*REORDER*/ >();
+            action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
 
             return *this;
          }
@@ -720,14 +722,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< Direction::next, true/*REORDER*/ >();
+            action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
 
             return tmp;
          }
 
          concatenation_iterator& operator--()
          {
-            action< Direction::prev, true/*REORDER*/ >();
+            action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
 
             return *this;
          }
@@ -736,7 +738,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< Direction::prev, true/*REORDER*/ >();
+            action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
 
             return tmp;
          }
@@ -801,7 +803,7 @@ namespace ce
          concatenation_reverse_iterator( const concatenation_iterator< OBJECT, CMP >& obj )
          : base_class( obj )
          {
-            this-> template action< Direction::prev, false/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, false/*REORDER*/ >();
          }
 
          template< typename... ELEMENTS >
@@ -810,7 +812,7 @@ namespace ce
          {
             base_class::prepare( *this, false/*status*/, Direction::next, base_class::pos_end, elements... );
 
-            this-> template action< Direction::prev, false/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, false/*REORDER*/ >();
          }
 
          template< typename... ELEMENTS >
@@ -824,7 +826,7 @@ namespace ce
 
          concatenation_reverse_iterator& operator++()
          {
-            this-> template action< Direction::prev, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
 
             return *this;
          }
@@ -833,14 +835,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< Direction::prev, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
 
             return tmp;
          }
 
          concatenation_reverse_iterator& operator--()
          {
-            this-> template action< Direction::next, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
 
             return *this;
          }
@@ -849,7 +851,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< Direction::next, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
 
             return tmp;
          }
@@ -924,7 +926,7 @@ namespace ce
                if( !find_with_key_search_impl( key ) )
                   break;
             
-               this-> template action< DIRECTION, false/*REORDER*/ >();
+               this-> template action< false/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION, false/*REORDER*/ >();
             }
          }
 
@@ -962,7 +964,7 @@ namespace ce
          template< Direction DIRECTION, int32_t position >
          void action_ex()
          {
-            this-> template action< DIRECTION, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION, true/*REORDER*/ >();
             find_with_key_search< DIRECTION, position >();
          }
 
