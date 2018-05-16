@@ -12,8 +12,10 @@ before_install:
 script:
   - if [ -n "${TRAVIS_TAG}" ]; then
       docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
-    else
+    elif [ "$TRAVIS_BRANCH" == "master" ]; then
       docker build -t goloschain/golos:latest . ;
+    else
+      docker build -t goloschain/golos:test -f share/golosd/docker/Dockerfile-test . ;
     fi
   - docker images
 
