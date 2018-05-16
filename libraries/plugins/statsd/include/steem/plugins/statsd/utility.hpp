@@ -102,4 +102,4 @@ if( steem::plugins::statsd::util::statsd_enabled() )                            
 }
 
 #define STATSD_STOP_TIMER( NAMESPACE, STAT, KEY )        \
-   NAMESPACE ## STAT ## KEY ## _timer.reset();           \
+   NAMESPACE ## STAT ## KEY ## _timer.reset();
