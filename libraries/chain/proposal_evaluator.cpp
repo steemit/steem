@@ -120,6 +120,17 @@ namespace golos { namespace chain {
         check_existing(o.posting_approvals_to_remove, proposal.available_posting_approvals);
         check_existing(o.key_approvals_to_remove, proposal.available_key_approvals);
 
+        auto check_duplicate = [&](const auto& to_add, const auto& dst) {
+            for (const auto& a: to_add) {
+                FC_ASSERT(dst.find(a) == dst.end(), "Can't add already exist approval", ("id", a));
+            }
+        };
+
+        check_duplicate(o.active_approvals_to_add, proposal.available_active_approvals);
+        check_duplicate(o.owner_approvals_to_add, proposal.available_owner_approvals);
+        check_duplicate(o.posting_approvals_to_add, proposal.available_posting_approvals);
+        check_duplicate(o.key_approvals_to_add, proposal.available_key_approvals);
+
         db().modify(proposal, [&](proposal_object &p){
             p.available_active_approvals.insert(o.active_approvals_to_add.begin(), o.active_approvals_to_add.end());
             p.available_owner_approvals.insert(o.owner_approvals_to_add.begin(), o.owner_approvals_to_add.end());

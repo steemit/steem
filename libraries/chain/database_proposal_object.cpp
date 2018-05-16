@@ -36,9 +36,12 @@ namespace golos { namespace chain {
 
     void database::push_proposal(const proposal_object& proposal) { try {
         auto ops = proposal.operations();
+        auto session = start_undo_session();
         for (auto& op : ops) {
-            apply_operation(op);
+            apply_operation(op, true);
         }
+        // the parent session have been created in _push_block()/_push_transaction()
+        session.squash();
         remove(proposal);
     } FC_CAPTURE_AND_RETHROW((proposal.author)(proposal.title)) }
 
