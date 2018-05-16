@@ -825,7 +825,7 @@ void different_test( Filler&& filler )
       BOOST_REQUIRE( it_r == ReverseIterator( Cmp(), p1 ) );
       BOOST_REQUIRE( *it_r == *it_r_comparer );
 
-      while( it_r != it_r_end )
+      while( it_r_comparer != idx1.rend() )
       {
          BOOST_REQUIRE( *it_r == *it_r_comparer );
 
@@ -3111,10 +3111,10 @@ BOOST_AUTO_TEST_CASE(modification_tests_others)
    using Collection = ce_tests::test_object_index;
 
    using Iterator = ce::concatenation_iterator_ex< Object, CMP >;
-   //using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, CMP >;
+   using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, CMP >;
 
    modification_test_forward< true, Object, CMP, ID_Index, Index, Collection, Iterator >();
-   //modification_test_reverse< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   modification_test_reverse< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
 }
 
 BOOST_AUTO_TEST_CASE(modification_tests_forward)
@@ -3145,102 +3145,8 @@ BOOST_AUTO_TEST_CASE(modification_tests_reverse)
 
    modification_test_1< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
    modification_test_2< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
-   // modification_test_3< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   //modification_test_3< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
    //modification_test_4< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
-}
-
-BOOST_AUTO_TEST_CASE(benchmark_tests)
-{
-   using obj2 = ce_tests::test_object2;
-   using bmic2 = ce_tests::test_object_index2;
-   using oidx2 = ce_tests::OrderedIndex2;
-   using c_oidx2 = ce_tests::CompositeOrderedIndex2;
-   using cmp4 = ce_tests::cmp4;
-
-   benchmark_test_2_sources
-   <
-      false/*Is_Another_Source*/,
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >();
-
-   benchmark_test_3_sources
-   <
-      false/*Is_Another_Source*/,
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >();
-
-   benchmark_test_2_sources
-   <
-      true/*Is_Another_Source*/,
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >();
-
-   benchmark_test_3_sources
-   <
-      true/*Is_Another_Source*/,
-      bmic2,
-      oidx2,
-      c_oidx2,
-      obj2,
-      cmp4
-   >();
-/*
-Checked on hardware:
-	16 GB RAM
-	Intel® Core™ i5-7400 CPU @ 3.00GHz × 4
-	OS-type 64 bit
-
-************************************************************************************************************************
-'benchmark_test_2_sources - Is_Another_Source( false )'
-`2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 100 000 objects`
-iterator: bmic iterator: 33 ms
-iterator: concatenation iterator: 143 ms
-ratio: 4.33333
-reverse_iterator: bmic iterator: 42 ms
-reverse_iterator: concatenation iterator: 126 ms
-ratio: 3
-
-'benchmark_test_2_sources - Is_Another_Source( true )'
-2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 0 objects
-iterator: bmic iterator: 39 ms
-iterator: concatenation iterator: 77 ms
-ratio: 1.97436
-reverse_iterator: bmic iterator: 44 ms
-reverse_iterator: concatenation iterator: 62 ms
-ratio: 1.40909
-
-************************************************************************************************************************
-
-'benchmark_test_3_sources - Is_Another_Source( false )'
-`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 100 000 objects`
-iterator: bmic iterator: 48 ms
-iterator: concatenation iterator: 354 ms
-ratio: 7.375
-reverse_iterator: bmic iterator: 44 ms
-reverse_iterator: concatenation iterator: 260 ms
-ratio: 5.90909
-
-'benchmark_test_3_sources - Is_Another_Source( true )'
-`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 0 objects`
-iterator: bmic iterator: 46 ms
-iterator: concatenation iterator: 246 ms
-ratio: 5.34783
-reverse_iterator: bmic iterator: 45 ms
-reverse_iterator: concatenation iterator: 153 ms
-ratio: 3.4
-*/
 }
 
 BOOST_AUTO_TEST_CASE(different_tests)
@@ -3499,6 +3405,100 @@ BOOST_AUTO_TEST_CASE(advanced_tests)
       obj2,
       cmp4
    >();
+}
+
+BOOST_AUTO_TEST_CASE(benchmark_tests)
+{
+   using obj2 = ce_tests::test_object2;
+   using bmic2 = ce_tests::test_object_index2;
+   using oidx2 = ce_tests::OrderedIndex2;
+   using c_oidx2 = ce_tests::CompositeOrderedIndex2;
+   using cmp4 = ce_tests::cmp4;
+
+   benchmark_test_2_sources
+   <
+      false/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+
+   benchmark_test_3_sources
+   <
+      false/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+
+   benchmark_test_2_sources
+   <
+      true/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+
+   benchmark_test_3_sources
+   <
+      true/*Is_Another_Source*/,
+      bmic2,
+      oidx2,
+      c_oidx2,
+      obj2,
+      cmp4
+   >();
+/*
+Checked on hardware:
+	16 GB RAM
+	Intel® Core™ i5-7400 CPU @ 3.00GHz × 4
+	OS-type 64 bit
+
+************************************************************************************************************************
+'benchmark_test_2_sources - Is_Another_Source( false )'
+`2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 100 000 objects`
+iterator: bmic iterator: 33 ms
+iterator: concatenation iterator: 143 ms
+ratio: 4.33333
+reverse_iterator: bmic iterator: 42 ms
+reverse_iterator: concatenation iterator: 126 ms
+ratio: 3
+
+'benchmark_test_2_sources - Is_Another_Source( true )'
+2 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) -> keys searching in collection with length: 0 objects
+iterator: bmic iterator: 39 ms
+iterator: concatenation iterator: 77 ms
+ratio: 1.97436
+reverse_iterator: bmic iterator: 44 ms
+reverse_iterator: concatenation iterator: 62 ms
+ratio: 1.40909
+
+************************************************************************************************************************
+
+'benchmark_test_3_sources - Is_Another_Source( false )'
+`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 100 000 objects`
+iterator: bmic iterator: 48 ms
+iterator: concatenation iterator: 354 ms
+ratio: 7.375
+reverse_iterator: bmic iterator: 44 ms
+reverse_iterator: concatenation iterator: 260 ms
+ratio: 5.90909
+
+'benchmark_test_3_sources - Is_Another_Source( true )'
+`3 levels( persistent_state( 1mln objects ) + volatile state( 100 000 objects ) + volatile state( 100 000 objects ) -> keys searching in 2 collections - every has 0 objects`
+iterator: bmic iterator: 46 ms
+iterator: concatenation iterator: 246 ms
+ratio: 5.34783
+reverse_iterator: bmic iterator: 45 ms
+reverse_iterator: concatenation iterator: 153 ms
+ratio: 3.4
+*/
 }
 
 BOOST_AUTO_TEST_SUITE_END()
