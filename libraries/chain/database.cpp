@@ -1158,6 +1158,8 @@ namespace golos { namespace chain {
 
             FC_ASSERT(is_virtual_operation(op));
             operation_notification note(op);
+            ++_current_virtual_op;
+            note.virtual_op = _current_virtual_op;
             notify_pre_apply_operation(note);
             notify_post_apply_operation(note);
         }
@@ -3288,6 +3290,7 @@ namespace golos { namespace chain {
 
                 _current_block_num = next_block_num;
                 _current_trx_in_block = 0;
+                _current_virtual_op = 0;
 
                 /// modify current witness so transaction evaluators can know who included the transaction,
                 /// this is mostly for POW operations which must pay the current_witness
@@ -3319,6 +3322,10 @@ namespace golos { namespace chain {
                     apply_transaction(trx, skip);
                     ++_current_trx_in_block;
                 }
+
+                _current_trx_in_block = -1;
+                _current_op_in_trx = 0;
+                _current_virtual_op = 0;
 
                 update_global_dynamic_data(next_block, skip);
                 update_signing_witness(signing_witness, next_block);
@@ -3483,6 +3490,7 @@ namespace golos { namespace chain {
         void database::_apply_transaction(const signed_transaction &trx, uint32_t skip) {
             try {
                 _current_trx_id = trx.id();
+                _current_virtual_op = 0;
 
                 auto &trx_idx = get_index<transaction_index>();
                 auto trx_id = trx.id();
@@ -3535,8 +3543,12 @@ namespace golos { namespace chain {
             } FC_CAPTURE_AND_RETHROW((trx))
         }
 
-        void database::apply_operation(const operation &op) {
+        void database::apply_operation(const operation &op, bool is_virtual /* false */) {
             operation_notification note(op);
+            if (is_virtual) {
+                ++_current_virtual_op;
+                note.virtual_op = _current_virtual_op;
+            }
             notify_pre_apply_operation(note);
             _my->_evaluator_registry.get_evaluator(op).apply(op);
             notify_post_apply_operation(note);

@@ -112,7 +112,7 @@ namespace golos { namespace plugins { namespace operation_history {
             std::vector<applied_operation> result;
             for (; itr != idx.end() && itr->block == block_num; ++itr) {
                 applied_operation operation(*itr);
-                if (!only_virtual || golos::protocol::is_virtual_operation(operation.op)) {
+                if (!only_virtual || operation.virtual_op != 0) {
                     result.push_back(std::move(operation));
                 }
             }
