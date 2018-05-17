@@ -111,6 +111,8 @@ namespace golos {
 
         STEEMIT_DECLARE_INTERNAL_EXCEPTION(verify_auth_account_not_found, 2, "Auth account not found")
 
+        FC_DECLARE_DERIVED_EXCEPTION(database_revision_exception, golos::chain::chain_exception, 4120000, "database revision exception")
+
     }
 } // golos::chain
 

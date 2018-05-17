@@ -113,15 +113,23 @@ namespace golos { namespace chain {
 
                     _block_log.open(data_dir / "block_log");
 
-                    auto log_head = _block_log.head();
-
                     // Rewind all undo state. This should return us to the state at the last irreversible block.
                     with_strong_write_lock([&]() {
                         undo_all();
-                        FC_ASSERT(revision() ==
-                                  head_block_num(), "Chainbase revision does not match head block num",
-                                ("rev", revision())("head_block", head_block_num()));
                     });
+
+                    if (revision() != head_block_num()) {
+                        with_strong_read_lock([&]() {
+                            init_hardforks(); // Writes to local state, but reads from db
+                        });
+
+                        FC_THROW_EXCEPTION(database_revision_exception,
+                                           "Chainbase revision does not match head block num, "
+                                           "current revision is ${rev}, "
+                                           "current head block num is ${head}",
+                                           ("rev", revision())
+                                           ("head", head_block_num()));
+                    }
 
                     if (head_block_num()) {
                         auto head_block = _block_log.read_block_by_num(head_block_num());
@@ -143,11 +151,8 @@ namespace golos { namespace chain {
             FC_CAPTURE_LOG_AND_RETHROW((data_dir)(shared_mem_dir)(shared_file_size))
         }
 
-        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size) {
+        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size) {
             try {
-                ilog("Reindexing Blockchain");
-                wipe(data_dir, shared_mem_dir, false);
-                open(data_dir, shared_mem_dir, STEEMIT_INIT_SUPPLY, shared_file_size, chainbase::database::read_write);
                 _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
                 auto start = fc::time_point::now();
@@ -170,13 +175,14 @@ namespace golos { namespace chain {
                         skip_block_log;
 
                 with_strong_write_lock([&]() {
-                    auto itr = _block_log.read_block(0);
+                    auto cur_block_num = from_block_num;
                     auto last_block_num = _block_log.head()->block_num();
 
                     set_reserved_memory(1024*1024*1024); // protect from memory fragmentations ...
-                    while (itr.first.block_num() != last_block_num) {
+                    while (cur_block_num < last_block_num) {
                         auto end = fc::time_point::now();
-                        auto cur_block_num = itr.first.block_num();
+                        auto cur_block = *_block_log.read_block_by_num(cur_block_num);
+
                         if (cur_block_num % 100000 == 0) {
                             std::cerr
                                 << "   " << double(cur_block_num * 100) / last_block_num << "%   "
@@ -184,12 +190,19 @@ namespace golos { namespace chain {
                                 << "   ("  << (free_memory() / (1024 * 1024)) << "M free"
                                 << ", elapsed " << double((end - start).count()) / 1000000.0 << " sec)\n";
                         }
-                        apply_block(itr.first, skip_flags);
-                        check_free_memory(true, itr.first.block_num());
-                        itr = _block_log.read_block(itr.second);
+
+                        apply_block(cur_block, skip_flags);
+
+                        if (cur_block_num % 1000 == 0) {
+                            set_revision(head_block_num());
+                        }
+
+                        check_free_memory(true, cur_block_num);
+                        cur_block_num++;
                     }
 
-                    apply_block(itr.first, skip_flags);
+                    auto cur_block = *_block_log.read_block_by_num(cur_block_num);
+                    apply_block(cur_block, skip_flags);
                     set_reserved_memory(0);
                     set_revision(head_block_num());
                 });
@@ -3164,6 +3177,10 @@ namespace golos { namespace chain {
         void database::set_flush_interval(uint32_t flush_blocks) {
             _flush_blocks = flush_blocks;
             _next_flush_block = 0;
+        }
+
+        const block_log &database::get_block_log() const {
+            return _block_log;
         }
 
 //////////////////// private methods ////////////////////
