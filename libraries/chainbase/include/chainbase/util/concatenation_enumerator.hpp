@@ -144,12 +144,22 @@ namespace ce
             return it == collection->rbegin();
          }
 
+         const ITERATOR& end_( std::true_type ) const
+         {
+            return it_end;
+         }
+
+         ITERATOR end_( std::false_type ) const
+         {
+            return collection->rend();
+         }
+
          void set_iterator_( std::true_type, bool begin_pos )
          {
             if( begin_pos )
                it = collection->begin();
             else
-               it = it_end;
+               it = end_( selector );
          }
 
          void set_iterator_( std::false_type, bool begin_pos )
@@ -157,7 +167,7 @@ namespace ce
             if( begin_pos )
                it = collection->rbegin();
             else
-               it = it_end;
+               it = end_( selector );
          }
 
       protected:
@@ -169,7 +179,7 @@ namespace ce
 
          void inc() override
          {
-            assert( it != it_end );
+            assert( it != end_( selector ) );
             ++it;
 
             if( inactive )
@@ -188,7 +198,7 @@ namespace ce
 
          size_t get_id() const override
          {
-            assert( it != it_end );
+            assert( it != end_( selector ) );
             return size_t( it->id );
          }
 
@@ -206,13 +216,13 @@ namespace ce
 
          reference operator*() const override
          {
-            assert( it != it_end );
+            assert( it != end_( selector ) );
             return *it;
          }
 
          pointer operator->() const override
          {
-            assert( it != it_end );
+            assert( it != end_( selector ) );
             return &( *it );
          }
 
@@ -238,7 +248,7 @@ namespace ce
 
          bool end() const override
          {
-            return it == it_end;
+            return it == end_( selector );
          }
 
          void change_status( bool val ) override
@@ -253,7 +263,7 @@ namespace ce
 
          abstract_sub_enumerator< OBJECT >* copy() override
          {
-            return new sub_enumerator( inactive, tag, it, it_end, collection, cmp );
+            return new sub_enumerator( inactive, tag, it, end_( selector ), collection, cmp );
          }
 
          abstract_sub_enumerator< OBJECT >* create_( std::true_type )
@@ -654,37 +664,7 @@ namespace ce
             action( iterators[ idx.current ] );
          }
 
-         template< bool FORWARD_ITERATOR, int32_t position, Direction DIRECTION >
-         void reorder()
-         {
-            if( idx.current == position )
-            {
-               if( !_modifier.empty() )
-               {
-                  for( size_t i = 0 ; i < iterators.size(); ++i )
-                     iterators[ i ]->set_iterator( position == pos_begin );
-
-                  _modifier.end();
-               }
-
-               return;
-            }
-
-            assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
-
-            if( !_modifier.start( iterators[ idx.current ], idx.current ) )
-               return;
-
-            for( size_t i = 0 ; i < iterators.size(); ++i )
-            {
-               if( static_cast< int32_t >( i ) != idx.current )
-                  _modifier.run< FORWARD_ITERATOR, DIRECTION >( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
-            }
-
-            _modifier.end();
-         }
-
-         template< bool FORWARD_ITERATOR, bool MOVE_ALL, Direction DIRECTION, bool REORDER >
+         template< bool FORWARD_ITERATOR, bool MOVE_ALL, Direction DIRECTION >
          void move()
          {
             assert( DIRECTION == Direction::prev || DIRECTION == Direction::next );
@@ -693,9 +673,6 @@ namespace ce
 
             if( DIRECTION == Direction::next )
             {
-               if( REORDER )
-                  reorder< FORWARD_ITERATOR, pos_begin, DIRECTION >();
-
                if( !changed )
                   move_impl< MOVE_ALL, pos_end >( []( const pitem& item ){ ++( *item ); } );
                else
@@ -703,9 +680,6 @@ namespace ce
             }
             else
             {
-               if( REORDER )
-                  reorder< FORWARD_ITERATOR, pos_end, DIRECTION >();
-
                if( !changed )
                   move_impl< MOVE_ALL, pos_begin >( []( const pitem& item )
                                                    {
@@ -734,11 +708,11 @@ namespace ce
 
          std::vector< pitem > iterators;
 
-         template< bool MOVE_ALLOWED, bool FORWARD_ITERATOR, bool MOVE_ALL, bool EQUAL_ALLOWED, template< typename... > typename COLLECTION, Direction DIRECTION, bool REORDER >
+         template< bool MOVE_ALLOWED, bool FORWARD_ITERATOR, bool MOVE_ALL, bool EQUAL_ALLOWED, template< typename... > typename COLLECTION, Direction DIRECTION >
          void action()
          {
             if( MOVE_ALLOWED )
-               move< FORWARD_ITERATOR, MOVE_ALL, DIRECTION, REORDER >();
+               move< FORWARD_ITERATOR, MOVE_ALL, DIRECTION >();
             find< FORWARD_ITERATOR, DIRECTION, EQUAL_ALLOWED, COLLECTION >();
          }
 
@@ -797,6 +771,34 @@ namespace ce
                iterators.push_back( pitem( item->convert( forward_to_reverse ) ) );
          }
 
+         template< bool FORWARD_ITERATOR, Direction DIRECTION >
+         void reorder()
+         {
+            if( idx.current == pos_begin || idx.current == pos_end )
+               return;
+
+            assert( static_cast< size_t >( idx.current ) < iterators.size() && !iterators[ idx.current ]->end() && !iterators[ idx.current ]->is_inactive() );
+
+            if( !_modifier.start( iterators[ idx.current ], idx.current ) )
+               return;
+
+            for( size_t i = 0 ; i < iterators.size(); ++i )
+            {
+               if( static_cast< int32_t >( i ) != idx.current )
+                  _modifier.run< FORWARD_ITERATOR, DIRECTION >( cmp, iterators[ i ], iterators[ idx.current ], i, idx.current );
+            }
+
+            _modifier.end();
+         }
+
+         virtual void make_reorder()
+         {
+            if( direction == Direction::next )
+               reorder< true/*FORWARD_ITERATOR*/, Direction::next >();
+            else
+               reorder< true/*FORWARD_ITERATOR*/, Direction::prev >();
+         }
+
       public:
 
          CMP cmp;
@@ -835,9 +837,10 @@ namespace ce
             return ret;
          }
 
-         modifier& get_modifier()
+         void add_modify( uint32_t id, uint32_t current_level )
          {
-            return _modifier;
+            _modifier.add_modify( id, current_level );
+            make_reorder();
          }
 
          reference operator*()
@@ -860,7 +863,7 @@ namespace ce
 
          concatenation_iterator& operator++()
          {
-            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
+            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
 
             return *this;
          }
@@ -869,14 +872,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
+            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
 
             return tmp;
          }
 
          concatenation_iterator& operator--()
          {
-            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
+            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev >();
 
             return *this;
          }
@@ -885,7 +888,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
+            action< true/*MOVE_ALLOWED*/, true/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev >();
 
             return tmp;
          }
@@ -945,6 +948,14 @@ namespace ce
             base_class::prepare( ci, false/*forward_iterator*/, false/*is_begin*/, Direction::next, base_class::pos_end, elements... );
          }
 
+         void make_reorder() override
+         {
+            if( this->direction == Direction::next )
+               this-> template reorder< false/*FORWARD_ITERATOR*/, Direction::next >();
+            else
+               this-> template reorder< false/*FORWARD_ITERATOR*/, Direction::prev >();
+         }
+
       public:
 
          concatenation_reverse_iterator( const concatenation_reverse_iterator< OBJECT, CMP >& obj )
@@ -960,7 +971,7 @@ namespace ce
             this->prepare_data( obj );
             this->convert_iterators( true/*forward_to_reverse*/, obj );
 
-            this-> template action< false/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, false/*REORDER*/ >();
+            this-> template action< false/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
          }
 
          template< typename... ELEMENTS >
@@ -969,7 +980,7 @@ namespace ce
          {
             base_class::prepare( *this, false/*forward_iterator*/, true/*is_begin*/, Direction::next, base_class::pos_end, elements... );
 
-            this-> template action< false/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, false/*REORDER*/ >();
+            this-> template action< false/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
          }
 
          template< typename... ELEMENTS >
@@ -983,7 +994,7 @@ namespace ce
 
          concatenation_reverse_iterator& operator++()
          {
-            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
 
             return *this;
          }
@@ -992,14 +1003,14 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::next >();
 
             return tmp;
          }
 
          concatenation_reverse_iterator& operator--()
          {
-            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev >();
 
             return *this;
          }
@@ -1008,7 +1019,7 @@ namespace ce
          {
             auto tmp( *this );
 
-            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALLOWED*/, false/*FORWARD_ITERATOR*/, true/*MOVE_ALL*/, true/*EQUAL_ALLOWED*/, std::set/*COLLECTION*/, Direction::prev >();
 
             return tmp;
          }
@@ -1083,7 +1094,7 @@ namespace ce
                if( !find_with_key_search_impl( key ) )
                   break;
             
-               this-> template action< true/*MOVE_ALLOWED*/, FORWARD_ITERATOR, false/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION, false/*REORDER*/ >();
+               this-> template action< true/*MOVE_ALLOWED*/, FORWARD_ITERATOR, false/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION >();
             }
          }
 
@@ -1121,7 +1132,7 @@ namespace ce
          template< bool FORWARD_ITERATOR, Direction DIRECTION, int32_t position >
          void action_ex()
          {
-            this-> template action< true/*MOVE_ALLOWED*/, FORWARD_ITERATOR, true/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION, true/*REORDER*/ >();
+            this-> template action< true/*MOVE_ALLOWED*/, FORWARD_ITERATOR, true/*MOVE_ALL*/, false/*EQUAL_ALLOWED*/, std::multiset/*COLLECTION*/, DIRECTION >();
             find_with_key_search< FORWARD_ITERATOR, DIRECTION, position >();
          }
 

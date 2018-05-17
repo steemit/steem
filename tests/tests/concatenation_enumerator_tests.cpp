@@ -2126,9 +2126,9 @@ void modification_test_1()
    auto it_comparer = hi.get_begin( comparer_idx );
 
    BOOST_TEST_MESSAGE( "2 elements forward" );
-
    ++it;
    ++it_comparer;
+   BOOST_REQUIRE( *it == *it_comparer );
 
    ++it;
    ++it_comparer;
@@ -2146,7 +2146,7 @@ void modification_test_1()
    BOOST_TEST_MESSAGE( "modifying current element, which is moved back" );
    modify< Object >( 0/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 0; } );
    modify< Object >( 0/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 0; } );
-   it.get_modifier().add_modify( 0, 0 );
+   it.add_modify( 0, 0 );
    /*
       id = 0; val = 0; val2 = 1; val3 = 0;   X
       id = 4; val = 0; val2 = 6; val3 = 10;
@@ -2181,7 +2181,7 @@ void modification_test_1()
    BOOST_TEST_MESSAGE( "modifying current element, which is moved forward" );
    modify< Object >( 1/*id*/, id_idx3, [&]( Object& obj ){ obj.val = 8; } );
    modify< Object >( 1/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 8; } );
-   it.get_modifier().add_modify( 1, 2 );
+   it.add_modify( 1, 2 );
    /*
       id = 0; val = 0; val2 = 1; val3 = 0;
       id = 4; val = 0; val2 = 6; val3 = 10;
@@ -2192,6 +2192,7 @@ void modification_test_1()
       id = 3; val = 9; val2 = 4; val3 = 3;   X
    */
    BOOST_REQUIRE( *it == *it_comparer );
+
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
@@ -2248,7 +2249,7 @@ void modification_test_2()
    BOOST_TEST_MESSAGE( "modifying next element, which is moved back" );
    modify< Object >( 1/*id*/, id_idx3, [&]( Object& obj ){ obj.val = 2; } );
    modify< Object >( 1/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 2; } );
-   it.get_modifier().add_modify( 1, 2 );
+   it.add_modify( 1, 2 );
    /*
       id = 4; val = 0; val2 = 6; val3 = 10;
       id = 5; val = 1; val2 = 6; val3 = 20;
@@ -2276,7 +2277,7 @@ void modification_test_2()
    BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
    modify< Object >( 7/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 20; } );
    modify< Object >( 7/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 20; } );
-   it.get_modifier().add_modify( 1, 1 );
+   it.add_modify( 1, 1 );
    /*
       id = 4; val = 0; val2 = 6; val3 = 10;
       id = 5; val = 1; val2 = 6; val3 = 20;
@@ -2345,7 +2346,8 @@ void modification_test_3()
    BOOST_TEST_MESSAGE( "modifying element on 'begin' position, which is moved forward" );
    modify< Object >( 4/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 4; } );
    modify< Object >( 4/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 4; } );
-   it.get_modifier().add_modify( 4, 1 );
+   it.add_modify( 4, 1 );
+
    /*
       id = 5; val = 1; val2 = 6; val3 = 20;
       id = 4; val = 4; val2 = 6; val3 = 10;  X
@@ -2360,7 +2362,8 @@ void modification_test_3()
    BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
    modify< Object >( 0/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 10; } );
    modify< Object >( 0/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 10; } );
-   it.get_modifier().add_modify( 0, 0 );
+   it.add_modify( 0, 0 );
+
    /*
       id = 5; val = 1; val2 = 6; val3 = 20;
       id = 4; val = 4; val2 = 6; val3 = 10;  X
@@ -2375,6 +2378,7 @@ void modification_test_3()
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
+
    ++it;
    ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
@@ -2391,7 +2395,7 @@ void modification_test_3()
    BOOST_TEST_MESSAGE( "modifying previous element, which is moved forward" );
    modify< Object >( 5/*id*/, id_idx3, [&]( Object& obj ){ obj.val = 11; } );
    modify< Object >( 5/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 11; } );
-   it.get_modifier().add_modify( 5, 2 );
+   it.add_modify( 5, 2 );
    /*
       id = 4; val = 4; val2 = 6; val3 = 10;
       id = 1; val = 5; val2 = 3; val3 = 21;
@@ -2489,6 +2493,48 @@ void simple_fill_for_modification_tests( Collection& c1, Collection& comparer )
    comparer.emplace( Object ( c2_, std::allocator< Object >() ) );
 }
 
+template< typename Object, typename Collection >
+void simple_fill_for_modification_tests( Collection& c1, Collection& c2, Collection& comparer )
+{
+   //bmic1
+   auto c0_a = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+   auto c1_a = []( Object& obj ){ obj.id = 1; obj.val = 6; obj.val2 = 2; obj.val3 = 1; };
+   auto c2_a = []( Object& obj ){ obj.id = 2; obj.val = 8; obj.val2 = 4; obj.val3 = 2; };
+   auto c3_a = []( Object& obj ){ obj.id = 3; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+   c1.emplace( Object ( c0_a, std::allocator< Object >() ) );
+   c1.emplace( Object ( c1_a, std::allocator< Object >() ) );
+   c1.emplace( Object ( c2_a, std::allocator< Object >() ) );
+   c1.emplace( Object ( c3_a, std::allocator< Object >() ) );
+
+   //bmic2
+   auto c0_b = []( Object& obj ){ obj.id = 4; obj.val = 0; obj.val2 = 6; obj.val3 = 10; };
+   auto c1_b = []( Object& obj ){ obj.id = 5; obj.val = 5; obj.val2 = 0; obj.val3 = 11; };
+   auto c2_b = []( Object& obj ){ obj.id = 2; obj.val = 6; obj.val2 = 3; obj.val3 = 12; };
+   auto c3_b = []( Object& obj ){ obj.id = 7; obj.val = 7; obj.val2 = 2; obj.val3 = 13; };
+   c2.emplace( Object ( c0_b, std::allocator< Object >() ) );
+   c2.emplace( Object ( c1_b, std::allocator< Object >() ) );
+   c2.emplace( Object ( c2_b, std::allocator< Object >() ) );
+   c2.emplace( Object ( c3_b, std::allocator< Object >() ) );
+
+   //comparer
+
+   auto c0_ = []( Object& obj ){ obj.id = 4; obj.val = 0; obj.val2 = 6; obj.val3 = 10; };	
+   auto c1_ = []( Object& obj ){ obj.id = 5; obj.val = 5; obj.val2 = 0; obj.val3 = 11; };
+   auto c2_ = []( Object& obj ){ obj.id = 0; obj.val = 5; obj.val2 = 1; obj.val3 = 0; };
+   auto c3_ = []( Object& obj ){ obj.id = 1; obj.val = 6; obj.val2 = 2; obj.val3 = 1; };
+   auto c4_ = []( Object& obj ){ obj.id = 2; obj.val = 6; obj.val2 = 3; obj.val3 = 12; };
+   auto c5_ = []( Object& obj ){ obj.id = 7; obj.val = 7; obj.val2 = 2; obj.val3 = 13; };
+   auto c6_ = []( Object& obj ){ obj.id = 3; obj.val = 9; obj.val2 = 4; obj.val3 = 3; };
+
+   comparer.emplace( Object ( c0_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c1_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c2_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c3_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c4_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c5_, std::allocator< Object >() ) );
+   comparer.emplace( Object ( c6_, std::allocator< Object >() ) );
+}
+
 template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
 void modification_test_forward()
 {
@@ -2524,7 +2570,7 @@ void modification_test_forward()
    BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
    modify< Object >( 2/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 4; } );
    modify< Object >( 2/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 4; } );
-   it.get_modifier().add_modify( 0, 0 );
+   it.add_modify( 0, 0 );
 
    BOOST_REQUIRE( *it == *it_comparer );
 }
@@ -2564,8 +2610,73 @@ void modification_test_reverse()
    BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
    modify< Object >( 0/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 13; } );
    modify< Object >( 0/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 13; } );
-   it.get_modifier().add_modify( 0, 0 );
+   it.add_modify( 0, 0 );
 
+   BOOST_REQUIRE( *it == *it_comparer );
+}
+
+template< bool Forward, typename Object, typename CMP, typename ID_Index, typename Index, typename Collection, typename Iterator >
+void modification_test_reverse2()
+{
+   Collection bmic1;
+   Collection bmic2;
+
+   Collection comparer;
+
+   simple_fill_for_modification_tests< Object >( bmic1, bmic2, comparer );
+
+   auto& id_idx1 = bmic1.template get< ID_Index >();
+   auto& id_idx2 = bmic2.template get< ID_Index >();
+
+   const auto& idx1 = bmic1.template get< Index >();
+   const auto& idx2 = bmic2.template get< Index >();
+
+   Iterator it( CMP(),
+               std::make_tuple( &idx1, &id_idx1 ),
+               std::make_tuple( &idx2, &id_idx2 )
+            );
+
+   auto& id_comparer_idx = comparer.template get< ID_Index >();
+   auto& comparer_idx = comparer.template get< Index >();
+
+   helper_iterator< Collection, Index, t_direction< Forward, Collection, Index > > hi;
+   auto it_comparer = hi.get_begin( comparer_idx );
+
+   BOOST_REQUIRE( *it == *it_comparer );
+/*
+   id = 4; val = 0; val2 = 6; val3 = 10;
+   id = 5; val = 5; val2 = 0; val3 = 11;
+   id = 0; val = 5; val2 = 1; val3 = 0;
+   id = 1; val = 6; val2 = 2; val3 = 1;
+   id = 2; val = 6; val2 = 3; val3 = 12;
+   id = 7; val = 7; val2 = 2; val3 = 13;
+   id = 3; val = 9; val2 = 4; val3 = 3;   X(R)
+*/
+   BOOST_TEST_MESSAGE( "modifying next element, which is moved forward" );
+   modify< Object >( 0/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 10; } );
+   modify< Object >( 0/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 10; } );
+   it.add_modify( 0, 0 );
+/*
+   id = 4; val = 0; val2 = 6; val3 = 10;
+   id = 5; val = 5; val2 = 0; val3 = 11;
+   id = 1; val = 6; val2 = 2; val3 = 1;
+   id = 2; val = 6; val2 = 3; val3 = 12;
+   id = 7; val = 7; val2 = 2; val3 = 13;
+   id = 3; val = 9; val2 = 4; val3 = 3;
+   id = 0; val = 10; val2 = 1; val3 = 0;     X(R)
+*/
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   ++it;
+   ++it_comparer;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   ++it;
+   ++it_comparer;
+   BOOST_REQUIRE( *it == *it_comparer );
+
+   ++it;
+   ++it_comparer;
    BOOST_REQUIRE( *it == *it_comparer );
 }
 
@@ -2628,7 +2739,7 @@ void modification_test_4()
    {
       modify< Object >( i/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 20 - i; } );
       modify< Object >( i/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 20 - i; } );
-      it.get_modifier().add_modify( i, 0 );
+      it.add_modify( i, 0 );
       BOOST_REQUIRE( *it == *it_comparer );
    }
    /*
@@ -2669,12 +2780,14 @@ void modification_test_4()
       id = 1;  val = 19; val2 = 2;  val3 = 1;   (10)
       id = 0;  val = 20; val2 = 1;  val3 = 0;   X
    */
+
+
    BOOST_TEST_MESSAGE( "modifying 4 elements for id<1-4>" );
    for( int32_t i = 1; i <= 4; ++i )
    {
       modify< Object >( i/*id*/, id_idx1, [&]( Object& obj ){ obj.val = i * 10; } );
       modify< Object >( i/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = i * 10; } );
-      it.get_modifier().add_modify( i, 0 );
+      it.add_modify( i, 0 );
       BOOST_REQUIRE( *it == *it_comparer );
    }
    /*
@@ -2693,9 +2806,9 @@ void modification_test_4()
    */
   for( int32_t i = 0; i < 2; ++i )
   {
-      BOOST_REQUIRE( *it == *it_comparer );
       --it;
       --it_comparer;
+      BOOST_REQUIRE( *it == *it_comparer );
   }
 
    /*
@@ -2715,7 +2828,7 @@ void modification_test_4()
    BOOST_TEST_MESSAGE( "modifying 1 element for id<6>" );
    modify< Object >( 6/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 2; obj.val2 = 0; } );
    modify< Object >( 6/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 2; obj.val2 = 0; } );
-   it.get_modifier().add_modify( 6, 1 );
+   it.add_modify( 6, 1 );
    BOOST_REQUIRE( *it == *it_comparer );
    /*
       id = 11; val = 1; val2 = 12; val3 = 11;
@@ -2731,6 +2844,7 @@ void modification_test_4()
       id = 3;  val = 30; val2 = 4;  val3 = 3;
       id = 4;  val = 40; val2 = 5;  val3 = 4;
    */
+
 
    --it;
    --it_comparer;
@@ -2756,7 +2870,7 @@ void modification_test_4()
    {
       modify< Object >( id_set[i]/*id*/, id_idx2, [&]( Object& obj ){ obj.val = obj.val + 20 - 5*i; } );
       modify< Object >( id_set[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = obj.val + 20 - 5*i; } );
-      it.get_modifier().add_modify( id_set[i], 1 );
+      it.add_modify( id_set[i], 1 );
       BOOST_REQUIRE( *it == *it_comparer );
    }
    /*
@@ -2810,7 +2924,7 @@ void modification_test_4()
    {
       modify< Object >( id_set2[i]/*id*/, i==0?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 0; } );
       modify< Object >( id_set2[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 0; } );
-      it.get_modifier().add_modify( id_set2[i], i==0?0:1 );
+      it.add_modify( id_set2[i], i==0?0:1 );
       BOOST_REQUIRE( *it == *it_comparer );
    }
    /*
@@ -2864,7 +2978,7 @@ void modification_test_4()
    BOOST_TEST_MESSAGE( "modifying 1 elements for id<11> and change direction from '--' to '++'" );
    modify< Object >( 11/*id*/, id_idx2, [&]( Object& obj ){ obj.val = 19; } );
    modify< Object >( 11/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 19; } );
-   it.get_modifier().add_modify( 11, 1 );
+   it.add_modify( 11, 1 );
    BOOST_REQUIRE( *it == *it_comparer );
    /*
       id = 4;  val = 0; val2 = 5;  val3 = 4;
@@ -2903,7 +3017,7 @@ void modification_test_4()
    BOOST_TEST_MESSAGE( "modifying 1 elements for id<2> and change direction from '++' to '--'" );
    modify< Object >( 2/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 5; } );
    modify< Object >( 2/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 5; } );
-   it.get_modifier().add_modify( 2, 0 );
+   it.add_modify( 2, 0 );
    BOOST_REQUIRE( *it == *it_comparer );
    /*
       id = 4;  val = 0; val2 = 5;  val3 = 4;
@@ -2944,7 +3058,7 @@ void modification_test_4()
    BOOST_TEST_MESSAGE( "modifying 1 elements for id<4> and change direction from '--' to '++'" );
    modify< Object >( 4/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 4; } );
    modify< Object >( 4/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 4; } );
-   it.get_modifier().add_modify( 4, 0 );
+   it.add_modify( 4, 0 );
    BOOST_REQUIRE( *it == *it_comparer );
    /*
       id = 7;  val = 0; val2 = 8;  val3 = 7;          X
@@ -2984,7 +3098,7 @@ void modification_test_4()
    BOOST_TEST_MESSAGE( "modifying 1 elements for id<1>" );
    modify< Object >( 1/*id*/, id_idx1, [&]( Object& obj ){ obj.val = 0; } );
    modify< Object >( 1/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 0; } );
-   it.get_modifier().add_modify( 1, 0 );
+   it.add_modify( 1, 0 );
    BOOST_REQUIRE( *it == *it_comparer );
    /*
       id = 1;  val = 0; val2 = 2;  val3 = 1;       X
@@ -3030,7 +3144,7 @@ void modification_test_4()
    {
       modify< Object >( id_set3[i]/*id*/, ( id_set3[i] < 6 )?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 40 - i; } );
       modify< Object >( id_set3[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 40 - i; } );
-      it.get_modifier().add_modify( id_set3[i], ( id_set3[i] < 6 )?0:1 );
+      it.add_modify( id_set3[i], ( id_set3[i] < 6 )?0:1 );
    }
    /*
       id = 3;  val = 29; val2 = 4;  val3 = 3;
@@ -3075,7 +3189,7 @@ void modification_test_4()
    {
       modify< Object >( id_set4[i]/*id*/, ( id_set4[i] < 6 )?id_idx1:id_idx2, [&]( Object& obj ){ obj.val = 20 - i; } );
       modify< Object >( id_set4[i]/*id*/, id_comparer_idx, [&]( Object& obj ){ obj.val = 20 - i; } );
-      it.get_modifier().add_modify( id_set4[i], ( id_set4[i] < 6 )?0:1 );
+      it.add_modify( id_set4[i], ( id_set4[i] < 6 )?0:1 );
    }
    /*
       id = 1;  val = 09; val2 = 2;  val3 = 1;
@@ -3101,6 +3215,19 @@ void modification_test_4()
 }
 
 BOOST_AUTO_TEST_SUITE(concatenation_enumeration_tests)
+
+BOOST_AUTO_TEST_CASE(modification_tests_others2)
+{
+   using Object = ce_tests::test_object;
+   using CMP = ce_tests::cmp2;
+   using ID_Index = ce_tests::OrderedIndex;
+   using Index = ce_tests::CompositeOrderedIndexA;
+   using Collection = ce_tests::test_object_index;
+
+   using ReverseIterator = ce::concatenation_reverse_iterator_ex< Object, CMP >;
+
+   modification_test_reverse2< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+}
 
 BOOST_AUTO_TEST_CASE(modification_tests_others)
 {
@@ -3145,7 +3272,7 @@ BOOST_AUTO_TEST_CASE(modification_tests_reverse)
 
    modification_test_1< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
    modification_test_2< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
-   //modification_test_3< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
+   modification_test_3< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
    //modification_test_4< false, Object, CMP, ID_Index, Index, Collection, ReverseIterator >();
 }
 

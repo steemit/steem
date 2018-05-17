@@ -40,6 +40,25 @@ namespace ce
          }
 
          template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
+         bool make_cmp( CMP& cmp, const ITEM& item, const ITEM& current_item )
+         {
+            if( DIRECTION == Direction::next )
+            {
+               if( FORWARD_ITERATOR )
+                  return cmp( *( *item ), *( *current_item ) );
+               else
+                  return !cmp( *( *item ), *( *current_item ) );
+            }
+            else
+            {
+               if( FORWARD_ITERATOR )
+                  return !cmp( *( *item ), *( *current_item ) );
+               else
+                  return cmp( *( *item ), *( *current_item ) );
+            }
+         }
+
+         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
          void dec( CMP& cmp, const ITEM& item, const ITEM& current_item )
          {
             bool _cmp = true;
@@ -47,10 +66,8 @@ namespace ce
 
             while( _cmp && !done && !item->end() )
             {
-               if( FORWARD_ITERATOR )
-                  _cmp = !cmp( *( *item ), *( *current_item ) );
-               else
-                  _cmp = cmp( *( *item ), *( *current_item ) );
+               _cmp = make_cmp< FORWARD_ITERATOR, Direction::prev >( cmp, item, current_item );
+
                if( _cmp )
                {
                   if( item->begin() )
@@ -65,20 +82,24 @@ namespace ce
             }
          }
 
-         template< bool FORWARD_ITERATOR, typename CMP, typename ITEM >
+         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
          void inc( CMP& cmp, const ITEM& item, const ITEM& current_item )
          {
             bool _cmp = true;
 
             while( _cmp && !item->end() )
             {
-               if( FORWARD_ITERATOR )
-                  _cmp = cmp( *( *item ), *( *current_item ) );
-               else
-                  _cmp = !cmp( *( *item ), *( *current_item ) );
+               _cmp = make_cmp< FORWARD_ITERATOR, Direction::next >( cmp, item, current_item );
 
                if( _cmp )
+               {
                   ++( *item );
+                  if( DIRECTION != Direction::next && item->end() )
+                  {
+                     --( *item );
+                     break;
+                  }
+               }
             }
          }
 
@@ -107,18 +128,8 @@ namespace ce
          template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
          void run( CMP& cmp, const ITEM& item, const ITEM& current_item, uint32_t level, uint32_t current_level )
          {
-            if( current_is_invalidated )
-            {
-               dec< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
-               inc< FORWARD_ITERATOR >( cmp, item, current_item );
-            }
-            else
-            {
-               if( DIRECTION == Direction::next )
-                  inc< FORWARD_ITERATOR >( cmp, item, current_item );
-               else
-                  dec< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
-            }
+            dec< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
+            inc< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
          }
 
          void end()
