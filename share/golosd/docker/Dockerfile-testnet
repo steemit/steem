@@ -1,7 +1,5 @@
 FROM phusion/baseimage:0.9.22
 
-#ARG STEEMD_BLOCKCHAIN=https://download.golos.io/blockchain.tar.bz2
-
 ENV LANG=en_US.UTF-8
 
 RUN apt-get update && \

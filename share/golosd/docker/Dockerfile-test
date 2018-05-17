@@ -1,7 +1,5 @@
 FROM phusion/baseimage:0.9.19
 
-#ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
-
 ENV LANG=en_US.UTF-8
 
 RUN \
@@ -47,59 +45,10 @@ RUN \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
     ./tests/chain_test --log_level=message --report_level=detailed && \
-    ./tests/plugin_test --log_level=message --report_level=detailed && \
-    cd .. && \
-    rm -rf build
-
-RUN \
-    cd /usr/local/src/golos && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_GOLOS_TESTNET=FALSE \
-        -DBUILD_SHARED_LIBRARIES=FALSE \
-        -DLOW_MEMORY_NODE=FALSE \
-        -DCHAINBASE_CHECK_LOCKING=FALSE \
-        .. \
-    && \
-    make -j$(nproc) && \
-    cd .. && \
-    rm -rf build
-
-RUN \
-    cd /usr/local/src/golos && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_GOLOS_TESTNET=FALSE \
-        -DBUILD_SHARED_LIBRARIES=FALSE \
-        -DLOW_MEMORY_NODE=TRUE \
-        -DCHAINBASE_CHECK_LOCKING=FALSE \
-        .. \
-    && \
-    make -j$(nproc) && \
-    cd .. && \
-    rm -rf build
-
-RUN \
-    cd /usr/local/src/golos && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_GOLOS_TESTNET=TRUE \
-        -DBUILD_SHARED_LIBRARIES=FALSE \
-        -DLOW_MEMORY_NODE=FALSE \
-        -DCHAINBASE_CHECK_LOCKING=FALSE \
-        .. \
-    && \
-    make -j$(nproc) && \
-    cd .. && \
-    rm -rf build
+    ./tests/plugin_test --log_level=message --report_level=detailed
 
 # isn't used now, but can be used later ...
+#
 # RUN \
 #    cd /usr/local/src/golos && \
 #    rm -rf build && \

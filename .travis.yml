@@ -16,6 +16,9 @@ script:
       docker build -t goloschain/golos:latest . ;
     else
       docker build -t goloschain/golos:test -f share/golosd/docker/Dockerfile-test . ;
+      docker build -t goloschain/golos:develop . ;
+      docker build -t goloschain/golos:lowmem -f share/golosd/docker/Dockerfile-lowmem-small . ;
+      docker build -t goloschain/golos:testnet -f share/golosd/docker/Dockerfile-testnet . ;
     fi
   - docker images
 
