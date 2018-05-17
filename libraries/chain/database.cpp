@@ -3402,21 +3402,19 @@ void database::update_global_dynamic_data( const signed_block& b )
       for( uint32_t i = 0; i < missed_blocks; ++i )
       {
          const auto& witness_missed = get_witness( get_scheduled_witness( i + 1 ) );
-         if(  witness_missed.owner != b.witness )
+
+         modify( witness_missed, [&]( witness_object& w )
          {
-            modify( witness_missed, [&]( witness_object& w )
+            w.total_missed++;
+            if(    (_dgp.head_block_number - w.last_confirmed_block_num > STEEM_BLOCKS_PER_DAY)
+                && (witness_missed.owner != b.witness)
+                && has_hardfork( STEEM_HARDFORK_0_14__278 )
+              )
             {
-               w.total_missed++;
-               if( has_hardfork( STEEM_HARDFORK_0_14__278 ) )
-               {
-                  if( head_block_num() - w.last_confirmed_block_num  > STEEM_BLOCKS_PER_DAY )
-                  {
-                     w.signing_key = public_key_type();
-                     push_virtual_operation( shutdown_witness_operation( w.owner ) );
-                  }
-               }
-            } );
-         }
+               w.signing_key = public_key_type();
+               push_virtual_operation( shutdown_witness_operation( w.owner ) );
+            }
+         } );
       }
    }
 
