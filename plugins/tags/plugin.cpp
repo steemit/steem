@@ -883,6 +883,10 @@ namespace golos { namespace plugins { namespace tags {
 
     // Needed for correct work of golos::api::discussion_helper::set_pending_payout and etc api methods
     void fill_promoted( discussion & d, golos::chain::database& db) {
+        if (!db.has_index<tags::tag_index>()) {
+            return;
+        }
+
         const auto& cidx = db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
         auto itr = cidx.lower_bound(d.id);
         if (itr != cidx.end() && itr->comment == d.id) {
