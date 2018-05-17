@@ -9,58 +9,36 @@ before_install:
   - echo "$TRAVIS_TAG"
   - echo "$TRAVIS_BRANCH"
 
-jobs:
-    include:
-    - script: ignore # Skip default stage test
+env:
+  - DOCKERFILE=Dockerfile DOCKERNAME=""
+  - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-lowmem DOCKERNAME="-lowmem"
 
-    - stage: test building of docker images
-      script: docker build -t goloschain/golos:test -f share/golosd/docker/Dockerfile-test .
-    - script: docker build -t goloschain/golos:develop .
-    - script: docker build -t goloschain/golos:develop -f share/golosd/docker/Dockerfile-testnet .
-    - script: docker build -t goloschain/golos:develop -f share/golosd/docker/Dockerfile-lowmem .
+matrix:
+  fast_finish: true
 
-    - stage: publish latest docker images
-      if: branch = master
-      script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:latest .
-        - docker images
-        - docker tag goloschain/golos:latest goloschain/golos:latest
-        - docker push goloschain/golos:latest
+script:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+      export DOCKERNAME="latest""$DOCKERNAME";
+      export EXPORTNAME="latest""$DOCKERNAME";
+    elif [ -n "$TRAVIS_TAG" ]; then
+      export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
+      export EXPORTNAME="$TRAVIS_TAG""$DOCKERNAME";
+    else
+      export DOCKERNAME=develop"$DOCKERNAME";
+    fi
+  - echo "$DOCKERFILE"
+  - echo "$DOCKERNAME"
+  - docker build -t goloschain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .
 
-    - script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:latest-testnet -f share/golosd/docker/Dockerfile-testnet .
-        - docker images
-        - docker tag goloschain/golos:latest-testnet goloschain/golos:latest-testnet
-        - docker push goloschain/golos:lastest-testnet
-
-    - script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:latest-lowmem -f share/golosd/docker/Dockerfile-lowmem .
-        - docker images
-        - docker tag goloschain/golos:latest-lowmem goloschain/golos:latest-lowmem
-        - docker push goloschain/golos:lastest-lowmem
-
-    - stage: publish "$TRAVIS_TAG" docker images
-      if: tag IS present
-      script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:"$TRAVIS_TAG" .
-        - docker images
-        - docker tag goloschain/golos:"$TRAVIS_TAG" goloschain/golos:"$TRAVIS_TAG"
-        - docker push goloschain/golos:"$TRAVIS_TAG"
-
-    - script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:"$TRAVIS_TAG"-testnet -f share/golosd/docker/Dockerfile-testnet .
-        - docker images
-        - docker tag goloschain/golos:"$TRAVIS_TAG"-testnet goloschain/golos:"$TRAVIS_TAG"-testnet
-        - docker push goloschain/golos:"$TRAVIS_TAG"-testnet
-
-    - script:
-        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        - docker build -t goloschain/golos:"$TRAVIS_TAG"-lowmem -f share/golosd/docker/Dockerfile-lowmem .
-        - docker images
-        - docker tag goloschain/golos:"$TRAVIS_TAG"-lowmem goloschain/golos:"$TRAVIS_TAG"-lowmem
-        - docker push goloschain/golos:"$TRAVIS_TAG"-lowmem
+after_success:
+  - echo "$EXPORTNAME"
+  - docker images
+  - if [ -n "$EXPORTNAME" ]; then
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+      docker push goloschain/golos:"$EXPORTNAME";
+    fi
+  - if [ "$TRAVIS_BRANCH" == "master" -a "$EXPORTNAME" == "latest" ]; then
+      bash deploy/deploy.sh;
+    fi
