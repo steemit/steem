@@ -185,6 +185,10 @@ namespace golos { namespace plugins { namespace tags {
                 auto citr = comment_idx.lower_bound(comment.id);
                 const tag_object* language_tag = nullptr;
 
+                if (meta.tags.empty()) {
+                    meta.tags.insert(std::string());
+                }
+
                 std::map<std::string, const tag_object*> existing_tags;
                 std::vector<const tag_object*> remove_queue;
                 for (; citr != comment_idx.end() && citr->comment == comment.id; ++citr) {
