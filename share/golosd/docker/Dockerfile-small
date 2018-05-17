@@ -1,7 +1,5 @@
 FROM phusion/baseimage:0.9.19
 
-#ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
-
 ENV LANG=en_US.UTF-8
 
 ADD . /usr/local/src/golos
@@ -32,7 +30,8 @@ RUN \
     pip3 install gcovr && \
     # build golosd
     cd /usr/local/src/golos && \
-    git submodule update --init --recursive && \
+    git submodule deinit -f . && \
+    git submodule update --init --recursive -f && \
     mkdir build && \
     cd build && \
     cmake \

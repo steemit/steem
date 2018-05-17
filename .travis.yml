@@ -9,21 +9,36 @@ before_install:
   - echo "$TRAVIS_TAG"
   - echo "$TRAVIS_BRANCH"
 
+env:
+  - DOCKERFILE=Dockerfile DOCKERNAME=""
+  - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-lowmem DOCKERNAME="-lowmem"
+
+matrix:
+  fast_finish: true
+
 script:
-  - if [ -n "${TRAVIS_TAG}" ]; then
-      docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+      export DOCKERNAME="latest""$DOCKERNAME";
+      export EXPORTNAME="latest""$DOCKERNAME";
+    elif [ -n "$TRAVIS_TAG" ]; then
+      export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
+      export EXPORTNAME="$TRAVIS_TAG""$DOCKERNAME";
     else
-      docker build -t goloschain/golos:latest . ;
+      export DOCKERNAME=develop"$DOCKERNAME";
     fi
-  - docker images
+  - echo "$DOCKERFILE"
+  - echo "$DOCKERNAME"
+  - docker build -t goloschain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+  - echo "$EXPORTNAME"
+  - docker images
+  - if [ -n "$EXPORTNAME" ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push goloschain/golos:latest;
-      bash deploy/deploy.sh;
+      docker push goloschain/golos:"$EXPORTNAME";
     fi
-  - if [ -n "$TRAVIS_TAG" ]; then
-      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push goloschain/golos:"$TRAVIS_TAG";
+  - if [ "$TRAVIS_BRANCH" == "master" -a "$EXPORTNAME" == "latest" ]; then
+      bash deploy/deploy.sh;
     fi

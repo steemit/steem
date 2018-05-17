@@ -2,8 +2,6 @@ FROM phusion/baseimage:0.9.19
 
 ENV LANG=en_US.UTF-8
 
-ADD . /usr/local/src/golos
-
 RUN \
     apt-get update && \
     apt-get install -y \
@@ -27,8 +25,13 @@ RUN \
         python3-dev \
         python3-pip \
     && \
-    pip3 install gcovr && \
-    # build golosd
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    pip3 install gcovr
+
+ADD . /usr/local/src/golos
+
+RUN \
     cd /usr/local/src/golos && \
     git submodule deinit -f . && \
     git submodule update --init --recursive -f && \
@@ -44,8 +47,9 @@ RUN \
     && \
     make -j$(nproc) && \
     make install && \
-    # perform cleanup
-    rm -rf /usr/local/src/golos && \
+    rm -rf /usr/local/src/golos
+
+RUN \
     apt-get remove -y \
         automake \
         autotools-dev \
@@ -91,11 +95,11 @@ RUN \
         /var/tmp/* \
         /var/cache/* \
         /usr/include \
-        /usr/local/include && \
-    # add pseudouser
-    useradd -s /bin/bash -m -d /var/lib/golosd golosd && \
-    # prepare cache directory
-    mkdir /var/cache/golosd && \
+        /usr/local/include
+
+RUN useradd -s /bin/bash -m -d /var/lib/golosd golosd
+
+RUN mkdir /var/cache/golosd && \
     chown golosd:golosd -R /var/cache/golosd
 
 # add blockchain cache to image
