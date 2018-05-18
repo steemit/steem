@@ -114,7 +114,7 @@ class wallet_api
        *
        * @returns Public block data on the blockchain
        */
-      optional< database_api::api_signed_block_object > get_block( uint32_t num );
+      optional< condenser_api::legacy_signed_block > get_block( uint32_t num );
 
       /** Returns sequence of operations included/generated in a specified block
        *

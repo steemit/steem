@@ -29,7 +29,7 @@ optional< block_header > remote_node_api::get_block_header( uint32_t )
    FC_ASSERT( false );
 }
 
-optional< database_api::api_signed_block_object > remote_node_api::get_block( uint32_t )
+optional< condenser_api::legacy_signed_block > remote_node_api::get_block( uint32_t )
 {
    FC_ASSERT( false );
 }

@@ -26,7 +26,7 @@ struct remote_node_api
    condenser_api::state get_state( string );
    vector< account_name_type > get_active_witnesses();
    optional< block_header > get_block_header( uint32_t );
-   optional< database_api::api_signed_block_object > get_block( uint32_t );
+   optional< condenser_api::legacy_signed_block > get_block( uint32_t );
    vector< condenser_api::api_operation_object > get_ops_in_block( uint32_t, bool only_virtual = true );
    fc::variant_object get_config();
    condenser_api::extended_dynamic_global_properties get_dynamic_global_properties();

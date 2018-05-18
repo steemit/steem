@@ -914,7 +914,7 @@ bool wallet_api::copy_wallet_file(string destination_filename)
    return my->copy_wallet_file(destination_filename);
 }
 
-optional< database_api::api_signed_block_object > wallet_api::get_block(uint32_t num)
+optional< condenser_api::legacy_signed_block > wallet_api::get_block(uint32_t num)
 {
    return my->_remote_api->get_block( num );
 }
