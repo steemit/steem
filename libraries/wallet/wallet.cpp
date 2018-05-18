@@ -1376,6 +1376,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             string creator,
             string new_account_name,
             string json_meta,
+            asset fee,
             public_key_type owner,
             public_key_type active,
             public_key_type posting,
@@ -1392,7 +1393,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 op.posting = authority( 1, posting, 1 );
                 op.memo_key = memo;
                 op.json_metadata = json_meta;
-                op.fee = my->_remote_database_api->get_chain_properties().account_creation_fee;
+                op.fee = fee;
 
                 signed_transaction tx;
                 tx.operations.push_back(op);
@@ -1808,7 +1809,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
  *  This method will generate new owner, active, posting and memo keys for the new account
  *  which will be controlable by this wallet.
  */
-        annotated_signed_transaction wallet_api::create_account( string creator, string new_account_name, string json_meta, bool broadcast )
+        annotated_signed_transaction wallet_api::create_account(
+            string creator, string new_account_name, string json_meta, asset fee, bool broadcast
+        )
         { try {
                 FC_ASSERT( !is_locked() );
                 auto owner = suggest_brain_key();
@@ -1819,7 +1822,18 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 import_key( active.wif_priv_key );
                 import_key( posting.wif_priv_key );
                 import_key( memo.wif_priv_key );
-                return create_account_with_keys( creator, new_account_name, json_meta, owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
+                if (!fee.amount.value) {
+                    auto prop = my->_remote_database_api->get_chain_properties();
+                    auto hf = my->_remote_database_api->get_hardfork_version();
+                    fee = prop.account_creation_fee;
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_18)) {
+                        fee *= GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+                    }
+                }
+                return create_account_with_keys(
+                    creator, new_account_name, json_meta, fee,
+                    owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast
+                );
             } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
 
 /**
