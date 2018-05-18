@@ -36,7 +36,7 @@ namespace golos { namespace plugins { namespace tags {
         void prepare();
         void validate() const;
 
-        uint32_t                          limit = 0; ///< the discussions return amount top limit
+        uint32_t                          limit = 20; ///< the discussions return amount top limit
         std::set<std::string>             select_tags; ///< list of tags to include, posts without these tags are filtered
         std::set<std::string>             filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
         std::set<std::string>             select_languages; ///< list of language to select

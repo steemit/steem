@@ -93,7 +93,7 @@ namespace golos { namespace plugins { namespace tags {
         template<typename DiscussionOrder, typename Selector>
         std::vector<discussion> select_ordered_discussions(discussion_query&, Selector&&) const;
 
-        std::vector<tag_api_object> get_trending_tags(std::string after, uint32_t limit) const;
+        std::vector<tag_api_object> get_trending_tags(const std::string& after, uint32_t limit) const;
 
         std::vector<std::pair<std::string, uint32_t>> get_tags_used_by_author(const std::string& author) const;
 
@@ -602,7 +602,8 @@ namespace golos { namespace plugins { namespace tags {
 
             for (; itr != idx.end() && itr->author == *query.start_author && result.size() < query.limit; ++itr) {
                 if (itr->parent_author.size() > 0) {
-                    if (!query.is_good_tags(discussion(db.get<comment_object>(itr->root_comment), db))) {
+                    discussion p(db.get<comment_object>(itr->root_comment), db);
+                    if (!query.is_good_tags(p) || !query.is_good_author(p.author)) {
                         continue;
                     }
                     result.emplace_back(discussion(*itr, db));
@@ -760,7 +761,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     std::vector<tag_api_object>
-    tags_plugin::impl::get_trending_tags(std::string after, uint32_t limit) const {
+    tags_plugin::impl::get_trending_tags(const std::string& after, uint32_t limit) const {
         limit = std::min(limit, uint32_t(1000));
         std::vector<tag_api_object> result;
 #ifndef IS_LOW_MEM
@@ -769,7 +770,7 @@ namespace golos { namespace plugins { namespace tags {
         const auto& nidx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
         const auto& ridx = database().get_index<tags::tag_stats_index>().indices().get<tags::by_trending>();
         auto itr = ridx.begin();
-        if (after != "" && nidx.size()) {
+        if (!after.empty() && nidx.size()) {
             auto nitr = nidx.lower_bound(std::make_tuple(tags::tag_type::tag, after));
             if (nitr == nidx.end()) {
                 itr = ridx.end();
@@ -780,6 +781,10 @@ namespace golos { namespace plugins { namespace tags {
 
         for (; itr->type == tags::tag_type::tag && itr != ridx.end() && result.size() < limit; ++itr) {
             tag_api_object push_object = tag_api_object(*itr);
+
+            if (push_object.name.empty()) {
+                continue;
+            }
 
             if (!fc::is_utf8(push_object.name)) {
                 push_object.name = fc::prune_invalid_utf8(push_object.name);
@@ -812,7 +817,7 @@ namespace golos { namespace plugins { namespace tags {
         const auto& tidx = db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
         auto itr = tidx.lower_bound(std::make_tuple(acnt->id, tags::tag_type::tag));
         for (;itr != tidx.end() && itr->author == acnt->id && result.size() < 1000; ++itr) {
-            if (itr->type == tags::tag_type::tag) {
+            if (itr->type == tags::tag_type::tag && itr->name.size()) {
                 if (!fc::is_utf8(itr->name)) {
                     result.emplace_back(std::make_pair(fc::prune_invalid_utf8(itr->name), itr->total_posts));
                 } else {
