@@ -443,9 +443,13 @@ namespace golos { namespace wallet {
              *  @param creator The account creating the new account
              *  @param new_account_name The name of the new account
              *  @param json_meta JSON Metadata associated with the new account
+             *  @param fee The amount of the fee to be paid with GOLOS
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+            annotated_signed_transaction create_account(
+                string creator, string new_account_name, string json_meta,
+                asset fee = asset(), bool broadcast = false
+            );
 
             /**
              * This method is used by faucets to create new accounts for other users which must
@@ -456,20 +460,23 @@ namespace golos { namespace wallet {
              * @param creator The account creating the new account
              * @param newname The name of the new account
              * @param json_meta JSON Metadata associated with the new account
+             * @param fee The amount of the fee to be paid with GOLOS
              * @param owner public owner key of the new account
              * @param active public active key of the new account
              * @param posting public posting key of the new account
              * @param memo public memo key of the new account
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account_with_keys( string creator,
-                                                                   string newname,
-                                                                   string json_meta,
-                                                                   public_key_type owner,
-                                                                   public_key_type active,
-                                                                   public_key_type posting,
-                                                                   public_key_type memo,
-                                                                   bool broadcast )const;
+            annotated_signed_transaction create_account_with_keys(
+                string creator,
+                string newname,
+                string json_meta,
+                asset fee,
+                public_key_type owner,
+                public_key_type active,
+                public_key_type posting,
+                public_key_type memo,
+                bool broadcast )const;
 
             /**
              *  This method will genrate new owner, active, posting and memo keys for the new account which
