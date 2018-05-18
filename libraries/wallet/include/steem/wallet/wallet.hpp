@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/plugins/condenser_api/condenser_api.hpp>
+
 #include <steem/wallet/remote_node_api.hpp>
 
 #include <steem/utilities/key_conversion.hpp>
@@ -345,7 +347,7 @@ class wallet_api
        *  @param json_meta JSON Metadata associated with the new account
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+      condenser_api::legacy_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
 
       /**
        * This method is used by faucets to create new accounts for other users which must
@@ -362,14 +364,15 @@ class wallet_api
        * @param memo public memo key of the new account
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_account_with_keys( string creator,
-                                            string newname,
-                                            string json_meta,
-                                            public_key_type owner,
-                                            public_key_type active,
-                                            public_key_type posting,
-                                            public_key_type memo,
-                                            bool broadcast )const;
+      condenser_api::legacy_signed_transaction create_account_with_keys(
+         string creator,
+         string newname,
+         string json_meta,
+         public_key_type owner,
+         public_key_type active,
+         public_key_type posting,
+         public_key_type memo,
+         bool broadcast )const;
 
       /**
        *  This method will genrate new owner, active, and memo keys for the new account which
@@ -386,7 +389,13 @@ class wallet_api
        *  @param json_meta JSON Metadata associated with the new account
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast );
+      condenser_api::legacy_signed_transaction create_account_delegated(
+         string creator,
+         condenser_api::legacy_asset steem_fee,
+         condenser_api::legacy_asset delegated_vests,
+         string new_account_name,
+         string json_meta,
+         bool broadcast );
 
       /**
        * This method is used by faucets to create new accounts for other users which must
@@ -407,16 +416,17 @@ class wallet_api
        * @param memo public memo key of the new account
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_account_with_keys_delegated( string creator,
-                                            asset steem_fee,
-                                            asset delegated_vests,
-                                            string newname,
-                                            string json_meta,
-                                            public_key_type owner,
-                                            public_key_type active,
-                                            public_key_type posting,
-                                            public_key_type memo,
-                                            bool broadcast )const;
+      condenser_api::legacy_signed_transaction create_account_with_keys_delegated(
+         string creator,
+         condenser_api::legacy_asset steem_fee,
+         condenser_api::legacy_asset delegated_vests,
+         string newname,
+         string json_meta,
+         public_key_type owner,
+         public_key_type active,
+         public_key_type posting,
+         public_key_type memo,
+         bool broadcast )const;
 
       /**
        * This method updates the keys of an existing account.
@@ -429,13 +439,14 @@ class wallet_api
        * @param memo New public memo key for the account
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction update_account( string accountname,
-                                         string json_meta,
-                                         public_key_type owner,
-                                         public_key_type active,
-                                         public_key_type posting,
-                                         public_key_type memo,
-                                         bool broadcast )const;
+      condenser_api::legacy_signed_transaction update_account(
+         string accountname,
+         string json_meta,
+         public_key_type owner,
+         public_key_type active,
+         public_key_type posting,
+         public_key_type memo,
+         bool broadcast )const;
 
       /**
        * This method updates the key of an authority for an exisiting account.
@@ -449,7 +460,12 @@ class wallet_api
        * @param weight The weight the key should have in the authority. A weight of 0 indicates the removal of the key.
        * @param broadcast true if you wish to broadcast the transaction.
        */
-      annotated_signed_transaction update_account_auth_key( string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast );
+      condenser_api::legacy_signed_transaction update_account_auth_key(
+         string account_name,
+         authority_type type,
+         public_key_type key,
+         weight_type weight,
+         bool broadcast );
 
       /**
        * This method updates the account of an authority for an exisiting account.
@@ -463,7 +479,12 @@ class wallet_api
        * @param weight The weight the account should have in the authority. A weight of 0 indicates the removal of the account.
        * @param broadcast true if you wish to broadcast the transaction.
        */
-      annotated_signed_transaction update_account_auth_account( string account_name, authority_type type, string auth_account, weight_type weight, bool broadcast );
+      condenser_api::legacy_signed_transaction update_account_auth_account(
+         string account_name,
+         authority_type type,
+         string auth_account,
+         weight_type weight,
+         bool broadcast );
 
       /**
        * This method updates the weight threshold of an authority for an account.
@@ -477,7 +498,11 @@ class wallet_api
        * @param threshold The weight threshold required for the authority to be met
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction update_account_auth_threshold( string account_name, authority_type type, uint32_t threshold, bool broadcast );
+      condenser_api::legacy_signed_transaction update_account_auth_threshold(
+         string account_name,
+         authority_type type,
+         uint32_t threshold,
+         bool broadcast );
 
       /**
        * This method updates the account JSON metadata
@@ -486,7 +511,10 @@ class wallet_api
        * @param json_meta The new JSON metadata for the account. This overrides existing metadata
        * @param broadcast ture if you wish to broadcast the transaction
        */
-      annotated_signed_transaction update_account_meta( string account_name, string json_meta, bool broadcast );
+      condenser_api::legacy_signed_transaction update_account_meta(
+         string account_name,
+         string json_meta,
+         bool broadcast );
 
       /**
        * This method updates the memo key of an account
@@ -495,7 +523,10 @@ class wallet_api
        * @param key The new memo public key
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
+      condenser_api::legacy_signed_transaction update_account_memo_key(
+         string account_name,
+         public_key_type key,
+         bool broadcast );
 
 
       /**
@@ -506,7 +537,11 @@ class wallet_api
        * @param vesting_shares The amount of VESTS to delegate
        * @param broadcast true if you wish to broadcast the transaction
        */
-       annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
+       condenser_api::legacy_signed_transaction delegate_vesting_shares(
+          string delegator,
+          string delegatee,
+          condenser_api::legacy_asset vesting_shares,
+          bool broadcast );
 
 
       /**
@@ -553,11 +588,12 @@ class wallet_api
        * @param props The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
        */
-      annotated_signed_transaction update_witness(string witness_name,
-                                        string url,
-                                        public_key_type block_signing_key,
-                                        const legacy_chain_properties& props,
-                                        bool broadcast = false);
+      condenser_api::legacy_signed_transaction update_witness(
+         string witness_name,
+         string url,
+         public_key_type block_signing_key,
+         const legacy_chain_properties& props,
+         bool broadcast = false);
 
       /** Set the voting proxy for an account.
        *
@@ -574,9 +610,10 @@ class wallet_api
        * @param proxy the name of account that should proxy to, or empty string to have no proxy
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction set_voting_proxy(string account_to_modify,
-                                          string proxy,
-                                          bool broadcast = false);
+      condenser_api::legacy_signed_transaction set_voting_proxy(
+         string account_to_modify,
+         string proxy,
+         bool broadcast = false);
 
       /**
        * Vote for a witness to become a block producer. By default an account has not voted
@@ -589,10 +626,11 @@ class wallet_api
        * @param approve true if the account is voting for the account to be able to be a block produce
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction vote_for_witness(string account_to_vote_with,
-                                          string witness_to_vote_for,
-                                          bool approve = true,
-                                          bool broadcast = false);
+      condenser_api::legacy_signed_transaction vote_for_witness(
+         string account_to_vote_with,
+         string witness_to_vote_for,
+         bool approve = true,
+         bool broadcast = false);
 
       /**
        * Transfer funds from one account to another. STEEM and SBD can be transferred.
@@ -603,7 +641,12 @@ class wallet_api
        * @param memo A memo for the transactionm, encrypted with the to account's public memo key
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
+      condenser_api::legacy_signed_transaction transfer(
+         string from,
+         string to,
+         condenser_api::legacy_asset amount,
+         string memo,
+         bool broadcast = false);
 
       /**
        * Transfer funds from one account to another using escrow. STEEM and SBD can be transferred.
@@ -620,14 +663,14 @@ class wallet_api
        * @param json_meta JSON encoded meta data
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction escrow_transfer(
+      condenser_api::legacy_signed_transaction escrow_transfer(
          string from,
          string to,
          string agent,
          uint32_t escrow_id,
-         asset sbd_amount,
-         asset steem_amount,
-         asset fee,
+         condenser_api::legacy_asset sbd_amount,
+         condenser_api::legacy_asset steem_amount,
+         condenser_api::legacy_asset fee,
          time_point_sec ratification_deadline,
          time_point_sec escrow_expiration,
          string json_meta,
@@ -646,7 +689,7 @@ class wallet_api
        * @param approve true to approve the escrow transfer, otherwise cancels it and refunds 'from'
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction escrow_approve(
+      condenser_api::legacy_signed_transaction escrow_approve(
          string from,
          string to,
          string agent,
@@ -666,7 +709,7 @@ class wallet_api
        * @param escrow_id A unique id for the escrow transfer
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction escrow_dispute(
+      condenser_api::legacy_signed_transaction escrow_dispute(
          string from,
          string to,
          string agent,
@@ -688,15 +731,15 @@ class wallet_api
        * @param steem_amount The amount of STEEM that will be released
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction escrow_release(
+      condenser_api::legacy_signed_transaction escrow_release(
          string from,
          string to,
          string agent,
          string who,
          string receiver,
          uint32_t escrow_id,
-         asset sbd_amount,
-         asset steem_amount,
+         condenser_api::legacy_asset sbd_amount,
+         condenser_api::legacy_asset steem_amount,
          bool broadcast = false
       );
 
@@ -710,12 +753,21 @@ class wallet_api
        * @param amount The amount of STEEM to vest i.e. "100.00 STEEM"
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction transfer_to_vesting(string from, string to, asset amount, bool broadcast = false);
+      condenser_api::legacy_signed_transaction transfer_to_vesting(
+         string from,
+         string to,
+         condenser_api::legacy_asset amount,
+         bool broadcast = false);
 
       /**
        *  Transfers into savings happen immediately, transfers from savings take 72 hours
        */
-      annotated_signed_transaction transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast = false );
+      condenser_api::legacy_signed_transaction transfer_to_savings(
+         string from,
+         string to,
+         condenser_api::legacy_asset amount,
+         string memo,
+         bool broadcast = false );
 
       /**
        *  @param from       - the account that initiated the transfer
@@ -725,15 +777,23 @@ class wallet_api
        *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false );
+      condenser_api::legacy_signed_transaction transfer_from_savings(
+         string from,
+         uint32_t request_id,
+         string to,
+         condenser_api::legacy_asset amount,
+         string memo,
+         bool broadcast = false );
 
       /**
        *  @param from the account that initiated the transfer
        *  @param request_id the id used in transfer_from_savings
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast = false );
-
+      condenser_api::legacy_signed_transaction cancel_transfer_from_savings(
+         string from, uint32_t
+         request_id,
+         bool broadcast = false );
 
       /**
        * Set up a vesting withdraw request. The request is fulfilled once a week over the next two year (104 weeks).
@@ -743,7 +803,10 @@ class wallet_api
        *    withdrawn and deposited back as STEEM. i.e. "10.000000 VESTS"
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
+      condenser_api::legacy_signed_transaction withdraw_vesting(
+         string from,
+         condenser_api::legacy_asset vesting_shares,
+         bool broadcast = false );
 
       /**
        * Set up a vesting withdraw route. When vesting shares are withdrawn, they will be routed to these accounts
@@ -757,7 +820,12 @@ class wallet_api
        *    them as STEEM.
        * @param broadcast true if you wish to broadcast the transaction.
        */
-      annotated_signed_transaction set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast = false );
+      condenser_api::legacy_signed_transaction set_withdraw_vesting_route(
+         string from,
+         string to,
+         uint16_t percent,
+         bool auto_vest,
+         bool broadcast = false );
 
       /**
        *  This method will convert SBD to STEEM at the current_median_history price one
@@ -767,7 +835,10 @@ class wallet_api
        *  @param amount The amount of SBD to convert
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
+      condenser_api::legacy_signed_transaction convert_sbd(
+         string from,
+         condenser_api::legacy_asset amount,
+         bool broadcast = false );
 
       /**
        * A witness can public a price feed for the STEEM:SBD market. The median price feed is used
@@ -777,7 +848,10 @@ class wallet_api
        * @param exchange_rate The desired exchange rate
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast );
+      condenser_api::legacy_signed_transaction publish_feed(
+         string witness,
+         condenser_api::legacy_price exchange_rate,
+         bool broadcast );
 
       /** Signs a transaction.
        *
@@ -787,7 +861,9 @@ class wallet_api
        * @param broadcast true if you wish to broadcast the transaction
        * @return the signed version of the transaction
        */
-      annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
+      condenser_api::legacy_signed_transaction sign_transaction(
+         condenser_api::legacy_signed_transaction tx,
+         bool broadcast = false);
 
       /** Returns an uninitialized object representing a given blockchain operation.
        *
@@ -826,7 +902,14 @@ class wallet_api
        *  @param expiration the time the order should expire if it has not been filled
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
+      condenser_api::legacy_signed_transaction create_order(
+         string owner,
+         uint32_t order_id,
+         condenser_api::legacy_asset amount_to_sell,
+         condenser_api::legacy_asset min_to_receive,
+         bool fill_or_kill,
+         uint32_t expiration,
+         bool broadcast );
 
       /**
        * Cancel an order created with create_order
@@ -835,7 +918,10 @@ class wallet_api
        * @param orderid The unique identifier assigned to the order by its creator
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
+      condenser_api::legacy_signed_transaction cancel_order(
+         string owner,
+         uint32_t orderid,
+         bool broadcast );
 
       /**
        *  Post or update a comment.
@@ -849,7 +935,15 @@ class wallet_api
        *  @param json the json metadata of the comment
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
+      condenser_api::legacy_signed_transaction post_comment(
+         string author,
+         string permlink,
+         string parent_author,
+         string parent_permlink,
+         string title,
+         string body,
+         string json,
+         bool broadcast );
 
       /**
        * Vote on a comment to be paid STEEM
@@ -860,7 +954,12 @@ class wallet_api
        * @param weight The weight [-100,100] of the vote
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
+      condenser_api::legacy_signed_transaction vote(
+         string voter,
+         string author,
+         string permlink,
+         int16_t weight,
+         bool broadcast );
 
       /**
        * Sets the amount of time in the future until a transaction expires.
@@ -878,7 +977,11 @@ class wallet_api
        * @param new_authority The new owner authority for the recovered account. This should be given to you by the holder of the compromised or lost account.
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction request_account_recovery( string recovery_account, string account_to_recover, authority new_authority, bool broadcast );
+      condenser_api::legacy_signed_transaction request_account_recovery(
+         string recovery_account,
+         string account_to_recover,
+         authority new_authority,
+         bool broadcast );
 
       /**
        * Recover your account using a recovery request created by your recovery account. The syntax for this commain contains a serialized
@@ -891,7 +994,11 @@ class wallet_api
        * @param new_authority The new authority that your recovery account used in the account recover request.
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction recover_account( string account_to_recover, authority recent_authority, authority new_authority, bool broadcast );
+      condenser_api::legacy_signed_transaction recover_account(
+         string account_to_recover,
+         authority recent_authority,
+         authority new_authority,
+         bool broadcast );
 
       /**
        * Change your recovery account after a 30 day delay.
@@ -900,7 +1007,10 @@ class wallet_api
        * @param new_recovery_account The name of the recovery account you wish to have
        * @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
+      condenser_api::legacy_signed_transaction change_recovery_account(
+         string owner,
+         string new_recovery_account,
+         bool broadcast );
 
       vector< database_api::api_owner_authority_history_object > get_owner_history( string account )const;
 
@@ -924,7 +1034,7 @@ class wallet_api
        *  @param what - a set of things to follow: posts, comments, votes, ignore
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
+      condenser_api::legacy_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
 
 
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
@@ -948,9 +1058,14 @@ class wallet_api
        */
       string decrypt_memo( string memo );
 
-      annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
+      condenser_api::legacy_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
 
-      annotated_signed_transaction claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast );
+      condenser_api::legacy_signed_transaction claim_reward_balance(
+         string account,
+         condenser_api::legacy_asset reward_steem,
+         condenser_api::legacy_asset reward_sbd,
+         condenser_api::legacy_asset reward_vests,
+         bool broadcast );
 };
 
 struct plain_keys {
