@@ -48,6 +48,8 @@ will build out of the box without further effort:
         cmake \
         g++ \
         git \
+        libbz2-dev \
+        libsnappy-dev \
         libssl-dev \
         libtool \
         make \
@@ -102,6 +104,8 @@ Here are the required packages:
         cmake3 \
         g++ \
         git \
+        libbz2-dev \
+        libsnappy-dev \
         libssl-dev \
         libtool \
         make \
