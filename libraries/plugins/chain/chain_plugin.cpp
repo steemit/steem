@@ -1,6 +1,7 @@
 #include <steem/chain/database_exceptions.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/statsd/statsd_plugin.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
 
@@ -75,6 +76,7 @@ class chain_plugin_impl
       bool                             validate_invariants = false;
       bool                             dump_memory_details = false;
       bool                             benchmark_is_enabled =false;
+      bool                             statsd_on_replay = false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
@@ -356,6 +358,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->benchmark_is_enabled = (options.count( "advanced-benchmark" ) != 0);
 
+   if( options.count( "statsd-record-on-replay" ) )
+   {
+      my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
+   }
+
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
       my->db.set_chain_id( options.at("chain-id").as< std::string >() );
@@ -366,6 +373,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 {
+   if( my->statsd_on_replay )
+   {
+      auto statsd = appbase::app().find_plugin< steem::plugins::statsd::statsd_plugin >();
+      if( statsd != nullptr )
+      {
+         statsd->start_logging();
+      }
+   }
+
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
 
    my->start_write_processing();
