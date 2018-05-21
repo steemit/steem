@@ -621,7 +621,14 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( _db.calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen." );
       }
 
-      if( _db.has_hardfork( STEEM_HARDFORK_0_12__176 ) )
+      if( _db.has_hardfork( STEEM_HARDFORK_0_20__2019 ) )
+      {
+         if( o.parent_author == STEEM_ROOT_POST_PARENT )
+             FC_ASSERT( ( now - auth.last_root_post ) > STEEM_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", auth.last_root_post) );
+         else
+             FC_ASSERT( (now - auth.last_post) >= STEEM_MIN_REPLY_INTERVAL_HF20, "You may only comment once every 3 seconds.", ("now",now)("auth.last_post",auth.last_post) );
+      }
+      else if( _db.has_hardfork( STEEM_HARDFORK_0_12__176 ) )
       {
          if( o.parent_author == STEEM_ROOT_POST_PARENT )
              FC_ASSERT( ( now - auth.last_root_post ) > STEEM_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", auth.last_root_post) );
