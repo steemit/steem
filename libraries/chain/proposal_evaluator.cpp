@@ -56,17 +56,35 @@ namespace golos { namespace chain {
         remove_existing(required_active, required_total);
         required_total.insert(required_active.begin(), required_active.end());
 
-        // For more information, see sign_state.cpp
+        // For more information, see transaction.cpp
         FC_ASSERT(
             required_posting.empty() != required_total.empty(),
             "Can't combine operations required posting authority and active or owner authority");
         required_total.insert(required_posting.begin(), required_posting.end());
 
+        // Doesn't allow proposal with combination of create_account() + some_operation()
+        //  because it will be never approved.
+        for (const auto& account: required_total) {
+            FC_ASSERT(
+                nullptr != db().find_account(account),
+                "Account '${account}' for proposed operation doesn't exist", ("account", account));
+        }
+
+        FC_ASSERT(required_total.size(), "No operations require approvals");
+
         transaction trx;
         for (const auto& op : o.proposed_operations) {
             trx.operations.push_back(op.op);
         }
-        trx.validate();
+        trx.set_expiration(db().head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+
+        const uint32_t skip_steps =
+            golos::chain::database::skip_authority_check |
+            golos::chain::database::skip_transaction_signatures |
+            golos::chain::database::skip_tapos_check |
+            golos::chain::database::skip_database_locking;
+
+        db().validate_transaction(trx, skip_steps);
 
         auto ops_size = fc::raw::pack_size(trx.operations);
 
@@ -111,7 +129,7 @@ namespace golos { namespace chain {
 
         auto check_existing = [&](const auto& to_remove, const auto& dst) {
             for (const auto& a: to_remove) {
-                FC_ASSERT(dst.find(a) != dst.end(), "Can't remove the non existing approval", ("id", a));
+                FC_ASSERT(dst.find(a) != dst.end(), "Can't remove the non existing approval '${id}'", ("id", a));
             }
         };
 
@@ -122,7 +140,7 @@ namespace golos { namespace chain {
 
         auto check_duplicate = [&](const auto& to_add, const auto& dst) {
             for (const auto& a: to_add) {
-                FC_ASSERT(dst.find(a) == dst.end(), "Can't add already exist approval", ("id", a));
+                FC_ASSERT(dst.find(a) == dst.end(), "Can't add already exist approval '${id}'", ("id", a));
             }
         };
 
