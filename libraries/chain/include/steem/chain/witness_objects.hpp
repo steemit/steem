@@ -76,6 +76,10 @@ namespace steem { namespace chain {
          uint32_t          total_missed = 0;
          uint64_t          last_aslot = 0;
          uint64_t          last_confirmed_block_num = 0;
+         /** Number of blocks produced since beginning of time or last missed block */
+         uint64_t          current_run = 0;
+         /** Last block produced when current_run >= STEEM_IRREVERSIBLE_SUPPORT_MIN_RUN */
+         uint64_t          last_supported_block_num = 0;
 
          /**
           * Some witnesses have the job because they did a proof of work,
@@ -272,7 +276,8 @@ FC_REFLECT( steem::chain::witness_object,
              (owner)
              (created)
              (url)(votes)(schedule)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
-             (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
+             (last_aslot)(last_confirmed_block_num)(current_run)(last_supported_block_num)
+             (pow_worker)(signing_key)
              (props)
              (sbd_exchange_rate)(last_sbd_exchange_update)
              (last_work)

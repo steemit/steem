@@ -3405,6 +3405,7 @@ void database::update_global_dynamic_data( const signed_block& b )
 
          modify( witness_missed, [&]( witness_object& w )
          {
+            w.current_run = 0;
             if( witness_missed.owner != b.witness )
             {
                //
@@ -3490,6 +3491,9 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    {
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
+      if( _wit.current_run >= STEEM_IRREVERSIBLE_SUPPORT_MIN_RUN )
+         _wit.last_supported_block_num = _wit.last_confirmed_block_num;
+      _wit.current_run++;
    } );
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -3532,10 +3536,10 @@ void database::update_last_irreversible_block()
       std::nth_element( wit_objs.begin(), wit_objs.begin() + offset, wit_objs.end(),
          []( const witness_object* a, const witness_object* b )
          {
-            return a->last_confirmed_block_num < b->last_confirmed_block_num;
+            return a->last_supported_block_num < b->last_supported_block_num;
          } );
 
-      uint32_t new_last_irreversible_block_num = wit_objs[offset]->last_confirmed_block_num;
+      uint32_t new_last_irreversible_block_num = wit_objs[offset]->last_supported_block_num;
 
       if( new_last_irreversible_block_num > dpo.last_irreversible_block_num )
       {
