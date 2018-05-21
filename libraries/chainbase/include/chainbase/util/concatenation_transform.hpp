@@ -14,146 +14,124 @@ namespace ce
 
    enum class Direction : bool { prev, next };
 
+   template< typename CMP >
    class modifier
    {
       private:
 
-         using levels = std::set< uint32_t >;
-         using t_items = std::map< size_t/*id*/, levels >;
+         CMP cmp;
 
-      private:
-
-         bool current_is_invalidated = false;
-         t_items items;
-
-         template< typename ITEM >
-         bool exists( const ITEM& item, uint32_t level )
-         {
-            size_t id = item->get_id();
-
-            auto _found = items.find( id );
-            if( _found == items.end() )
-               return false;
-
-            auto found = _found->second.find( level );
-            return found != _found->second.end();
-         }
-
-         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
-         bool make_cmp( CMP& cmp, const ITEM& item, const ITEM& current_item )
+         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename OBJECT >
+         bool make_cmp( const OBJECT& item, const OBJECT& current_item )
          {
             if( DIRECTION == Direction::next )
             {
                if( FORWARD_ITERATOR )
-                  return cmp( *( *item ), *( *current_item ) );
+                  return cmp( item, current_item );
                else
-                  return !cmp( *( *item ), *( *current_item ) );
+                  return !cmp( item, current_item );
             }
             else
             {
                if( FORWARD_ITERATOR )
-                  return !cmp( *( *item ), *( *current_item ) );
+                  return !cmp( item, current_item );
                else
-                  return cmp( *( *item ), *( *current_item ) );
+                  return cmp( item, current_item );
             }
          }
 
-         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
-         void dec( CMP& cmp, const ITEM& item, const ITEM& current_item )
+         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename ITEM, typename KEY, typename INDEX >
+         void correct( const ITEM& item, const ITEM& current_item, const KEY& key, const INDEX& index )
          {
-            bool _cmp = true;
-            bool done = false;
-
-            while( _cmp && !done && !item->end() )
+            if( FORWARD_ITERATOR )
             {
-               _cmp = make_cmp< FORWARD_ITERATOR, Direction::prev >( cmp, item, current_item );
-
-               if( _cmp )
+               if( DIRECTION == Direction::next )
                {
-                  if( item->begin() )
+                  auto found = index.lower_bound( key );
+                  if( found == index.end() )
                   {
-                     if( DIRECTION == Direction::prev )
-                        item->change_status( true );
-                     done = true;
+                     item->set_iterator( false/*begin_pos*/ );
+                     return;
+                  }
+
+                  bool res = make_cmp< FORWARD_ITERATOR, DIRECTION >( *found, *( *current_item ) );
+                  if( res )
+                     item->set_iterator( false/*begin_pos*/ );
+                  else
+                     item->change_iterator( &found );
+               }
+               else
+               {
+                  auto found = index.upper_bound( key );
+
+                  if( found == index.begin() )
+                  {
+                     item->set_iterator( true/*begin_pos*/ );
+                     item->change_status( true );
+                     return;
+                  }
+
+                  --found;
+                  bool res = make_cmp< FORWARD_ITERATOR, DIRECTION >( *found, *( *current_item ) );
+                  if( res )
+                  {
+                     item->set_iterator( true/*begin_pos*/ );
+                     item->change_status( true );
                   }
                   else
-                     --( *item );
+                     item->change_iterator( &found );
                }
             }
-         }
-
-         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
-         void inc( CMP& cmp, const ITEM& item, const ITEM& current_item )
-         {
-            bool _cmp = true;
-
-            while( _cmp && !item->end() )
+            else
             {
-               _cmp = make_cmp< FORWARD_ITERATOR, Direction::next >( cmp, item, current_item );
-
-               if( _cmp )
+               if( DIRECTION == Direction::next )
                {
-                  ++( *item );
-                  if( DIRECTION != Direction::next && item->end() )
+                  auto found = index.upper_bound( key );
+
+                  bool res = make_cmp< FORWARD_ITERATOR, DIRECTION >( *found, *( *current_item ) );
+                  if( res )
                   {
-                     --( *item );
-                     break;
+                     item->set_iterator( true/*begin_pos*/ );
+                     item->change_status( true );
                   }
+                  else
+                     item->change_iterator( &found );
+               }
+               else
+               {
+                  auto found = index.lower_bound( key );
+
+                  bool res = make_cmp< FORWARD_ITERATOR, DIRECTION >( *found, *( *current_item ) );
+                  if( res )
+                     item->set_iterator( false/*begin_pos*/ );
+                  else
+                     item->change_iterator( &found );
                }
             }
          }
 
       public:
 
-         modifier()
+         modifier( const CMP& _cmp ): cmp( _cmp )
          {
          }
 
-         bool empty() const
+         template< typename KEY, typename INDEX >
+         bool check_current( const KEY& key, const INDEX& index )
          {
-            return items.empty();
+            bool found = index.find( key ) != index.end();
+            return found;
          }
 
-         template< typename ITEM >
-         bool start( const ITEM& current_item, uint32_t current_level )
+         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename ITEM, typename KEY, typename INDEX >
+         void run( const ITEM& item, const ITEM& current_item, const KEY& key, const INDEX& index )
          {
-            if( empty() )
-               return false;
+            if( item->end() )
+               return;
 
-            current_is_invalidated = exists( current_item, current_level );
-
-            return true;
+            correct< FORWARD_ITERATOR, DIRECTION >( item, current_item, key, index );
          }
 
-         template< bool FORWARD_ITERATOR, Direction DIRECTION, typename CMP, typename ITEM >
-         void run( CMP& cmp, const ITEM& item, const ITEM& current_item, uint32_t level, uint32_t current_level )
-         {
-            dec< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
-            inc< FORWARD_ITERATOR, DIRECTION >( cmp, item, current_item );
-         }
-
-         void end()
-         {
-            items.clear();
-         }
-
-         void add_modify( uint32_t id, uint32_t current_level )
-         {
-            auto found = items.find( id );
-
-            if( found == items.end() )
-               items.insert( std::make_pair( id, levels( { current_level } ) ) );
-            else
-               found->second.insert( current_level );
-         }
-         
-         modifier& operator=( const modifier& obj )
-         {
-            current_is_invalidated = obj.current_is_invalidated;
-            items = obj.items;
-
-            return *this;
-         }
    };
 
 }
