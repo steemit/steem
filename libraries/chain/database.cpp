@@ -3502,13 +3502,15 @@ void database::update_last_irreversible_block()
     * Prior to voting taking over, we must be more conservative...
     *
     */
-   if( head_block_num() < STEEM_START_MINER_VOTING_BLOCK )
+   if( dpo.head_block_number < STEEM_START_MINER_VOTING_BLOCK )
    {
-      modify( dpo, [&]( dynamic_global_property_object& _dpo )
+      if ( dpo.head_block_number > STEEM_MAX_WITNESSES )
       {
-         if ( head_block_num() > STEEM_MAX_WITNESSES )
-            _dpo.last_irreversible_block_num = head_block_num() - STEEM_MAX_WITNESSES;
-      } );
+         modify( dpo, [&]( dynamic_global_property_object& _dpo )
+         {
+            _dpo.last_irreversible_block_num = _dpo.head_block_number - STEEM_MAX_WITNESSES;
+         } );
+      }
    }
    else
    {
