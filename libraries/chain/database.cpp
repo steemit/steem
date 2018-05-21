@@ -4365,6 +4365,11 @@ bool database::has_hardfork( uint32_t hardfork )const
    return get_hardfork_property_object().processed_hardforks.size() > hardfork;
 }
 
+uint32_t database::get_hardfork()const
+{
+   return get_hardfork_property_object().processed_hardforks.size() - 1;
+}
+
 void database::set_hardfork( uint32_t hardfork, bool apply_now )
 {
    auto const& hardforks = get_hardfork_property_object();
