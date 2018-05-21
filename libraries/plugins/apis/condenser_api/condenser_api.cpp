@@ -726,7 +726,17 @@ namespace detail
       auto b = _block_api->get_block( { args[0].as< uint32_t >() } ).block;
 
       if( b )
+      {
          result = legacy_signed_block( *b );
+         uint32_t n = uint32_t( b->transactions.size() );
+         uint32_t block_num = block_header::num_from_id( b->block_id );
+         for( uint32_t i=0; i<n; i++ )
+         {
+            result->transactions[i].transaction_id = b->transactions[i].id();
+            result->transactions[i].block_num = block_num;
+            result->transactions[i].transaction_num = i;
+         }
+      }
 
       return result;
    }
