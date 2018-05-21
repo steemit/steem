@@ -621,6 +621,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( _db.calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen." );
       }
 
+      FC_TODO( "Cleanup this logic after HF 20. Old ops don't need to check pre-hf20 times." )
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2019 ) )
       {
          if( o.parent_author == STEEM_ROOT_POST_PARENT )
