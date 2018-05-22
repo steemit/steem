@@ -1994,7 +1994,6 @@ void database::process_funds()
 
       modify( props, [&]( dynamic_global_property_object& p )
       {
-         p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
          if( !has_hardfork( STEEM_HARDFORK_0_17__774 ) )
             p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
          p.current_supply           += asset( new_steem, STEEM_SYMBOL );
