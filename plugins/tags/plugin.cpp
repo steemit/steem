@@ -538,7 +538,7 @@ namespace golos { namespace plugins { namespace tags {
         auto query = args.args->at(0).as<discussion_query>();
         query.prepare();
         query.validate();
-        FC_ASSERT(query.select_authors.size(), "No such author to select blog from");
+        FC_ASSERT(query.select_authors.size(), "Must get blogs for specific authors");
 
 
 #ifndef IS_LOW_MEM
@@ -559,7 +559,7 @@ namespace golos { namespace plugins { namespace tags {
         auto query = args.args->at(0).as<discussion_query>();
         query.prepare();
         query.validate();
-        FC_ASSERT(query.select_authors.size(), "No such author to select feed from");
+        FC_ASSERT(query.select_authors.size(), "Must get feeds for specific authors");
 
 #ifndef IS_LOW_MEM
         auto& db = pimpl->database();
@@ -585,12 +585,16 @@ namespace golos { namespace plugins { namespace tags {
         return db.with_weak_read_lock([&]() {
             const auto &idx = db.get_index<comment_index>().indices().get<by_author_last_update>();
             auto itr = idx.lower_bound(*query.start_author);
-            FC_ASSERT(itr != idx.end(), "Author doesn't have any comment.");
+            if (itr == idx.end()) {
+                return result;
+            }
 
             if (!!query.start_permlink) {
                 const auto &lidx = db.get_index<comment_index>().indices().get<by_permlink>();
                 auto litr = lidx.find(std::make_tuple(*query.start_author, *query.start_permlink));
-                FC_ASSERT(litr != lidx.end(), "Comment is not in account's comments");
+                if (litr == lidx.end()) {
+                    return result;
+                }
                 itr = idx.iterator_to(*litr);
             }
 
@@ -813,7 +817,9 @@ namespace golos { namespace plugins { namespace tags {
 #ifndef IS_LOW_MEM
         auto& db = database();
         const auto* acnt = db.find_account(author);
-        FC_ASSERT(acnt != nullptr);
+        if (acnt == nullptr) {
+            return result;
+        }
         const auto& tidx = db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
         auto itr = tidx.lower_bound(std::make_tuple(acnt->id, tags::tag_type::tag));
         for (;itr != tidx.end() && itr->author == acnt->id && result.size() < 1000; ++itr) {
