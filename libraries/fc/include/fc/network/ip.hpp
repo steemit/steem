@@ -40,7 +40,7 @@ namespace fc {
       private:
         uint32_t _ip;
     };
-    
+
     class endpoint {
       public:
         endpoint();
@@ -58,16 +58,16 @@ namespace fc {
         friend bool operator==( const endpoint& a, const endpoint& b );
         friend bool operator!=( const endpoint& a, const endpoint& b );
         friend bool operator< ( const endpoint& a, const endpoint& b );
-    
+
       private:
         /**
          *  The compiler pads endpoint to a full 8 bytes, so while
          *  a port number is limited in range to 16 bits, we specify
-         *  a full 32 bits so that memcmp can be used with sizeof(), 
-         *  otherwise 2 bytes will be 'random' and you do not know 
+         *  a full 32 bits so that memcmp can be used with sizeof(),
+         *  otherwise 2 bytes will be 'random' and you do not know
          *  where they are stored.
          */
-        uint32_t _port; 
+        uint32_t _port;
         address  _ip;
     };
 
@@ -80,14 +80,14 @@ namespace fc {
   void from_variant( const variant& var,  ip::address& vo );
 
 
-  namespace raw 
+  namespace raw
   {
-    template<typename Stream> 
+    template<typename Stream>
     inline void pack( Stream& s, const ip::address& v )
     {
        fc::raw::pack( s, uint32_t(v) );
     }
-    template<typename Stream> 
+    template<typename Stream>
     inline void unpack( Stream& s, ip::address& v )
     {
        uint32_t _ip;
@@ -95,13 +95,13 @@ namespace fc {
        v = ip::address(_ip);
     }
 
-    template<typename Stream> 
+    template<typename Stream>
     inline void pack( Stream& s, const ip::endpoint& v )
     {
        fc::raw::pack( s, v.get_address() );
        fc::raw::pack( s, v.port() );
     }
-    template<typename Stream> 
+    template<typename Stream>
     inline void unpack( Stream& s, ip::endpoint& v )
     {
        ip::address a;
@@ -113,8 +113,8 @@ namespace fc {
 
   }
 } // namespace fc
-FC_REFLECT_TYPENAME( fc::ip::address ) 
-FC_REFLECT_TYPENAME( fc::ip::endpoint ) 
+FC_REFLECT_TYPENAME( fc::ip::address )
+FC_REFLECT_TYPENAME( fc::ip::endpoint )
 namespace std
 {
     template<>

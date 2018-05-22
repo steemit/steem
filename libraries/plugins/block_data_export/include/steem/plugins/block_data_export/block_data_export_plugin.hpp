@@ -73,4 +73,13 @@ class block_data_export_plugin : public appbase::plugin< block_data_export_plugi
       std::unique_ptr< detail::block_data_export_plugin_impl > my;
 };
 
+template< typename T >
+std::shared_ptr< T > find_export_data( const std::string& name )
+{
+   block_data_export_plugin* export_plugin = appbase::app().find_plugin< block_data_export_plugin >();
+   if( export_plugin == nullptr )
+      return std::shared_ptr< T >();
+   return export_plugin->find_export_data< T >( name );
+}
+
 } } } // steem::plugins::block_data_export

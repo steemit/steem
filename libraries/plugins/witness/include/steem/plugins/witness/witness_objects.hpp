@@ -94,7 +94,6 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
 
 typedef oid< reserve_ratio_object > reserve_ratio_id_type;
 
-
 struct by_account_bandwidth_type;
 
 typedef multi_index_container <

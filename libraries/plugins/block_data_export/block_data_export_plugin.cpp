@@ -32,19 +32,21 @@ namespace detail {
 struct api_export_data_object
 {
    block_id_type                    block_id;
+   block_id_type                    previous;
    flat_map< string, std::shared_ptr< exportable_block_data > >
                                     export_data;
 
    void clear()
    {
       block_id = block_id_type();
+      previous = block_id_type();
       export_data.clear();
    }
 };
 
 } } } }
 
-FC_REFLECT( steem::plugins::block_data_export::detail::api_export_data_object, (block_id)(export_data) )
+FC_REFLECT( steem::plugins::block_data_export::detail::api_export_data_object, (block_id)(previous)(export_data) )
 
 namespace steem { namespace plugins { namespace block_data_export { namespace detail {
 
@@ -68,7 +70,7 @@ class block_data_export_plugin_impl
       void on_post_apply_block( const block_notification& note );
 
       void register_export_data_factory( const std::string& name, std::function< std::shared_ptr< exportable_block_data >() >& factory );
-      void create_export_data( const block_id_type& block_id );
+      void create_export_data( const block_id_type& previous, const block_id_type& block_id );
       void send_export_data();
       std::shared_ptr< exportable_block_data > find_abstract_export_data( const std::string& name );
 
@@ -185,7 +187,7 @@ void block_data_export_plugin_impl::register_export_data_factory(
    _factory_list.emplace_back( name, factory );
 }
 
-void block_data_export_plugin_impl::create_export_data( const block_id_type& block_id )
+void block_data_export_plugin_impl::create_export_data( const block_id_type& previous, const block_id_type& block_id )
 {
    _edo.reset();
    if( !_enabled )
@@ -193,6 +195,7 @@ void block_data_export_plugin_impl::create_export_data( const block_id_type& blo
    _edo = std::make_shared< api_export_data_object >();
 
    _edo->block_id = block_id;
+   _edo->previous = previous;
    for( const auto& fact : _factory_list )
    {
       _edo->export_data.emplace( fact.first, fact.second() );
@@ -232,7 +235,7 @@ std::shared_ptr< exportable_block_data > block_data_export_plugin_impl::find_abs
 
 void block_data_export_plugin_impl::on_pre_apply_block( const block_notification& note )
 {
-   create_export_data( note.block_id );
+   create_export_data( note.block.previous, note.block_id );
 }
 
 void block_data_export_plugin_impl::on_post_apply_block( const block_notification& note )
