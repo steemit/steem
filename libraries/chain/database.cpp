@@ -1100,8 +1100,11 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
 }
 
 /**
- * @param to_account - the account to receive the new vesting shares
- * @param liquid     - STEEM or liquid SMT to be converted to vesting shares
+ * @param to_account          - the account to receive the new vesting shares
+ * @param liquid              - STEEM or liquid SMT to be converted to vesting shares
+ * @param to_reward_balance   - whether the resulting VESTS or vesting SMT should go to account's reward or regular balance
+ * @warning In case liquid parameter refers to SMT and to_reward_balance parameter is true,
+ *          it is caller's duty to check whether SMT allows voting, and NOT call this method otherwise.
  */
 asset database::create_vesting( const account_object& to_account, asset liquid, bool to_reward_balance )
 {
@@ -1130,10 +1133,10 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
-         // Get share price.
          const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
-         if( to_reward_balance && false == smt.allow_voting )
-            return asset( 0, liquid.symbol.get_paired_symbol() ); // No voting - no rewards
+         // WARNING: When to_reward_balance is true, it is caller's duty to check if SMT allows voting, and NOT call this method otherwise.
+         FC_ASSERT( smt.allow_voting || to_reward_balance == false, "This should never happen - fix calling code" );
+         // Get share price.
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
