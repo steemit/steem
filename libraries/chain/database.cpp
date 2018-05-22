@@ -3088,7 +3088,6 @@ namespace golos { namespace chain {
             FC_CAPTURE_AND_RETHROW()
         }
 
-
         uint32_t database::validate_transaction(const signed_transaction &trx, uint32_t skip) {
             const uint32_t validate_transaction_steps =
                 skip_authority_check |
@@ -3101,19 +3100,31 @@ namespace golos { namespace chain {
                 // this method can be used only for push_transaction(),
                 //  because such transactions only added to pending list,
                 //  and they will be rechecked on block generation
-                with_weak_read_lock([&] {
+                auto validate_action = [&]() {
                     _validate_transaction(trx, skip);
-                });
+                };
+
+                if (!(skip & skip_database_locking)) {
+                    with_weak_read_lock(std::move(validate_action));
+                } else {
+                    validate_action();
+                }
 
                 skip |= validate_transaction_steps;
             }
 
             if (!(skip & skip_apply_transaction)) {
-                with_weak_write_lock([&]() {
+                auto apply_action = [&]() {
                     auto session = start_undo_session();
                     _apply_transaction(trx, skip);
                     session.undo();
-                });
+                };
+
+                if (!(skip & skip_database_locking)) {
+                    with_weak_write_lock(std::move(apply_action));
+                } else {
+                    apply_action();
+                }
             }
 
             return skip;
