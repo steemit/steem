@@ -1990,7 +1990,7 @@ void database::process_funds()
 
       witness_reward /= wso.witness_pay_normalization_factor;
 
-      new_steem = content_reward + vesting_reward + witness_reward;
+      new_steem = content_reward + witness_reward;
 
       modify( props, [&]( dynamic_global_property_object& p )
       {
