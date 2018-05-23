@@ -447,8 +447,8 @@ struct api_reward_fund_object
    uint128_t               content_constant = 0;
    uint16_t                percent_curation_rewards = 0;
    uint16_t                percent_content_rewards = 0;
-   protocol::curve_id      author_reward_curve;
-   protocol::curve_id      curation_reward_curve;
+   protocol::curve_id      author_reward_curve = protocol::linear;
+   protocol::curve_id      curation_reward_curve = protocol::square_root;
 };
 
 struct api_escrow_object
