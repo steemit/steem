@@ -409,6 +409,39 @@ BOOST_AUTO_TEST_CASE( tapos )
    }
 }
 
+BOOST_FIXTURE_TEST_CASE( tapos_check_should_not_throw_after_blockid_pool_size_exceeded, clean_database_fixture )
+{
+    try
+    {
+        ACTORS( (alice) );
+
+        generate_blocks(STEEM_BLOCKID_POOL_SIZE);
+
+        comment_operation op;
+        op.author = "alice";
+        op.body = "body";
+        op.permlink = "permlink2";
+        op.parent_author = STEEM_ROOT_POST_PARENT;
+        op.parent_permlink = "test";
+
+        signed_transaction tx;
+        tx.operations.push_back(op);
+        tx.set_reference_block(db->get_dynamic_global_properties().head_block_id);
+        tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+        tx.sign( alice_private_key, db->get_chain_id() );
+
+        generate_block();
+
+        BOOST_REQUIRE_NO_THROW( PUSH_TX( *db, tx ) );
+    }
+    catch (fc::exception& e)
+    {
+       edump((e.to_detail_string()));
+       throw;
+    }
+}
+
+
 BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
 {
    try
