@@ -111,6 +111,9 @@ echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
 if [ $TEST_STEEMD_PID -ne -1 ] &&  [ $REF_STEEMD_PID -ne -1 ]; then
    run_test "account_history" "test_ah_get_account_history.py"
    run_test "get_ops_in_block" "test_ah_get_ops_in_block.py" $BLOCK_LIMIT
+   # 20 * 60 * 24 * 7 = 201600 blocks per week
+   BLOCK_LIMIT_WEEKS=$((BLOCK_LIMIT / 201600))
+   run_test "list_comments" "test_list_comments.py" $BLOCK_LIMIT_WEEKS
 else
    EXIT_CODE=-1
 fi
