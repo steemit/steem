@@ -1887,6 +1887,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       op.owner = "alice";
       op.amount_to_sell = asset( alice_sbd.amount.value / 20, SBD_SYMBOL ) ;
       op.min_to_receive = op.amount_to_sell * exchange_rate;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       op.orderid = 1;
 
       tx.signatures.clear();

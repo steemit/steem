@@ -261,6 +261,8 @@
 #define STEEM_INITIAL_VOTE_POWER_RATE (40)
 #define STEEM_REDUCED_VOTE_POWER_RATE (10)
 
+#define STEEM_MAX_LIMIT_ORDER_EXPIRATION     (60*60*24*28) // 28 days
+
 /**
  *  Reserved Account IDs with special meaning
  */

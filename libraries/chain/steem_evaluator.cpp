@@ -1785,6 +1785,11 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449) )
+   {
+      FC_ASSERT( o.expiration <= _db.head_block_time() + STEEM_MAX_LIMIT_ORDER_EXPIRATION, "Limit Order Expiration must not be more than 28 days in the future" );
+   }
+
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
    _db.adjust_balance( o.owner, -o.amount_to_sell );
@@ -1796,7 +1801,16 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.get_price();
-       obj.expiration = o.expiration;
+
+       FC_TODO( "Check past order expirations and cleanup after HF 20" )
+       if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449 ) )
+       {
+          obj.expiration = o.expiration;
+       }
+       else
+       {
+          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION ) );
+       }
    });
 
    bool filled = _db.apply_order( order );
@@ -1807,6 +1821,11 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o )
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449) )
+   {
+      FC_ASSERT( o.expiration <= _db.head_block_time() + STEEM_MAX_LIMIT_ORDER_EXPIRATION, "Limit Order Expiration must not be more than 28 days in the future" );
+   }
 
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
@@ -1819,7 +1838,16 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.exchange_rate;
-       obj.expiration = o.expiration;
+
+       FC_TODO( "Check past order expirations and cleanup after HF 20" )
+       if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449 ) )
+       {
+          obj.expiration = o.expiration;
+       }
+       else
+       {
+          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION ) );
+       }
    });
 
    bool filled = _db.apply_order( order );
