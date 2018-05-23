@@ -3165,7 +3165,8 @@ void database::_apply_transaction(const signed_transaction& trx)
    {
       if( !(skip & skip_tapos_check) )
       {
-         const auto& tapos_block_summary = get< block_summary_object >( trx.ref_block_num );
+         auto sid = trx.ref_block_num & STEEM_BLOCKID_POOL_SIZE;
+         const auto& tapos_block_summary = get< block_summary_object >( sid );
          //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
          STEEM_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_tapos_exception,
                     "", ("trx.ref_block_prefix", trx.ref_block_prefix)
@@ -3382,7 +3383,7 @@ const witness_object& database::validate_block_header( uint32_t skip, const sign
 
 void database::create_block_summary(const signed_block& next_block)
 { try {
-   block_summary_id_type sid( next_block.block_num() & 0xffff );
+   block_summary_id_type sid( next_block.block_num() & STEEM_BLOCKID_POOL_SIZE );
    modify( get< block_summary_object >( sid ), [&](block_summary_object& p) {
          p.block_id = next_block.id();
    });
