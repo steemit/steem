@@ -5,6 +5,7 @@
 #define STEEMIT_HARDFORK_0_18__535 (STEEMIT_HARDFORK_0_18) // Golos Power delegation
 #define STEEMIT_HARDFORK_0_18__536 (STEEMIT_HARDFORK_0_18) // Comments should be editable forever
 #define STEEMIT_HARDFORK_0_18__542 (STEEMIT_HARDFORK_0_18) // Proposal transactions
+#define STEEMIT_HARDFORK_0_18__673 (STEEMIT_HARDFORK_0_18) // Votable delegation params
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_18_TIME  1523869200 // 16 apr 2018 12:00:00 MSK

@@ -107,51 +107,12 @@ namespace golos { namespace chain {
 #endif
         }
 
-        void witness_update_evaluator::do_apply(const witness_update_operation &o) {
-            database &_db = db();
-            _db.get_account(o.owner); // verify owner exists
-
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
-                FC_ASSERT(o.url.size() <=
-                          STEEMIT_MAX_WITNESS_URL_LENGTH, "URL is too long");
-            } else if (o.url.size() > STEEMIT_MAX_WITNESS_URL_LENGTH) {
-                // after HF, above check can be moved to validate() if reindex doesn't show this warning
-                wlog("URL is too long in block ${b}", ("b",
-                        _db.head_block_num() + 1));
-            }
-
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__410)) {
-                FC_ASSERT(o.props.account_creation_fee.symbol == STEEM_SYMBOL);
-            } else if (o.props.account_creation_fee.symbol != STEEM_SYMBOL) {
-                // after HF, above check can be moved to validate() if reindex doesn't show this warning
-                wlog("Wrong fee symbol in block ${b}", ("b",
-                        _db.head_block_num() + 1));
-            }
-
-            const auto &by_witness_name_idx = _db.get_index<witness_index>().indices().get<by_name>();
-            auto wit_itr = by_witness_name_idx.find(o.owner);
-            if (wit_itr != by_witness_name_idx.end()) {
-                _db.modify(*wit_itr, [&](witness_object &w) {
-                    from_string(w.url, o.url);
-                    w.signing_key = o.block_signing_key;
-                    w.props = o.props;
-                });
-            } else {
-                _db.create<witness_object>([&](witness_object &w) {
-                    w.owner = o.owner;
-                    from_string(w.url, o.url);
-                    w.signing_key = o.block_signing_key;
-                    w.created = _db.head_block_time();
-                    w.props = o.props;
-                });
-            }
-        }
-
         void account_create_evaluator::do_apply(const account_create_operation &o) {
             database &_db = db();
             const auto &creator = _db.get_account(o.creator);
 
             const auto &props = _db.get_dynamic_global_properties();
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
 
             FC_ASSERT(creator.balance >=
                       o.fee, "Insufficient balance to create account.", ("creator.balance", creator.balance)("required", o.fee));
@@ -159,7 +120,7 @@ namespace golos { namespace chain {
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 auto min_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_18__535)) {
-                    min_fee *= GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+                    min_fee *= median_props.create_account_with_golos_modifier;
                 }
                 FC_ASSERT(o.fee >= min_fee,
                     "Insufficient Fee: ${f} required, ${p} provided.", ("f", min_fee)("p", o.fee));
@@ -225,17 +186,19 @@ namespace golos { namespace chain {
                 ("required", o.delegation));
 
             const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
-            const auto& median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
-            auto target_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER *
-                median_fee * v_share_price;
-            auto current_delegation = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO * o.fee * v_share_price + o.delegation;
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+            auto target_delegation =
+                median_props.create_account_delegation_ratio *
+                median_props.create_account_with_golos_modifier *
+                median_props.account_creation_fee * v_share_price;
+            auto current_delegation =
+                median_props.create_account_delegation_ratio * o.fee * v_share_price + o.delegation;
 
             FC_ASSERT(current_delegation >= target_delegation,
                 "Inssufficient Delegation ${f} required, ${p} provided.",
-                ("f", target_delegation)("p", current_delegation)
-                ("account_creation_fee", median_fee)("o.fee", o.fee)("o.delegation", o.delegation));
-            FC_ASSERT(o.fee >= median_fee,
-                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_fee)("p", o.fee));
+                ("f", target_delegation)("p", current_delegation)("o.fee", o.fee) ("o.delegation", o.delegation));
+            FC_ASSERT(o.fee >= median_props.account_creation_fee,
+                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_props.account_creation_fee)("p", o.fee));
 
             for (auto& a : o.owner.account_auths) {
                 _db.get_account(a.first);
@@ -276,7 +239,7 @@ namespace golos { namespace chain {
                     d.delegator = o.creator;
                     d.delegatee = o.new_account_name;
                     d.vesting_shares = o.delegation;
-                    d.min_delegation_time = now + GOLOS_CREATE_ACCOUNT_DELEGATION_TIME;
+                    d.min_delegation_time = now + median_props.create_account_delegation_time;
                 });
             }
             if (o.fee.amount > 0) {
@@ -1664,7 +1627,7 @@ namespace golos { namespace chain {
                 const auto &witness_by_work = db.get_index<witness_index>().indices().get<by_work>();
                 auto work_itr = witness_by_work.find(o.work.work);
                 if (work_itr != witness_by_work.end()) {
-                    FC_ASSERT(!"DUPLICATE WORK DISCOVERED", "${w}  ${witness}", ("w", o)("wit", *work_itr));
+                    FC_ASSERT(!"DUPLICATE WORK DISCOVERED", "${w}  ${witness}", ("w", o)("witness", *work_itr));
                 }
             }
 

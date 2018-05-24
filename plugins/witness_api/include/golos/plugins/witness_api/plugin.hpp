@@ -26,7 +26,7 @@
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/witness_api/api_objects/feed_history_api_object.hpp>
-#include <golos/plugins/witness_api/api_objects/witness_api_object.hpp>
+#include <golos/api/witness_api_object.hpp>
 
 #include <golos/chain/database.hpp>
 
@@ -39,6 +39,7 @@ namespace golos { namespace plugins { namespace witness_api {
 
 using namespace chain;
 using namespace golos::protocol;
+using namespace golos::api;
 using plugins::json_rpc::msg_pack;
 
 

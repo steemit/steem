@@ -10,7 +10,7 @@ namespace golos { namespace api {
     using namespace golos::chain;
 
     struct comment_api_object {
-        comment_api_object(const golos::chain::comment_object &o, const golos::chain::database &db);
+        comment_api_object(const comment_object &o, const database &db);
         comment_api_object();
 
         comment_object::id_type id;

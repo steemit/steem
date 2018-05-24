@@ -200,6 +200,20 @@ namespace golos { namespace protocol {
             props.validate();
         }
 
+        struct chain_properties_validator {
+            using result_type = void;
+
+            template <typename Props>
+            void operator()(const Props& p) const {
+                p.validate();
+            }
+        };
+
+        void chain_properties_update_operation::validate() const {
+            validate_account_name(owner);
+            props.visit(chain_properties_validator());
+        }
+
         void account_witness_vote_operation::validate() const {
             validate_account_name(account);
             validate_account_name(witness);

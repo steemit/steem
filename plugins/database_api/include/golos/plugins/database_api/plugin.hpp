@@ -16,12 +16,15 @@
 #include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
+#include <golos/api/chain_api_properties.hpp>
+
 #include "forward.hpp"
 
 namespace golos { namespace plugins { namespace database_api {
 
 using namespace golos::chain;
 using namespace golos::protocol;
+using namespace golos::api;
 using fc::variant;
 using std::vector;
 using plugins::json_rpc::void_type;
@@ -91,9 +94,6 @@ struct signed_block_api_object : public signed_block {
 };
 
 
-using chain_properties_17 = chain_properties;
-using price_17 = price;
-
 using block_applied_callback = std::function<void(const variant &block_header)>;
 
 ///               API,                                    args,                return
@@ -102,7 +102,7 @@ DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_bloc
 DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
 DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
 DEFINE_API_ARGS(get_dynamic_global_properties,    msg_pack, dynamic_global_property_api_object)
-DEFINE_API_ARGS(get_chain_properties,             msg_pack, chain_properties_17)
+DEFINE_API_ARGS(get_chain_properties,             msg_pack, chain_api_properties)
 DEFINE_API_ARGS(get_hardfork_version,             msg_pack, hardfork_version)
 DEFINE_API_ARGS(get_next_scheduled_hardfork,      msg_pack, scheduled_hardfork)
 DEFINE_API_ARGS(get_accounts,                     msg_pack, std::vector<account_api_object>)

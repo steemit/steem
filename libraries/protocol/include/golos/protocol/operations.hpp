@@ -66,6 +66,7 @@ namespace golos {
                 proposal_create_operation,
                 proposal_update_operation,
                 proposal_delete_operation,
+                chain_properties_update_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
