@@ -5,6 +5,9 @@
 #include <fc/crypto/openssl.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
+#include <boost/endian/conversion.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+
 #ifdef _WIN32
 # include <malloc.h>
 #else
@@ -17,6 +20,8 @@
 #define BTC_EXT_PRIV_MAGIC  (0x0488ADE4)
 
 namespace fc { namespace ecc {
+
+   using namespace boost::multiprecision::literals;
 
     namespace detail {
         typedef fc::array<char,37> chr37;
@@ -168,11 +173,46 @@ namespace fc { namespace ecc {
         return (fp[0] << 24) | (fp[1] << 16) | (fp[2] << 8) | fp[3];
     }
 
-    bool public_key::is_canonical( const compact_signature& c ) {
-        return !(c.data[1] & 0x80)
-               && !(c.data[1] == 0 && !(c.data[2] & 0x80))
-               && !(c.data[33] & 0x80)
-               && !(c.data[33] == 0 && !(c.data[34] & 0x80));
+    bool is_fc_canonical( const compact_signature& c )
+    {
+      return !(c.data[1] & 0x80)
+          && !(c.data[1] == 0 && !(c.data[2] & 0x80))
+          && !(c.data[33] & 0x80)
+          && !(c.data[33] == 0 && !(c.data[34] & 0x80));
+    }
+
+    bool is_bip_0062_canonical( const compact_signature& c )
+    {
+       constexpr boost::multiprecision::uint256_t n_2 =
+          0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0_cppui256;
+
+       boost::multiprecision::uint256_t sig = 0;
+
+       // boost endian conversions are only supported for native c++ types,
+       // so we need to convert in 64 bit words
+       for( size_t i = 0; i < 4; i++ )
+       {
+          sig <<= 64;
+          sig += boost::endian::big_to_native( *( uint64_t* )( c.data + 33 + ( i * 8 ) ) );
+       }
+
+       // BIP-0062 states that sig must be in [1,n/2], however because a sig of value 0 is an invalid
+       // signature under all circumstances, the lower bound does not need checking
+       return sig <= n_2;
+    }
+
+
+    bool public_key::is_canonical( const compact_signature& c, canonical_signature_type canon_type )
+    {
+      switch( canon_type )
+      {
+        case bip_0062:
+          return is_bip_0062_canonical( c );
+        case fc_canonical:
+          return is_fc_canonical( c );
+        case non_canonical:
+          return true;
+      }
     }
 
     private_key private_key::generate_from_seed( const fc::sha256& seed, const fc::sha256& offset )
@@ -269,7 +309,7 @@ namespace fc { namespace ecc {
         memcpy( dest, key.begin(), key.size() );
         return result;
     }
-    
+
     extended_public_key extended_public_key::deserialize( const extended_key_data& data )
     {
        return from_base58( _to_base58( data ) );
@@ -340,7 +380,7 @@ namespace fc { namespace ecc {
         memcpy( dest, key.data(), key.data_size() );
         return result;
     }
-    
+
     extended_private_key extended_private_key::deserialize( const extended_key_data& data )
     {
        return from_base58( _to_base58( data ) );

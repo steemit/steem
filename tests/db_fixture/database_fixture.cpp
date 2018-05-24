@@ -289,7 +289,7 @@ const account_object& database_fixture::account_create(
       trx.operations.push_back( op );
 
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( creator_key, db->get_chain_id() );
+      sign( trx, creator_key );
       trx.validate();
       db->push_transaction( trx, 0 );
       trx.operations.clear();
@@ -347,7 +347,7 @@ const witness_object& database_fixture::witness_create(
 
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( owner_key, db->get_chain_id() );
+      sign( trx, owner_key );
       trx.validate();
       db->push_transaction( trx, 0 );
       trx.operations.clear();
@@ -557,7 +557,7 @@ const asset& database_fixture::get_balance( const string& account_name )const
 
 void database_fixture::sign(signed_transaction& trx, const fc::ecc::private_key& key)
 {
-   trx.sign( key, db->get_chain_id() );
+   trx.sign( key, db->get_chain_id(), default_sig_canon );
 }
 
 vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
@@ -614,7 +614,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
 
       tx.operations.push_back( op );
       tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( key, this->db->get_chain_id() );
+      tx.sign( key, this->db->get_chain_id(), fc::ecc::bip_0062 );
 
       this->db->push_transaction( tx, 0 );
 
@@ -668,7 +668,7 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       tx.operations.push_back( op1 );
       tx.operations.push_back( op2 );
       tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( key, this->db->get_chain_id() );
+      tx.sign( key, this->db->get_chain_id(), fc::ecc::bip_0062 );
       this->db->push_transaction( tx, 0 );
 
       this->generate_block();
@@ -687,7 +687,7 @@ void push_invalid_operation(const operation& invalid_op, const fc::ecc::private_
    signed_transaction tx;
    tx.operations.push_back( invalid_op );
    tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-   tx.sign( key, db->get_chain_id() );
+   tx.sign( key, db->get_chain_id(), fc::ecc::bip_0062 );
    STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 }
 

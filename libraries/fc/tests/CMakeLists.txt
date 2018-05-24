@@ -40,6 +40,9 @@ target_link_libraries( log_test fc )
 add_executable( saturation_test saturation_test.cpp )
 target_link_libraries( saturation_test fc )
 
+add_executable( ecdsa_canon_test crypto/ecdsa_canon_test.cpp )
+target_link_libraries( ecdsa_canon_test fc )
+
 #add_executable( test_aes aes_test.cpp )
 #target_link_libraries( test_aes fc ${rt_library} ${pthread_library} )
 #add_executable( test_sleep sleep.cpp )
@@ -60,6 +63,7 @@ add_executable( all_tests all_tests.cpp
                           crypto/dh_test.cpp
                           crypto/rand_test.cpp
                           crypto/sha_tests.cpp
+                          crypto/ecdsa_canon_test.cpp
                           network/ntp_test.cpp
                           network/http/websocket_test.cpp
                           thread/task_cancel.cpp

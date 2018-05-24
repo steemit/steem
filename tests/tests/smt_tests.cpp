@@ -246,7 +246,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 
       op.control_account = "####";
       STEEM_REQUIRE_THROW( op.validate(), fc::exception ); // invalid account name
-      
+
       op.control_account = "dany";
       op.validate();
 
@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       fail_op.emissions_unit.token_unit["bob"] = 10;
 
       // Do invalid attempt at SMT creation.
-      create_invalid_smt("alice", alice_private_key);      
+      create_invalid_smt("alice", alice_private_key);
 
       // Fail due to non-existing SMT (too early).
       FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
@@ -369,23 +369,23 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
    try
    {
       ACTORS( (dany)(eddy) )
-      
+
       generate_block();
 
       FUND( "dany", 5000000 );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
-      
+
       smt_set_setup_parameters_operation fail_op;
       fail_op.control_account = "dany";
 
       // Do invalid attempt at SMT creation.
       create_invalid_smt("dany", dany_private_key);
-      
+
       // Fail due to non-existing SMT (too early).
       FAIL_WITH_OP(fail_op, dany_private_key, fc::assert_exception)
-      
+
       // Create SMT(s) and continue.
       auto smts = create_smt_3("dany", dany_private_key);
       {
@@ -706,7 +706,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
 
       validate_database();
    }
-   FC_LOG_AND_RETHROW()   
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
@@ -731,7 +731,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
 
          op.author = "alice";
          op.permlink = "test";
-            
+
          BOOST_TEST_MESSAGE( "--- Testing valid configuration: no votable_assets" );
          allowed_vote_assets ava;
          op.extensions.insert( ava );
@@ -743,7 +743,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
 
          op.author = "alice";
          op.permlink = "test";
-            
+
          BOOST_TEST_MESSAGE( "--- Testing valid configuration of votable_assets" );
          allowed_vote_assets ava;
          for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS; ++i)
@@ -751,7 +751,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
             const auto& smt = smts[i];
             ava.add_votable_asset(smt, share_type(10 + i), (i & 2) != 0);
          }
-         
+
          op.extensions.insert( ava );
          op.validate();
       }
@@ -761,7 +761,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
 
          op.author = "alice";
          op.permlink = "test";
-            
+
          BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - too much assets specified" );
          allowed_vote_assets ava;
          for(size_t i = 0; i < smts.size(); ++i)
@@ -769,7 +769,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
             const auto& smt = smts[i];
             ava.add_votable_asset(smt, share_type(20 + i), (i & 2) != 0);
          }
-         
+
          op.extensions.insert( ava );
          STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       }
@@ -779,7 +779,7 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
 
          op.author = "alice";
          op.permlink = "test";
-            
+
          BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - STEEM added to container" );
          allowed_vote_assets ava;
          const auto& smt = smts.front();
@@ -895,7 +895,7 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
    try
    {
       BOOST_TEST_MESSAGE( "Test Creation of vesting SMT" );
-      
+
       ACTORS((alice));
       generate_block();
 
@@ -1284,7 +1284,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       //SMT doesn't exist
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       tx.operations.clear();
       tx.signatures.clear();
@@ -1299,7 +1299,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.decimal_places = 3;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
@@ -1310,7 +1310,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.decimal_places = 5;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       const steem::chain::smt_token_object* smt_token = db->find< steem::chain::smt_token_object, by_control_account >( op.control_account );

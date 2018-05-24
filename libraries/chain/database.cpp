@@ -3157,7 +3157,8 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       try
       {
-         trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH );
+         trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH,
+            has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
       }
       catch( protocol::tx_missing_active_auth& e )
       {
@@ -3371,7 +3372,8 @@ const witness_object& database::validate_block_header( uint32_t skip, const sign
    const witness_object& witness = get_witness( next_block.witness );
 
    if( !(skip&skip_witness_signature) )
-      FC_ASSERT( next_block.validate_signee( witness.signing_key ) );
+      FC_ASSERT( next_block.validate_signee( witness.signing_key,
+         has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical ) );
 
    if( !(skip&skip_witness_schedule_check) )
    {

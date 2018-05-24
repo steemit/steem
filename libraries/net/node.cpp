@@ -1937,7 +1937,7 @@ namespace graphene { namespace net {
       fc::sha256::encoder shared_secret_encoder;
       fc::sha512 shared_secret = originating_peer->get_shared_secret();
       shared_secret_encoder.write(shared_secret.data(), sizeof(shared_secret));
-      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), false);
+      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), fc::ecc::non_canonical);
 
       // store off the data provided in the hello message
       originating_peer->user_agent = hello_message_received.user_agent;
