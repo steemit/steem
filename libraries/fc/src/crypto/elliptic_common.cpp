@@ -212,6 +212,8 @@ namespace fc { namespace ecc {
           return is_fc_canonical( c );
         case non_canonical:
           return true;
+        default:
+          return false;
       }
     }
 
