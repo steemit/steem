@@ -930,7 +930,7 @@ signed_block database::_generate_block(
    }
 
    if( !(skip & skip_witness_signature) )
-      pending_block.sign( block_signing_private_key );
+      pending_block.sign( block_signing_private_key, has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
 
    // TODO:  Move this to _push_block() so session is restored.
    if( !(skip & skip_block_size_check) )
