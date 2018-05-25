@@ -3759,20 +3759,24 @@ void database::adjust_smt_balance( const account_name_type& name, bool check_acc
    if( bo == nullptr )
    {
       // No balance object related to the SMT means '0' balance. Check delta to avoid creation of negative balance.
-      FC_ASSERT( balance_operator.is_positive_delta(), "Insufficient SMT ${smt} funds", ("smt", balance_symbol) );
+      FC_ASSERT( balance_operator.is_positive_delta(), "Cannot create a negative balance for SMT ${smt}", ("smt", balance_symbol) );
+
       // No need to create object with '0' balance (see comment above).
       if( balance_operator.is_zero_delta() )
+      {
          return;
+      }
 
       if( check_account )
+      {
          get_account( name );
+      }
 
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
          smt_balance.clear_balance( liquid_symbol );
          smt_balance.owner = name;
          balance_operator.add_to_balance( smt_balance );
-         smt_balance.validate();
       } );
    }
    else

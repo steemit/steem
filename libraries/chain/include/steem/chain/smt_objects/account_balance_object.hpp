@@ -16,7 +16,7 @@ class account_regular_balance_object : public object< account_regular_balance_ob
 {
    account_regular_balance_object() = delete;
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_regular_balance_object(Constructor&& c, allocator< Allocator > a)
    {
@@ -50,9 +50,6 @@ public:
       vesting += vesting_shares;
    }
    ///@}
-
-   void validate() const
-   { FC_ASSERT( liquid.symbol == vesting.symbol.get_paired_symbol() ); }
 };
 
 /**
@@ -64,7 +61,7 @@ class account_rewards_balance_object : public object< account_rewards_balance_ob
 {
    account_rewards_balance_object() = delete;
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_rewards_balance_object(Constructor&& c, allocator< Allocator > a)
    {
@@ -100,12 +97,6 @@ public:
       pending_vesting_value += vesting_value;
    }
    ///@}
-
-   void validate() const
-   {
-      FC_ASSERT( pending_liquid.symbol == pending_vesting_shares.symbol.get_paired_symbol() &&
-                 pending_liquid.symbol == pending_vesting_value.symbol );
-   }
 };
 
 struct by_owner_liquid_symbol;
