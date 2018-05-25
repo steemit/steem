@@ -232,7 +232,6 @@ namespace steem { namespace chain {
          time_point_sec    effective_on;
    };
 
-   struct by_name;
    struct by_proxy;
    struct by_next_vesting_withdrawal;
 

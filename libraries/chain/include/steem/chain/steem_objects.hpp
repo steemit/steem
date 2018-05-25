@@ -449,7 +449,6 @@ namespace steem { namespace chain {
       allocator< decline_voting_rights_request_object >
    > decline_voting_rights_request_index;
 
-   struct by_name;
    typedef multi_index_container<
       reward_fund_object,
       indexed_by<

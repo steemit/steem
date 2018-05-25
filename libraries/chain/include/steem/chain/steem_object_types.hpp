@@ -33,6 +33,7 @@ inline std::string to_string( const shared_string& str ) { return std::string( s
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
 
 struct by_id;
+struct by_name;
 
 enum object_type
 {
