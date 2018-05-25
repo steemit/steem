@@ -17,6 +17,66 @@ namespace golos { namespace chain {
                 second.begin(), second.end(),
                 std::inserter(first, first.begin()));
         }
+
+        void assert_irrelevant_proposal_authority(
+            database& db, const proposal_object& proposal, const proposal_update_operation& o
+        ) {
+            fc::flat_set<account_name_type> operation_approvals;
+            fc::flat_set<account_name_type> active_approvals;
+            fc::flat_set<account_name_type> owner_approvals;
+            fc::flat_set<account_name_type> posting_approvals;
+            fc::flat_set<public_key_type> used_signatures;
+
+            operation_approvals.insert(o.active_approvals_to_add.begin(), o.active_approvals_to_add.end());
+            operation_approvals.insert(o.owner_approvals_to_add.begin(), o.owner_approvals_to_add.end());
+            operation_approvals.insert(o.posting_approvals_to_add.begin(), o.posting_approvals_to_add.end());
+
+            // Verify authority doesn't check all cases, it throws an error on a first breaking
+            // That is why on a missing authority we add them and rethrow the exception on the following conditions:
+            //
+            // 1. an irrelevant signature/approval exists
+            // 2. the irrelevant signature/approval has came in the operation
+            for (int i = 0; i < 3 /* active + owner or posting */; ++i) {
+                try {
+                    proposal.verify_authority(db, active_approvals, owner_approvals, posting_approvals);
+                    return;
+                } catch (const protocol::tx_missing_active_auth& e) {
+                    if (!active_approvals.empty()) {
+                        throw;
+                    }
+                    active_approvals.insert(e.missing_accounts.begin(), e.missing_accounts.end());
+                    used_signatures.insert(e.used_signatures.begin(), e.used_signatures.end());
+                } catch (const protocol::tx_missing_owner_auth& e) {
+                    if (!owner_approvals.empty()) {
+                        throw;
+                    }
+                    owner_approvals.insert(e.missing_accounts.begin(), e.missing_accounts.end());
+                    used_signatures.insert(e.used_signatures.begin(), e.used_signatures.end());
+                } catch (const protocol::tx_missing_posting_auth& e) {
+                    if (!posting_approvals.empty()) {
+                        throw;
+                    }
+                    posting_approvals.insert(e.missing_accounts.begin(), e.missing_accounts.end());
+                    used_signatures.insert(e.used_signatures.begin(), e.used_signatures.end());
+                } catch (const protocol::tx_irrelevant_sig& e) {
+                    for (auto& sig: e.unused_signatures) {
+                        if (o.key_approvals_to_add.count(sig) && !used_signatures.count(sig)) {
+                            throw;
+                        }
+                    }
+                    return;
+                } catch (const protocol::tx_irrelevant_approval& e) {
+                    for (auto& account: e.unused_approvals) {
+                        if (operation_approvals.count(account)) {
+                            throw;
+                        }
+                    }
+                    return;
+                } catch (...) {
+                    throw;
+                }
+            }
+        }
     }
 
     void proposal_create_evaluator::do_apply(const proposal_create_operation& o) { try {
@@ -174,7 +234,9 @@ namespace golos { namespace chain {
             return;
         }
 
-        if (db().is_authorized_to_execute(proposal)) {
+        assert_irrelevant_proposal_authority(db(), proposal, o);
+
+        if (proposal.is_authorized_to_execute(db())) {
             // All required approvals are satisfied. Execute!
             try {
                 db().push_proposal(proposal);

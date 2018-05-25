@@ -229,8 +229,6 @@ namespace golos {
 
             void _push_transaction(const signed_transaction &trx, uint32_t skip);
 
-            bool is_authorized_to_execute(const proposal_object&) const;
-
             void push_proposal(const proposal_object&);
 
             void remove(const proposal_object&);

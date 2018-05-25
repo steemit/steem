@@ -396,12 +396,12 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
  *
  * Mega Corp.       Well 30, Yaya 30                    T=40
  * Nova Ltd.        Alice 10, Well 10                   T=20
- * Odle Intl.       Dan 10, Yaya 10, Zyzz 10            T=20
+ * Odle Intl.       Dan 10, Yaya 10, Zyzz 10, Dave 5   T=20
  * Poxx LLC         Well 10, Xylo 10, Yaya 20, Zyzz 20  T=40
  */
 BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     BOOST_TEST_MESSAGE("--- Multiple signatures");
-    ACTORS((alice)(bob)(cindy)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
+    ACTORS((alice)(bob)(cindy)(dave)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
     generate_blocks(1);
 
     auto set_auth = [&](
@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
 
     set_auth("mega", mega_private_key, authority(40, "well", 30, "yaya", 30));
     set_auth("nova", nova_private_key, authority(20, "alice", 10, "well", 10));
-    set_auth("odle", odle_private_key, authority(20, "dan", 10, "yaya", 10, "zyzz", 10));
+    set_auth("odle", odle_private_key, authority(20, "dan", 10, "yaya", 10, "zyzz", 10, "dave", 5));
     set_auth("poxx", poxx_private_key, authority(40, "well", 10, "xylo", 10, "yaya", 20, "zyzz", 20));
 
     transfer_operation op;
@@ -531,8 +531,14 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     proposal_update_operation uop3;
     uop3.author = cop.author;
     uop3.title = cop.title;
-    uop3.key_approvals_to_add.insert(dan_public_key);
-    push_tx_with_ops(tx, dan_private_key, uop3);
+    uop3.key_approvals_to_add.insert(dave_public_key);
+    BOOST_REQUIRE_THROW(push_tx_with_ops(tx, dave_private_key, uop3), tx_irrelevant_sig);
+
+    proposal_update_operation uop4;
+    uop4.author = cop.author;
+    uop4.title = cop.title;
+    uop4.key_approvals_to_add.insert(dan_public_key);
+    push_tx_with_ops(tx, dan_private_key, uop4);
     generate_blocks(1);
 
     BOOST_REQUIRE_THROW(db->get_proposal(cop.author, cop.title), fc::exception);
