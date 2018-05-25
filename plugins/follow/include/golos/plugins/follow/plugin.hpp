@@ -4,14 +4,15 @@
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include "follow_api_object.hpp"
-#include <golos/api/extended_account.hpp>
 
 namespace golos { namespace plugins { namespace follow {
     using json_rpc::msg_pack;
-    using golos::api::extended_account;
-    using golos::api::account_api_object;
 
-    share_type get_account_reputation(const account_name_type& account);
+    void fill_account_reputation(
+        const golos::chain::database& db,
+        const account_name_type& account,
+        fc::optional<share_type>& reputation
+    );
     
     ///               API,                          args,       return
     DEFINE_API_ARGS(get_followers,           msg_pack, std::vector<follow_api_object>)
@@ -24,7 +25,6 @@ namespace golos { namespace plugins { namespace follow {
     DEFINE_API_ARGS(get_account_reputations, msg_pack, std::vector<account_reputation>)
     DEFINE_API_ARGS(get_reblogged_by,        msg_pack, std::vector<account_name_type>)
     DEFINE_API_ARGS(get_blog_authors,        msg_pack, blog_authors_r)
-    DEFINE_API_ARGS(get_accounts,            msg_pack, std::vector<extended_account>)
 
 
     class plugin final : public appbase::plugin<plugin> {
@@ -55,12 +55,7 @@ namespace golos { namespace plugins { namespace follow {
                 (get_reblogged_by)
                         /// Gets a list of authors that have had their content reblogged on a given blog account
                 (get_blog_authors)
-                        /// Returns list of accounts with included field reputation
-                (get_accounts)
         )
-
-        std::vector<account_reputation> get_account_reputations_native(
-                std::vector < account_name_type > accounts );
 
         plugin();
 

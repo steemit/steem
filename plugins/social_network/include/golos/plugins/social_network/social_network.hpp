@@ -26,7 +26,6 @@ namespace golos { namespace plugins { namespace social_network {
     public:
         APPBASE_PLUGIN_REQUIRES (
             (chain::plugin)
-            (follow::plugin)
             (json_rpc::plugin)
         )
 

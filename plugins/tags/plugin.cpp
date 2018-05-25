@@ -35,7 +35,10 @@ namespace golos { namespace plugins { namespace tags {
 
     struct tags_plugin::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
-            helper = std::make_unique<discussion_helper>(database_);
+            helper = std::make_unique<discussion_helper>(
+                database_,
+                follow::fill_account_reputation,
+                fill_promoted);
         }
 
         ~impl() {}
@@ -123,11 +126,11 @@ namespace golos { namespace plugins { namespace tags {
         std::vector<vote_state>& result, uint32_t& total_count,
         const std::string& author, const std::string& permlink, uint32_t limit
     ) const {
-        helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
+        helper->select_active_votes(result, total_count, author, permlink, limit);
     }
 
     discussion tags_plugin::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
-        return helper->get_discussion(c, vote_limit, follow::get_account_reputation, fill_promoted);
+        return helper->get_discussion(c, vote_limit);
     }
 
     get_languages_result tags_plugin::impl::get_languages() {
@@ -234,7 +237,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void tags_plugin::impl::set_pending_payout(discussion& d) const {
-        helper->set_pending_payout(d, follow::get_account_reputation, fill_promoted);
+        helper->set_pending_payout(d);
     }
 
     bool tags_plugin::impl::filter_tags(const tags::tag_type type, std::set<std::string>& select_tags) const {
@@ -645,7 +648,7 @@ namespace golos { namespace plugins { namespace tags {
         return pimpl->select_ordered_discussions<sort::by_promoted>(
             query,
             [&](const discussion& d) -> bool {
-                return d.promoted.amount > 0;
+                return !!d.promoted && d.promoted->amount > 0;
             }
         );
 #endif
@@ -893,7 +896,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     // Needed for correct work of golos::api::discussion_helper::set_pending_payout and etc api methods
-    void fill_promoted( discussion & d, golos::chain::database& db) {
+    void fill_promoted(const golos::chain::database& db, discussion & d) {
         if (!db.has_index<tags::tag_index>()) {
             return;
         }
@@ -902,6 +905,8 @@ namespace golos { namespace plugins { namespace tags {
         auto itr = cidx.lower_bound(d.id);
         if (itr != cidx.end() && itr->comment == d.id) {
             d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
+        } else {
+            d.promoted = asset(0, SBD_SYMBOL);
         }
     }
 

@@ -53,28 +53,25 @@ namespace golos { namespace api {
 
     struct discussion_helper::impl final {
     public:
-        impl () = delete;
-        impl ( golos::chain::database& db ) : database_( db ) {
+        impl() = delete;
+        impl(
+            golos::chain::database& db,
+            std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation,
+            std::function<void(const golos::chain::database&, discussion&)> fill_promoted)
+            : database_(db),
+              fill_reputation_(fill_reputation),
+              fill_promoted_(fill_promoted) {
         }
         ~impl() = default;
 
         discussion create_discussion(const comment_object& o) const ;
 
-        share_type get_account_reputation (
-            std::function<share_type(const account_name_type&)> callback_func,
-            const account_name_type& account
-        ) const;
-        
         void select_active_votes(
             std::vector<vote_state>& result, uint32_t& total_count,
-            const std::string& author, const std::string& permlink, uint32_t limit,
-            std::function<share_type(const account_name_type&)> callback_func
+            const std::string& author, const std::string& permlink, uint32_t limit
         ) const ;
 
-        void set_pending_payout(discussion& d,
-                std::function<share_type(const account_name_type&)> callback_func,
-                std::function<void(discussion&, golos::chain::database&)> fill_promoted
-        ) const;
+        void set_pending_payout(discussion& d) const;
 
         void set_url(discussion& d) const;
 
@@ -86,63 +83,32 @@ namespace golos { namespace api {
             return database_;
         }
 
-        discussion get_discussion(
-            const comment_object& c, uint32_t vote_limit,
-            std::function<share_type(const account_name_type&)> callback_func,
-            std::function<void(discussion&, golos::chain::database&)> fill_promoted 
-        ) const ;
+        discussion get_discussion(const comment_object& c, uint32_t vote_limit) const;
+
     private:
         golos::chain::database& database_;
+        std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation_;
+        std::function<void(const golos::chain::database&, discussion&)> fill_promoted_;
     };
 
-
-
 //  get_discussion
-    discussion discussion_helper::impl::get_discussion(
-            const comment_object& c, uint32_t vote_limit,
-            std::function<share_type(const account_name_type&)> callback_func,
-            std::function<void(discussion&, golos::chain::database&)> fill_promoted 
-    ) const {
+    discussion discussion_helper::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
         discussion d = create_discussion(c);
         set_url(d);
-        set_pending_payout(d, callback_func, fill_promoted);
-        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit, callback_func);
+        set_pending_payout(d);
+        select_active_votes(d.active_votes, d.active_votes_count, d.author, d.permlink, vote_limit);
         return d;
     }
 
-    discussion discussion_helper::get_discussion(
-        const comment_object& c, uint32_t vote_limit,
-        std::function<share_type(const account_name_type&)> callback_func,
-        std::function<void(discussion&, golos::chain::database&)> fill_promoted 
-    ) const  {
-        return pimpl->get_discussion( c, vote_limit, callback_func, fill_promoted );
+    discussion discussion_helper::get_discussion(const comment_object& c, uint32_t vote_limit) const  {
+        return pimpl->get_discussion(c, vote_limit);
     }    
-
-
-// get_account_reputation
-    share_type discussion_helper::impl::get_account_reputation (
-        std::function<share_type(const account_name_type&)> callback_func,
-        const account_name_type& account
-    ) const {
-
-        return callback_func( account );
-    }
-
-    share_type discussion_helper::get_account_reputation (
-        std::function<share_type(const account_name_type&)> callback_func,
-        const account_name_type& account
-    ) const {
-
-        return pimpl->get_account_reputation( callback_func, account );
-    }
-
-// 
+//
 
 // select_active_votes
     void discussion_helper::impl::select_active_votes(
         std::vector<vote_state>& result, uint32_t& total_count,
-        const std::string& author, const std::string& permlink, uint32_t limit,
-        std::function<share_type(const account_name_type&)> callback_func
+        const std::string& author, const std::string& permlink, uint32_t limit
     ) const {
         const auto& comment = database().get_comment(author, permlink);
         const auto& idx = database().get_index<comment_vote_index>().indices().get<by_comment_voter>();
@@ -158,7 +124,7 @@ namespace golos { namespace api {
                 vstate.rshares = itr->rshares;
                 vstate.percent = itr->vote_percent;
                 vstate.time = itr->last_update;
-                vstate.reputation = get_account_reputation(callback_func, vo.name);
+                fill_reputation_(database(), vo.name, vstate.reputation);
                 result.emplace_back(vstate);
             }
         }
@@ -166,22 +132,17 @@ namespace golos { namespace api {
 
     void discussion_helper::select_active_votes(
         std::vector<vote_state>& result, uint32_t& total_count,
-        const std::string& author, const std::string& permlink, uint32_t limit,
-        std::function<share_type(const account_name_type&)> callback_func
+        const std::string& author, const std::string& permlink, uint32_t limit
     ) const {
-        pimpl->select_active_votes(result, total_count, author, permlink, limit, callback_func);
+        pimpl->select_active_votes(result, total_count, author, permlink, limit);
     }
 //
 // set_pending_payout
-    void discussion_helper::impl::set_pending_payout(discussion& d,
-            std::function<share_type(const account_name_type&)> callback_func,
-            std::function<void(discussion&, golos::chain::database&)> fill_promoted
-    ) const {
+    void discussion_helper::impl::set_pending_payout(discussion& d) const {
         auto& db = database();
 
-#ifndef IS_LOW_MEM
-        fill_promoted(d, db);
-#endif
+        fill_promoted_(db, d);
+
         const auto& props = db.get_dynamic_global_properties();
         const auto& hist = db.get_feed_history();
         asset pot = props.total_reward_fund_steem;
@@ -204,10 +165,9 @@ namespace golos { namespace api {
 
             d.pending_payout_value = asset(static_cast<uint64_t>(r2), pot.symbol);
             d.total_pending_payout_value = asset(static_cast<uint64_t>(tpp), pot.symbol);
-
-            d.author_reputation = get_account_reputation( callback_func, d.author );
-
         }
+
+        fill_reputation_(db, d.author, d.author_reputation);
 
         if (d.parent_author != STEEMIT_ROOT_POST_PARENT) {
             d.cashout_time = db.calculate_discussion_payout_time(db.get<comment_object>(d.id));
@@ -223,11 +183,8 @@ namespace golos { namespace api {
         set_url(d);
     }
 
-    void discussion_helper::set_pending_payout(discussion& d,
-            std::function<share_type(const account_name_type&)> callback_func,
-            std::function<void(discussion&, golos::chain::database&)> fill_promoted
-    ) const {
-        pimpl->set_pending_payout(d, callback_func, fill_promoted);
+    void discussion_helper::set_pending_payout(discussion& d) const {
+        pimpl->set_pending_payout(d);
     }
 //
 // set_url
@@ -263,12 +220,15 @@ namespace golos { namespace api {
         return pimpl->create_discussion(o);
     }
 
-    discussion_helper::discussion_helper ( golos::chain::database& db ) {
-        pimpl = std::make_unique<impl>(db);
+    discussion_helper::discussion_helper(
+        golos::chain::database& db,
+        std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation,
+        std::function<void(const golos::chain::database&, discussion&)> fill_promoted
+    ) {
+        pimpl = std::make_unique<impl>(db, fill_reputation, fill_promoted);
     } 
-    discussion_helper::~discussion_helper ( ) {
-        pimpl.reset();
-    }
+
+    discussion_helper::~discussion_helper() = default;
 
 //
 } } // golos::api

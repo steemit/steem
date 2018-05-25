@@ -21,8 +21,8 @@ namespace golos { namespace api {
         std::vector<vote_state> active_votes;
         uint32_t active_votes_count = 0;
         std::vector<string> replies; ///< author/slug mapping
-        share_type author_reputation = 0;
-        asset promoted = asset(0, SBD_SYMBOL);
+        fc::optional<share_type> author_reputation;
+        fc::optional<asset> promoted;
         double hot = 0;
         double trending = 0;
         uint32_t body_length = 0;

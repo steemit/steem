@@ -9,7 +9,7 @@ namespace golos { namespace api {
         uint64_t weight = 0;
         int64_t rshares = 0;
         int16_t percent = 0;
-        share_type reputation = 0;
+        fc::optional<share_type> reputation;
         time_point_sec time;
     };
 

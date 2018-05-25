@@ -25,19 +25,22 @@ namespace golos {
             using golos::chain::account_index;
             using golos::chain::by_name;
 
-            share_type get_account_reputation(const account_name_type& account) {
-                if (!database().has_index<follow::reputation_index>()) {
-                    return 0;
+            void fill_account_reputation(
+                const golos::chain::database& db,
+                const account_name_type& account,
+                fc::optional<share_type>& reputation
+            ) {
+                if (!db.has_index<follow::reputation_index>()) {
+                    return;
                 }
 
-                auto &rep_idx = database().get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                auto &rep_idx = db.get_index<follow::reputation_index>().indices().get<follow::by_account>();
                 auto itr = rep_idx.find(account);
-
                 if (rep_idx.end() != itr) {
-                    return itr->reputation;
+                    reputation = itr->reputation;
+                } else {
+                    reputation = 0;
                 }
-
-                return 0;
             }
 
             struct pre_operation_visitor {
@@ -369,8 +372,6 @@ namespace golos {
 
                 blog_authors_r get_blog_authors(account_name_type );
 
-                std::vector<extended_account> get_accounts( std::vector<std::string> names ) ;
-
                 golos::chain::database &database_;
 
                 uint32_t max_feed_size_ = 500;
@@ -646,8 +647,7 @@ namespace golos {
 
                 FC_ASSERT(accounts.size() <= 100, "Cannot retrieve more than 100 account reputations at a time.");
 
-                const auto &acc_idx = database().get_index<account_index>().indices().get<by_name>();
-                const auto &rep_idx = database().get_index<reputation_index>().indices().get<by_account>();
+                const auto &idx = database().get_index<account_index>().indices().get<by_name>();
 
                 size_t acc_count = accounts.size();
 
@@ -656,39 +656,27 @@ namespace golos {
 
                 for (size_t i = 0; i < acc_count; i++) {
                     account_reputation rep;
-                    auto acc_itr = acc_idx.find( accounts[i] );
+                    auto itr = idx.find(accounts[i]);
 
                     // checking the presence of account with such name in database
-                    if ( acc_itr == acc_idx.end() ) {
-
+                    if (itr == idx.end()) {
                         rep.account = accounts[i];
                         rep.reputation = 0;
-                        result.push_back( std::move(rep) );
-
-                        wlog("Follow plugin: No such account with name \"${name}\" in account index", ("name", accounts[i]) );
+                        result.push_back(std::move(rep));
                         continue;
                     }
 
-                    rep.account = acc_itr->name;
-
-                    auto itr = rep_idx.find(acc_itr->name);
-                    // same presence check in reputation idx
-                    if ( itr != rep_idx.end() ) {
-                        rep.reputation = itr->reputation;
-                    }
-                    else {
-                        wlog("Follow plugin: No such account with name \"${name}\" in reputation index", ("name", accounts[i]) );
-                        rep.reputation = 0;
-                    }
-
-                    result.push_back( std::move(rep) );
+                    rep.account = itr->name;
+                    fill_account_reputation(database(), itr->name, rep.reputation);
+                    result.push_back(std::move(rep));
                 }
                 return result;
             }
 
             std::vector<account_name_type> plugin::impl::get_reblogged_by(
                     account_name_type author,
-                    std::string permlink) {
+                    std::string permlink
+            ) {
                 auto &db = database();
                 std::vector<account_name_type> result;
                 const auto &post = db.get_comment(author, permlink);
@@ -711,39 +699,6 @@ namespace golos {
                     ++itr;
                 }
                 return result;
-            }
-
-
-            std::vector<extended_account> plugin::impl::get_accounts(std::vector<std::string> names) {
-                auto &db = database();
-
-                const auto &idx = db.get_index<account_index>().indices().get<by_name>();
-                const auto &vidx = db.get_index<golos::chain::witness_vote_index>().indices().get<golos::chain::by_account_witness>();
-                std::vector<extended_account> results;
-
-                for (auto name : names) {   
-                    auto itr = idx.find(name);
-                    if (itr != idx.end()) {
-                        results.push_back(extended_account(*itr, db));
-                        results.back().reputation = get_account_reputation(name);
-                        auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, golos::chain::witness_id_type()));
-                        while (vitr != vidx.end() && vitr->account == itr->id) {
-                            results.back().witness_votes.insert(db.get(vitr->witness).owner);
-                            ++vitr;
-                        }
-                    }
-                    else {
-                        wlog("database_api: No such account with name \"${name}\" in account index", ("name", name) );
-                    }
-                }
-                return results;
-            }
-
-            DEFINE_API(plugin, get_accounts) {
-                CHECK_ARG_SIZE(1)
-                return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_accounts(args.args->at(0).as<vector<std::string> >());
-                });
             }
 
             DEFINE_API(plugin, get_followers) {
@@ -838,16 +793,6 @@ namespace golos {
                     return pimpl->get_blog_authors(tmp);
                 });
             }
-
-            std::vector<account_reputation> plugin::get_account_reputations_native(
-                    std::vector < account_name_type > accounts
-                ) {
-
-                return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_account_reputations( accounts );
-                });
-            }
-
         }
     }
 } // golos::follow
