@@ -7,6 +7,7 @@
 #include <fc/fwd.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/array.hpp>
+#include <fc/int_array.hpp>
 #include <fc/time.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/exception/exception.hpp>
@@ -120,21 +121,34 @@ namespace fc {
     } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
     template<typename Stream, typename T, size_t N>
-    inline void pack( Stream& s, const fc::array<T,N>& v) {
-      s.write((const char*)&v.data[0],N*sizeof(T));
+    inline void pack( Stream& s, const fc::array<T,N>& v)
+    {
+       s.write((const char*)&v.data[0],N*sizeof(T));
     }
+
+    template<typename Stream, typename T, size_t N>
+    inline void unpack( Stream& s, fc::array<T,N>& v)
+    { try {
+       s.read( (char*)&v.data[0], N*sizeof(T) );
+    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<type,length>", ("type",fc::get_typename<T>::name())("length",N) ) }
+
+    template<typename Stream, typename T, size_t N>
+    inline void pack( Stream& s, const fc::int_array<T,N>& v)
+    {
+       s.write( (const char*)&v.data[0], N*sizeof(T) );
+    }
+
+    template<typename Stream, typename T, size_t N>
+    inline void unpack( Stream& s, fc::int_array<T,N>& v)
+    { try {
+       s.read( (char*)&v.data[0], N*sizeof(T) );
+    } FC_RETHROW_EXCEPTIONS( warn, "fc::int_array<type,length>", ("type",fc::get_typename<T>::name())("length",N) ) }
 
     template<typename Stream, typename T>
     inline void pack( Stream& s, const std::shared_ptr<T>& v)
     {
       fc::raw::pack( s, *v );
     }
-
-    template<typename Stream, typename T, size_t N>
-    inline void unpack( Stream& s, fc::array<T,N>& v)
-    { try {
-      s.read((char*)&v.data[0],N*sizeof(T));
-    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<type,length>", ("type",fc::get_typename<T>::name())("length",N) ) }
 
     template<typename Stream, typename T>
     inline void unpack( Stream& s, std::shared_ptr<T>& v)
