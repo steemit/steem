@@ -94,6 +94,8 @@ struct account_api_object {
     share_type new_average_bandwidth;
     share_type new_average_market_bandwidth;
     set<string> witness_votes;
+    
+    fc::optional<share_type> reputation;
 };
 
 } } // golos::api
@@ -111,6 +113,6 @@ FC_REFLECT((golos::api::account_api_object),
     (curation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)(average_bandwidth)
     (lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(last_market_bandwidth_update)
     (last_post)(last_root_post)(post_bandwidth)(new_average_bandwidth)(new_average_market_bandwidth)
-    (witness_votes))
+    (witness_votes)(reputation))
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

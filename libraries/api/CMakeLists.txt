@@ -1,7 +1,6 @@
 set(CURRENT_TARGET api)
 
 list(APPEND CURRENT_TARGET_HEADERS
-    include/golos/api/extended_account.hpp
     include/golos/api/account_api_object.hpp
     include/golos/api/comment_api_object.hpp
     include/golos/api/discussion.hpp
@@ -34,7 +33,6 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 target_link_libraries(
     golos_${CURRENT_TARGET}
     golos_chain
-    golos::chain_plugin
     golos_protocol
     graphene_utilities
     fc

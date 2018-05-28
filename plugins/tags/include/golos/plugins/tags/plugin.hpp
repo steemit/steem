@@ -38,7 +38,6 @@ namespace golos { namespace plugins { namespace tags {
     public:
         APPBASE_PLUGIN_REQUIRES(
             (chain::plugin)
-            (follow::plugin)
             (json_rpc::plugin)
         )
 
@@ -173,7 +172,7 @@ namespace golos { namespace plugins { namespace tags {
     };
 
     // Needed for correct work of golos::api::discussion_helper::set_pending_payout
-    void fill_promoted(discussion& d, golos::chain::database& db);
+    void fill_promoted(const golos::chain::database& db, discussion& d);
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::get_languages_result), (languages))

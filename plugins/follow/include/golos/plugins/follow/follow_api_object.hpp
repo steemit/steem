@@ -42,7 +42,7 @@ namespace golos {
 
             struct account_reputation {
                 std::string account;
-                golos::protocol::share_type reputation;
+                fc::optional<golos::protocol::share_type> reputation;
             };
 
             struct follow_api_object {

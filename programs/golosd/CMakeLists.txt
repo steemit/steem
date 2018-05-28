@@ -38,6 +38,7 @@ target_link_libraries(
         golos::raw_block
         golos::block_info
         golos::json_rpc
+        golos::follow
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}

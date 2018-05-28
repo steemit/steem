@@ -1,6 +1,6 @@
 #include <golos/plugins/database_api/plugin.hpp>
 
-//#include <golos/plugins/tags/tags_plugin.hpp>
+#include <golos/plugins/follow/plugin.hpp>
 
 #include <golos/protocol/get_config.hpp>
 
@@ -342,6 +342,7 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(std::vector<std::
         auto itr = idx.find(name);
         if (itr != idx.end()) {
             results.push_back(account_api_object(*itr, _db));
+            follow::fill_account_reputation(_db, itr->name, results.back().reputation);
             auto vitr = vidx.lower_bound(boost::make_tuple(itr->id, witness_id_type()));
             while (vitr != vidx.end() && vitr->account == itr->id) {
                 results.back().witness_votes.insert(_db.get(vitr->witness).owner);

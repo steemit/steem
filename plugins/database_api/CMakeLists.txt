@@ -38,6 +38,7 @@ target_link_libraries(
         golos_${CURRENT_TARGET}
         golos_chain
         golos::chain_plugin
+        golos::follow
         golos_protocol
         golos::json_rpc
         graphene_utilities

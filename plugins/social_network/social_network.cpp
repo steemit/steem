@@ -34,7 +34,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     struct social_network::impl final {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
-            helper = std::make_unique<discussion_helper>(database_);
+            helper = std::make_unique<discussion_helper>(database_, follow::fill_account_reputation, fill_promoted);
         }
 
         ~impl() = default;
@@ -72,7 +72,6 @@ namespace golos { namespace plugins { namespace social_network {
         discussion get_content(std::string author, std::string permlink, uint32_t limit) const;
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit) const ;
-        share_type get_account_reputation ( const account_name_type& account ) const ;
 
     private:
         golos::chain::database& database_;
@@ -81,18 +80,14 @@ namespace golos { namespace plugins { namespace social_network {
 
 
     discussion social_network::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
-        return helper->get_discussion(c, vote_limit, follow::get_account_reputation, fill_promoted);
-    }
-
-    share_type social_network::impl::get_account_reputation ( const account_name_type& account ) const {
-        return helper->get_account_reputation(follow::get_account_reputation, account);
+        return helper->get_discussion(c, vote_limit);
     }
 
     void social_network::impl::select_active_votes(
         std::vector<vote_state>& result, uint32_t& total_count,
         const std::string& author, const std::string& permlink, uint32_t limit
     ) const {
-        helper->select_active_votes(result, total_count, author, permlink, limit, follow::get_account_reputation);
+        helper->select_active_votes(result, total_count, author, permlink, limit);
     }
 
     void social_network::plugin_startup() {

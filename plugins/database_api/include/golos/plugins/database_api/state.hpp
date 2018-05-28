@@ -5,7 +5,7 @@
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/steem_object_types.hpp>
 #include "forward.hpp"
-#include <golos/api/extended_account.hpp>
+#include <golos/api/account_api_object.hpp>
 
 namespace golos {
     namespace plugins {
