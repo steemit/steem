@@ -2201,10 +2201,10 @@ namespace golos { namespace chain {
             const auto& delegatee = _db.get_account(op.delegatee);
             auto delegation = _db.find<vesting_delegation_object, by_delegation>(std::make_tuple(op.delegator, op.delegatee));
 
-            const auto median_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
             const auto v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
-            auto min_delegation = median_fee * GOLOS_MIN_DELEGATION_MULTIPLIER * v_share_price;
-            auto min_update = median_fee * v_share_price;
+            auto min_delegation = median_props.account_creation_fee * median_props.min_delegation_multiplier * v_share_price;
+            auto min_update = median_props.account_creation_fee * v_share_price;
 
             auto now = _db.head_block_time();
             auto delta = delegation ?
