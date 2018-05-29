@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/protocol/operation_util.hpp>
+#include <golos/protocol/proposal_operations.hpp>
 #include <golos/protocol/steem_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
 
@@ -59,6 +60,13 @@ namespace golos {
                 decline_voting_rights_operation,
                 reset_account_operation,
                 set_reset_account_operation,
+                delegate_vesting_shares_operation,
+                account_create_with_delegation_operation,
+                account_metadata_operation,
+                proposal_create_operation,
+                proposal_update_operation,
+                proposal_delete_operation,
+                chain_properties_update_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
@@ -73,7 +81,8 @@ namespace golos {
                 fill_transfer_from_savings_operation,
                 hardfork_operation,
                 comment_payout_update_operation,
-                comment_benefactor_reward_operation
+                comment_benefactor_reward_operation,
+                return_vesting_delegation_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,
@@ -88,6 +97,12 @@ namespace golos {
 
         bool is_virtual_operation(const operation &op);
 
+        struct operation_wrapper {
+            operation_wrapper(const operation& op = operation()) : op(op) {}
+
+            operation op;
+        };
+
     }
 } // golos::protocol
 
@@ -98,3 +113,4 @@ namespace golos {
 
 DECLARE_OPERATION_TYPE(golos::protocol::operation)
 FC_REFLECT_TYPENAME((golos::protocol::operation))
+FC_REFLECT((golos::protocol::operation_wrapper), (op));

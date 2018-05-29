@@ -5,7 +5,7 @@
 #include <graphene/utilities/tempdir.hpp>
 
 #include <golos/chain/steem_objects.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -16,8 +16,7 @@
 
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using std::cout;
         using std::cerr;
@@ -124,6 +123,7 @@ namespace golos {
             }
 
             ch_plugin = &appbase::app().register_plugin<golos::plugins::chain::plugin>();
+            oh_plugin = &appbase::app().register_plugin<operation_history::plugin>();
             ah_plugin = &appbase::app().register_plugin<account_history::plugin>();
             db_plugin = &appbase::app().register_plugin<debug_node::plugin>();
 
@@ -158,6 +158,7 @@ namespace golos {
                                STEEMIT_MIN_PRODUCER_REWARD.amount);
             }
 
+            oh_plugin->plugin_startup();
             ah_plugin->plugin_startup();
             db_plugin->plugin_startup();
 
@@ -246,7 +247,7 @@ namespace golos {
                         name,
                         STEEMIT_INIT_MINER_NAME,
                         init_account_priv_key,
-                        100,
+                        30*1e3,
                         key,
                         post_key,
                         "");
@@ -448,7 +449,7 @@ namespace golos {
 
         vector<operation> database_fixture::get_last_operations(uint32_t num_ops) {
             vector<operation> ops;
-            const auto &acc_hist_idx = db->get_index<account_history_index>().indices().get<by_id>();
+            const auto &acc_hist_idx = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>();
             auto itr = acc_hist_idx.end();
 
             while (itr != acc_hist_idx.begin() && ops.size() < num_ops) {
@@ -480,5 +481,4 @@ namespace golos {
 
         } // golos::chain::test
 
-    }
-} // golos::chain
+} } // golos::chain

@@ -22,10 +22,13 @@ target_link_libraries(
         golos::chain_plugin
         golos::network_broadcast_api
         golos::witness
+        golos::witness_api
         golos::database_api
         golos::test_api_plugin
         golos::social_network
+        golos::tags
         golos::market_history
+        golos::operation_history
         golos::statsd
         golos::account_by_key
         golos::account_history
@@ -35,6 +38,7 @@ target_link_libraries(
         golos::raw_block
         golos::block_info
         golos::json_rpc
+        golos::follow
         golos_protocol
         fc
         ${CMAKE_DL_LIBS}

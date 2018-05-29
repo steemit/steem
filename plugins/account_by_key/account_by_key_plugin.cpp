@@ -4,9 +4,7 @@
 #include <golos/chain/index.hpp>
 #include <golos/chain/operation_notification.hpp>
 
-namespace golos {
-    namespace plugins {
-        namespace account_by_key {
+namespace golos { namespace plugins { namespace account_by_key {
 
             namespace detail {
 
@@ -24,6 +22,9 @@ namespace golos {
                     }
 
                     void operator()(const account_create_operation &op) const {
+                        _plugin.my->clear_cache();
+                    }
+                    void operator()(const account_create_with_delegation_operation& op) const {
                         _plugin.my->clear_cache();
                     }
 
@@ -80,6 +81,13 @@ namespace golos {
                                 op.new_account_name);
                         if (acct_itr) {
                             _plugin.my->update_key_lookup(*acct_itr);
+                        }
+                    }
+
+                    void operator()(const account_create_with_delegation_operation& op) const {
+                        auto itr = _plugin.my->database().find<account_authority_object, by_account>(op.new_account_name);
+                        if (itr) {
+                            _plugin.my->update_key_lookup(*itr);
                         }
                     }
 
@@ -242,7 +250,7 @@ namespace golos {
                     my.reset(new account_by_key_plugin_impl(*this));
                     golos::chain::database &db = appbase::app().get_plugin<golos::plugins::chain::plugin>().db();
 
-                    db.pre_apply_operation.connect([&](const operation_notification &o) { my->pre_operation(o); });
+                    db.pre_apply_operation.connect([&](operation_notification &o) { my->pre_operation(o); });
                     db.post_apply_operation.connect([&](const operation_notification &o) { my->post_operation(o); });
 
                     add_plugin_index<key_lookup_index>(db);
@@ -271,7 +279,4 @@ namespace golos {
                     return my->get_key_references(tmp);
                 });
             }
-        }
-    }
-} // golos::plugins::account_by_key
-
+} } } // golos::plugins::account_by_key

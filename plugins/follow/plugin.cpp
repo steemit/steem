@@ -25,6 +25,24 @@ namespace golos {
             using golos::chain::account_index;
             using golos::chain::by_name;
 
+            void fill_account_reputation(
+                const golos::chain::database& db,
+                const account_name_type& account,
+                fc::optional<share_type>& reputation
+            ) {
+                if (!db.has_index<follow::reputation_index>()) {
+                    return;
+                }
+
+                auto &rep_idx = db.get_index<follow::reputation_index>().indices().get<follow::by_account>();
+                auto itr = rep_idx.find(account);
+                if (rep_idx.end() != itr) {
+                    reputation = itr->reputation;
+                } else {
+                    reputation = 0;
+                }
+            }
+
             struct pre_operation_visitor {
                 plugin &_plugin;
                 golos::chain::database &db;
@@ -344,8 +362,7 @@ namespace golos {
                         uint32_t limit = 500);
 
                 std::vector<account_reputation> get_account_reputations(
-                        account_name_type account_lower_bound,
-                        uint32_t limit = 1000);
+                        std::vector < account_name_type > accounts);
 
                 follow_count_api_obj get_follow_count(account_name_type start);
 
@@ -382,7 +399,7 @@ namespace golos {
                     auto &db = pimpl->database();
                     pimpl->plugin_initialize(*this);
 
-                    db.pre_apply_operation.connect([&](const operation_notification &o) {
+                    db.pre_apply_operation.connect([&](operation_notification &o) {
                         pimpl->pre_operation(o, *this);
                     });
                     db.post_apply_operation.connect([&](const operation_notification &o) {
@@ -539,7 +556,7 @@ namespace golos {
                 while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_feed_entry entry;
-                    entry.comment = comment;
+                    entry.comment = comment_api_object(comment, db);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
                         //entry.reblog_by = itr->first_reblogged_by;
@@ -611,7 +628,7 @@ namespace golos {
                 while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
                     const auto &comment = db.get(itr->comment);
                     comment_blog_entry entry;
-                    entry.comment = comment;
+                    entry.comment = comment_api_object(comment, db);
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;
@@ -625,36 +642,41 @@ namespace golos {
             }
 
             std::vector<account_reputation> plugin::impl::get_account_reputations(
-                    account_name_type account_lower_bound,
-                    uint32_t limit) {
-                FC_ASSERT(limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time.");
+                    std::vector < account_name_type > accounts
+                ) {
 
-                const auto &acc_idx = database().get_index<account_index>().indices().get<by_name>();
-                const auto &rep_idx = database().get_index<reputation_index>().indices().get<by_account>();
+                FC_ASSERT(accounts.size() <= 100, "Cannot retrieve more than 100 account reputations at a time.");
 
-                auto acc_itr = acc_idx.lower_bound(account_lower_bound);
+                const auto &idx = database().get_index<account_index>().indices().get<by_name>();
+
+                size_t acc_count = accounts.size();
 
                 std::vector<account_reputation> result;
-                result.reserve(limit);
+                result.reserve(acc_count);
 
-                while (acc_itr != acc_idx.end() && result.size() < limit) {
-                    auto itr = rep_idx.find(acc_itr->name);
+                for (size_t i = 0; i < acc_count; i++) {
                     account_reputation rep;
+                    auto itr = idx.find(accounts[i]);
 
-                    rep.account = acc_itr->name;
-                    rep.reputation = itr != rep_idx.end() ? itr->reputation : 0;
+                    // checking the presence of account with such name in database
+                    if (itr == idx.end()) {
+                        rep.account = accounts[i];
+                        rep.reputation = 0;
+                        result.push_back(std::move(rep));
+                        continue;
+                    }
 
-                    result.push_back(rep);
-
-                    ++acc_itr;
+                    rep.account = itr->name;
+                    fill_account_reputation(database(), itr->name, rep.reputation);
+                    result.push_back(std::move(rep));
                 }
-
                 return result;
             }
 
             std::vector<account_name_type> plugin::impl::get_reblogged_by(
                     account_name_type author,
-                    std::string permlink) {
+                    std::string permlink
+            ) {
                 auto &db = database();
                 std::vector<account_name_type> result;
                 const auto &post = db.get_comment(author, permlink);
@@ -678,7 +700,6 @@ namespace golos {
                 }
                 return result;
             }
-
 
             DEFINE_API(plugin, get_followers) {
                 CHECK_ARG_SIZE(4)
@@ -750,11 +771,10 @@ namespace golos {
             }
 
             DEFINE_API(plugin, get_account_reputations) {
-                CHECK_ARG_SIZE(2)
-                auto lower_bound_name = args.args->at(0).as<account_name_type>();
-                auto limit = args.args->at(1).as<uint32_t>();
+                CHECK_ARG_SIZE(1)
+                auto accounts = args.args->at(0).as< std::vector < account_name_type > >();
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_account_reputations(lower_bound_name, limit);
+                    return pimpl->get_account_reputations( accounts );
                 });
             }
 
@@ -773,15 +793,6 @@ namespace golos {
                     return pimpl->get_blog_authors(tmp);
                 });
             }
-
-            std::vector<account_reputation> plugin::get_account_reputations_native(
-                    account_name_type account_lower_bound,
-                    uint32_t limit) {
-                return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_account_reputations(account_lower_bound, limit);
-                });
-            }
-
         }
     }
 } // golos::follow

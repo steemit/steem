@@ -23,74 +23,76 @@
  */
 #pragma once
 
-#include <appbase/application.hpp>
-#include <golos/plugins/chain/plugin.hpp>
-
-#include <golos/chain/database.hpp>
 #include <boost/program_options.hpp>
 
-#include <fc/thread/future.hpp>
+#include <appbase/application.hpp>
 
-namespace golos {
-namespace plugins {
-namespace account_history {
-using namespace chain;
-//
-// Plugins should #define their SPACE_ID's so plugins with
-// conflicting SPACE_ID assignments can be compiled into the
-// same binary (by simply re-assigning some of the conflicting #defined
-// SPACE_ID's in a build script).
-//
-// Assignment of SPACE_ID's cannot be done at run-time because
-// various template automagic depends on them being known at compile
-// time.
-//
+#include <golos/chain/database.hpp>
 
-#ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
-#endif
+#include <golos/plugins/chain/plugin.hpp>
 
-enum account_history_object_type {
-    key_account_object_type = 0,
-    bucket_object_type = 1 ///< used in market_history_plugin
-};
+#include <golos/plugins/json_rpc/utility.hpp>
+#include <golos/plugins/json_rpc/plugin.hpp>
 
-/**
-*  This plugin is designed to track a range of operations by account so that one node
-*  doesn't need to hold the full operation history in memory.
-*/
-class plugin : public appbase::plugin<plugin> {
-public:
-    constexpr static const char *plugin_name = "account_history";
+#include <golos/plugins/operation_history/plugin.hpp>
+#include <golos/plugins/operation_history/applied_operation.hpp>
 
-    APPBASE_PLUGIN_REQUIRES((chain::plugin))
+#include <golos/plugins/account_history/history_object.hpp>
 
-    static const std::string &name() {
-        static std::string name = plugin_name;
-        return name;
-    }
+namespace golos { namespace plugins { namespace account_history {
+    using namespace chain;
 
-    plugin( );
-    ~plugin( );
+    using golos::plugins::operation_history::applied_operation;
 
-    void set_program_options(boost::program_options::options_description &cli,
-                             boost::program_options::options_description &cfg) override;
+    using get_account_history_return_type = std::map<uint32_t, applied_operation>;
 
-    void plugin_initialize(const boost::program_options::variables_map &options) override;
+    using plugins::json_rpc::void_type;
+    using plugins::json_rpc::msg_pack;
+    using plugins::json_rpc::msg_pack_transfer;
 
-    void plugin_startup() override;
+    DEFINE_API_ARGS(get_account_history, msg_pack, get_account_history_return_type)
 
-    void plugin_shutdown() override {
-    }
+   /**
+    *  This plugin is designed to track a range of operations by account so that one node
+    *  doesn't need to hold the full operation history in memory.
+    */
+    class plugin final: public appbase::plugin<plugin> {
+    public:
+        APPBASE_PLUGIN_REQUIRES(
+            (json_rpc::plugin)
+            (chain::plugin)
+            (operation_history::plugin)
+        )
 
-    flat_map<string, string> tracked_accounts() const; /// map start_range to end_range
+        plugin();
+        ~plugin();
 
-private:
-    struct plugin_impl;
+        static const std::string& name();
 
-    std::unique_ptr<plugin_impl> my;
-};
+        void set_program_options(
+            boost::program_options::options_description &cli,
+            boost::program_options::options_description &cfg) override;
 
-}
-}
-} // golos::plugins::account_history
+        void plugin_initialize(const boost::program_options::variables_map &options) override;
+        void plugin_startup() override;
+        void plugin_shutdown() override;
+
+        fc::flat_map<std::string, std::string> tracked_accounts() const; /// map start_range to end_range
+
+        DECLARE_API(
+            /**
+             *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
+             *  returns operations in the range [from-limit, from]
+             *
+             *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
+             *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
+             */
+            (get_account_history)
+        )
+
+    private:
+        struct plugin_impl;
+        std::unique_ptr<plugin_impl> pimpl;
+    };
+
+} } } // golos::plugins::account_history

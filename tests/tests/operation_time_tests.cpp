@@ -7,7 +7,7 @@
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/database.hpp>
 #include <golos/chain/hardfork.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 #include <golos/chain/steem_objects.hpp>
 
 #include <golos/plugins/debug_node/plugin.hpp>
@@ -2582,7 +2582,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             tx.operations.push_back(comment);
             tx.sign(alice_private_key, db->get_chain_id());
-            STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
+            // comments do not expire now
+            db->push_transaction(tx, 0);
         }
         FC_LOG_AND_RETHROW()
     }

@@ -39,6 +39,8 @@ namespace golos {
 
             ~database();
 
+            using chainbase::database::remove;
+
             bool is_producing() const {
                 return _is_producing;
             }
@@ -67,7 +69,8 @@ namespace golos {
                 skip_validate_invariants = 1 << 11, ///< used to skip database invariant check on block application
                 skip_undo_block = 1 << 12, ///< used to skip undo db on reindex
                 skip_block_log = 1 << 13,  ///< used to skip block logging on reindex
-                skip_apply_transaction = 1 << 14 ///< used to skip apply transaction
+                skip_apply_transaction = 1 << 14, ///< used to skip apply transaction
+                skip_database_locking = 1 << 15 ///< used to skip locking of database
             };
 
             /**
@@ -145,6 +148,10 @@ namespace golos {
 
             const account_object *find_account(const account_name_type &name) const;
 
+            const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
+
+            const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
+
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
             const comment_object *find_comment(const account_name_type &author, const shared_string &permlink) const;
@@ -153,9 +160,9 @@ namespace golos {
 
             const comment_object *find_comment(const account_name_type &author, const string &permlink) const;
 
-            const category_object &get_category(const shared_string &name) const;
+            const comment_content_object &get_comment_content(const comment_id_type &comment) const;
 
-            const category_object *find_category(const shared_string &name) const;
+            const comment_content_object *find_comment_content(const comment_id_type &comment) const;
 
             const escrow_object &get_escrow(const account_name_type &name, uint32_t escrow_id) const;
 
@@ -222,6 +229,12 @@ namespace golos {
 
             void _push_transaction(const signed_transaction &trx, uint32_t skip);
 
+            void push_proposal(const proposal_object&);
+
+            void remove(const proposal_object&);
+
+            void clear_expired_proposals();
+
             signed_block generate_block(
                     const fc::time_point_sec when,
                     const account_name_type &witness_owner,
@@ -260,7 +273,7 @@ namespace golos {
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
              */
-            fc::signal<void(const operation_notification &)> pre_apply_operation;
+            fc::signal<void(operation_notification &)> pre_apply_operation;
             fc::signal<void(const operation_notification &)> post_apply_operation;
 
             /**
@@ -530,7 +543,7 @@ namespace golos {
 
             void _validate_transaction(const signed_transaction& trx, uint32_t skip);
 
-            void apply_operation(const operation &op);
+            void apply_operation(const operation &op, bool is_virtual = false);
 
 
             ///Steps involved in applying a new block
@@ -553,8 +566,8 @@ namespace golos {
             void update_last_irreversible_block(uint32_t skip);
 
             void clear_expired_transactions();
-
             void clear_expired_orders();
+            void clear_expired_delegations();
 
             void process_header_extensions(const signed_block &next_block);
 
@@ -589,7 +602,7 @@ namespace golos {
             uint32_t _current_block_num = 0;
             uint16_t _current_trx_in_block = 0;
             uint16_t _current_op_in_trx = 0;
-            uint16_t _current_virtual_op = 0;
+            uint32_t _current_virtual_op = 0;
 
             flat_map<uint32_t, block_id_type> _checkpoints;
 

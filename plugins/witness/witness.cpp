@@ -124,7 +124,7 @@ namespace golos {
                 std::map<public_key_type, fc::ecc::private_key> _private_keys;
                 std::set<string> _witnesses;
                 std::map<string, public_key_type> _miners;
-                protocol::chain_properties _miner_prop_vote;
+                protocol::chain_properties_17 _miner_prop_vote;
             };
 
             void witness_plugin::set_program_options(

@@ -20,6 +20,9 @@
 #include <golos/plugins/debug_node/plugin.hpp>
 #include <golos/plugins/raw_block/plugin.hpp>
 #include <golos/plugins/block_info/plugin.hpp>
+#include <golos/plugins/tags/plugin.hpp>
+#include <golos/plugins/witness_api/plugin.hpp>
+#include <golos/plugins/follow/plugin.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <fc/log/console_appender.hpp>
@@ -57,9 +60,10 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::p2p::p2p_plugin>();
             appbase::app().register_plugin<golos::plugins::webserver::webserver_plugin>();
             appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
+            appbase::app().register_plugin<golos::plugins::witness_api::plugin>();
             appbase::app().register_plugin<golos::plugins::network_broadcast_api::network_broadcast_api_plugin>();
             golos::plugins::database_api::register_database_api();
-            appbase::app().register_plugin<golos::plugins::social_network::social_network_t>();
+            appbase::app().register_plugin<golos::plugins::social_network::social_network>();
             appbase::app().register_plugin<golos::plugins::test_api::test_api_plugin>();
             appbase::app().register_plugin<golos::plugins::market_history::market_history_plugin>();
             appbase::app().register_plugin<golos::plugins::account_history::plugin>();
@@ -70,6 +74,8 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::raw_block::plugin>();
             appbase::app().register_plugin<golos::plugins::block_info::plugin>();
             appbase::app().register_plugin<golos::plugins::debug_node::plugin>();
+            appbase::app().register_plugin<golos::plugins::tags::tags_plugin>();
+            appbase::app().register_plugin<golos::plugins::follow::plugin>();
             ///plugins
         };
     }
@@ -126,7 +132,7 @@ int main( int argc, char** argv ) {
         // auto& args = appbase::app().get_args();
 
         try {
-            fc::optional<fc::logging_config> logging_config = golos::utilities::load_logging_config(appbase::app().config_path());
+            auto logging_config = golos::utilities::load_logging_config(appbase::app().config_path());
             if (logging_config)
                 fc::configure_logging(*logging_config);
         } catch (const fc::exception&) {
