@@ -6429,11 +6429,14 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto exp_obj = db->get_index< vesting_delegation_expiration_index, by_id >().begin();
       auto end = db->get_index< vesting_delegation_expiration_index, by_id >().end();
+      auto gpo = db->get_dynamic_global_properties();
+
+      BOOST_REQUIRE( gpo.delegation_return_period == STEEM_DELEGATION_RETURN_PERIOD_HF20 );
 
       BOOST_REQUIRE( exp_obj != end );
       BOOST_REQUIRE( exp_obj->delegator == "sam" );
       BOOST_REQUIRE( exp_obj->vesting_shares == sam_vest );
-      BOOST_REQUIRE( exp_obj->expiration == db->head_block_time() + STEEM_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( exp_obj->expiration == db->head_block_time() + gpo.delegation_return_period );
       BOOST_REQUIRE( db->get_account( "sam" ).delegated_vesting_shares == sam_vest );
       BOOST_REQUIRE( db->get_account( "dave" ).received_vesting_shares == ASSET( "0.000000 VESTS" ) );
       delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
