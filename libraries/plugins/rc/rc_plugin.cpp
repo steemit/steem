@@ -135,6 +135,7 @@ void use_account_rcs(
       return;
    }
 
+   // ilog( "use_account_rcs( ${n}, ${rc} )", ("n", account_name)("rc", rc) );
    const account_object& account = db.get_account( account_name );
    const rc_account_object& rc_account = get_or_create_rc_account_object( db, account_name );
 
@@ -303,6 +304,8 @@ void rc_plugin_impl::on_first_block()
             mvo["time_unit"] = int8_t( vo["time_unit"].as< rc_time_unit_type >() );
             fc::from_variant( fc::variant( mvo ), params_obj.resource_param_array[ k ] );
          }
+
+         ilog( "Genesis params_obj is ${o}", ("o", params_obj) );
       } );
    _db.create< rc_pool_object >(
       [&]( rc_pool_object& pool_obj )
@@ -310,6 +313,8 @@ void rc_plugin_impl::on_first_block()
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
             pool_obj.pool_array[i] = 0;
          pool_obj.last_update = _db.get_dynamic_global_properties().time;
+
+         ilog( "Genesis pool_obj is ${o}", ("o", pool_obj) );
       } );
    return;
 }

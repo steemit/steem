@@ -1,6 +1,7 @@
 
 #include <steem/plugins/rc/rc_utility.hpp>
 
+#include <fc/reflect/variant.hpp>
 #include <fc/uint128.hpp>
 
 namespace steem { namespace plugins { namespace rc {
@@ -12,6 +13,12 @@ int64_t compute_rc_cost_of_resource(
    int64_t current_pool,
    int64_t resource_count )
 {
+   /*
+   ilog( "compute_rc_cost_of_resources( ${params}, ${pool}, ${res} )",
+      ("params", curve_params)
+      ("pool", current_pool)
+      ("res", resource_count) );
+   */
    if( resource_count <= 0 )
    {
       if( resource_count < 0 )
@@ -44,6 +51,13 @@ int64_t compute_pool_decay(
    uint32_t dt
    )
 {
+   /*
+   ilog( "compute_pool_decay( ${params}, ${pool}, ${dt} )",
+      ("params", decay_params)
+      ("pool", current_pool)
+      ("dt", dt) );
+   */
+
    if( current_pool < 0 )
       return -compute_pool_decay( decay_params, -current_pool, dt );
 
