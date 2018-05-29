@@ -296,7 +296,7 @@ DEFINE_API(plugin, get_dynamic_global_properties) {
 
 DEFINE_API(plugin, get_chain_properties) {
     return my->database().with_weak_read_lock([&]() {
-        return my->database().get_witness_schedule_object().median_props;
+        return chain_api_properties(my->database().get_witness_schedule_object().median_props, my->database());
     });
 }
 

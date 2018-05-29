@@ -55,5 +55,6 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(proposal_create)
         DEFINE_EVALUATOR(proposal_update)
         DEFINE_EVALUATOR(proposal_delete)
+        DEFINE_EVALUATOR(chain_properties_update)
 
 } } // golos::chain

@@ -3,7 +3,6 @@ set(CURRENT_TARGET witness_api)
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/witness_api/plugin.hpp
     include/golos/plugins/witness_api/api_objects/feed_history_api_object.hpp
-    include/golos/plugins/witness_api/api_objects/witness_api_object.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
@@ -29,6 +28,7 @@ target_link_libraries (
     golos_chain
     golos_chain_plugin
     golos_protocol
+    golos_api
     appbase
     golos_json_rpc
     graphene_time

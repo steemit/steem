@@ -192,8 +192,6 @@ namespace golos {
                         pimpl->_callback_expirations.erase( exp_it );
                     }
                 } FC_LOG_AND_RETHROW() }
-                #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
-
         }
     }
 } // steem::plugins::network_broadcast_api
