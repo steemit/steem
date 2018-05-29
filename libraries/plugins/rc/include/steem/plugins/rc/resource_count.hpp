@@ -39,3 +39,9 @@ FC_REFLECT_ENUM( steem::plugins::rc::rc_resource_types,
     (resource_new_accounts)
     (resource_market_bytes)
    )
+
+FC_REFLECT( steem::plugins::rc::count_resources_result,
+   (resource_count)
+)
+
+FC_REFLECT_TYPENAME( steem::plugins::rc::resource_count_type )

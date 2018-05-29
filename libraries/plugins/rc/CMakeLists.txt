@@ -7,7 +7,7 @@ add_library( rc_plugin
              resource_user.cpp
            )
 
-target_link_libraries( rc_plugin chain_plugin steem_chain steem_jsonball steem_protocol )
+target_link_libraries( rc_plugin chain_plugin block_data_export_plugin steem_chain steem_jsonball steem_protocol )
 target_include_directories( rc_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

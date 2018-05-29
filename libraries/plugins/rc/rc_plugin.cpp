@@ -1,3 +1,7 @@
+
+#include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
+
+#include <steem/plugins/rc/rc_export_objects.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>
 
@@ -12,6 +16,8 @@
 #define STEEM_RC_REGEN_TIME   (60*60*24*15)
 
 namespace steem { namespace plugins { namespace rc {
+
+using steem::plugins::block_data_export::block_data_export_plugin;
 
 namespace detail {
 
@@ -181,9 +187,10 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    if( gpo.total_vesting_shares.amount <= 0 )
       return;
 
+   rc_transaction_info tx_info;
+
    // How many resources does the transaction use?
-   count_resources_result count;
-   count_resources( note.transaction, count );
+   count_resources( note.transaction, tx_info.usage );
 
    // How many RC does this transaction cost?
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
@@ -196,17 +203,23 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
       const rc_resource_params& params = params_obj.resource_param_array[i];
       int64_t pool = pool_obj.pool_array[i];
 
-      int64_t cost = compute_rc_cost_of_resource( params.curve_params, pool, count.resource_count[i] );
-      total_cost += cost;
+      tx_info.usage.resource_count[i] *= int64_t( params.resource_unit );
+      tx_info.cost[i] = compute_rc_cost_of_resource( params.curve_params, pool, tx_info.usage.resource_count[i] );
+      total_cost += tx_info.cost[i];
    }
 
    // Update any accounts that were created by this transaction based on fee.
    // TODO: Add issue number to HF constant
-   if( (count.resource_count[ resource_new_accounts ] > 0) && _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   if( (tx_info.usage.resource_count[ resource_new_accounts ] > 0) && _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       set_creation_adjustments( _db, gpo.get_vesting_share_price(), note.transaction );
 
-   account_name_type resource_user = get_resource_user( note.transaction );
-   use_account_rcs( _db, gpo, resource_user, total_cost );
+   tx_info.resource_user = get_resource_user( note.transaction );
+   use_account_rcs( _db, gpo, tx_info.resource_user, total_cost );
+
+   std::shared_ptr< exp_rc_data > export_data =
+      steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
+   if( export_data )
+      export_data->tx_info.push_back( tx_info );
 }
 
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
@@ -232,6 +245,8 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
 
+   rc_block_info block_info;
+
    _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ),
       [&]( rc_pool_object& pool_obj )
       {
@@ -241,6 +256,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             int64_t& pool = pool_obj.pool_array[i];
             uint32_t dt = 0;
 
+            block_info.pool[i] = pool;
             switch( params.time_unit )
             {
                case rc_time_unit_blocks:
@@ -252,17 +268,21 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
                default:
                   FC_ASSERT( false, "unknown time unit in RC parameter object" );
             }
+            block_info.dt[i] = dt;
 
-            pool -= compute_pool_decay( params.decay_params, pool, dt );
+            block_info.decay[i] = compute_pool_decay( params.decay_params, pool, dt );
+            block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
+            block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
 
-            int64_t budget = params.budget_per_time_unit;
-            budget *= int64_t(dt);
-            pool += budget;
-
-            pool -= count.resource_count[i];
+            pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
          }
          pool_obj.last_update = gpo.time;
       } );
+
+   std::shared_ptr< exp_rc_data > export_data =
+      steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
+   if( export_data )
+      export_data->block_info = block_info;
 }
 
 void rc_plugin_impl::on_first_block()
@@ -303,10 +323,20 @@ void rc_plugin::set_program_options( options_description& cli, options_descripti
 
 void rc_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
+   ilog( "Initializing resource credit plugin" );
+
    my = std::make_unique< detail::rc_plugin_impl >( *this );
+
    try
    {
-      ilog( "Initializing resource credit plugin" );
+      block_data_export_plugin* export_plugin = appbase::app().find_plugin< block_data_export_plugin >();
+      if( export_plugin != nullptr )
+      {
+         ilog( "Registering RC export data factory" );
+         export_plugin->register_export_data_factory( STEEM_RC_PLUGIN_NAME,
+            []() -> std::shared_ptr< exportable_block_data > { return std::make_shared< exp_rc_data >(); } );
+      }
+
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
       my->_post_apply_block_conn = db.add_post_apply_block_handler( [&]( const block_notification& note ){ my->on_post_apply_block( note ); }, *this, 0 );
@@ -325,6 +355,14 @@ void rc_plugin::plugin_shutdown()
 {
    chain::util::disconnect_signal( my->_post_apply_block_conn );
    chain::util::disconnect_signal( my->_post_apply_transaction_conn );
+}
+
+exp_rc_data::exp_rc_data() {}
+exp_rc_data::~exp_rc_data() {}
+
+void exp_rc_data::to_variant( fc::variant& v )const
+{
+   fc::to_variant( *this, v );
 }
 
 } } } // steem::plugins::rc
