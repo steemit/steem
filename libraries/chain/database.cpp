@@ -4655,6 +4655,25 @@ void database::apply_hardfork( uint32_t hardfork )
             {
                gpo.delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF20;
             });
+
+            const auto& wso = get_witness_schedule_object();
+
+            for( const auto& witness : wso.current_shuffled_witnesses )
+            {
+               // Required check when applying hardfork at genesis
+               if( witness != account_name_type() )
+               {
+                  modify( get< witness_object, by_name >( witness ), [&]( witness_object& w )
+                  {
+                     w.props.account_creation_fee = asset( w.props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+                  });
+               }
+            }
+
+            modify( wso, [&]( witness_schedule_object& wso )
+            {
+               wso.median_props.account_creation_fee = asset( wso.median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+            });
          }
          break;
       case STEEM_HARDFORK_0_21:
