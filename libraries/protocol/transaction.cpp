@@ -73,96 +73,153 @@ namespace golos {
             }
         }
 
-        void verify_authority(const vector<operation> &ops, const flat_set<public_key_type> &sigs,
-                const authority_getter &get_active,
-                const authority_getter &get_owner,
-                const authority_getter &get_posting,
-                uint32_t max_recursion_depth,
-                bool allow_committe,
-                const flat_set<account_name_type> &active_aprovals,
-                const flat_set<account_name_type> &owner_approvals,
-                const flat_set<account_name_type> &posting_approvals
-        ) {
-            try {
-                flat_set<account_name_type> required_active;
-                flat_set<account_name_type> required_owner;
-                flat_set<account_name_type> required_posting;
-                vector<authority> other;
+        void assert_unused_approvals(sign_state& s) {
+            GOLOS_CTOR_ASSERT(
+                !s.remove_unused_signatures(),
+                tx_irrelevant_sig,
+                [&](auto& e) {
+                    e.unused_signatures = std::move(s.unused_signatures);
+                    e.append_log(GOLOS_ASSERT_MESSAGE("Unnecessary signature(s) detected"));
+                });
 
-                for (const auto &op : ops) {
-                    operation_get_required_authorities(op, required_active, required_owner, required_posting, other);
-                }
-
-                /**
-                 *  Transactions with operations required posting authority cannot be combined
-                 *  with transactions requiring active or owner authority. This is for ease of
-                 *  implementation. Future versions of authority verification may be able to
-                 *  check for the merged authority of active and posting.
-                 */
-                if (required_posting.size()) {
-                    FC_ASSERT(required_active.size() == 0);
-                    FC_ASSERT(required_owner.size() == 0);
-                    FC_ASSERT(other.size() == 0);
-
-                    flat_set<public_key_type> avail;
-                    sign_state s(sigs, get_posting, avail);
-                    s.max_recursion = max_recursion_depth;
-                    for (auto &id : posting_approvals) {
-                        s.approved_by.insert(id);
-                    }
-                    for (auto id : required_posting) {
-                        STEEMIT_ASSERT(s.check_authority(id) ||
-                                       s.check_authority(get_active(id)) ||
-                                       s.check_authority(get_owner(id)),
-                                tx_missing_posting_auth, "Missing Posting Authority ${id}",
-                                ("id", id)
-                                        ("posting", get_posting(id))
-                                        ("active", get_active(id))
-                                        ("owner", get_owner(id)));
-                    }
-                    STEEMIT_ASSERT(
-                            !s.remove_unused_signatures(),
-                            tx_irrelevant_sig,
-                            "Unnecessary signature(s) detected"
-                    );
-                    return;
-                }
-
-                flat_set<public_key_type> avail;
-                sign_state s(sigs, get_active, avail);
-                s.max_recursion = max_recursion_depth;
-                for (auto &id : active_aprovals) {
-                    s.approved_by.insert(id);
-                }
-                for (auto &id : owner_approvals) {
-                    s.approved_by.insert(id);
-                }
-
-                for (const auto &auth : other) {
-                    STEEMIT_ASSERT(s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth", auth)("sigs", sigs));
-                }
-
-                // fetch all of the top level authorities
-                for (auto id : required_active) {
-                    STEEMIT_ASSERT(s.check_authority(id) ||
-                                   s.check_authority(get_owner(id)),
-                            tx_missing_active_auth, "Missing Active Authority ${id}", ("id", id)("auth", get_active(id))("owner", get_owner(id)));
-                }
-
-                for (auto id : required_owner) {
-                    STEEMIT_ASSERT(
-                            owner_approvals.find(id) != owner_approvals.end() ||
-                            s.check_authority(get_owner(id)),
-                            tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id", id)("auth", get_owner(id)));
-                }
-
-                STEEMIT_ASSERT(
-                        !s.remove_unused_signatures(),
-                        tx_irrelevant_sig,
-                        "Unnecessary signature(s) detected"
-                );
-            } FC_CAPTURE_AND_RETHROW((ops)(sigs))
+            GOLOS_CTOR_ASSERT(
+                !s.filter_unused_approvals(),
+                tx_irrelevant_approval,
+                [&](auto& e) {
+                    e.unused_approvals = std::move(s.unused_approvals);
+                    e.append_log(GOLOS_ASSERT_MESSAGE("Unnecessary approval(s) detected"));
+                });
         }
+
+        void verify_authority(
+            const std::vector<operation>& ops,
+            const fc::flat_set<public_key_type>& sigs,
+            const authority_getter& get_active,
+            const authority_getter& get_owner,
+            const authority_getter& get_posting,
+            uint32_t max_recursion_depth,
+            bool allow_committe,
+            const flat_set<account_name_type>& active_aprovals,
+            const flat_set<account_name_type>& owner_approvals,
+            const flat_set<account_name_type>& posting_approvals
+        ) { try {
+            fc::flat_set<account_name_type> required_active;
+            fc::flat_set<account_name_type> required_owner;
+            fc::flat_set<account_name_type> required_posting;
+            std::vector<authority> other;
+            fc::flat_set<public_key_type> avail;
+            std::vector<account_name_type> missing_accounts;
+            std::vector<authority> missing_auths;
+
+            for (const auto& op : ops) {
+                operation_get_required_authorities(op, required_active, required_owner, required_posting, other);
+            }
+
+            /**
+             *  Transactions with operations required posting authority cannot be combined
+             *  with transactions requiring active or owner authority. This is for ease of
+             *  implementation. Future versions of authority verification may be able to
+             *  check for the merged authority of active and posting.
+             */
+            if (required_posting.size()) {
+                FC_ASSERT(required_active.size() == 0);
+                FC_ASSERT(required_owner.size() == 0);
+                FC_ASSERT(other.size() == 0);
+
+                sign_state s(sigs, get_posting, avail);
+                s.max_recursion = max_recursion_depth;
+
+                for (const auto& id : posting_approvals) {
+                   s.approved_by[id] = false;
+                }
+
+                for (const auto& id: required_posting) {
+                    if (!s.check_authority(id) &&
+                        !s.check_authority(get_active(id)) &&
+                        !s.check_authority(get_owner(id))
+                    ) {
+                        missing_accounts.push_back(id);
+                    }
+                }
+
+                GOLOS_CTOR_ASSERT(
+                    missing_accounts.empty(),
+                    tx_missing_posting_auth,
+                    [&](auto& e) {
+                        s.remove_unused_signatures();
+                        e.used_signatures = std::move(s.used_signatures);
+                        e.missing_accounts = std::move(missing_accounts);
+                        e.append_log(
+                            GOLOS_ASSERT_MESSAGE("Missing Posting Authority ${id}", ("id", e.missing_accounts)));
+                    });
+
+                assert_unused_approvals(s);
+                return;
+            }
+
+            sign_state s(sigs, get_active, avail);
+            s.max_recursion = max_recursion_depth;
+            for (auto& id: active_aprovals) {
+                s.approved_by[id] = false;
+            }
+            for (auto& id: owner_approvals) {
+                s.approved_by[id] = false;
+            }
+
+            for (const auto& auth: other) {
+                if (!s.check_authority(auth)) {
+                    missing_auths.push_back(auth);
+                }
+            }
+
+            GOLOS_CTOR_ASSERT(
+                missing_auths.empty(),
+                tx_missing_other_auth,
+                [&](auto& e) {
+                    e.missing_auths = std::move(missing_auths);
+                    e.append_log(
+                        GOLOS_ASSERT_MESSAGE("Missing Authority", ("auth", e.missing_auths)));
+                });
+
+            // fetch all of the top level authorities
+            for (const auto& id: required_active) {
+                if (!s.check_authority(id) && !s.check_authority(get_owner(id))) {
+                    missing_accounts.push_back(id);
+                }
+            }
+
+            GOLOS_CTOR_ASSERT(
+                missing_accounts.empty(),
+                tx_missing_active_auth,
+                [&](auto& e) {
+                    s.remove_unused_signatures();
+                    e.used_signatures = std::move(s.used_signatures);
+                    e.missing_accounts = std::move(missing_accounts);
+                    e.append_log(
+                        GOLOS_ASSERT_MESSAGE("Missing Active Authority ${id}", ("id", e.missing_accounts)));
+                });
+
+            for (const auto& id: required_owner) {
+                if (owner_approvals.find(id) == owner_approvals.end() && !s.check_authority(get_owner(id))) {
+                    missing_accounts.push_back(id);
+                } else {
+                    s.approved_by[id] = true;
+                }
+            }
+
+            GOLOS_CTOR_ASSERT(
+                missing_accounts.empty(),
+                tx_missing_owner_auth,
+                [&](auto& e) {
+                    s.remove_unused_signatures();
+                    e.used_signatures = std::move(s.used_signatures);
+                    e.missing_accounts = std::move(missing_accounts);
+                    e.append_log(
+                        GOLOS_ASSERT_MESSAGE("Missing Owner Authority ${id}", ("id", e.missing_accounts)));
+                });
+
+            assert_unused_approvals(s);
+        } FC_CAPTURE_AND_RETHROW((ops)(sigs)) }
 
 
         flat_set<public_key_type> signed_transaction::get_signature_keys(const chain_id_type &chain_id) const {
@@ -170,10 +227,10 @@ namespace golos {
                 auto d = sig_digest(chain_id);
                 flat_set<public_key_type> result;
                 for (const auto &sig : signatures) {
-                    STEEMIT_ASSERT(
-                            result.insert(fc::ecc::public_key(sig, d)).second,
-                            tx_duplicate_sig,
-                            "Duplicate Signature detected");
+                    GOLOS_ASSERT(
+                        result.insert(fc::ecc::public_key(sig, d)).second,
+                        tx_duplicate_sig,
+                        "Duplicate Signature detected");
                 }
                 return result;
             } FC_CAPTURE_AND_RETHROW()

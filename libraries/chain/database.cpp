@@ -151,7 +151,7 @@ namespace golos { namespace chain {
                 _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
                 auto start = fc::time_point::now();
-                STEEMIT_ASSERT(_block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain.");
+                GOLOS_ASSERT(_block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain.");
 
                 ilog("Replaying blocks...");
 
@@ -1109,7 +1109,7 @@ namespace golos { namespace chain {
 
                 /// save the head block so we can recover its transactions
                 optional<signed_block> head_block = fetch_block_by_id(head_id);
-                STEEMIT_ASSERT(head_block.valid(), pop_empty_chain, "there are no blocks to pop");
+                GOLOS_ASSERT(head_block.valid(), pop_empty_chain, "there are no blocks to pop");
 
                 _fork_db.pop_block();
                 undo();
@@ -3138,15 +3138,15 @@ namespace golos { namespace chain {
             if (!(skip & (skip_transaction_signatures | skip_authority_check))) {
                 const chain_id_type &chain_id = STEEMIT_CHAIN_ID;
 
-                auto get_active = [&](const string &name) {
+                auto get_active = [&](const account_name_type& name) {
                     return authority(get<account_authority_object, by_account>(name).active);
                 };
 
-                auto get_owner = [&](const string &name) {
+                auto get_owner = [&](const account_name_type& name) {
                     return authority(get<account_authority_object, by_account>(name).owner);
                 };
 
-                auto get_posting = [&](const string &name) {
+                auto get_posting = [&](const account_name_type& name) {
                     return authority(get<account_authority_object, by_account>(name).posting);
                 };
 
@@ -3688,13 +3688,14 @@ namespace golos { namespace chain {
                 });
 
                 if (!(skip & skip_undo_history_check)) {
-                    STEEMIT_ASSERT(_dgp.head_block_number -
-                                   _dgp.last_irreversible_block_num <
-                                   STEEMIT_MAX_UNDO_HISTORY, undo_database_exception,
-                            "The database does not have enough undo history to support a blockchain with so many missed blocks. "
-                                    "Please add a checkpoint if you would like to continue applying blocks beyond this point.",
-                            ("last_irreversible_block_num", _dgp.last_irreversible_block_num)("head", _dgp.head_block_number)
-                                    ("max_undo", STEEMIT_MAX_UNDO_HISTORY));
+                    GOLOS_ASSERT(
+                        _dgp.head_block_number - _dgp.last_irreversible_block_num < STEEMIT_MAX_UNDO_HISTORY,
+                        undo_database_exception,
+                        "The database does not have enough undo history to support a blockchain with so many missed blocks. "
+                        "Please add a checkpoint if you would like to continue applying blocks beyond this point.",
+                        ("last_irreversible_block_num", _dgp.last_irreversible_block_num)
+                        ("head", _dgp.head_block_number)
+                        ("max_undo", STEEMIT_MAX_UNDO_HISTORY));
                 }
             } FC_CAPTURE_AND_RETHROW()
         }

@@ -18,6 +18,7 @@ namespace golos { namespace chain {
     namespace bip = boost::interprocess;
     using protocol::public_key_type;
     using chainbase::allocator;
+    class database;
 
     /**
      *  @brief Tracks the approval of a partially approved transaction
@@ -69,11 +70,13 @@ namespace golos { namespace chain {
         name_set_type available_posting_approvals;
         key_set_type available_key_approvals;
 
-        bool is_authorized_to_execute(
-            const protocol::authority_getter& get_active,
-            const protocol::authority_getter& get_owner,
-            const protocol::authority_getter& get_posting,
-            uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
+        bool is_authorized_to_execute(const database& db) const;
+
+        void verify_authority(
+            const database& db,
+            const fc::flat_set<account_name_type>& active_approvals = fc::flat_set<account_name_type>(),
+            const fc::flat_set<account_name_type>& owner_approvals = fc::flat_set<account_name_type>(),
+            const fc::flat_set<account_name_type>& posting_approvals = fc::flat_set<account_name_type>()
         ) const;
 
         std::vector<protocol::operation> operations() const;

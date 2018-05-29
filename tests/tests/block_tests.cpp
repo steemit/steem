@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             // Sam is the creator of accounts
             auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             private_key_type sam_key = generate_private_key("sam");
-            account_object sam_account_object = account_create("sam", sam_key.get_public_key());
+            account_create("sam", sam_key.get_public_key());
 
             //Get a sane head block time
             generate_block(skip_flags);
