@@ -47,6 +47,11 @@ namespace golos { namespace api {
         body = to_string(content.body);
         json_metadata = to_string(content.json_metadata);
 #endif
+        if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
+            category = to_string(o.parent_permlink);
+        } else {
+            category = to_string(db.get<comment_object, by_id>(o.root_comment).parent_permlink);
+        }
     }
 
     comment_api_object::comment_api_object() = default;
