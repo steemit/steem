@@ -515,7 +515,7 @@ DEFINE_PLUGIN_API ( debug_push_json_blocks ) {
     // 577 = skip_witness_signature | skip_authority_check | skip_witness_schedule_check
     
     auto &db = my->database();
-    return db.with_read_lock([&]() {
+    return db.with_weak_read_lock([&]() {
         return my->debug_push_json_blocks(json_filename, count, skip_flags);
     });
 }
@@ -542,7 +542,7 @@ DEFINE_API ( plugin, debug_get_witness_schedule ) {
 // DEFINE_API ( plugin, debug_get_hardfork_property_object ) {
 //     auto tmp = args.args->at(0).as<debug_get_hardfork_property_object_a>();
 //     auto &db = my->database();
-//     return db.with_read_lock([&]() {
+//     return db.with_weak_read_lock([&]() {
 //         return my->debug_get_hardfork_property_object(tmp);
 //     });
 // }
