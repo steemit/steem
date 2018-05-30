@@ -1306,7 +1306,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
       abs_rshares = std::max( int64_t(0), abs_rshares );
    }
-   if( _db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
+   else if( _db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
    {
       FC_ASSERT( abs_rshares > STEEM_VOTE_DUST_THRESHOLD || o.weight == 0, "Voting weight is too small, please accumulate more voting power or steem power." );
    }
