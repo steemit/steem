@@ -21,10 +21,10 @@ matrix:
 script:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       export DOCKERNAME="latest""$DOCKERNAME";
-      export EXPORTNAME="latest""$DOCKERNAME";
+      export EXPORTNAME="$DOCKERNAME";
     elif [ -n "$TRAVIS_TAG" ]; then
       export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
-      export EXPORTNAME="$TRAVIS_TAG""$DOCKERNAME";
+      export EXPORTNAME="$DOCKERNAME";
     else
       export DOCKERNAME=develop"$DOCKERNAME";
     fi
