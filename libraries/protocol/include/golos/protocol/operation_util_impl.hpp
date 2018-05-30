@@ -140,4 +140,4 @@ void operation_get_required_authorities( const OperationType& op,          \
    op.visit( golos::protocol::operation_get_required_auth_visitor( active, owner, posting, other ) ); \
 }                                                                          \
                                                                            \
-} } /* steemit::protocol */
+} } /* golos::protocol */

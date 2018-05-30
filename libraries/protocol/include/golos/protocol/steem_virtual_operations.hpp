@@ -6,8 +6,7 @@
 
 #include <fc/utf8.hpp>
 
-namespace golos {
-    namespace protocol {
+namespace golos { namespace protocol {
 
         struct author_reward_operation : public virtual_operation {
             author_reward_operation() {
@@ -174,8 +173,31 @@ namespace golos {
             string permlink;
         };
 
-    }
-} //golos::protocol
+        struct comment_benefactor_reward_operation : public virtual_operation {
+            comment_benefactor_reward_operation() {
+            }
+
+            comment_benefactor_reward_operation(const account_name_type &b, const account_name_type &a, const string &p, const asset &r)
+                    : benefactor(b), author(a), permlink(p), reward(r) {
+            }
+
+            account_name_type benefactor;
+            account_name_type author;
+            string permlink;
+            asset reward;
+        };
+
+        struct return_vesting_delegation_operation: public virtual_operation {
+            return_vesting_delegation_operation() {
+            }
+            return_vesting_delegation_operation(const account_name_type& a, const asset& v)
+            :   account(a), vesting_shares(v) {
+            }
+
+            account_name_type account;
+            asset vesting_shares;
+        };
+} } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
 FC_REFLECT((golos::protocol::curation_reward_operation), (curator)(reward)(comment_author)(comment_permlink))
@@ -189,3 +211,5 @@ FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orde
 FC_REFLECT((golos::protocol::fill_transfer_from_savings_operation), (from)(to)(amount)(request_id)(memo))
 FC_REFLECT((golos::protocol::hardfork_operation), (hardfork_id))
 FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(permlink))
+FC_REFLECT((golos::protocol::comment_benefactor_reward_operation), (benefactor)(author)(permlink)(reward))
+FC_REFLECT((golos::protocol::return_vesting_delegation_operation), (account)(vesting_shares))

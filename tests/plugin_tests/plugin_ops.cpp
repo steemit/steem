@@ -6,7 +6,7 @@
 #include <golos/chain/generic_custom_operation_interpreter.hpp>
 #include <golos/chain/account_object.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "database_fixture.hpp"
 
 using namespace golos::chain;
 using namespace golos::chain::test;

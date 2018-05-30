@@ -5,6 +5,8 @@
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
+#include <thirdparty/fc/vendor/websocketpp/websocketpp/error.hpp>
+#include <thirdparty/fc/include/fc/time.hpp>
 
 namespace golos {
     namespace plugins {
@@ -83,12 +85,22 @@ namespace golos {
                 }
                 return fc::optional<fc::variant>();
             }
-            
-            void msg_pack::result(fc::optional<fc::variant> result) {
+
+            void msg_pack::unsafe_result(fc::optional<fc::variant> result) {
                 // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
                 FC_ASSERT(valid(), "The msg_pack delegated its handlers");
                 pimpl->response.result = std::move(result);
                 pimpl->handler(pimpl->response);
+            }
+
+            void msg_pack::result(fc::optional<fc::variant> result) {
+                // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
+                try {
+                    unsafe_result(std::move(result));
+                } catch (const websocketpp::exception &) {
+                    // Can't send data via socket -
+                    //    don't pass exception to upper level, because it doesn't have handler for exception
+                }
             }
 
             fc::optional<fc::variant> msg_pack::result() const {
@@ -103,7 +115,12 @@ namespace golos {
                 // Pimpl can absent in case if msg_pack delegated its handlers to other msg_pack (see move constructor)
                 FC_ASSERT(valid(), "The msg_pack delegated its handlers");
                 pimpl->response.error = json_rpc_error(code, std::move(message), std::move(data));
-                pimpl->handler(pimpl->response);
+                try {
+                    pimpl->handler(pimpl->response);
+                } catch (const websocketpp::exception &) {
+                    // Can't send data via socket - see
+                    //    don't pass exception to upper level, because it doesn't have handler for exception
+               }
             }
 
             void msg_pack::error(std::string message, fc::optional<fc::variant> data) {
@@ -238,22 +255,58 @@ namespace golos {
                     }
                 }
 
-#define ddump(SEQ) \
-                    dlog( FC_FORMAT(SEQ), FC_FORMAT_ARG_PARAMS(SEQ) )
+                struct dump_rpc_time {
+                    dump_rpc_time(const fc::variant& data)
+                        : data_(data) {
 
-                void rpc(const fc::variant &data, msg_pack &msg) {
-                    ddump((data));
+                        dlog("data: ${data}", ("data", fc::json::to_string(data_)));
+                    }
+
+                    ~dump_rpc_time() {
+                        if (error_.empty()) {
+                            dlog(
+                                "elapsed: ${time} sec, data: ${data}",
+                                ("data", fc::json::to_string(data_))
+                                ("time", double((fc::time_point::now() - start_).count()) / 1000000.0));
+                        } else {
+                            dlog(
+                                "elapsed: ${time} sec, error: '${error}', data: ${data}",
+                                ("data", fc::json::to_string(data_))
+                                ("error", error_)
+                                ("time", double((fc::time_point::now() - start_).count()) / 1000000.0));
+                        }
+                    }
+
+                    void error(std::string value) {
+                        error_ = std::move(value);
+                    }
+
+                private:
+                    fc::time_point start_ = fc::time_point::now();
+                    std::string error_;
+                    const fc::variant& data_;
+                };
+
+                void rpc(const fc::variant& data, msg_pack& msg) {
+                    dump_rpc_time dump(data);
 
                     try {
                         rpc_jsonrpc(data.get_object(), msg);
-                    } catch (const fc::parse_error_exception &e) {
+                    } catch (const fc::parse_error_exception& e) {
                         msg.error(JSON_RPC_INVALID_PARAMS, e);
-                    } catch (const fc::bad_cast_exception &e) {
+                        dump.error("invalid params");
+                    } catch (const fc::bad_cast_exception& e) {
                         msg.error(JSON_RPC_INVALID_PARAMS, e);
-                    } catch (const fc::exception &e) {
+                        dump.error("invalid types");
+                    } catch (const fc::exception& e) {
                         msg.error(e);
+                        dump.error("invalid request");
+                    } catch (const std::exception& e) {
+                        msg.error(e.what());
+                        dump.error(e.what());
                     } catch (...) {
                         msg.error("Unknown error - parsing rpc message failed");
+                        dump.error("unknown");
                     }
                 }
 

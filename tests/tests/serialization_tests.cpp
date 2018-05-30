@@ -32,7 +32,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/reflect/variant.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "database_fixture.hpp"
 
 #include <cmath>
 
@@ -42,31 +42,29 @@ using namespace golos::protocol;
 
 BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
 
-    /*
- BOOST_AUTO_TEST_CASE( account_name_type_test )
- {
+//    BOOST_AUTO_TEST_CASE(account_name_type_test) {
+//
+//        auto test = [](const string &data) {
+//            fc::fixed_string<> a(data);
+//            std::string b(data);
+//
+//            auto ap = fc::raw::pack(empty);
+//            auto bp = fc::raw::pack(emptystr);
+//            FC_ASSERT(ap.size() == bp.size());
+//            FC_ASSERT(std::equal(ap.begin(), ap.end(), bp.begin()));
+//
+//            auto sfa = fc::raw::unpack<std::string>(ap);
+//            auto afs = fc::raw::unpack<fixed_string<>>(bp);
+//        }
+//        test(std::string());
+//        test("helloworld");
+//        test("1234567890123456");
+//
+//        auto packed_long_string = fc::raw::pack(std::string("12345678901234567890"));
+//        auto unpacked = fc::raw::unpack<fixed_string<>>(packed_long_string);
+//        idump((unpacked));
+//    }
 
-    auto test = []( const string& data ) {
-       fixed_string<> a(data);
-       std::string    b(data);
-
-       auto ap = fc::raw::pack( empty );
-       auto bp = fc::raw::pack( emptystr );
-       FC_ASSERT( ap.size() == bp.size() );
-       FC_ASSERT( std::equal( ap.begin(), ap.end(), bp.begin() ) );
-
-       auto sfa = fc::raw::unpack<std::string>( ap );
-       auto afs = fc::raw::unpack<fixed_string<>>( bp );
-    }
-    test( std::string() );
-    test( "helloworld" );
-    test( "1234567890123456" );
-
-    auto packed_long_string = fc::raw::pack( std::string( "12345678901234567890" ) );
-    auto unpacked = fc::raw::unpack<fixed_string<>>( packed_long_string );
-    idump( (unpacked) );
- }
- */
 
     BOOST_AUTO_TEST_CASE(serialization_raw_test) {
         try {
@@ -143,7 +141,7 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             BOOST_CHECK_EQUAL(asset(50000, SBD_SYMBOL).to_string(), "50.000 GBG");
 
             BOOST_CHECK_THROW(steem.set_decimals(100), fc::exception);
-            char *steem_sy = (char *)&steem.symbol;
+            char *steem_sy = (char *) &steem.symbol;
             steem_sy[0] = 100;
             BOOST_CHECK_THROW(steem.decimals(), fc::exception);
             steem_sy[6] = 'A';
@@ -158,7 +156,8 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             BOOST_CHECK_THROW(check_sym(steem), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1.00000000000000000000 GOLOS"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1.000GOLOS"), fc::exception);
-            BOOST_CHECK_THROW(asset::from_string("1. 333 GOLOS"), fc::exception); // Fails because symbol is '333 GOLOS', which is too long
+            // Fails because symbol is '333 GOLOS', which is too long
+            BOOST_CHECK_THROW(asset::from_string("1. 333 GOLOS"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1 .333 GOLOS"), fc::exception);
             asset unusual = asset::from_string("1. 333 X"); // Passes because symbol '333 X' is short enough
             FC_ASSERT(unusual.decimals() == 0);
@@ -166,7 +165,9 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             BOOST_CHECK_THROW(asset::from_string("1 .333 X"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1 .333"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1 1.1"), fc::exception);
-            BOOST_CHECK_THROW(asset::from_string("11111111111111111111111111111111111111111111111 GOLOS"), fc::exception);
+            BOOST_CHECK_THROW(
+                asset::from_string("11111111111111111111111111111111111111111111111 GOLOS"),
+                fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1.1.1 GOLOS"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string("1.abc GOLOS"), fc::exception);
             BOOST_CHECK_THROW(asset::from_string(" GOLOS"), fc::exception);
@@ -194,7 +195,9 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(extended_private_key_type_test) {
         try {
-            fc::ecc::extended_private_key key = fc::ecc::extended_private_key(fc::ecc::private_key::generate(),
+            fc::ecc::extended_private_key key =
+                fc::ecc::extended_private_key(
+                    fc::ecc::private_key::generate(),
                     fc::sha256(),
                     0, 0, 0);
             extended_private_key_type type = extended_private_key_type(key);
@@ -209,7 +212,9 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(extended_public_key_type_test) {
         try {
-            fc::ecc::extended_public_key key = fc::ecc::extended_public_key(fc::ecc::private_key::generate().get_public_key(),
+            fc::ecc::extended_public_key key =
+                fc::ecc::extended_public_key(
+                    fc::ecc::private_key::generate().get_public_key(),
                     fc::sha256(),
                     0, 0, 0);
             extended_public_key_type type = extended_public_key_type(key);

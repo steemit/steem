@@ -47,7 +47,7 @@ get_raw_block_r plugin::plugin_impl::get_raw_block(uint32_t block_num) {
 DEFINE_API ( plugin, get_raw_block ) {
     auto tmp = args.args->at(0).as<uint32_t>();
     auto &db = my->database();
-    return db.with_read_lock([&]() {
+    return db.with_weak_read_lock([&]() {
         return my->get_raw_block(tmp);
     });
 }

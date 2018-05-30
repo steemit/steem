@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 16, 5))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 18, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 #ifdef STEEMIT_BUILD_TESTNET
@@ -24,10 +24,13 @@
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hour
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS * 2)
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEMIT_CASHOUT_WINDOW_SECONDS * 2)
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*5) /// 5 hours
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*2) /// 2 hours
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
+
+#define STEEMIT_MAX_PROPOSAL_LIFETIME_SEC       (60*60*12) /// 12 hours
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE          0
@@ -42,12 +45,14 @@
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY / 512)
 #define STEEMIT_START_MINER_VOTING_BLOCK        (60*10/STEEMIT_BLOCK_INTERVAL)
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1484478000))
+#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1476788400 + STEEMIT_BLOCK_INTERVAL))
 
 #define STEEMIT_INIT_MINER_NAME                 "cyberfounder"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_VOTED_WITNESSES             19
+#ifndef STEEMIT_MAX_VOTED_WITNESSES
+#  define STEEMIT_MAX_VOTED_WITNESSES           1
+#endif
 #define STEEMIT_MAX_MINER_WITNESSES             1
 #define STEEMIT_MAX_RUNNER_WITNESSES            1
 #define STEEMIT_MAX_WITNESSES                   (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
@@ -59,13 +64,14 @@
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      13
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) // 1 week per interval
 #define STEEMIT_MAX_WITHDRAW_ROUTES             10
-#define STEEMIT_SAVINGS_WITHDRAW_TIME            (fc::days(3))
+#define STEEMIT_SAVINGS_WITHDRAW_TIME           (fc::days(3))
 #define STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
-#define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
+#define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 days
 #define STEEMIT_MAX_VOTE_CHANGES                5
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+#define STEEMIT_MAX_COMMENT_BENEFICIARIES       8
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -95,9 +101,15 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
-
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
+
+#define GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER    30
+#define GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO       5
+#define GOLOS_CREATE_ACCOUNT_DELEGATION_TIME        (fc::days(1))
+#define GOLOS_MIN_DELEGATION_MULTIPLIER             10
 
 #define STEEMIT_MINING_REWARD                   asset( 666, STEEM_SYMBOL )
 #define STEEMIT_MINING_REWARD_PRE_HF_16         asset( 1000, STEEM_SYMBOL )
@@ -183,8 +195,8 @@
 #define STEEMIT_FEED_INTERVAL_BLOCKS            (STEEMIT_BLOCKS_PER_HOUR / 60)
 #define STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
 #define STEEMIT_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEMIT_MAX_FEED_AGE                    (fc::days(7))
-#define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
+#define STEEMIT_MAX_FEED_AGE                    (fc::days(1))
+#define STEEMIT_MIN_FEEDS                       1 /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
@@ -220,11 +232,14 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)  /// 1 day
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  // 1 week
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    // 1 day
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2) /// 2 hours
+
+#define STEEMIT_MAX_PROPOSAL_LIFETIME_SEC       (60*60*24*7*4) /// 4 weeks
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
@@ -256,13 +271,14 @@
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      13
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) // 1 week per interval
 #define STEEMIT_MAX_WITHDRAW_ROUTES             10
-#define STEEMIT_SAVINGS_WITHDRAW_TIME            (fc::days(3))
+#define STEEMIT_SAVINGS_WITHDRAW_TIME           (fc::days(3))
 #define STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
-#define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
+#define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 days
 #define STEEMIT_MAX_VOTE_CHANGES                5
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+#define STEEMIT_MAX_COMMENT_BENEFICIARIES       64
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -292,9 +308,16 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               5
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      5
+#define STEEMIT_MAX_COMMENT_DEPTH               0xfff0 // 64k - 16
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
+
+#define GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER    30
+#define GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO       5
+#define GOLOS_CREATE_ACCOUNT_DELEGATION_TIME        (fc::days(30))
+#define GOLOS_MIN_DELEGATION_MULTIPLIER             10
 
 #define STEEMIT_MINING_REWARD                   asset( 666, STEEM_SYMBOL )
 #define STEEMIT_MINING_REWARD_PRE_HF_16         asset( 1000, STEEM_SYMBOL )

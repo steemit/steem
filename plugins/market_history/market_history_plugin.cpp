@@ -16,6 +16,8 @@ namespace golos {
         namespace market_history {
 
             using golos::protocol::fill_order_operation;
+            using golos::chain::operation_notification;
+
 
             class market_history_plugin::market_history_plugin_impl {
             public:
@@ -31,11 +33,13 @@ namespace golos {
                 market_ticker get_ticker() const;
                 market_volume get_volume() const;
                 order_book get_order_book(uint32_t limit) const;
+                order_book_extended get_order_book_extended(uint32_t limit) const;
                 vector<market_trade> get_trade_history(time_point_sec start, time_point_sec end, uint32_t limit) const;
                 vector<market_trade> get_recent_trades(uint32_t limit) const;
                 vector<bucket_object> get_market_history(uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
                 std::vector<limit_order> get_open_orders(std::string) const;
+
 
                 void update_market_histories(const golos::chain::operation_notification &o);
 
@@ -51,15 +55,16 @@ namespace golos {
                 golos::chain::database &_db;
             };
 
-            void market_history_plugin::market_history_plugin_impl::update_market_histories(const golos::chain::operation_notification &o) {
+            void market_history_plugin::market_history_plugin_impl::update_market_histories(const operation_notification &o) {
                 if (o.op.which() ==
                     operation::tag<fill_order_operation>::value) {
                     fill_order_operation op = o.op.get<fill_order_operation>();
 
-                    const auto &bucket_idx = _db.get_index<bucket_index>().indices().get<by_bucket>();
+                    auto &db = database();
+                    const auto &bucket_idx = db.get_index<bucket_index>().indices().get<by_bucket>();
 
-                    _db.create<order_history_object>([&](order_history_object &ho) {
-                        ho.time = _db.head_block_time();
+                    db.create<order_history_object>([&](order_history_object &ho) {
+                        ho.time = db.head_block_time();
                         ho.op = op;
                     });
 
@@ -71,17 +76,17 @@ namespace golos {
                     }
 
                     for (auto bucket : _tracked_buckets) {
-                        auto cutoff = _db.head_block_time() - fc::seconds(
+                        auto cutoff = db.head_block_time() - fc::seconds(
                                 bucket * _maximum_history_per_bucket_size);
 
                         auto open = fc::time_point_sec(
-                                (_db.head_block_time().sec_since_epoch() /
+                                (db.head_block_time().sec_since_epoch() /
                                  bucket) * bucket);
                         auto seconds = bucket;
 
                         auto itr = bucket_idx.find(boost::make_tuple(seconds, open));
                         if (itr == bucket_idx.end()) {
-                            _db.create<bucket_object>([&](bucket_object &b) {
+                            db.create<bucket_object>([&](bucket_object &b) {
                                 b.open = open;
                                 b.seconds = bucket;
 
@@ -110,7 +115,7 @@ namespace golos {
                                 }
                             });
                         } else {
-                            _db.modify(*itr, [&](bucket_object &b) {
+                            db.modify(*itr, [&](bucket_object &b) {
                                 if (op.open_pays.symbol == STEEM_SYMBOL) {
                                     b.steem_volume += op.open_pays.amount;
                                     b.sbd_volume += op.current_pays.amount;
@@ -118,13 +123,13 @@ namespace golos {
                                     b.close_sbd = op.current_pays.amount;
 
                                     if (b.high() <
-                                        golos::protocol::price(op.current_pays, op.open_pays)) {
+                                        price(op.current_pays, op.open_pays)) {
                                         b.high_steem = op.open_pays.amount;
                                         b.high_sbd = op.current_pays.amount;
                                     }
 
                                     if (b.low() >
-                                        golos::protocol::price(op.current_pays, op.open_pays)) {
+                                        price(op.current_pays, op.open_pays)) {
                                         b.low_steem = op.open_pays.amount;
                                         b.low_sbd = op.current_pays.amount;
                                     }
@@ -135,13 +140,13 @@ namespace golos {
                                     b.close_sbd = op.open_pays.amount;
 
                                     if (b.high() <
-                                        golos::protocol::price(op.open_pays, op.current_pays)) {
+                                        price(op.open_pays, op.current_pays)) {
                                         b.high_steem = op.current_pays.amount;
                                         b.high_sbd = op.open_pays.amount;
                                     }
 
                                     if (b.low() >
-                                        golos::protocol::price(op.open_pays, op.current_pays)) {
+                                        price(op.open_pays, op.current_pays)) {
                                         b.low_steem = op.current_pays.amount;
                                         b.low_sbd = op.open_pays.amount;
                                     }
@@ -156,7 +161,7 @@ namespace golos {
                                        itr->open < cutoff) {
                                     auto old_itr = itr;
                                     ++itr;
-                                    _db.remove(*old_itr);
+                                    db.remove(*old_itr);
                                 }
                             }
                         }
@@ -166,16 +171,14 @@ namespace golos {
 
             market_ticker market_history_plugin::market_history_plugin_impl::get_ticker() const {
                 market_ticker result;
-
-                const auto &bucket_idx = _db.get_index<bucket_index>().indices().get<by_bucket>();
-                auto itr = bucket_idx.lower_bound(boost::make_tuple(86400,
-                                                                    _db.head_block_time() - 86400));
+                const auto &bucket_idx = database().get_index<bucket_index>().indices().get<by_bucket>();
+                auto itr = bucket_idx.lower_bound(boost::make_tuple(86400, database().head_block_time() - 86400));
 
                 if (itr != bucket_idx.end()) {
-                    auto open = (golos::protocol::asset(itr->open_sbd, SBD_SYMBOL) /
-                                 golos::protocol::asset(itr->open_steem, STEEM_SYMBOL)).to_real();
-                    result.latest = (golos::protocol::asset(itr->close_sbd, SBD_SYMBOL) /
-                                            golos::protocol::asset(itr->close_steem, STEEM_SYMBOL)).to_real();
+                    auto open = (asset(itr->open_sbd, SBD_SYMBOL) /
+                                 asset(itr->open_steem, STEEM_SYMBOL)).to_real();
+                    result.latest = (asset(itr->close_sbd, SBD_SYMBOL) /
+                                     asset(itr->close_steem, STEEM_SYMBOL)).to_real();
                     result.percent_change =
                             ((result.latest - open) / open) * 100;
                 } else {
@@ -199,8 +202,8 @@ namespace golos {
             }
 
             market_volume market_history_plugin::market_history_plugin_impl::get_volume() const {
-                const auto &bucket_idx = _db.get_index<bucket_index>().indices().get<by_bucket>();
-                auto itr = bucket_idx.lower_bound(boost::make_tuple(0, _db.head_block_time() - 86400));
+                const auto &bucket_idx = database().get_index<bucket_index>().indices().get<by_bucket>();
+                auto itr = bucket_idx.lower_bound(boost::make_tuple(0, database().head_block_time() - 86400));
                 market_volume result;
 
                 if (itr == bucket_idx.end()) {
@@ -222,8 +225,8 @@ namespace golos {
             order_book market_history_plugin::market_history_plugin_impl::get_order_book(uint32_t limit) const {
                 FC_ASSERT(limit <= 500);
 
-                const auto &order_idx = _db.get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_price>();
-                auto itr = order_idx.lower_bound(golos::protocol::price::max(SBD_SYMBOL, STEEM_SYMBOL));
+                const auto &order_idx = database().get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_price>();
+                auto itr = order_idx.lower_bound(price::max(SBD_SYMBOL, STEEM_SYMBOL));
 
                 order_book result;
 
@@ -231,26 +234,22 @@ namespace golos {
                        itr->sell_price.base.symbol == SBD_SYMBOL &&
                        result.bids.size() < limit) {
                     order cur;
-                    cur.price = itr->sell_price.base.to_real() /
-                                itr->sell_price.quote.to_real();
-                    cur.steem = (asset(itr->for_sale, SBD_SYMBOL) *
-                                 itr->sell_price).amount;
+                    cur.price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
+                    cur.steem = (asset(itr->for_sale, SBD_SYMBOL) * itr->sell_price).amount;
                     cur.sbd = itr->for_sale;
                     result.bids.push_back(cur);
                     ++itr;
                 }
 
-                itr = order_idx.lower_bound(golos::protocol::price::max(STEEM_SYMBOL, SBD_SYMBOL));
+                itr = order_idx.lower_bound(price::max(STEEM_SYMBOL, SBD_SYMBOL));
 
                 while (itr != order_idx.end() &&
                        itr->sell_price.base.symbol == STEEM_SYMBOL &&
                        result.asks.size() < limit) {
                     order cur;
-                    cur.price = itr->sell_price.quote.to_real() /
-                                itr->sell_price.base.to_real();
+                    cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
                     cur.steem = itr->for_sale;
-                    cur.sbd = (asset(itr->for_sale, STEEM_SYMBOL) *
-                               itr->sell_price).amount;
+                    cur.sbd = (asset(itr->for_sale, STEEM_SYMBOL) * itr->sell_price).amount;
                     result.asks.push_back(cur);
                     ++itr;
                 }
@@ -258,15 +257,58 @@ namespace golos {
                 return result;
             }
 
+            order_book_extended market_history_plugin::market_history_plugin_impl::get_order_book_extended(uint32_t limit) const {
+                FC_ASSERT(limit <= 1000);
+                order_book_extended result;
+
+                auto max_sell = price::max(SBD_SYMBOL, STEEM_SYMBOL);
+                auto max_buy = price::max(STEEM_SYMBOL, SBD_SYMBOL);
+                const auto &limit_price_idx = database().get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_price>();
+                auto sell_itr = limit_price_idx.lower_bound(max_sell);
+                auto buy_itr = limit_price_idx.lower_bound(max_buy);
+                auto end = limit_price_idx.end();
+
+                while (sell_itr != end &&
+                       sell_itr->sell_price.base.symbol == SBD_SYMBOL &&
+                       result.bids.size() < limit) {
+                    auto itr = sell_itr;
+                    order_extended cur;
+                    cur.order_price = itr->sell_price;
+                    cur.real_price = (cur.order_price).to_real();
+                    cur.sbd = itr->for_sale;
+                    cur.steem = (asset(itr->for_sale, SBD_SYMBOL) * cur.order_price).amount;
+                    cur.created = itr->created;
+                    result.bids.push_back(cur);
+                    ++sell_itr;
+                }
+                while (buy_itr != end &&
+                       buy_itr->sell_price.base.symbol == STEEM_SYMBOL &&
+                       result.asks.size() < limit) {
+                    auto itr = buy_itr;
+                    order_extended cur;
+                    cur.order_price = itr->sell_price;
+                    cur.real_price = (~cur.order_price).to_real();
+                    cur.steem = itr->for_sale;
+                    cur.sbd = (asset(itr->for_sale, STEEM_SYMBOL) * cur.order_price).amount;
+                    cur.created = itr->created;
+                    result.asks.push_back(cur);
+                    ++buy_itr;
+                }
+
+                return result;
+            }
+
+
             vector<market_trade> market_history_plugin::market_history_plugin_impl::get_trade_history(
                     time_point_sec start, time_point_sec end, uint32_t limit) const {
                 FC_ASSERT(limit <= 1000);
-                const auto &bucket_idx = _db.get_index<order_history_index>().indices().get<by_time>();
+                const auto &bucket_idx = database().get_index<order_history_index>().indices().get<by_time>();
                 auto itr = bucket_idx.lower_bound(start);
 
-                vector<market_trade> result;
+                std::vector<market_trade> result;
 
-                while (itr != bucket_idx.end() && itr->time <= end && result.size() < limit) {
+                while (itr != bucket_idx.end() && itr->time <= end &&
+                       result.size() < limit) {
                     market_trade trade;
                     trade.date = itr->time;
                     trade.current_pays = itr->op.current_pays;
@@ -280,7 +322,7 @@ namespace golos {
 
             vector<market_trade> market_history_plugin::market_history_plugin_impl::get_recent_trades(uint32_t limit) const {
                 FC_ASSERT(limit <= 1000);
-                const auto &order_idx = _db.get_index<order_history_index>().indices().get<by_time>();
+                const auto &order_idx = database().get_index<order_history_index>().indices().get<by_time>();
                 auto itr = order_idx.rbegin();
 
                 vector<market_trade> result;
@@ -299,12 +341,13 @@ namespace golos {
 
             vector<bucket_object> market_history_plugin::market_history_plugin_impl::get_market_history(
                     uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const {
-                const auto &bucket_idx = _db.get_index<bucket_index>().indices().get<by_bucket>();
+                const auto &bucket_idx = database().get_index<bucket_index>().indices().get<by_bucket>();
                 auto itr = bucket_idx.lower_bound(boost::make_tuple(bucket_seconds, start));
 
-                vector<bucket_object> result;
+                std::vector<bucket_object> result;
 
-                while (itr != bucket_idx.end() && itr->seconds == bucket_seconds && itr->open < end) {
+                while (itr != bucket_idx.end() &&
+                       itr->seconds == bucket_seconds && itr->open < end) {
                     result.push_back(*itr);
 
                     ++itr;
@@ -314,11 +357,11 @@ namespace golos {
             }
 
             flat_set<uint32_t> market_history_plugin::market_history_plugin_impl::get_market_history_buckets() const {
-                return appbase::app().get_plugin<market_history_plugin>().get_tracked_buckets();;
+                return appbase::app().get_plugin<market_history_plugin>().get_tracked_buckets();
             }
 
             std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(string owner) const {
-                return _db.with_read_lock([&]() {
+                return _db.with_weak_read_lock([&]() {
                     std::vector<limit_order> result;
                     const auto &idx = _db.get_index<golos::chain::limit_order_index>().indices().get<golos::chain::by_account>();
                     auto itr = idx.lower_bound(owner);
@@ -408,14 +451,14 @@ namespace golos {
 
             DEFINE_API(market_history_plugin, get_ticker) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_ticker();
                 });
             }
 
             DEFINE_API(market_history_plugin, get_volume) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_volume();
                 });
             }
@@ -424,10 +467,20 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto limit = args.args->at(0).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_order_book(limit);
                 });
             }
+
+            DEFINE_API(market_history_plugin, get_order_book_extended) {
+                CHECK_ARG_SIZE(1)
+                auto limit = args.args->at(0).as<uint32_t>();
+                auto &db = _my->database();
+                return db.with_weak_read_lock([&]() {
+                    return _my->get_order_book_extended(limit);
+                });
+            }
+
 
             DEFINE_API(market_history_plugin, get_trade_history) {
                 CHECK_ARG_SIZE(3)
@@ -435,7 +488,7 @@ namespace golos {
                 auto end = args.args->at(1).as<time_point_sec>();
                 auto limit = args.args->at(2).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_trade_history(start, end, limit);
                 });
             }
@@ -444,7 +497,7 @@ namespace golos {
                 CHECK_ARG_SIZE(1)
                 auto limit = args.args->at(0).as<uint32_t>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_recent_trades(limit);
                 });
             }
@@ -455,14 +508,14 @@ namespace golos {
                 auto start = args.args->at(1).as<time_point_sec>();
                 auto end = args.args->at(2).as<time_point_sec>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_market_history(bucket_seconds, start, end);
                 });
             }
 
             DEFINE_API(market_history_plugin, get_market_history_buckets) {
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_market_history_buckets();
                 });
             }
@@ -470,7 +523,7 @@ namespace golos {
             DEFINE_API(market_history_plugin, get_open_orders) {
                 auto tmp = args.args->at(0).as<string>();
                 auto &db = _my->database();
-                return db.with_read_lock([&]() {
+                return db.with_weak_read_lock([&]() {
                     return _my->get_open_orders(tmp);
                 });
             }

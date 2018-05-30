@@ -107,7 +107,7 @@ DEFINE_API ( plugin, get_block_info ) {
     auto start_block_num = args.args->at(0).as<uint32_t>();
     auto count = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
-    return db.with_read_lock([&]() {
+    return db.with_weak_read_lock([&]() {
         return  my->get_block_info(start_block_num, count);
     });
 }
@@ -116,7 +116,7 @@ DEFINE_API ( plugin, get_blocks_with_info ) {
     auto start_block_num = args.args->at(0).as<uint32_t>();
     auto count = args.args->at(1).as<uint32_t>();
     auto &db = my->database();
-    return db.with_read_lock([&]() {
+    return db.with_weak_read_lock([&]() {
         return my->get_blocks_with_info(start_block_num, count);
     });
 }

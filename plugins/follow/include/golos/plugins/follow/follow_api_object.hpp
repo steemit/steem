@@ -1,57 +1,58 @@
 #ifndef GOLOS_FOLLOW_API_OBJECT_HPP
 #define GOLOS_FOLLOW_API_OBJECT_HPP
 
-#include <golos/plugins/social_network/api_object/comment_api_object.hpp>
+#include <golos/api/comment_api_object.hpp>
 #include <golos/plugins/follow/follow_objects.hpp>
 #include "follow_forward.hpp"
+
 namespace golos {
     namespace plugins {
         namespace follow {
-            using golos::protocol::account_name_type;
+            using golos::api::comment_api_object;
 
             struct feed_entry {
-                account_name_type author;
+                std::string author;
                 std::string permlink;
-                std::vector<account_name_type> reblog_by;
+                std::vector<std::string> reblog_by;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
             };
 
             struct comment_feed_entry {
-                social_network::comment_api_object comment;
-                std::vector<account_name_type> reblog_by;
+                comment_api_object comment;
+                std::vector<std::string> reblog_by;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
             };
 
             struct blog_entry {
-                account_name_type author;
-                account_name_type permlink;
-                account_name_type blog;
+                std::string author;
+                std::string permlink;
+                std::string blog;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
             };
 
             struct comment_blog_entry {
-                social_network::comment_api_object comment;
+                comment_api_object comment;
                 std::string blog;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
             };
 
             struct account_reputation {
-                account_name_type account;
-                golos::protocol::share_type reputation;
+                std::string account;
+                fc::optional<golos::protocol::share_type> reputation;
             };
 
             struct follow_api_object {
-                account_name_type follower;
-                account_name_type following;
+                std::string follower;
+                std::string following;
                 std::vector<follow_type> what;
             };
 
             struct reblog_count {
-                account_name_type author;
+                std::string author;
                 uint32_t count;
             };
             struct follow_count_api_obj {
@@ -78,7 +79,7 @@ namespace golos {
                 uint32_t limit = 1000;
             };
 
-            using blog_authors_r = std::vector<std::pair<account_name_type, uint32_t>>;
+            using blog_authors_r = std::vector<std::pair<std::string, uint32_t>>;
         }}}
 
 FC_REFLECT((golos::plugins::follow::feed_entry), (author)(permlink)(reblog_by)(reblog_on)(entry_id));

@@ -41,7 +41,7 @@ namespace golos {
 
                 void plugin_shutdown() override;
 
-                bool accept_block(const protocol::signed_block &block, bool currently_syncing, uint32_t skip);
+                bool accept_block(const protocol::signed_block &block, bool currently_syncing = false, uint32_t skip = 0);
 
                 void accept_transaction(const protocol::signed_transaction &trx);
 

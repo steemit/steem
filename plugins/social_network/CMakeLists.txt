@@ -2,27 +2,10 @@ set(CURRENT_TARGET social_network)
 
 list(APPEND CURRENT_TARGET_HEADERS
         include/golos/plugins/social_network/social_network.hpp
-        include/golos/plugins/social_network/tag/tags_object.hpp
-        include/golos/plugins/social_network/tag/tag_visitor.hpp
-        include/golos/plugins/social_network/api_object/category_api_object.hpp
-        include/golos/plugins/social_network/api_object/category_index.hpp
-        include/golos/plugins/social_network/api_object/comment_api_object.hpp
-        include/golos/plugins/social_network/api_object/discussion.hpp
-        include/golos/plugins/social_network/api_object/discussion_index.hpp
-        include/golos/plugins/social_network/api_object/discussion_query.hpp
-        include/golos/plugins/social_network/api_object/tag_api_object.hpp
-        include/golos/plugins/social_network/api_object/tag_index.hpp
-        include/golos/plugins/social_network/api_object/vote_state.hpp
-        include/golos/plugins/social_network/languages/language_object.hpp
-        include/golos/plugins/social_network/languages/language_visitor.hpp
-        include/golos/plugins/social_network/api_object/account_vote.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES
-        discussion_query.cpp
-        language_visitor.cpp
         social_network.cpp
-        tag_visitor.cpp
 )
 
 if(BUILD_SHARED_LIBRARIES)
@@ -47,6 +30,7 @@ target_link_libraries(
         golos::chain_plugin
         golos::network
         golos::follow
+        golos::tags
         appbase
 )
 

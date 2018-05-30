@@ -7,8 +7,7 @@
 #include <fc/utf8.hpp>
 #include <fc/crypto/equihash.hpp>
 
-namespace golos {
-    namespace protocol {
+namespace golos { namespace protocol {
 
         struct account_create_operation : public base_operation {
             asset fee;
@@ -21,8 +20,26 @@ namespace golos {
             string json_metadata;
 
             void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
 
-            void get_required_active_authorities(flat_set<account_name_type> &a) const {
+        struct account_create_with_delegation_operation: public base_operation {
+            asset fee;
+            asset delegation;
+            account_name_type creator;
+            account_name_type new_account_name;
+            authority owner;
+            authority active;
+            authority posting;
+            public_key_type memo_key;
+            string json_metadata;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
                 a.insert(creator);
             }
         };
@@ -51,6 +68,16 @@ namespace golos {
             }
         };
 
+        struct account_metadata_operation : public base_operation {
+            account_name_type account;
+            string json_metadata;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(account);
+            }
+        };
+
 
         struct comment_operation : public base_operation {
             account_name_type parent_author;
@@ -70,6 +97,35 @@ namespace golos {
             }
         };
 
+        struct beneficiary_route_type {
+            beneficiary_route_type() {
+            }
+
+            beneficiary_route_type(const account_name_type &a, const uint16_t &w)
+                    : account(a), weight(w) {
+            }
+
+            account_name_type account;
+            uint16_t weight;
+
+            // For use by std::sort such that the route is sorted first by name (ascending)
+            bool operator<(const beneficiary_route_type &o) const {
+                return string_less()(account, o.account);
+            }
+        };
+
+        struct comment_payout_beneficiaries {
+            vector <beneficiary_route_type> beneficiaries;
+
+            void validate() const;
+        };
+
+        typedef static_variant <
+            comment_payout_beneficiaries
+        > comment_options_extension;
+
+        typedef flat_set <comment_options_extension> comment_options_extensions_type;
+
 
         /**
          *  Authors of posts may not want all of the benefits that come from creating a post. This
@@ -87,7 +143,7 @@ namespace golos {
             uint16_t percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Golos Dollars to key, unkept amounts will be received as Golos Power
             bool allow_votes = true;      /// allows a post to receive votes;
             bool allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-            extensions_type extensions;
+            comment_options_extensions_type extensions;
 
             void validate() const;
 
@@ -362,13 +418,14 @@ namespace golos {
             }
         };
 
+        struct chain_properties_18;
 
         /**
          * Witnesses must vote on how to set certain chain properties to ensure a smooth
          * and well functioning network.  Any time @owner is in the active set of witnesses these
          * properties will be used to control the blockchain configuration.
          */
-        struct chain_properties {
+        struct chain_properties_17 {
             /**
              *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
              *  without vesting shares cannot earn usage rations and therefore are powerless. This minimum
@@ -386,14 +443,81 @@ namespace golos {
             uint16_t sbd_interest_rate = STEEMIT_DEFAULT_SBD_INTEREST_RATE;
 
             void validate() const {
-                FC_ASSERT(account_creation_fee.amount >=
-                          STEEMIT_MIN_ACCOUNT_CREATION_FEE);
+                FC_ASSERT(account_creation_fee.amount >= STEEMIT_MIN_ACCOUNT_CREATION_FEE);
                 FC_ASSERT(maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT);
                 FC_ASSERT(sbd_interest_rate >= 0);
                 FC_ASSERT(sbd_interest_rate <= STEEMIT_100_PERCENT);
             }
+
+            chain_properties_17& operator=(const chain_properties_17&) = default;
+
+            chain_properties_17& operator=(const chain_properties_18& src);
         };
 
+        /**
+         * Witnesses must vote on how to set certain chain properties to ensure a smooth
+         * and well functioning network.  Any time @owner is in the active set of witnesses these
+         * properties will be used to control the blockchain configuration.
+         */
+        struct chain_properties_18: public chain_properties_17 {
+
+            /**
+             * Modifier for delegated GP on account creation
+             *
+             *  target_delegation =
+             *  create_account_delegation_ratio * create_account_with_golos_modifier * account_creation_fee
+             */
+            uint32_t create_account_with_golos_modifier = GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+
+            /**
+             *  Ratio for delegated GP on account creation
+             *
+             *  target_delegation =
+             *  create_account_delegation_ratio * create_account_with_golos_modifier * account_creation_fee
+             */
+            uint32_t create_account_delegation_ratio = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO;
+
+            /**
+             * Minimum time of delegated GP on create account
+             */
+            fc::microseconds create_account_delegation_time = GOLOS_CREATE_ACCOUNT_DELEGATION_TIME;
+
+            /**
+             * Multiplier of minimum delegated GP
+             *
+             * minimum delegated GP = delegation_multiplier * account_creation_fee
+             */
+            uint32_t min_delegation_multiplier = GOLOS_MIN_DELEGATION_MULTIPLIER;
+
+            void validate() const {
+                chain_properties_17::validate();
+                FC_ASSERT(min_delegation_multiplier > 0);
+                FC_ASSERT(create_account_delegation_time.count() > GOLOS_CREATE_ACCOUNT_DELEGATION_TIME.count() / 2);
+                FC_ASSERT(create_account_delegation_ratio > 0);
+                FC_ASSERT(create_account_with_golos_modifier > 0);
+            }
+
+            chain_properties_18& operator=(const chain_properties_17& src) {
+                account_creation_fee = src.account_creation_fee;
+                maximum_block_size = src.maximum_block_size;
+                sbd_interest_rate = src.sbd_interest_rate;
+                return *this;
+            }
+
+            chain_properties_18& operator=(const chain_properties_18&) = default;
+        };
+
+        inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
+            account_creation_fee = src.account_creation_fee;
+            maximum_block_size = src.maximum_block_size;
+            sbd_interest_rate = src.sbd_interest_rate;
+            return *this;
+        }
+
+        using versioned_chain_properties = fc::static_variant<
+            chain_properties_17,
+            chain_properties_18
+        >;
 
         /**
          *  Users who wish to become a witness must pay a fee acceptable to
@@ -413,8 +537,22 @@ namespace golos {
             account_name_type owner;
             string url;
             public_key_type block_signing_key;
-            chain_properties props;
+            chain_properties_17 props;
             asset fee; ///< the fee paid to register a new witness, should be 10x current block production pay
+
+            void validate() const;
+
+            void get_required_active_authorities(flat_set<account_name_type> &a) const {
+                a.insert(owner);
+            }
+        };
+
+        /**
+         *  Wintesses can change some dynamic votable params to control the blockchain configuration
+         */
+        struct chain_properties_update_operation : public base_operation {
+            account_name_type owner;
+            versioned_chain_properties props;
 
             void validate() const;
 
@@ -663,7 +801,7 @@ namespace golos {
             block_id_type block_id;
             uint64_t nonce = 0;
             pow work;
-            chain_properties props;
+            chain_properties_17 props;
 
             void validate() const;
 
@@ -711,7 +849,7 @@ namespace golos {
         struct pow2_operation : public base_operation {
             pow2_work work;
             optional<public_key_type> new_owner_key;
-            chain_properties props;
+            chain_properties_17 props;
 
             void validate() const;
 
@@ -970,8 +1108,28 @@ namespace golos {
 
             void validate() const;
         };
-    }
-} // golos::protocol
+
+/**
+ * Delegate vesting shares from one account to the other. The vesting shares are still owned
+ * by the original account, but content voting rights and bandwidth allocation are transferred
+ * to the receiving account. This sets the delegation to `vesting_shares`, increasing it or
+ * decreasing it as needed. (i.e. a delegation of 0 removes the delegation)
+ *
+ * When a delegation is removed the shares are placed in limbo for a week to prevent a satoshi
+ * of GESTS from voting on the same content twice.
+ */
+        class delegate_vesting_shares_operation: public base_operation {
+        public:
+            account_name_type delegator;    ///< The account delegating vesting shares
+            account_name_type delegatee;    ///< The account receiving vesting shares
+            asset vesting_shares;           ///< The amount of vesting shares delegated
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(delegator);
+            }
+        };
+} } // golos::protocol
 
 
 FC_REFLECT((golos::protocol::transfer_to_savings_operation), (from)(to)(amount)(memo))
@@ -989,7 +1147,16 @@ FC_REFLECT((golos::protocol::pow), (worker)(input)(signature)(work))
 FC_REFLECT((golos::protocol::pow2), (input)(pow_summary))
 FC_REFLECT((golos::protocol::pow2_input), (worker_account)(prev_block)(nonce))
 FC_REFLECT((golos::protocol::equihash_pow), (input)(proof)(prev_block)(pow_summary))
-FC_REFLECT((golos::protocol::chain_properties), (account_creation_fee)(maximum_block_size)(sbd_interest_rate));
+
+FC_REFLECT(
+    (golos::protocol::chain_properties_17),
+    (account_creation_fee)(maximum_block_size)(sbd_interest_rate))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_18),((golos::protocol::chain_properties_17)),
+    (create_account_with_golos_modifier)(create_account_delegation_ratio)
+    (create_account_delegation_time)(min_delegation_multiplier))
+
+FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
 FC_REFLECT_TYPENAME((golos::protocol::pow2_work))
 FC_REFLECT((golos::protocol::pow_operation), (worker_account)(block_id)(nonce)(work)(props))
@@ -1005,6 +1172,9 @@ FC_REFLECT((golos::protocol::account_create_operation),
                 (memo_key)
                 (json_metadata))
 
+FC_REFLECT((golos::protocol::account_create_with_delegation_operation),
+    (fee)(delegation)(creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions));
+
 FC_REFLECT((golos::protocol::account_update_operation),
         (account)
                 (owner)
@@ -1012,6 +1182,8 @@ FC_REFLECT((golos::protocol::account_update_operation),
                 (posting)
                 (memo_key)
                 (json_metadata))
+
+FC_REFLECT((golos::protocol::account_metadata_operation), (account)(json_metadata))
 
 FC_REFLECT((golos::protocol::transfer_operation), (from)(to)(amount)(memo))
 FC_REFLECT((golos::protocol::transfer_to_vesting_operation), (from)(to)(amount))
@@ -1030,6 +1202,10 @@ FC_REFLECT((golos::protocol::limit_order_create2_operation), (owner)(orderid)(am
 FC_REFLECT((golos::protocol::limit_order_cancel_operation), (owner)(orderid))
 
 FC_REFLECT((golos::protocol::delete_comment_operation), (author)(permlink));
+
+FC_REFLECT((golos::protocol::beneficiary_route_type), (account)(weight))
+FC_REFLECT((golos::protocol::comment_payout_beneficiaries), (beneficiaries));
+FC_REFLECT_TYPENAME((golos::protocol::comment_options_extension));
 FC_REFLECT((golos::protocol::comment_options_operation), (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions))
 
 FC_REFLECT((golos::protocol::escrow_transfer_operation), (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration));
@@ -1042,3 +1218,5 @@ FC_REFLECT((golos::protocol::request_account_recovery_operation), (recovery_acco
 FC_REFLECT((golos::protocol::recover_account_operation), (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions));
 FC_REFLECT((golos::protocol::change_recovery_account_operation), (account_to_recover)(new_recovery_account)(extensions));
 FC_REFLECT((golos::protocol::decline_voting_rights_operation), (account)(decline));
+FC_REFLECT((golos::protocol::delegate_vesting_shares_operation), (delegator)(delegatee)(vesting_shares));
+FC_REFLECT((golos::protocol::chain_properties_update_operation), (owner)(props));

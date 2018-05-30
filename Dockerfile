@@ -1,7 +1,5 @@
 FROM phusion/baseimage:0.9.19
 
-#ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
-
 ENV LANG=en_US.UTF-8
 
 RUN \
@@ -35,7 +33,8 @@ ADD . /usr/local/src/golos
 
 RUN \
     cd /usr/local/src/golos && \
-    git submodule update --init --recursive && \
+    git submodule deinit -f . && \
+    git submodule update --init --recursive -f && \
     mkdir build && \
     cd build && \
     cmake \
@@ -44,7 +43,6 @@ RUN \
         -DBUILD_SHARED_LIBRARIES=FALSE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCHAINBASE_CHECK_LOCKING=FALSE \
-        -DCLEAR_VOTES=FALSE \
         .. \
     && \
     make -j$(nproc) && \

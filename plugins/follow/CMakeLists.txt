@@ -36,7 +36,7 @@ target_link_libraries(
         golos::json_rpc
         golos::chain_plugin
         golos::protocol
-        golos::social_network
+        golos::api
         appbase
         fc
 )

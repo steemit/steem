@@ -2,7 +2,7 @@
 
 #include <golos/wallet/remote_node_api.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
-#include <golos/chain/history_object.hpp>
+#include <golos/plugins/account_history/history_object.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -20,6 +20,17 @@ namespace golos { namespace wallet {
         using namespace golos::plugins::private_message;
 
         typedef uint16_t transaction_handle_type;
+
+        struct approval_delta {
+            vector<string> active_approvals_to_add;
+            vector<string> active_approvals_to_remove;
+            vector<string> owner_approvals_to_add;
+            vector<string> owner_approvals_to_remove;
+            vector<string> posting_approvals_to_add;
+            vector<string> posting_approvals_to_remove;
+            vector<string> key_approvals_to_add;
+            vector<string> key_approvals_to_remove;
+        };
 
         struct memo_data {
 
@@ -56,10 +67,16 @@ namespace golos { namespace wallet {
 
         struct wallet_data {
             vector<char>              cipher_keys; /** encrypted keys */
-
             string                    ws_server = "ws://localhost:8090";
-            string                    ws_user;
-            string                    ws_password;
+        };
+
+        struct signed_block_with_info: public signed_block {
+            signed_block_with_info(const signed_block& block);
+            signed_block_with_info(const signed_block_with_info& block) = default;
+
+            block_id_type block_id;
+            public_key_type signing_key;
+            vector<transaction_id_type> transaction_ids;
         };
 
         enum authority_type {
@@ -96,12 +113,93 @@ namespace golos { namespace wallet {
             /**
              * Returns info about the current state of the blockchain
              */
-            variant                             info();
+            variant                             info() const;
+
+            /**
+             * Returns info about database objects
+             */
+            variant_object                      database_info() const;
 
             /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
              * @returns compile time info and client and dependencies versions
              */
             variant_object                      about() const;
+
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            transaction_handle_type begin_builder_transaction();
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void add_operation_to_builder_transaction(transaction_handle_type handle, const operation& op);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void add_operation_copy_to_builder_transaction(
+                transaction_handle_type src_handle, transaction_handle_type dst_handle, uint32_t op_index
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void replace_operation_in_builder_transaction(
+                transaction_handle_type handle, unsigned op_index, const operation& op
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            transaction preview_builder_transaction(transaction_handle_type handle);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            signed_transaction sign_builder_transaction(transaction_handle_type handle, bool broadcast = true);
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            signed_transaction propose_builder_transaction(
+                transaction_handle_type handle,
+                std::string author,
+                std::string title,
+                std::string memo,
+                time_point_sec expiration = time_point::now() + fc::minutes(1),
+                time_point_sec review_period_time = time_point::min(),
+                bool broadcast = true
+            );
+
+            /**
+             * @ingroup Transaction Builder API
+             */
+            void remove_builder_transaction(transaction_handle_type handle);
+
+            /**
+             * Approve or disapprove a proposal.
+             *
+             * @param author The author of the proposal
+             * @param title The proposal to modify.
+             * @param delta Members contain approvals to create or remove.  In JSON you can leave empty members undefined.
+             * @param broadcast true if you wish to broadcast the transaction
+             * @return the signed version of the transaction
+             */
+            signed_transaction approve_proposal(
+                const std::string& author,
+                const std::string& title,
+                const approval_delta& delta,
+                bool broadcast /* = false */
+            );
+
+            /**
+             * Returns proposals for the account
+             */
+             std::vector<database_api::proposal_api_object> get_proposed_transactions(
+                 std::string account, uint32_t from, uint32_t limit
+            );
 
             /** Returns the information about a block
              *
@@ -109,20 +207,20 @@ namespace golos { namespace wallet {
              *
              * @returns Public block data on the blockchain
              */
-            optional< database_api::signed_block > get_block( uint32_t num );
+            optional<signed_block_with_info> get_block(uint32_t num);
 
             /** Returns sequence of operations included/generated in a specified block
              *
              * @param block_num Block height of specified block
              * @param only_virtual Whether to only return virtual operations
              */
-            vector<operation_api_object> get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+            vector<golos::plugins::operation_history::applied_operation> get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
             /** Return the current price feed history
              *
              * @returns Price feed history data on the blockchain
              */
-            database_api::feed_history_api_object get_feed_history()const;
+            witness_api::feed_history_api_object get_feed_history()const;
 
             /**
              * Returns the list of witnesses producing blocks in the current round (21 Blocks)
@@ -145,7 +243,7 @@ namespace golos { namespace wallet {
             /**
              *  Gets the account information for all accounts for which this wallet has a private key
              */
-            vector< database_api::account_api_object > list_my_accounts();
+            vector< golos::api::account_api_object > list_my_accounts();
 
             /** Lists all accounts registered in the blockchain.
              * This returns a list of all account names and their account ids, sorted by account name.
@@ -174,7 +272,7 @@ namespace golos { namespace wallet {
              * @param account_name the name of the account to provide information about
              * @returns the public account data stored in the blockchain
              */
-            database_api::account_api_object get_account( string account_name ) const;
+            golos::api::account_api_object get_account( string account_name ) const;
 
             /** Returns the current wallet filename.
              *
@@ -284,6 +382,11 @@ namespace golos { namespace wallet {
              */
             void    save_wallet_file(string wallet_filename = "");
 
+            /**
+             * Quits wallet.
+             */
+            void    quit();
+
             /** Sets the wallet filename used for future writes.
              *
              * This does not trigger a save, it only changes the default filename
@@ -332,7 +435,7 @@ namespace golos { namespace wallet {
             string normalize_brain_key(string s) const;
 
             /**
-             *  This method will genrate new owner, active, and memo keys for the new account which
+             *  This method will genrate new owner, active, posting and memo keys for the new account which
              *  will be controlable by this wallet. There is a fee associated with account creation
              *  that is paid by the creator. The current account creation fee can be found with the
              *  'info' wallet command.
@@ -340,9 +443,13 @@ namespace golos { namespace wallet {
              *  @param creator The account creating the new account
              *  @param new_account_name The name of the new account
              *  @param json_meta JSON Metadata associated with the new account
+             *  @param fee The amount of the fee to be paid with GOLOS
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+            annotated_signed_transaction create_account(
+                string creator, string new_account_name, string json_meta,
+                asset fee = asset(), bool broadcast = false
+            );
 
             /**
              * This method is used by faucets to create new accounts for other users which must
@@ -353,20 +460,41 @@ namespace golos { namespace wallet {
              * @param creator The account creating the new account
              * @param newname The name of the new account
              * @param json_meta JSON Metadata associated with the new account
+             * @param fee The amount of the fee to be paid with GOLOS
              * @param owner public owner key of the new account
              * @param active public active key of the new account
              * @param posting public posting key of the new account
              * @param memo public memo key of the new account
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction create_account_with_keys( string creator,
-                                                                   string newname,
-                                                                   string json_meta,
-                                                                   public_key_type owner,
-                                                                   public_key_type active,
-                                                                   public_key_type posting,
-                                                                   public_key_type memo,
-                                                                   bool broadcast )const;
+            annotated_signed_transaction create_account_with_keys(
+                string creator,
+                string newname,
+                string json_meta,
+                asset fee,
+                public_key_type owner,
+                public_key_type active,
+                public_key_type posting,
+                public_key_type memo,
+                bool broadcast )const;
+
+            /**
+             *  This method will genrate new owner, active, posting and memo keys for the new account which
+             *  will be controlable by this wallet. There is a fee associated with account creation
+             *  that is paid by the creator. The current account creation fee can be found with the
+             *  'info' wallet command.
+             *
+             *  These accounts are created with combination of GOLOS and delegated GP
+             *
+             *  @param creator The account creating the new account
+             *  @param steem_fee The amount of the fee to be paid with GOLOS
+             *  @param delegated_vests The amount of the fee to be paid with delegation
+             *  @param new_account_name The name of the new account
+             *  @param json_meta JSON Metadata associated with the new account
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction create_account_delegated(
+                string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast);
 
             /**
              * This method is used by faucets to create new accounts for other users which must
@@ -374,10 +502,10 @@ namespace golos { namespace wallet {
              * wallet. There is a fee associated with account creation that is paid by the creator.
              * The current account creation fee can be found with the 'info' wallet command.
              *
-             * These accounts are created with combination of STEEM and delegated SP
+             * These accounts are created with combination of GOLOS and delegated GP
              *
              * @param creator The account creating the new account
-             * @param steem_fee The amount of the fee to be paid with STEEM
+             * @param steem_fee The amount of the fee to be paid with GOLOS
              * @param delegated_vests The amount of the fee to be paid with delegation
              * @param newname The name of the new account
              * @param json_meta JSON Metadata associated with the new account
@@ -387,17 +515,17 @@ namespace golos { namespace wallet {
              * @param memo public memo key of the new account
              * @param broadcast true if you wish to broadcast the transaction
              */
-
-            annotated_signed_transaction create_account_with_keys_delegated( string creator,
-                                                                             asset steem_fee,
-                                                                             asset delegated_vests,
-                                                                             string newname,
-                                                                             string json_meta,
-                                                                             public_key_type owner,
-                                                                             public_key_type active,
-                                                                             public_key_type posting,
-                                                                             public_key_type memo,
-                                                                             bool broadcast )const;
+            annotated_signed_transaction create_account_with_keys_delegated(
+                string creator,
+                asset steem_fee,
+                asset delegated_vests,
+                string newname,
+                string json_meta,
+                public_key_type owner,
+                public_key_type active,
+                public_key_type posting,
+                public_key_type memo,
+                bool broadcast) const;
 
             /**
              * This method updates the keys of an existing account.
@@ -467,7 +595,7 @@ namespace golos { namespace wallet {
              * @param json_meta The new JSON metadata for the account. This overrides existing metadata
              * @param broadcast ture if you wish to broadcast the transaction
              */
-            annotated_signed_transaction update_account_meta( string account_name, string json_meta, bool broadcast );
+            annotated_signed_transaction update_account_meta(string account_name, string json_meta, bool broadcast);
 
             /**
              * This method updates the memo key of an account
@@ -478,16 +606,15 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
 
-
             /**
-             * This method delegates VESTS from one account to another.
+             * This method delegates GESTS from one account to another.
              *
-             * @param delegator The name of the account delegating VESTS
-             * @param delegatee The name of the account receiving VESTS
-             * @param vesting_shares The amount of VESTS to delegate
+             * @param delegator The name of the account delegating GESTS
+             * @param delegatee The name of the account receiving GESTS
+             * @param vesting_shares The amount of GESTS to delegate
              * @param broadcast true if you wish to broadcast the transaction
              */
-            //annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
+            annotated_signed_transaction delegate_vesting_shares(string delegator, string delegatee, asset vesting_shares, bool broadcast);
 
 
             /**
@@ -514,7 +641,7 @@ namespace golos { namespace wallet {
              * @param owner_account the name or id of the witness account owner, or the id of the witness
              * @returns the information about the witness stored in the block chain
              */
-            optional< database_api::witness_api_object > get_witness(string owner_account);
+            optional< witness_api::witness_api_object > get_witness(string owner_account);
 
             /** Returns conversion requests by an account
              *
@@ -893,7 +1020,7 @@ namespace golos { namespace wallet {
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
              */
-            map< uint32_t, golos::plugins::database_api::operation_api_object >
+            map< uint32_t, golos::plugins::operation_history::applied_operation >
                 get_account_history( string account, uint32_t from, uint32_t limit );
 
 
@@ -916,13 +1043,14 @@ namespace golos { namespace wallet {
             std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
             fc::signal<void(bool)> lock_changed;
+            fc::signal<void(void)> quit_command;
             std::shared_ptr<detail::wallet_api_impl> my;
             void encrypt_keys();
 
             /**
              * Checks memos against private keys on account and imported in wallet
              */
-            void check_memo( const string& memo, const database_api::account_api_object& account )const;
+            void check_memo( const string& memo, const golos::api::account_api_object& account )const;
 
             /**
              *  Returns the encrypted memo if memo starts with '#' otherwise returns memo
@@ -938,9 +1066,9 @@ namespace golos { namespace wallet {
 
             // Private message
             vector<extended_message_object> get_inbox(
-                    const std::string& to, time_point newest, uint16_t limit);
+                    const std::string& to, time_point newest, uint16_t limit, std::uint64_t offset);
             vector<extended_message_object> get_outbox(
-                    const std::string& from, time_point newest, uint16_t limit);
+                    const std::string& from, time_point newest, uint16_t limit, std::uint64_t offset);
 
             message_body try_decrypt_message( const message_api_obj& mo );
         };
@@ -952,12 +1080,10 @@ namespace golos { namespace wallet {
 
     } }
 
-FC_REFLECT( (golos::wallet::wallet_data),
-            (cipher_keys)
-                    (ws_server)
-                    (ws_user)
-                    (ws_password)
-)
+FC_REFLECT((golos::wallet::wallet_data), (cipher_keys)(ws_server))
+
+FC_REFLECT_DERIVED((golos::wallet::signed_block_with_info), ((golos::chain::signed_block)),
+        (block_id)(signing_key)(transaction_ids))
 
 FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
@@ -970,6 +1096,7 @@ FC_API( golos::wallet::wallet_api,
         (help)(gethelp)
                 (about)(is_new)(is_locked)(lock)(unlock)(set_password)
                 (load_wallet_file)(save_wallet_file)
+                (quit)
 
                 /// key api
                 (import_key)
@@ -981,6 +1108,7 @@ FC_API( golos::wallet::wallet_api,
 
                 /// query api
                 (info)
+                (database_info)
                 (list_my_accounts)
                 (list_accounts)
                 (list_witnesses)
@@ -996,12 +1124,15 @@ FC_API( golos::wallet::wallet_api,
                 /// transaction api
                 (create_account)
                 (create_account_with_keys)
+                (create_account_delegated)
+                (create_account_with_keys_delegated)
                 (update_account)
                 (update_account_auth_key)
                 (update_account_auth_account)
                 (update_account_auth_threshold)
                 (update_account_meta)
                 (update_account_memo_key)
+                (delegate_vesting_shares)
                 (update_witness)
                 (set_voting_proxy)
                 (vote_for_witness)
@@ -1035,6 +1166,16 @@ FC_API( golos::wallet::wallet_api,
                 (decline_voting_rights)
 
                 /// helper api
+                (begin_builder_transaction)
+                (add_operation_to_builder_transaction)
+                (add_operation_copy_to_builder_transaction)
+                (replace_operation_in_builder_transaction)
+                (preview_builder_transaction)
+                (sign_builder_transaction)
+                (propose_builder_transaction)
+                (remove_builder_transaction)
+                (approve_proposal)
+                (get_proposed_transactions)
                 (get_prototype_operation)
                 (serialize_transaction)
                 (sign_transaction)
@@ -1047,3 +1188,9 @@ FC_API( golos::wallet::wallet_api,
 )
 
 FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )
+FC_REFLECT(
+    (golos::wallet::approval_delta),
+    (active_approvals_to_add)(active_approvals_to_remove)
+    (owner_approvals_to_add)(owner_approvals_to_remove)
+    (posting_approvals_to_add)(posting_approvals_to_remove)
+    (key_approvals_to_add)(key_approvals_to_remove) )

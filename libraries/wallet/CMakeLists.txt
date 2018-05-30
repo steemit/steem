@@ -55,11 +55,14 @@ target_link_libraries(
         golos::network_broadcast_api
         golos::database_api
         golos::account_history
+        golos::operation_history
         golos::market_history
         golos::social_network
+        golos::tags
         golos::private_message
         golos::follow
         golos::account_by_key
+        golos::witness_api
         golos_protocol
         graphene_utilities
         fc

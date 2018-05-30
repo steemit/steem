@@ -39,6 +39,8 @@ namespace golos {
 
             ~database();
 
+            using chainbase::database::remove;
+
             bool is_producing() const {
                 return _is_producing;
             }
@@ -54,28 +56,21 @@ namespace golos {
             enum validation_steps {
                 skip_nothing = 0,
                 skip_witness_signature = 1 << 0,  ///< used while reindexing
-                skip_transaction_signatures =
-                1 << 1,  ///< used by non-witness nodes
-                skip_transaction_dupe_check =
-                1 << 2,  ///< used while reindexing
+                skip_transaction_signatures = 1 << 1,  ///< used by non-witness nodes
+                skip_transaction_dupe_check = 1 << 2,  ///< used while reindexing
                 skip_fork_db = 1 << 3,  ///< used while reindexing
-                skip_block_size_check =
-                1 << 4,  ///< used when applying locally generated transactions
-                skip_tapos_check = 1
-                        << 5,  ///< used while reindexing -- note this skips expiration check as well
-                skip_authority_check = 1
-                        << 6,  ///< used while reindexing -- disables any checking of authority on transactions
+                skip_block_size_check = 1 << 4,  ///< used when applying locally generated transactions
+                skip_tapos_check = 1 << 5,  ///< used while reindexing -- note this skips expiration check as well
+                skip_authority_check = 1 << 6,  ///< used while reindexing -- disables any checking of authority on transactions
                 skip_merkle_check = 1 << 7,  ///< used while reindexing
                 skip_undo_history_check = 1 << 8,  ///< used while reindexing
-                skip_witness_schedule_check =
-                1 << 9,  ///< used while reindexing
-                skip_validate = 1
-                        << 10, ///< used prior to checkpoint, skips validate() call on transaction
-                skip_validate_invariants = 1
-                        << 11, ///< used to skip database invariant check on block application
+                skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
+                skip_validate_operations = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
+                skip_validate_invariants = 1 << 11, ///< used to skip database invariant check on block application
                 skip_undo_block = 1 << 12, ///< used to skip undo db on reindex
-                skip_block_log =
-                1 << 13  ///< used to skip block logging on reindex
+                skip_block_log = 1 << 13,  ///< used to skip block logging on reindex
+                skip_apply_transaction = 1 << 14, ///< used to skip apply transaction
+                skip_database_locking = 1 << 15 ///< used to skip locking of database
             };
 
             /**
@@ -96,6 +91,15 @@ namespace golos {
              */
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size = (
                     1024l * 1024l * 1024l * 8l));
+
+            void set_min_free_shared_memory_size(size_t);
+            void set_inc_shared_memory_size(size_t);
+            void set_block_num_check_free_size(uint32_t);
+            void check_free_memory(bool skip_print, uint32_t current_block_num);
+
+            void set_clear_votes(uint32_t clear_votes_block);
+            void set_skip_virtual_ops();
+            bool clear_votes();
 
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -121,7 +125,7 @@ namespace golos {
 
             uint32_t get_pow_summary_target() const;
 
-                     block_id_type              get_block_id_for_num( uint32_t block_num )const;
+            block_id_type get_block_id_for_num( uint32_t block_num )const;
 
             block_id_type find_block_id_for_num(uint32_t block_num) const;
 
@@ -144,6 +148,10 @@ namespace golos {
 
             const account_object *find_account(const account_name_type &name) const;
 
+            const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
+
+            const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
+
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
             const comment_object *find_comment(const account_name_type &author, const shared_string &permlink) const;
@@ -152,9 +160,9 @@ namespace golos {
 
             const comment_object *find_comment(const account_name_type &author, const string &permlink) const;
 
-            const category_object &get_category(const shared_string &name) const;
+            const comment_content_object &get_comment_content(const comment_id_type &comment) const;
 
-            const category_object *find_category(const shared_string &name) const;
+            const comment_content_object *find_comment_content(const comment_id_type &comment) const;
 
             const escrow_object &get_escrow(const account_name_type &name, uint32_t escrow_id) const;
 
@@ -169,8 +177,6 @@ namespace golos {
             const savings_withdraw_object *find_savings_withdraw(const account_name_type &owner, uint32_t request_id) const;
 
             const dynamic_global_property_object &get_dynamic_global_properties() const;
-
-            const node_property_object &get_node_properties() const;
 
             const feed_history_object &get_feed_history() const;
 
@@ -209,15 +215,25 @@ namespace golos {
 
             bool before_last_checkpoint() const;
 
+            uint32_t validate_block(const signed_block &b, uint32_t skip = skip_nothing);
+
             bool push_block(const signed_block &b, uint32_t skip = skip_nothing);
+
+            void enable_plugins_on_push_transaction(bool);
 
             void push_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
             void _maybe_warn_multiple_production(uint32_t height) const;
 
-            bool _push_block(const signed_block &b);
+            bool _push_block(const signed_block &b, uint32_t skip);
 
-            void _push_transaction(const signed_transaction &trx);
+            void _push_transaction(const signed_transaction &trx, uint32_t skip);
+
+            void push_proposal(const proposal_object&);
+
+            void remove(const proposal_object&);
+
+            void clear_expired_proposals();
 
             signed_block generate_block(
                     const fc::time_point_sec when,
@@ -229,7 +245,8 @@ namespace golos {
             signed_block _generate_block(
                     const fc::time_point_sec when,
                     const account_name_type &witness_owner,
-                    const fc::ecc::private_key &block_signing_private_key
+                    const fc::ecc::private_key &block_signing_private_key,
+                    uint32_t skip
             );
 
             void pop_block();
@@ -256,7 +273,7 @@ namespace golos {
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
              */
-            fc::signal<void(const operation_notification &)> pre_apply_operation;
+            fc::signal<void(operation_notification &)> pre_apply_operation;
             fc::signal<void(const operation_notification &)> post_apply_operation;
 
             /**
@@ -335,7 +352,7 @@ namespace golos {
 
             asset create_vesting(const account_object &to_account, asset steem);
 
-            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value);
+            void adjust_total_payout(const comment_object &a, const asset &sbd, const asset &curator_sbd_value, const asset& beneficiary_value);
 
             void update_witness_schedule();
 
@@ -382,8 +399,6 @@ namespace golos {
 
             void process_vesting_withdrawals();
 
-            share_type pay_discussions(const comment_object &c, share_type max_rewards);
-
             share_type pay_curators(const comment_object &c, share_type max_rewards);
 
             void cashout_comment_helper(const comment_object &comment);
@@ -416,8 +431,6 @@ namespace golos {
 
             asset get_pow_reward() const;
 
-            uint16_t get_discussion_rewards_percent() const;
-
             uint16_t get_curation_rewards_percent() const;
 
             uint128_t get_content_constant_s() const;
@@ -440,8 +453,6 @@ namespace golos {
 
             block_id_type head_block_id() const;
 
-            node_property_object &node_properties();
-
             uint32_t last_non_undoable_block_num() const;
             //////////////////// db_init.cpp ////////////////////
 
@@ -461,8 +472,9 @@ namespace golos {
             /**
              *  This method validates transactions without adding it to the pending state.
              *  @throw if an error occurs
+             *  @return modified skip flags
              */
-            void validate_transaction(const signed_transaction &trx);
+            uint32_t validate_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
             /** when popping a block, the transactions that were removed get cached here so they
              * can be reapplied at the proper time */
@@ -523,11 +535,15 @@ namespace golos {
 
             void apply_transaction(const signed_transaction &trx, uint32_t skip = skip_nothing);
 
-            void _apply_block(const signed_block &next_block);
+            void _validate_block(const signed_block& next_block, uint32_t skip);
 
-            void _apply_transaction(const signed_transaction &trx);
+            void _apply_block(const signed_block &next_block, uint32_t skip);
 
-            void apply_operation(const operation &op);
+            void _apply_transaction(const signed_transaction &trx, uint32_t skip);
+
+            void _validate_transaction(const signed_transaction& trx, uint32_t skip);
+
+            void apply_operation(const operation &op, bool is_virtual = false);
 
 
             ///Steps involved in applying a new block
@@ -543,15 +559,15 @@ namespace golos {
 
             void clear_null_account_balance();
 
-            void update_global_dynamic_data(const signed_block &b);
+            void update_global_dynamic_data(const signed_block &b, uint32_t skip);
 
             void update_signing_witness(const witness_object &signing_witness, const signed_block &new_block);
 
-            void update_last_irreversible_block();
+            void update_last_irreversible_block(uint32_t skip);
 
             void clear_expired_transactions();
-
             void clear_expired_orders();
+            void clear_expired_delegations();
 
             void process_header_extensions(const signed_block &next_block);
 
@@ -562,6 +578,8 @@ namespace golos {
             void process_hardforks();
 
             void apply_hardfork(uint32_t hardfork);
+
+            bool _resize(uint32_t block_num);
 
             ///@}
 
@@ -584,16 +602,23 @@ namespace golos {
             uint32_t _current_block_num = 0;
             uint16_t _current_trx_in_block = 0;
             uint16_t _current_op_in_trx = 0;
-            uint16_t _current_virtual_op = 0;
+            uint32_t _current_virtual_op = 0;
 
             flat_map<uint32_t, block_id_type> _checkpoints;
-
-            node_property_object _node_property_object;
 
             uint32_t _flush_blocks = 0;
             uint32_t _next_flush_block = 0;
 
             uint32_t _last_free_gb_printed = 0;
+
+            size_t _inc_shared_memory_size = 0;
+            size_t _min_free_shared_memory_size = 0;
+
+            uint32_t _block_num_check_free_memory = 1000;
+
+            uint32_t _clear_votes_block = 0;
+            bool _skip_virtual_ops = false;
+            bool _enable_plugins_on_push_transaction = true;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

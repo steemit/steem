@@ -73,6 +73,8 @@ namespace golos {
                 // Pass result to remote connection
                 void result(fc::optional<fc::variant> result);
 
+                void unsafe_result(fc::optional<fc::variant> result);
+
                 fc::optional<fc::variant> result() const;
 
                 // Pass error to remote connection
