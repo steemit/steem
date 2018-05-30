@@ -42,6 +42,12 @@ public:
         bool skip_validate_invariants = false
     );
 
+    uint32_t debug_push_json_blocks(
+        std::string json_filename,
+        uint32_t count,
+        uint32_t skip_flags = golos::chain::database::skip_nothing
+    );
+
     uint32_t debug_generate_blocks_until(
         std::string debug_key,
         fc::time_point_sec head_block_time,
@@ -371,6 +377,54 @@ uint32_t plugin::plugin_impl::debug_push_blocks(
     return 0;
 }
 
+uint32_t plugin::plugin_impl::debug_push_json_blocks(
+    std::string json_filename,
+    uint32_t count,
+    uint32_t skip_flags
+) {
+    uint32_t pushed = 0;
+
+    if (count == 0)
+        return pushed;
+    fc::path src_path = fc::path(json_filename);
+    if (fc::exists(src_path) && !fc::is_directory(src_path)) {
+        ilog("Loading ${n} JSON blocks from ${f}", ("n", count)("f", json_filename));
+        idump((json_filename)(count)(skip_flags));
+
+        vector<signed_block> blocks;
+        try {
+            blocks = fc::json::from_file(src_path).as<vector<signed_block>>();
+        }
+        catch (const fc::exception &e) {
+            elog("Failed to load JSON blocks from ${f}", ("f", json_filename));
+            elog("Exception backtrace: ${bt}", ("bt", e.to_detail_string()));
+            return pushed;
+        }
+
+        uint32_t n_blocks = blocks.size();
+        for (uint32_t i = 0; i < count; i++) {
+            if (i >= n_blocks) {
+                wlog("File ${f} only contained ${i} of ${n} requested blocks",
+                    ("i", i)("n", count)("f", json_filename));
+                break;
+            }
+
+            signed_block blk = blocks[i];
+            try {
+                database().push_block(blk, skip_flags);
+                pushed++;
+            }
+            catch (const fc::exception& e) {
+                elog("Got exception pushing block ${bn} : ${bid} (${i} of ${n})",
+                    ("bn", blk.block_num())("bid", blk.id())("i", i)("n", count));
+                elog("Exception backtrace: ${bt}", ("bt", e.to_detail_string()));
+            }
+        }
+        ilog("Completed loading json blocks, pushed ${ok} of ${n}", ("ok", pushed)("n", n_blocks<count?n_blocks:count));
+    }
+    return pushed;
+}
+
 fc::optional< protocol::signed_block > plugin::plugin_impl::debug_pop_block() {
     auto & db = database();
     return db.fetch_block_by_number( db.head_block_num() );
@@ -424,80 +478,55 @@ bool plugin::plugin_impl::debug_has_hardfork( uint32_t hardfork_id ) {
 // 
 // 
 
-DEFINE_API ( plugin, debug_generate_blocks ) {
-    std::string                               debug_key;
-    uint32_t                                  count = 0;
-    uint32_t                                  skip = golos::chain::database::skip_nothing;
-    uint32_t                                  miss_blocks = 0;
-    bool                                      edit_if_needed = true;
 
-    FC_ASSERT(args.args.valid(), "Invalid parameters" );
+#include <golos/plugins/debug_node/api_helper.hpp>
 
-    auto args_count = args.args->size() ;
+#define DEFINE_PLUGIN_API(name) DEFINE_API(plugin, name)
 
-    FC_ASSERT( args_count > 0 && args_count < 6, "Wrong parameters number, given ${n}", ("n", args_count) );
-    auto args_vector = *(args.args);
-    debug_key = args_vector[0].as_string();
-    if (args_count > 1) {
-        count = args_vector[1].as_int64();        
-    }
-    if (args_count > 2) {
-        skip = args_vector[2].as_int64();
-    }
-    if (args_count > 3) {
-        miss_blocks = args_vector[3].as_int64();
-    }
-    if (args_count > 4) {
-        edit_if_needed = args_vector[4].as_bool();
-    }
+DEFINE_PLUGIN_API ( debug_generate_blocks ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::string,   debug_key)
+        (uint32_t,      count, 0)
+        (uint32_t,      skip, golos::chain::database::skip_nothing)
+        (uint32_t,      miss_blocks, 0)
+        (bool,          edit_if_needed, true)
+    )
 
     return my->debug_generate_blocks( debug_key, count, skip, miss_blocks, edit_if_needed );
 }
 
-DEFINE_API ( plugin, debug_push_blocks ) {
-    std::string src_filename;
-    uint32_t count;
-    bool skip_validate_invariants = false;
-
-    FC_ASSERT(args.args.valid(), "Invalid parameters" );        // is it possible to get invalid?
-
-    auto args_count = args.args->size() ;
-
-    FC_ASSERT( args_count > 0 && args_count < 4, "Wrong parameters number, given ${n}", ("n", args_count) );
-    auto args_vector = *(args.args);
-
-    src_filename = args_vector[0].as_string();
-    count = args_vector[1].as_int64();        
-    if (args_count > 2) {
-        skip_validate_invariants = args_vector[2].as_bool();
-    }
+DEFINE_PLUGIN_API ( debug_push_blocks ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::string,   src_filename)
+        (uint32_t,      count)
+        (bool,          skip_validate_invariants, false)
+    )
 
     return my->debug_push_blocks( src_filename, count, skip_validate_invariants );
 }
 
-DEFINE_API ( plugin, debug_generate_blocks_until ) {
-    std::string debug_key;
-    fc::time_point_sec head_block_time;
-    bool generate_sparsely = true;
-    uint32_t skip = golos::chain::database::skip_nothing;
+DEFINE_PLUGIN_API ( debug_push_json_blocks ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::string,   json_filename)
+        (uint32_t,      count)
+        (uint32_t,      skip_flags, golos::chain::database::skip_nothing)
+    )
+    // `skip_flags` can be set to 577 if loading mainnet blocks
+    // 577 = skip_witness_signature | skip_authority_check | skip_witness_schedule_check
+    
+    auto &db = my->database();
+    return db.with_read_lock([&]() {
+        return my->debug_push_json_blocks(json_filename, count, skip_flags);
+    });
+}
 
-    FC_ASSERT(args.args.valid(), "Invalid parameters" );
-
-    auto args_count = args.args->size() ;
-
-    FC_ASSERT( args_count > 0 && args_count < 5, "Wrong parameters number, given ${n}", ("n", args_count) );
-    auto args_vector = *(args.args);
-
-    debug_key = args_vector[0].as_string();
-    head_block_time = fc::time_point_sec::from_iso_string( args_vector[1].as_string() );      
-
-    if (args_count > 2) {
-        generate_sparsely = args_vector[2].as_bool();
-    }
-
-    if (args_count > 3) {
-        skip = args_vector[3].as_int64();
-    }
+DEFINE_PLUGIN_API ( debug_generate_blocks_until ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::string,       debug_key)
+        (fc::time_point_sec,head_block_time)
+        (bool,              generate_sparsely, true)
+        (uint32_t,          skip, golos::chain::database::skip_nothing)
+    )
 
     return my->debug_generate_blocks_until( debug_key, head_block_time, generate_sparsely, skip );
 }
@@ -518,31 +547,19 @@ DEFINE_API ( plugin, debug_get_witness_schedule ) {
 //     });
 // }
 
-DEFINE_API ( plugin, debug_set_hardfork ) {
-    uint32_t hardfork_id;
-
-    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
-
-    auto args_count = args.args->size() ;
-
-    FC_ASSERT( args_count == 1, "Wrong parameters number, given ${n}", ("n", args_count) );
-    auto args_vector = *(args.args);
-    hardfork_id = args_vector[0].as_int64();
+DEFINE_PLUGIN_API ( debug_set_hardfork ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (uint32_t, hardfork_id)
+    )
 
     my->debug_set_hardfork( hardfork_id );
     return void_type();
 }
 
-DEFINE_API ( plugin, debug_has_hardfork ) {
-    uint32_t hardfork_id;
-
-    FC_ASSERT(args.args.valid(), "Invalid parameters" ) ;
-
-    auto args_count = args.args->size() ;
-
-    FC_ASSERT( args_count == 1, "Wrong parameters number, given ${n}", ("n", args_count) );
-    auto args_vector = *(args.args);
-    hardfork_id = args_vector[0].as_int64();
+DEFINE_PLUGIN_API ( debug_has_hardfork ) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (uint32_t, hardfork_id)
+    )
 
     return my->debug_has_hardfork( hardfork_id );
 }
