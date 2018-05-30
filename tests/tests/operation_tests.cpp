@@ -1458,7 +1458,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
    {
       BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_apply" );
 
-      ACTORS( (alice) )
+      ACTORS( (alice)(bob) )
       generate_block();
       vest( "alice", ASSET( "10.000 TESTS" ) );
 
@@ -1571,6 +1571,14 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
       BOOST_REQUIRE( db->get_account( "alice" ).vesting_withdraw_rate == ASSET( "0.000000 VESTS" ) );
       validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test withdrawing minimal VESTS" );
+      op.account = "bob";
+      op.vesting_shares = db->get_account( "bob" ).vesting_shares;
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 ); // We do not need to test the result of this, simply that it works.
    }
    FC_LOG_AND_RETHROW()
 }
