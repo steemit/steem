@@ -41,6 +41,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_authorities )
       op.owner = "alice";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
       op.min_to_receive = asset( 1000, alice_symbol );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_TIME_UNTIL_EXPIRATION );
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -92,6 +93,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_authorities )
       op.owner = "alice";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
       op.exchange_rate = price( ASSET( "1.000 TESTS" ), asset( 1000, alice_symbol ) );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -167,6 +169,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.min_to_receive = asset( 10000, alice_symbol );
       op.fill_or_kill = false;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db->get_chain_id() );
@@ -207,8 +210,19 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       BOOST_REQUIRE( db->get_balance( alice_account, alice_symbol ).amount.value == alice_smt_balance.amount.value );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure when expiration is too long" );
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.min_to_receive = ASSET( "15.000 TBD" );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION + 1 );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
 
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.min_to_receive = asset( 15000, alice_symbol );
       tx.operations.clear();
@@ -308,7 +322,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
- 
+
       op.amount_to_sell = asset( 15000, alice_symbol );
       op.min_to_receive = ASSET( "10.000 TESTS" );
       tx.operations.clear();
@@ -336,7 +350,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
- 
+
       op.owner = "alice";
       op.orderid = 3;
       op.amount_to_sell = ASSET( "5.000 TESTS" );
@@ -479,6 +493,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_authorities )
       c.orderid = 1;
       c.amount_to_sell = ASSET( "1.000 TESTS" );
       c.min_to_receive = asset( 1000, alice_symbol );
+      c.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
 
       tx.operations.push_back( c );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -562,6 +577,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
       create.orderid = 5;
       create.amount_to_sell = ASSET( "5.000 TESTS" );
       create.min_to_receive = asset( 7500, alice_symbol );
+      create.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( create );
@@ -627,6 +643,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.exchange_rate = price( ASSET( "1.000 TESTS" ), asset( 1000, alice_symbol ) );
       op.fill_or_kill = false;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db->get_chain_id() );
@@ -668,8 +685,19 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       BOOST_REQUIRE( db->get_balance( alice_account, alice_symbol ).amount.value == alice_smt_balance.amount.value );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure when expiration is too long" );
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.exchange_rate = price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION + 1 );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
 
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.exchange_rate = price( ASSET( "2.000 TESTS" ), asset( 3000, alice_symbol ) );
       tx.operations.clear();
@@ -769,7 +797,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
- 
+
       op.amount_to_sell = asset( 15000, alice_symbol );
       op.exchange_rate = price( asset( 3000, alice_symbol ), ASSET( "2.000 TESTS" ) );
       tx.operations.clear();
@@ -797,7 +825,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
- 
+
       op.owner = "alice";
       op.orderid = 3;
       op.amount_to_sell = ASSET( "5.000 TESTS" );
@@ -1014,7 +1042,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( asset( -1, smt3 ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
-      
+
       BOOST_TEST_MESSAGE( "Testing duplicated reward tokens." );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
@@ -1288,7 +1316,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
          op.to = "bob";
          op.amount = asset( 2000, liquid_smt );
          PUSH_OP( op, key );
-         
+
          new_vest = op.amount * smt_share_price;
          smt_shares += new_vest;
          smt_vests += op.amount;

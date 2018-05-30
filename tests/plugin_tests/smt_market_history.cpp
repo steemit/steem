@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       signed_transaction tx;
       asset_symbol_type any_smt_symbol = create_smt( "smtcreator", smtcreator_private_key, 3);
- 
+
       fund( "alice", ASSET( "1000.000 TESTS" ) );
       fund( "bob", ASSET( "1000.000 TESTS" ) );
       fund( "sam", ASSET( "1000.000 TESTS" ) );
@@ -89,6 +89,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       op.owner = "alice";
       op.amount_to_sell = asset( 1000, any_smt_symbol );
       op.min_to_receive = ASSET( "2.000 TESTS" );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
