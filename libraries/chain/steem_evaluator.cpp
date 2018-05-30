@@ -1809,7 +1809,8 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
        }
        else
        {
-          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION ) );
+          uint32_t rand_offset = _db.head_block_id()._hash[4] % 86400;
+          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION + rand_offset ) );
        }
    });
 
