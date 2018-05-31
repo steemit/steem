@@ -280,7 +280,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( _db.has_hardfork( STEEM_HARDFORK_0_19__987) )
+   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) && _db.has_hardfork( STEEM_HARDFORK_0_19__987 ) )
    {
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
       FC_ASSERT( o.fee >= asset( wso.median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
@@ -1008,7 +1008,8 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
    FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
-   if( !account.mined && _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
+   FC_TODO( "Remove this entire block after HF 20" )
+   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1860 ) && !account.mined && _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
    {
       const auto& props = _db.get_dynamic_global_properties();
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
@@ -1785,6 +1786,11 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449) )
+   {
+      FC_ASSERT( o.expiration <= _db.head_block_time() + STEEM_MAX_LIMIT_ORDER_EXPIRATION, "Limit Order Expiration must not be more than 28 days in the future" );
+   }
+
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
    _db.adjust_balance( o.owner, -o.amount_to_sell );
@@ -1796,7 +1802,17 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.get_price();
-       obj.expiration = o.expiration;
+
+       FC_TODO( "Check past order expirations and cleanup after HF 20" )
+       if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449 ) )
+       {
+          obj.expiration = o.expiration;
+       }
+       else
+       {
+          uint32_t rand_offset = _db.head_block_id()._hash[4] % 86400;
+          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION + rand_offset ) );
+       }
    });
 
    bool filled = _db.apply_order( order );
@@ -1807,6 +1823,11 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o )
 {
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449) )
+   {
+      FC_ASSERT( o.expiration <= _db.head_block_time() + STEEM_MAX_LIMIT_ORDER_EXPIRATION, "Limit Order Expiration must not be more than 28 days in the future" );
+   }
 
    FC_ASSERT( _db.get_balance( o.owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
 
@@ -1819,7 +1840,16 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.exchange_rate;
-       obj.expiration = o.expiration;
+
+       FC_TODO( "Check past order expirations and cleanup after HF 20" )
+       if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449 ) )
+       {
+          obj.expiration = o.expiration;
+       }
+       else
+       {
+          obj.expiration = std::min( o.expiration, fc::time_point_sec( STEEM_HARDFORK_0_20_TIME + STEEM_MAX_LIMIT_ORDER_EXPIRATION ) );
+       }
    });
 
    bool filled = _db.apply_order( order );
@@ -2203,8 +2233,14 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
    const auto& wso = _db.get_witness_schedule_object();
    const auto& gpo = _db.get_dynamic_global_properties();
-   auto min_delegation = asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
-   auto min_update = wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+
+   // HF 20 increase fee meaning by 30x, reduce these thresholds to compensate.
+   auto min_delegation = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+      asset( wso.median_props.account_creation_fee.amount / 3, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+      asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
+   auto min_update = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+      asset( wso.median_props.account_creation_fee.amount / 30, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+      wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
 
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
