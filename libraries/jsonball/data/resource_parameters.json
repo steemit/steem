@@ -3,10 +3,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "15000000000",
+   "budget" : "30000000000",
    "half_life" : {"days" : 15},
-   "drain_time" : {"hours" : 1},
-   "p_min" : 100.0
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
   }
  ],
 
@@ -16,8 +18,10 @@
    "budget_time" : {"days" : 30},
    "budget" : 1000000,
    "half_life" : {"days" : 20},
-   "drain_time" : {"hours" : 1},
-   "p_min" : 1000.0
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
   }
  ],
 
@@ -25,10 +29,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "3000000000",
+   "budget" : "5000000000",
    "half_life" : {"hours" : 16},
-   "drain_time" : {"hours" : 1},
-   "p_min" : 500.0
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
   }
  ]
 ]

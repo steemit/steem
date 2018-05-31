@@ -184,8 +184,9 @@ void use_account_rcs(
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   int64_t rc_regen = gpo.total_vesting_shares.amount.value / STEEM_RC_REGEN_TIME;
 
-   if( gpo.total_vesting_shares.amount <= 0 )
+   if( rc_regen < 1000 )
       return;
 
    rc_transaction_info tx_info;
@@ -205,7 +206,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
       int64_t pool = pool_obj.pool_array[i];
 
       tx_info.usage.resource_count[i] *= int64_t( params.resource_unit );
-      tx_info.cost[i] = compute_rc_cost_of_resource( params.curve_params, pool, tx_info.usage.resource_count[i] );
+      tx_info.cost[i] = compute_rc_cost_of_resource( params.curve_params, pool, tx_info.usage.resource_count[i], rc_regen );
       total_cost += tx_info.cost[i];
    }
 
@@ -307,11 +308,17 @@ void rc_plugin_impl::on_first_block()
 
          ilog( "Genesis params_obj is ${o}", ("o", params_obj) );
       } );
+
+   const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
+
    _db.create< rc_pool_object >(
       [&]( rc_pool_object& pool_obj )
       {
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
-            pool_obj.pool_array[i] = 0;
+         {
+            const rc_resource_params& params = params_obj.resource_param_array[i];
+            pool_obj.pool_array[i] = params.pool_eq;
+         }
          pool_obj.last_update = _db.get_dynamic_global_properties().time;
 
          ilog( "Genesis pool_obj is ${o}", ("o", pool_obj) );

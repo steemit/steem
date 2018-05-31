@@ -25,11 +25,9 @@ def compute_parameters(args):
     budget_time = datetime.timedelta(**args["budget_time"])
     budget      = int(args["budget"])
     half_life   = datetime.timedelta(**args["half_life"])
-    drain_time  = datetime.timedelta(**args["drain_time"])
     inelasticity_threshold_num = args.get("inelasticity_threshold_num", 1.0)
     inelasticity_threshold_denom = args.get("inelasticity_threshold_denom", 128.0)
     inelasticity_threshold = inelasticity_threshold_num / inelasticity_threshold_denom
-    p_min       = args.get("p_min", 50.0)
 
     half_life_sec = half_life.total_seconds()
 
@@ -40,7 +38,8 @@ def compute_parameters(args):
     # -x = expm1(-ln(2)/H)
     # x = -expm1(-ln(2)/H)
 
-    decay_per_sec_float = -math.expm1(-math.log(2.0) / half_life_sec)
+    tau = half_life_sec / math.log(2.0)
+    decay_per_sec_float = -math.expm1(-1.0 / tau)
     result2["decay_per_sec_float"] = decay_per_sec_float
 
     # For numerical correctness of decay, half-life should be one year or less,
@@ -72,7 +71,6 @@ def compute_parameters(args):
     result2["resource_unit_exponent"] = resource_unit_exponent
     resource_unit = resource_unit_base**resource_unit_exponent
     result["resource_unit"] = resource_unit
-    p_min /= resource_unit
 
     budget_per_sec *= resource_unit
     budget_per_time_unit = budget_per_sec * time_unit_sec
@@ -81,39 +79,34 @@ def compute_parameters(args):
     result["budget_per_time_unit"] = int(budget_per_time_unit+0.5)
 
     pool_eq = budget_per_sec / decay_per_sec_float
-    result2["pool_eq"] = pool_eq
+    result["pool_eq"] = int(pool_eq+1)
     result["max_pool_size"] = str(int(pool_eq*2.0 + 0.5))
 
-    #(n choose 1) = n
-    #(n choose 2) = n(n-1) / 2
+    # Find k such that 1-1/(1+k*a) = u
+    # 1-u = 1/(1+k*a)
+    # 1/(1-u) = 1+k*a
+    # 1/(1-u) - 1 = k*a
+    # k = (1/(1-u) - 1) / a
+    #   = (1-(1-u)) / (a(1-u))
+    #   = u / (a*(1-u))
+    a_point_num   = args.get("a_point_num", 1.0)
+    a_point_denom = args.get("a_point_denom", 32.0)
+    u_point_num   = args.get("u_point_num", 1.0)
+    u_point_denom = args.get("u_point_denom", 2.0)
 
-    #(1-e)^n ~ 1 - n*e + 0.5*n*(n-1)*e*e
+    a_point = a_point_num / a_point_denom
+    u_point = u_point_num / u_point_denom
+    k = u_point / (a_point * (1.0 - u_point))
 
-    # 400 billion VESTS
-    drain_time_sec = drain_time.total_seconds()
-    global_rc_regen = 400 * 10**9
-    rc_regen_time_sec = 15*24*60*60
-    global_rc_capacity = global_rc_regen * rc_regen_time_sec
-    # price to burn only the budget
-    p_bb = global_rc_regen / (budget_per_sec * rc_regen_time_sec)
-    p_0 = p_bb * (1.0 + rc_regen_time_sec / drain_time_sec)
-
-    result2["p_0"] = p_0
-    result2["p_bb"] = p_bb
-
-    # global_rc_regen * (rc_regen_time_sec + drain_time_sec) / (budget * drain_time_sec)
-    # (global_rc_regen / budget) * (1 + rc_regen_time_sec / drain_time_sec)
-
+    D = 0
     B = inelasticity_threshold * pool_eq
-    D = (B / pool_eq) * (p_0 - p_min) - p_min
-    A = B*(p_0+D)
+    A = tau / k
     if (A < 1.0) or (B < 1.0):
-        raise RuntimeError("Bad parameter value (is p_min too large?)")
+        raise RuntimeError("Bad parameter value (is time too short?)")
 
     result2["D"] = D
     result2["B"] = B
     result2["A"] = A
-    result2["p_min"] = A / (B + pool_eq) - D
 
     curve_shift_float = math.log( (2.0**64-1) / A ) / math.log(2)
     curve_shift = int(math.floor(curve_shift_float))

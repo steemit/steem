@@ -45,8 +45,6 @@ class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
       rc_pool_object( Constructor&& c, allocator< Allocator > a )
       {
          c( *this );
-         for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
-            pool_array[i] = 0;
       }
 
       id_type               id;

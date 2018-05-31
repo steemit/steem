@@ -14,7 +14,6 @@ struct rc_curve_params
 {
    uint64_t        coeff_a = 0;
    uint64_t        coeff_b = 0;
-   int64_t         coeff_d = 0;
    uint8_t         shift = 0;
 };
 
@@ -31,6 +30,7 @@ struct rc_resource_params
 
    int32_t         budget_per_time_unit = 0;
 
+   uint64_t        pool_eq = 0;
    uint64_t        max_pool_size = 0;
 
    rc_curve_params curve_params;
@@ -40,7 +40,8 @@ struct rc_resource_params
 int64_t compute_rc_cost_of_resource(
    const rc_curve_params& curve_params,
    int64_t current_pool,
-   int64_t resource_count );
+   int64_t resource_count,
+   int64_t rc_regen );
 int64_t compute_pool_decay(
    const rc_decay_params& decay_params,
    int64_t current_pool,
@@ -50,12 +51,13 @@ int64_t compute_pool_decay(
 } } } // steem::plugins::rc
 
 FC_REFLECT_ENUM( steem::plugins::rc::rc_time_unit_type, (rc_time_unit_seconds)(rc_time_unit_blocks) )
-FC_REFLECT( steem::plugins::rc::rc_curve_params, (coeff_a)(coeff_b)(coeff_d)(shift) )
+FC_REFLECT( steem::plugins::rc::rc_curve_params, (coeff_a)(coeff_b)(shift) )
 FC_REFLECT( steem::plugins::rc::rc_decay_params, (decay_per_time_unit)(decay_per_time_unit_denom_shift) )
 FC_REFLECT( steem::plugins::rc::rc_resource_params,
    (time_unit)
    (resource_unit)
    (budget_per_time_unit)
+   (pool_eq)
    (max_pool_size)
    (curve_params)
    (decay_params)
