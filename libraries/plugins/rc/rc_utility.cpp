@@ -16,10 +16,11 @@ int64_t compute_rc_cost_of_resource(
    )
 {
    /*
-   ilog( "compute_rc_cost_of_resources( ${params}, ${pool}, ${res} )",
+   ilog( "compute_rc_cost_of_resources( ${params}, ${pool}, ${res}, ${reg} )",
       ("params", curve_params)
       ("pool", current_pool)
-      ("res", resource_count) );
+      ("res", resource_count)
+      ("reg", rc_regen) );
    */
    FC_ASSERT( rc_regen > 0 );
 
@@ -46,6 +47,7 @@ int64_t compute_rc_cost_of_resource(
    uint128_t num_denom = num / denom;
    // Add 1 to avoid 0 result in case of various rounding issues,
    // err on the side of rounding not in the user's favor
+   // ilog( "result: ${r}", ("r", num_denom.to_uint64()+1) );
    return num_denom.to_uint64()+1;
 }
 

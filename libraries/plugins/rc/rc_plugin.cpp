@@ -220,6 +220,10 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
 
    std::shared_ptr< exp_rc_data > export_data =
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
+   if( (gpo.head_block_number % 10000) == 0 )
+   {
+      ilog( "${t} : ${i}", ("t", gpo.time)("i", tx_info) );
+   }
    if( export_data )
       export_data->tx_info.push_back( tx_info );
 }
@@ -252,6 +256,8 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
    _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ),
       [&]( rc_pool_object& pool_obj )
       {
+         bool debug_print = ((gpo.head_block_number % 10000) == 0);
+
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
          {
             const rc_resource_params& params = params_obj.resource_param_array[i];
@@ -277,6 +283,18 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
 
             pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+
+            if( debug_print )
+            {
+               double k = 27.027027027027028;
+               double a = double(params.pool_eq - pool);
+               a /= k*double(pool);
+               ilog( "a=${a}   aR=${aR}", ("a", a)("aR", a*gpo.total_vesting_shares.amount.value/STEEM_RC_REGEN_TIME) );
+            }
+         }
+         if( debug_print )
+         {
+            ilog( "${t} : ${i}", ("t", gpo.time)("i", block_info) );
          }
          pool_obj.last_update = gpo.time;
       } );
