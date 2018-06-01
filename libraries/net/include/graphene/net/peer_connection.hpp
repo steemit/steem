@@ -234,6 +234,10 @@ namespace graphene { namespace net
       bool inhibit_fetching_sync_blocks = false;
       /// @}
 
+      /// latency timing data
+      std::unordered_map< item_hash_t, fc::time_point > pending_item_request_times;
+      /// @}
+
       /// non-synchronization state data
       /// @{
       struct timestamped_item_id

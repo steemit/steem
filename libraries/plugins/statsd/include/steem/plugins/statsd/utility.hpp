@@ -58,6 +58,11 @@ class statsd_timer_helper
       bool                 _recorded = false;
 };
 
+inline uint32_t timing_helper( const fc::microseconds& time ) { return time.count() / 1000; }
+inline uint32_t timing_helper( const fc::time_point& time ) { return time.time_since_epoch().count() / 1000; }
+inline uint32_t timing_helper( const fc::time_point_sec& time ) { return time.sec_since_epoch() * 1000; }
+inline uint32_t timing_helper( uint32_t time ) { return time; }
+
 } } } } // steem::plugins::statsd::util
 
 #define STATSD_INCREMENT( NAMESPACE, STAT, KEY, FREQ )   \
@@ -103,3 +108,13 @@ if( steem::plugins::statsd::util::statsd_enabled() )                            
 
 #define STATSD_STOP_TIMER( NAMESPACE, STAT, KEY )        \
    NAMESPACE ## STAT ## KEY ## _timer.reset();
+
+#define STATSD_TIMER( NAMESPACE, STAT, KEY, VAL, FREQ )  \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
+{                                                        \
+   steem::plugins::statsd::util::get_statsd().timing(    \
+      NAMESPACE, STAT, KEY,                              \
+      steem::plugins::statsd::util::timing_helper( VAL ),\
+      FREQ                                               \
+   );                                                    \
+}
