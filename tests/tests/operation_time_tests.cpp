@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       const account_object& bob_account   = db->get_account("bob");
       const account_object& dave_account  = db->get_account("dave");
 
-      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "14288.000 TBD" ) );
+      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "10720.000 TBD" ) );
       BOOST_CHECK( bob_account.reward_sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_CHECK( dave_account.reward_sbd_balance == alice_account.reward_sbd_balance );
    }
@@ -175,27 +175,42 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       comment.parent_permlink = "test";
       comment.title = "test";
       comment.body = "test";
-      vote_operation vote;
-      vote.voter = "alice";
-      vote.author = "alice";
-      vote.permlink = "test";
-      vote.weight = 81 * STEEM_1_PERCENT;
 
       signed_transaction tx;
       tx.operations.push_back( comment );
-      tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
       validate_database();
 
       comment.author = "bob";
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      validate_database();
+
+      generate_blocks( db->head_block_time() + STEEM_REVERSE_AUCTION_WINDOW_SECONDS );
+
+      vote_operation vote;
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = 81 * STEEM_1_PERCENT;
+
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      validate_database();
+
       vote.voter = "bob";
       vote.author = "bob";
       vote.weight = 59 * STEEM_1_PERCENT;
 
       tx.clear();
-      tx.operations.push_back( comment );
       tx.operations.push_back( vote );
       tx.sign( bob_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
