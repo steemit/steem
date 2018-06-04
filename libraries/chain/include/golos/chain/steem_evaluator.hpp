@@ -52,9 +52,31 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(reset_account)
         DEFINE_EVALUATOR(set_reset_account)
         DEFINE_EVALUATOR(delegate_vesting_shares)
-        DEFINE_EVALUATOR(proposal_create)
-        DEFINE_EVALUATOR(proposal_update)
         DEFINE_EVALUATOR(proposal_delete)
         DEFINE_EVALUATOR(chain_properties_update)
+
+        class proposal_create_evaluator: public evaluator_impl<proposal_create_evaluator> {
+        public:
+            using operation_type = proposal_create_operation;
+
+            proposal_create_evaluator(database& db);
+
+            void do_apply(const operation_type& o);
+
+        protected:
+            int depth_ = 0;
+        };
+
+        class proposal_update_evaluator: public evaluator_impl<proposal_update_evaluator> {
+        public:
+            using operation_type = proposal_update_operation;
+
+            proposal_update_evaluator(database& db);
+
+            void do_apply(const operation_type& o);
+
+        protected:
+            int depth_ = 0;
+        };
 
 } } // golos::chain
