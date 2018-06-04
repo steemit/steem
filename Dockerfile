@@ -43,6 +43,7 @@ RUN \
         -DBUILD_SHARED_LIBRARIES=FALSE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCHAINBASE_CHECK_LOCKING=FALSE \
+        -DENABLE_MONGO_PLUGIN=FALSE \
         .. \
     && \
     make -j$(nproc) && \
