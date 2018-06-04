@@ -36,10 +36,6 @@ if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     ARGS+=" --account-history-rocksdb-track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
-if [[ ! "$DISABLE_BLOCK_API" ]]; then
-   ARGS+=" --plugin=block_api"
-fi
-
 if [[ ! "$DISABLE_SCALE_MEM" ]]; then
    ARGS+=" --shared-file-full-threshold=9500 --shared-file-scale-rate=1000"
 fi
