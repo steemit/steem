@@ -18,8 +18,22 @@ namespace golos { namespace chain {
             FC_ASSERT(o.props.account_creation_fee.symbol == STEEM_SYMBOL);
         } else if (o.props.account_creation_fee.symbol != STEEM_SYMBOL) {
             // after HF, above check can be moved to validate() if reindex doesn't show this warning
-            wlog("Wrong fee symbol in block ${b}", ("b",
-                db().head_block_num() + 1));
+            wlog("Wrong fee symbol in block ${b}", ("b", db().head_block_num() + 1));
+        }
+
+        const bool has_hf18 = db().has_hardfork(STEEMIT_HARDFORK_0_18__673);
+
+        // TODO: remove this after HF 18
+        if (has_hf18) {
+            if (o.props.account_creation_fee.amount.value != STEEMIT_MIN_ACCOUNT_CREATION_FEE) {
+                wlog("The chain_properties_update_operation should be used to update account_creation_fee");
+            }
+            if (o.props.sbd_interest_rate != STEEMIT_DEFAULT_SBD_INTEREST_RATE) {
+                wlog("The chain_properties_update_operation should be used to update sbd_interest_rate");
+            }
+            if (o.props.maximum_block_size != STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2) {
+                wlog("The chain_properties_update_operation should be used to update maximum_block_size");
+            }
         }
 
         const auto &idx = db().get_index<witness_index>().indices().get<by_name>();
@@ -28,7 +42,9 @@ namespace golos { namespace chain {
             db().modify(*itr, [&](witness_object& w) {
                 from_string(w.url, o.url);
                 w.signing_key = o.block_signing_key;
-                w.props = o.props;
+                if (!has_hf18) {
+                    w.props = o.props;
+                }
             });
         } else {
             db().create<witness_object>([&](witness_object& w) {
@@ -36,7 +52,9 @@ namespace golos { namespace chain {
                 from_string(w.url, o.url);
                 w.signing_key = o.block_signing_key;
                 w.created = db().head_block_time();
-                w.props = o.props;
+                if (!has_hf18) {
+                    w.props = o.props;
+                }
             });
         }
     }
@@ -70,4 +88,5 @@ namespace golos { namespace chain {
             });
         }
     }
+
 } } // golos::chain
