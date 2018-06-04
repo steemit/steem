@@ -75,7 +75,6 @@ namespace golos { namespace plugins { namespace operation_history {
             if (database.head_block_num() < start_block) {
                 return;
             }
-
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
                 if (!blacklist) {
                     operation_visitor::operator()(op);
@@ -175,15 +174,15 @@ namespace golos { namespace plugins { namespace operation_history {
             boost::program_options::value<uint32_t>()->composing(),
             "Defines starting block from which recording stats."
         );
-        
+
         cfg.add(cli);
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
         ilog("operation_history plugin: plugin_initialize() begin");
-        
+
         pimpl = std::make_unique<plugin_impl>();
-        
+
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){
             pimpl->on_operation(note);
         });
@@ -207,7 +206,7 @@ namespace golos { namespace plugins { namespace operation_history {
             FC_ASSERT(
                 !options.count("history-blacklist-ops"),
                 "history-blacklist-ops and history-whitelist-ops can't be specified together");
-            
+
             pimpl->filter_content = true;
             pimpl->blacklist = false;
             split_list(options.at("history-whitelist-ops").as<std::vector<std::string>>());
@@ -215,7 +214,7 @@ namespace golos { namespace plugins { namespace operation_history {
         } else if (options.count("history-blacklist-ops")) {
             pimpl->filter_content = true;
             pimpl->blacklist = true;
-            split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());            
+            split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
 

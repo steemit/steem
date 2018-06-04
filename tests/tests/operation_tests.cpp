@@ -1977,7 +1977,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- Test adding a grandchild proxy");
             // alice
-            // bob->  sam-> dave
+            // bob-> sam-> dave
 
             tx.operations.clear();
             tx.signatures.clear();

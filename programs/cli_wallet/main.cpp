@@ -122,7 +122,7 @@ int unsafe_main(int argc, char** argv) {
     // Note: each logging option have default value, no need to check options.count()
     auto ll_default = fc::variant(options["logger.default.level"].as<string>()).as<fc::log_level>();
     auto ll_rpc = fc::variant(options["logger.rpc.level"].as<string>()).as<fc::log_level>();
-    
+
     fc::logging_config cfg;
     fc::file_appender::config ac;
     if (ll_rpc < fc::log_level::off) {
@@ -146,7 +146,7 @@ int unsafe_main(int argc, char** argv) {
     fc::configure_logging(cfg);
 
     //
-    // TODO:  We read wallet_data twice, once in main() to grab the
+    // TODO: We read wallet_data twice, once in main() to grab the
     //    socket info, again in wallet_api when we do
     //    load_wallet_file().  Seems like this could be better
     //    designed.

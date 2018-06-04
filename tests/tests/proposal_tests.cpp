@@ -396,7 +396,7 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
  *
  * Mega Corp.       Well 30, Yaya 30                    T=40
  * Nova Ltd.        Alice 10, Well 10                   T=20
- * Odle Intl.       Dan 10, Yaya 10, Zyzz 10, Dave 5   T=20
+ * Odle Intl.       Dan 10, Yaya 10, Zyzz 10, Dave 5    T=20
  * Poxx LLC         Well 10, Xylo 10, Yaya 20, Zyzz 20  T=40
  */
 BOOST_AUTO_TEST_CASE(nested_signatures) { try {

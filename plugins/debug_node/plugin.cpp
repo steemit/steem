@@ -470,13 +470,12 @@ bool plugin::plugin_impl::debug_has_hardfork( uint32_t hardfork_id ) {
 // ```
 // You can pass from 1 to 5 params as you wish.
 // Just don't forget that it work for testnet only and you have to write this in ur config.ini:
-// 
+//
 // witness = "cyberfounder"
 // private-key = 5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS
 // enable-stale-production = true
 // required-participation = 0
-// 
-// 
+//
 
 
 #include <golos/plugins/debug_node/api_helper.hpp>
@@ -491,7 +490,6 @@ DEFINE_PLUGIN_API ( debug_generate_blocks ) {
         (uint32_t,      miss_blocks, 0)
         (bool,          edit_if_needed, true)
     )
-
     return my->debug_generate_blocks( debug_key, count, skip, miss_blocks, edit_if_needed );
 }
 
@@ -501,7 +499,6 @@ DEFINE_PLUGIN_API ( debug_push_blocks ) {
         (uint32_t,      count)
         (bool,          skip_validate_invariants, false)
     )
-
     return my->debug_push_blocks( src_filename, count, skip_validate_invariants );
 }
 
@@ -513,7 +510,7 @@ DEFINE_PLUGIN_API ( debug_push_json_blocks ) {
     )
     // `skip_flags` can be set to 577 if loading mainnet blocks
     // 577 = skip_witness_signature | skip_authority_check | skip_witness_schedule_check
-    
+
     auto &db = my->database();
     return db.with_weak_read_lock([&]() {
         return my->debug_push_json_blocks(json_filename, count, skip_flags);
