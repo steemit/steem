@@ -1,8 +1,9 @@
-FROM phusion/baseimage:0.9.22
+FROM phusion/baseimage:0.9.19
 
 ENV LANG=en_US.UTF-8
 
-RUN apt-get update && \
+RUN \
+    apt-get update && \
     apt-get install -y \
         autoconf \
         automake \
@@ -10,9 +11,9 @@ RUN apt-get update && \
         bsdmainutils \
         build-essential \
         cmake \
-        ccache \
         doxygen \
         git \
+        ccache\
         libboost-all-dev \
         libreadline-dev \
         libssl-dev \
@@ -28,6 +29,35 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     pip3 install gcovr
 
+# installing mongo drivers
+RUN \
+    echo "Installing mongo-c-driver" && \
+    apt-get -qq update && \
+    apt-get install -y \
+        pkg-config \
+        libssl-dev \
+        libsasl2-dev \
+        wget \
+    && \
+    wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.5/mongo-c-driver-1.9.5.tar.gz && \
+    tar xzf mongo-c-driver-1.9.5.tar.gz && \
+    cd mongo-c-driver-1.9.5 && \
+    ./configure --disable-automatic-init-and-cleanup --enable-static && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf mongo-c-driver-1.9.5 && \
+    echo "Installing mongo-cxx-driver" && \
+    git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.2 --depth 1 && \
+    cd mongo-cxx-driver/build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    make EP_mnmlstc_core && \
+    make && \
+    make install && \
+    cd ../.. && \
+    rm -rf mongo-cxx-driver
+# end
+
 ADD . /usr/local/src/golos
 
 RUN \
@@ -38,11 +68,11 @@ RUN \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_GOLOS_TESTNET=TRUE \
+        -DBUILD_GOLOS_TESTNET=FALSE \
         -DBUILD_SHARED_LIBRARIES=FALSE \
         -DLOW_MEMORY_NODE=FALSE \
         -DCHAINBASE_CHECK_LOCKING=FALSE \
-        -DENABLE_MONGO_PLUGIN=FALSE \
+        -DENABLE_MONGO_PLUGIN=TRUE \
         .. \
     && \
     make -j$(nproc) && \
@@ -108,6 +138,8 @@ RUN mkdir /var/cache/golosd && \
 ENV HOME /var/lib/golosd
 RUN chown golosd:golosd -R /var/lib/golosd
 
+ADD share/golosd/snapshot5392323.json /var/lib/golosd
+
 # rpc service:
 # http
 EXPOSE 8090
@@ -120,8 +152,8 @@ RUN mkdir -p /etc/service/golosd
 ADD share/golosd/golosd.sh /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
-# the following adds lots of logging info to stdout
-ADD share/golosd/config/config_debug.ini /etc/golosd/config.ini
+# add seednodes from documentation to image
+ADD share/golosd/seednodes /etc/golosd/seednodes
 
-# put blockchain data into separate docker volume
-VOLUME /var/lib/golosd
+# the following adds lots of logging info to stdout
+ADD share/golosd/config/config_mongo.ini /etc/golosd/config.ini
