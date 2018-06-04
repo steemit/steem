@@ -77,10 +77,36 @@ namespace golos { namespace chain {
                 }
             }
         }
+
+        struct safe_int_increment {
+            safe_int_increment(int& value)
+                : value_(value) {
+                value_++;
+            }
+
+            ~safe_int_increment() {
+                value_--;
+            }
+
+            int& value_;
+        };
+    }
+
+    proposal_create_evaluator::proposal_create_evaluator(database& db)
+        : evaluator_impl<proposal_create_evaluator>(db) {
     }
 
     void proposal_create_evaluator::do_apply(const proposal_create_operation& o) { try {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__542, "Proposal transaction creating"); // remove after hf
+
+        safe_int_increment depth_increment(depth_);
+
+        if (db().is_producing()) {
+            FC_ASSERT(
+                depth_ <= STEEMIT_MAX_PROPOSAL_DEPTH,
+                "You can't create more than ${depth} nested proposals",
+                ("depth", STEEMIT_MAX_PROPOSAL_DEPTH));
+        }
 
         FC_ASSERT(nullptr == db().find_proposal(o.author, o.title), "Proposal already exists.");
 
@@ -173,8 +199,22 @@ namespace golos { namespace chain {
         }
     } FC_CAPTURE_AND_RETHROW((o)) }
 
+    proposal_update_evaluator::proposal_update_evaluator(database& db)
+        : evaluator_impl<proposal_update_evaluator>(db) {
+    }
+
     void proposal_update_evaluator::do_apply(const proposal_update_operation& o) { try {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__542, "Proposal transaction updating"); // remove after hf
+
+        safe_int_increment depth_increment(depth_);
+
+        if (db().is_producing()) {
+            FC_ASSERT(
+                depth_ <= STEEMIT_MAX_PROPOSAL_DEPTH,
+                "You can't create more than ${depth} nested proposals",
+                ("depth", STEEMIT_MAX_PROPOSAL_DEPTH));
+        }
+
         auto& proposal = db().get_proposal(o.author, o.title);
         const auto now = db().head_block_time();
 
