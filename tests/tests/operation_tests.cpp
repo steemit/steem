@@ -1560,6 +1560,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- Test upgrading an account to a witness");
 
+            signed_transaction tx;
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+
             witness_update_operation op;
             op.owner = "alice";
             op.url = "foo.bar";
@@ -1567,12 +1570,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.block_signing_key = signing_key.get_public_key();
             op.props.account_creation_fee = asset(STEEMIT_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL);
             op.props.maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT + 100;
-
-            signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(op);
-            tx.sign(alice_private_key, db->get_chain_id());
 
+            chain_properties_update_operation op1;
+            op1.owner = op.owner;
+            op1.props = op.props;
+            tx.operations.push_back(op1);
+
+            tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
             const witness_object &alice_witness = db->get_witness("alice");
