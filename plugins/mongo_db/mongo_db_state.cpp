@@ -125,13 +125,20 @@ namespace mongo_db {
             format_value(body, "body", content.body);
             format_value(body, "json_metadata", content.json_metadata);
 
-            std::string category;
+            std::string category, root_oid;
             if (comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
                 category = to_string(comment.parent_permlink);
+                root_oid = oid;
             } else {
-                category = to_string(db_.get<comment_object, by_id>(comment.root_comment).parent_permlink);
+                auto& root_comment = db_.get<comment_object, by_id>(comment.root_comment);
+                category = to_string(root_comment.parent_permlink);
+                root_oid = std::string(root_comment.author).append("/").append(root_comment.permlink.c_str());
             }
             format_value(body, "category", category);
+            format_oid(body, "root_comment", root_oid);
+            document root_comment_index;
+            root_comment_index << "root_comment" << 1;
+            doc.indexes_to_create.push_back(std::move(root_comment_index));
 
             body << close_document;
 
