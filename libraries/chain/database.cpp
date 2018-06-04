@@ -581,69 +581,12 @@ namespace golos { namespace chain {
             adjust_supply(-fee);
         }
 
-        void database::old_update_account_bandwidth(const account_object &a, uint32_t trx_size, const bandwidth_type type) {
-            try {
-                const auto &props = get_dynamic_global_properties();
-                if (props.total_vesting_shares.amount > 0) {
-                    FC_ASSERT(a.vesting_shares.amount >
-                              0, "Only accounts with a postive vesting balance may transact.");
-
-                    auto band = find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(a.name, type));
-
-                    if (band == nullptr) {
-                        band = &create<account_bandwidth_object>([&](account_bandwidth_object &b) {
-                            b.account = a.name;
-                            b.type = type;
-                        });
-                    }
-
-                    modify(*band, [&](account_bandwidth_object &b) {
-                        b.lifetime_bandwidth +=
-                                trx_size * STEEMIT_BANDWIDTH_PRECISION;
-
-                        auto now = head_block_time();
-                        auto delta_time = (now -
-                                           b.last_bandwidth_update).to_seconds();
-                        uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-                        if (delta_time >=
-                            STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) {
-                            b.average_bandwidth = N;
-                        } else {
-                            auto old_weight = b.average_bandwidth *
-                                              (STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS -
-                                               delta_time);
-                            auto new_weight = delta_time * N;
-                            b.average_bandwidth = (old_weight + new_weight) /
-                                                  STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS;
-                        }
-
-                        b.last_bandwidth_update = now;
-                    });
-
-                    fc::uint128_t account_vshares(a.vesting_shares.amount.value);
-                    fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
-
-                    fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
-                    fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
-
-                    FC_ASSERT((account_vshares * max_virtual_bandwidth) >
-                              (account_average_bandwidth * total_vshares),
-                            "Account exceeded maximum allowed bandwidth per vesting share.",
-                            ("account_vshares", account_vshares)
-                                    ("account_average_bandwidth", account_average_bandwidth)
-                                    ("max_virtual_bandwidth", max_virtual_bandwidth)
-                                    ("total_vesting_shares", total_vshares));
-                }
-            } FC_CAPTURE_AND_RETHROW()
-        }
-
         bool database::update_account_bandwidth(const account_object &a, uint32_t trx_size, const bandwidth_type type) {
             const auto &props = get_dynamic_global_properties();
             bool has_bandwidth = true;
 
             if (props.total_vesting_shares.amount > 0) {
                 auto band = find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(a.name, type));
-
                 if (band == nullptr) {
                     band = &create<account_bandwidth_object>([&](account_bandwidth_object &b) {
                         b.account = a.name;
@@ -652,11 +595,8 @@ namespace golos { namespace chain {
                 }
 
                 share_type new_bandwidth;
-                share_type trx_bandwidth =
-                        trx_size * STEEMIT_BANDWIDTH_PRECISION;
-                auto delta_time = (head_block_time() -
-                                   band->last_bandwidth_update).to_seconds();
-
+                share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
+                auto delta_time = (head_block_time() - band->last_bandwidth_update).to_seconds();
                 if (delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) {
                     new_bandwidth = 0;
                 } else {
@@ -681,16 +621,14 @@ namespace golos { namespace chain {
                 fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
                 fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
 
-                has_bandwidth = (account_vshares * max_virtual_bandwidth) >
-                                (account_average_bandwidth * total_vshares);
+                has_bandwidth = (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares);
 
                 if (is_producing())
-                    FC_ASSERT(has_bandwidth,
-                            "Account exceeded maximum allowed bandwidth per vesting share.",
-                            ("account_vshares", account_vshares)
-                                    ("account_average_bandwidth", account_average_bandwidth)
-                                    ("max_virtual_bandwidth", max_virtual_bandwidth)
-                                    ("total_vesting_shares", total_vshares));
+                    FC_ASSERT(has_bandwidth, "Account exceeded maximum allowed bandwidth per vesting share.",
+                        ("account_vshares", account_vshares)
+                        ("account_average_bandwidth", account_average_bandwidth)
+                        ("max_virtual_bandwidth", max_virtual_bandwidth)
+                        ("total_vesting_shares", total_vshares));
             }
 
             return has_bandwidth;
@@ -3525,14 +3463,11 @@ namespace golos { namespace chain {
 
                 auto trx_size = fc::raw::pack_size(trx);
 
-                for (const auto &auth : required) {
-                    const auto &acnt = get_account(auth);
-
-                    old_update_account_bandwidth(acnt, trx_size, bandwidth_type::old_forum);
+                for (const auto& auth : required) {
+                    const auto& acnt = get_account(auth);
                     update_account_bandwidth(acnt, trx_size, bandwidth_type::forum);
-                    for (const auto &op : trx.operations) {
+                    for (const auto& op : trx.operations) {
                         if (is_market_operation(op)) {
-                            old_update_account_bandwidth(acnt, trx_size, bandwidth_type::old_market);
                             update_account_bandwidth(acnt, trx_size * 10, bandwidth_type::market);
                             break;
                         }
