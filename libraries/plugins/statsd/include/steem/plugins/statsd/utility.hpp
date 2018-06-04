@@ -8,17 +8,8 @@ namespace steem { namespace plugins { namespace statsd { namespace util {
 
 using steem::plugins::statsd::statsd_plugin;
 
-bool statsd_enabled()
-{
-   static bool enabled = appbase::app().find_plugin< statsd_plugin >() != nullptr;
-   return enabled;
-}
-
-const statsd_plugin& get_statsd()
-{
-   static const statsd_plugin& statsd = appbase::app().get_plugin< statsd_plugin >();
-   return statsd;
-}
+bool statsd_enabled();
+const statsd_plugin& get_statsd();
 
 class statsd_timer_helper
 {

@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/statsd/*.hpp")
 
 add_library( statsd_plugin
              statsd_plugin.cpp
+             utility.cpp
              ${HEADERS} )
 
 target_link_libraries( statsd_plugin chain_plugin )
