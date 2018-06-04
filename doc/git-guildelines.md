@@ -6,9 +6,9 @@ blog
 post](http://www.draconianoverlord.com/2013/09/07/no-cherry-picking.html).
 
 ## Branches
-
-- `master`: Points to the current release of Steem.  Witnesses should be
-  running this branch. Each release commit will be tagged
+- `stable`: Points to the latest version of code that is production-ready, and has been tested in production.
+ Witnesses, exchanges, seed nodes, and RPC nodes should be running this branch. 
+- `master`: Points to the current release of Steem. Each release commit will be tagged
   `vMajor.Hardfork.Release`. When we get ready to release we will merge
   feature branches into `develop` and then do a single merge into `master`
   via a Pull Request. All PRs to `master` must pass automated testing to be
@@ -19,7 +19,7 @@ post](http://www.draconianoverlord.com/2013/09/07/no-cherry-picking.html).
   guarantee that the branch is buildable in our standard build configuration
   and passes the current suite of tests. That being said, running a node
   from `develop` has risks.  We recommend that any block producing node
-  build from `master`. If you want to test new features, develop is the
+  build from `stable`. If you want to test new features, develop is the
   correct branch.
 
 ### Patch Branches
