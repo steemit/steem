@@ -71,8 +71,12 @@ namespace mongo_db {
 
     using named_document_ptr = std::unique_ptr<named_document>;
 
+    inline std::string hash_oid(const std::string& value) {
+        return fc::sha1::hash(value).str().substr(0, 24);
+    }
+
     inline void format_oid(document& doc, const std::string& name, const std::string& value) {
-        auto oid = fc::sha1::hash(value).str().substr(0, 24);
+        auto oid = hash_oid(value);
         doc << name << bsoncxx::oid(oid);
     }
 

@@ -90,7 +90,7 @@ namespace mongo_db {
 
         db_map &all_docs;
 
-        void format_comment(const std::string& auth, const std::string& perm);
+        bool format_comment(const std::string& auth, const std::string& perm);
 
         named_document create_document(const std::string& name,
             const std::string& key, const std::string& keyval);
