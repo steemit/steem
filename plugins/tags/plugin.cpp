@@ -404,15 +404,15 @@ namespace golos { namespace plugins { namespace tags {
             }
 
             discussion d = create_discussion(*comment);
-
-            fill_discussion(d, query);
             d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
-            d.hot = itr->hot;
-            d.trending = itr->trending;
 
             if (!select(d) || !query.is_good_tags(d)) {
                 continue;
             }
+
+            fill_discussion(d, query);
+            d.hot = itr->hot;
+            d.trending = itr->trending;
 
             if (query.has_start_comment() && !query.is_good_start(d.id) && !order(query.start_comment, d)) {
                 continue;
