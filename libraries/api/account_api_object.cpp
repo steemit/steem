@@ -51,19 +51,21 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
 
     auto post = db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(name, bandwidth_type::post));
     if (post != nullptr) {
-        last_root_post = post->last_bandwidth_update;
         post_bandwidth = post->average_bandwidth;
+        last_root_post = post->last_bandwidth_update;
     }
 
     auto forum = db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(name, bandwidth_type::forum));
     if (forum != nullptr) {
-        new_average_bandwidth = forum->average_bandwidth;
+        average_bandwidth = forum->average_bandwidth;
+        lifetime_bandwidth = forum->lifetime_bandwidth;
         last_bandwidth_update = forum->last_bandwidth_update;
     }
 
     auto market = db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(name, bandwidth_type::market));
     if (market != nullptr) {
-        new_average_market_bandwidth = market->average_bandwidth;
+        average_market_bandwidth = market->average_bandwidth;
+        lifetime_market_bandwidth = market->lifetime_bandwidth;
         last_market_bandwidth_update = market->last_bandwidth_update;
     }
 }
