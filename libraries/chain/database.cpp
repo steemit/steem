@@ -1740,7 +1740,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                else
                {
                               auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-                              push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), vest_created ) )
+                              push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), vest_created ) );
                }
 
                total_beneficiary += benefactor_tokens;
