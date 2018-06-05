@@ -5,8 +5,7 @@
 #include <golos/protocol/steem_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
 
-namespace golos {
-    namespace protocol {
+namespace golos { namespace protocol {
 
         /** NOTE: do not change the order of any operations prior to the virtual operations
          * or it will trigger a hardfork.
@@ -89,7 +88,7 @@ namespace golos {
                                                  flat_set<string>& active,
                                                  flat_set<string>& owner,
                                                  flat_set<string>& posting,
-                                                 vector<authority>&  other );
+                                                 vector<authority>& other );
 
         void operation_validate( const operation& op );*/
 
@@ -103,12 +102,11 @@ namespace golos {
             operation op;
         };
 
-    }
-} // golos::protocol
+} } // golos::protocol
 
 /*namespace fc {
-    void to_variant( const golos::protocol::operation& var,  fc::variant& vo );
-    void from_variant( const fc::variant& var,  golos::protocol::operation& vo );
+    void to_variant(const golos::protocol::operation& var, fc::variant& vo);
+    void from_variant(const fc::variant& var, golos::protocol::operation& vo);
 }*/
 
 DECLARE_OPERATION_TYPE(golos::protocol::operation)

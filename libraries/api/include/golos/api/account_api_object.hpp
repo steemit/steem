@@ -81,20 +81,18 @@ struct account_api_object {
 
     uint16_t witnesses_voted_for;
 
-    share_type average_bandwidth = 0;
-    share_type lifetime_bandwidth = 0;
+    share_type average_bandwidth;
+    share_type average_market_bandwidth;
+    share_type lifetime_bandwidth;
+    share_type lifetime_market_bandwidth;
     time_point_sec last_bandwidth_update;
-
-    share_type average_market_bandwidth = 0;
     time_point_sec last_market_bandwidth_update;
     time_point_sec last_post;
     time_point_sec last_root_post;
     share_type post_bandwidth = STEEMIT_100_PERCENT;
 
-    share_type new_average_bandwidth;
-    share_type new_average_market_bandwidth;
     set<string> witness_votes;
-    
+
     fc::optional<share_type> reputation;
 };
 
@@ -110,9 +108,10 @@ FC_REFLECT((golos::api::account_api_object),
     (savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
     (savings_withdraw_requests)(vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
     (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
-    (curation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)(average_bandwidth)
-    (lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(last_market_bandwidth_update)
-    (last_post)(last_root_post)(post_bandwidth)(new_average_bandwidth)(new_average_market_bandwidth)
+    (curation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)
+    (average_bandwidth)(average_market_bandwidth)(lifetime_bandwidth)(lifetime_market_bandwidth)
+    (last_bandwidth_update)(last_market_bandwidth_update)
+    (last_post)(last_root_post)(post_bandwidth)
     (witness_votes)(reputation))
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

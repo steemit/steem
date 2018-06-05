@@ -344,7 +344,7 @@ namespace golos { namespace chain {
                     return block_id_type();
                 }
 
-                // Reversible blocks are *usually* in the TAPOS buffer.  Since this
+                // Reversible blocks are *usually* in the TAPOS buffer. Since this
                 // is the fastest check, we do it first.
                 block_summary_id_type bsid = block_num & 0xFFFF;
                 const block_summary_object *bs = find<block_summary_object, by_id>(bsid);
@@ -355,7 +355,7 @@ namespace golos { namespace chain {
                     }
                 }
 
-                // Next we query the block log.   Irreversible blocks are here.
+                // Next we query the block log. Irreversible blocks are here.
 
                 auto b = _block_log.read_block_by_num(block_num);
                 if (b.valid()) {
@@ -581,69 +581,12 @@ namespace golos { namespace chain {
             adjust_supply(-fee);
         }
 
-        void database::old_update_account_bandwidth(const account_object &a, uint32_t trx_size, const bandwidth_type type) {
-            try {
-                const auto &props = get_dynamic_global_properties();
-                if (props.total_vesting_shares.amount > 0) {
-                    FC_ASSERT(a.vesting_shares.amount >
-                              0, "Only accounts with a postive vesting balance may transact.");
-
-                    auto band = find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(a.name, type));
-
-                    if (band == nullptr) {
-                        band = &create<account_bandwidth_object>([&](account_bandwidth_object &b) {
-                            b.account = a.name;
-                            b.type = type;
-                        });
-                    }
-
-                    modify(*band, [&](account_bandwidth_object &b) {
-                        b.lifetime_bandwidth +=
-                                trx_size * STEEMIT_BANDWIDTH_PRECISION;
-
-                        auto now = head_block_time();
-                        auto delta_time = (now -
-                                           b.last_bandwidth_update).to_seconds();
-                        uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-                        if (delta_time >=
-                            STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) {
-                            b.average_bandwidth = N;
-                        } else {
-                            auto old_weight = b.average_bandwidth *
-                                              (STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS -
-                                               delta_time);
-                            auto new_weight = delta_time * N;
-                            b.average_bandwidth = (old_weight + new_weight) /
-                                                  STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS;
-                        }
-
-                        b.last_bandwidth_update = now;
-                    });
-
-                    fc::uint128_t account_vshares(a.vesting_shares.amount.value);
-                    fc::uint128_t total_vshares(props.total_vesting_shares.amount.value);
-
-                    fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
-                    fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
-
-                    FC_ASSERT((account_vshares * max_virtual_bandwidth) >
-                              (account_average_bandwidth * total_vshares),
-                            "Account exceeded maximum allowed bandwidth per vesting share.",
-                            ("account_vshares", account_vshares)
-                                    ("account_average_bandwidth", account_average_bandwidth)
-                                    ("max_virtual_bandwidth", max_virtual_bandwidth)
-                                    ("total_vesting_shares", total_vshares));
-                }
-            } FC_CAPTURE_AND_RETHROW()
-        }
-
         bool database::update_account_bandwidth(const account_object &a, uint32_t trx_size, const bandwidth_type type) {
             const auto &props = get_dynamic_global_properties();
             bool has_bandwidth = true;
 
             if (props.total_vesting_shares.amount > 0) {
                 auto band = find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(a.name, type));
-
                 if (band == nullptr) {
                     band = &create<account_bandwidth_object>([&](account_bandwidth_object &b) {
                         b.account = a.name;
@@ -652,11 +595,8 @@ namespace golos { namespace chain {
                 }
 
                 share_type new_bandwidth;
-                share_type trx_bandwidth =
-                        trx_size * STEEMIT_BANDWIDTH_PRECISION;
-                auto delta_time = (head_block_time() -
-                                   band->last_bandwidth_update).to_seconds();
-
+                share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
+                auto delta_time = (head_block_time() - band->last_bandwidth_update).to_seconds();
                 if (delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) {
                     new_bandwidth = 0;
                 } else {
@@ -681,16 +621,14 @@ namespace golos { namespace chain {
                 fc::uint128_t account_average_bandwidth(band->average_bandwidth.value);
                 fc::uint128_t max_virtual_bandwidth(props.max_virtual_bandwidth);
 
-                has_bandwidth = (account_vshares * max_virtual_bandwidth) >
-                                (account_average_bandwidth * total_vshares);
+                has_bandwidth = (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares);
 
                 if (is_producing())
-                    FC_ASSERT(has_bandwidth,
-                            "Account exceeded maximum allowed bandwidth per vesting share.",
-                            ("account_vshares", account_vshares)
-                                    ("account_average_bandwidth", account_average_bandwidth)
-                                    ("max_virtual_bandwidth", max_virtual_bandwidth)
-                                    ("total_vesting_shares", total_vshares));
+                    FC_ASSERT(has_bandwidth, "Account exceeded maximum allowed bandwidth per vesting share.",
+                        ("account_vshares", account_vshares)
+                        ("account_average_bandwidth", account_average_bandwidth)
+                        ("max_virtual_bandwidth", max_virtual_bandwidth)
+                        ("total_vesting_shares", total_vshares));
             }
 
             return has_bandwidth;
@@ -772,7 +710,7 @@ namespace golos { namespace chain {
         }
 
        /**
-        * Push block "may fail" in which case every partial change is unwound.  After
+        * Push block "may fail" in which case every partial change is unwound. After
         * push block is successful the block is appended to the chain database on disk.
         *
         * @return true if we switched forks as a result of this push.
@@ -934,7 +872,7 @@ namespace golos { namespace chain {
 
             // Create a temporary undo session as a child of _pending_tx_session.
             // The temporary session will be discarded by the destructor if
-            // _apply_transaction fails.  If we make it to merge(), we
+            // _apply_transaction fails. If we make it to merge(), we
             // apply the changes.
 
             auto temp_session = start_undo_session();
@@ -996,7 +934,7 @@ namespace golos { namespace chain {
                 // This rebuild is necessary because pending transactions' validity
                 // and semantics may have changed since they were received, because
                 // time-based semantics are evaluated based on the current block
-                // time.  These changes can only be reflected in the database when
+                // time. These changes can only be reflected in the database when
                 // the value of the "when" variable is known, which means we need to
                 // re-apply pending transactions in this method.
                 //
@@ -1088,7 +1026,7 @@ namespace golos { namespace chain {
                 pending_block.sign(block_signing_private_key);
             }
 
-            // TODO:  Move this to _push_block() so session is restored.
+            // TODO: Move this to _push_block() so session is restored.
             if (!(skip & skip_block_size_check)) {
                 FC_ASSERT(fc::raw::pack_size(pending_block) <= STEEMIT_MAX_BLOCK_SIZE);
             }
@@ -1267,7 +1205,7 @@ namespace golos { namespace chain {
                  *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
                  *  change as the result of the user adding funds
                  *
-                 *  V / C  = (V+Vn) / (C+Cn)
+                 *  V / C = (V+Vn) / (C+Cn)
                  *
                  *  Simplifies to Vn = (V * Cn ) / C
                  *
@@ -1963,7 +1901,7 @@ namespace golos { namespace chain {
       *  Let V = total vesting shares
       *  Let v = total vesting shares being cashed out
       *
-      *  The user may withdraw  vT / V tokens
+      *  The user may withdraw vT / V tokens
       */
                 share_type to_withdraw;
                 if (from_account.to_withdraw - from_account.withdrawn <
@@ -2269,7 +2207,7 @@ namespace golos { namespace chain {
 
         void database::process_comment_cashout() {
             /// don't allow any content to get paid out until the website is ready to launch
-            /// and people have had a week to start posting.  The first cashout will be the biggest because it
+            /// and people have had a week to start posting. The first cashout will be the biggest because it
             /// will represent 2+ months of rewards.
 //            if (!has_hardfork(STEEMIT_FIRST_CASHOUT_TIME)) {
 //                return;
@@ -3448,7 +3386,7 @@ namespace golos { namespace chain {
                         }
                     }
                     else {
-                        if ( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE && !wit.sbd_exchange_rate.is_null() ) { 
+                        if ( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE && !wit.sbd_exchange_rate.is_null() ) {
 
                             feeds.push_back(wit.sbd_exchange_rate);
                         }
@@ -3525,14 +3463,11 @@ namespace golos { namespace chain {
 
                 auto trx_size = fc::raw::pack_size(trx);
 
-                for (const auto &auth : required) {
-                    const auto &acnt = get_account(auth);
-
-                    old_update_account_bandwidth(acnt, trx_size, bandwidth_type::old_forum);
+                for (const auto& auth : required) {
+                    const auto& acnt = get_account(auth);
                     update_account_bandwidth(acnt, trx_size, bandwidth_type::forum);
-                    for (const auto &op : trx.operations) {
+                    for (const auto& op : trx.operations) {
                         if (is_market_operation(op)) {
-                            old_update_account_bandwidth(acnt, trx_size, bandwidth_type::old_market);
                             update_account_bandwidth(acnt, trx_size * 10, bandwidth_type::market);
                             break;
                         }
@@ -3663,7 +3598,7 @@ namespace golos { namespace chain {
        *  their capacity.
        *
        *  When the reserve ratio is at its max (check STEEMIT_MAX_RESERVE_RATIO) a 50%
-       *  reduction will take 3 to 4 days to return back to maximum.  When it is at its
+       *  reduction will take 3 to 4 days to return back to maximum. When it is at its
        *  minimum it will return back to its prior level in just a few minutes.
        *
        *  If the network reserve ratio falls under 100 then it is probably time to
@@ -3974,7 +3909,7 @@ namespace golos { namespace chain {
                     });
                     /**
           *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
-          *  have hit the limit where the seller is asking for nothing in return.  When this
+          *  have hit the limit where the seller is asking for nothing in return. When this
           *  happens we must refund any balance back to the seller, it is too small to be
           *  sold at the sale price.
           */

@@ -506,8 +506,7 @@ namespace golos { namespace chain {
                         }
                     }
 
-                    auto band = _db.find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(o.author, bandwidth_type::post));
-
+                    auto band = _db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(o.author, bandwidth_type::post));
                     if (band == nullptr) {
                         band = &_db.create<account_bandwidth_object>([&](account_bandwidth_object &b) {
                             b.account = o.author;
@@ -2162,36 +2161,34 @@ namespace golos { namespace chain {
         }
 
         void reset_account_evaluator::do_apply(const reset_account_operation &op) {
-            database &_db = db();
             FC_ASSERT(false, "Reset Account Operation is currently disabled.");
-
-            const auto &acnt = _db.get_account(op.account_to_reset);
-            auto band = _db.find<account_bandwidth_object, by_account_bandwidth_type>(boost::make_tuple(op.account_to_reset, bandwidth_type::old_forum));
+/*
+            database& _db = db();
+            const auto& acnt = _db.get_account(op.account_to_reset);
+            auto band = _db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(op.account_to_reset, bandwidth_type::old_forum));
             if (band != nullptr)
-                FC_ASSERT(
-                        (_db.head_block_time() - band->last_bandwidth_update) >
-                        fc::days(60), "Account must be inactive for 60 days to be eligible for reset");
-            FC_ASSERT(acnt.reset_account ==
-                      op.reset_account, "Reset account does not match reset account on account.");
-
+                FC_ASSERT((_db.head_block_time() - band->last_bandwidth_update) > fc::days(60),
+                    "Account must be inactive for 60 days to be eligible for reset");
+            FC_ASSERT(acnt.reset_account == op.reset_account, "Reset account does not match reset account on account.");
             _db.update_owner_authority(acnt, op.new_owner_authority);
+*/
         }
 
         void set_reset_account_evaluator::do_apply(const set_reset_account_operation &op) {
-            database &_db = db();
             FC_ASSERT(false, "Set Reset Account Operation is currently disabled.");
-
-            const auto &acnt = _db.get_account(op.account);
+/*
+            database& _db = db();
+            const auto& acnt = _db.get_account(op.account);
             _db.get_account(op.reset_account);
 
-            FC_ASSERT(acnt.reset_account ==
-                      op.current_reset_account, "Current reset account does not match reset account on account.");
-            FC_ASSERT(acnt.reset_account !=
-                      op.reset_account, "Reset account must change");
+            FC_ASSERT(acnt.reset_account == op.current_reset_account,
+                "Current reset account does not match reset account on account.");
+            FC_ASSERT(acnt.reset_account != op.reset_account, "Reset account must change");
 
-            _db.modify(acnt, [&](account_object &a) {
+            _db.modify(acnt, [&](account_object& a) {
                 a.reset_account = op.reset_account;
             });
+*/
         }
 
         void delegate_vesting_shares_evaluator::do_apply(const delegate_vesting_shares_operation& op) {

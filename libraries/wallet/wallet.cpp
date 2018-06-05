@@ -110,7 +110,7 @@ namespace golos { namespace wallet {
                 while (i < n) {
                     char c = s[i++];
                     switch (c) {
-                        case ' ':  case '\t': case '\r': case '\n': case '\v': case '\f':
+                        case ' ': case '\t': case '\r': case '\n': case '\v': case '\f':
                             preceded_by_whitespace = true;
                             continue;
 
@@ -539,8 +539,7 @@ namespace golos { namespace wallet {
                 }
 
                 bool load_wallet_file(string wallet_filename = "") {
-                    // TODO:  Merge imported wallet with existing wallet,
-                    //        instead of replacing it
+                    // TODO: Merge imported wallet with existing wallet, instead of replacing it
                     if( wallet_filename == "" )
                         wallet_filename = _wallet_filename;
 
@@ -572,7 +571,7 @@ namespace golos { namespace wallet {
                         enable_umask_protection();
                         //
                         // Parentheses on the following declaration fails to compile,
-                        // due to the Most Vexing Parse.  Thanks, C++
+                        // due to the Most Vexing Parse. Thanks, C++
                         //
                         // http://en.wikipedia.org/wiki/Most_vexing_parse
                         //
@@ -588,7 +587,7 @@ namespace golos { namespace wallet {
                 }
 
                 // This function generates derived keys starting with index 0 and keeps incrementing
-                // the index until it finds a key that isn't registered in the block chain.  To be
+                // the index until it finds a key that isn't registered in the block chain. To be
                 // safer, it continues checking for a few more keys to make sure there wasn't a short gap
                 // caused by a failed registration or the like.
                 int find_first_unused_derived_key_index(const fc::ecc::private_key& parent_key) {
@@ -677,10 +676,10 @@ namespace golos { namespace wallet {
 
                 annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
                 {
-                    flat_set< account_name_type >   req_active_approvals;
-                    flat_set< account_name_type >   req_owner_approvals;
-                    flat_set< account_name_type >   req_posting_approvals;
-                    vector< authority >  other_auths;
+                    flat_set< account_name_type > req_active_approvals;
+                    flat_set< account_name_type > req_owner_approvals;
+                    flat_set< account_name_type > req_posting_approvals;
+                    vector< authority > other_auths;
 
                     tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
 
@@ -716,7 +715,7 @@ namespace golos { namespace wallet {
                             i++;
                             continue;
                         }
-                        approving_account_lut[ approving_acct->name ] =  *approving_acct;
+                        approving_account_lut[ approving_acct->name ] = *approving_acct;
                         i++;
                     }
                     auto get_account_from_lut = [&]( const std::string& name ) -> const golos::api::account_api_object& {
@@ -817,7 +816,7 @@ namespace golos { namespace wallet {
                             rtrx.transaction_num = result.trx_num;
                             return rtrx;
                         } catch (const fc::exception& e) {
-                            elog("Caught exception while broadcasting tx ${id}:  ${e}", ("id", tx.id().str())("e", e.to_detail_string()) );
+                            elog("Caught exception while broadcasting tx ${id}: ${e}", ("id", tx.id().str())("e", e.to_detail_string()) );
                             throw;
                         }
                     }
@@ -843,8 +842,8 @@ namespace golos { namespace wallet {
                         asset total_sbd(0, SBD_SYMBOL );
                         for( const auto& a : accounts ) {
                             total_steem += a.balance;
-                            total_vest  += a.vesting_shares;
-                            total_sbd  += a.sbd_balance;
+                            total_vest += a.vesting_shares;
+                            total_sbd += a.sbd_balance;
                             out << std::left << std::setw( 17 ) << std::string(a.name)
                                 << std::right << std::setw(18) << fc::variant(a.balance).as_string() <<" "
                                 << std::right << std::setw(26) << fc::variant(a.vesting_shares).as_string() <<" "
@@ -1543,7 +1542,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
                 account_update_operation op;
                 op.account = account_name;
-                op.owner  = authority( 1, owner, 1 );
+                op.owner = authority( 1, owner, 1 );
                 op.active = authority( 1, active, 1);
                 op.posting = authority( 1, posting, 1);
                 op.memo_key = memo;
@@ -2149,7 +2148,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 /**
  *  Transfers into savings happen immediately, transfers from savings take 72 hours
  */
-        annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
+        annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast)
         {
             FC_ASSERT( !is_locked() );
             check_memo( memo, get_account( from ) );
@@ -2169,7 +2168,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 /**
  * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
  */
-        annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast  )
+        annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast)
         {
             FC_ASSERT( !is_locked() );
             check_memo( memo, get_account( from ) );
@@ -2191,7 +2190,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
  *  @param request_id the id used in transfer_from_savings
  *  @param from the account that initiated the transfer
  */
-        annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast  )
+        annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast)
         {
             FC_ASSERT( !is_locked() );
             cancel_transfer_from_savings_operation op;
@@ -2291,7 +2290,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                     fc::sha512 shared_secret;
                     auto from_key = my->try_get_private_key( m->from );
                     if( !from_key ) {
-                        auto to_key   = my->try_get_private_key( m->to );
+                        auto to_key = my->try_get_private_key( m->to );
                         if( !to_key ) return encrypted_memo;
                         shared_secret = to_key->get_shared_secret( m->from );
                     } else {
@@ -2362,7 +2361,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->_remote_database_api->get_open_orders( owner );
         }
 
-        annotated_signed_transaction wallet_api::create_order(  string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast ) {
+        annotated_signed_transaction wallet_api::create_order(string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast) {
             FC_ASSERT( !is_locked() );
             limit_order_create_operation op;
             op.owner = owner;
@@ -2395,7 +2394,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         annotated_signed_transaction wallet_api::post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast ) {
             FC_ASSERT( !is_locked() );
             comment_operation op;
-            op.parent_author =  parent_author;
+            op.parent_author = parent_author;
             op.parent_permlink = parent_permlink;
             op.author = author;
             op.permlink = permlink;
@@ -2508,7 +2507,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 const bool broadcast) {
             string _following = following;
 
-            auto follwer_account     = get_account( follower );
+            auto follwer_account = get_account( follower );
             FC_ASSERT( _following.size() );
             if( _following[0] != '@' || _following[0] != '#' ) {
                 _following = '@' + _following;

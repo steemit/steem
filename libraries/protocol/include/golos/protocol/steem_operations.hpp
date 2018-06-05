@@ -422,7 +422,7 @@ namespace golos { namespace protocol {
 
         /**
          * Witnesses must vote on how to set certain chain properties to ensure a smooth
-         * and well functioning network.  Any time @owner is in the active set of witnesses these
+         * and well functioning network. Any time @owner is in the active set of witnesses these
          * properties will be used to control the blockchain configuration.
          */
         struct chain_properties_17 {
@@ -456,7 +456,7 @@ namespace golos { namespace protocol {
 
         /**
          * Witnesses must vote on how to set certain chain properties to ensure a smooth
-         * and well functioning network.  Any time @owner is in the active set of witnesses these
+         * and well functioning network. Any time @owner is in the active set of witnesses these
          * properties will be used to control the blockchain configuration.
          */
         struct chain_properties_18: public chain_properties_17 {
@@ -524,13 +524,13 @@ namespace golos { namespace protocol {
          *  the current witnesses to apply for the position and allow voting
          *  to begin.
          *
-         *  If the owner isn't a witness they will become a witness.  Witnesses
+         *  If the owner isn't a witness they will become a witness. Witnesses
          *  are charged a fee equal to 1 weeks worth of witness pay which in
-         *  turn is derived from the current share supply.  The fee is
+         *  turn is derived from the current share supply. The fee is
          *  only applied if the owner is not already a witness.
          *
          *  If the block_signing_key is null then the witness is removed from
-         *  contention.  The network will pick the top 21 witnesses for
+         *  contention. The network will pick the top 21 witnesses for
          *  producing blocks.
          */
         struct witness_update_operation : public base_operation {
