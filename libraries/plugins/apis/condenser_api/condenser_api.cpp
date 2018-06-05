@@ -1738,7 +1738,11 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
 
-      return _follow_api->get_feed( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
+      auto feed = _follow_api->get_feed( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
+      get_feed_return result;
+      result.resize( feed.size() );
+      result.insert( result.end(), feed.begin(), feed.end() );
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_blog_entries )
@@ -1754,7 +1758,11 @@ namespace detail
       FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
 
-      return _follow_api->get_blog( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
+      auto blog = _follow_api->get_blog( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
+      get_blog_return result;
+      result.resize( blog.size() );
+      result.insert( result.end(), blog.begin(), blog.end() );
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_account_reputations )
