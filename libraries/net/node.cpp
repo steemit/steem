@@ -3964,7 +3964,7 @@ namespace graphene { namespace net {
       }
       else
       {
-        STATSD_TIMER( "p2p", "latency", fc::variant( message_to_process.msg_type ).as_string(), message_receive_time - iter->second, 0.1f );
+        STATSD_TIMER( "p2p", "latency", fc::variant( core_message_type_enum( message_to_process.msg_type ) ).as_string(), message_receive_time - iter->second, 0.1f );
         originating_peer->items_requested_from_peer.erase( iter );
         if (originating_peer->idle())
           trigger_fetch_items_loop();
