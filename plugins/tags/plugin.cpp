@@ -10,8 +10,6 @@
 // These visitors creates additional tables, we don't really need them in LOW_MEM mode
 #include <golos/plugins/tags/tag_visitor.hpp>
 #include <golos/chain/operation_notification.hpp>
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
 
 #define CHECK_ARG_SIZE(_S)                                 \
    FC_ASSERT(                                              \
