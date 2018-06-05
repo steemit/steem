@@ -404,12 +404,13 @@ namespace golos { namespace plugins { namespace tags {
             }
 
             discussion d = create_discussion(*comment);
+            d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
+
             if (!select(d) || !query.is_good_tags(d)) {
                 continue;
             }
 
             fill_discussion(d, query);
-            d.promoted = itr->promoted_balance;
             d.hot = itr->hot;
             d.trending = itr->trending;
 
