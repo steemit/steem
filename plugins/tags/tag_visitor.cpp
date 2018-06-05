@@ -85,25 +85,21 @@ namespace golos { namespace plugins { namespace tags {
         const tag_object& current, const comment_object& comment, double hot, double trending
     ) const {
         auto cashout_time = db_.calculate_discussion_payout_time(comment);
-        if (cashout_time != fc::time_point_sec::maximum()) {
-            remove_stats(current);
-            db_.modify(current, [&](tag_object& obj) {
-                obj.active = comment.active;
-                obj.cashout = cashout_time;
-                obj.children = comment.children;
-                obj.net_rshares = comment.net_rshares.value;
-                obj.net_votes = comment.net_votes;
-                obj.children_rshares2 = comment.children_rshares2;
-                obj.hot = hot;
-                obj.trending = trending;
-                if (obj.cashout == fc::time_point_sec()) {
-                    obj.promoted_balance = 0;
-                }
-            });
-            add_stats(current);
-        } else {
-            remove_tag(current);
-        }
+        remove_stats(current);
+        db_.modify(current, [&](tag_object& obj) {
+            obj.active = comment.active;
+            obj.cashout = cashout_time;
+            obj.children = comment.children;
+            obj.net_rshares = comment.net_rshares.value;
+            obj.net_votes = comment.net_votes;
+            obj.children_rshares2 = comment.children_rshares2;
+            obj.hot = hot;
+            obj.trending = trending;
+            if (obj.cashout == fc::time_point_sec()) {
+                obj.promoted_balance = 0;
+            }
+        });
+        add_stats(current);
     }
 
     void operation_visitor::create_tag(
@@ -166,79 +162,101 @@ namespace golos { namespace plugins { namespace tags {
         return calculate_score<10000000, 10000>(score, created);
     }
 
-    double
-    operation_visitor::calculate_trending(const share_type& score, const time_point_sec& created) const {
+    double operation_visitor::calculate_trending(const share_type& score, const time_point_sec& created) const {
         return calculate_score<10000000, 480000>(score, created);
     }
 
-    void operation_visitor::update_tags(
-        const account_name_type& author, const std::string& permlink, bool parse_tags
-    ) const {
+    void operation_visitor::create_update_tags(
+        const account_name_type& author, const std::string& permlink
+    ) const { try {
         const auto& comment = db_.get_comment(author, permlink);
-        try {
-            auto hot = calculate_hot(comment.net_rshares, comment.created);
-            auto trending = calculate_trending(comment.net_rshares, comment.created);
-            const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
+        auto hot = calculate_hot(comment.net_rshares, comment.created);
+        auto trending = calculate_trending(comment.net_rshares, comment.created);
+        const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
 
-            if (parse_tags) {
-                auto meta = get_metadata(comment_api_object(comment, db_));
-                auto citr = comment_idx.lower_bound(comment.id);
-                const tag_object* language_tag = nullptr;
+        auto meta = get_metadata(comment_api_object(comment, db_));
+        auto citr = comment_idx.lower_bound(comment.id);
+        const tag_object* language_tag = nullptr;
 
-                if (meta.tags.empty()) {
-                    meta.tags.insert(std::string());
-                }
+        if (meta.tags.empty()) {
+            meta.tags.insert(std::string());
+        }
 
-                std::map<std::string, const tag_object*> existing_tags;
-                std::vector<const tag_object*> remove_queue;
-                for (; citr != comment_idx.end() && citr->comment == comment.id; ++citr) {
-                    const tag_object* tag = &*citr;
-                    switch (tag->type) {
-                        case tag_type::tag:
-                            if (meta.tags.find(tag->name) == meta.tags.end()) {
-                                remove_queue.push_back(tag);
-                            } else {
-                                existing_tags[tag->name] = tag;
-                            }
-                            break;
-
-                        case tag_type::language:
-                            language_tag = tag;
-                            if (meta.language != language_tag->name) {
-                                remove_queue.push_back(tag);
-                            }
-                            break;
-                    }
-                }
-
-                for (const auto& name : meta.tags) {
-                    auto existing = existing_tags.find(name);
-                    if (existing == existing_tags.end()) {
-                        create_tag(name, tag_type::tag, comment, hot, trending);
+        std::map<std::string, const tag_object*> existing_tags;
+        std::vector<const tag_object*> remove_queue;
+        for (; citr != comment_idx.end() && citr->comment == comment.id; ++citr) {
+            const tag_object* tag = &*citr;
+            switch (tag->type) {
+                case tag_type::tag:
+                    if (meta.tags.find(tag->name) == meta.tags.end()) {
+                        remove_queue.push_back(tag);
                     } else {
-                        update_tag(*existing->second, comment, hot, trending);
+                        existing_tags[tag->name] = tag;
                     }
-                }
+                    break;
 
-                if (!meta.language.empty() && (!language_tag || meta.language != language_tag->name)) {
-                    create_tag(meta.language, tag_type::language, comment, hot, trending);
-                }
+                case tag_type::language:
+                    language_tag = tag;
+                    if (meta.language != language_tag->name) {
+                        remove_queue.push_back(tag);
+                    }
+                    break;
+            }
+        }
 
-                for (const auto& item : remove_queue) {
-                    remove_tag(*item);
-                }
+        for (const auto& name : meta.tags) {
+            auto existing = existing_tags.find(name);
+            if (existing == existing_tags.end()) {
+                create_tag(name, tag_type::tag, comment, hot, trending);
             } else {
-                auto citr = comment_idx.lower_bound(comment.id);
-                while (citr != comment_idx.end() && citr->comment == comment.id) {
-                    update_tag(*citr, comment, hot, trending);
-                    ++citr;
-                }
+                update_tag(*existing->second, comment, hot, trending);
             }
+        }
 
-            if (comment.parent_author.size()) {
-                update_tags(comment.parent_author, to_string(comment.parent_permlink));
-            }
-        } FC_CAPTURE_LOG_AND_RETHROW(())
+        if (!meta.language.empty() && (!language_tag || meta.language != language_tag->name)) {
+            create_tag(meta.language, tag_type::language, comment, hot, trending);
+        }
+
+        for (const auto& item : remove_queue) {
+            remove_tag(*item);
+        }
+    } FC_CAPTURE_LOG_AND_RETHROW(()) }
+
+    void operation_visitor::update_tags(const account_name_type& author, const std::string& permlink) const {
+        const auto& comment = db_.get_comment(author, permlink);
+        auto hot = calculate_hot(comment.net_rshares, comment.created);
+        auto trending = calculate_trending(comment.net_rshares, comment.created);
+        const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
+
+        auto citr = comment_idx.lower_bound(comment.id);
+        for (; citr != comment_idx.end() && citr->comment == comment.id; ++citr) {
+            update_tag(*citr, comment, hot, trending);
+        }
+
+        if (comment.parent_author.size()) {
+            update_tags(comment.parent_author, to_string(comment.parent_permlink));
+        }
+    }
+
+    void operation_visitor::remove_tags(const account_name_type& author, const std::string& permlink) const {
+        const auto& comment = db_.get_comment(author, permlink);
+        const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
+        std::vector<const tag_object*> remove_queue;
+
+        remove_queue.reserve(10);
+        auto citr = comment_idx.lower_bound(comment.id);
+        for (; citr != comment_idx.end() && citr->comment == comment.id; ++citr) {
+            const tag_object* tag = &*citr;
+            remove_queue.push_back(tag);
+        }
+
+        for (const auto& tag : remove_queue) {
+            remove_tag(*tag);
+        }
+
+        if (comment.parent_author.size()) {
+            update_tags(comment.parent_author, to_string(comment.parent_permlink));
+        }
     }
 
     void operation_visitor::operator()(const transfer_operation& op) const {
@@ -285,6 +303,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const comment_reward_operation& op) const {
+        // only update existing tags
         update_tags(op.author, op.permlink);
 
         const auto& comment = db_.get_comment(op.author, op.permlink);
@@ -320,15 +339,29 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const comment_operation& op) const {
-        update_tags(op.author, op.permlink, true);
+        const auto& comment = db_.get_comment(op.author, op.permlink);
+
+        if (db_.calculate_discussion_payout_time(comment) != fc::time_point_sec::maximum()) {
+            // in a cashout window
+            create_update_tags(op.author, op.permlink);
+        }
     }
 
     void operation_visitor::operator()(const vote_operation& op) const {
+        // only update existing tags
         update_tags(op.author, op.permlink);
     }
 
     void operation_visitor::operator()(const comment_payout_update_operation& op) const {
-        update_tags(op.author, op.permlink);
+        const auto& comment = db_.get_comment(op.author, op.permlink);
+        const auto cashout_time = db_.calculate_discussion_payout_time(comment);
+
+        if (cashout_time != fc::time_point_sec::maximum()) {
+            update_tags(op.author, op.permlink);
+        } else {
+            // it can be the end of a cashout window
+            remove_tags(op.author, op.permlink);
+        }
     }
 
 } } } // golos::plugins::tags
