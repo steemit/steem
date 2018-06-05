@@ -14,6 +14,7 @@ env:
   - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
   - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
   - DOCKERFILE=share/golosd/docker/Dockerfile-lowmem DOCKERNAME="-lowmem"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-mongo DOCKERNAME="-mongo"
 
 matrix:
   fast_finish: true

@@ -1718,67 +1718,33 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            /// sort them by account_creation_fee
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.account_creation_fee.amount <
-                       b->props.account_creation_fee.amount;
-            });
-            asset median_account_creation_fee = active[active.size() / 2]->props.account_creation_fee;
+            chain_properties_18 median_props;
 
-            /// sort them by create_account_with_golos_modifier
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.create_account_with_golos_modifier <
-                       b->props.create_account_with_golos_modifier;
-            });
-            auto median_with_golos_modifier = active[active.size() / 2]->props.create_account_with_golos_modifier;
+            auto calc_median = [&](auto&& param) {
+                std::nth_element(
+                    active.begin(), active.begin() + active.size() / 2, active.end(),
+                    [&](const auto* a, const auto* b) {
+                        return a->props.*param < b->props.*param;
+                    }
+                );
+                median_props.*param = active[active.size() / 2]->props.*param;
+            };
 
-            /// sort them by create_account_delegation_ratio
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.create_account_delegation_ratio <
-                       b->props.create_account_delegation_ratio;
-            });
-            auto median_delegation_ratio = active[active.size() / 2]->props.create_account_delegation_ratio;
-
-            /// sort them by create_account_delegation_time
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.create_account_delegation_time <
-                       b->props.create_account_delegation_time;
-            });
-            auto median_delegation_time = active[active.size() / 2]->props.create_account_delegation_time;
-
-            /// sort them by min_delegation_multiplier
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.min_delegation_multiplier <
-                       b->props.min_delegation_multiplier;
-            });
-            auto median_delegation_multiplier = active[active.size() / 2]->props.min_delegation_multiplier;
-
-            /// sort them by maximum_block_size
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.maximum_block_size <
-                       b->props.maximum_block_size;
-            });
-            uint32_t median_maximum_block_size = active[active.size() / 2]->props.maximum_block_size;
-
-            /// sort them by sbd_interest_rate
-            std::sort(active.begin(), active.end(), [&](const witness_object *a, const witness_object *b) {
-                return a->props.sbd_interest_rate < b->props.sbd_interest_rate;
-            });
-            uint16_t median_sbd_interest_rate = active[active.size() / 2]->props.sbd_interest_rate;
+            calc_median(&chain_properties_17::account_creation_fee);
+            calc_median(&chain_properties_17::maximum_block_size);
+            calc_median(&chain_properties_17::sbd_interest_rate);
+            calc_median(&chain_properties_18::create_account_with_golos_modifier);
+            calc_median(&chain_properties_18::create_account_delegation_ratio);
+            calc_median(&chain_properties_18::create_account_delegation_time);
+            calc_median(&chain_properties_18::min_delegation_multiplier);
 
             modify(wso, [&](witness_schedule_object &_wso) {
-                _wso.median_props.account_creation_fee = median_account_creation_fee;
-                _wso.median_props.maximum_block_size = median_maximum_block_size;
-                _wso.median_props.sbd_interest_rate = median_sbd_interest_rate;
-                _wso.median_props.create_account_with_golos_modifier = median_with_golos_modifier;
-                _wso.median_props.create_account_delegation_ratio = median_delegation_ratio;
-                _wso.median_props.create_account_delegation_time = median_delegation_time;
-                _wso.median_props.min_delegation_multiplier = median_delegation_multiplier;
+                _wso.median_props = median_props;
             });
 
             modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &_dgpo) {
-                _dgpo.maximum_block_size = median_maximum_block_size;
-                _dgpo.sbd_interest_rate = median_sbd_interest_rate;
+                _dgpo.maximum_block_size = median_props.maximum_block_size;
+                _dgpo.sbd_interest_rate = median_props.sbd_interest_rate;
             });
         }
 

@@ -1850,46 +1850,71 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
  *  will be controlable by this wallet.
  */
 
-        annotated_signed_transaction wallet_api::update_witness( string witness_account_name,
-                                                                 string url,
-                                                                 public_key_type block_signing_key,
-                                                                 const chain_properties& props,
-                                                                 bool broadcast  )
-        {
-            FC_ASSERT( !is_locked() );
+        annotated_signed_transaction wallet_api::update_witness(
+            string witness_account_name,
+            string url,
+            public_key_type block_signing_key,
+            optional<chain_properties> props,
+            bool broadcast
+        ) {
+            FC_ASSERT(!is_locked());
 
-            witness_update_operation op;
-
-            optional< witness_api::witness_api_object > wit = my->_remote_witness_api->get_witness_by_account( witness_account_name );
-            if( !wit.valid() ) {
-                op.url = url;
-            } else {
-                FC_ASSERT( wit->owner == witness_account_name );
-                if( url != "" )
-                    op.url = url;
-                else
-                    op.url = wit->url;
-            }
-            op.owner = witness_account_name;
-            op.block_signing_key = block_signing_key;
-            op.props = props;
+            const auto hf = my->_remote_database_api->get_hardfork_version();
+            const auto has_hf18 = hf >= hardfork_version(0, STEEMIT_HARDFORK_0_18__673);
 
             signed_transaction tx;
+            witness_update_operation op;
+
+            auto wit = my->_remote_witness_api->get_witness_by_account(witness_account_name);
+            if (!wit.valid()) {
+                op.url = url;
+            } else {
+                FC_ASSERT(wit->owner == witness_account_name);
+                if (!url.empty()) {
+                    op.url = url;
+                } else {
+                    op.url = wit->url;
+                }
+            }
+
+            op.owner = witness_account_name;
+            op.block_signing_key = block_signing_key;
+
+            if (!has_hf18 && props.valid()) {
+                op.props = *props;
+            }
+
             tx.operations.push_back(op);
 
-            auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_18)) {
+            if (has_hf18 && props.valid()) {
                 chain_properties_update_operation chain_op;
                 chain_op.owner = witness_account_name;
-                chain_op.props = props;
+                chain_op.props = *props;
                 tx.operations.push_back(chain_op);
             }
 
             tx.validate();
 
+            return my->sign_transaction(tx, broadcast);
+        }
 
+        annotated_signed_transaction wallet_api::update_chain_properties(
+            string witness_account_name,
+            const chain_properties& props,
+            bool broadcast
+        ) {
+            FC_ASSERT(!is_locked());
 
-            return my->sign_transaction( tx, broadcast );
+            signed_transaction tx;
+            chain_properties_update_operation op;
+
+            op.owner = witness_account_name;
+            op.props = props;
+            tx.operations.push_back(op);
+
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
         }
 
         annotated_signed_transaction wallet_api::vote_for_witness(string voting_account, string witness_to_vote_for, bool approve, bool broadcast )

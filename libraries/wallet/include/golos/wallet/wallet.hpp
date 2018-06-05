@@ -661,11 +661,26 @@ namespace golos { namespace wallet {
              * @param props The chain properties the witness is voting on.
              * @param broadcast true if you wish to broadcast the transaction.
              */
-            annotated_signed_transaction update_witness(string witness_name,
-                                                        string url,
-                                                        public_key_type block_signing_key,
-                                                        const chain_properties& props,
-                                                        bool broadcast = false);
+            annotated_signed_transaction update_witness(
+                string witness_name,
+                string url,
+                public_key_type block_signing_key,
+                optional<chain_properties> props,
+                bool broadcast = false
+            );
+
+            /**
+             * Vote for the chain properties
+             *
+             * @param witness_name The name of the witness account.
+             * @param props The chain properties the witness is voting on.
+             * @param broadcast true if you wish to broadcast the transaction.
+             */
+            annotated_signed_transaction update_chain_properties(
+                string witness_name,
+                const chain_properties& props,
+                bool broadcast = false
+            );
 
             /** Set the voting proxy for an account.
              *
@@ -1134,6 +1149,7 @@ FC_API( golos::wallet::wallet_api,
                 (update_account_memo_key)
                 (delegate_vesting_shares)
                 (update_witness)
+                (update_chain_properties)
                 (set_voting_proxy)
                 (vote_for_witness)
                 //(follow)
