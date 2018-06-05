@@ -2,6 +2,7 @@
 #include <steem/plugins/json_rpc/utility.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 #include <steem/plugins/database_api/database_api_objects.hpp>
+#include <steem/plugins/reputation_api/reputation_api.hpp>
 
 #include <steem/protocol/types.hpp>
 
@@ -12,6 +13,7 @@
 namespace steem { namespace plugins { namespace follow {
 
 using steem::protocol::account_name_type;
+using steem::plugins::reputation::account_reputation;
 
 namespace detail
 {
@@ -50,12 +52,6 @@ struct comment_blog_entry
    string                           blog;
    time_point_sec                   reblog_on;
    uint32_t                         entry_id = 0;
-};
-
-struct account_reputation
-{
-   account_name_type             account;
-   steem::protocol::share_type reputation;
 };
 
 struct api_follow_object
@@ -136,16 +132,9 @@ struct get_blog_return
    vector< comment_blog_entry > blog;
 };
 
-struct get_account_reputations_args
-{
-   account_name_type account_lower_bound;
-   uint32_t          limit = 1000;
-};
+typedef reputation::get_account_reputations_args get_account_reputations_args;
 
-struct get_account_reputations_return
-{
-   vector< account_reputation > reputations;
-};
+typedef reputation::get_account_reputations_return get_account_reputations_return;
 
 struct get_reblogged_by_args
 {
@@ -213,9 +202,6 @@ FC_REFLECT( steem::plugins::follow::blog_entry,
 FC_REFLECT( steem::plugins::follow::comment_blog_entry,
             (comment)(blog)(reblog_on)(entry_id) );
 
-FC_REFLECT( steem::plugins::follow::account_reputation,
-            (account)(reputation) );
-
 FC_REFLECT( steem::plugins::follow::api_follow_object,
             (follower)(following)(what) );
 
@@ -251,12 +237,6 @@ FC_REFLECT( steem::plugins::follow::get_blog_entries_return,
 
 FC_REFLECT( steem::plugins::follow::get_blog_return,
             (blog) );
-
-FC_REFLECT( steem::plugins::follow::get_account_reputations_args,
-            (account_lower_bound)(limit) );
-
-FC_REFLECT( steem::plugins::follow::get_account_reputations_return,
-            (reputations) );
 
 FC_REFLECT( steem::plugins::follow::get_reblogged_by_args,
             (author)(permlink) );
