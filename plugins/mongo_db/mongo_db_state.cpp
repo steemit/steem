@@ -156,6 +156,95 @@ namespace mongo_db {
         }
     }
 
+    void state_writer::format_account(const std::string& name) {
+        try {
+            auto& account = db_.get_account(name);
+            auto oid = name;
+            auto oid_hash = hash_oid(oid);
+
+            auto doc = create_document("account_object", "_id", oid_hash);
+            auto& body = doc.doc;
+
+            body << "$set" << open_document;
+
+            format_oid(body, oid);
+
+            format_value(body, "name", account.name);
+            format_value(body, "memo_key", std::string(account.memo_key));
+            format_value(body, "proxy", account.proxy);
+
+            format_value(body, "last_account_update", account.last_account_update);
+
+            format_value(body, "created", account.created);
+            format_value(body, "mined", account.mined);
+            format_value(body, "owner_challenged", account.owner_challenged);
+            format_value(body, "active_challenged", account.active_challenged);
+            format_value(body, "last_owner_proved", account.last_owner_proved);
+            format_value(body, "last_active_proved", account.last_active_proved);
+            format_value(body, "recovery_account", account.recovery_account);
+            format_value(body, "reset_account", account.reset_account);
+            format_value(body, "last_account_recovery", account.last_account_recovery);
+            format_value(body, "comment_count", account.comment_count);
+            format_value(body, "lifetime_vote_count", account.lifetime_vote_count);
+            format_value(body, "post_count", account.post_count);
+
+            format_value(body, "can_vote", account.can_vote);
+            format_value(body, "voting_power", account.voting_power);
+            format_value(body, "last_vote_time", account.last_vote_time);
+
+            format_value(body, "balance", account.balance);
+            format_value(body, "savings_balance", account.savings_balance);
+
+            format_value(body, "sbd_balance", account.sbd_balance);
+            format_value(body, "sbd_seconds", account.sbd_seconds);
+            format_value(body, "sbd_seconds_last_update", account.sbd_seconds_last_update);
+            format_value(body, "sbd_last_interest_payment", account.sbd_last_interest_payment);
+
+            format_value(body, "savings_sbd_balance", account.savings_sbd_balance);
+            format_value(body, "savings_sbd_seconds", account.savings_sbd_seconds);
+            format_value(body, "savings_sbd_seconds_last_update", account.savings_sbd_seconds_last_update);
+            format_value(body, "savings_sbd_last_interest_payment", account.savings_sbd_last_interest_payment);
+
+            format_value(body, "savings_withdraw_requests", account.savings_withdraw_requests);
+
+            format_value(body, "curation_rewards", account.curation_rewards);
+            format_value(body, "posting_rewards", account.posting_rewards);
+
+            format_value(body, "vesting_shares", account.vesting_shares);
+            format_value(body, "delegated_vesting_shares", account.delegated_vesting_shares);
+            format_value(body, "received_vesting_shares", account.received_vesting_shares);
+
+            format_value(body, "vesting_withdraw_rate", account.vesting_withdraw_rate);
+            format_value(body, "next_vesting_withdrawal", account.next_vesting_withdrawal);
+            format_value(body, "withdrawn", account.withdrawn);
+            format_value(body, "to_withdraw", account.to_withdraw);
+            format_value(body, "withdraw_routes", account.withdraw_routes);
+
+            if (account.proxied_vsf_votes.size() != 0) {
+                array ben_array;
+                for (auto& b: account.proxied_vsf_votes) {
+                    ben_array << b;
+                }
+                body << "proxied_vsf_votes" << ben_array;
+            }
+
+            format_value(body, "witnesses_voted_for", account.witnesses_voted_for);
+
+            format_value(body, "last_post", account.last_post);
+
+            body << close_document;
+
+            bmi_insert_or_replace(all_docs, std::move(doc));
+
+        }
+//        catch (fc::exception& ex) {
+//            ilog("MongoDB operations fc::exception during formatting comment. ${e}", ("e", ex.what()));
+//        }
+        catch (...) {
+            // ilog("Unknown exception during formatting comment.");
+        }
+    }
+
     auto state_writer::operator()(const vote_operation& op) -> result_type {
         format_comment(op.author, op.permlink);
         
@@ -266,6 +355,9 @@ namespace mongo_db {
             }
         }
 
+        format_account(op.from);
+        format_account(op.to);
+
         all_docs.push_back(std::move(doc));
     }
 
@@ -294,19 +386,19 @@ namespace mongo_db {
     }
 
     auto state_writer::operator()(const account_create_operation& op) -> result_type {
-        
+        format_account(op.new_account_name);
     }
 
     auto state_writer::operator()(const account_update_operation& op) -> result_type {
-        
+        format_account(op.account);
     }
 
     auto state_writer::operator()(const account_create_with_delegation_operation& op) -> result_type {
-        
+        format_account(op.new_account_name);
     }
 
     auto state_writer::operator()(const account_metadata_operation& op) -> result_type {
-        
+        format_account(op.account);
     }
 
     auto state_writer::operator()(const witness_update_operation& op) -> result_type {
