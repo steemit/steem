@@ -18,17 +18,17 @@ namespace golos { namespace api {
             golos::chain::database& db,
             std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation,
             std::function<void(const golos::chain::database&, discussion&)> fill_promoted);
-        ~discussion_helper() ;
+        ~discussion_helper();
 
 
         void set_pending_payout(discussion& d) const;
-        
+
         void set_url(discussion& d) const;
 
         void select_active_votes(
             std::vector<vote_state>& result, uint32_t& total_count,
             const std::string& author, const std::string& permlink, uint32_t limit
-        ) const ;
+        ) const;
 
         discussion create_discussion(const comment_object& o) const;
 

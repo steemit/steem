@@ -91,7 +91,7 @@ namespace golos { namespace api {
         std::function<void(const golos::chain::database&, discussion&)> fill_promoted_;
     };
 
-//  get_discussion
+// get_discussion
     discussion discussion_helper::impl::get_discussion(const comment_object& c, uint32_t vote_limit) const {
         discussion d = create_discussion(c);
         set_url(d);
@@ -100,9 +100,9 @@ namespace golos { namespace api {
         return d;
     }
 
-    discussion discussion_helper::get_discussion(const comment_object& c, uint32_t vote_limit) const  {
+    discussion discussion_helper::get_discussion(const comment_object& c, uint32_t vote_limit) const {
         return pimpl->get_discussion(c, vote_limit);
-    }    
+    }
 //
 
 // select_active_votes
@@ -202,7 +202,7 @@ namespace golos { namespace api {
     void discussion_helper::set_url(discussion& d) const {
         pimpl->set_url(d);
     }
-// 
+//
 // create_discussion
     discussion discussion_helper::impl::create_discussion(const comment_object& o) const {
         return discussion(o, database_);
@@ -218,7 +218,7 @@ namespace golos { namespace api {
         std::function<void(const golos::chain::database&, discussion&)> fill_promoted
     ) {
         pimpl = std::make_unique<impl>(db, fill_reputation, fill_promoted);
-    } 
+    }
 
     discussion_helper::~discussion_helper() = default;
 

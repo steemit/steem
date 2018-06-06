@@ -77,14 +77,40 @@ namespace golos { namespace chain {
                 }
             }
         }
+
+        struct safe_int_increment {
+            safe_int_increment(int& value)
+                : value_(value) {
+                value_++;
+            }
+
+            ~safe_int_increment() {
+                value_--;
+            }
+
+            int& value_;
+        };
+    }
+
+    proposal_create_evaluator::proposal_create_evaluator(database& db)
+        : evaluator_impl<proposal_create_evaluator>(db) {
     }
 
     void proposal_create_evaluator::do_apply(const proposal_create_operation& o) { try {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__542, "Proposal transaction creating"); // remove after hf
 
-        FC_ASSERT(nullptr == db().find_proposal(o.author, o.title), "Proposal already exists.");
+        safe_int_increment depth_increment(depth_);
 
-        const auto now = db().head_block_time();
+        if (_db.is_producing()) {
+            FC_ASSERT(
+                depth_ <= STEEMIT_MAX_PROPOSAL_DEPTH,
+                "You can't create more than ${depth} nested proposals",
+                ("depth", STEEMIT_MAX_PROPOSAL_DEPTH));
+        }
+
+        FC_ASSERT(nullptr == _db.find_proposal(o.author, o.title), "Proposal already exists.");
+
+        const auto now = _db.head_block_time();
         FC_ASSERT(
             o.expiration_time > now,
             "Proposal has already expired on creation.");
@@ -126,7 +152,7 @@ namespace golos { namespace chain {
         //  because it will be never approved.
         for (const auto& account: required_total) {
             FC_ASSERT(
-                nullptr != db().find_account(account),
+                nullptr != _db.find_account(account),
                 "Account '${account}' for proposed operation doesn't exist", ("account", account));
         }
 
@@ -136,7 +162,7 @@ namespace golos { namespace chain {
         for (const auto& op : o.proposed_operations) {
             trx.operations.push_back(op.op);
         }
-        trx.set_expiration(db().head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+        trx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
         const uint32_t skip_steps =
             golos::chain::database::skip_authority_check |
@@ -144,11 +170,11 @@ namespace golos { namespace chain {
             golos::chain::database::skip_tapos_check |
             golos::chain::database::skip_database_locking;
 
-        db().validate_transaction(trx, skip_steps);
+        _db.validate_transaction(trx, skip_steps);
 
         auto ops_size = fc::raw::pack_size(trx.operations);
 
-        const auto& proposal = db().create<proposal_object>([&](proposal_object& p){
+        const auto& proposal = _db.create<proposal_object>([&](proposal_object& p){
             p.author = o.author;
             from_string(p.title, o.title);
             from_string(p.memo, o.memo);
@@ -166,17 +192,31 @@ namespace golos { namespace chain {
         });
 
         for (const auto& account: required_total) {
-            db().create<required_approval_object>([&](required_approval_object& o){
+            _db.create<required_approval_object>([&](required_approval_object& o){
                 o.account = account;
                 o.proposal = proposal.id;
             });
         }
     } FC_CAPTURE_AND_RETHROW((o)) }
 
+    proposal_update_evaluator::proposal_update_evaluator(database& db)
+        : evaluator_impl<proposal_update_evaluator>(db) {
+    }
+
     void proposal_update_evaluator::do_apply(const proposal_update_operation& o) { try {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__542, "Proposal transaction updating"); // remove after hf
-        auto& proposal = db().get_proposal(o.author, o.title);
-        const auto now = db().head_block_time();
+
+        safe_int_increment depth_increment(depth_);
+
+        if (_db.is_producing()) {
+            FC_ASSERT(
+                depth_ <= STEEMIT_MAX_PROPOSAL_DEPTH,
+                "You can't create more than ${depth} nested proposals",
+                ("depth", STEEMIT_MAX_PROPOSAL_DEPTH));
+        }
+
+        auto& proposal = _db.get_proposal(o.author, o.title);
+        const auto now = _db.head_block_time();
 
         if (proposal.review_period_time && now >= *proposal.review_period_time) {
             FC_ASSERT(
@@ -209,7 +249,7 @@ namespace golos { namespace chain {
         check_duplicate(o.posting_approvals_to_add, proposal.available_posting_approvals);
         check_duplicate(o.key_approvals_to_add, proposal.available_key_approvals);
 
-        db().modify(proposal, [&](proposal_object &p){
+        _db.modify(proposal, [&](proposal_object &p){
             p.available_active_approvals.insert(o.active_approvals_to_add.begin(), o.active_approvals_to_add.end());
             p.available_owner_approvals.insert(o.owner_approvals_to_add.begin(), o.owner_approvals_to_add.end());
             p.available_posting_approvals.insert(o.posting_approvals_to_add.begin(), o.posting_approvals_to_add.end());
@@ -229,17 +269,17 @@ namespace golos { namespace chain {
                 proposal.available_posting_approvals.empty() &&
                 proposal.available_key_approvals.empty()
             ) {
-                db().remove(proposal);
+                _db.remove(proposal);
             }
             return;
         }
 
-        assert_irrelevant_proposal_authority(db(), proposal, o);
+        assert_irrelevant_proposal_authority(_db, proposal, o);
 
-        if (proposal.is_authorized_to_execute(db())) {
+        if (proposal.is_authorized_to_execute(_db)) {
             // All required approvals are satisfied. Execute!
             try {
-                db().push_proposal(proposal);
+                _db.push_proposal(proposal);
             } catch (fc::exception &e) {
                 wlog(
                     "Proposed transaction ${author}::${title} failed to apply once approved with exception:\n"
@@ -252,7 +292,7 @@ namespace golos { namespace chain {
 
     void proposal_delete_evaluator::do_apply(const proposal_delete_operation& o) { try {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_18__542, "Proposal transaction deleting"); // remove after hf
-        const auto& proposal = db().get_proposal(o.author, o.title);
+        const auto& proposal = _db.get_proposal(o.author, o.title);
 
         FC_ASSERT(
             proposal.author == o.requester ||
@@ -262,7 +302,7 @@ namespace golos { namespace chain {
             "Provided authority is not authoritative for this proposal.",
             ("author", o.author)("title", o.title)("requester", o.requester));
 
-        db().remove(proposal);
+        _db.remove(proposal);
 
     } FC_CAPTURE_AND_RETHROW((o)) }
 

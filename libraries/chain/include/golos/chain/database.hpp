@@ -13,8 +13,7 @@
 
 #include <map>
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using golos::protocol::signed_transaction;
         using golos::protocol::operation;
@@ -191,8 +190,6 @@ namespace golos {
              *  Deducts fee from the account and the share supply
              */
             void pay_fee(const account_object &a, asset fee);
-
-            void old_update_account_bandwidth(const account_object &a, uint32_t trx_size, const bandwidth_type type);
 
             /**
              * Update an account's bandwidth and returns if the account had the requisite bandwidth for the trx
@@ -624,5 +621,4 @@ namespace golos {
             std::string _json_schema;
         };
 
-    }
-}
+} } // golos::chain

@@ -14,6 +14,7 @@ env:
   - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
   - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
   - DOCKERFILE=share/golosd/docker/Dockerfile-lowmem DOCKERNAME="-lowmem"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-mongo DOCKERNAME="-mongo"
 
 matrix:
   fast_finish: true
@@ -21,10 +22,10 @@ matrix:
 script:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       export DOCKERNAME="latest""$DOCKERNAME";
-      export EXPORTNAME="latest""$DOCKERNAME";
+      export EXPORTNAME="$DOCKERNAME";
     elif [ -n "$TRAVIS_TAG" ]; then
       export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
-      export EXPORTNAME="$TRAVIS_TAG""$DOCKERNAME";
+      export EXPORTNAME="$DOCKERNAME";
     else
       export DOCKERNAME=develop"$DOCKERNAME";
     fi

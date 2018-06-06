@@ -5,15 +5,13 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-//#include <golos/db2/database.hpp>
 #include <chainbase/chainbase.hpp>
 
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/authority.hpp>
 
 
-namespace golos {
-    namespace chain {
+namespace golos { namespace chain {
 
         using namespace boost::multi_index;
 
@@ -142,13 +140,10 @@ namespace golos {
         enum bandwidth_type {
             post,    ///< Rate limiting posting reward eligibility over time
             forum,   ///< Rate limiting for all forum related actins
-            market,  ///< Rate limiting for all other actions
-            old_forum,   ///< Rate limiting for all forum related actions (deprecated)
-            old_market   ///< Rate limiting for all other actions (deprecated)
+            market   ///< Rate limiting for all other actions
         };
 
-    }
-} //golos::chain
+} } //golos::chain
 
 namespace fc {
     class variant;
@@ -211,10 +206,6 @@ namespace fc {
     }
 }
 
-namespace fc {
-
-}
-
 FC_REFLECT_ENUM(golos::chain::object_type,
         (dynamic_global_property_object_type)
                 (account_object_type)
@@ -251,4 +242,4 @@ FC_REFLECT_ENUM(golos::chain::object_type,
 FC_REFLECT_TYPENAME((golos::chain::shared_string))
 FC_REFLECT_TYPENAME((golos::chain::buffer_type))
 
-FC_REFLECT_ENUM(golos::chain::bandwidth_type, (post)(forum)(market)(old_forum)(old_market))
+FC_REFLECT_ENUM(golos::chain::bandwidth_type, (post)(forum)(market))

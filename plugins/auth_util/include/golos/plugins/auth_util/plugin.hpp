@@ -13,7 +13,7 @@ namespace golos {
 namespace plugins {
 namespace auth_util {
 
-using golos::plugins::json_rpc::msg_pack; 
+using golos::plugins::json_rpc::msg_pack;
 
 
 DEFINE_API_ARGS ( check_authority_signature, msg_pack, std::vector<protocol::public_key_type>)

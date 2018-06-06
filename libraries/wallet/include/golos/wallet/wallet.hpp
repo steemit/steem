@@ -38,7 +38,7 @@ namespace golos { namespace wallet {
                 try {
                     if( str.size() > sizeof(memo_data) && str[0] == '#') {
                         auto data = fc::from_base58( str.substr(1) );
-                        auto m  = fc::raw::unpack<memo_data>( data );
+                        auto m = fc::raw::unpack<memo_data>( data );
                         FC_ASSERT( string(m) == str );
                         return m;
                     }
@@ -183,7 +183,7 @@ namespace golos { namespace wallet {
              *
              * @param author The author of the proposal
              * @param title The proposal to modify.
-             * @param delta Members contain approvals to create or remove.  In JSON you can leave empty members undefined.
+             * @param delta Members contain approvals to create or remove. In JSON you can leave empty members undefined.
              * @param broadcast true if you wish to broadcast the transaction
              * @return the signed version of the transaction
              */
@@ -248,11 +248,11 @@ namespace golos { namespace wallet {
             /** Lists all accounts registered in the blockchain.
              * This returns a list of all account names and their account ids, sorted by account name.
              *
-             * Use the \c lowerbound and limit parameters to page through the list.  To retrieve all accounts,
+             * Use the \c lowerbound and limit parameters to page through the list. To retrieve all accounts,
              * start by setting \c lowerbound to the empty string \c "", and then each iteration, pass
              * the last account name returned as the \c lowerbound for the next \c list_accounts() call.
              *
-             * @param lowerbound the name of the first account to return.  If the named account does not exist,
+             * @param lowerbound the name of the first account to return. If the named account does not exist,
              *                   the list will start at the account that comes after \c lowerbound
              * @param limit the maximum number of accounts to return (max: 1000)
              * @returns a list of accounts mapping account names to account ids
@@ -284,7 +284,7 @@ namespace golos { namespace wallet {
             string                            get_wallet_filename() const;
 
             /**
-             * Get the WIF private key corresponding to a public key.  The
+             * Get the WIF private key corresponding to a public key. The
              * private key must already be in the wallet.
              */
             string                            get_private_key( public_key_type pubkey )const;
@@ -295,7 +295,7 @@ namespace golos { namespace wallet {
              *  @param password - the password to be used at key generation
              *  @return public key corresponding to generated private key, and private key in WIF format.
              */
-            pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
+            pair<public_key_type,string> get_private_key_from_password(string account, string role, string password) const;
 
 
             /**
@@ -343,7 +343,7 @@ namespace golos { namespace wallet {
 
             /** Dumps all private keys owned by the wallet.
              *
-             * The keys are printed in WIF format.  You can import these keys into another wallet
+             * The keys are printed in WIF format. You can import these keys into another wallet
              * using \c import_key()
              * @returns a map containing the private keys, indexed by their public key
              */
@@ -353,7 +353,7 @@ namespace golos { namespace wallet {
              * @param method the name of the API command you want help with
              * @returns a multi-line string suitable for displaying on a terminal
              */
-            string  gethelp(const string& method)const;
+            string gethelp(const string& method)const;
 
             /** Loads a specified Graphene wallet.
              *
@@ -374,10 +374,10 @@ namespace golos { namespace wallet {
              *
              * @warning This does not change the wallet filename that will be used for future
              * writes, so think of this function as 'Save a Copy As...' instead of
-             * 'Save As...'.  Use \c set_wallet_filename() to make the filename
+             * 'Save As...'. Use \c set_wallet_filename() to make the filename
              * persist.
              * @param wallet_filename the filename of the new wallet JSON file to create
-             *                        or overwrite.  If \c wallet_filename is empty,
+             *                        or overwrite. If \c wallet_filename is empty,
              *                        save to the current filename.
              */
             void    save_wallet_file(string wallet_filename = "");
@@ -399,7 +399,7 @@ namespace golos { namespace wallet {
             /** Suggests a safe brain key to use for creating your account.
              * \c create_account_with_brain_key() requires you to specify a 'brain key',
              * a long passphrase that provides enough entropy to generate cyrptographic
-             * keys.  This function will suggest a suitably random string that should
+             * keys. This function will suggest a suitably random string that should
              * be easy to write down (and, with effort, memorize).
              * @returns a suggested brain_key
              */
@@ -410,7 +410,7 @@ namespace golos { namespace wallet {
              * TODO: I don't see a broadcast_transaction() function, do we need one?
              *
              * @param tx the transaction to serialize
-             * @returns the binary form of the transaction.  It will not be hex encoded,
+             * @returns the binary form of the transaction. It will not be hex encoded,
              *          this returns a raw string that may have null characters embedded
              *          in it
              */
@@ -427,7 +427,7 @@ namespace golos { namespace wallet {
             /** Transforms a brain key to reduce the chance of errors when re-entering the key from memory.
              *
              * This takes a user-supplied brain key and normalizes it into the form used
-             * for generating private keys.  In particular, this upper-cases all ASCII characters
+             * for generating private keys. In particular, this upper-cases all ASCII characters
              * and collapses multiple spaces into one.
              * @param s the brain key as supplied by the user
              * @returns the brain key in its normalized form
@@ -624,13 +624,13 @@ namespace golos { namespace wallet {
 
             /** Lists all witnesses registered in the blockchain.
              * This returns a list of all account names that own witnesses, and the associated witness id,
-             * sorted by name.  This lists witnesses whether they are currently voted in or not.
+             * sorted by name. This lists witnesses whether they are currently voted in or not.
              *
-             * Use the \c lowerbound and limit parameters to page through the list.  To retrieve all witnesss,
+             * Use the \c lowerbound and limit parameters to page through the list. To retrieve all witnesss,
              * start by setting \c lowerbound to the empty string \c "", and then each iteration, pass
              * the last witness name returned as the \c lowerbound for the next \c list_witnesss() call.
              *
-             * @param lowerbound the name of the first witness to return.  If the named witness does not exist,
+             * @param lowerbound the name of the first witness to return. If the named witness does not exist,
              *                   the list will start at the witness that comes after \c lowerbound
              * @param limit the maximum number of witnesss to return (max: 1000)
              * @returns a list of witnesss mapping witness names to witness ids
@@ -656,16 +656,31 @@ namespace golos { namespace wallet {
              * Update a witness object owned by the given account.
              *
              * @param witness_name The name of the witness account.
-             * @param url A URL containing some information about the witness.  The empty string makes it remain the same.
-             * @param block_signing_key The new block signing public key.  The empty string disables block production.
+             * @param url A URL containing some information about the witness. The empty string makes it remain the same.
+             * @param block_signing_key The new block signing public key. The empty string disables block production.
              * @param props The chain properties the witness is voting on.
              * @param broadcast true if you wish to broadcast the transaction.
              */
-            annotated_signed_transaction update_witness(string witness_name,
-                                                        string url,
-                                                        public_key_type block_signing_key,
-                                                        const chain_properties& props,
-                                                        bool broadcast = false);
+            annotated_signed_transaction update_witness(
+                string witness_name,
+                string url,
+                public_key_type block_signing_key,
+                optional<chain_properties> props,
+                bool broadcast = false
+            );
+
+            /**
+             * Vote for the chain properties
+             *
+             * @param witness_name The name of the witness account.
+             * @param props The chain properties the witness is voting on.
+             * @param broadcast true if you wish to broadcast the transaction.
+             */
+            annotated_signed_transaction update_chain_properties(
+                string witness_name,
+                const chain_properties& props,
+                bool broadcast = false
+            );
 
             /** Set the voting proxy for an account.
              *
@@ -673,7 +688,7 @@ namespace golos { namespace wallet {
              * to allow another account to vote their stake.
              *
              * Setting a vote proxy does not remove your previous votes from the blockchain,
-             * they remain there but are ignored.  If you later null out your vote proxy,
+             * they remain there but are ignored. If you later null out your vote proxy,
              * your previous votes will take effect again.
              *
              * This setting can be changed at any time.
@@ -905,8 +920,8 @@ namespace golos { namespace wallet {
              *
              * Any operation the blockchain supports can be created using the transaction builder's
              * \c add_operation_to_builder_transaction() , but to do that from the CLI you need to
-             * know what the JSON form of the operation looks like.  This will give you a template
-             * you can fill in.  It's better than nothing.
+             * know what the JSON form of the operation looks like. This will give you a template
+             * you can fill in. It's better than nothing.
              *
              * @param operation_type the type of operation to return, must be one of the
              *                       operations defined in `steem/chain/operations.hpp`
@@ -1026,7 +1041,7 @@ namespace golos { namespace wallet {
 
             FC_TODO(Supplement API argument description)
             /**
-             *  Marks one account as following another account.  Requires the posting authority of the follower.
+             *  Marks one account as following another account. Requires the posting authority of the follower.
              *
              *  @param follower
              *  @param following
@@ -1134,6 +1149,7 @@ FC_API( golos::wallet::wallet_api,
                 (update_account_memo_key)
                 (delegate_vesting_shares)
                 (update_witness)
+                (update_chain_properties)
                 (set_voting_proxy)
                 (vote_for_witness)
                 //(follow)
