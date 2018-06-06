@@ -208,19 +208,21 @@ namespace mongo_db {
             formatted_blocks[named_doc.collection_name] = std::make_unique<mongocxx::bulk_write>(bulk_opts);
         }
 
-        //auto view = named_doc.doc.view();
-        //auto itr = view.find("_id");
-        //if (view.end() == itr) {
-        //    mongocxx::model::insert_one msg{std::move(view)};
-        //    formatted_blocks[named_doc.collection_name]->append(msg);
-        //} else {
-        document filter;
+        auto view = named_doc.doc.view();
+        auto itr = view.find("$set");
+        if (view.end() == itr) {
+            mongocxx::model::insert_one msg{std::move(view)};
+            formatted_blocks[named_doc.collection_name]->append(msg);
+        } else {
+            document filter;
 
-        filter << "_id" << bsoncxx::oid(named_doc.keyval); 
+            filter << "_id" << bsoncxx::oid(named_doc.keyval); 
 
-        mongocxx::model::update_one msg{filter.view(), 
-            named_doc.doc.view()};
-        msg.upsert(true);
+            mongocxx::model::update_one msg{filter.view(), 
+                view};
+            msg.upsert(true);
+            formatted_blocks[named_doc.collection_name]->append(msg);
+        }
 
         if (indexes.find(named_doc.collection_name) == indexes.end()) {
             for (auto& index_to_create : named_doc.indexes_to_create) {
@@ -228,9 +230,6 @@ namespace mongo_db {
                 indexes[named_doc.collection_name] = "created";
             }
         }
-
-        formatted_blocks[named_doc.collection_name]->append(msg);
-        //}
     }
 
     void mongo_db_writer::remove_document(named_document const& named_doc) {
