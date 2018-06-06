@@ -1864,18 +1864,14 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             witness_update_operation op;
 
-            auto wit = my->_remote_witness_api->get_witness_by_account(witness_account_name);
-            if (!wit.valid()) {
-                op.url = url;
-            } else {
-                FC_ASSERT(wit->owner == witness_account_name);
-                if (!url.empty()) {
-                    op.url = url;
-                } else {
-                    op.url = wit->url;
+            if (url.empty()) {
+                auto wit = my->_remote_witness_api->get_witness_by_account(witness_account_name);
+                if (wit.valid()) {
+                    FC_ASSERT(wit->owner == witness_account_name);
+                    url = wit->url;
                 }
             }
-
+            op.url = url;
             op.owner = witness_account_name;
             op.block_signing_key = block_signing_key;
 
