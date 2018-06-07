@@ -34,10 +34,11 @@ namespace bpo = boost::program_options;
 #define DIAGNOSTIC(s)
 //#define DIAGNOSTIC(s) s
 
-#define OPERATION_BY_ID 1
-#define OPERATION_BY_BLOCK 2
-#define AH_INFO_BY_NAME 3
-#define AH_OPERATION_BY_ID 4
+#define CURRENT_LIB 1
+#define OPERATION_BY_ID 2
+#define OPERATION_BY_BLOCK 3
+#define AH_INFO_BY_NAME 4
+#define AH_OPERATION_BY_ID 5
 
 #define WRITE_BUFFER_FLUSH_LIMIT     10
 #define ACCOUNT_HISTORY_LENGTH_LIMIT 30
@@ -225,6 +226,11 @@ private:
 typedef PrimitiveTypeComparatorImpl<uint32_t> by_id_ComparatorImpl;
 
 typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_ComparatorImpl;
+
+typedef PrimitiveTypeSlice< uint32_t > lib_id_slice_t;
+typedef PrimitiveTypeSlice< uint32_t > lib_slice_t;
+
+#define LIB_ID lib_id_slice_t( 0 )
 
 /** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended
  *  by some unique part (ie ID).
@@ -453,6 +459,9 @@ public:
    }
 
 private:
+   uint32_t get_lib();
+   void update_lib( uint32_t );
+
    typedef std::vector<ColumnFamilyDescriptor> ColumnDefinitions;
    ColumnDefinitions prepareColumnDefinitions(bool addDefaultColumn);
 
@@ -957,11 +966,36 @@ uint32_t account_history_rocksdb_plugin::impl::enumVirtualOperationsFromBlockRan
    return 0;
 }
 
+uint32_t account_history_rocksdb_plugin::impl::get_lib()
+{
+   std::string data;
+   auto s = _storage->Get(ReadOptions(), _columnHandles[CURRENT_LIB], LIB_ID, &data );
+
+   if( s.ok() )
+   {
+      uint32_t lib = 0;
+      load( lib, data.data(), data.size() );
+      return lib;
+   }
+
+   FC_ASSERT( s.IsNotFound() );
+
+   return 0;
+}
+
+void account_history_rocksdb_plugin::impl::update_lib( uint32_t lib )
+{
+   auto s = _writeBuffer.Put( _columnHandles[ CURRENT_LIB ], LIB_ID, lib_slice_t( lib ) );
+   checkStatus( s );
+}
+
 account_history_rocksdb_plugin::impl::ColumnDefinitions account_history_rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
 {
    ColumnDefinitions columnDefs;
    if(addDefaultColumn)
       columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, ColumnFamilyOptions());
+
+   columnDefs.emplace_back("current_lib", ColumnFamilyOptions());
 
    columnDefs.emplace_back("operation_by_id", ColumnFamilyOptions());
    auto& byIdColumn = columnDefs.back();
@@ -1342,6 +1376,8 @@ void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block
 {
    if( _reindexing ) return;
 
+   if( block_num <= get_lib() ) return;
+
    const auto& volatile_idx = _mainDb.get_index< volatile_operation_index, by_block >();
    auto itr = volatile_idx.begin();
 
@@ -1359,6 +1395,8 @@ void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block
    {
       _mainDb.remove( *o );
    }
+
+   update_lib( block_num );
 }
 
 account_history_rocksdb_plugin::account_history_rocksdb_plugin()
