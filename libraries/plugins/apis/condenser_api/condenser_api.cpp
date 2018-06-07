@@ -1324,7 +1324,17 @@ namespace detail
       CHECK_ARG_SIZE( 2 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return discussion( _tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } ) );
+      auto comments = _database_api->find_comments( { { { args[0].as< account_name_type >(), args[1].as< string >() } } } );
+
+      if( comments.comments.size() == 0 )
+      {
+         return discussion();
+      }
+
+      discussion content( comments.comments[0] );
+      set_pending_payout( content );
+
+      return content;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_content_replies )
