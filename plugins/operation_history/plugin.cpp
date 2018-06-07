@@ -196,7 +196,13 @@ namespace golos { namespace plugins { namespace operation_history {
 
                 for (const auto& op : ops) {
                     if (op.size()) {
-                        pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
+                        std::string ops_postfix("_operation");
+                        stp::size_t pos = op.find(ops_postfix);
+                        if (pos != std::string::npos && pos + ops_postfix.size() == op.size()) {
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + ops_postfix);
+                        } else {
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
+                        }
                     }
                 }
             }
