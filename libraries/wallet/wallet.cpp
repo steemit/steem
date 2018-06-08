@@ -1666,7 +1666,7 @@ condenser_api::legacy_signed_transaction wallet_api::update_witness(
    string witness_account_name,
    string url,
    public_key_type block_signing_key,
-   const legacy_chain_properties& props,
+   const condenser_api::api_chain_properties& props,
    bool broadcast  )
 {
    FC_ASSERT( !is_locked() );
