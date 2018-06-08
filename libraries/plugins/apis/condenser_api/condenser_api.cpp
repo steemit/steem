@@ -1365,14 +1365,18 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_content_replies )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      auto discussions = _tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
+      account_name_type author = args[0].as< account_name_type >();
+      string permlink = args[1].as< string >();
+      const auto& by_permlink_idx = _db.get_index< comment_index, by_parent >();
+      auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
       vector< discussion > result;
 
-      for( auto& d : discussions )
+      while( itr != by_permlink_idx.end() && itr->parent_author == author && to_string( itr->parent_permlink ) == permlink )
       {
-         result.push_back( discussion( d ) );
+         result.push_back( discussion( database_api::api_comment_object( *itr, _db ) ) );
+         set_pending_payout( result.back() );
+         ++itr;
       }
 
       return result;
@@ -1610,16 +1614,41 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_replies_by_last_update )
    {
       CHECK_ARG_SIZE( 3 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      auto discussions = _tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
       vector< discussion > result;
 
-      for( auto& d : discussions )
+#ifndef IS_LOW_MEM
+      account_name_type start_parent_author = args[0].as< account_name_type >();
+      string start_parent_permlink = args[1].as< string >();
+      uint32_t limit = args[2].as< uint32_t >();
+
+      FC_ASSERT( limit <= 100 );
+      const auto& last_update_idx = my->_db.get_index< comment_index, by_last_update >();
+      auto itr = last_update_idx.begin();
+      const account_name_type* parent_author = &start_parent_author;
+
+      if( start_permlink.size() )
       {
-         result.push_back( discussion( d ) );
+         const auto& comment = my->_db.get_comment( start_parent_author, start_permlink );
+         itr = last_update_idx.iterator_to( comment );
+         parent_author = &comment.parent_author;
+      }
+      else if( start_parent_author.size() )
+      {
+         itr = last_update_idx.lower_bound( start_parent_author );
       }
 
+      result.reserve( limit );
+
+      while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
+      {
+         result.push_back( *itr );
+         set_pending_payout( result.back() );
+         result.back().active_votes = get_active_votes( itr->author, to_string( itr->permlink ) );
+         ++itr;
+      }
+
+#endif
       return result;
    }
 
