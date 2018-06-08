@@ -179,15 +179,19 @@ namespace golos { namespace plugins { namespace operation_history {
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
+        ilog("###: plugin_initialize() 0");
         ilog("operation_history plugin: plugin_initialize() begin");
 
         pimpl = std::make_unique<plugin_impl>();
+        ilog("###: plugin_initialize() 1");
 
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){
             pimpl->on_operation(note);
         });
+        ilog("###: plugin_initialize() 2");
 
         golos::chain::add_plugin_index<operation_index>(pimpl->database);
+        ilog("###: plugin_initialize() 3");
 
         auto split_list = [&](const std::vector<std::string>& ops_list) {
             for (const auto& raw: ops_list) {
@@ -196,17 +200,21 @@ namespace golos { namespace plugins { namespace operation_history {
 
                 for (const auto& op : ops) {
                     if (op.size()) {
+                        ilog("#: opt ${s}", ("s", op));
                         std::string ops_postfix("_operation");
                         std::size_t pos = op.find(ops_postfix);
-                        if (pos != std::string::npos && pos + ops_postfix.size() == op.size()) {
+                        if (pos not_eq std::string::npos and (pos + ops_postfix.size()) == op.size()) {
+                            ilog("#: without opt ${s}", ("s", STEEM_NAMESPACE_PREFIX + op + ops_postfix));
                             pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + ops_postfix);
                         } else {
+                            ilog("#: with opt ${s}", ("s", STEEM_NAMESPACE_PREFIX + op));
                             pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
                         }
                     }
                 }
             }
         };
+        ilog("###: plugin_initialize() 4");
 
         if (options.count("history-whitelist-ops")) {
             FC_ASSERT(
@@ -223,6 +231,7 @@ namespace golos { namespace plugins { namespace operation_history {
             split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
+        ilog("###: plugin_initialize() 5");
 
         if (options.count("history-start-block")) {
             pimpl->filter_content = true;
