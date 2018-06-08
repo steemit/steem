@@ -41,8 +41,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
    typedef account_update_operation               legacy_account_update_operation;
    typedef comment_operation                      legacy_comment_operation;
-   typedef placeholder_a_operation                legacy_placeholder_a_operation;
-   typedef placeholder_b_operation                legacy_placeholder_b_operation;
+   typedef create_claimed_account_operation       legacy_create_claimed_account_operation;
    typedef delete_comment_operation               legacy_delete_comment_operation;
    typedef vote_operation                         legacy_vote_operation;
    typedef escrow_approve_operation               legacy_escrow_approve_operation;
@@ -946,6 +945,30 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset      vesting_shares;
    };
 
+   struct legacy_claim_account_operation
+   {
+      legacy_claim_account_operation() {}
+      legacy_claim_account_operation( const claim_account_operation& op ) :
+         creator( op.creator ),
+         fee( legacy_asset::from_asset( op.fee ) )
+      {
+         extensions.insert( op.extensions.begin(), op.extensions.end() );
+      }
+
+      operator claim_account_operation()const
+      {
+         claim_account_operation op;
+         op.creator = creator;
+         op.fee = fee;
+         op.extensions.insert( extensions.begin(), extensions.end() );
+         return op;
+      }
+
+      account_name_type creator;
+      legacy_asset      fee;
+      extensions_type   extensions;
+   };
+
    typedef fc::static_variant<
             legacy_vote_operation,
             legacy_comment_operation,
@@ -969,8 +992,8 @@ namespace steem { namespace plugins { namespace condenser_api {
             legacy_comment_options_operation,
             legacy_set_withdraw_vesting_route_operation,
             legacy_limit_order_create2_operation,
-            legacy_placeholder_a_operation,
-            legacy_placeholder_b_operation,
+            legacy_claim_account_operation,
+            legacy_create_claimed_account_operation,
             legacy_request_account_recovery_operation,
             legacy_recover_account_operation,
             legacy_change_recovery_account_operation,
@@ -1017,8 +1040,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       bool operator()( const account_update_operation& op )const                 { l_op = op; return true; }
       bool operator()( const comment_operation& op )const                        { l_op = op; return true; }
-      bool operator()( const placeholder_a_operation& op )const                  { l_op = op; return true; }
-      bool operator()( const placeholder_b_operation& op )const                  { l_op = op; return true; }
+      bool operator()( const create_claimed_account_operation& op )const         { l_op = op; return true; }
       bool operator()( const delete_comment_operation& op )const                 { l_op = op; return true; }
       bool operator()( const vote_operation& op )const                           { l_op = op; return true; }
       bool operator()( const escrow_approve_operation& op )const                 { l_op = op; return true; }
@@ -1224,6 +1246,12 @@ namespace steem { namespace plugins { namespace condenser_api {
          return true;
       }
 
+      bool operator()( const claim_account_operation& op )const
+      {
+         l_op = legacy_claim_account_operation( op );
+         return true;
+      }
+
 
       // Should only be SMT ops
       template< typename T >
@@ -1386,6 +1414,11 @@ struct convert_from_legacy_operation_visitor
       return operation( producer_reward_operation( op ) );
    }
 
+   operation operator()( const legacy_claim_account_operation& op )const
+   {
+      return operation( claim_account_operation( op ) );
+   }
+
    template< typename T >
    operation operator()( const T& t )const
    {
@@ -1507,5 +1540,6 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_fill_transfer_from_savings_ope
 FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_operation, (account)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
 
 FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )

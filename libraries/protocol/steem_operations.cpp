@@ -136,14 +136,14 @@ namespace steem { namespace protocol {
       validate_account_name( author );
    }
 
-   void placeholder_a_operation::validate()const
+   void claim_account_operation::validate()const
    {
-      FC_ASSERT( false, "This is not a valid op" );
+
    }
 
-   void placeholder_b_operation::validate()const
+   void create_claimed_account_operation::validate()const
    {
-      FC_ASSERT( false, "This is not a valid op" );
+
    }
 
    void vote_operation::validate() const
@@ -642,9 +642,9 @@ namespace steem { namespace protocol {
       bool is_substantial_reward = reward_tokens.begin()->amount > 0;
       for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
       {
-         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(), 
+         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(),
                     "Reward tokens have not been inserted in ascending order." );
-         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(), 
+         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(),
                     "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
          FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
          is_substantial_reward |= itr->amount > 0;

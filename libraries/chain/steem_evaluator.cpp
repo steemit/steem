@@ -1867,12 +1867,12 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
-void placeholder_a_evaluator::do_apply( const placeholder_a_operation& o )
+void claim_account_evaluator::do_apply( const claim_account_operation& o )
 {
    FC_ASSERT( false, "This is not a valid op." );
 }
 
-void placeholder_b_evaluator::do_apply( const placeholder_b_operation& o )
+void create_claimed_account_evaluator::do_apply( const create_claimed_account_operation& o )
 {
    FC_ASSERT( false, "This is not a valid op" );
 }

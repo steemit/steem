@@ -2416,8 +2416,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< limit_order_create_evaluator             >();
    _my->_evaluator_registry.register_evaluator< limit_order_create2_evaluator            >();
    _my->_evaluator_registry.register_evaluator< limit_order_cancel_evaluator             >();
-   _my->_evaluator_registry.register_evaluator< placeholder_a_evaluator                  >();
-   _my->_evaluator_registry.register_evaluator< placeholder_b_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< claim_account_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< create_claimed_account_evaluator         >();
    _my->_evaluator_registry.register_evaluator< request_account_recovery_evaluator       >();
    _my->_evaluator_registry.register_evaluator< recover_account_evaluator                >();
    _my->_evaluator_registry.register_evaluator< change_recovery_account_evaluator        >();

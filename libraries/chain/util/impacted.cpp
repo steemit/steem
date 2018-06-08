@@ -179,6 +179,12 @@ struct get_impacted_account_visitor
       _impacted.insert( op.owner );
    }
 
+   void operator()( const create_claimed_account_operation& op )
+   {
+      _impacted.insert( op.creator );
+      _impacted.insert( op.new_account_name );
+   }
+
 
    // vops
 
