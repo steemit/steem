@@ -1322,7 +1322,6 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_content )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
       auto comments = _database_api->find_comments( { { { args[0].as< account_name_type >(), args[1].as< string >() } } } );
 
