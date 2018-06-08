@@ -686,12 +686,10 @@ namespace detail
                _state.accounts[a].reputation = _follow_api->get_account_reputations( { a, 1 } ).reputations[0].reputation;
             }
          }
-         if( _tags_api )
+
+         for( auto& d : _state.content )
          {
-            for( auto& d : _state.content )
-            {
-               d.second.active_votes = _tags_api->get_active_votes( { d.second.author, d.second.permlink } ).votes;
-            }
+            d.second.active_votes = get_active_votes( { fc::variant( d.second.author ), fc::variant( d.second.permlink ) } );
          }
 
          _state.witness_schedule = _database_api->get_witness_schedule( {} );
@@ -1285,9 +1283,37 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_active_votes )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_active_votes( { args[0].as< account_name_type >(), args[1].as< string >() } ).votes;
+      vector< tags::vote_state > votes;
+      const auto& comment = _db.get_comment( args[0].as< account_name_type >(), args[1].as< string >() );
+      const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+      chain::comment_id_type cid(comment.id);
+      auto itr = idx.lower_bound( cid );
+
+      while( itr != idx.end() && itr->comment == cid )
+      {
+         const auto& vo = _db.get( itr->voter );
+         tags::vote_state vstate;
+         vstate.voter = vo.name;
+         vstate.weight = itr->weight;
+         vstate.rshares = itr->rshares;
+         vstate.percent = itr->vote_percent;
+         vstate.time = itr->last_update;
+
+         if( _follow_api )
+         {
+            auto reps = _follow_api->get_account_reputations( follow::get_account_reputations_args( { vo.name, 1 } ) ).reputations;
+            if( reps.size() )
+            {
+               vstate.reputation = reps[0].reputation;
+            }
+         }
+
+         votes.push_back( vstate );
+         ++itr;
+      }
+
+      return votes;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_account_votes )
