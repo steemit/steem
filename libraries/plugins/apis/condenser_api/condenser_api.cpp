@@ -1619,17 +1619,17 @@ namespace detail
 
 #ifndef IS_LOW_MEM
       account_name_type start_parent_author = args[0].as< account_name_type >();
-      string start_parent_permlink = args[1].as< string >();
+      string start_permlink = args[1].as< string >();
       uint32_t limit = args[2].as< uint32_t >();
 
       FC_ASSERT( limit <= 100 );
-      const auto& last_update_idx = my->_db.get_index< comment_index, by_last_update >();
+      const auto& last_update_idx = _db.get_index< comment_index, by_last_update >();
       auto itr = last_update_idx.begin();
       const account_name_type* parent_author = &start_parent_author;
 
       if( start_permlink.size() )
       {
-         const auto& comment = my->_db.get_comment( start_parent_author, start_permlink );
+         const auto& comment = _db.get_comment( start_parent_author, start_permlink );
          itr = last_update_idx.iterator_to( comment );
          parent_author = &comment.parent_author;
       }
@@ -1642,9 +1642,9 @@ namespace detail
 
       while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
       {
-         result.push_back( *itr );
+         result.push_back( discussion( database_api::api_comment_object( *itr, _db ) ) );
          set_pending_payout( result.back() );
-         result.back().active_votes = get_active_votes( itr->author, to_string( itr->permlink ) );
+         result.back().active_votes = get_active_votes( { fc::variant( itr->author ), fc::variant( itr->permlink ) } );
          ++itr;
       }
 
