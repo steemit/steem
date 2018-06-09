@@ -26,6 +26,6 @@ namespace golos { namespace api {
 
 FC_REFLECT(
     (golos::api::chain_api_properties),
-    (account_creation_fee)(maximum_block_size)(maximum_block_size)
+    (account_creation_fee)(maximum_block_size)(sbd_interest_rate)
     (create_account_min_golos_fee)(create_account_min_delegation)
     (create_account_delegation_time)(min_delegation))
