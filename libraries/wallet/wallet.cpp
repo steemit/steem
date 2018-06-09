@@ -290,10 +290,10 @@ namespace golos { namespace wallet {
 
                     auto hf = _remote_database_api->get_hardfork_version();
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_18)) {
-                        result["create_account_with_golos_modifier"] = median_props.create_account_with_golos_modifier;
-                        result["create_account_delegation_ratio"] = median_props.create_account_delegation_ratio;
+                        result["create_account_min_golos_fee"] = median_props.create_account_min_golos_fee;
+                        result["create_account_min_delegation"] = median_props.create_account_min_delegation;
                         result["create_account_delegation_time"] = median_props.create_account_delegation_time;
-                        result["min_delegation_multiplier"] = median_props.min_delegation_multiplier;
+                        result["min_delegation"] = median_props.min_delegation;
                     }
 
                     return result;
@@ -1834,9 +1834,6 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                     auto prop = my->_remote_database_api->get_chain_properties();
                     auto hf = my->_remote_database_api->get_hardfork_version();
                     fee = prop.account_creation_fee;
-                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_18)) {
-                        fee *= prop.create_account_with_golos_modifier;
-                    }
                 }
                 return create_account_with_keys(
                     creator, new_account_name, json_meta, fee,

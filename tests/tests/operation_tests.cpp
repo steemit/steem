@@ -6287,7 +6287,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             signed_transaction tx;
             ACTOR(alice);
 
-            // 150 * fee = (5 * GOLOS) + GP
             generate_blocks(1);
             fund("alice", ASSET_GOLOS(10));
             vest("alice", ASSET_GOLOS(10000));
@@ -6346,9 +6345,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("--- Test success using only GOLOS to reach target delegation");
             const auto& gp = db->get_dynamic_global_properties();
-            const auto fee_mult = GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO;
-            auto min_fee = db->get_witness_schedule_object().median_props.account_creation_fee;
-            auto required_fee = fee_mult * min_fee;
+            const auto& mp = db->get_witness_schedule_object().median_props;
+            auto min_fee = mp.create_account_min_golos_fee;
+            auto required_fee = min_fee + mp.create_account_min_delegation;
             auto required_gests = required_fee * gp.get_vesting_share_price();
             op.fee = required_fee;
             op.delegation = ASSET_GESTS(0);

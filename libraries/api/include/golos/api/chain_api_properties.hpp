@@ -16,10 +16,10 @@ namespace golos { namespace api {
         uint32_t maximum_block_size;
         uint16_t sbd_interest_rate;
 
-        fc::optional<uint32_t> create_account_with_golos_modifier;
-        fc::optional<uint32_t> create_account_delegation_ratio;
-        fc::optional<fc::microseconds> create_account_delegation_time;
-        fc::optional<uint32_t> min_delegation_multiplier;
+        fc::optional<asset> create_account_min_golos_fee;
+        fc::optional<asset> create_account_min_delegation;
+        fc::optional<uint32_t> create_account_delegation_time;
+        fc::optional<asset> min_delegation;
     };
 
 } } // golos::api
@@ -27,5 +27,5 @@ namespace golos { namespace api {
 FC_REFLECT(
     (golos::api::chain_api_properties),
     (account_creation_fee)(maximum_block_size)(maximum_block_size)
-    (create_account_with_golos_modifier)(create_account_delegation_ratio)
-    (create_account_delegation_time)(min_delegation_multiplier))
+    (create_account_min_golos_fee)(create_account_min_delegation)
+    (create_account_delegation_time)(min_delegation))
