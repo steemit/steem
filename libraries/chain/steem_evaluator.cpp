@@ -184,7 +184,12 @@ namespace golos { namespace chain {
             const auto& median_props = _db.get_witness_schedule_object().median_props;
             const auto target = median_props.create_account_min_golos_fee + median_props.create_account_min_delegation;
             auto target_delegation = target * v_share_price;
-            auto current_delegation = o.fee * target.amount.value / median_props.account_creation_fee.amount.value * v_share_price + o.delegation;
+            auto min_fee = median_props.account_creation_fee.amount.value;
+#ifdef STEEMIT_BUILD_TESTNET
+            if (!min_fee)
+                min_fee = 1;
+#endif
+            auto current_delegation = o.fee * target.amount.value / min_fee * v_share_price + o.delegation;
 
             FC_ASSERT(current_delegation >= target_delegation,
                 "Inssufficient Delegation ${f} required, ${p} provided.",
