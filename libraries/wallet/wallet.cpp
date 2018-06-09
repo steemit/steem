@@ -1901,6 +1901,12 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             chain_properties_update_operation op;
             chain_api_properties ap;
             chain_properties p;
+
+            // copy defaults in case of missing witness object
+            ap.account_creation_fee = p.account_creation_fee;
+            ap.maximum_block_size = p.maximum_block_size;
+            ap.sbd_interest_rate = p.sbd_interest_rate;
+
             auto wit = my->_remote_witness_api->get_witness_by_account(witness_account_name);
             if (wit.valid()) {
                 FC_ASSERT(wit->owner == witness_account_name);
