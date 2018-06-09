@@ -10,10 +10,10 @@ namespace golos { namespace api {
         sbd_interest_rate(src.sbd_interest_rate)
     {
         if (db.has_hardfork(STEEMIT_HARDFORK_0_18__673)) {
-            create_account_with_golos_modifier = src.create_account_with_golos_modifier;
-            create_account_delegation_ratio = src.create_account_delegation_ratio;
+            create_account_min_golos_fee = src.create_account_min_golos_fee;
+            create_account_min_delegation = src.create_account_min_delegation;
             create_account_delegation_time = src.create_account_delegation_time;
-            min_delegation_multiplier = src.min_delegation_multiplier;
+            min_delegation = src.min_delegation;
         }
     }
 

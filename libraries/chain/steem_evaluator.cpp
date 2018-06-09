@@ -108,20 +108,14 @@ namespace golos { namespace chain {
         }
 
         void account_create_evaluator::do_apply(const account_create_operation &o) {
-            database &_db = db();
-            const auto &creator = _db.get_account(o.creator);
+            const auto& creator = _db.get_account(o.creator);
 
-            const auto &props = _db.get_dynamic_global_properties();
-            const auto& median_props = _db.get_witness_schedule_object().median_props;
-
-            FC_ASSERT(creator.balance >=
-                      o.fee, "Insufficient balance to create account.", ("creator.balance", creator.balance)("required", o.fee));
+            FC_ASSERT(creator.balance >= o.fee,
+                "Insufficient balance to create account.", ("creator.balance", creator.balance)("required", o.fee));
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
-                auto min_fee = _db.get_witness_schedule_object().median_props.account_creation_fee;
-                if (_db.has_hardfork(STEEMIT_HARDFORK_0_18__535)) {
-                    min_fee *= median_props.create_account_with_golos_modifier;
-                }
+                const auto& median_props = _db.get_witness_schedule_object().median_props;
+                auto min_fee = median_props.account_creation_fee;
                 FC_ASSERT(o.fee >= min_fee,
                     "Insufficient Fee: ${f} required, ${p} provided.", ("f", min_fee)("p", o.fee));
             }
@@ -145,6 +139,7 @@ namespace golos { namespace chain {
                 c.balance -= o.fee;
             });
 
+            const auto& props = _db.get_dynamic_global_properties();
             const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = o.new_account_name;
                 acc.memo_key = o.memo_key;
@@ -187,18 +182,20 @@ namespace golos { namespace chain {
 
             const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
             const auto& median_props = _db.get_witness_schedule_object().median_props;
-            auto target_delegation =
-                median_props.create_account_delegation_ratio *
-                median_props.create_account_with_golos_modifier *
-                median_props.account_creation_fee * v_share_price;
-            auto current_delegation =
-                median_props.create_account_delegation_ratio * o.fee * v_share_price + o.delegation;
+            const auto target = median_props.create_account_min_golos_fee + median_props.create_account_min_delegation;
+            auto target_delegation = target * v_share_price;
+            auto min_fee = median_props.account_creation_fee.amount.value;
+#ifdef STEEMIT_BUILD_TESTNET
+            if (!min_fee)
+                min_fee = 1;
+#endif
+            auto current_delegation = o.fee * target.amount.value / min_fee * v_share_price + o.delegation;
 
             FC_ASSERT(current_delegation >= target_delegation,
                 "Inssufficient Delegation ${f} required, ${p} provided.",
                 ("f", target_delegation)("p", current_delegation)("o.fee", o.fee) ("o.delegation", o.delegation));
-            FC_ASSERT(o.fee >= median_props.account_creation_fee,
-                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_props.account_creation_fee)("p", o.fee));
+            FC_ASSERT(o.fee >= median_props.create_account_min_golos_fee,
+                "Insufficient Fee: ${f} required, ${p} provided.", ("f", median_props.create_account_min_golos_fee)("p", o.fee));
 
             for (auto& a : o.owner.account_auths) {
                 _db.get_account(a.first);
@@ -239,7 +236,7 @@ namespace golos { namespace chain {
                     d.delegator = o.creator;
                     d.delegatee = o.new_account_name;
                     d.vesting_shares = o.delegation;
-                    d.min_delegation_time = now + median_props.create_account_delegation_time;
+                    d.min_delegation_time = now + fc::seconds(median_props.create_account_delegation_time);
                 });
             }
             if (o.fee.amount > 0) {
@@ -2200,8 +2197,8 @@ namespace golos { namespace chain {
 
             const auto& median_props = _db.get_witness_schedule_object().median_props;
             const auto v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
-            auto min_delegation = median_props.account_creation_fee * median_props.min_delegation_multiplier * v_share_price;
-            auto min_update = median_props.account_creation_fee * v_share_price;
+            auto min_delegation = median_props.min_delegation * v_share_price;
+            auto min_update = median_props.create_account_min_golos_fee * v_share_price;
 
             auto now = _db.head_block_time();
             auto delta = delegation ?

@@ -443,6 +443,7 @@ namespace golos { namespace protocol {
             uint16_t sbd_interest_rate = STEEMIT_DEFAULT_SBD_INTEREST_RATE;
 
             void validate() const {
+                FC_ASSERT(account_creation_fee.symbol == STEEM_SYMBOL);
                 FC_ASSERT(account_creation_fee.amount >= STEEMIT_MIN_ACCOUNT_CREATION_FEE);
                 FC_ASSERT(maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT);
                 FC_ASSERT(sbd_interest_rate >= 0);
@@ -462,39 +463,42 @@ namespace golos { namespace protocol {
         struct chain_properties_18: public chain_properties_17 {
 
             /**
-             * Modifier for delegated GP on account creation
-             *
-             *  target_delegation =
-             *  create_account_delegation_ratio * create_account_with_golos_modifier * account_creation_fee
+             *  Minimum fee (in GOLOS) payed when create account with delegation
              */
-            uint32_t create_account_with_golos_modifier = GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER;
+            asset create_account_min_golos_fee =
+                asset(STEEMIT_MIN_ACCOUNT_CREATION_FEE * GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER, STEEM_SYMBOL);
 
             /**
-             *  Ratio for delegated GP on account creation
+             *  Minimum GP delegation amount when create account with delegation
              *
-             *  target_delegation =
-             *  create_account_delegation_ratio * create_account_with_golos_modifier * account_creation_fee
+             *  Note: this minimum is applied only when fee is minimal. If fee is greater,
+             *  then actual delegation can be less (up to 0 if fee part is greater or equal than account_creation_fee)
              */
-            uint32_t create_account_delegation_ratio = GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO;
+            asset create_account_min_delegation =
+                asset(STEEMIT_MIN_ACCOUNT_CREATION_FEE *
+                    GOLOS_CREATE_ACCOUNT_WITH_GOLOS_MODIFIER * GOLOS_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL);
 
             /**
-             * Minimum time of delegated GP on create account
+             * Minimum time of delegated GP on create account (in seconds)
              */
-            fc::microseconds create_account_delegation_time = GOLOS_CREATE_ACCOUNT_DELEGATION_TIME;
+            uint32_t create_account_delegation_time = (GOLOS_CREATE_ACCOUNT_DELEGATION_TIME).to_seconds();
 
             /**
-             * Multiplier of minimum delegated GP
-             *
-             * minimum delegated GP = delegation_multiplier * account_creation_fee
+             * Minimum delegated GP
              */
-            uint32_t min_delegation_multiplier = GOLOS_MIN_DELEGATION_MULTIPLIER;
+            asset min_delegation =
+                asset(STEEMIT_MIN_ACCOUNT_CREATION_FEE * GOLOS_MIN_DELEGATION_MULTIPLIER, STEEM_SYMBOL);
+
 
             void validate() const {
                 chain_properties_17::validate();
-                FC_ASSERT(min_delegation_multiplier > 0);
-                FC_ASSERT(create_account_delegation_time.count() > GOLOS_CREATE_ACCOUNT_DELEGATION_TIME.count() / 2);
-                FC_ASSERT(create_account_delegation_ratio > 0);
-                FC_ASSERT(create_account_with_golos_modifier > 0);
+                FC_ASSERT(create_account_min_golos_fee.amount > 0);
+                FC_ASSERT(create_account_min_golos_fee.symbol == STEEM_SYMBOL);
+                FC_ASSERT(create_account_min_delegation.amount > 0);
+                FC_ASSERT(create_account_min_delegation.symbol == STEEM_SYMBOL);
+                FC_ASSERT(min_delegation.amount > 0);
+                FC_ASSERT(min_delegation.symbol == STEEM_SYMBOL);
+                FC_ASSERT(create_account_delegation_time > (GOLOS_CREATE_ACCOUNT_DELEGATION_TIME).to_seconds() / 2);
             }
 
             chain_properties_18& operator=(const chain_properties_17& src) {
@@ -1153,8 +1157,8 @@ FC_REFLECT(
     (account_creation_fee)(maximum_block_size)(sbd_interest_rate))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_18),((golos::protocol::chain_properties_17)),
-    (create_account_with_golos_modifier)(create_account_delegation_ratio)
-    (create_account_delegation_time)(min_delegation_multiplier))
+    (create_account_min_golos_fee)(create_account_min_delegation)
+    (create_account_delegation_time)(min_delegation))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
