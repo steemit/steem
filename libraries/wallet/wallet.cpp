@@ -1892,16 +1892,34 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
         annotated_signed_transaction wallet_api::update_chain_properties(
             string witness_account_name,
-            const chain_properties& props,
+            const optional_chain_props& props,
             bool broadcast
         ) {
             FC_ASSERT(!is_locked());
 
             signed_transaction tx;
             chain_properties_update_operation op;
+            chain_api_properties ap;
+            chain_properties p;
+            auto wit = my->_remote_witness_api->get_witness_by_account(witness_account_name);
+            if (wit.valid()) {
+                FC_ASSERT(wit->owner == witness_account_name);
+                ap = wit->props;
+            }
+#define SET_PROP(X) {p.X = !!props.X ? *(props.X) : ap.X;}
+            SET_PROP(account_creation_fee);
+            SET_PROP(maximum_block_size);
+            SET_PROP(sbd_interest_rate);
+#undef SET_PROP
+#define SET_PROP(X) {if (!!props.X) p.X = *(props.X); else if (!!ap.X) p.X = *(ap.X);}
+            SET_PROP(create_account_min_golos_fee);
+            SET_PROP(create_account_min_delegation);
+            SET_PROP(create_account_delegation_time);
+            SET_PROP(min_delegation);
+#undef SET_PROP
 
             op.owner = witness_account_name;
-            op.props = props;
+            op.props = p;
             tx.operations.push_back(op);
 
             tx.validate();
