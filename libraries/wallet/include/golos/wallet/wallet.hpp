@@ -32,6 +32,17 @@ namespace golos { namespace wallet {
             vector<string> key_approvals_to_remove;
         };
 
+        struct optional_chain_props {
+            fc::optional<asset> account_creation_fee;
+            fc::optional<uint32_t> maximum_block_size;
+            fc::optional<uint16_t> sbd_interest_rate;
+
+            fc::optional<asset> create_account_min_golos_fee;
+            fc::optional<asset> create_account_min_delegation;
+            fc::optional<uint32_t> create_account_delegation_time;
+            fc::optional<asset> min_delegation;
+        };
+
         struct memo_data {
 
             static optional<memo_data> from_string( string str ) {
@@ -678,7 +689,7 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction update_chain_properties(
                 string witness_name,
-                const chain_properties& props,
+                const optional_chain_props& props,
                 bool broadcast = false
             );
 
@@ -1203,10 +1214,15 @@ FC_API( golos::wallet::wallet_api,
                 (get_outbox)
 )
 
-FC_REFLECT( (golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted) )
+FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
 FC_REFLECT(
     (golos::wallet::approval_delta),
     (active_approvals_to_add)(active_approvals_to_remove)
     (owner_approvals_to_add)(owner_approvals_to_remove)
     (posting_approvals_to_add)(posting_approvals_to_remove)
-    (key_approvals_to_add)(key_approvals_to_remove) )
+    (key_approvals_to_add)(key_approvals_to_remove))
+
+FC_REFLECT((golos::wallet::optional_chain_props),
+    (account_creation_fee)(maximum_block_size)(sbd_interest_rate)
+    (create_account_min_golos_fee)(create_account_min_delegation)
+    (create_account_delegation_time)(min_delegation))
