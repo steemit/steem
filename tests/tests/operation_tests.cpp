@@ -7030,6 +7030,8 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       generate_block();
 
       fund( "alice", ASSET( "15.000 TESTS" ) );
+      generate_block();
+
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_witness_schedule_object(), [&](witness_schedule_object& wso )
@@ -7222,6 +7224,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_TEST_MESSAGE( "Testing: create_claimed_account_apply" );
 
       ACTORS( (alice) )
+      vest( STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
       generate_block();
 
       signed_transaction tx;
@@ -7242,8 +7245,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
-
-      BOOST_TEST_MESSAGE( "--- Test success creating claimed account" );
+      BOOST_TEST_MESSAGE( "--- Test failure creating account with non-existent account auth" );
       generate_block();
       db_plugin->debug_update( [=]( database& db )
       {
@@ -7253,6 +7255,18 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
          });
       });
       generate_block();
+      op.owner = authority( 1, "bob", 1 );
+      tx.clear();
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success creating claimed account" );
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
       const auto& bob = db->get_account( "bob" );
@@ -7263,7 +7277,9 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_REQUIRE( bob_auth.active == authority( 2, priv_key.get_public_key(), 2 ) );
       BOOST_REQUIRE( bob_auth.posting == authority( 3, priv_key.get_public_key(), 3 ) );
       BOOST_REQUIRE( bob.memo_key == priv_key.get_public_key() );
+#ifndef IS_LOW_MEM // json_metadata is not stored on low memory nodes
       BOOST_REQUIRE( bob.json_metadata == "{\"foo\":\"bar\"}" );
+#endif
       BOOST_REQUIRE( bob.proxy == "" );
       BOOST_REQUIRE( bob.recovery_account == "alice" );
       BOOST_REQUIRE( bob.created == db->head_block_time() );
