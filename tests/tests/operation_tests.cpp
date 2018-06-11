@@ -6969,7 +6969,7 @@ BOOST_AUTO_TEST_CASE( claim_account_validate )
       op.fee = ASSET( "1.000 TESTS" );
 
       BOOST_TEST_MESSAGE( "--- Test failure with invalid account name" );
-      op.creator = "invalidaccountname";
+      op.creator = "aA0";
       BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Test failure with invalid fee symbol" );
@@ -7120,59 +7120,63 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
 
 BOOST_AUTO_TEST_CASE( create_claimed_account_validate )
 {
-   BOOST_TEST_MESSAGE( "Testing: create_claimed_account_validate" );
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: create_claimed_account_validate" );
 
-   private_key_type priv_key = generate_private_key( "alice" );
+      private_key_type priv_key = generate_private_key( "alice" );
 
-   create_claimed_account_operation op;
-   op.creator = "alice";
-   op.new_account_name = "bob";
-   op.owner = authority( 1, priv_key.get_public_key(), 1 );
-   op.active = authority( 1, priv_key.get_public_key(), 1 );
-   op.posting = authority( 1, priv_key.get_public_key(), 1 );
-   op.memo_key = priv_key.get_public_key();
+      create_claimed_account_operation op;
+      op.creator = "alice";
+      op.new_account_name = "bob";
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      op.active = authority( 1, priv_key.get_public_key(), 1 );
+      op.posting = authority( 1, priv_key.get_public_key(), 1 );
+      op.memo_key = priv_key.get_public_key();
 
-   BOOST_TEST_MESSAGE( "--- Test invalid creator name" );
-   op.creator = "invalidaccountname";
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid creator name" );
+      op.creator = "aA0";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test invalid new account name" );
-   op.creator = "alice";
-   op.new_account_name = "invalidaccountname";
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid new account name" );
+      op.creator = "alice";
+      op.new_account_name = "aA0";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test invalid account name in owner authority" );
-   op.new_account_name = "bob";
-   op.owner = authority( 1, "invalidaccountname", 1 );
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in owner authority" );
+      op.new_account_name = "bob";
+      op.owner = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test invalid account name in active authority" );
-   op.owner = authority( 1, priv_key.get_public_key(), 1 );
-   op.active = authority( 1, "invalidaccountname", 1 );
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in active authority" );
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      op.active = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test invalid account name in posting authority" );
-   op.active = authority( 1, priv_key.get_public_key(), 1 );
-   op.posting = authority( 1, "invalidaccountname", 1 );
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in posting authority" );
+      op.active = authority( 1, priv_key.get_public_key(), 1 );
+      op.posting = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test invalid JSON metadata" );
-   op.posting = authority( 1, priv_key.get_public_key(), 1 );
-   op.json_metadata = "{\"foo\",\"bar\"}";
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test invalid JSON metadata" );
+      op.posting = authority( 1, priv_key.get_public_key(), 1 );
+      op.json_metadata = "{\"foo\",\"bar\"}";
+      BOOST_REQUIRE_THROW( op.validate(), fc::exception );
 
-   BOOST_TEST_MESSAGE( "--- Test non UTF-8 JSON metadata" );
-   op.json_metadata = "{\"foo\":\"\xa0\xa1\"}";
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test non UTF-8 JSON metadata" );
+      op.json_metadata = "{\"foo\":\"\xa0\xa1\"}";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test failure with non-zero extensions" );
-   op.json_metadata = "";
-   op.extensions.insert( future_extensions( void_t() ) );
-   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "--- Test failure with non-zero extensions" );
+      op.json_metadata = "";
+      op.extensions.insert( future_extensions( void_t() ) );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-   BOOST_TEST_MESSAGE( "--- Test success" );
-   op.extensions.clear();
-   op.validate();
+      BOOST_TEST_MESSAGE( "--- Test success" );
+      op.extensions.clear();
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_CASE( create_claimed_account_authorities )

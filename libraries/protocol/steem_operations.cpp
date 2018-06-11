@@ -138,12 +138,27 @@ namespace steem { namespace protocol {
 
    void claim_account_operation::validate()const
    {
-
+      validate_account_name( creator );
+      FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
+      FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
+      FC_ASSERT( extensions.size() == 0, "There are no extensions for claim_account_operation." );
    }
 
    void create_claimed_account_operation::validate()const
    {
+      validate_account_name( creator );
+      validate_account_name( new_account_name );
+      owner.validate();
+      active.validate();
+      posting.validate();
 
+      if( json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
+      }
+
+      FC_ASSERT( extensions.size() == 0, "There are no extensions for create_claimed_account_operation." );
    }
 
    void vote_operation::validate() const
