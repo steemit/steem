@@ -7027,9 +7027,9 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       BOOST_TEST_MESSAGE( "Testing: claim_account_apply" );
 
       ACTORS( (alice) )
-
       generate_block();
-      fund( "alice", 15000 );
+
+      fund( "alice", ASSET( "15.000 TESTS" ) );
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_witness_schedule_object(), [&](witness_schedule_object& wso )
@@ -7037,7 +7037,6 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
          });
       });
-
       generate_block();
 
       signed_transaction tx;
@@ -7082,11 +7081,21 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test claiming from a non-existent account" );
+      op.creator = "bob";
+      tx.clear();
+      tx.operations.push_back( op );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
       generate_block();
+      op.creator = "alice";
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -7112,7 +7121,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
-      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -7210,7 +7219,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: account_create_apply" );
+      BOOST_TEST_MESSAGE( "Testing: create_claimed_account_apply" );
 
       ACTORS( (alice) )
       generate_block();

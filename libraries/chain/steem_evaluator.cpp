@@ -1869,7 +1869,24 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
 
 void claim_account_evaluator::do_apply( const claim_account_operation& o )
 {
-   FC_ASSERT( false, "This is not a valid op." );
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1771 ), "claim_account_operation is not enabled until hardfork 20." );
+
+   const auto& creator = _db.get_account( o.creator );
+   const auto& wso = _db.get_witness_schedule_object();
+
+   FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
+
+   FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
+               ("f", wso.median_props.account_creation_fee)
+               ("p", o.fee) );
+
+   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), o.fee );
+
+   _db.modify( creator, [&]( account_object& a )
+   {
+      a.balance -= o.fee;
+      a.pending_claimed_accounts++;
+   });
 }
 
 void create_claimed_account_evaluator::do_apply( const create_claimed_account_operation& o )

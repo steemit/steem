@@ -80,6 +80,9 @@ clean_database_fixture::clean_database_fixture()
       witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
+   // claim_account_apply test needed to start with generate_block to work, so I am adding it here instead.
+   generate_block();
+
    validate_database();
    } catch ( const fc::exception& e )
    {
