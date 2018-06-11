@@ -7,6 +7,7 @@
 #include <steem/plugins/network_broadcast_api/network_broadcast_api.hpp>
 #include <steem/plugins/tags_api/tags_api.hpp>
 #include <steem/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/reputation_api/reputation_api.hpp>
 #include <steem/plugins/market_history_api/market_history_api.hpp>
 #include <steem/plugins/witness_api/witness_api.hpp>
 
@@ -1067,7 +1068,7 @@ DEFINE_API_ARGS( get_feed_entries,                       vector< variant >,   ve
 DEFINE_API_ARGS( get_feed,                               vector< variant >,   vector< comment_feed_entry > )
 DEFINE_API_ARGS( get_blog_entries,                       vector< variant >,   vector< follow::blog_entry > )
 DEFINE_API_ARGS( get_blog,                               vector< variant >,   vector< comment_blog_entry > )
-DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< follow::account_reputation > )
+DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< reputation::account_reputation > )
 DEFINE_API_ARGS( get_reblogged_by,                       vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_blog_authors,                       vector< variant >,   vector< follow::reblog_count > )
 DEFINE_API_ARGS( get_ticker,                             vector< variant >,   ticker )

@@ -91,6 +91,15 @@ namespace steem { namespace plugins { namespace condenser_api {
          sbd_interest_rate( c.sbd_interest_rate )
       {}
 
+      operator legacy_chain_properties() const
+      {
+         legacy_chain_properties props;
+         props.account_creation_fee = legacy_steem_asset::from_asset( asset( account_creation_fee ) );
+         props.maximum_block_size = maximum_block_size;
+         props.sbd_interest_rate = sbd_interest_rate;
+         return props;
+      }
+
       legacy_asset   account_creation_fee;
       uint32_t       maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t       sbd_interest_rate = STEEM_DEFAULT_SBD_INTEREST_RATE;
