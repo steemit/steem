@@ -107,6 +107,8 @@ namespace steem { namespace chain {
          time_point_sec    last_root_post = fc::time_point_sec::min();
          uint32_t          post_bandwidth = 0;
 
+         share_type        pending_claimed_accounts = 0;
+
          /// This function should be used only when the account votes for a witness directly
          share_type        witness_vote_weight()const {
             return std::accumulate( proxied_vsf_votes.begin(),
@@ -416,6 +418,7 @@ FC_REFLECT( steem::chain::account_object,
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)(post_bandwidth)
+             (pending_claimed_accounts)
           )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
