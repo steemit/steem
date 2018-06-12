@@ -6957,5 +6957,370 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( claim_account_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: claim_account_validate" );
+
+      claim_account_operation op;
+      op.creator = "alice";
+      op.fee = ASSET( "1.000 TESTS" );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with invalid account name" );
+      op.creator = "aA0";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with invalid fee symbol" );
+      op.creator = "alice";
+      op.fee = ASSET( "1.000 TBD" );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with negative fee" );
+      op.fee = ASSET( "-1.000 TESTS" );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with non-zero extensions" );
+      op.fee = ASSET( "1.000 TESTS" );
+      op.extensions.insert( future_extensions( void_t() ) );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test success" );
+      op.extensions.clear();
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_account_authorities )
+{
+   try
+   {
+     BOOST_TEST_MESSAGE( "Testing: claim_account_authorities" );
+
+      claim_account_operation op;
+      op.creator = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_account_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: claim_account_apply" );
+
+      ACTORS( (alice) )
+      generate_block();
+
+      fund( "alice", ASSET( "15.000 TESTS" ) );
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&](witness_schedule_object& wso )
+         {
+            wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
+         });
+      });
+      generate_block();
+
+      signed_transaction tx;
+      claim_account_operation op;
+
+      BOOST_TEST_MESSAGE( "--- Test failure when creator cannot cover fee" );
+      op.creator = "alice";
+      op.fee = ASSET( "20.000 TESTS" );
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
+
+      // This test will be removed when soft forking for discount creation is implemented
+      BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+         {
+            wso.median_props.account_creation_fee = ASSET( "5.000 TESTS" );
+         });
+      });
+      generate_block();
+
+      op.fee = ASSET( "1.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming an account" );
+      op.fee = ASSET( "5.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test claiming from a non-existent account" );
+      op.creator = "bob";
+      tx.clear();
+      tx.operations.push_back( op );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
+      generate_block();
+      op.creator = "alice";
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "5.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure on claim overflow" );
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( "alice" ), [&]( account_object& a )
+         {
+            a.pending_claimed_accounts = std::numeric_limits< int64_t >::max();
+         });
+      });
+      generate_block();
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( create_claimed_account_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: create_claimed_account_validate" );
+
+      private_key_type priv_key = generate_private_key( "alice" );
+
+      create_claimed_account_operation op;
+      op.creator = "alice";
+      op.new_account_name = "bob";
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      op.active = authority( 1, priv_key.get_public_key(), 1 );
+      op.posting = authority( 1, priv_key.get_public_key(), 1 );
+      op.memo_key = priv_key.get_public_key();
+
+      BOOST_TEST_MESSAGE( "--- Test invalid creator name" );
+      op.creator = "aA0";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test invalid new account name" );
+      op.creator = "alice";
+      op.new_account_name = "aA0";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in owner authority" );
+      op.new_account_name = "bob";
+      op.owner = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in active authority" );
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      op.active = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test invalid account name in posting authority" );
+      op.active = authority( 1, priv_key.get_public_key(), 1 );
+      op.posting = authority( 1, "aA0", 1 );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test invalid JSON metadata" );
+      op.posting = authority( 1, priv_key.get_public_key(), 1 );
+      op.json_metadata = "{\"foo\",\"bar\"}";
+      BOOST_REQUIRE_THROW( op.validate(), fc::exception );
+
+      BOOST_TEST_MESSAGE( "--- Test non UTF-8 JSON metadata" );
+      op.json_metadata = "{\"foo\":\"\xa0\xa1\"}";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with non-zero extensions" );
+      op.json_metadata = "";
+      op.extensions.insert( future_extensions( void_t() ) );
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test success" );
+      op.extensions.clear();
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( create_claimed_account_authorities )
+{
+   try
+   {
+     BOOST_TEST_MESSAGE( "Testing: create_claimed_account_authorities" );
+
+      create_claimed_account_operation op;
+      op.creator = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: create_claimed_account_apply" );
+
+      ACTORS( (alice) )
+      vest( STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
+      generate_block();
+
+      signed_transaction tx;
+      create_claimed_account_operation op;
+      private_key_type priv_key = generate_private_key( "bob" );
+
+      BOOST_TEST_MESSAGE( "--- Test failure when creator has not claimed an account" );
+      op.creator = "alice";
+      op.new_account_name = "bob";
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      op.active = authority( 2, priv_key.get_public_key(), 2 );
+      op.posting = authority( 3, priv_key.get_public_key(), 3 );
+      op.memo_key = priv_key.get_public_key();
+      op.json_metadata = "{\"foo\":\"bar\"}";
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test failure creating account with non-existent account auth" );
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( "alice" ), [&]( account_object& a )
+         {
+            a.pending_claimed_accounts = 2;
+         });
+      });
+      generate_block();
+      op.owner = authority( 1, "bob", 1 );
+      tx.clear();
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success creating claimed account" );
+      op.owner = authority( 1, priv_key.get_public_key(), 1 );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      const auto& bob = db->get_account( "bob" );
+      const auto& bob_auth = db->get< account_authority_object, by_account >( "bob" );
+
+      BOOST_REQUIRE( bob.name == "bob" );
+      BOOST_REQUIRE( bob_auth.owner == authority( 1, priv_key.get_public_key(), 1 ) );
+      BOOST_REQUIRE( bob_auth.active == authority( 2, priv_key.get_public_key(), 2 ) );
+      BOOST_REQUIRE( bob_auth.posting == authority( 3, priv_key.get_public_key(), 3 ) );
+      BOOST_REQUIRE( bob.memo_key == priv_key.get_public_key() );
+#ifndef IS_LOW_MEM // json_metadata is not stored on low memory nodes
+      BOOST_REQUIRE( bob.json_metadata == "{\"foo\":\"bar\"}" );
+#endif
+      BOOST_REQUIRE( bob.proxy == "" );
+      BOOST_REQUIRE( bob.recovery_account == "alice" );
+      BOOST_REQUIRE( bob.created == db->head_block_time() );
+      BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.vesting_shares.amount.value == ASSET( "0.000000 VESTS" ).amount.value );
+      BOOST_REQUIRE( bob.id._id == bob_auth.id._id );
+
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure creating duplicate account name" );
+      tx.signatures.clear();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test account creation with temp account does not set recovery account" );
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( STEEM_TEMP_ACCOUNT ), [&]( account_object& a )
+         {
+            a.pending_claimed_accounts = 1;
+         });
+      });
+      generate_block();
+      op.creator = STEEM_TEMP_ACCOUNT;
+      op.new_account_name = "charlie";
+      tx.clear();
+      tx.operations.push_back( op );
+      db->push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db->get_account( "charlie" ).recovery_account == account_name_type() );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

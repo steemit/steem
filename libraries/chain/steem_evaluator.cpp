@@ -1867,14 +1867,63 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
-void placeholder_a_evaluator::do_apply( const placeholder_a_operation& o )
+void claim_account_evaluator::do_apply( const claim_account_operation& o )
 {
-   FC_ASSERT( false, "This is not a valid op." );
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1771 ), "claim_account_operation is not enabled until hardfork 20." );
+
+   const auto& creator = _db.get_account( o.creator );
+   const auto& wso = _db.get_witness_schedule_object();
+
+   FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
+
+   FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
+               ("f", wso.median_props.account_creation_fee)
+               ("p", o.fee) );
+
+   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), o.fee );
+
+   _db.modify( creator, [&]( account_object& a )
+   {
+      a.balance -= o.fee;
+      a.pending_claimed_accounts++;
+   });
 }
 
-void placeholder_b_evaluator::do_apply( const placeholder_b_operation& o )
+void create_claimed_account_evaluator::do_apply( const create_claimed_account_operation& o )
 {
-   FC_ASSERT( false, "This is not a valid op" );
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1771 ), "create_claimed_account_operation is not enabled until hardfork 20." );
+
+   const auto& creator = _db.get_account( o.creator );
+   const auto& props = _db.get_dynamic_global_properties();
+
+   FC_ASSERT( creator.pending_claimed_accounts > 0, "${creator} has no claimed accounts to create", ( "creator", o.creator ) );
+
+   verify_authority_accounts_exist( _db, o.owner, o.new_account_name, authority::owner );
+   verify_authority_accounts_exist( _db, o.active, o.new_account_name, authority::active );
+   verify_authority_accounts_exist( _db, o.posting, o.new_account_name, authority::posting );
+
+   _db.modify( creator, [&]( account_object& a )
+   {
+      a.pending_claimed_accounts--;
+   });
+
+   _db.create< account_object >( [&]( account_object& acc )
+   {
+      initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
+      #ifndef IS_LOW_MEM
+         from_string( acc.json_metadata, o.json_metadata );
+      #endif
+   });
+
+   _db.create< account_authority_object >( [&]( account_authority_object& auth )
+   {
+      auth.account = o.new_account_name;
+      auth.owner = o.owner;
+      auth.active = o.active;
+      auth.posting = o.posting;
+      auth.last_owner_update = fc::time_point_sec::min();
+   });
+
 }
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )

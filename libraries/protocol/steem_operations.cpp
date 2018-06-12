@@ -136,14 +136,29 @@ namespace steem { namespace protocol {
       validate_account_name( author );
    }
 
-   void placeholder_a_operation::validate()const
+   void claim_account_operation::validate()const
    {
-      FC_ASSERT( false, "This is not a valid op" );
+      validate_account_name( creator );
+      FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
+      FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
+      FC_ASSERT( extensions.size() == 0, "There are no extensions for claim_account_operation." );
    }
 
-   void placeholder_b_operation::validate()const
+   void create_claimed_account_operation::validate()const
    {
-      FC_ASSERT( false, "This is not a valid op" );
+      validate_account_name( creator );
+      validate_account_name( new_account_name );
+      owner.validate();
+      active.validate();
+      posting.validate();
+
+      if( json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
+      }
+
+      FC_ASSERT( extensions.size() == 0, "There are no extensions for create_claimed_account_operation." );
    }
 
    void vote_operation::validate() const
@@ -642,9 +657,9 @@ namespace steem { namespace protocol {
       bool is_substantial_reward = reward_tokens.begin()->amount > 0;
       for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
       {
-         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(), 
+         FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(),
                     "Reward tokens have not been inserted in ascending order." );
-         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(), 
+         FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(),
                     "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
          FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
          is_substantial_reward |= itr->amount > 0;
