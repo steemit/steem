@@ -656,45 +656,14 @@ struct api_convert_request_object
    time_point_sec    conversion_date;
 };
 
-struct discussion
+struct discussion : public api_comment_object
 {
    discussion() {}
+
+   discussion( const api_comment_object& c ) : api_comment_object( c ) {}
+
    discussion( const tags::discussion& d ) :
-      id( d.id ),
-      category( d.category ),
-      parent_author( d.parent_author ),
-      parent_permlink( d.parent_permlink ),
-      author( d.author ),
-      permlink( d.permlink ),
-      title( d.title ),
-      body( d.body ),
-      json_metadata( d.json_metadata ),
-      last_update( d.last_update ),
-      created( d.created ),
-      active( d.active ),
-      last_payout( d.last_payout ),
-      depth( d.depth ),
-      children( d.children ),
-      net_rshares( d.net_rshares ),
-      abs_rshares( d.abs_rshares ),
-      vote_rshares( d.vote_rshares ),
-      children_abs_rshares( d.children_abs_rshares ),
-      cashout_time( d.cashout_time ),
-      max_cashout_time( d.max_cashout_time ),
-      total_vote_weight( d.total_vote_weight ),
-      reward_weight( d.reward_weight ),
-      total_payout_value( legacy_asset::from_asset( d.total_payout_value ) ),
-      curator_payout_value( legacy_asset::from_asset( d.curator_payout_value ) ),
-      author_rewards( d.author_rewards ),
-      net_votes( d.net_votes ),
-      root_author( d.root_author ),
-      root_permlink( d.root_permlink ),
-      max_accepted_payout( legacy_asset::from_asset( d.max_accepted_payout ) ),
-      percent_steem_dollars( d.percent_steem_dollars ),
-      allow_replies( d.allow_replies ),
-      allow_votes( d.allow_votes ),
-      allow_curation_rewards( d.allow_curation_rewards ),
-      beneficiaries( d.beneficiaries ),
+      api_comment_object( d ),
       url( d.url ),
       root_title( d.root_title ),
       pending_payout_value( legacy_asset::from_asset( d.pending_payout_value ) ),
@@ -708,53 +677,6 @@ struct discussion
       first_reblogged_by( d.first_reblogged_by ),
       first_reblogged_on( d.first_reblogged_on )
    {}
-
-
-   comment_id_type   id;
-   string            category;
-   string            parent_author;
-   string            parent_permlink;
-   string            author;
-   string            permlink;
-
-   string            title;
-   string            body;
-   string            json_metadata;
-   time_point_sec    last_update;
-   time_point_sec    created;
-   time_point_sec    active;
-   time_point_sec    last_payout;
-
-   uint8_t           depth = 0;
-   uint32_t          children = 0;
-
-   share_type        net_rshares;
-   share_type        abs_rshares;
-   share_type        vote_rshares;
-
-   share_type        children_abs_rshares;
-   time_point_sec    cashout_time;
-   time_point_sec    max_cashout_time;
-   uint64_t          total_vote_weight = 0;
-
-   uint16_t          reward_weight = 0;
-
-   legacy_asset      total_payout_value;
-   legacy_asset      curator_payout_value;
-
-   share_type        author_rewards;
-
-   int32_t           net_votes = 0;
-
-   account_name_type root_author;
-   string            root_permlink;
-
-   legacy_asset      max_accepted_payout;
-   uint16_t          percent_steem_dollars = 0;
-   bool              allow_replies = false;
-   bool              allow_votes = false;
-   bool              allow_curation_rewards = false;
-   vector< beneficiary_route_type > beneficiaries;
 
    string                        url; /// /category/@rootauthor/root_permlink#author/permlink
    string                        root_title;
@@ -1318,17 +1240,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_vesting_delegation_expiration_obj
 FC_REFLECT( steem::plugins::condenser_api::api_convert_request_object,
              (id)(owner)(requestid)(amount)(conversion_date) )
 
-FC_REFLECT( steem::plugins::condenser_api::discussion,
-             (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
-             (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
-             (depth)(children)
-             (net_rshares)(abs_rshares)(vote_rshares)
-             (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)
-             (root_author)(root_permlink)
-             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
-             (beneficiaries)
+FC_REFLECT_DERIVED( steem::plugins::condenser_api::discussion, (steem::plugins::condenser_api::api_comment_object),
              (url)(root_title)(pending_payout_value)(total_pending_payout_value)
              (active_votes)(replies)(author_reputation)(promoted)
              (body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on)

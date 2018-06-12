@@ -700,12 +700,10 @@ namespace detail
                _state.accounts[a].reputation = _reputation_api->get_account_reputations( { a, 1 } ).reputations[0].reputation;
             }
          }
-         if( _tags_api )
+
+         for( auto& d : _state.content )
          {
-            for( auto& d : _state.content )
-            {
-               d.second.active_votes = _tags_api->get_active_votes( { d.second.author, d.second.permlink } ).votes;
-            }
+            d.second.active_votes = get_active_votes( { fc::variant( d.second.author ), fc::variant( d.second.permlink ) } );
          }
 
          _state.witness_schedule = _database_api->get_witness_schedule( {} );
@@ -1303,9 +1301,37 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_active_votes )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_active_votes( { args[0].as< account_name_type >(), args[1].as< string >() } ).votes;
+      vector< tags::vote_state > votes;
+      const auto& comment = _db.get_comment( args[0].as< account_name_type >(), args[1].as< string >() );
+      const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+      chain::comment_id_type cid(comment.id);
+      auto itr = idx.lower_bound( cid );
+
+      while( itr != idx.end() && itr->comment == cid )
+      {
+         const auto& vo = _db.get( itr->voter );
+         tags::vote_state vstate;
+         vstate.voter = vo.name;
+         vstate.weight = itr->weight;
+         vstate.rshares = itr->rshares;
+         vstate.percent = itr->vote_percent;
+         vstate.time = itr->last_update;
+
+         if( _follow_api )
+         {
+            auto reps = _follow_api->get_account_reputations( follow::get_account_reputations_args( { vo.name, 1 } ) ).reputations;
+            if( reps.size() )
+            {
+               vstate.reputation = reps[0].reputation;
+            }
+         }
+
+         votes.push_back( vstate );
+         ++itr;
+      }
+
+      return votes;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_account_votes )
@@ -1340,22 +1366,35 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_content )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return discussion( _tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } ) );
+      auto comments = _database_api->find_comments( { { { args[0].as< account_name_type >(), args[1].as< string >() } } } );
+
+      if( comments.comments.size() == 0 )
+      {
+         return discussion();
+      }
+
+      discussion content( comments.comments[0] );
+      set_pending_payout( content );
+
+      return content;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_content_replies )
    {
       CHECK_ARG_SIZE( 2 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      auto discussions = _tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
+      account_name_type author = args[0].as< account_name_type >();
+      string permlink = args[1].as< string >();
+      const auto& by_permlink_idx = _db.get_index< comment_index, by_parent >();
+      auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
       vector< discussion > result;
 
-      for( auto& d : discussions )
+      while( itr != by_permlink_idx.end() && itr->parent_author == author && to_string( itr->parent_permlink ) == permlink )
       {
-         result.push_back( discussion( d ) );
+         result.push_back( discussion( database_api::api_comment_object( *itr, _db ) ) );
+         set_pending_payout( result.back() );
+         ++itr;
       }
 
       return result;
@@ -1593,16 +1632,41 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_replies_by_last_update )
    {
       CHECK_ARG_SIZE( 3 )
-      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      auto discussions = _tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
       vector< discussion > result;
 
-      for( auto& d : discussions )
+#ifndef IS_LOW_MEM
+      account_name_type start_parent_author = args[0].as< account_name_type >();
+      string start_permlink = args[1].as< string >();
+      uint32_t limit = args[2].as< uint32_t >();
+
+      FC_ASSERT( limit <= 100 );
+      const auto& last_update_idx = _db.get_index< comment_index, by_last_update >();
+      auto itr = last_update_idx.begin();
+      const account_name_type* parent_author = &start_parent_author;
+
+      if( start_permlink.size() )
       {
-         result.push_back( discussion( d ) );
+         const auto& comment = _db.get_comment( start_parent_author, start_permlink );
+         itr = last_update_idx.iterator_to( comment );
+         parent_author = &comment.parent_author;
+      }
+      else if( start_parent_author.size() )
+      {
+         itr = last_update_idx.lower_bound( start_parent_author );
       }
 
+      result.reserve( limit );
+
+      while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
+      {
+         result.push_back( discussion( database_api::api_comment_object( *itr, _db ) ) );
+         set_pending_payout( result.back() );
+         result.back().active_votes = get_active_votes( { fc::variant( itr->author ), fc::variant( itr->permlink ) } );
+         ++itr;
+      }
+
+#endif
       return result;
    }
 
