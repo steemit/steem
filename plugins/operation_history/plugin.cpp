@@ -196,15 +196,12 @@ namespace golos { namespace plugins { namespace operation_history {
 
                 for (const auto& op : ops) {
                     if (op.size()) {
-                        ilog("#: opt ${s}", ("s", op));
                         std::string ops_postfix("_operation");
                         std::size_t pos = op.find(ops_postfix);
                         if (pos not_eq std::string::npos and (pos + ops_postfix.size()) == op.size()) {
-                            ilog("#: without opt ${s}", ("s", STEEM_NAMESPACE_PREFIX + op + ops_postfix));
-                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + ops_postfix);
-                        } else {
-                            ilog("#: with opt ${s}", ("s", STEEM_NAMESPACE_PREFIX + op));
                             pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
+                        } else {
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + ops_postfix);
                         }
                     }
                 }
@@ -212,24 +209,20 @@ namespace golos { namespace plugins { namespace operation_history {
         };
 
         if (options.count("history-whitelist-ops")) {
-            ilog("###: plugin_initialize() 1.1");
             FC_ASSERT(
                 !options.count("history-blacklist-ops"),
                 "history-blacklist-ops and history-whitelist-ops can't be specified together");
-            ilog("###: plugin_initialize() 1.2");
 
             pimpl->filter_content = true;
             pimpl->blacklist = false;
             split_list(options.at("history-whitelist-ops").as<std::vector<std::string>>());
             ilog("operation_history: whitelisting ops ${o}", ("o", pimpl->ops_list));
         } else if (options.count("history-blacklist-ops")) {
-            ilog("###: plugin_initialize() 1.3");
             pimpl->filter_content = true;
             pimpl->blacklist = true;
             split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
-        ilog("###: plugin_initialize() 2");
 
         if (options.count("history-start-block")) {
             pimpl->filter_content = true;
