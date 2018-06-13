@@ -256,7 +256,6 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.memo_key = key;
    acc.created = props.time;
    acc.last_power_shares_update = props.time;
-   acc.last_vote_block = props.head_block_number;
    acc.mined = mined;
 
    if( hardfork < STEEM_HARDFORK_0_20__2539 )
@@ -1371,7 +1370,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       _db.modify( voter, [&]( account_object& a ){
          a.power_shares = current_power - used_power;
          a.last_power_shares_update = _db.head_block_time();
-         a.last_vote_block = _db.head_block_num();
+         a.last_vote_time = _db.head_block_time();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
@@ -1555,7 +1554,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       _db.modify( voter, [&]( account_object& a ){
          a.power_shares = current_power - used_power;
          a.last_power_shares_update = _db.head_block_time();
-         a.last_vote_block = _db.head_block_num();
+         a.last_vote_time = _db.head_block_time();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
@@ -1683,7 +1682,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
-      FC_TODO( "This looks suspicious. We might now be deleting vote objects that we should be on nodes that are configured to clear votes" );
+      FC_TODO( "This looks suspicious. We might not be deleting vote objects that we should be on nodes that are configured to clear votes" );
       FC_ASSERT( false, "Cannot vote again on a comment after payout." );
 
       _db.remove( *itr );
@@ -1691,7 +1690,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    FC_TODO( "Replace with new check not against elapse seconds" );
-   FC_ASSERT( voter.last_vote_block < _db.head_block_num() , "Can only vote once per block." );
+   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() < STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
    uint128_t current_power_shares = util::get_regen_power_shares( voter, _db.head_block_time() );
    FC_ASSERT( current_power_shares > 0, "Account currently does not have power shares." );
@@ -1727,7 +1726,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       {
          a.power_shares = current_power_shares - used_power_shares;
          a.last_power_shares_update = _db.head_block_time();
-         a.last_vote_block = _db.head_block_num();
+         a.last_vote_time = _db.head_block_time();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
@@ -1846,7 +1845,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       {
          a.power_shares = current_power_shares - used_power_shares;
          a.last_power_shares_update = _db.head_block_time();
-         a.last_vote_block = _db.head_block_num();
+         a.last_vote_time = _db.head_block_time();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
