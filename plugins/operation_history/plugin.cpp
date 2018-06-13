@@ -179,19 +179,15 @@ namespace golos { namespace plugins { namespace operation_history {
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
-        ilog("###: plugin_initialize() 0");
         ilog("operation_history plugin: plugin_initialize() begin");
 
         pimpl = std::make_unique<plugin_impl>();
-        ilog("###: plugin_initialize() 1");
 
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){
             pimpl->on_operation(note);
         });
-        ilog("###: plugin_initialize() 2");
 
         golos::chain::add_plugin_index<operation_index>(pimpl->database);
-        ilog("###: plugin_initialize() 3");
 
         auto split_list = [&](const std::vector<std::string>& ops_list) {
             for (const auto& raw: ops_list) {
@@ -214,24 +210,26 @@ namespace golos { namespace plugins { namespace operation_history {
                 }
             }
         };
-        ilog("###: plugin_initialize() 4");
 
         if (options.count("history-whitelist-ops")) {
+            ilog("###: plugin_initialize() 1.1");
             FC_ASSERT(
                 !options.count("history-blacklist-ops"),
                 "history-blacklist-ops and history-whitelist-ops can't be specified together");
+            ilog("###: plugin_initialize() 1.2");
 
             pimpl->filter_content = true;
             pimpl->blacklist = false;
             split_list(options.at("history-whitelist-ops").as<std::vector<std::string>>());
             ilog("operation_history: whitelisting ops ${o}", ("o", pimpl->ops_list));
         } else if (options.count("history-blacklist-ops")) {
+            ilog("###: plugin_initialize() 1.3");
             pimpl->filter_content = true;
             pimpl->blacklist = true;
             split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
-        ilog("###: plugin_initialize() 5");
+        ilog("###: plugin_initialize() 2");
 
         if (options.count("history-start-block")) {
             pimpl->filter_content = true;
