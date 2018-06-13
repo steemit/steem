@@ -13,6 +13,8 @@
 
 #include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
+#include <steem/chain/util/power_shares.hpp>
+
 #include <fc/optional.hpp>
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
@@ -116,8 +118,8 @@ struct api_account_object
       lifetime_vote_count( a.lifetime_vote_count ),
       post_count( a.post_count ),
       can_vote( a.can_vote ),
-      voting_power( a.voting_power ),
-      last_vote_time( a.last_vote_time ),
+      power_shares( a.power_shares ),
+      last_power_shares_update( a.last_power_shares_update ),
       balance( legacy_asset::from_asset( a.balance ) ),
       savings_balance( legacy_asset::from_asset( a.savings_balance ) ),
       sbd_balance( legacy_asset::from_asset( a.sbd_balance ) ),
@@ -145,8 +147,10 @@ struct api_account_object
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
-      last_root_post( a.last_root_post )
+      last_root_post( a.last_root_post ),
+      last_vote_time( a.last_vote_time )
    {
+      voting_power = (uint16_t)( a.power_shares / chain::util::get_effective_vesting_shares( a ) ).to_uint64();
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
@@ -176,8 +180,9 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
+   uint128_t         power_shares;
+   time_point_sec    last_power_shares_update;
    uint16_t          voting_power = 0;
-   time_point_sec    last_vote_time;
 
    legacy_asset      balance;
    legacy_asset      savings_balance;
@@ -217,6 +222,7 @@ struct api_account_object
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+   time_point_sec    last_vote_time;
 };
 
 struct extended_account : public api_account_object
@@ -1125,7 +1131,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(power_shares)(last_power_shares_update)(voting_power)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -1135,7 +1141,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)
+             (last_post)(last_root_post)(last_vote_time)
           )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::condenser_api::api_account_object),
