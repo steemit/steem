@@ -47,8 +47,8 @@ namespace steem { namespace chain {
          uint32_t          post_count = 0;
 
          bool              can_vote = true;
-         uint16_t          voting_power = STEEM_100_PERCENT;   ///< current voting power of this account, it falls after every vote
-         time_point_sec    last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
+         uint128_t         power_shares = 0;   ///< current power shares of this account, it falls after every vote
+         time_point_sec    last_power_shares_update; ///< used to increase the power shares of this account the longer it goes without voting.
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
@@ -105,6 +105,7 @@ namespace steem { namespace chain {
 
          time_point_sec    last_post;
          time_point_sec    last_root_post = fc::time_point_sec::min();
+         uint32_t          last_vote_block = 0;
          uint32_t          post_bandwidth = 0;
 
          share_type        pending_claimed_accounts = 0;
@@ -405,7 +406,7 @@ FC_REFLECT( steem::chain::account_object,
              (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(power_shares)(last_power_shares_update)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -416,7 +417,7 @@ FC_REFLECT( steem::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(post_bandwidth)
+             (last_post)(last_root_post)(last_vote_block)(post_bandwidth)
              (pending_claimed_accounts)
           )
 
