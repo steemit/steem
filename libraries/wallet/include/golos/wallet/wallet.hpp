@@ -78,7 +78,7 @@ namespace golos { namespace wallet {
 
         struct wallet_data {
             vector<char>              cipher_keys; /** encrypted keys */
-            string                    ws_server = "ws://localhost:8090";
+            string                    ws_server = "ws://localhost:8091";
         };
 
         struct signed_block_with_info: public signed_block {
