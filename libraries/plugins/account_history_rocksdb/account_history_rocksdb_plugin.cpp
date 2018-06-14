@@ -409,6 +409,17 @@ public:
 
          const auto& rocksdb_plugin = appbase::app().get_plugin< account_history_rocksdb_plugin >();
 
+         // I do not like using exceptions for control paths, but column definitions are set multiple times
+         // opening the db, so that is not a good place to write the initial lib.
+         try
+         {
+            get_lib();
+         }
+         catch( fc::assert_exception& )
+         {
+            update_lib( 0 );
+         }
+
          _on_post_apply_operation_con = _mainDb.add_post_apply_operation_handler(
             [&]( const operation_notification& note )
             {
@@ -971,16 +982,11 @@ uint32_t account_history_rocksdb_plugin::impl::get_lib()
    std::string data;
    auto s = _storage->Get(ReadOptions(), _columnHandles[CURRENT_LIB], LIB_ID, &data );
 
-   if( s.ok() )
-   {
-      uint32_t lib = 0;
-      load( lib, data.data(), data.size() );
-      return lib;
-   }
+   FC_ASSERT( s.ok(), "Could not find last irreversible block." );
 
-   FC_ASSERT( s.IsNotFound() );
-
-   return 0;
+   uint32_t lib = 0;
+   load( lib, data.data(), data.size() );
+   return lib;
 }
 
 void account_history_rocksdb_plugin::impl::update_lib( uint32_t lib )
@@ -1213,15 +1219,15 @@ void account_history_rocksdb_plugin::impl::on_pre_reindex(const steem::chain::re
 
 void account_history_rocksdb_plugin::impl::on_post_reindex(const steem::chain::reindex_notification& note)
 {
-   const uint32_t finalBlock = note.last_block_number;
    ilog("Reindex completed up to block: ${b}. Setting back write limit to non-massive level.",
-      ("b", finalBlock));
+      ("b", note.last_block_number));
 
    flushStorage();
    _collectedOpsWriteLimit = 1;
    _reindexing = false;
+   update_lib( note.last_block_number ); // We always reindex irreversible blocks.
 
-   printReport(finalBlock, "RocksDB data reindex finished. ");
+   printReport( note.last_block_number, "RocksDB data reindex finished." );
 }
 
 void account_history_rocksdb_plugin::impl::printReport(uint32_t blockNo, const char* detailText) const
