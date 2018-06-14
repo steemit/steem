@@ -47,7 +47,7 @@ namespace steem { namespace chain {
          uint32_t          post_count = 0;
 
          bool              can_vote = true;
-         uint128_t         power_shares = 0;   ///< current power shares of this account, it falls after every vote
+         int64_t           power_shares = 0;   ///< current power shares of this account, it falls after every vote
          time_point_sec    last_power_shares_update; ///< used to increase the power shares of this account the longer it goes without voting.
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account

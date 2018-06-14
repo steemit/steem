@@ -251,7 +251,7 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
-   uint128_t         power_shares = 0;
+   int64_t           power_shares = 0;
    time_point_sec    last_power_shares_update;
 
    asset             balance;
