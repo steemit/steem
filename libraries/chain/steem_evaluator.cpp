@@ -1279,7 +1279,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       FC_ASSERT( elapsed_seconds >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
    int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / STEEM_POWER_SHARES_REGENERATION_SECONDS;
-   int64_t current_power     = std::min( int64_t(voter.power_shares.to_uint64() + regenerated_power), int64_t(STEEM_100_PERCENT) );
+   int64_t current_power     = std::min( int64_t(voter.power_shares) + regenerated_power, int64_t(STEEM_100_PERCENT) );
    FC_ASSERT( current_power > 0, "Account currently does not have voting power." );
 
    int64_t  abs_weight    = abs(o.weight);
@@ -1672,23 +1672,23 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    FC_TODO( "Replace with new check not against elapse seconds" );
-   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() < STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
-   uint128_t current_power_shares = util::get_regen_power_shares( voter, _db.head_block_time() );
+   int64_t current_power_shares = util::get_regen_power_shares( voter, _db.head_block_time() );
    FC_ASSERT( current_power_shares > 0, "Account currently does not have power shares." );
 
-   uint16_t abs_weight = abs( o.weight );
-   uint128_t used_power_shares = ( current_power_shares * abs_weight * ( 60 * 60 * 24 ) ) / STEEM_100_PERCENT;
+   int16_t abs_weight = abs( o.weight );
+   int64_t used_power_shares = ( current_power_shares * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
 
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   uint64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_POWER_SHARES_REGENERATION_SECONDS;
+   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_POWER_SHARES_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
    used_power_shares = ( used_power_shares + max_vote_denom - 1 ) / max_vote_denom;
    FC_ASSERT( used_power_shares <= current_power_shares, "Account does not have enough power to vote." );
 
-   int64_t abs_rshares = ( used_power_shares / STEEM_100_PERCENT ).to_uint64();
+   int64_t abs_rshares = used_power_shares;
 
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
@@ -1886,11 +1886,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
 { try {
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
    {
-      pre_hf20_vote_evaluator( o, _db );
+      hf20_vote_evaluator( o, _db );
    }
    else
    {
-      hf20_vote_evaluator( o, _db );
+      pre_hf20_vote_evaluator( o, _db );
    }
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
@@ -2578,6 +2578,7 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
       a.vesting_shares += op.reward_vests;
       a.reward_vesting_balance -= op.reward_vests;
       a.reward_vesting_steem -= reward_vesting_steem_to_move;
+      a.power_shares += uint128_t( op.reward_vests.amount.value ) * STEEM_100_PERCENT;
    });
 
    _db.modify( _db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
@@ -2670,7 +2671,38 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    const auto& delegatee = _db.get_account( op.delegatee );
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
 
-   auto available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+   asset available_shares;
+   uint128_t current_power_shares = 0;
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+   {
+      current_power_shares = util::get_regen_power_shares( delegator, _db.head_block_time() );
+      // Any trunaction represents 1 satoshi of VESTS that is not at 100% power and thereforce cannot be delegated.
+      // There is not loss of accuracy from this conversion.
+      available_shares = asset( ( current_power_shares / STEEM_100_PERCENT ).to_uint64(), VESTS_SYMBOL );
+
+      if( delegator.next_vesting_withdrawal < fc::time_point_sec::maximum()
+         && delegator.to_withdraw - delegator.withdrawn > delegator.vesting_withdraw_rate.amount )
+      {
+         /*
+         current power shares does not include the current week's power down:
+
+         std::min(
+            account.vesting_withdraw_rate.amount.value,           // Weekly amount
+            account.to_withdraw.value - account.withdrawn.value   // Or remainder
+            );
+
+         But an account cannot delegate **any** power shares that they are powering down.
+         The remaining withdrawal needs to be added in but then the current week is double counted.
+         */
+
+        available_shares += delegator.vesting_withdraw_rate - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+      }
+   }
+   else
+   {
+      available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+   }
 
    const auto& wso = _db.get_witness_schedule_object();
    const auto& gpo = _db.get_dynamic_global_properties();
@@ -2700,11 +2732,21 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       _db.modify( delegator, [&]( account_object& a )
       {
          a.delegated_vesting_shares += op.vesting_shares;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            a.power_shares = current_power_shares - ( op.vesting_shares.amount.value * STEEM_100_PERCENT );
+         }
       });
 
       _db.modify( delegatee, [&]( account_object& a )
       {
          a.received_vesting_shares += op.vesting_shares;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            a.power_shares = util::get_regen_power_shares( a, _db.head_block_time() ) + ( op.vesting_shares.amount.value * STEEM_100_PERCENT );
+         }
       });
    }
    // Else if the delegation is increasing
@@ -2713,16 +2755,26 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       auto delta = op.vesting_shares - delegation->vesting_shares;
 
       FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a difference. min_update: ${min}", ("min", min_update) );
-      FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
+      FC_ASSERT( available_shares >= delta, "Account does not have enough vesting shares to delegate." );
 
       _db.modify( delegator, [&]( account_object& a )
       {
          a.delegated_vesting_shares += delta;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            a.power_shares = current_power_shares - ( delta.amount.value * STEEM_100_PERCENT );
+         }
       });
 
       _db.modify( delegatee, [&]( account_object& a )
       {
          a.received_vesting_shares += delta;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            a.power_shares = util::get_regen_power_shares( a, _db.head_block_time() ) + ( delta.amount.value * STEEM_100_PERCENT );
+         }
       });
 
       _db.modify( *delegation, [&]( vesting_delegation_object& obj )
@@ -2755,6 +2807,12 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       _db.modify( delegatee, [&]( account_object& a )
       {
          a.received_vesting_shares -= delta;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            uint128_t delta_power_sharess = delta.amount.value * STEEM_100_PERCENT;
+            a.power_shares = a.power_shares > delta_power_sharess ? a.power_shares - delta_power_sharess : 0;
+         }
       });
 
       if( op.vesting_shares.amount > 0 )

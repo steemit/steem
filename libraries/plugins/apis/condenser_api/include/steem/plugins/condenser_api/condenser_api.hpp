@@ -150,7 +150,7 @@ struct api_account_object
       last_root_post( a.last_root_post ),
       last_vote_time( a.last_vote_time )
    {
-      voting_power = (uint16_t)( a.power_shares / chain::util::get_effective_vesting_shares( a ) ).to_uint64();
+      voting_power = (uint16_t)( a.power_shares / chain::util::get_effective_vesting_shares( a ) );
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
@@ -180,7 +180,7 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
-   uint128_t         power_shares;
+   int64_t           power_shares;
    time_point_sec    last_power_shares_update;
    uint16_t          voting_power = 0;
 
