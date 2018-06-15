@@ -7074,7 +7074,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.available_account_subsidies = 2000000;
+            gpo.available_account_subsidies = 200000;
          });
       });
       generate_block();
@@ -7111,7 +7111,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "15.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
       validate_database();
 
 
@@ -7133,7 +7133,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
       validate_database();
 
 
@@ -7146,7 +7146,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1900000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 190000 );
 
 
       BOOST_TEST_MESSAGE( "--- Test success claiming a partial subsidized account" );
@@ -7157,7 +7157,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 4 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "7.500 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1850000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 185000 );
 
 
       BOOST_TEST_MESSAGE( "--- Test failure with no available subsidized accounts" );

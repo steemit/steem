@@ -2286,15 +2286,34 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
-               ("f", wso.median_props.account_creation_fee)
-               ("p", o.fee) );
+   const auto& creation_fee = wso.median_props.account_creation_fee;
 
-   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), o.fee );
+   asset paid_fee = o.fee;
+
+   if( paid_fee < creation_fee )
+   {
+      // This is optimized because STEEM_100_PERCENT == STEEM_ACCOUNT_SUBSIDY_PRECISION
+      uint64_t percent_unpaid = ( ( creation_fee.amount.value - paid_fee.amount.value ) * STEEM_100_PERCENT ) / creation_fee.amount.value;
+      const auto& gpo = _db.get_dynamic_global_properties();
+
+      FC_ASSERT( gpo.available_account_subsidies >= percent_unpaid, "There are not enough subsidized accounts to claim" );
+
+      _db.modify( gpo, [&]( dynamic_global_property_object& gpo )
+      {
+         gpo.available_account_subsidies -= percent_unpaid;
+      });
+   }
+   else
+   {
+      // operation fee could be higher that witness specified fee
+      paid_fee.amount.value = std::min( o.fee.amount.value, creation_fee.amount.value );
+   }
+
+   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), paid_fee );
 
    _db.modify( creator, [&]( account_object& a )
    {
-      a.balance -= o.fee;
+      a.balance -= paid_fee;
       a.pending_claimed_accounts++;
    });
 }
