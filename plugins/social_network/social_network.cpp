@@ -53,7 +53,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         void select_content_replies(
-            std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
+            std::vector<discussion>& result, std::string author, std::string permlink, uint32_t limit
         ) const;
 
         std::vector<discussion> get_content_replies(
@@ -119,7 +119,7 @@ namespace golos { namespace plugins { namespace social_network {
     social_network::~social_network() = default;
 
     void social_network::impl::select_content_replies(
-        std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit
+        std::vector<discussion>& result, std::string author, std::string permlink, uint32_t limit
     ) const {
         account_name_type acc_name = account_name_type(author);
         const auto& by_permlink_idx = database().get_index<comment_index>().indices().get<by_parent>();
