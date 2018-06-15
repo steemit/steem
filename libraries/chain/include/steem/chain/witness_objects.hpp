@@ -193,7 +193,6 @@ namespace steem { namespace chain {
 
 
    struct by_vote_name;
-   struct by_name;
    struct by_pow;
    struct by_work;
    struct by_schedule_time;
