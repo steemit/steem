@@ -34,10 +34,11 @@ namespace bpo = boost::program_options;
 #define DIAGNOSTIC(s)
 //#define DIAGNOSTIC(s) s
 
-#define OPERATION_BY_ID 1
-#define OPERATION_BY_BLOCK 2
-#define AH_INFO_BY_NAME 3
-#define AH_OPERATION_BY_ID 4
+#define CURRENT_LIB 1
+#define OPERATION_BY_ID 2
+#define OPERATION_BY_BLOCK 3
+#define AH_INFO_BY_NAME 4
+#define AH_OPERATION_BY_ID 5
 
 #define WRITE_BUFFER_FLUSH_LIMIT     10
 #define ACCOUNT_HISTORY_LENGTH_LIMIT 30
@@ -226,6 +227,11 @@ typedef PrimitiveTypeComparatorImpl<uint32_t> by_id_ComparatorImpl;
 
 typedef PrimitiveTypeComparatorImpl<account_name_type::Storage> by_account_name_ComparatorImpl;
 
+typedef PrimitiveTypeSlice< uint32_t > lib_id_slice_t;
+typedef PrimitiveTypeSlice< uint32_t > lib_slice_t;
+
+#define LIB_ID lib_id_slice_t( 0 )
+
 /** Location index is nonunique. Since RocksDB supports only unique indexes, it must be extended
  *  by some unique part (ie ID).
  *
@@ -403,6 +409,17 @@ public:
 
          const auto& rocksdb_plugin = appbase::app().get_plugin< account_history_rocksdb_plugin >();
 
+         // I do not like using exceptions for control paths, but column definitions are set multiple times
+         // opening the db, so that is not a good place to write the initial lib.
+         try
+         {
+            get_lib();
+         }
+         catch( fc::assert_exception& )
+         {
+            update_lib( 0 );
+         }
+
          _on_post_apply_operation_con = _mainDb.add_post_apply_operation_handler(
             [&]( const operation_notification& note )
             {
@@ -453,6 +470,9 @@ public:
    }
 
 private:
+   uint32_t get_lib();
+   void update_lib( uint32_t );
+
    typedef std::vector<ColumnFamilyDescriptor> ColumnDefinitions;
    ColumnDefinitions prepareColumnDefinitions(bool addDefaultColumn);
 
@@ -957,11 +977,31 @@ uint32_t account_history_rocksdb_plugin::impl::enumVirtualOperationsFromBlockRan
    return 0;
 }
 
+uint32_t account_history_rocksdb_plugin::impl::get_lib()
+{
+   std::string data;
+   auto s = _storage->Get(ReadOptions(), _columnHandles[CURRENT_LIB], LIB_ID, &data );
+
+   FC_ASSERT( s.ok(), "Could not find last irreversible block." );
+
+   uint32_t lib = 0;
+   load( lib, data.data(), data.size() );
+   return lib;
+}
+
+void account_history_rocksdb_plugin::impl::update_lib( uint32_t lib )
+{
+   auto s = _writeBuffer.Put( _columnHandles[ CURRENT_LIB ], LIB_ID, lib_slice_t( lib ) );
+   checkStatus( s );
+}
+
 account_history_rocksdb_plugin::impl::ColumnDefinitions account_history_rocksdb_plugin::impl::prepareColumnDefinitions(bool addDefaultColumn)
 {
    ColumnDefinitions columnDefs;
    if(addDefaultColumn)
       columnDefs.emplace_back(::rocksdb::kDefaultColumnFamilyName, ColumnFamilyOptions());
+
+   columnDefs.emplace_back("current_lib", ColumnFamilyOptions());
 
    columnDefs.emplace_back("operation_by_id", ColumnFamilyOptions());
    auto& byIdColumn = columnDefs.back();
@@ -1179,15 +1219,15 @@ void account_history_rocksdb_plugin::impl::on_pre_reindex(const steem::chain::re
 
 void account_history_rocksdb_plugin::impl::on_post_reindex(const steem::chain::reindex_notification& note)
 {
-   const uint32_t finalBlock = note.last_block_number;
    ilog("Reindex completed up to block: ${b}. Setting back write limit to non-massive level.",
-      ("b", finalBlock));
+      ("b", note.last_block_number));
 
    flushStorage();
    _collectedOpsWriteLimit = 1;
    _reindexing = false;
+   update_lib( note.last_block_number ); // We always reindex irreversible blocks.
 
-   printReport(finalBlock, "RocksDB data reindex finished. ");
+   printReport( note.last_block_number, "RocksDB data reindex finished." );
 }
 
 void account_history_rocksdb_plugin::impl::printReport(uint32_t blockNo, const char* detailText) const
@@ -1342,6 +1382,8 @@ void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block
 {
    if( _reindexing ) return;
 
+   if( block_num <= get_lib() ) return;
+
    const auto& volatile_idx = _mainDb.get_index< volatile_operation_index, by_block >();
    auto itr = volatile_idx.begin();
 
@@ -1359,6 +1401,8 @@ void account_history_rocksdb_plugin::impl::on_irreversible_block( uint32_t block
    {
       _mainDb.remove( *o );
    }
+
+   update_lib( block_num );
 }
 
 account_history_rocksdb_plugin::account_history_rocksdb_plugin()
