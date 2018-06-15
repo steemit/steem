@@ -9,20 +9,49 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
-//#include <appbase/plugin.hpp>
 #include <golos/plugins/operation_history/plugin.hpp>
+#include <golos/chain/operation_notification.hpp>
+
 #include "database_fixture.hpp"
+#include "comment_reward.hpp"
 
 
 namespace golos { namespace test {
+    
 namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
 
-typedef golos::chain::database_fixture database_fixture;
+typedef golos::chain::clean_database_fixture clean_database_fixture;
+typedef golos::chain::database database;
 typedef golos::plugins::operation_history::plugin gpoh_plugin;
 typedef golos::plugins::operation_history::applied_operation applied_operation; 
 typedef golos::plugins::chain::plugin chain_plugin;
 typedef golos::plugins::json_rpc::plugin json_rpc_plugin;
+typedef golos::plugins::json_rpc::msg_pack msg_pack;
+
+
+struct app_initialise {
+    gpoh_plugin *_plg;
+    
+    app_initialise() {
+        int argc = boost::unit_test::framework::master_test_suite().argc;
+        char **argv = boost::unit_test::framework::master_test_suite().argv;
+        for (int i = 1; i < argc; i++) {
+            const std::string arg = argv[i];
+            if (arg == "--record-assert-trip") {
+                fc::enable_record_assert_trip = true;
+            }
+            if (arg == "--show-test-names") {
+                std::cout << "running test "
+                          << boost::unit_test::framework::current_test_case().p_name
+                          << std::endl;
+            }
+        }
+        _plg = &appbase::app().register_plugin<gpoh_plugin>();
+        BOOST_TEST_REQUIRE(_plg);
+        appbase::app().initialize<gpoh_plugin>(argc, argv);
+    }
+};
 
 
 struct key_option_whitelist {
@@ -38,7 +67,7 @@ struct key_option_blacklist {
 struct option_with_postfix {
     std::string opt =
         "account_create_operation," \
-        "account_update_operation," \
+        "vote_operation," \
         "comment_operation," \
         "delete_comment_operation";
 };
@@ -47,7 +76,7 @@ struct option_with_postfix {
 struct option_without_postfix {
     std::string opt =
         "account_create," \
-        "account_update," \
+        "vote," \
         "comment," \
         "delete_comment";
 };
@@ -61,17 +90,6 @@ struct test_options_postfix
     bpo::options_description _cfg_opts;
     bpo::options_description _cli_opts;
     bpo::variables_map _vm_opts;
-
-    void print_applied_opts(const applied_operation &opts) {
-        std::stringstream ss;
-        ss << opts.trx_id << ", "; /// golos::protocol::transaction_id_type
-        ss << opts.block << ", ";
-        ss << opts.trx_in_block << ", ";
-        ss << opts.op_in_trx << ", ";
-        ss << opts.virtual_op << ", ";
-        ss << opts.timestamp.to_iso_string() << ", "; /// fc::time_point_sec
-        //ss << opts.op << "\n"; /// golos::protocol::operation
-    }
 
     void print_options(const std::vector<bpo::option> &args) {
         for (auto arg : args) {
@@ -127,7 +145,7 @@ struct test_options_postfix
         auto parsed_cmd_line = bpo::parse_command_line(1, &argv, all_opts);
         print_options(parsed_cmd_line.options);
         bpo::store(parsed_cmd_line, _vm_opts); 
-        print_vmap(_vm_opts);
+        //print_vmap(_vm_opts);
         
         std::stringstream ss_opts;
         ss_opts << "history-whitelist-ops = " << opt_type::opt << "\n";
@@ -139,7 +157,7 @@ struct test_options_postfix
         auto parsed_cfg = bpo::parse_config_file<char>(iss_opts, _cfg_opts, true);
         print_options(parsed_cfg.options);
         bpo::store(parsed_cfg, _vm_opts);
-        print_vmap(_vm_opts);
+        //print_vmap(_vm_opts);
     }
     
 
@@ -148,7 +166,144 @@ struct test_options_postfix
         fill_testing_options();
     }
     
-    ~test_options_postfix() {
+    operator bpo::variables_map () const {
+        return _vm_opts;
+    }
+    
+    bool check_applied_options(const applied_operation &opts) const {
+        std::stringstream ss;
+        ss << opts.trx_id << ", "; /// golos::protocol::transaction_id_type
+        ss << opts.block << ", ";
+        ss << opts.trx_in_block << ", ";
+        ss << opts.op_in_trx << ", ";
+        ss << opts.virtual_op << ", ";
+        ss << opts.timestamp.to_iso_string() << ", "; /// fc::time_point_sec
+        //ss << opts.op << "\n"; /// golos::protocol::operation
+        BOOST_TEST_MESSAGE(ss.str());
+        return true;
+    }
+
+};
+
+
+using namespace golos::protocol;
+using namespace golos::chain;
+
+struct transaction_fixture : clean_database_fixture {
+    gpoh_plugin *_plg;
+
+    template<class test_type>
+    void check_operations(const test_type &tt) {
+        BOOST_TEST_MESSAGE("Check history operations.");
+        msg_pack msg;
+        msg.args = std::vector<fc::variant>({fc::variant(1), fc::variant(false)});
+        auto ops = _plg->get_ops_in_block(msg);
+        BOOST_TEST_MESSAGE("Operations is " + std::to_string(ops.size()));
+        size_t count = 0;
+        for (auto o : ops) {
+            tt.check_applied_options(o);
+            //if (o.which() == operation::tag<comment_operation>::value) {
+                BOOST_TEST_MESSAGE("comment_operation " + std::to_string(++count) + " " 
+                    + std::to_string(operation::tag<comment_operation>::value));
+                
+                //auto &top = o.get<comment_operation>();
+                //top.memo = decrypt_memo(top.memo);
+            //}
+        }
+    }
+    
+    template<class test_type>
+    void execute(const test_type &tt) {
+        _plg = app_initialise()._plg;
+        _plg->plugin_initialize(tt);
+        _plg->plugin_startup();
+        init_database();
+        init_transactions();
+        check_operations(tt);
+        close_database();
+    }
+
+    void init_database() {
+        clean_database_fixture::initialize();
+    }
+    
+    void init_transactions() {
+        BOOST_TEST_MESSAGE("Init transactions");
+
+        ACTORS((alice)(bob)(sam))
+        fund("alice", 10000);            
+        vest("alice", 10000);            
+        fund("bob", 7500);            
+        vest("bob", 7500);            
+        fund("sam", 8000);            
+        vest("sam", 8000);            
+        
+        db->set_clear_votes(0xFFFFFFFF);
+        
+        signed_transaction tx;            
+        
+        BOOST_TEST_MESSAGE("Creating comments.");   
+        comment_operation com;            
+        com.author = "bob";            
+        com.permlink = "test";            
+        com.parent_author = "";            
+        com.parent_permlink = "test";            
+        com.title = "foo";            
+        com.body = "bar";            
+        tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+        tx.operations.push_back(com); 
+        tx.sign(bob_private_key, db->get_chain_id());
+        db->push_transaction(tx, 0);
+        generate_block();
+        tx.operations.clear();
+        tx.signatures.clear();
+        
+        BOOST_TEST_MESSAGE("Voting for comments.");
+        vote_operation vote;            
+        vote.voter = "alice";            
+        vote.author = "bob";            
+        vote.permlink = "test";            
+        vote.weight = -1; ///< Nessary for the posiblity of delet_comment_operation.            
+        tx.operations.push_back(vote);            
+        vote.voter = "bob";            
+        tx.operations.push_back(vote);            
+        vote.voter = "sam";            
+        tx.operations.push_back(vote);            
+        tx.sign(alice_private_key, db->get_chain_id());            
+        tx.sign(bob_private_key, db->get_chain_id());            
+        tx.sign(sam_private_key, db->get_chain_id());            
+        db->push_transaction(tx, 0);
+        generate_block();
+        tx.operations.clear();
+        tx.signatures.clear();
+        
+        BOOST_TEST_MESSAGE("Deleting comment.");
+        delete_comment_operation dco;
+        dco.author = "bob";
+        dco.permlink = "test";
+        tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+        tx.operations.push_back(dco); 
+        tx.sign(bob_private_key, db->get_chain_id());
+        db->push_transaction(tx, 0);
+        generate_block();
+        tx.operations.clear();
+        tx.signatures.clear();
+        
+        BOOST_TEST_MESSAGE("Generate accaunt.");
+        account_create_operation aco;
+        aco.new_account_name = "dave";
+        aco.creator = STEEMIT_INIT_MINER_NAME;
+        aco.owner = authority(1, init_account_pub_key, 1);
+        aco.active = aco.owner;
+        tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+        tx.operations.push_back(aco);
+        tx.sign(init_account_priv_key, db->get_chain_id());
+        db->push_transaction(tx, 0);
+        generate_block();
+        tx.operations.clear();
+        tx.signatures.clear();
+        
+        validate_database();
     }
 };
 }}
@@ -165,39 +320,34 @@ typedef test_options_postfix<key_opt_blacklist, opt_with_postfix> test_black_wit
 typedef test_options_postfix<key_opt_blacklist, opt_without_postfix> test_black_without_postfix;
 
 
-BOOST_FIXTURE_TEST_SUITE(options_postfix, database_fixture);
+BOOST_AUTO_TEST_SUITE(options_postfix)
 
-    BOOST_AUTO_TEST_CASE(options_postfix_case) try {
-        BOOST_TEST_MESSAGE("\n@ white options with postfix: ");
-        int argc = boost::unit_test::framework::master_test_suite().argc;
-        char **argv = boost::unit_test::framework::master_test_suite().argv;
-        for (int i = 1; i < argc; i++) {
-            const std::string arg = argv[i];
-            if (arg == "--record-assert-trip") {
-                fc::enable_record_assert_trip = true;
-            }
-            if (arg == "--show-test-names") {
-                std::cout << "running test "
-                          << boost::unit_test::framework::current_test_case().p_name
-                          << std::endl;
-            }
-        }
-        gpoh_plugin *plg = &appbase::app().register_plugin<gpoh_plugin>();
-        BOOST_TEST_REQUIRE(plg);
-        appbase::app().initialize<gpoh_plugin>(argc, argv);
+    BOOST_FIXTURE_TEST_CASE(white_options_with_postfix, transaction_fixture) try {
+        execute(test_white_with_postfix());
+    } FC_LOG_AND_RETHROW();
 
-        test_white_with_postfix wwo;
-        plg->plugin_initialize(wwo._vm_opts);
-        
-        test_white_without_postfix woo;
-        plg->plugin_initialize(woo._vm_opts);
-
-        test_black_with_postfix bwo;
-        plg->plugin_initialize(bwo._vm_opts);
-        
-        test_black_without_postfix boo;
-        plg->plugin_initialize(boo._vm_opts);
-    } 
-    FC_LOG_AND_RETHROW();
+    BOOST_FIXTURE_TEST_CASE(white_options_without_postfix, transaction_fixture) try {
+        _plg = app_initialise()._plg;
+        _plg->plugin_initialize(test_white_without_postfix());
+        _plg->plugin_startup();
+        init_database();
+    } FC_LOG_AND_RETHROW();
+    
+    BOOST_FIXTURE_TEST_CASE(black_options_with_postfix, transaction_fixture) try {
+        _plg = app_initialise()._plg;
+        _plg->plugin_initialize(test_black_with_postfix());
+        _plg->plugin_startup();
+    } FC_LOG_AND_RETHROW();
+    
+    BOOST_FIXTURE_TEST_CASE(black_options_without_postfix, transaction_fixture) try {
+        _plg = app_initialise()._plg;
+        _plg->plugin_initialize(test_black_without_postfix());
+        _plg->plugin_startup();
+    } FC_LOG_AND_RETHROW();
 
 BOOST_AUTO_TEST_SUITE_END()
+
+
+// - там есть настройка history-start-block - это номер блока до которого не хранить историю 
+// - хранить историю только за последний день, неделю, месяц это более удобно потому, 
+// что делегатов сейчас интересует только последняя история операций.
