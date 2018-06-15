@@ -46,9 +46,8 @@ template<typename T,size_t N> struct get_typename< fc::int_array<T,N> >
 template<typename T, size_t N>
 void from_variant( const variant& var, fc::int_array<T,N>& a )
 {
-   const variants& vars = var.get_array();
    memset( a.data, 0, sizeof(a.data) );
-   variants& varray = var.get_array();    // throws if is not array
+   const variants& varray = var.get_array();    // throws if is not array
    FC_ASSERT( varray.size() == N );
 
    for( size_t i=0; i<N; i++ )
