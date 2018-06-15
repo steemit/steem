@@ -7123,9 +7123,10 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
+      BOOST_TEST_MESSAGE( "--- Test success claiming a second account, but with an excess fee" );
       generate_block();
       op.creator = "alice";
+      op.fee = ASSET( "10.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
