@@ -24,17 +24,22 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/optional.hpp>
+#include <boost/interprocess/containers/flat_set.hpp>
 
 #include <fc/crypto/sha1.hpp>
+
+#define MONGO_ID_SINGLE "__single__"
 
 namespace golos {
 namespace plugins {
 namespace mongo_db {
 
+    namespace bip = boost::interprocess;
     using namespace golos::chain;
     using namespace golos::protocol;
     using golos::chain::to_string;
     using golos::chain::shared_string;
+    using bsoncxx::builder::stream::array;
     using bsoncxx::builder::stream::document;
 
     struct named_document {
@@ -90,6 +95,11 @@ namespace mongo_db {
         doc << name + "_symbol" << value.symbol_name();
     }
 
+    inline void format_value(document& doc, const std::string& name, const price& value) {
+        format_value(doc, name + "_base", value.base);
+        format_value(doc, name + "_quote", value.quote);
+    }
+
     inline void format_value(document& doc, const std::string& name, const std::string& value) {
         doc << name << value;
     }
@@ -127,6 +137,18 @@ namespace mongo_db {
     template <typename T>
     inline void format_value(document& doc, const std::string& name, const fc::safe<T>& value) {
         doc << name << static_cast<int64_t>(value.value);
+    }
+
+    template <typename T, typename Pred, typename Alloc, typename Func>
+    inline void format_array_value(document& doc, const std::string& name, const bip::flat_set<T, Pred, Alloc>& value,
+        Func each_item_converter) {
+             if (!value.empty()) {
+                array results_array;
+                for (auto& item: value) {
+                    results_array << each_item_converter(item);
+                }
+                doc << name << results_array;
+            }
     }
     
 }}} // golos::plugins::mongo_db
