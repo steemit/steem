@@ -22,57 +22,42 @@ each individual to inspect the code to understand the consensus rules.
 
 # Quickstart
 
-Just want to get up and running quickly?  Try deploying a prebuilt
-dockerized container.  Both common binary types are included.
+Just want to get up and running quickly?  Try deploying a prebuilt dockerized container. 
 
-## Dockerized p2p Node
+```
+sudo docker run -d \
+    -p 4243:4243 \
+    -p 8090:8090 \
+    -p 8091:8091 \
+    --name golos-default  goloschain/golos:latest
+```    
 
-To run a p2p node (ca. 2GB of memory is required at the moment):
+To attach to the golosd you should use the cli_wallet:
+```
+sudo docker exec -ti golos-default \
+    /usr/local/bin/cli_wallet \
+    --server-rpc-endpoint="ws://127.0.0.1:8091"
+```
 
-    docker run \
-        -d -p 2001:2001 -p 8090:8090 --name golos-default \
-        goloschain/golos
+# Building
 
-    docker logs -f golos-default  # follow along
+See the [build instruction](https://github.com/GolosChain/golos/wiki/Build-instruction), which contains 
+more information about configuring, building and running of docker containers.
 
-## Dockerized Full Node
+# Testing
 
-To run a node with *all* the data (e.g. for supporting a content website)
-that uses ca. 14GB of memory and growing:
-
-    docker run \
-        --env USE_WAY_TOO_MUCH_RAM=1 \
-        -d -p 2001:2001 -p 8090:8090 --name golos-full \
-        goloschain/golos
-
-    docker logs -f golos-full
+```
+git clone https://github.com/GolosChain/golos.git
+cd golos
+sudo docker rm local/golos-test
+sudo docker build -t local/golos-test -f share/golosd/docker/Dockerfile-test .
+```
 
 # Seed Nodes
 
 A list of some seed nodes to get you started can be found in
-[documentation/seednodes](documentation/seednodes).
+[share/golosd/seednodes](share/golosd/seednodes).
 
 This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
 time to a whitespace delimited list of seed nodes (with port).
-
-# How to Mine
-
-The mining algorithm used by Golos requires the owner to have access to the
-private key used by the account. This means it does not favor mining pools.
-
-    ./golosd --miner=["accountname","${WIFPRIVATEKEY}"] \
-        --witness="accountname" --seed-node="95.85.13.229:2225"
-
-Make sure that your accountname is unique and not already used by someone
-else or your proof of work might not be accepted by the blockchain.
-
-# Building
-
-See [documentation/building.md](documentation/building.md) for detailed build instructions, including
-compile-time options, and specific commands for Linux (Ubuntu LTS) or macOS X.
-
-# Testing
-
-See [documentation/testing.md](documentation/testing.md) for test build targets and info
-on how to use lcov to check code test coverage.
