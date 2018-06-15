@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/util/manabar.hpp>
+
 #include <steem/plugins/rc/rc_utility.hpp>
 #include <steem/plugins/rc/resource_count.hpp>
 
@@ -65,8 +67,7 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       id_type               id;
 
       account_name_type     account;
-      int64_t               rc_usage = 0;
-      fc::time_point_sec    rc_usage_last_update;
+      steem::chain::util::manabar   rc_manabar;
       asset                 max_rc_creation_adjustment = asset( 0, VESTS_SYMBOL );
 };
 
@@ -108,8 +109,7 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_pool_object, steem::plugins::rc
 FC_REFLECT( steem::plugins::rc::rc_account_object,
    (id)
    (account)
-   (rc_usage)
-   (rc_usage_last_update)
+   (rc_manabar)
    (max_rc_creation_adjustment)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_account_object, steem::plugins::rc::rc_account_index )
