@@ -1985,12 +1985,13 @@ namespace detail
    void condenser_api_impl::set_pending_payout( discussion& d )
    {
       if( !_tags_api )
-         return;
-
-      const auto& cidx = _db.get_index< tags::tag_index, tags::by_comment>();
-      auto itr = cidx.lower_bound( d.id );
-      if( itr != cidx.end() && itr->comment == d.id )  {
-         d.promoted = legacy_asset::from_asset( asset( itr->promoted_balance, SBD_SYMBOL ) );
+      {
+         const auto& cidx = _db.get_index< tags::tag_index, tags::by_comment>();
+         auto itr = cidx.lower_bound( d.id );
+         if( itr != cidx.end() && itr->comment == d.id )
+         {
+            d.promoted = legacy_asset::from_asset( asset( itr->promoted_balance, SBD_SYMBOL ) );
+         }
       }
 
       const auto& props = _db.get_dynamic_global_properties();
