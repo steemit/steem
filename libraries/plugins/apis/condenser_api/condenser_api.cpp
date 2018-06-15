@@ -1984,7 +1984,7 @@ namespace detail
 
    void condenser_api_impl::set_pending_payout( discussion& d )
    {
-      if( !_tags_api )
+      if( _tags_api )
       {
          const auto& cidx = _db.get_index< tags::tag_index, tags::by_comment>();
          auto itr = cidx.lower_bound( d.id );
