@@ -371,6 +371,7 @@ namespace steem { namespace chain {
          void process_funds();
          void process_conversions();
          void process_savings_withdraws();
+         void process_subsidized_accounts();
 #ifdef STEEM_ENABLE_SMT
          void process_smt_objects();
 #endif

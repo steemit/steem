@@ -2140,6 +2140,18 @@ void database::process_savings_withdraws()
   }
 }
 
+void database::process_subsidized_accounts()
+{
+   const auto& wso = get_witness_schedule_object();
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   {
+      gpo.available_account_subsidies = std::min(
+         uint64_t( wso.median_props.account_subsidy_limit ) * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * STEEM_ACCOUNT_SUBSIDY_PRECISION,
+         gpo.available_account_subsidies + wso.median_props.account_subsidy_print_rate );
+   });
+}
+
 #ifdef STEEM_ENABLE_SMT
 
 template< typename T, bool ALLOW_REMOVE >
@@ -3073,6 +3085,7 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    process_savings_withdraws();
+   process_subsidized_accounts();
    pay_liquidity_reward();
    update_virtual_supply();
 

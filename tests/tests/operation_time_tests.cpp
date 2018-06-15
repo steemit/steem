@@ -2966,5 +2966,47 @@ BOOST_AUTO_TEST_CASE( clear_null_account )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( generate_account_subsidies )
+{
+   BOOST_TEST_MESSAGE( "Testing: generate_account_subsidies" );
+
+   generate_block();
+   generate_block();
+
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
+
+   db_plugin->debug_update( [=]( database& db )
+   {
+      db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+      {
+         wso.median_props.account_subsidy_limit = 1000;
+         wso.median_props.account_subsidy_print_rate = 1000;
+      });
+   });
+
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
+
+   generate_block();
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 );
+
+   generate_block();
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000 );
+
+   db_plugin->debug_update( [=]( database& db )
+   {
+      db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+      {
+         gpo.available_account_subsidies = 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS;
+      });
+   });
+
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
+
+   generate_block();
+   BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
+
+   validate_database();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

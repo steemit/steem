@@ -72,6 +72,8 @@ void update_median_witness_props( database& db )
       _wso.median_props.maximum_block_size      = median_maximum_block_size;
       _wso.median_props.sbd_interest_rate       = median_sbd_interest_rate;
       _wso.median_props.account_subsidy_limit   = median_account_subsidy_limit;
+      _wso.median_props.account_subsidy_print_rate =
+         ( uint64_t( median_account_subsidy_limit ) * STEEM_ACCOUNT_SUBSIDY_PRECISION ) / STEEM_BLOCKS_PER_DAY;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )
