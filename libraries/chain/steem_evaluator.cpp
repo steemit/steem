@@ -2296,6 +2296,43 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
       uint64_t percent_unpaid = ( ( creation_fee.amount.value - paid_fee.amount.value ) * STEEM_100_PERCENT ) / creation_fee.amount.value;
       const auto& gpo = _db.get_dynamic_global_properties();
 
+      // This block is a little wierd. We want to enforce that only elected witnesses can include the transaction, but
+      // we do not want to prevent the transaction from propogating on the p2p network. Because we do not know what type of
+      // witness will have produced the last block whent he tx in broadcast, we need to disregard this assertion when the tx
+      // is propogating, but require it when applying the block.
+      if( !_db.is_pending_tx() )
+      {
+         const auto& current_witness = _db.get_witness( gpo.current_witness );
+         FC_ASSERT( current_witness.schedule == witness_object::elected, "Subsidized accounts can only be claimed by elected witnesses" );
+
+         uint32_t delta_time = ( _db.head_block_time() - current_witness.last_subsidy_update ).to_seconds();
+
+         // linear decay to enforce no more than 10% max by a single witness over 48 hours.
+         uint64_t recovered_subsidies = ( delta_time * STEEM_100_PERCENT * wso.single_witness_subsidy_limit )
+            / ( fc::days( STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ).to_seconds() * STEEM_100_PERCENT );
+         uint64_t new_subsidies = current_witness.recent_account_subsidies;
+
+         if( recovered_subsidies > new_subsidies )
+         {
+            new_subsidies = 0;
+         }
+         else
+         {
+            new_subsidies -= recovered_subsidies;
+         }
+
+         new_subsidies += STEEM_ACCOUNT_SUBSIDY_PRECISION;
+
+         FC_ASSERT( new_subsidies <= wso.single_witness_subsidy_limit, "Witness has claimed too many subsidized accounts recents. Claimed: ${claimed} Limit: ${limit}",
+            ("claiemd", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
+
+         _db.modify( current_witness, [&]( witness_object& w )
+         {
+            w.recent_account_subsidies = new_subsidies;
+            w.last_subsidy_update = _db.head_block_time();
+         });
+      }
+
       FC_ASSERT( gpo.available_account_subsidies >= percent_unpaid, "There are not enough subsidized accounts to claim" );
 
       _db.modify( gpo, [&]( dynamic_global_property_object& gpo )

@@ -40,7 +40,6 @@ namespace steem { namespace chain {
       uint32_t          maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t          sbd_interest_rate  = STEEM_DEFAULT_SBD_INTEREST_RATE;
       uint32_t          account_subsidy_limit = 0;
-      uint64_t          account_subsidy_print_rate = 0; // Per block print rate with precision 6
    };
 
    /**
@@ -55,7 +54,7 @@ namespace steem { namespace chain {
       public:
          enum witness_schedule_type
          {
-            top19,
+            elected,
             timeshare,
             miner,
             none
@@ -141,6 +140,9 @@ namespace steem { namespace chain {
 
          hardfork_version  hardfork_version_vote;
          time_point_sec    hardfork_time_vote = STEEM_GENESIS_TIME;
+
+         uint64_t          recent_account_subsidies = 0;
+         time_point_sec    last_subsidy_update;
    };
 
 
@@ -178,7 +180,7 @@ namespace steem { namespace chain {
          uint32_t                                                          next_shuffle_block_num = 1;
          fc::array< account_name_type, STEEM_MAX_WITNESSES >             current_shuffled_witnesses;
          uint8_t                                                           num_scheduled_witnesses = 1;
-         uint8_t                                                           top19_weight = 1;
+         uint8_t                                                           elected_weight = 1;
          uint8_t                                                           timeshare_weight = 5;
          uint8_t                                                           miner_weight = 1;
          uint32_t                                                          witness_pay_normalization_factor = 25;
@@ -189,6 +191,10 @@ namespace steem { namespace chain {
          uint8_t max_miner_witnesses            = STEEM_MAX_MINER_WITNESSES_HF0;
          uint8_t max_runner_witnesses           = STEEM_MAX_RUNNER_WITNESSES_HF0;
          uint8_t hardfork_required_witnesses    = STEEM_HARDFORK_REQUIRED_WITNESSES;
+
+         // Derivided fields that are stored for easy caching and reading of values.
+         uint64_t account_subsidy_print_rate = 0; // Per block print rate with precision 6
+         uint64_t single_witness_subsidy_limit = 0; // Per witness limit
    };
 
 
@@ -258,14 +264,13 @@ namespace steem { namespace chain {
 
 } }
 
-FC_REFLECT_ENUM( steem::chain::witness_object::witness_schedule_type, (top19)(timeshare)(miner)(none) )
+FC_REFLECT_ENUM( steem::chain::witness_object::witness_schedule_type, (elected)(timeshare)(miner)(none) )
 
 FC_REFLECT( steem::chain::chain_properties,
              (account_creation_fee)
              (maximum_block_size)
              (sbd_interest_rate)
              (account_subsidy_limit)
-             (account_subsidy_print_rate)
           )
 
 FC_REFLECT( steem::chain::witness_object,
@@ -287,11 +292,12 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::witness_vote_object, steem::chain::witne
 
 FC_REFLECT( steem::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)
-             (top19_weight)(timeshare_weight)(miner_weight)(witness_pay_normalization_factor)
+             (elected_weight)(timeshare_weight)(miner_weight)(witness_pay_normalization_factor)
              (median_props)(majority_version)
              (max_voted_witnesses)
              (max_miner_witnesses)
              (max_runner_witnesses)
              (hardfork_required_witnesses)
+             (account_subsidy_print_rate)(single_witness_subsidy_limit)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::witness_schedule_object, steem::chain::witness_schedule_index )

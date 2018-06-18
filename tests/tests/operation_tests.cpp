@@ -7069,7 +7069,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
          {
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
             wso.median_props.account_subsidy_limit = 10;
-            wso.median_props.account_subsidy_print_rate = 34;
+            wso.account_subsidy_print_rate = 34;
          });
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )

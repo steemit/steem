@@ -268,6 +268,7 @@
 
 #define STEEM_ACCOUNT_SUBSIDY_PRECISION      (STEEM_100_PERCENT)
 #define STEEM_ACCOUNT_SUBSIDY_BURST_DAYS     (2)
+#define STEEM_WITNESS_SUBSIDY_PERCENT        (10 * STEEM_1_PERCENT)
 
 /**
  *  Reserved Account IDs with special meaning
