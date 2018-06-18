@@ -61,6 +61,30 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
    } );
 }
 
+std::vector< std::pair< int64_t, account_name_type > > dump_all_accounts( const database& db )
+{
+   std::vector< std::pair< int64_t, account_name_type > > result;
+   const auto& idx = db.get_index< account_index >().indices().get< by_id >();
+   for( auto it=idx.begin(); it!=idx.end(); ++it )
+   {
+      result.emplace_back( it->id._id, it->name );
+   }
+
+   return result;
+}
+
+std::vector< std::pair< int64_t, account_name_type > > dump_all_rc_accounts( const database& db )
+{
+   std::vector< std::pair< int64_t, account_name_type > > result;
+   const auto& idx = db.get_index< rc_account_index >().indices().get< by_id >();
+   for( auto it=idx.begin(); it!=idx.end(); ++it )
+   {
+      result.emplace_back( it->id._id, it->account );
+   }
+
+   return result;
+}
+
 void create_rc_accounts( database& db, uint32_t now )
 {
    //
@@ -73,6 +97,17 @@ void create_rc_accounts( database& db, uint32_t now )
 
    const auto& idx = db.get_index< account_index >().indices().get< by_id >();
    const auto& rc_idx = db.get_index< rc_account_index >().indices().get< by_id >();
+   bool debug_print = (db.head_block_num() > 160785) && (db.head_block_num() < 160795);
+
+   if( debug_print )
+   {
+      ilog( "Begin create_rc_accounts()" );
+      ilog( "   accounts:   ${a}", ("a", dump_all_accounts(db)   ) );
+      ilog( "rc_accounts:   ${a}", ("a", dump_all_rc_accounts(db)) );
+   }
+
+   std::vector< std::pair< int64_t, account_name_type > > account_names;
+   std::vector< std::pair< int64_t, account_name_type > > rc_account_names;
 
    // Special case when rc is empty
    auto rc_it = rc_idx.end();
@@ -81,6 +116,12 @@ void create_rc_accounts( database& db, uint32_t now )
       for( auto it=idx.begin(); it!=idx.end(); ++it )
       {
          create_rc_account( db, now, *it );
+      }
+      if( debug_print )
+      {
+         ilog( "   accounts:   ${a}", ("a", dump_all_accounts(db)   ) );
+         ilog( "rc_accounts:   ${a}", ("a", dump_all_rc_accounts(db)) );
+         ilog( "create_rc_accounts() end (genesis path)" );
       }
       return;
    }
@@ -97,6 +138,12 @@ void create_rc_accounts( database& db, uint32_t now )
    {
       create_rc_account( db, now, *it );
       ++it;
+   }
+   if( debug_print )
+   {
+      ilog( "   accounts:   ${a}", ("a", dump_all_accounts(db)   ) );
+      ilog( "rc_accounts:   ${a}", ("a", dump_all_rc_accounts(db)) );
+      ilog( "create_rc_accounts() end (normal path)" );
    }
 }
 
@@ -222,6 +269,11 @@ void use_account_rcs(
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   bool debug_print = (gpo.head_block_number > 160785) && (gpo.head_block_number < 160795);
+   if( debug_print )
+   {
+      ilog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
+   }
    int64_t rc_regen = gpo.total_vesting_shares.amount.value / STEEM_RC_REGEN_TIME;
 
    create_rc_accounts( _db, gpo.time.sec_since_epoch() );
