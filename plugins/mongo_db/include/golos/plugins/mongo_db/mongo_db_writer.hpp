@@ -71,6 +71,8 @@ namespace mongo_db {
         uint32_t last_irreversible_block_num;
         std::map<uint32_t, signed_block> blocks;
         std::map<uint32_t, operations> virtual_ops;
+        std::map<uint32_t, dynamic_global_property_object> dgp_s;
+        std::map<uint32_t, witness_schedule_object> wso_s;
         // Table name, bulk write
         std::map<std::string, bulk_ptr> formatted_blocks;
 

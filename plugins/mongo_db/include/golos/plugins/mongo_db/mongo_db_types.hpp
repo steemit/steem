@@ -139,10 +139,20 @@ namespace mongo_db {
         doc << name << static_cast<int64_t>(value.value);
     }
 
+    template <typename Iterable, typename Func>
+    inline void format_array_value(document& doc, const std::string& name, const Iterable& value,
+        Func each_item_converter) {
+            array results_array;
+            for (auto& item: value) {
+                results_array << each_item_converter(item);
+            }
+            doc << name << results_array;
+    }
+
     template <typename T, typename Pred, typename Alloc, typename Func>
     inline void format_array_value(document& doc, const std::string& name, const bip::flat_set<T, Pred, Alloc>& value,
         Func each_item_converter) {
-             if (!value.empty()) {
+            if (!value.empty()) {
                 array results_array;
                 for (auto& item: value) {
                     results_array << each_item_converter(item);

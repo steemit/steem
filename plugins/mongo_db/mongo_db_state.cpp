@@ -522,69 +522,6 @@ namespace mongo_db {
         }
     }
 
-    void state_writer::format_global_property_object() {
-        try {
-            const auto &dgpo = db_.get_dynamic_global_properties();
-
-            auto oid = MONGO_ID_SINGLE;
-            auto oid_hash = hash_oid(oid);
-
-            auto doc = create_document("dynamic_global_property_object", "_id", oid_hash);
-            auto& body = doc.doc;
-
-            body << "$set" << open_document;
-
-            format_oid(body, oid);
-
-            format_value(body, "head_block_number", dgpo.head_block_number);
-            format_value(body, "head_block_id", dgpo.head_block_id.str());
-            format_value(body, "time", dgpo.time);
-            format_value(body, "current_witness", dgpo.current_witness);
-
-            format_value(body, "total_pow", dgpo.total_pow);
-
-            format_value(body, "num_pow_witnesses", dgpo.num_pow_witnesses);
-
-            format_value(body, "virtual_supply", dgpo.virtual_supply);
-            format_value(body, "current_supply", dgpo.current_supply);
-            format_value(body, "confidential_supply", dgpo.confidential_supply);
-            format_value(body, "current_sbd_supply", dgpo.current_sbd_supply);
-            format_value(body, "confidential_sbd_supply", dgpo.confidential_sbd_supply);
-            format_value(body, "total_vesting_fund_steem", dgpo.total_vesting_fund_steem);
-            format_value(body, "total_vesting_shares", dgpo.total_vesting_shares);
-            format_value(body, "total_reward_fund_steem", dgpo.total_reward_fund_steem);
-            format_value(body, "total_reward_shares2", dgpo.total_reward_shares2);
-
-            format_value(body, "sbd_interest_rate", dgpo.sbd_interest_rate);
-
-            format_value(body, "sbd_print_rate", dgpo.sbd_print_rate);
-
-            format_value(body, "average_block_size", dgpo.average_block_size);
-
-            format_value(body, "maximum_block_size", dgpo.maximum_block_size);
-
-            format_value(body, "current_aslot", dgpo.current_aslot);
-
-            format_value(body, "recent_slots_filled", dgpo.head_block_number);
-            format_value(body, "participation_count", dgpo.participation_count);
-
-            format_value(body, "last_irreversible_block_num", dgpo.last_irreversible_block_num);
-
-            format_value(body, "max_virtual_bandwidth", dgpo.max_virtual_bandwidth);
-
-            format_value(body, "current_reserve_ratio", dgpo.current_reserve_ratio);
-
-            format_value(body, "vote_regeneration_per_day", dgpo.vote_regeneration_per_day);
-
-            body << close_document;
-
-            bmi_insert_or_replace(all_docs, std::move(doc));
-        }
-        catch (...) {
-            // ilog("Unknown exception during formatting global property object.");
-        }
-    }
-
     template <typename F, typename S>
     void remove_existing(F& first, const S& second) {
         auto src = std::move(first);
@@ -979,7 +916,7 @@ namespace mongo_db {
         const auto &dgp = db_.get_dynamic_global_properties();
         const auto &inc_witness = db_.get_account(dgp.current_witness);
         format_account(inc_witness);
-        format_global_property_object();
+        //format_global_property_object();
     }
 
     auto state_writer::operator()(const pow2_operation& op) -> result_type {
@@ -997,7 +934,7 @@ namespace mongo_db {
         format_account(worker_account);
         format_account_authority(worker_account);
         format_witness(worker_account);
-        format_global_property_object();
+        //format_global_property_object();
     }
 
     auto state_writer::operator()(const custom_operation& op) -> result_type {
@@ -1538,6 +1475,128 @@ namespace mongo_db {
         }
         catch (...) {
             // ilog("Unknown exception during formatting witness.");
+        }
+    }
+
+    void state_writer::write_global_property_object(const dynamic_global_property_object& dgpo,
+        const signed_block& current_block, bool history) {
+        try {
+            std::string oid;
+            if (history) {
+                oid = current_block.timestamp;
+            } else {
+                oid = MONGO_ID_SINGLE;
+            }
+            auto oid_hash = hash_oid(oid);
+
+            auto doc = create_document(std::string("dynamic_global_property_object") + 
+                 (history ? "_history" : ""), "_id", oid_hash);
+            auto& body = doc.doc;
+
+            if (!history) {
+                body << "$set" << open_document;
+            }
+
+            format_oid(body, oid);
+
+            if (history) {
+                format_value(body, "timestamp", current_block.timestamp);
+            }
+            format_value(body, "head_block_number", dgpo.head_block_number);
+            format_value(body, "head_block_id", dgpo.head_block_id.str());
+            format_value(body, "time", dgpo.time);
+            format_value(body, "current_witness", dgpo.current_witness);
+
+            format_value(body, "total_pow", dgpo.total_pow);
+
+            format_value(body, "num_pow_witnesses", dgpo.num_pow_witnesses);
+
+            format_value(body, "virtual_supply", dgpo.virtual_supply);
+            format_value(body, "current_supply", dgpo.current_supply);
+            format_value(body, "confidential_supply", dgpo.confidential_supply);
+            format_value(body, "current_sbd_supply", dgpo.current_sbd_supply);
+            format_value(body, "confidential_sbd_supply", dgpo.confidential_sbd_supply);
+            format_value(body, "total_vesting_fund_steem", dgpo.total_vesting_fund_steem);
+            format_value(body, "total_vesting_shares", dgpo.total_vesting_shares);
+            format_value(body, "total_reward_fund_steem", dgpo.total_reward_fund_steem);
+            format_value(body, "total_reward_shares2", dgpo.total_reward_shares2);
+
+            format_value(body, "sbd_interest_rate", dgpo.sbd_interest_rate);
+
+            format_value(body, "sbd_print_rate", dgpo.sbd_print_rate);
+
+            format_value(body, "average_block_size", dgpo.average_block_size);
+
+            format_value(body, "maximum_block_size", dgpo.maximum_block_size);
+
+            format_value(body, "current_aslot", dgpo.current_aslot);
+
+            format_value(body, "recent_slots_filled", dgpo.head_block_number);
+            format_value(body, "participation_count", dgpo.participation_count);
+
+            format_value(body, "last_irreversible_block_num", dgpo.last_irreversible_block_num);
+
+            format_value(body, "max_virtual_bandwidth", dgpo.max_virtual_bandwidth);
+
+            format_value(body, "current_reserve_ratio", dgpo.current_reserve_ratio);
+
+            format_value(body, "vote_regeneration_per_day", dgpo.vote_regeneration_per_day);
+
+            if (!history) {
+                body << close_document;
+            }
+
+            bmi_insert_or_replace(all_docs, std::move(doc));
+        }
+        catch (...) {
+            // ilog("Unknown exception during writing global property object.");
+        }
+    }
+
+    void state_writer::write_witness_schedule_object(const witness_schedule_object& wso,
+        const signed_block& current_block, bool history) {
+        try {
+            std::string oid;
+            if (history) {
+                oid = current_block.timestamp;
+            } else {
+                oid = MONGO_ID_SINGLE;
+            }
+            auto oid_hash = hash_oid(oid);
+
+            auto doc = create_document(std::string("witness_schedule_object") + 
+                 (history ? "_history" : ""), "_id", oid_hash);
+            auto& body = doc.doc;
+
+            if (!history) {
+                body << "$set" << open_document;
+            }
+
+            format_oid(body, oid);
+
+            if (history) {
+                format_value(body, "timestamp", current_block.timestamp);
+            }
+            format_value(body, "current_virtual_time", wso.current_virtual_time);
+            format_value(body, "next_shuffle_block_num", wso.next_shuffle_block_num);
+            format_array_value(body, "current_shuffled_witnesses", wso.current_shuffled_witnesses,
+                [] (const account_name_type& item) -> std::string { return std::string(item); });
+            format_value(body, "num_scheduled_witnesses", wso.num_scheduled_witnesses);
+            format_value(body, "top19_weight", wso.current_virtual_time);
+            format_value(body, "timeshare_weight", wso.current_virtual_time);
+            format_value(body, "miner_weight", wso.current_virtual_time);
+            format_value(body, "witness_pay_normalization_factor", wso.current_virtual_time);
+            //format_value(body, "median_props", ... // Skipped because it is still empty
+            format_value(body, "majority_version", wso.current_virtual_time);
+
+            if (!history) {
+                body << close_document;
+            }
+
+            bmi_insert_or_replace(all_docs, std::move(doc));
+        }
+        catch (...) {
+            // ilog("Unknown exception during writing witness schedule object.");
         }
     }
 
