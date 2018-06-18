@@ -113,6 +113,8 @@ namespace golos {
 
         FC_DECLARE_DERIVED_EXCEPTION(database_revision_exception, golos::chain::chain_exception, 4120000, "database revision exception")
 
+        FC_DECLARE_DERIVED_EXCEPTION(database_signal_exception, golos::chain::chain_exception, 4130000, "database signal exception")
+
     }
 } // golos::chain
 
