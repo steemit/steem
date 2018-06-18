@@ -284,6 +284,7 @@ FC_REFLECT( steem::chain::witness_object,
              (last_work)
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
+             (recent_account_subsidies)(last_subsidy_update)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::witness_object, steem::chain::witness_index )
 
