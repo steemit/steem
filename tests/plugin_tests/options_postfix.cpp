@@ -22,6 +22,7 @@ namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
 
 typedef golos::chain::clean_database_fixture clean_database_fixture;
+typedef golos::chain::database_fixture database_fixture;
 typedef golos::chain::database database;
 typedef golos::plugins::operation_history::plugin gpoh_plugin;
 typedef golos::plugins::operation_history::applied_operation applied_operation; 
@@ -170,6 +171,15 @@ struct test_options_postfix
         return _vm_opts;
     }
     
+    struct operation_visitor {   
+        using result_type = std::string;   
+        template<class T>
+        std::string operator()(const T&) const { 
+            return std::string(fc::get_typename<T>::name());   
+        }
+    } ovisit;
+
+
     bool check_applied_options(const applied_operation &opts) const {
         std::stringstream ss;
         ss << opts.trx_id << ", "; /// golos::protocol::transaction_id_type
@@ -178,7 +188,7 @@ struct test_options_postfix
         ss << opts.op_in_trx << ", ";
         ss << opts.virtual_op << ", ";
         ss << opts.timestamp.to_iso_string() << ", "; /// fc::time_point_sec
-        //ss << opts.op << "\n"; /// golos::protocol::operation
+        ss << "which is [" << opts.op.visit(ovisit) << "]"; /// golos::protocol::operation
         BOOST_TEST_MESSAGE(ss.str());
         return true;
     }
@@ -189,45 +199,32 @@ struct test_options_postfix
 using namespace golos::protocol;
 using namespace golos::chain;
 
-struct transaction_fixture : clean_database_fixture {
+
+//struct transaction_fixture {
+template<class test_type>
+//struct transaction_fixture : clean_database_fixture {
+struct transaction_fixture : database_fixture {
+    test_type _tt;
     gpoh_plugin *_plg;
 
-    template<class test_type>
-    void check_operations(const test_type &tt) {
-        BOOST_TEST_MESSAGE("Check history operations.");
-        msg_pack msg;
-        msg.args = std::vector<fc::variant>({fc::variant(1), fc::variant(false)});
-        auto ops = _plg->get_ops_in_block(msg);
-        BOOST_TEST_MESSAGE("Operations is " + std::to_string(ops.size()));
-        size_t count = 0;
-        for (auto o : ops) {
-            tt.check_applied_options(o);
-            //if (o.which() == operation::tag<comment_operation>::value) {
-                BOOST_TEST_MESSAGE("comment_operation " + std::to_string(++count) + " " 
-                    + std::to_string(operation::tag<comment_operation>::value));
-                
-                //auto &top = o.get<comment_operation>();
-                //top.memo = decrypt_memo(top.memo);
-            //}
-        }
-    }
-    
-    template<class test_type>
-    void execute(const test_type &tt) {
-        _plg = app_initialise()._plg;
-        _plg->plugin_initialize(tt);
-        _plg->plugin_startup();
-        init_database();
-        init_transactions();
-        check_operations(tt);
-        close_database();
+    transaction_fixture(const test_type &tt) 
+        : _tt(tt) { 
+        BOOST_TEST_MESSAGE("Create transactions");
+        try {
+            database_fixture::initialize();
+            database_fixture::open_database();
+            database_fixture::startup();
+
+            _plg = app_initialise()._plg;
+            _plg->plugin_initialize(_tt);
+            _plg->plugin_startup();
+            
+            add_operations();
+            check_operations();
+        } FC_LOG_AND_RETHROW();
     }
 
-    void init_database() {
-        clean_database_fixture::initialize();
-    }
-    
-    void init_transactions() {
+    void add_operations() {
         BOOST_TEST_MESSAGE("Init transactions");
 
         ACTORS((alice)(bob)(sam))
@@ -305,6 +302,67 @@ struct transaction_fixture : clean_database_fixture {
         
         validate_database();
     }
+        
+    void check_operations() {
+        BOOST_TEST_MESSAGE("Check history operations.");
+        //msg_pack mt;
+        //mt.args = std::vector<fc::variant>({fc::variant(1)});
+        //auto trans = _plg->get_transaction(mt);
+        //const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
+        
+        msg_pack mo;
+        //mo.args = std::vector<fc::variant>({fc::variant(trans.block_num), fc::variant(true)});
+        mo.args = std::vector<fc::variant>({fc::variant(1), fc::variant(true)});
+        auto ops = _plg->get_ops_in_block(mo);
+        BOOST_TEST_MESSAGE("Checked perations is " + std::to_string(ops.size()) + " {");
+        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<account_create_operation>::value) + 
+                           "] account_create_operation");
+        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<vote_operation>::value) + 
+                           "] vote_operation");
+        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<comment_operation>::value) + 
+                           "] comment_operation");
+        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<delete_comment_operation>::value) + 
+                           "] delete_comment_operation");
+        BOOST_TEST_MESSAGE("}");
+
+        //size_t count = 0;
+        for (auto o : ops) {
+            _tt.check_applied_options(o);
+            
+            //fc::variant v(o.op);
+            //fc::variant v;
+            //fc::to_variant(o.op, v);
+          
+            //BOOST_TEST_MESSAGE("type name[" + std::to_string(++count) + "]: " + o.op.visit(ovisit));
+            //BOOST_TEST_MESSAGE("type name[" + std::to_string(++count) + "]: " + v.get_type().name_from_type);
+            
+            //BOOST_TEST_MESSAGE(std::string("is marcet: ") + (o.is_market_operation() ? "TRUE":"FALSE"));
+            //fc::variant v;
+            //fc::to_variant(o.op, v);
+            //BOOST_TEST_MESSAGE("witch = " + std::to_string(v.which()));
+            //fc::get_operation_name on;
+            //std::string op_name = on(o).name;
+            //BOOST_TEST_MESSAGE("validate: " + (is_market_operation(o) ? "TRUE":"FALSE"));
+            //if (o.op.which() == operation::tag<comment_operation>::value) {}
+            //
+            //    BOOST_TEST_MESSAGE("comment_operation " + std::to_string(++count) + " " 
+            //        + std::to_string(operation::tag<comment_operation>::value));
+                
+                //auto &top = o.get<comment_operation>();
+                //top.memo = decrypt_memo(top.memo);
+            //}
+        }
+    }
+};
+
+
+template<class test_type>
+struct execute_fixture {
+    execute_fixture() {
+        BOOST_TEST_MESSAGE("Execute");
+        typedef transaction_fixture<test_type> transaction;
+        std::unique_ptr<transaction> trans(new transaction(test_type()));
+    }
 };
 }}
 
@@ -322,28 +380,13 @@ typedef test_options_postfix<key_opt_blacklist, opt_without_postfix> test_black_
 
 BOOST_AUTO_TEST_SUITE(options_postfix)
 
-    BOOST_FIXTURE_TEST_CASE(white_options_with_postfix, transaction_fixture) try {
-        execute(test_white_with_postfix());
-    } FC_LOG_AND_RETHROW();
+    BOOST_FIXTURE_TEST_CASE(white_options_with_postfix, execute_fixture<test_white_with_postfix>) {}
 
-    BOOST_FIXTURE_TEST_CASE(white_options_without_postfix, transaction_fixture) try {
-        _plg = app_initialise()._plg;
-        _plg->plugin_initialize(test_white_without_postfix());
-        _plg->plugin_startup();
-        init_database();
-    } FC_LOG_AND_RETHROW();
+    BOOST_FIXTURE_TEST_CASE(white_options_without_postfix, execute_fixture<test_white_without_postfix>) {}
     
-    BOOST_FIXTURE_TEST_CASE(black_options_with_postfix, transaction_fixture) try {
-        _plg = app_initialise()._plg;
-        _plg->plugin_initialize(test_black_with_postfix());
-        _plg->plugin_startup();
-    } FC_LOG_AND_RETHROW();
+    BOOST_FIXTURE_TEST_CASE(black_options_with_postfix, execute_fixture<test_black_with_postfix>) {}
     
-    BOOST_FIXTURE_TEST_CASE(black_options_without_postfix, transaction_fixture) try {
-        _plg = app_initialise()._plg;
-        _plg->plugin_initialize(test_black_without_postfix());
-        _plg->plugin_startup();
-    } FC_LOG_AND_RETHROW();
+    BOOST_FIXTURE_TEST_CASE(black_options_without_postfix, execute_fixture<test_black_without_postfix>) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -351,3 +394,5 @@ BOOST_AUTO_TEST_SUITE_END()
 // - там есть настройка history-start-block - это номер блока до которого не хранить историю 
 // - хранить историю только за последний день, неделю, месяц это более удобно потому, 
 // что делегатов сейчас интересует только последняя история операций.
+
+
