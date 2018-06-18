@@ -3331,7 +3331,7 @@ boost::signals2::connection database::add_pre_apply_transaction_handler( const a
 boost::signals2::connection database::add_post_apply_transaction_handler( const apply_transaction_handler_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_pre_apply_transaction_signal, func, plugin, group, "<-transaction");
+   return connect_impl(_post_apply_transaction_signal, func, plugin, group, "<-transaction");
 }
 
 boost::signals2::connection database::add_pre_apply_block_handler( const apply_block_handler_t& func,
