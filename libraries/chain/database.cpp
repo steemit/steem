@@ -3295,14 +3295,20 @@ void database::apply_operation(const operation& op)
 {
    operation_notification note(op);
    notify_pre_apply_operation( note );
+   size_t op_size = 0;
 
    if( _benchmark_dumper.is_enabled() )
+   {
+      op_size = fc::raw::pack_size( op );
       _benchmark_dumper.begin();
+   }
 
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
 
    if( _benchmark_dumper.is_enabled() )
-      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ) );
+   {
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_evaluator_registry.get_evaluator( op ).get_name( op ), op_size );
+   }
 
    notify_post_apply_operation( note );
 }

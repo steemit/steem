@@ -20,28 +20,53 @@ struct emplace_ret_value
 
 
 class advanced_benchmark_dumper
-{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+{
    public:
 
       struct item
       {
          std::string op_name;
-         mutable uint64_t time;
+         size_t size;
+         mutable uint64_t count = 0;
+         mutable uint64_t time = 0;
 
-         item( std::string _op_name, uint64_t _time ): op_name( _op_name ), time( _time ) {}
+         item( std::string _op_name, size_t _size, uint64_t _count, uint64_t _time ) :
+            op_name( _op_name ),
+            size( _size ),
+            count( _count ),
+            time( _time )
+         {}
 
-         bool operator<( const item& obj ) const { return op_name < obj.op_name; }
-         void inc( uint64_t _time ) const { time += _time; }
+         bool operator<( const item& obj ) const
+         {
+            return std::tie( op_name, size ) > std::tie( obj.op_name, obj.size );
+         }
+
+         void inc( uint64_t _time ) const
+         {
+            time += _time;
+            count++;
+         }
       };
 
       struct ritem
       {
          std::string op_name;
+         size_t size;
+         uint64_t count;
          uint64_t time;
 
-         ritem( std::string _op_name, uint64_t _time ): op_name( _op_name ), time( _time ){}
+         ritem( std::string _op_name, size_t _size, uint64_t _count, uint64_t _time ) :
+            op_name( _op_name ),
+            size( _size ),
+            count( _count ),
+            time( _time )
+         {}
 
-         bool operator<( const ritem& obj ) const { return time > obj.time; }
+         bool operator<( const ritem& obj ) const
+         {
+            return std::tie( op_name, size ) > std::tie( obj.op_name, obj.size );
+         }
       };
 
       template< typename COLLECTION >
@@ -50,7 +75,7 @@ class advanced_benchmark_dumper
          uint64_t total_time = 0;
 
          COLLECTION items;
-         
+
          total_info(){}
          total_info( uint64_t _total_time ): total_time( _total_time ) {}
 
@@ -72,7 +97,7 @@ class advanced_benchmark_dumper
       uint32_t flush_cnt = 0;
       uint32_t flush_max = 500000;
 
-      uint64_t time_begin = 0;
+      fc::time_point time_begin;
 
       std::string file_name;
 
@@ -104,13 +129,16 @@ class advanced_benchmark_dumper
       template< bool APPLY_CONTEXT = false >
       void end( const std::string& str );
 
+      template< bool APPLY_CONTEXT = false >
+      void end( const std::string& str, const uint64_t size );
+
       void dump();
 };
 
 } } } // steem::chain::util
 
-FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::item, (op_name)(time) )
-FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::ritem, (op_name)(time) )
+FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::item, (op_name)(size)(count)(time) )
+FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::ritem, (op_name)(size)(count)(time) )
 
 FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::total_info< std::set< steem::chain::util::advanced_benchmark_dumper::item > >, (total_time)(items) )
 FC_REFLECT( steem::chain::util::advanced_benchmark_dumper::total_info< std::multiset< steem::chain::util::advanced_benchmark_dumper::ritem > >, (total_time)(items) )
