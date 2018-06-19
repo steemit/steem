@@ -83,6 +83,12 @@ namespace mongo_db {
         result_type operator()(const return_vesting_delegation_operation& op);
         result_type operator()(const chain_properties_update_operation& op);
 
+        void write_global_property_object(const dynamic_global_property_object& dgpo,
+            const signed_block& current_block, bool history);
+
+        void write_witness_schedule_object(const witness_schedule_object& wso,
+            const signed_block& current_block, bool history);
+
     private:
         database &db_;
 

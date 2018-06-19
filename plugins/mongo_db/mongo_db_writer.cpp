@@ -2,6 +2,7 @@
 #include <golos/plugins/mongo_db/mongo_db_operations.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/protocol/operations.hpp>
+#include <golos/chain/witness_objects.hpp>
 
 #include <fc/log/logger.hpp>
 #include <appbase/application.hpp>
@@ -63,13 +64,16 @@ namespace mongo_db {
             wlog("Unknown exception in MongoDB writer");
             return false;
         }
-    }
+    }    
 
     void mongo_db_writer::on_block(const signed_block& block) {
 
         try {
 
             blocks[block.block_num()] = block;
+
+            dgp_s[block.block_num()] = _db.get_dynamic_global_properties();
+            wso_s[block.block_num()] = _db.get_witness_schedule_object();
 
             // Update last irreversible block number
             last_irreversible_block_num = _db.last_non_undoable_block_num();
@@ -88,6 +92,12 @@ namespace mongo_db {
 
                         state_writer st_writer(all_docs, block);
 
+                        st_writer.write_global_property_object(dgp_s[head_iter->first], head_iter->second, true);
+                        st_writer.write_global_property_object(dgp_s[head_iter->first], head_iter->second, false);
+
+                        st_writer.write_witness_schedule_object(wso_s[head_iter->first], head_iter->second, true);
+                        st_writer.write_witness_schedule_object(wso_s[head_iter->first], head_iter->second, false);
+
                         // Parsing all transactions. st_writer writes all results to all_docs
 
                         for (const auto& tran : head_iter->second.transactions) {
@@ -101,10 +111,14 @@ namespace mongo_db {
                     catch (...) {
                         // If some block causes any problems lets remove it from buffer and move on
                         blocks.erase(head_iter);
+                        dgp_s.erase(head_iter->first);
+                        wso_s.erase(head_iter->first);
                         virtual_ops.erase(head_iter->first);
                         throw;
                     }
                     blocks.erase(head_iter);
+                    dgp_s.erase(head_iter->first);
+                    wso_s.erase(head_iter->first);
                     virtual_ops.erase(head_iter->first);
                 }
 
