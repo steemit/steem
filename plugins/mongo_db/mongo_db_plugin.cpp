@@ -18,8 +18,9 @@ namespace mongo_db {
               db_(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
         }
 
-        bool initialize(const std::string& uri, const bool write_raw, const std::vector<std::string>& op) {
-            return writer.initialize(uri, write_raw, op);
+        bool initialize(const std::string& uri, const bool write_raw, const std::vector<std::string>& op,
+            unsigned int store_history_dgp, unsigned int store_history_wso) {
+            return writer.initialize(uri, write_raw, op, store_history_dgp, store_history_wso);
         }
 
         ~mongo_db_plugin_impl() = default;
@@ -64,7 +65,13 @@ namespace mongo_db {
              "Write raw blocks into mongo or not")
             ("mongodb-write-operations",
              boost::program_options::value<std::vector<std::string>>()->multitoken()->zero_tokens()->composing(),
-             "List of operations to write into mongo");
+             "List of operations to write into mongo")
+            ("mongodb-store-dgp-history",
+             boost::program_options::value<unsigned int>()->default_value(10),
+             "Mode of storing global_property_object history for each N block")
+            ("mongodb-store-wso-history",
+             boost::program_options::value<unsigned int>()->default_value(10),
+             "Mode of storing witness_schedule_object history for each N block");
         cfg.add(cli);
     }
 
@@ -80,6 +87,14 @@ namespace mongo_db {
             if (options.count("mongodb-write-operations")) {
                 write_operations = options.at("mongodb-write-operations").as<std::vector<std::string>>();
             }
+            unsigned int store_history_dgp = 10;
+            if (options.count("mongodb-store-dgp-history")) {
+                store_history_dgp = options.at("mongodb-store-dgp-history").as<unsigned int>();
+            }
+            unsigned int store_history_wso = 10;
+            if (options.count("mongodb-store-wso-history")) {
+                store_history_wso = options.at("mongodb-store-wso-history").as<unsigned int>();
+            }
 
             // First init mongo db
             if (options.count("mongodb-uri")) {
@@ -88,7 +103,7 @@ namespace mongo_db {
 
                 pimpl_ = std::make_unique<mongo_db_plugin_impl>(*this);
 
-                if (!pimpl_->initialize(uri_str, raw_blocks, write_operations)) {
+                if (!pimpl_->initialize(uri_str, raw_blocks, write_operations, store_history_dgp, store_history_wso)) {
                     ilog("Cannot initialize MongoDB plugin. Plugin disabled.");
                     pimpl_.reset();
                     return;
