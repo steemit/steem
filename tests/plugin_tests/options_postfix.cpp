@@ -5,6 +5,7 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <map>
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
@@ -15,6 +16,8 @@
 #include "database_fixture.hpp"
 #include "comment_reward.hpp"
 
+#define STEEM_NAMESPACE_PREFIX std::string("golos::protocol::")
+
 
 namespace golos { namespace test {
     
@@ -24,11 +27,20 @@ namespace bfs = boost::filesystem;
 typedef golos::chain::clean_database_fixture clean_database_fixture;
 typedef golos::chain::database_fixture database_fixture;
 typedef golos::chain::database database;
-typedef golos::plugins::operation_history::plugin gpoh_plugin;
-typedef golos::plugins::operation_history::applied_operation applied_operation; 
+
 typedef golos::plugins::chain::plugin chain_plugin;
 typedef golos::plugins::json_rpc::plugin json_rpc_plugin;
 typedef golos::plugins::json_rpc::msg_pack msg_pack;
+
+typedef golos::plugins::operation_history::plugin gpoh_plugin;
+typedef golos::plugins::operation_history::applied_operation applied_operation;
+typedef golos::plugins::operation_history::operation_index operation_index;
+typedef golos::plugins::operation_history::operation_index by_location;
+typedef golos::plugins::operation_history::annotated_signed_transaction annotated_signed_transaction;
+typedef golos::plugins::operation_history::by_transaction_id by_transaction_id;
+
+typedef std::pair<std::string, std::string> chacked_operation; ///<  [itx_id], [operation name]
+typedef std::map<std::string, std::string> chacked_operation_map; ///<  pair { [itx_id], [operation name] }
 
 
 struct app_initialise {
@@ -180,19 +192,19 @@ struct test_options_postfix
     } ovisit;
 
 
-    bool check_applied_options(const applied_operation &opts) const {
+    chacked_operation print_applied_options(const applied_operation &opts) const {
         std::stringstream ss;
-        ss << opts.trx_id << ", "; /// golos::protocol::transaction_id_type
+        ss << opts.trx_id.str() << ", "; /// golos::protocol::transaction_id_type
         ss << opts.block << ", ";
         ss << opts.trx_in_block << ", ";
         ss << opts.op_in_trx << ", ";
         ss << opts.virtual_op << ", ";
         ss << opts.timestamp.to_iso_string() << ", "; /// fc::time_point_sec
-        ss << "which is [" << opts.op.visit(ovisit) << "]"; /// golos::protocol::operation
+        std::string op_name = opts.op.visit(ovisit);
+        ss << "which is [" << op_name << "]"; /// golos::protocol::operation
         BOOST_TEST_MESSAGE(ss.str());
-        return true;
+        return chacked_operation(opts.trx_id.str(), op_name);
     }
-
 };
 
 
@@ -200,12 +212,12 @@ using namespace golos::protocol;
 using namespace golos::chain;
 
 
-//struct transaction_fixture {
 template<class test_type>
-//struct transaction_fixture : clean_database_fixture {
 struct transaction_fixture : database_fixture {
     test_type _tt;
     gpoh_plugin *_plg;
+    chacked_operation_map _finded_ops;
+    chacked_operation_map _chacked_ops;
 
     transaction_fixture(const test_type &tt) 
         : _tt(tt) { 
@@ -252,6 +264,7 @@ struct transaction_fixture : database_fixture {
         tx.sign(bob_private_key, db->get_chain_id());
         db->push_transaction(tx, 0);
         generate_block();
+        _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "comment_operation"));
         tx.operations.clear();
         tx.signatures.clear();
         
@@ -271,6 +284,7 @@ struct transaction_fixture : database_fixture {
         tx.sign(sam_private_key, db->get_chain_id());            
         db->push_transaction(tx, 0);
         generate_block();
+        _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "vote_operation"));
         tx.operations.clear();
         tx.signatures.clear();
         
@@ -283,6 +297,7 @@ struct transaction_fixture : database_fixture {
         tx.sign(bob_private_key, db->get_chain_id());
         db->push_transaction(tx, 0);
         generate_block();
+        _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "delete_comment_operation"));
         tx.operations.clear();
         tx.signatures.clear();
         
@@ -297,61 +312,44 @@ struct transaction_fixture : database_fixture {
         tx.sign(init_account_priv_key, db->get_chain_id());
         db->push_transaction(tx, 0);
         generate_block();
+        _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "account_create_operation"));
         tx.operations.clear();
         tx.signatures.clear();
         
         validate_database();
     }
         
+
     void check_operations() {
         BOOST_TEST_MESSAGE("Check history operations.");
-        //msg_pack mt;
-        //mt.args = std::vector<fc::variant>({fc::variant(1)});
-        //auto trans = _plg->get_transaction(mt);
-        //const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
-        
-        msg_pack mo;
-        //mo.args = std::vector<fc::variant>({fc::variant(trans.block_num), fc::variant(true)});
-        mo.args = std::vector<fc::variant>({fc::variant(1), fc::variant(true)});
-        auto ops = _plg->get_ops_in_block(mo);
-        BOOST_TEST_MESSAGE("Checked perations is " + std::to_string(ops.size()) + " {");
-        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<account_create_operation>::value) + 
-                           "] account_create_operation");
-        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<vote_operation>::value) + 
-                           "] vote_operation");
-        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<comment_operation>::value) + 
-                           "] comment_operation");
-        BOOST_TEST_MESSAGE("\t[" + std::to_string(operation::tag<delete_comment_operation>::value) + 
-                           "] delete_comment_operation");
-        BOOST_TEST_MESSAGE("}");
-
-        //size_t count = 0;
-        for (auto o : ops) {
-            _tt.check_applied_options(o);
-            
-            //fc::variant v(o.op);
-            //fc::variant v;
-            //fc::to_variant(o.op, v);
-          
-            //BOOST_TEST_MESSAGE("type name[" + std::to_string(++count) + "]: " + o.op.visit(ovisit));
-            //BOOST_TEST_MESSAGE("type name[" + std::to_string(++count) + "]: " + v.get_type().name_from_type);
-            
-            //BOOST_TEST_MESSAGE(std::string("is marcet: ") + (o.is_market_operation() ? "TRUE":"FALSE"));
-            //fc::variant v;
-            //fc::to_variant(o.op, v);
-            //BOOST_TEST_MESSAGE("witch = " + std::to_string(v.which()));
-            //fc::get_operation_name on;
-            //std::string op_name = on(o).name;
-            //BOOST_TEST_MESSAGE("validate: " + (is_market_operation(o) ? "TRUE":"FALSE"));
-            //if (o.op.which() == operation::tag<comment_operation>::value) {}
-            //
-            //    BOOST_TEST_MESSAGE("comment_operation " + std::to_string(++count) + " " 
-            //        + std::to_string(operation::tag<comment_operation>::value));
-                
-                //auto &top = o.get<comment_operation>();
-                //top.memo = decrypt_memo(top.memo);
-            //}
+        uint32_t head_block_num = db->head_block_num();
+        BOOST_TEST_MESSAGE("Head block num is " + std::to_string(head_block_num));
+        for (uint32_t i = 0; i < head_block_num; ++i) {
+            msg_pack mo;
+            mo.args = std::vector<fc::variant>({fc::variant(i), fc::variant(false)});
+            auto ops = _plg->get_ops_in_block(mo);
+            BOOST_TEST_MESSAGE("Checked operations is " + std::to_string(ops.size()));
+            for (auto o : ops) {
+                auto ch_op = _tt.print_applied_options(o);
+                auto iter = _finded_ops.find(ch_op.first);
+                if (iter == _finded_ops.end()) {
+                    _finded_ops.insert(ch_op);
+                }
+            }
         }
+        size_t _chacked_ops_count = 0;
+        for (const auto &co : _chacked_ops) {
+            auto iter = _finded_ops.find(co.first);
+            bool is_finded = (iter not_eq _finded_ops.end());
+            BOOST_CHECK(is_finded);
+            if (is_finded) {
+                BOOST_CHECK_EQUAL(iter->second, co.second);
+                if (iter->second == co.second) {
+                    ++_chacked_ops_count;
+                }
+            }
+        }
+        BOOST_CHECK_EQUAL(_chacked_ops_count, _chacked_ops.size());
     }
 };
 
@@ -365,6 +363,7 @@ struct execute_fixture {
     }
 };
 }}
+
 
 using namespace golos::test;
 
