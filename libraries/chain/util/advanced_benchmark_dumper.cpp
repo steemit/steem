@@ -55,6 +55,9 @@ namespace steem { namespace chain { namespace util {
       }
    }
 
+   template void advanced_benchmark_dumper::end< true >( const std::string& str, const uint64_t size );
+   template void advanced_benchmark_dumper::end< false >( const std::string& str, const uint64_t size );
+
    template void advanced_benchmark_dumper::end< true >( const std::string& str );
    template void advanced_benchmark_dumper::end< false >( const std::string& str );
 
@@ -73,17 +76,33 @@ namespace steem { namespace chain { namespace util {
       }
    }
 
-   void advanced_benchmark_dumper::dump()
+   void advanced_benchmark_dumper::dump( bool log )
    {
+#ifdef DEFAULT_LOGGER
+#pragma push_macro( "DEFAULT_LOGGER" )
+#define OLD_DEFAULT
+#undef DEFAULT_LOGGER
+#endif
+#define DEFAULT_LOGGER "benchmark"
       total_info< std::multiset< ritem > > rinfo( info.total_time );
-      std::for_each(info.items.begin(), info.items.end(), [&rinfo]( const item& obj )
+      std::for_each(info.items.begin(), info.items.end(), [&rinfo, log]( const item& obj )
       {
          //rinfo.items.emplace( obj.op_name, obj.time );
          rinfo.emplace( obj.op_name, obj.size, obj.count, obj.time );
+         if( log )
+         {
+            ilog( "${o}, ${s}, ${c}, ${t}, ${a}", ("o", obj.op_name)("s", obj.size)("c", obj.count)("t", obj.time)("a", obj.time / obj.count) );
+         }
       });
 
       dump_impl( info, file_name );
       dump_impl( rinfo, "r_" + file_name );
+#undef DEFAULT_LOGGER
+#ifdef OLD_DEFAULT
+#undef DEFAULT_LOGGER
+#undef OLD_DEFAULT
+#pragma pop_macro( "DEFAULT_LOGGER" )
+#endif
    }
 
 } } } // steem::chain::util

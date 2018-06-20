@@ -132,7 +132,7 @@ class advanced_benchmark_dumper
       template< bool APPLY_CONTEXT = false >
       void end( const std::string& str, const uint64_t size );
 
-      void dump();
+      void dump( bool log = false );
 };
 
 } } } // steem::chain::util

@@ -244,6 +244,11 @@ uint32_t database::reindex( const open_args& args )
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
 
+      if( _benchmark_dumper.is_enabled() )
+      {
+         _benchmark_dumper.dump( true );
+      }
+
       note.reindex_success = true;
 
       return note.last_block_number;
