@@ -1376,6 +1376,7 @@ namespace detail
 
       discussion content( comments.comments[0] );
       set_pending_payout( content );
+      content.active_votes = get_active_votes( args );
 
       return content;
    }
