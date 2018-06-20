@@ -34,9 +34,10 @@ typedef golos::plugins::json_rpc::msg_pack msg_pack;
 
 typedef golos::plugins::operation_history::plugin gpoh_plugin;
 typedef golos::plugins::operation_history::applied_operation applied_operation;
-typedef golos::plugins::operation_history::operation_index operation_index;
-typedef golos::plugins::operation_history::operation_index by_location;
 typedef golos::plugins::operation_history::annotated_signed_transaction annotated_signed_transaction;
+typedef golos::plugins::operation_history::operation_index operation_index;
+typedef golos::plugins::operation_history::by_location by_location;
+typedef golos::plugins::operation_history::operation_object operation_object;
 typedef golos::plugins::operation_history::by_transaction_id by_transaction_id;
 
 typedef std::pair<std::string, std::string> chacked_operation; ///<  [itx_id], [operation name]
@@ -225,12 +226,13 @@ struct transaction_fixture : database_fixture {
         try {
             database_fixture::initialize();
             database_fixture::open_database();
-            database_fixture::startup();
 
             _plg = app_initialise()._plg;
             _plg->plugin_initialize(_tt);
             _plg->plugin_startup();
-            
+
+            database_fixture::startup();
+
             add_operations();
             check_operations();
         } FC_LOG_AND_RETHROW();
@@ -251,7 +253,6 @@ struct transaction_fixture : database_fixture {
         
         signed_transaction tx;            
         
-        BOOST_TEST_MESSAGE("Creating comments.");   
         comment_operation com;            
         com.author = "bob";            
         com.permlink = "test";            
@@ -265,10 +266,10 @@ struct transaction_fixture : database_fixture {
         db->push_transaction(tx, 0);
         generate_block();
         _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "comment_operation"));
+        BOOST_TEST_MESSAGE("Generate: " + tx.id().str() + " comment_operation");
         tx.operations.clear();
         tx.signatures.clear();
         
-        BOOST_TEST_MESSAGE("Voting for comments.");
         vote_operation vote;            
         vote.voter = "alice";            
         vote.author = "bob";            
@@ -285,10 +286,10 @@ struct transaction_fixture : database_fixture {
         db->push_transaction(tx, 0);
         generate_block();
         _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "vote_operation"));
+        BOOST_TEST_MESSAGE("Generate: " + tx.id().str() + " vote_operation");
         tx.operations.clear();
         tx.signatures.clear();
         
-        BOOST_TEST_MESSAGE("Deleting comment.");
         delete_comment_operation dco;
         dco.author = "bob";
         dco.permlink = "test";
@@ -298,10 +299,10 @@ struct transaction_fixture : database_fixture {
         db->push_transaction(tx, 0);
         generate_block();
         _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "delete_comment_operation"));
+        BOOST_TEST_MESSAGE("Generate: " + tx.id().str() + " delete_comment_operation");
         tx.operations.clear();
         tx.signatures.clear();
         
-        BOOST_TEST_MESSAGE("Generate accaunt.");
         account_create_operation aco;
         aco.new_account_name = "dave";
         aco.creator = STEEMIT_INIT_MINER_NAME;
@@ -313,18 +314,21 @@ struct transaction_fixture : database_fixture {
         db->push_transaction(tx, 0);
         generate_block();
         _chacked_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "account_create_operation"));
+        BOOST_TEST_MESSAGE("Generate: " + tx.id().str() + " account_create_operation");
         tx.operations.clear();
         tx.signatures.clear();
         
         validate_database();
     }
-        
 
     void check_operations() {
         BOOST_TEST_MESSAGE("Check history operations.");
+
+        //const auto& idx = db->get_index<operation_index>().indices().get<by_location>();
+
         uint32_t head_block_num = db->head_block_num();
         BOOST_TEST_MESSAGE("Head block num is " + std::to_string(head_block_num));
-        for (uint32_t i = 0; i < head_block_num; ++i) {
+        for (uint32_t i = 0; i <= head_block_num; ++i) {
             msg_pack mo;
             mo.args = std::vector<fc::variant>({fc::variant(i), fc::variant(false)});
             auto ops = _plg->get_ops_in_block(mo);
@@ -347,6 +351,8 @@ struct transaction_fixture : database_fixture {
                 if (iter->second == co.second) {
                     ++_chacked_ops_count;
                 }
+            } else {
+                BOOST_TEST_MESSAGE("Operation \"" + co.second + "\" by \"" + co.first + "\" is not found");
             }
         }
         BOOST_CHECK_EQUAL(_chacked_ops_count, _chacked_ops.size());
@@ -357,12 +363,17 @@ struct transaction_fixture : database_fixture {
 template<class test_type>
 struct execute_fixture {
     execute_fixture() {
-        BOOST_TEST_MESSAGE("Execute");
+        BOOST_TEST_MESSAGE("Execute begin");
         typedef transaction_fixture<test_type> transaction;
         std::unique_ptr<transaction> trans(new transaction(test_type()));
     }
+
+    ~execute_fixture() {
+        BOOST_TEST_MESSAGE("Execute end");
+    }
 };
 }}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 using namespace golos::test;
