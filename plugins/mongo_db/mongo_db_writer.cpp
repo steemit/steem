@@ -37,7 +37,8 @@ namespace mongo_db {
     mongo_db_writer::~mongo_db_writer() {
     }
 
-    bool mongo_db_writer::initialize(const std::string& uri_str, const bool write_raw, const std::vector<std::string>& ops) {
+    bool mongo_db_writer::initialize(const std::string& uri_str, const bool write_raw, const std::vector<std::string>& ops,
+        unsigned int store_history_dgp, unsigned int store_history_wso) {
         try {
             uri = mongocxx::uri {uri_str};
             mongo_conn = mongocxx::client {uri};
@@ -45,6 +46,8 @@ namespace mongo_db {
             mongo_database = mongo_conn[db_name];
             bulk_opts.ordered(false);
             write_raw_blocks = write_raw;
+            store_history_mode_dgp = store_history_dgp;
+            store_history_mode_wso = store_history_wso;
 
             for (auto& op : ops) {
                 if (!op.empty()) {
@@ -92,10 +95,14 @@ namespace mongo_db {
 
                         state_writer st_writer(all_docs, block);
 
-                        st_writer.write_global_property_object(dgp_s[head_iter->first], head_iter->second, true);
+                        if (store_history_mode_dgp != 0 && (head_iter->second.block_num() % store_history_mode_dgp == 0)) {
+                            st_writer.write_global_property_object(dgp_s[head_iter->first], head_iter->second, true);
+                        }
                         st_writer.write_global_property_object(dgp_s[head_iter->first], head_iter->second, false);
 
-                        st_writer.write_witness_schedule_object(wso_s[head_iter->first], head_iter->second, true);
+                        if (store_history_mode_wso != 0 && (head_iter->second.block_num() % store_history_mode_wso == 0)) {
+                            st_writer.write_witness_schedule_object(wso_s[head_iter->first], head_iter->second, true);
+                        }
                         st_writer.write_witness_schedule_object(wso_s[head_iter->first], head_iter->second, false);
 
                         // Parsing all transactions. st_writer writes all results to all_docs
