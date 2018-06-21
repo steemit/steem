@@ -22,7 +22,7 @@
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/uint256.hpp>
 #include <steem/chain/util/reward.hpp>
-#include <steem/chain/util/power_shares.hpp>
+#include <steem/chain/util/manabar.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -1210,8 +1210,9 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
          {
             modify( to_account, [&]( account_object& a )
             {
-               a.power_shares = util::get_regen_power_shares( a, head_block_time() );
-               a.power_shares += uint128_t( new_vesting.amount.value ) * STEEM_100_PERCENT;
+               util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+               a.voting_manabar.regenerate_mana( params, head_block_time() );
+               a.voting_manabar.use_mana( -new_vesting.amount.value );
             });
          }
 
@@ -3833,8 +3834,9 @@ void database::clear_expired_delegations()
       {
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.power_shares = util::get_regen_power_shares( a, head_block_time() );
-            a.power_shares += uint128_t( itr->vesting_shares.amount.value ) * STEEM_100_PERCENT;
+            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+            a.voting_manabar.regenerate_mana( params, head_block_time() );
+            a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
          }
 
          a.delegated_vesting_shares -= itr->vesting_shares;
