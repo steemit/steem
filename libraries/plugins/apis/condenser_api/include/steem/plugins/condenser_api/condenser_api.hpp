@@ -7,6 +7,7 @@
 #include <steem/plugins/network_broadcast_api/network_broadcast_api.hpp>
 #include <steem/plugins/tags_api/tags_api.hpp>
 #include <steem/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/reputation_api/reputation_api.hpp>
 #include <steem/plugins/market_history_api/market_history_api.hpp>
 #include <steem/plugins/witness_api/witness_api.hpp>
 
@@ -250,6 +251,99 @@ struct extended_account : public api_account_object
    optional< vector< string > >                             recommended;      /// posts recommened for this user
 };
 
+struct api_comment_object
+{
+   api_comment_object( const database_api::api_comment_object& c ):
+      id( c.id ),
+      category( c.category ),
+      parent_author( c.parent_author ),
+      parent_permlink( c.parent_permlink ),
+      author( c.author ),
+      permlink( c.permlink ),
+      title( c.title ),
+      body( c.body ),
+      json_metadata( c.json_metadata ),
+      last_update( c.last_update ),
+      created( c.created ),
+      active( c.active ),
+      last_payout( c.last_payout ),
+      depth( c.depth ),
+      children( c.children ),
+      net_rshares( c.net_rshares ),
+      abs_rshares( c.abs_rshares ),
+      vote_rshares( c.vote_rshares ),
+      children_abs_rshares( c.children_abs_rshares ),
+      cashout_time( c.cashout_time ),
+      max_cashout_time( c.max_cashout_time ),
+      total_vote_weight( c.total_vote_weight ),
+      reward_weight( c.reward_weight ),
+      total_payout_value( legacy_asset::from_asset( c.total_payout_value ) ),
+      curator_payout_value( legacy_asset::from_asset( c.curator_payout_value ) ),
+      author_rewards( c.author_rewards ),
+      net_votes( c.net_votes ),
+      root_author( c.root_author ),
+      root_permlink( c.root_permlink ),
+      max_accepted_payout( legacy_asset::from_asset( c.max_accepted_payout ) ),
+      percent_steem_dollars( c.percent_steem_dollars ),
+      allow_replies( c.allow_replies ),
+      allow_votes( c.allow_votes ),
+      allow_curation_rewards( c.allow_curation_rewards )
+   {
+      for( auto& route : c.beneficiaries )
+      {
+         beneficiaries.push_back( route );
+      }
+   }
+
+   api_comment_object(){}
+
+   comment_id_type   id;
+   string            category;
+   string            parent_author;
+   string            parent_permlink;
+   string            author;
+   string            permlink;
+
+   string            title;
+   string            body;
+   string            json_metadata;
+   time_point_sec    last_update;
+   time_point_sec    created;
+   time_point_sec    active;
+   time_point_sec    last_payout;
+
+   uint8_t           depth = 0;
+   uint32_t          children = 0;
+
+   share_type        net_rshares;
+   share_type        abs_rshares;
+   share_type        vote_rshares;
+
+   share_type        children_abs_rshares;
+   time_point_sec    cashout_time;
+   time_point_sec    max_cashout_time;
+   uint64_t          total_vote_weight = 0;
+
+   uint16_t          reward_weight = 0;
+
+   legacy_asset      total_payout_value;
+   legacy_asset      curator_payout_value;
+
+   share_type        author_rewards;
+
+   int32_t           net_votes = 0;
+
+   account_name_type root_author;
+   string            root_permlink;
+
+   legacy_asset      max_accepted_payout;
+   uint16_t          percent_steem_dollars = 0;
+   bool              allow_replies = false;
+   bool              allow_votes = false;
+   bool              allow_curation_rewards = false;
+   vector< beneficiary_route_type > beneficiaries;
+};
+
 struct extended_dynamic_global_properties
 {
    extended_dynamic_global_properties() {}
@@ -447,8 +541,8 @@ struct api_reward_fund_object
    uint128_t               content_constant = 0;
    uint16_t                percent_curation_rewards = 0;
    uint16_t                percent_content_rewards = 0;
-   protocol::curve_id      author_reward_curve;
-   protocol::curve_id      curation_reward_curve;
+   protocol::curve_id      author_reward_curve = protocol::linear;
+   protocol::curve_id      curation_reward_curve = protocol::square_root;
 };
 
 struct api_escrow_object
@@ -562,45 +656,14 @@ struct api_convert_request_object
    time_point_sec    conversion_date;
 };
 
-struct discussion
+struct discussion : public api_comment_object
 {
    discussion() {}
+
+   discussion( const api_comment_object& c ) : api_comment_object( c ) {}
+
    discussion( const tags::discussion& d ) :
-      id( d.id ),
-      category( d.category ),
-      parent_author( d.parent_author ),
-      parent_permlink( d.parent_permlink ),
-      author( d.author ),
-      permlink( d.permlink ),
-      title( d.title ),
-      body( d.body ),
-      json_metadata( d.json_metadata ),
-      last_update( d.last_update ),
-      created( d.created ),
-      active( d.active ),
-      last_payout( d.last_payout ),
-      depth( d.depth ),
-      children( d.children ),
-      net_rshares( d.net_rshares ),
-      abs_rshares( d.abs_rshares ),
-      vote_rshares( d.vote_rshares ),
-      children_abs_rshares( d.children_abs_rshares ),
-      cashout_time( d.cashout_time ),
-      max_cashout_time( d.max_cashout_time ),
-      total_vote_weight( d.total_vote_weight ),
-      reward_weight( d.reward_weight ),
-      total_payout_value( legacy_asset::from_asset( d.total_payout_value ) ),
-      curator_payout_value( legacy_asset::from_asset( d.curator_payout_value ) ),
-      author_rewards( d.author_rewards ),
-      net_votes( d.net_votes ),
-      root_author( d.root_author ),
-      root_permlink( d.root_permlink ),
-      max_accepted_payout( legacy_asset::from_asset( d.max_accepted_payout ) ),
-      percent_steem_dollars( d.percent_steem_dollars ),
-      allow_replies( d.allow_replies ),
-      allow_votes( d.allow_votes ),
-      allow_curation_rewards( d.allow_curation_rewards ),
-      beneficiaries( d.beneficiaries ),
+      api_comment_object( d ),
       url( d.url ),
       root_title( d.root_title ),
       pending_payout_value( legacy_asset::from_asset( d.pending_payout_value ) ),
@@ -614,53 +677,6 @@ struct discussion
       first_reblogged_by( d.first_reblogged_by ),
       first_reblogged_on( d.first_reblogged_on )
    {}
-
-
-   comment_id_type   id;
-   string            category;
-   string            parent_author;
-   string            parent_permlink;
-   string            author;
-   string            permlink;
-
-   string            title;
-   string            body;
-   string            json_metadata;
-   time_point_sec    last_update;
-   time_point_sec    created;
-   time_point_sec    active;
-   time_point_sec    last_payout;
-
-   uint8_t           depth = 0;
-   uint32_t          children = 0;
-
-   share_type        net_rshares;
-   share_type        abs_rshares;
-   share_type        vote_rshares;
-
-   share_type        children_abs_rshares;
-   time_point_sec    cashout_time;
-   time_point_sec    max_cashout_time;
-   uint64_t          total_vote_weight = 0;
-
-   uint16_t          reward_weight = 0;
-
-   legacy_asset      total_payout_value;
-   legacy_asset      curator_payout_value;
-
-   share_type        author_rewards;
-
-   int32_t           net_votes = 0;
-
-   account_name_type root_author;
-   string            root_permlink;
-
-   legacy_asset      max_accepted_payout;
-   uint16_t          percent_steem_dollars = 0;
-   bool              allow_replies = false;
-   bool              allow_votes = false;
-   bool              allow_curation_rewards = false;
-   vector< beneficiary_route_type > beneficiaries;
 
    string                        url; /// /category/@rootauthor/root_permlink#author/permlink
    string                        root_title;
@@ -777,6 +793,46 @@ struct broadcast_transaction_synchronous_return
    int32_t               block_num = 0;
    int32_t               trx_num   = 0;
    bool                  expired   = false;
+};
+
+struct comment_feed_entry
+{
+   comment_feed_entry( const follow::comment_feed_entry& c ) :
+      comment( c.comment ),
+      reblog_on( c.reblog_on ),
+      entry_id( c.entry_id )
+   {
+      reblog_by.resize( c.reblog_by.size() );
+
+      for( auto& a : c.reblog_by )
+      {
+         reblog_by.push_back( a );
+      }
+   }
+
+   comment_feed_entry() {}
+
+   api_comment_object            comment;
+   vector< account_name_type >   reblog_by;
+   time_point_sec                reblog_on;
+   uint32_t                      entry_id = 0;
+};
+
+struct comment_blog_entry
+{
+   comment_blog_entry( const follow::comment_blog_entry& c ) :
+      comment( c.comment ),
+      blog( c.blog ),
+      reblog_on( c.reblog_on ),
+      entry_id( c.entry_id )
+   {}
+
+   comment_blog_entry() {}
+
+   api_comment_object   comment;
+   string               blog;
+   time_point_sec       reblog_on;
+   uint32_t             entry_id = 0;
 };
 
 struct ticker
@@ -931,10 +987,10 @@ DEFINE_API_ARGS( get_followers,                          vector< variant >,   ve
 DEFINE_API_ARGS( get_following,                          vector< variant >,   vector< follow::api_follow_object > )
 DEFINE_API_ARGS( get_follow_count,                       vector< variant >,   follow::get_follow_count_return )
 DEFINE_API_ARGS( get_feed_entries,                       vector< variant >,   vector< follow::feed_entry > )
-DEFINE_API_ARGS( get_feed,                               vector< variant >,   vector< follow::comment_feed_entry > )
+DEFINE_API_ARGS( get_feed,                               vector< variant >,   vector< comment_feed_entry > )
 DEFINE_API_ARGS( get_blog_entries,                       vector< variant >,   vector< follow::blog_entry > )
-DEFINE_API_ARGS( get_blog,                               vector< variant >,   vector< follow::comment_blog_entry > )
-DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< follow::account_reputation > )
+DEFINE_API_ARGS( get_blog,                               vector< variant >,   vector< comment_blog_entry > )
+DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< reputation::account_reputation > )
 DEFINE_API_ARGS( get_reblogged_by,                       vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_blog_authors,                       vector< variant >,   vector< follow::reblog_count > )
 DEFINE_API_ARGS( get_ticker,                             vector< variant >,   ticker )
@@ -1086,6 +1142,19 @@ FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plu
             (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
             (vesting_balance)(reputation)(transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended) )
 
+FC_REFLECT( steem::plugins::condenser_api::api_comment_object,
+             (id)(author)(permlink)
+             (category)(parent_author)(parent_permlink)
+             (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
+             (depth)(children)
+             (net_rshares)(abs_rshares)(vote_rshares)
+             (children_abs_rshares)(cashout_time)(max_cashout_time)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)
+             (root_author)(root_permlink)
+             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)
+          )
+
 FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (head_block_number)(head_block_id)(time)
             (current_witness)(total_pow)(num_pow_witnesses)
@@ -1171,17 +1240,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_vesting_delegation_expiration_obj
 FC_REFLECT( steem::plugins::condenser_api::api_convert_request_object,
              (id)(owner)(requestid)(amount)(conversion_date) )
 
-FC_REFLECT( steem::plugins::condenser_api::discussion,
-             (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
-             (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
-             (depth)(children)
-             (net_rshares)(abs_rshares)(vote_rshares)
-             (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)
-             (root_author)(root_permlink)
-             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
-             (beneficiaries)
+FC_REFLECT_DERIVED( steem::plugins::condenser_api::discussion, (steem::plugins::condenser_api::api_comment_object),
              (url)(root_title)(pending_payout_value)(total_pending_payout_value)
              (active_votes)(replies)(author_reputation)(promoted)
              (body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on)
@@ -1202,6 +1261,12 @@ FC_REFLECT( steem::plugins::condenser_api::get_version_return,
 
 FC_REFLECT( steem::plugins::condenser_api::broadcast_transaction_synchronous_return,
             (id)(block_num)(trx_num)(expired) )
+
+FC_REFLECT( steem::plugins::condenser_api::comment_feed_entry,
+            (comment)(reblog_by)(reblog_on)(entry_id) )
+
+FC_REFLECT( steem::plugins::condenser_api::comment_blog_entry,
+            (comment)(blog)(reblog_on)(entry_id) )
 
 FC_REFLECT( steem::plugins::condenser_api::ticker,
             (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )

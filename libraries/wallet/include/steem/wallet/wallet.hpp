@@ -592,7 +592,7 @@ class wallet_api
          string witness_name,
          string url,
          public_key_type block_signing_key,
-         const legacy_chain_properties& props,
+         const condenser_api::api_chain_properties& props,
          bool broadcast = false);
 
       /** Set the voting proxy for an account.

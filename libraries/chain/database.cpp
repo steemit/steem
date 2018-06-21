@@ -1692,7 +1692,7 @@ void fill_comment_reward_context_local_state( util::comment_reward_context& ctx,
    ctx.max_sbd = comment.max_accepted_payout;
 }
 
-share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment )
+share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment, bool forward_curation_remainder )
 {
    try
    {
@@ -1717,7 +1717,11 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent( comment ) ) / STEEM_100_PERCENT ).to_uint64();
             share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
-            author_tokens += pay_curators( comment, curation_tokens );
+            share_type curation_remainder = pay_curators( comment, curation_tokens );
+
+            if( forward_curation_remainder )
+               author_tokens += curation_remainder;
+
             share_type total_beneficiary = 0;
             claimed_reward = author_tokens + curation_tokens;
 
@@ -1901,7 +1905,10 @@ void database::process_comment_cashout()
          auto fund_id = get_reward_fund( *current ).id._id;
          ctx.total_reward_shares2 = funds[ fund_id ].recent_claims;
          ctx.total_reward_fund_steem = funds[ fund_id ].reward_balance;
-         funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current );
+
+         bool forward_curation_remainder = !has_hardfork( STEEM_HARDFORK_0_20__1877 );
+
+         funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current, forward_curation_remainder );
       }
       else
       {
@@ -2409,8 +2416,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< limit_order_create_evaluator             >();
    _my->_evaluator_registry.register_evaluator< limit_order_create2_evaluator            >();
    _my->_evaluator_registry.register_evaluator< limit_order_cancel_evaluator             >();
-   _my->_evaluator_registry.register_evaluator< placeholder_a_evaluator                  >();
-   _my->_evaluator_registry.register_evaluator< placeholder_b_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< claim_account_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< create_claimed_account_evaluator         >();
    _my->_evaluator_registry.register_evaluator< request_account_recovery_evaluator       >();
    _my->_evaluator_registry.register_evaluator< recover_account_evaluator                >();
    _my->_evaluator_registry.register_evaluator< change_recovery_account_evaluator        >();
@@ -3324,7 +3331,7 @@ boost::signals2::connection database::add_pre_apply_transaction_handler( const a
 boost::signals2::connection database::add_post_apply_transaction_handler( const apply_transaction_handler_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
-   return connect_impl(_pre_apply_transaction_signal, func, plugin, group, "<-transaction");
+   return connect_impl(_post_apply_transaction_signal, func, plugin, group, "<-transaction");
 }
 
 boost::signals2::connection database::add_pre_apply_block_handler( const apply_block_handler_t& func,
@@ -4650,6 +4657,31 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
 #ifdef IS_TEST_NET
       case STEEM_HARDFORK_0_20:
+         {
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF20;
+            });
+
+            const auto& wso = get_witness_schedule_object();
+
+            for( const auto& witness : wso.current_shuffled_witnesses )
+            {
+               // Required check when applying hardfork at genesis
+               if( witness != account_name_type() )
+               {
+                  modify( get< witness_object, by_name >( witness ), [&]( witness_object& w )
+                  {
+                     w.props.account_creation_fee = asset( w.props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+                  });
+               }
+            }
+
+            modify( wso, [&]( witness_schedule_object& wso )
+            {
+               wso.median_props.account_creation_fee = asset( wso.median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+            });
+         }
          break;
       case STEEM_HARDFORK_0_21:
          break;

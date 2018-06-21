@@ -20,6 +20,7 @@ namespace fc {
    class variant_object;
    class path;
    template<typename... Types> class static_variant;
+   template<typename T, size_t N> class int_array;
 
    template<typename IntType, typename EnumType> class enum_type;
    namespace ip { class endpoint; }
@@ -115,6 +116,9 @@ namespace fc {
 
     template<typename Stream, typename T, size_t N> inline void pack( Stream& s, const fc::array<T,N>& v);
     template<typename Stream, typename T, size_t N> inline void unpack( Stream& s, fc::array<T,N>& v);
+
+    template<typename Stream, typename T, size_t N> inline void pack( Stream& s, const fc::int_array<T,N>& v);
+    template<typename Stream, typename T, size_t N> inline void unpack( Stream& s, fc::int_array<T,N>& v);
 
     template<typename Stream> inline void pack( Stream& s, const bool& v );
     template<typename Stream> inline void unpack( Stream& s, bool& v );

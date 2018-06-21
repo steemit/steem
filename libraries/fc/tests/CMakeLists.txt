@@ -37,6 +37,9 @@ target_link_libraries( ecc_test fc )
 add_executable( log_test crypto/log_test.cpp )
 target_link_libraries( log_test fc )
 
+add_executable( saturation_test saturation_test.cpp )
+target_link_libraries( saturation_test fc )
+
 #add_executable( test_aes aes_test.cpp )
 #target_link_libraries( test_aes fc ${rt_library} ${pthread_library} )
 #add_executable( test_sleep sleep.cpp )
@@ -63,6 +66,7 @@ add_executable( all_tests all_tests.cpp
                           thread/thread_tests.cpp
                           bloom_test.cpp
                           real128_test.cpp
+                          saturation_test.cpp
                           utf8_test.cpp
                           )
 target_link_libraries( all_tests fc )

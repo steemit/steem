@@ -8,17 +8,8 @@ namespace steem { namespace plugins { namespace statsd { namespace util {
 
 using steem::plugins::statsd::statsd_plugin;
 
-bool statsd_enabled()
-{
-   static bool enabled = appbase::app().find_plugin< statsd_plugin >() != nullptr;
-   return enabled;
-}
-
-const statsd_plugin& get_statsd()
-{
-   static const statsd_plugin& statsd = appbase::app().get_plugin< statsd_plugin >();
-   return statsd;
-}
+bool statsd_enabled();
+const statsd_plugin& get_statsd();
 
 class statsd_timer_helper
 {
@@ -57,6 +48,11 @@ class statsd_timer_helper
       const statsd_plugin& _statsd;
       bool                 _recorded = false;
 };
+
+inline uint32_t timing_helper( const fc::microseconds& time ) { return time.count() / 1000; }
+inline uint32_t timing_helper( const fc::time_point& time ) { return time.time_since_epoch().count() / 1000; }
+inline uint32_t timing_helper( const fc::time_point_sec& time ) { return time.sec_since_epoch() * 1000; }
+inline uint32_t timing_helper( uint32_t time ) { return time; }
 
 } } } } // steem::plugins::statsd::util
 
@@ -103,3 +99,13 @@ if( steem::plugins::statsd::util::statsd_enabled() )                            
 
 #define STATSD_STOP_TIMER( NAMESPACE, STAT, KEY )        \
    NAMESPACE ## STAT ## KEY ## _timer.reset();
+
+#define STATSD_TIMER( NAMESPACE, STAT, KEY, VAL, FREQ )  \
+if( steem::plugins::statsd::util::statsd_enabled() )     \
+{                                                        \
+   steem::plugins::statsd::util::get_statsd().timing(    \
+      NAMESPACE, STAT, KEY,                              \
+      steem::plugins::statsd::util::timing_helper( VAL ),\
+      FREQ                                               \
+   );                                                    \
+}

@@ -17,7 +17,6 @@ add_library( steem_chain
              shared_authority.cpp
              block_log.cpp
 
-             voting_helper.cpp
              generic_custom_operation_interpreter.cpp
 
              util/reward.cpp

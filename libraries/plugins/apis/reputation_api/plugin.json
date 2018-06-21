@@ -1,0 +1,5 @@
+{
+   "plugin_name": "reputation_api",
+   "plugin_namespace": "reputation",
+   "plugin_project": "reputation_api_plugin"
+}

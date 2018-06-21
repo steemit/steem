@@ -967,6 +967,13 @@ namespace chainbase {
              return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
          }
 
+         template< typename ObjectType >
+         size_t count()const
+         {
+            typedef typename get_index_type<ObjectType>::type index_type;
+            return get_index< index_type >().indices().size();
+         }
+
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {

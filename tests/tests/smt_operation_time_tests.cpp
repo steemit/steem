@@ -83,6 +83,7 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
       op.amount_to_sell = asset( alice_smt.amount.value / 20, any_smt_symbol ) ;
       op.min_to_receive = op.amount_to_sell * exchange_rate;
       op.orderid = 1;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
 
       tx.signatures.clear();
       tx.operations.clear();
