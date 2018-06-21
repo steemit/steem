@@ -91,7 +91,7 @@ namespace steem { namespace chain { namespace util {
          rinfo.emplace( obj.op_name, obj.size, obj.count, obj.time );
          if( log )
          {
-            ilog( "${o}, ${s}, ${c}, ${t}, ${a}", ("o", obj.op_name)("s", obj.size)("c", obj.count)("t", obj.time)("a", obj.time / obj.count) );
+            ilog( "${o}, ${s}, ${c}, ${t}", ("o", obj.op_name)("s", obj.size)("c", obj.count)("t", obj.time) );
          }
       });
 

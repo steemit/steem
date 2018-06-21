@@ -4714,6 +4714,8 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEM_HARDFORK_0_19:
          {
+            _benchmark_dumper.set_enabled( true );
+
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
                gpo.vote_power_reserve_rate = STEEM_REDUCED_VOTE_POWER_RATE;
