@@ -1577,7 +1577,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = db->get_account( "bob" ).vesting_shares;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 ); // We do not need to test the result of this, simply that it works.
    }
    FC_LOG_AND_RETHROW()
@@ -2651,7 +2651,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -3016,7 +3016,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -7049,7 +7049,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "20.000 TESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7070,7 +7070,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "1.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7079,7 +7079,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
@@ -7101,7 +7101,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "5.000 TESTS" ) );
@@ -7122,7 +7122,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
@@ -7241,7 +7241,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       op.json_metadata = "{\"foo\":\"bar\"}";
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7257,7 +7257,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       generate_block();
       op.owner = authority( 1, "bob", 1 );
       tx.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -7266,7 +7266,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const auto& bob = db->get_account( "bob" );
@@ -7295,7 +7295,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_TEST_MESSAGE( "--- Test failure creating duplicate account name" );
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 

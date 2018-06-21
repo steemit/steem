@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       signed_transaction tx;
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
