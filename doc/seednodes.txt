@@ -34,3 +34,4 @@ seed.riversteem.com:2001            # riverhead
 steem-seed.furion.me:2001           # furion
 148.251.237.104:2001                # steem-bounty
 seed1.blockbrothers.io:2001         # blockbrothers
+seed.usesteem.com:2001              # themarkymark
