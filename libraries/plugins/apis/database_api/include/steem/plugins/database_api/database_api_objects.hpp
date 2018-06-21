@@ -176,8 +176,7 @@ struct api_account_object
       lifetime_vote_count( a.lifetime_vote_count ),
       post_count( a.post_count ),
       can_vote( a.can_vote ),
-      power_shares( a.power_shares ),
-      last_power_shares_update( a.last_power_shares_update ),
+      voting_manabar( a.voting_manabar ),
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -251,8 +250,7 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
-   int64_t           power_shares = 0;
-   time_point_sec    last_power_shares_update;
+   util::manabar     voting_manabar;
 
    asset             balance;
    asset             savings_balance;
@@ -554,7 +552,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(power_shares)(last_power_shares_update)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)

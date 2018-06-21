@@ -6,7 +6,7 @@
 #include <steem/chain/block_summary_object.hpp>
 
 #include <steem/chain/util/reward.hpp>
-#include <steem/chain/util/power_shares.hpp>
+#include <steem/chain/util/manabar.hpp>
 
 #include <fc/macros.hpp>
 
@@ -255,12 +255,12 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.name = name;
    acc.memo_key = key;
    acc.created = props.time;
-   acc.last_power_shares_update = props.time;
+   acc.voting_manabar.last_update_time = props.time.sec_since_epoch();
    acc.mined = mined;
 
    if( hardfork < STEEM_HARDFORK_0_20__2539 )
    {
-      acc.power_shares = STEEM_100_PERCENT;
+      acc.voting_manabar.current_mana = STEEM_100_PERCENT;
    }
 
    if( hardfork >= STEEM_HARDFORK_0_11 )
@@ -1291,13 +1291,13 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
-   int64_t elapsed_seconds   = (_db.head_block_time() - voter.last_power_shares_update).to_seconds();
+   uint32_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
-   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / STEEM_POWER_SHARES_REGENERATION_SECONDS;
-   int64_t current_power     = std::min( int64_t(voter.power_shares) + regenerated_power, int64_t(STEEM_100_PERCENT) );
+   int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / STEEM_VOTING_MANA_REGENERATION_SECONDS;
+   int64_t current_power     = std::min( int64_t(voter.voting_manabar.current_mana) + regenerated_power, int64_t(STEEM_100_PERCENT) );
    FC_ASSERT( current_power > 0, "Account currently does not have voting power." );
 
    int64_t  abs_weight    = abs(o.weight);
@@ -1308,7 +1308,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_POWER_SHARES_REGENERATION_SECONDS;
+   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !_db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
@@ -1368,8 +1368,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       //if( used_power == 0 ) used_power = 1;
 
       _db.modify( voter, [&]( account_object& a ){
-         a.power_shares = current_power - used_power;
-         a.last_power_shares_update = _db.head_block_time();
+         a.voting_manabar.current_mana = current_power - used_power;
+         a.voting_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -1552,8 +1552,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       }
 
       _db.modify( voter, [&]( account_object& a ){
-         a.power_shares = current_power - used_power;
-         a.last_power_shares_update = _db.head_block_time();
+         a.voting_manabar.current_mana = current_power - used_power;
+         a.voting_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -1689,24 +1689,28 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       itr = comment_vote_idx.end();
    }
 
-   FC_TODO( "Replace with new check not against elapse seconds" );
-   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+   auto now = _db.head_block_time();
+   FC_ASSERT( ( now - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
-   int64_t current_power_shares = util::get_regen_power_shares( voter, _db.head_block_time() );
-   FC_ASSERT( current_power_shares > 0, "Account currently does not have power shares." );
+   _db.modify( voter, [&]( account_object& a )
+   {
+      util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      a.voting_manabar.regenerate_mana( params, now );
+   });
+   FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account currently does not have power shares." );
 
    int16_t abs_weight = abs( o.weight );
-   int64_t used_power_shares = ( current_power_shares * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+   int64_t used_mana = ( voter.voting_manabar.current_mana * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
 
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_POWER_SHARES_REGENERATION_SECONDS;
+   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
-   used_power_shares = ( used_power_shares + max_vote_denom - 1 ) / max_vote_denom;
-   FC_ASSERT( used_power_shares <= current_power_shares, "Account does not have enough power to vote." );
+   used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
+   FC_ASSERT( voter.voting_manabar.has_mana( used_mana ), "Account does not have enough power to vote." );
 
-   int64_t abs_rshares = used_power_shares;
+   int64_t abs_rshares = used_mana;
 
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
@@ -1724,8 +1728,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.power_shares = current_power_shares - used_power_shares;
-         a.last_power_shares_update = _db.head_block_time();
+         a.voting_manabar.use_mana( used_mana );
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -1843,8 +1846,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.power_shares = current_power_shares - used_power_shares;
-         a.last_power_shares_update = _db.head_block_time();
+         a.voting_manabar.use_mana( used_mana );
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -2596,7 +2598,7 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
       a.vesting_shares += op.reward_vests;
       a.reward_vesting_balance -= op.reward_vests;
       a.reward_vesting_steem -= reward_vesting_steem_to_move;
-      a.power_shares += uint128_t( op.reward_vests.amount.value ) * STEEM_100_PERCENT;
+      a.voting_manabar.current_mana += op.reward_vests.amount.value;
    });
 
    _db.modify( _db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
@@ -2690,14 +2692,16 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
 
    asset available_shares;
-   uint128_t current_power_shares = 0;
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
    {
-      current_power_shares = util::get_regen_power_shares( delegator, _db.head_block_time() );
-      // Any trunaction represents 1 satoshi of VESTS that is not at 100% power and thereforce cannot be delegated.
-      // There is not loss of accuracy from this conversion.
-      available_shares = asset( ( current_power_shares / STEEM_100_PERCENT ).to_uint64(), VESTS_SYMBOL );
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+         a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
+      });
+
+      available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
 
       if( delegator.next_vesting_withdrawal < fc::time_point_sec::maximum()
          && delegator.to_withdraw - delegator.withdrawn > delegator.vesting_withdraw_rate.amount )
@@ -2753,18 +2757,20 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.power_shares = current_power_shares - ( op.vesting_shares.amount.value * STEEM_100_PERCENT );
+            a.voting_manabar.use_mana( op.vesting_shares.amount.value );
          }
       });
 
       _db.modify( delegatee, [&]( account_object& a )
       {
-         a.received_vesting_shares += op.vesting_shares;
-
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.power_shares = util::get_regen_power_shares( a, _db.head_block_time() ) + ( op.vesting_shares.amount.value * STEEM_100_PERCENT );
+            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+            a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
+            a.voting_manabar.current_mana += op.vesting_shares.amount.value;
          }
+
+         a.received_vesting_shares += op.vesting_shares;
       });
    }
    // Else if the delegation is increasing
@@ -2781,18 +2787,20 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.power_shares = current_power_shares - ( delta.amount.value * STEEM_100_PERCENT );
+            a.voting_manabar.use_mana( delta.amount.value );
          }
       });
 
       _db.modify( delegatee, [&]( account_object& a )
       {
-         a.received_vesting_shares += delta;
-
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.power_shares = util::get_regen_power_shares( a, _db.head_block_time() ) + ( delta.amount.value * STEEM_100_PERCENT );
+            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+            a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
+            a.voting_manabar.current_mana += delta.amount.value;
          }
+
+         a.received_vesting_shares += delta;
       });
 
       _db.modify( *delegation, [&]( vesting_delegation_object& obj )
@@ -2828,8 +2836,12 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            uint128_t delta_power_sharess = delta.amount.value * STEEM_100_PERCENT;
-            a.power_shares = a.power_shares > delta_power_sharess ? a.power_shares - delta_power_sharess : 0;
+            a.voting_manabar.use_mana( delta.amount.value );
+
+            if( a.voting_manabar.current_mana < 0 )
+            {
+               a.voting_manabar.current_mana = 0;
+            }
          }
       });
 
