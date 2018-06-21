@@ -352,13 +352,13 @@ namespace golos { namespace wallet {
              */
             void    set_password(string password);
 
-            /** Dumps all private keys owned by the wallet.
+            /** Dumps private keys from all accounts owned by the wallet or from the specific account.
              *
              * The keys are printed in WIF format. You can import these keys into another wallet
              * using \c import_key()
-             * @returns a map containing the private keys, indexed by their public key
+             * @returns a vector of vectors containing the private keys, public keys, account names, key types
              */
-            map<public_key_type, string> list_keys();
+            vector<vector<string>> list_keys(string account);
 
             /** Returns detailed help on a single API command.
              * @param method the name of the API command you want help with

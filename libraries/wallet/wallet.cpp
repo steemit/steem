@@ -1343,10 +1343,59 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             lock();
         }
 
-        map<public_key_type, string> wallet_api::list_keys()
+        vector<vector<string>> wallet_api::list_keys(string account)
         {
             FC_ASSERT(!is_locked());
-            return my->_keys;
+
+            vector<vector<string>> all_keys;
+
+            vector<golos::api::account_api_object> accounts;
+            if (account.empty()) {
+                accounts = list_my_accounts();
+            } else {
+                accounts.push_back(get_account(account));
+            }
+            
+            for (auto it = accounts.begin(); it != accounts.end(); it++) {
+                vector<string> memo_key_data;
+                memo_key_data.push_back(std::string(it->memo_key));
+                memo_key_data.push_back(get_private_key(it->memo_key));
+                memo_key_data.push_back(std::string(it->name));
+                memo_key_data.push_back("memo_key");
+                all_keys.push_back(memo_key_data);
+
+                auto acc_owner_keys = it->owner.get_keys();
+                for (auto it2 = acc_owner_keys.begin(); it2 != acc_owner_keys.end(); it2++) { 
+                    vector<string> key_data;
+                    key_data.push_back(std::string(*it2));
+                    key_data.push_back(get_private_key(*it2));
+                    key_data.push_back(std::string(it->name));
+                    key_data.push_back("owner");
+                    all_keys.push_back(key_data);
+                }
+
+                auto acc_active_keys = it->active.get_keys();
+                for (auto it2 = acc_active_keys.begin(); it2 != acc_active_keys.end(); it2++) { 
+                    vector<string> key_data;
+                    key_data.push_back(std::string(*it2));
+                    key_data.push_back(get_private_key(*it2));
+                    key_data.push_back(std::string(it->name));
+                    key_data.push_back("active");
+                    all_keys.push_back(key_data);
+                }
+
+                auto acc_posting_keys = it->posting.get_keys();
+                for (auto it2 = acc_posting_keys.begin(); it2 != acc_posting_keys.end(); it2++) { 
+                    vector<string> key_data;
+                    key_data.push_back(std::string(*it2));
+                    key_data.push_back(get_private_key(*it2));
+                    key_data.push_back(std::string(it->name));
+                    key_data.push_back("posting");
+                    all_keys.push_back(key_data);
+                }
+            }
+
+            return all_keys;
         }
 
         string wallet_api::get_private_key( public_key_type pubkey )const
