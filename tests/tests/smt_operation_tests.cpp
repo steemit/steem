@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -692,7 +692,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
