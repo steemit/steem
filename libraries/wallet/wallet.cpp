@@ -1343,11 +1343,11 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             lock();
         }
 
-        vector<vector<string>> wallet_api::list_keys(string account)
+        vector<key_with_data> wallet_api::list_keys(string account)
         {
             FC_ASSERT(!is_locked());
 
-            vector<vector<string>> all_keys;
+            vector<key_with_data> all_keys;
 
             vector<golos::api::account_api_object> accounts;
             if (account.empty()) {
@@ -1357,40 +1357,40 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             }
             
             for (auto it = accounts.begin(); it != accounts.end(); it++) {
-                vector<string> memo_key_data;
-                memo_key_data.push_back(std::string(it->memo_key));
-                memo_key_data.push_back(get_private_key(it->memo_key));
-                memo_key_data.push_back(std::string(it->name));
-                memo_key_data.push_back("memo_key");
+                key_with_data memo_key_data;
+                memo_key_data.public_key = std::string(it->memo_key);
+                memo_key_data.private_key = get_private_key(it->memo_key);
+                memo_key_data.account = std::string(it->name);
+                memo_key_data.type = "memo_key";
                 all_keys.push_back(memo_key_data);
 
                 auto acc_owner_keys = it->owner.get_keys();
                 for (auto it2 = acc_owner_keys.begin(); it2 != acc_owner_keys.end(); it2++) { 
-                    vector<string> key_data;
-                    key_data.push_back(std::string(*it2));
-                    key_data.push_back(get_private_key(*it2));
-                    key_data.push_back(std::string(it->name));
-                    key_data.push_back("owner");
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "owner";
                     all_keys.push_back(key_data);
                 }
 
                 auto acc_active_keys = it->active.get_keys();
                 for (auto it2 = acc_active_keys.begin(); it2 != acc_active_keys.end(); it2++) { 
-                    vector<string> key_data;
-                    key_data.push_back(std::string(*it2));
-                    key_data.push_back(get_private_key(*it2));
-                    key_data.push_back(std::string(it->name));
-                    key_data.push_back("active");
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "active";
                     all_keys.push_back(key_data);
                 }
 
                 auto acc_posting_keys = it->posting.get_keys();
                 for (auto it2 = acc_posting_keys.begin(); it2 != acc_posting_keys.end(); it2++) { 
-                    vector<string> key_data;
-                    key_data.push_back(std::string(*it2));
-                    key_data.push_back(get_private_key(*it2));
-                    key_data.push_back(std::string(it->name));
-                    key_data.push_back("posting");
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "posting";
                     all_keys.push_back(key_data);
                 }
             }
