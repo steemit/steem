@@ -827,10 +827,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          int64_t max_vote_denom = ( db->get_dynamic_global_properties().vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS ) / (60*60*24);
 
          BOOST_REQUIRE( alice.last_vote_time == db->head_block_time() );
-         BOOST_REQUIRE( alice_comment.net_rshares.value == ( old_mana - alice.voting_manabar.current_mana ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
-         BOOST_REQUIRE( uint128_t( alice_comment.net_rshares.value ) * STEEM_100_PERCENT == old_mana + alice.voting_manabar.current_mana );
+         BOOST_REQUIRE( alice_comment.net_rshares.value == ( old_mana - alice.voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( alice_comment.cashout_time == alice_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( itr->rshares == ( old_mana - alice.voting_manabar.current_mana ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
+         BOOST_REQUIRE( itr->rshares == ( old_mana - alice.voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -838,7 +837,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          generate_blocks( db->head_block_time() + STEEM_MIN_VOTE_INTERVAL_SEC );
 
-         old_mana = db->get_account( "alice" ).voting_manabar.current_mana;
+         util::manabar old_manabar = db->get_account( "alice" ).voting_manabar;
+         util::manabar_params params( util::get_effective_vesting_shares( db->get_account( "alice" ) ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
 
          comment_op.author = "bob";
          comment_op.permlink = "foo";
@@ -863,11 +864,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
          itr = vote_idx.find( std::make_tuple( bob_comment.id, alice.id ) );
 
-
-         idump( (bob_comment.net_rshares) );
-         idump( (alice.vesting_shares.amount.value * ( old_mana - db->get_account( "alice" ).voting_manabar.current_mana ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD) );
-         BOOST_REQUIRE( bob_comment.net_rshares.value == ( old_mana - db->get_account( "alice" ).voting_manabar.current_mana ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
-         BOOST_REQUIRE( uint128_t( bob_comment.net_rshares.value ) * STEEM_100_PERCENT == old_mana - db->get_account( "alice" ).voting_manabar.current_mana );
+         BOOST_REQUIRE( bob_comment.net_rshares.value == ( old_manabar.current_mana - db->get_account( "alice" ).voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -894,10 +891,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_alice_comment.id, new_bob.id ) );
-         uint128_t new_cashout_time = db->head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS;
 
-         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + ( old_mana - new_bob.voting_manabar.current_mana ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
-         BOOST_REQUIRE( uint128_t( new_alice_comment.net_rshares.value - old_abs_rshares ) * STEEM_100_PERCENT == old_mana - new_bob.voting_manabar.current_mana );
+         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + ( old_mana - new_bob.voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( new_alice_comment.cashout_time == new_alice_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -908,6 +903,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& new_bob_comment = db->get_comment( "bob", string( "foo" ) );
 
          old_abs_rshares = new_bob_comment.abs_rshares.value;
+
+         old_manabar = db->get_account( "sam" ).voting_manabar;
+         params.max_mana = util::get_effective_vesting_shares( db->get_account( "sam" ) );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
 
          op.weight = -1 * STEEM_100_PERCENT / 2;
          op.voter = "sam";
@@ -920,11 +919,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
-         new_cashout_time = db->head_block_time().sec_since_epoch() + STEEM_CASHOUT_WINDOW_SECONDS;
-         auto sam_weight /*= ( ( uint128_t( new_sam.vesting_shares.amount.value ) ) / 400 + 1 ).to_uint64();*/
-                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
+         int64_t sam_weight = old_manabar.current_mana - db->get_account( "sam" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
-         BOOST_REQUIRE( get_voting_power( new_sam ) == STEEM_100_PERCENT - ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
          BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.net_rshares.value) == old_abs_rshares - sam_weight );
          BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.abs_rshares.value) == old_abs_rshares + sam_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
@@ -977,6 +973,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          used_power = ( ( STEEM_1_PERCENT * 25 * ( get_voting_power( new_alice ) ) / STEEM_100_PERCENT ) + max_vote_denom - 1 ) / max_vote_denom;
          auto alice_voting_power = get_voting_power( new_alice ) - used_power;
 
+         old_manabar = db->get_account( "alice" ).voting_manabar;
+         params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
+
          op.voter = "alice";
          op.weight = STEEM_1_PERCENT * 25;
          op.author = "bob";
@@ -988,7 +988,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
+         new_rshares = old_manabar.current_mana - db->get_account( "alice" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -996,7 +996,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( static_cast<uint64_t>(alice_bob_vote->rshares) == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
-         BOOST_REQUIRE( get_voting_power( db->get_account( "alice" ) ) == alice_voting_power );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test decreasing vote rshares" );
@@ -1010,6 +1009,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          used_power = ( used_power + max_vote_denom - 1 ) / max_vote_denom;
          alice_voting_power -= used_power;
 
+         old_manabar = db->get_account( "alice" ).voting_manabar;
+         params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
+
          op.weight = STEEM_1_PERCENT * -75;
          tx.operations.clear();
          tx.signatures.clear();
@@ -1018,7 +1021,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
+         new_rshares = old_manabar.current_mana - db->get_account( "alice" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -1026,7 +1029,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice_bob_vote->rshares == -1 * static_cast<int64_t>(new_rshares) );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
-         BOOST_REQUIRE( get_voting_power( db->get_account( "alice" ) ) == alice_voting_power );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight (aka: removing a vote)" );
@@ -1051,7 +1053,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
-         BOOST_REQUIRE( get_voting_power( db->get_account( "alice" ) ) == alice_voting_power );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
@@ -6348,6 +6349,10 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       tx.operations.clear();
       tx.signatures.clear();
 
+      util::manabar old_manabar = db->get_account( "bob" ).voting_manabar;
+      util::manabar_params params( util::get_effective_vesting_shares( db->get_account( "bob" ) ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      old_manabar.regenerate_mana( params, db->head_block_time() );
+
       comment_operation comment_op;
       comment_op.author = "alice";
       comment_op.permlink = "foo";
@@ -6378,8 +6383,8 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
       auto itr = vote_idx.find( std::make_tuple( alice_comment.id, bob_acc.id ) );
-      BOOST_REQUIRE( alice_comment.net_rshares.value == db->get_effective_vesting_shares(bob_acc, VESTS_SYMBOL).amount.value * ( old_voting_power - get_voting_power( bob_acc ) ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD);
-      BOOST_REQUIRE( itr->rshares == db->get_effective_vesting_shares(bob_acc, VESTS_SYMBOL).amount.value * ( old_voting_power - get_voting_power( bob_acc ) ) / STEEM_100_PERCENT - STEEM_VOTE_DUST_THRESHOLD );
+      BOOST_REQUIRE( alice_comment.net_rshares.value == old_manabar.current_mana - db->get_account( "bob" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD );
+      BOOST_REQUIRE( itr->rshares == old_manabar.current_mana - db->get_account( "bob" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD );
 
       generate_block();
       ACTORS( (sam)(dave) )
