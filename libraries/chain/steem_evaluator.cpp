@@ -1700,7 +1700,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account currently does not have power shares." );
 
    int16_t abs_weight = abs( o.weight );
-   int64_t used_mana = ( voter.voting_manabar.current_mana * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+   uint128_t used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
 
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
@@ -1708,9 +1708,9 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_ASSERT( max_vote_denom > 0 );
 
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
-   FC_ASSERT( voter.voting_manabar.has_mana( used_mana ), "Account does not have enough power to vote." );
+   FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough power to vote." );
 
-   int64_t abs_rshares = used_mana;
+   int64_t abs_rshares = used_mana.to_uint64();
 
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
@@ -1728,7 +1728,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.voting_manabar.use_mana( used_mana );
+         a.voting_manabar.use_mana( used_mana.to_uint64() );
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -1846,7 +1846,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.voting_manabar.use_mana( used_mana );
+         a.voting_manabar.use_mana( used_mana.to_uint64() );
          a.last_vote_time = _db.head_block_time();
       });
 
