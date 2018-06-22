@@ -69,9 +69,21 @@ struct manabar
       return (mana_needed <= 0) || (current_mana >= mana_needed);
    }
 
+   bool has_mana( uint64_t mana_needed )const
+   {
+      FC_ASSERT( mana_needed <= std::numeric_limits< int64_t >::max() );
+      return has_mana( (int64_t) mana_needed );
+   }
+
    void use_mana( int64_t mana_used )
    {
       current_mana = fc::signed_sat_sub( current_mana, mana_used );
+   }
+
+   void use_mana( uint64_t mana_used )
+   {
+      FC_ASSERT( mana_used <= std::numeric_limits< int64_t >::max() );
+      use_mana( (int64_t) mana_used );
    }
 };
 
