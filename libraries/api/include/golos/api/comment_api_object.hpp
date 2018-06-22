@@ -31,10 +31,10 @@ namespace golos { namespace api {
         time_point_sec active;
         time_point_sec last_payout;
 
-        uint8_t depth;
-        uint32_t children;
+        uint8_t depth = 0;
+        uint32_t children = 0;
 
-        uint128_t children_rshares2;
+        uint128_t children_rshares2 = 0;
 
         share_type net_rshares;
         share_type abs_rshares;
@@ -43,26 +43,26 @@ namespace golos { namespace api {
         share_type children_abs_rshares;
         time_point_sec cashout_time;
         time_point_sec max_cashout_time;
-        uint64_t total_vote_weight;
+        uint64_t total_vote_weight = 0;
 
-        uint16_t reward_weight;
+        uint16_t reward_weight = 0;
 
         protocol::asset total_payout_value;
         protocol::asset curator_payout_value;
 
         share_type author_rewards;
 
-        int32_t net_votes;
+        int32_t net_votes = 0;
 
-        comment_mode mode;
+        comment_mode mode = not_set;
 
         comment_object::id_type root_comment;
 
         protocol::asset max_accepted_payout;
-        uint16_t percent_steem_dollars;
-        bool allow_replies;
-        bool allow_votes;
-        bool allow_curation_rewards;
+        uint16_t percent_steem_dollars = 0;
+        bool allow_replies = 0;
+        bool allow_votes = 0;
+        bool allow_curation_rewards = 0;
 
         vector< protocol::beneficiary_route_type > beneficiaries;
     };

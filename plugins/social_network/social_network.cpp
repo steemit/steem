@@ -221,7 +221,7 @@ namespace golos { namespace plugins { namespace social_network {
         if (itr != by_permlink_idx.end()) {
             return get_discussion(*itr, limit);
         }
-        return discussion();
+        return helper->create_discussion(author);
     }
 
     DEFINE_API(social_network, get_content) {

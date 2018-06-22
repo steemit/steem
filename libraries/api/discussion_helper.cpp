@@ -64,6 +64,8 @@ namespace golos { namespace api {
         }
         ~impl() = default;
 
+        discussion create_discussion(const std::string& author) const ;
+
         discussion create_discussion(const comment_object& o) const ;
 
         void select_active_votes(
@@ -204,8 +206,18 @@ namespace golos { namespace api {
     }
 //
 // create_discussion
+    discussion discussion_helper::impl::create_discussion(const std::string& author) const {
+        auto dis = discussion();
+        fill_reputation_(database_, author, dis.author_reputation);
+        return dis;
+    }
+
     discussion discussion_helper::impl::create_discussion(const comment_object& o) const {
         return discussion(o, database_);
+    }
+
+    discussion discussion_helper::create_discussion(const std::string& author) const {
+        return pimpl->create_discussion(author);
     }
 
     discussion discussion_helper::create_discussion(const comment_object& o) const {

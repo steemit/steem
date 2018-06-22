@@ -112,6 +112,9 @@ namespace mongo_db {
 
             std::string comment_mode;
             switch (comment.mode) {
+                case not_set:
+                    comment_mode = "not_set";
+                    break;
                 case first_payout:
                     comment_mode = "first_payout";
                     break;
