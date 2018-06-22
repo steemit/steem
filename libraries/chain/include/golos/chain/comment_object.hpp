@@ -34,6 +34,7 @@ namespace golos {
         };
 
         enum comment_mode {
+            not_set,
             first_payout,
             second_payout,
             archived
@@ -275,7 +276,7 @@ namespace golos {
     }
 } // golos::chain
 
-FC_REFLECT_ENUM(golos::chain::comment_mode, (first_payout)(second_payout)(archived))
+FC_REFLECT_ENUM(golos::chain::comment_mode, (not_set)(first_payout)(second_payout)(archived))
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_object, golos::chain::comment_index)
 
