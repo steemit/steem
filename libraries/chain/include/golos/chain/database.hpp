@@ -88,7 +88,7 @@ namespace golos { namespace chain {
              * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
              * replaying blockchain history. When this method exits successfully, the database will be open.
              */
-            void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size = (
+            void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size = (
                     1024l * 1024l * 1024l * 8l));
 
             void set_min_free_shared_memory_size(size_t);
@@ -519,6 +519,8 @@ namespace golos { namespace chain {
             bool skip_price_feed_limit_check = true;
             bool skip_transaction_delta_check = true;
 #endif
+
+            const block_log &get_block_log() const;
 
         protected:
             //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
