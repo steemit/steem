@@ -1718,8 +1718,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       const auto& root = _db.get( comment.root_comment );
 
-      FC_ASSERT( abs_rshares > 0, "Cannot vote with 0 rshares." );
-
       auto old_vote_rshares = comment.vote_rshares;
 
       _db.modify( comment, [&]( comment_object& c )
