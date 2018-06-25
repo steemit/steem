@@ -90,6 +90,13 @@ namespace golos { namespace wallet {
             vector<transaction_id_type> transaction_ids;
         };
 
+        struct key_with_data {
+            std::string account;
+            std::string type;
+            std::string public_key;
+            std::string private_key;
+        };
+
         enum authority_type {
             owner,
             active,
@@ -356,9 +363,9 @@ namespace golos { namespace wallet {
              *
              * The keys are printed in WIF format. You can import these keys into another wallet
              * using \c import_key()
-             * @returns a vector of vectors containing the private keys, public keys, account names, key types
+             * @returns a vector of key_with_data
              */
-            vector<vector<string>> list_keys(string account);
+            vector<key_with_data> list_keys(string account);
 
             /** Returns detailed help on a single API command.
              * @param method the name of the API command you want help with
@@ -1114,6 +1121,8 @@ FC_REFLECT_DERIVED((golos::wallet::signed_block_with_info), ((golos::chain::sign
 FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
 FC_REFLECT( (golos::wallet::plain_keys), (checksum)(keys) )
+
+FC_REFLECT( (golos::wallet::key_with_data), (account)(type)(public_key)(private_key) )
 
 FC_REFLECT_ENUM( golos::wallet::authority_type, (owner)(active)(posting) )
 
