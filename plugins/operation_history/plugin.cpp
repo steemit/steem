@@ -173,6 +173,10 @@ namespace golos { namespace plugins { namespace operation_history {
             "history-start-block",
             boost::program_options::value<uint32_t>()->composing(),
             "Defines starting block from which recording stats."
+        ) (
+            "history-blocks",
+            boost::program_options::value<std::string>()->composing(),
+            "Defines starting time from which recording stats."
         );
 
         cfg.add(cli);

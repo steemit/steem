@@ -36,6 +36,15 @@ target_link_libraries(plugin_test golos_chain golos_protocol  golos_account_hist
 target_include_directories(plugin_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/common")
 add_test(NAME plugin_test_run COMMAND plugin_test)
 
+file(GLOB OPTION_TESTS
+    "plugin_tests/main.cpp"
+    "plugin_tests/black_options_postfix.cpp"
+    "plugin_tests/white_options_postfix.cpp")
+add_executable(options_test ${PLUGIN_TESTS} ${COMMON_SOURCES})
+target_link_libraries(options_test golos_chain golos_protocol  golos_account_history golos_market_history golos_debug_node fc ${PLATFORM_SPECIFIC_LIBS})
+target_include_directories(options_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/common")
+add_test(NAME options_test_run COMMAND options_test)
+
 if(MSVC)
     set_source_files_properties(tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
 endif(MSVC)
