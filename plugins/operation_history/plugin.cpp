@@ -59,20 +59,26 @@ namespace golos { namespace plugins { namespace operation_history {
             golos::chain::operation_notification& note,
             const fc::flat_set<std::string>& ops_list,
             bool is_blacklist,
-            uint32_t block)
+            uint32_t block,
+            fc::time_point_sec start_time)
             : operation_visitor(db, note),
               filter(ops_list),
               blacklist(is_blacklist),
-              start_block(block) {
+              start_block(block),
+              start_time(start_time) {
         }
 
         const fc::flat_set<std::string>& filter;
         bool blacklist;
         uint32_t start_block;
+        fc::time_point_sec start_time;
 
         template <typename T>
         void operator()(const T& op) const {
             if (database.head_block_num() < start_block) {
+                return;
+            }
+            if (database.head_block_time() < start_time) {
                 return;
             }
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
@@ -96,7 +102,7 @@ namespace golos { namespace plugins { namespace operation_history {
 
         void on_operation(golos::chain::operation_notification& note) {
             if (filter_content) {
-                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
+                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block, start_time));
             } else {
                 note.op.visit(operation_visitor(database, note));
             }
@@ -136,6 +142,7 @@ namespace golos { namespace plugins { namespace operation_history {
         bool filter_content = false;
         uint32_t start_block = 0;
         bool blacklist = false;
+        fc::time_point_sec start_time;
         fc::flat_set<std::string> ops_list;
         golos::chain::database& database;
     };
@@ -235,6 +242,15 @@ namespace golos { namespace plugins { namespace operation_history {
             pimpl->start_block = 0;
         }
         ilog("operation_history: start_block ${s}", ("s", pimpl->start_block));
+
+        if (options.count("history-blocks")) {
+            pimpl->filter_content = true;
+            std::string start_time_iso_str = options.at("history-blocks").as<std::string>();
+            pimpl->start_time = fc::time_point_sec::from_iso_string(start_time_iso_str);
+        } else {
+            pimpl->start_time = fc::time_point_sec();
+        }
+
         JSON_RPC_REGISTER_API(name());
         ilog("operation_history plugin: plugin_initialize() end");
     }

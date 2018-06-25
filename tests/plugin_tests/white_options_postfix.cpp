@@ -1,12 +1,9 @@
-/// Runnung example:
-///     ./plugin_test --log_level=test_suite --run_test=white_options_postfix
-
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
 #include "database_fixture.hpp"
 #include "comment_reward.hpp"
-#include "options_postfix.hpp"
+#include "options_fixture.hpp"
 
 
 using namespace golos::test;

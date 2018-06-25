@@ -2,7 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "options_postfix.hpp"
+#include "options_fixture.hpp"
 
 
 using namespace golos::test;
