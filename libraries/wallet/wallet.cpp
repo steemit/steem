@@ -425,8 +425,8 @@ namespace golos { namespace wallet {
                     std::string author,
                     std::string title,
                     std::string memo,
-                    time_point_sec expiration,
-                    time_point_sec review_period_time,
+                    std::string expiration,
+                    std::string review_period_time,
                     bool broadcast
                 ) {
                     FC_ASSERT(_builder_transactions.count(handle));
@@ -434,7 +434,11 @@ namespace golos { namespace wallet {
                     op.author = author;
                     op.title = title;
                     op.memo = memo;
-                    op.expiration_time = expiration;
+
+                    auto dyn_props = _remote_database_api->get_dynamic_global_properties();
+
+                    op.expiration_time = time_converter(expiration,
+                        dyn_props.time, dyn_props.time + STEEMIT_MAX_PROPOSAL_LIFETIME_SEC).time();
 
                     // copy tx to avoid malforming if sign_transaction fails
                     signed_transaction trx = _builder_transactions[handle];
@@ -442,8 +446,10 @@ namespace golos { namespace wallet {
                         trx.operations.begin(), trx.operations.end(), std::back_inserter(op.proposed_operations),
                         [](const operation& op) -> operation_wrapper { return op; });
 
-                    if (review_period_time > time_point_sec::min()) {
-                        op.review_period_time = review_period_time;
+                    auto review_period_time_sec = time_converter(review_period_time,
+                        dyn_props.time, time_point_sec::min()).time();
+                    if (review_period_time_sec > time_point_sec::min()) {
+                        op.review_period_time = review_period_time_sec;
                     }
 
                     trx.operations = {op};
@@ -1286,8 +1292,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             std::string author,
             std::string title,
             std::string memo,
-            time_point_sec expiration,
-            time_point_sec review,
+            std::string expiration,
+            std::string review,
             bool broadcast
         ) {
             return my->propose_builder_transaction(handle, author, title, memo, expiration, review, broadcast);
