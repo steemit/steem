@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/wallet/remote_node_api.hpp>
+#include <golos/wallet/time_converter.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/account_history/history_object.hpp>
 
@@ -178,6 +179,9 @@ namespace golos { namespace wallet {
              */
             signed_transaction sign_builder_transaction(transaction_handle_type handle, bool broadcast = true);
 
+
+
+
             /**
              * @ingroup Transaction Builder API
              */
@@ -186,8 +190,8 @@ namespace golos { namespace wallet {
                 std::string author,
                 std::string title,
                 std::string memo,
-                time_point_sec expiration = time_point::now() + fc::minutes(1),
-                time_point_sec review_period_time = time_point::min(),
+                std::string expiration = "",
+                std::string review_period_time = "",
                 bool broadcast = true
             );
 
