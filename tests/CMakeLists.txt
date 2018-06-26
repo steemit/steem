@@ -61,8 +61,7 @@ endmacro(add_exec_test)
 
 add_exec_test(NAME "white_options" FILES
     "plugin_tests/main.cpp"
-    "plugin_tests/white_options_postfix.cpp"
-    )
+    "plugin_tests/white_options_postfix.cpp")
 
 add_exec_test(NAME "black_options" FILES
     "plugin_tests/main.cpp"

@@ -4,6 +4,10 @@
 #include <vector>
 #include <map>
 
+
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+
 #include <golos/plugins/operation_history/plugin.hpp>
 #include <golos/chain/operation_notification.hpp>
 
@@ -26,6 +30,7 @@ typedef std::map<std::string, std::string> chacked_operation_map; ///<  pair { [
 
 template<class key_type_option>
 struct combine_postfix : key_type_option {
+    typedef std::vector<std::string> opt_type;
     std::string opt =
         "account_create_operation," \
         "delete_comment_operation," \
@@ -35,7 +40,7 @@ struct combine_postfix : key_type_option {
 
 
 template<class opt_type>
-struct test_options_postfix : public opt_type {
+struct test_options : public opt_type {
     bpo::options_description _cfg_opts;
     bpo::options_description _cli_opts;
     bpo::variables_map _vm_opts;
@@ -57,9 +62,7 @@ struct test_options_postfix : public opt_type {
                 "Configuration file name relative to data-dir")
             ;
         _cli_opts.add(cli_opts);
-    }
 
-    void fill_testing_options() {
         bpo::options_description all_opts;
         all_opts
             .add(_cli_opts)
@@ -68,20 +71,34 @@ struct test_options_postfix : public opt_type {
         const char *argv = "plugin";
         auto parsed_cmd_line = bpo::parse_command_line(1, &argv, all_opts);
         bpo::store(parsed_cmd_line, _vm_opts);
+    }
 
+    //void fill_operations_options() {
+    //    std::stringstream ss_opts;
+    //    ss_opts << opt_type::key << " = " << opt_type::opt << "\n";
+    //    std::istringstream iss_opts(ss_opts.str());
+    //    _cfg_opts.add_options()
+    //        (opt_type::key.c_str(), bpo::value<custom_opt_type::opt_type>())
+    //        ;
+    //    auto parsed_cfg = bpo::parse_config_file<char>(iss_opts, _cfg_opts, true);
+    //    bpo::store(parsed_cfg, _vm_opts);
+    //}
+
+    template<class custom_opt_type>
+    void fill_options() {
         std::stringstream ss_opts;
-        ss_opts << opt_type::key << " = " << opt_type::opt << "\n";
+        ss_opts << custom_opt_type::key << " = " << custom_opt_type::opt << "\n";
         std::istringstream iss_opts(ss_opts.str());
         _cfg_opts.add_options()
-            (opt_type::key.c_str(), bpo::value<std::vector<std::string>>())
+            (custom_opt_type::key.c_str(), bpo::value<typename custom_opt_type::opt_type>())
             ;
         auto parsed_cfg = bpo::parse_config_file<char>(iss_opts, _cfg_opts, true);
         bpo::store(parsed_cfg, _vm_opts);
     }
 
-    test_options_postfix() {
+    test_options() {
         fill_default_options();
-        fill_testing_options();
+        fill_options<opt_type>();
     }
 
     operator bpo::variables_map () const {

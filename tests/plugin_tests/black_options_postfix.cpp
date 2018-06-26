@@ -15,7 +15,7 @@ struct blacklist_key {
 
 
 BOOST_FIXTURE_TEST_CASE(black_options_postfix, options_fixture) {
-    init_plugin<test_options_postfix<combine_postfix<blacklist_key>>>();
+    init_plugin<test_options<combine_postfix<blacklist_key>>>();
 
     size_t _chacked_ops_count = 0;
     for (const auto &co : _db_init._added_ops) {
