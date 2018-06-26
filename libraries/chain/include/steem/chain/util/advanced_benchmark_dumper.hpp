@@ -18,6 +18,7 @@ struct emplace_ret_value
    using type = decltype(std::declval<TCntr>().emplace(std::declval<typename TCntr::value_type>()));
 };
 
+typedef std::pair< size_t, uint64_t > size_time_t;
 
 class advanced_benchmark_dumper
 {
@@ -102,6 +103,7 @@ class advanced_benchmark_dumper
       std::string file_name;
 
       total_info< std::set< item > > info;
+      std::map< std::string, std::vector< size_time_t > > timings;
 
       template< typename COLLECTION >
       void dump_impl( const total_info< COLLECTION >& src, const std::string& src_file_name );

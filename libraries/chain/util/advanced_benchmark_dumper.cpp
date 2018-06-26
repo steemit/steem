@@ -47,6 +47,8 @@ namespace steem { namespace chain { namespace util {
 
       info.inc( time );
 
+      timings[ APPLY_CONTEXT ? (apply_context_name + str) : str ].push_back( std::make_pair( size, time ) );
+
       ++flush_cnt;
       if( flush_cnt >= flush_max )
       {
@@ -94,6 +96,19 @@ namespace steem { namespace chain { namespace util {
             ilog( "${o}, ${s}, ${c}, ${t}", ("o", obj.op_name)("s", obj.size)("c", obj.count)("t", obj.time) );
          }
       });
+
+      if( log )
+      {
+         for( auto op_itr = timings.begin(); op_itr != timings.end(); ++op_itr )
+         {
+            ilog( "${op}", ("op", op_itr->first) );
+
+            for( auto time_itr = op_itr->second.begin(); time_itr != op_itr->second.end(); ++time_itr )
+            {
+               ilog( "${size}, ${time}", ("size", time_itr->first)("time", time_itr->second) );
+            }
+         }
+      }
 
       dump_impl( info, file_name );
       dump_impl( rinfo, "r_" + file_name );
