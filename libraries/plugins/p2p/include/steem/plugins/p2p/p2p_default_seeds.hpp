@@ -36,7 +36,7 @@ const std::vector< std::string > default_seeds = {
    "steem-seed.lukestokes.info:2001",     // lukestokes
    "seed.blackrift.net:2001",             // drakos
    "seed.followbtcnews.com:2001",         // followbtcnews
-   "node.mahdiyari.info:2001",            // mahdi.yari
+   "node.mahdiyari.info:2001",            // mahdiyari
    "seed.jerrybanfield.com:2001",         // jerrybanfield
    "seed.windforce.farm:2001",            // windforce
    "seed.curiesteem.com:2001",            // curie
