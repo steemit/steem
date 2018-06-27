@@ -64,8 +64,9 @@ if(ENABLE_MONGO_PLUGIN)
       fc
       ${LIBBSONCXX_LIBRARIES}
       ${LIBMONGOCXX_LIBRARIES}
+      ${BSON_LIBRARIES}
     )
-    target_include_directories(golos_${CURRENT_TARGET} PUBLIC "include" ${LIBMONGOCXX_INCLUDE_DIRS} ${LIBBSONCXX_INCLUDE_DIRS})
+    target_include_directories(golos_${CURRENT_TARGET} PUBLIC "include" ${LIBMONGOCXX_INCLUDE_DIRS} ${LIBBSONCXX_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS})
   
     install(TARGETS
       golos_${CURRENT_TARGET}
