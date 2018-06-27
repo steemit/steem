@@ -132,7 +132,8 @@ namespace chain {
     };
 
     void plugin::plugin_impl::replay_db(const bfs::path &data_dir, bool force_replay) {
-        force_replay |= db.revision() >= db.get_block_log().head()->block_num();
+        auto head_block_log = db.get_block_log().head();
+        force_replay |= head_block_log && db.revision() >= head_block_log->block_num();
 
         if (force_replay) {
             wipe_db(data_dir, false);
@@ -346,7 +347,8 @@ namespace chain {
         try {
             ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
             my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
-            my->replay |= my->db.revision() != my->db.get_block_log().head()->block_num();
+            auto head_block_log = my->db.get_block_log().head();
+            my->replay |= head_block_log && my->db.revision() != head_block_log->block_num();
 
             if (my->replay) {
                 my->replay_db(data_dir, my->force_replay);
