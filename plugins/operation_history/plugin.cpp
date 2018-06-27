@@ -59,28 +59,22 @@ namespace golos { namespace plugins { namespace operation_history {
             golos::chain::operation_notification& note,
             const fc::flat_set<std::string>& ops_list,
             bool is_blacklist,
-            uint32_t block,
-            uint32_t blocks)
+            uint32_t block)
             : operation_visitor(db, note),
               filter(ops_list),
               blacklist(is_blacklist),
-              start_block(block),
-              history_blocks(blocks) {
+              start_block(block) {
         }
 
         const fc::flat_set<std::string>& filter;
         bool blacklist;
         uint32_t start_block;
-        uint32_t history_blocks;
 
         template <typename T>
         void operator()(const T& op) const {
             if (database.head_block_num() < start_block) {
                 return;
             }
-            //if (database.head_block_time() < start_time) {
-            //    return;
-            //}
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
                 if (!blacklist) {
                     operation_visitor::operator()(op);
@@ -100,9 +94,38 @@ namespace golos { namespace plugins { namespace operation_history {
 
         ~plugin_impl() = default;
 
+        struct operation_name_visitor {
+            using result_type = std::string;
+            template<class T>
+            std::string operator()(const T&) const {
+                return std::string(fc::get_typename<T>::name());
+            }
+        };
+
+        void erase_old_blocks() {
+            uint32_t head_block = database.head_block_num();
+            if (history_blocks <= head_block) {
+                uint32_t need_block = head_block - history_blocks + 1;
+                const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
+                auto it = idx.begin();
+                while (it not_eq idx.end()) {
+                    auto next_it = it;
+                    ++next_it;
+                    uint32_t block = it->block;
+                    applied_operation op(*it);
+                    if (block <= need_block) {
+                        ilog("remove : [" + std::to_string(block) + "] " + op.op.visit(operation_name_visitor()));
+                        database.remove(*it);
+                    }
+                    it = next_it;
+                }
+            }
+        }
+
         void on_operation(golos::chain::operation_notification& note) {
             if (filter_content) {
-                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block, history_blocks));
+                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
+                erase_old_blocks();
             } else {
                 note.op.visit(operation_visitor(database, note));
             }

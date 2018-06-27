@@ -73,24 +73,14 @@ struct test_options : public opt_type {
         bpo::store(parsed_cmd_line, _vm_opts);
     }
 
-    //void fill_operations_options() {
-    //    std::stringstream ss_opts;
-    //    ss_opts << opt_type::key << " = " << opt_type::opt << "\n";
-    //    std::istringstream iss_opts(ss_opts.str());
-    //    _cfg_opts.add_options()
-    //        (opt_type::key.c_str(), bpo::value<custom_opt_type::opt_type>())
-    //        ;
-    //    auto parsed_cfg = bpo::parse_config_file<char>(iss_opts, _cfg_opts, true);
-    //    bpo::store(parsed_cfg, _vm_opts);
-    //}
-
     template<class custom_opt_type>
     void fill_options() {
+        custom_opt_type cot;
         std::stringstream ss_opts;
-        ss_opts << custom_opt_type::key << " = " << custom_opt_type::opt << "\n";
+        ss_opts << cot.key << " = " << cot.opt << "\n";
         std::istringstream iss_opts(ss_opts.str());
         _cfg_opts.add_options()
-            (custom_opt_type::key.c_str(), bpo::value<typename custom_opt_type::opt_type>())
+            (cot.key.c_str(), bpo::value<typename custom_opt_type::opt_type>())
             ;
         auto parsed_cfg = bpo::parse_config_file<char>(iss_opts, _cfg_opts, true);
         bpo::store(parsed_cfg, _vm_opts);
@@ -115,9 +105,9 @@ struct options_fixture {
     ~options_fixture() = default;
 
     template<class test_type>
-    void init_plugin() {
+    void init_plugin(const test_type& tt) {
         ilog(std::string("init_plugin(") + typeid(test_type).name() + ")");
-        _db_init._plg->plugin_initialize(test_type());
+        _db_init._plg->plugin_initialize(tt);
         _db_init._plg->plugin_startup();
         _db_init.startup();
         _db_init.add_operations();
