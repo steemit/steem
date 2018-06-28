@@ -24,6 +24,7 @@ namespace chain {
         uint64_t shared_memory_size = 0;
         boost::filesystem::path shared_memory_dir;
         bool replay = false;
+        bool replay_if_corrupted = true;
         bool force_replay = false;
         bool resync = false;
         bool readonly = false;
@@ -234,6 +235,9 @@ namespace chain {
                 "replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and replay all blocks"
             ) (
+                "replay-if-corrupted", boost::program_options::bool_switch()->default_value(true),
+                "replay all blocks if shared memory is corrupted"
+            ) (
                 "force-replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "force clear chain database and replay all blocks"
             ) (
@@ -246,6 +250,7 @@ namespace chain {
                 "validate-database-invariants", boost::program_options::bool_switch()->default_value(false),
                 "Validate all supply invariants check out"
             );
+        cfg.add(cli);
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
@@ -290,6 +295,7 @@ namespace chain {
         }
 
         my->replay = options.at("replay-blockchain").as<bool>();
+        my->replay_if_corrupted = options.at("replay-if-corrupted").as<bool>();
         my->force_replay = options.at("force-replay-blockchain").as<bool>();
         my->resync = options.at("resync-blockchain").as<bool>();
         my->check_locks = options.at("check-locks").as<bool>();
@@ -354,23 +360,33 @@ namespace chain {
                 my->replay_db(data_dir, my->force_replay);
             }
         } catch (const golos::chain::database_revision_exception &) {
-            wlog("Error opening database, attempting to replay blockchain.");
-            my->force_replay |= my->db.revision() >= my->db.head_block_num();
-
-            try {
-                my->replay_db(data_dir, my->force_replay);
-            } catch (const golos::chain::block_log_exception &) {
-                wlog("Error opening block log. Having to resync from network...");
-                my->wipe_db(data_dir, true);
+            if (my->replay_if_corrupted) {
+                wlog("Error opening database, attempting to replay blockchain.");
+                my->force_replay |= my->db.revision() >= my->db.head_block_num();
+                try {
+                    my->replay_db(data_dir, my->force_replay);
+                } catch (const golos::chain::block_log_exception &) {
+                    wlog("Error opening block log. Having to resync from network...");
+                    my->wipe_db(data_dir, true);
+                }
+            } else {
+                wlog("Error opening database, quiting. If should replay, set replay-if-corrupted in config.ini to true.");
+                std::exit(0); // TODO Migrate to appbase::app().quit()
+                return;
             }
         } catch (...) {
-            wlog("Error opening database, attempting to replay blockchain.");
-
-            try {
-                my->replay_db(data_dir, true);
-            } catch (const golos::chain::block_log_exception &) {
-                wlog("Error opening block log. Having to resync from network...");
-                my->wipe_db(data_dir, true);
+            if (my->replay_if_corrupted) {
+                wlog("Error opening database, attempting to replay blockchain.");
+                try {
+                    my->replay_db(data_dir, true);
+                } catch (const golos::chain::block_log_exception &) {
+                    wlog("Error opening block log. Having to resync from network...");
+                    my->wipe_db(data_dir, true);
+                }
+            } else {
+                wlog("Error opening database, quiting. If should replay, set replay-if-corrupted in config.ini to true.");
+                std::exit(0); // TODO Migrate to appbase::app().quit()
+                return;
             }
         }
 
