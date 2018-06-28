@@ -77,7 +77,7 @@ namespace golos { namespace plugins { namespace operation_history {
              *  @return sequence of operations included/generated within the block
              */
             (get_ops_in_block)
-        
+
             (get_transaction)
 
         )

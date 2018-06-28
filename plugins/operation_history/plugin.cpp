@@ -5,10 +5,11 @@
 
 #include <boost/algorithm/string.hpp>
 
-#define STEEM_NAMESPACE_PREFIX "golos::protocol::"
-
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+
+static const char STEEM_NAMESPACE_PREFIX[] = "golos::protocol::";
+
 
 namespace golos { namespace plugins { namespace operation_history {
 
@@ -191,7 +192,7 @@ namespace golos { namespace plugins { namespace operation_history {
         ) (
             "history-blocks",
             boost::program_options::value<uint32_t>()->composing(),
-            "Defines history block num from which recording stats."
+            "Defines depth of history for recording stats."
         );
 
         cfg.add(cli);
