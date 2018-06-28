@@ -26,7 +26,7 @@
 #include <boost/optional.hpp>
 #include <boost/interprocess/containers/flat_set.hpp>
 
-#include <fc/crypto/sha1.hpp>
+#include <bson.h>
 
 #define MONGO_ID_SINGLE "__single__"
 
@@ -76,8 +76,27 @@ namespace mongo_db {
 
     using named_document_ptr = std::unique_ptr<named_document>;
 
+    inline std::string hex_md5(const std::string& input)
+    {
+       uint8_t digest[16];
+       bson_md5_t md5;
+       char digest_str[33];
+       unsigned int i;
+
+       bson_md5_init (&md5);
+       bson_md5_append (&md5, (const uint8_t *) input.c_str(), (uint32_t) input.size());
+       bson_md5_finish (&md5, digest);
+
+       for (i = 0; i < sizeof digest; i++) {
+          bson_snprintf (&digest_str[i * 2], 3, "%02x", digest[i]);
+       }
+       digest_str[sizeof digest_str - 1] = '\0';
+
+       return std::string(bson_strdup (digest_str));
+    }
+
     inline std::string hash_oid(const std::string& value) {
-        return fc::sha1::hash(value).str().substr(0, 24);
+        return hex_md5(value).substr(0, 24);
     }
 
     inline void format_oid(document& doc, const std::string& name, const std::string& value) {
