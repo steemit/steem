@@ -94,14 +94,6 @@ namespace golos { namespace plugins { namespace operation_history {
 
         ~plugin_impl() = default;
 
-        struct operation_name_visitor {
-            using result_type = std::string;
-            template<class T>
-            std::string operator()(const T&) const {
-                return std::string(fc::get_typename<T>::name());
-            }
-        };
-
         void erase_old_blocks() {
             uint32_t head_block = database.head_block_num();
             if (history_blocks <= head_block) {
@@ -114,7 +106,6 @@ namespace golos { namespace plugins { namespace operation_history {
                     uint32_t block = it->block;
                     applied_operation op(*it);
                     if (block <= need_block) {
-                        ilog("remove : [" + std::to_string(block) + "] " + op.op.visit(operation_name_visitor()));
                         database.remove(*it);
                     }
                     it = next_it;
