@@ -20,7 +20,7 @@ BOOST_FIXTURE_TEST_CASE(white_options_postfix, options_fixture) {
     size_t _chacked_ops_count = 0;
     for (const auto &co : _db_init._added_ops) {
         auto iter = _finded_ops.find(co.first);
-        bool is_finded = (iter not_eq _finded_ops.end());
+        bool is_finded = (iter != _finded_ops.end());
         BOOST_CHECK(is_finded);
         if (is_finded) {
             BOOST_CHECK_EQUAL(iter->second, co.second);

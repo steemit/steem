@@ -33,9 +33,9 @@ BOOST_FIXTURE_TEST_CASE(time_limit_options, options_fixture) {
     init_plugin(tops);
 
     size_t _chacked_ops_count = 0;
-    for (auto it = _finded_ops.begin(); it not_eq _finded_ops.end(); ++it) {
+    for (auto it = _finded_ops.begin(); it != _finded_ops.end(); ++it) {
         auto iter = _db_init._added_ops.find(it->first);
-        bool is_finded = (iter not_eq _db_init._added_ops.end());
+        bool is_finded = (iter != _db_init._added_ops.end());
         BOOST_CHECK(is_finded);
         if (is_finded) {
             BOOST_CHECK_EQUAL(iter->second, it->second);

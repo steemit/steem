@@ -20,35 +20,40 @@ namespace golos { namespace plugins { namespace operation_history {
     struct operation_visitor {
         operation_visitor(
             golos::chain::database& db,
-            golos::chain::operation_notification& op_note)
+            golos::chain::operation_notification& op_note,
+            uint32_t start_block)
             : database(db),
-              note(op_note) {
+              note(op_note),
+              start_block(start_block) {
         }
 
         using result_type = void;
 
         golos::chain::database& database;
         golos::chain::operation_notification& note;
+        uint32_t start_block;
 
         template<typename Op>
         void operator()(Op&&) const {
-            note.stored_in_db = true;
+            if (start_block <= database.head_block_num()) {
+                note.stored_in_db = true;
 
-            database.create<operation_object>([&](operation_object& obj) {
-                note.db_id = obj.id._id;
+                database.create<operation_object>([&](operation_object& obj) {
+                    note.db_id = obj.id._id;
 
-                obj.trx_id = note.trx_id;
-                obj.block = note.block;
-                obj.trx_in_block = note.trx_in_block;
-                obj.op_in_trx = note.op_in_trx;
-                obj.virtual_op = note.virtual_op;
-                obj.timestamp = database.head_block_time();
+                    obj.trx_id = note.trx_id;
+                    obj.block = note.block;
+                    obj.trx_in_block = note.trx_in_block;
+                    obj.op_in_trx = note.op_in_trx;
+                    obj.virtual_op = note.virtual_op;
+                    obj.timestamp = database.head_block_time();
 
-                const auto size = fc::raw::pack_size(note.op);
-                obj.serialized_op.resize(size);
-                fc::datastream<char*> ds(obj.serialized_op.data(), size);
-                fc::raw::pack(ds, note.op);
-            });
+                    const auto size = fc::raw::pack_size(note.op);
+                    obj.serialized_op.resize(size);
+                    fc::datastream<char*> ds(obj.serialized_op.data(), size);
+                    fc::raw::pack(ds, note.op);
+                });
+            }
         }
     };
 
@@ -60,7 +65,7 @@ namespace golos { namespace plugins { namespace operation_history {
             const fc::flat_set<std::string>& ops_list,
             bool is_blacklist,
             uint32_t block)
-            : operation_visitor(db, note),
+            : operation_visitor(db, note, block),
               filter(ops_list),
               blacklist(is_blacklist),
               start_block(block) {
@@ -72,9 +77,6 @@ namespace golos { namespace plugins { namespace operation_history {
 
         template <typename T>
         void operator()(const T& op) const {
-            if (database.head_block_num() < start_block) {
-                return;
-            }
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
                 if (!blacklist) {
                     operation_visitor::operator()(op);
@@ -100,26 +102,19 @@ namespace golos { namespace plugins { namespace operation_history {
                 uint32_t need_block = head_block - history_blocks + 1;
                 const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
                 auto it = idx.begin();
-                while (it not_eq idx.end()) {
+                while (it != idx.end() && it->block <= need_block) {
                     auto next_it = it;
                     ++next_it;
-                    uint32_t block = it->block;
                     applied_operation op(*it);
-                    if (block <= need_block) {
-                        database.remove(*it);
-                    }
+                    database.remove(*it);
                     it = next_it;
                 }
             }
         }
 
         void on_operation(golos::chain::operation_notification& note) {
-            if (filter_content) {
-                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
-                erase_old_blocks();
-            } else {
-                note.op.visit(operation_visitor(database, note));
-            }
+            note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
+            erase_old_blocks();
         }
 
         std::vector<applied_operation> get_ops_in_block(
@@ -153,7 +148,6 @@ namespace golos { namespace plugins { namespace operation_history {
             FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
         }
 
-        bool filter_content = false;
         uint32_t start_block = 0;
         uint32_t history_blocks = UINT32_MAX;
         bool blacklist = false;
@@ -238,19 +232,16 @@ namespace golos { namespace plugins { namespace operation_history {
                 !options.count("history-blacklist-ops"),
                 "history-blacklist-ops and history-whitelist-ops can't be specified together");
 
-            pimpl->filter_content = true;
             pimpl->blacklist = false;
             split_list(options.at("history-whitelist-ops").as<std::vector<std::string>>());
             ilog("operation_history: whitelisting ops ${o}", ("o", pimpl->ops_list));
         } else if (options.count("history-blacklist-ops")) {
-            pimpl->filter_content = true;
             pimpl->blacklist = true;
             split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
 
         if (options.count("history-start-block")) {
-            pimpl->filter_content = true;
             pimpl->start_block = options.at("history-start-block").as<uint32_t>();
         } else {
             pimpl->start_block = 0;
@@ -258,7 +249,6 @@ namespace golos { namespace plugins { namespace operation_history {
         ilog("operation_history: start_block ${s}", ("s", pimpl->start_block));
 
         if (options.count("history-blocks")) {
-            pimpl->filter_content = true;
             uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
             pimpl->history_blocks = history_blocks;
         } else {
