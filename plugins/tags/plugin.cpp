@@ -413,7 +413,6 @@ namespace golos { namespace plugins { namespace tags {
             fill_discussion(d, query);
             d.hot = itr->hot;
             d.trending = itr->trending;
-
             if (query.has_start_comment() && !query.is_good_start(d.id) && !order(query.start_comment, d)) {
                 continue;
             }
@@ -511,7 +510,6 @@ namespace golos { namespace plugins { namespace tags {
             }
             return true;
         });
-
         std::vector<discussion> result;
         if (unordered.empty()) {
             return result;
@@ -522,7 +520,12 @@ namespace golos { namespace plugins { namespace tags {
         std::sort(it, et, DiscussionOrder());
 
         if (query.has_start_comment()) {
-            for (; et != it && it->id != query.start_comment.id; ++it);
+            for (; et != it; ++it) {
+                if (it->id == query.start_comment.id) {
+                    it++;
+                    break;
+                }
+            }
             if (et == it) {
                 return result;
             }
