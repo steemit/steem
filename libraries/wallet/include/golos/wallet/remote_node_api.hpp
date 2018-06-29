@@ -63,7 +63,6 @@ struct remote_database_api {
     vector< database_api::savings_withdraw_api_object > get_savings_withdraw_from( account_name_type );
     vector< database_api::savings_withdraw_api_object > get_savings_withdraw_to( account_name_type );
     vector< database_api::convert_request_api_object > get_conversion_requests( account_name_type );
-    vector< database_api::extended_limit_order > get_open_orders( account_name_type );
     string get_transaction_hex( signed_transaction );
     set< public_key_type > get_required_signatures( signed_transaction, flat_set< public_key_type > );
     set< public_key_type > get_potential_signatures( signed_transaction );
@@ -164,6 +163,7 @@ struct remote_market_history {
    market_ticker get_ticker();
    market_volume get_volume();
    order_book get_order_book(uint32_t limit);
+   vector<limit_order> get_open_orders(string accountname);
    vector<market_trade> get_trade_history(time_point_sec start, time_point_sec end, uint32_t limit);
    vector<market_trade> get_recent_trades(uint32_t limit);
    vector<bucket_object> get_market_history(uint32_t bucket_seconds, time_point_sec start, time_point_sec end);
@@ -228,7 +228,6 @@ FC_API( golos::wallet::remote_database_api,
         (get_savings_withdraw_from)
         (get_savings_withdraw_to)
         (get_conversion_requests)
-        (get_open_orders)
         (get_transaction_hex)
         (get_required_signatures)
         (get_potential_signatures)
@@ -312,6 +311,7 @@ FC_API( golos::wallet::remote_market_history,
         (get_ticker)
         (get_volume)
         (get_order_book)
+        (get_open_orders)
         (get_trade_history)
         (get_recent_trades)
         (get_market_history)

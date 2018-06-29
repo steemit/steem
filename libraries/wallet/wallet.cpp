@@ -2429,8 +2429,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->_remote_market_history->get_order_book( limit );
         }
 
-        vector< database_api::extended_limit_order > wallet_api::get_open_orders( string owner ) {
-            return my->_remote_database_api->get_open_orders( owner );
+        vector< market_history::limit_order > wallet_api::get_open_orders( string owner ) {
+            return my->_remote_market_history->get_open_orders( owner );
         }
 
         annotated_signed_transaction wallet_api::create_order(string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast) {

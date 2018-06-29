@@ -121,7 +121,6 @@ DEFINE_API_ARGS(get_vesting_delegations,          msg_pack, vector<vesting_deleg
 DEFINE_API_ARGS(get_expiring_vesting_delegations, msg_pack, vector<vesting_delegation_expiration_api_object>)
 
 DEFINE_API_ARGS(get_conversion_requests,          msg_pack, std::vector<convert_request_api_object>)
-DEFINE_API_ARGS(get_open_orders,                  msg_pack, std::vector<extended_limit_order>)
 DEFINE_API_ARGS(get_transaction_hex,              msg_pack, std::string)
 DEFINE_API_ARGS(get_required_signatures,          msg_pack, std::set<public_key_type>)
 DEFINE_API_ARGS(get_potential_signatures,         msg_pack, std::set<public_key_type>)
