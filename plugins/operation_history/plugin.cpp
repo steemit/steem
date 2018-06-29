@@ -5,10 +5,12 @@
 
 #include <boost/algorithm/string.hpp>
 
+#define STEEM_NAMESPACE_PREFIX "golos::protocol::"
+#define OPERATION_POSTFIX "_operation"
+
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
 
-static const char STEEM_NAMESPACE_PREFIX[] = "golos::protocol::";
 
 
 namespace golos { namespace plugins { namespace operation_history {
@@ -215,12 +217,11 @@ namespace golos { namespace plugins { namespace operation_history {
 
                 for (const auto& op : ops) {
                     if (op.size()) {
-                        std::string ops_postfix("_operation");
-                        std::size_t pos = op.find(ops_postfix);
-                        if (pos not_eq std::string::npos and (pos + ops_postfix.size()) == op.size()) {
+                        std::size_t pos = op.find(OPERATION_POSTFIX);
+                        if (pos not_eq std::string::npos and (pos + strlen(OPERATION_POSTFIX)) == op.size()) {
                             pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
                         } else {
-                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + ops_postfix);
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + OPERATION_POSTFIX);
                         }
                     }
                 }
