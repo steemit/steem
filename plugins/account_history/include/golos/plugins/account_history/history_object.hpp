@@ -65,16 +65,15 @@ namespace golos { namespace plugins { namespace account_history {
             ordered_unique<
                 tag<by_id>,
                 member<account_history_object, account_history_id_type, &account_history_object::id>>,
-//            ordered_unique<
-//                tag<by_location>,
-//                composite_key<
-//                    account_history_object,
-//                    member<account_history_object, uint32_t, &account_history_object::block>>>,
+            ordered_unique<
+                tag<by_location>,
+                composite_key<
+                    account_history_object,
+                    member<account_history_object, uint32_t, &account_history_object::block>>>,
             ordered_unique<
                 tag<by_account>,
                 composite_key<account_history_object,
                     member<account_history_object, account_name_type, &account_history_object::account>,
-                    //member<account_history_object, uint32_t, &account_history_object::block>,
                     member<account_history_object, uint32_t, &account_history_object::sequence>>,
                 composite_key_compare<std::less<account_name_type>, std::greater<uint32_t>>>>,
         allocator<account_history_object>>;
