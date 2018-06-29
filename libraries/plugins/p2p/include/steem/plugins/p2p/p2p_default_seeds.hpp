@@ -28,22 +28,26 @@ const std::vector< std::string > default_seeds = {
    "seed.roelandp.nl:2001",               // roelandp
    "steem.global:2001",                   // klye
    "seed.esteem.ws:2001",                 // good-karma
-   "94.23.33.61:2001",                    // timcliff
+   "seed.timcliff.com:2001",              // timcliff
    "104.199.118.92:2001",                 // clayop
-   "192.99.4.226:2001",                   // dele-puppy
-   "seed.bhuz.info:2001",                 // bhuz
    "seed.steemviz.com:2001",              // ausbitbank
    "steem-seed.lukestokes.info:2001",     // lukestokes
-   "seed.blackrift.net:2001",             // drakos
+   "seed.steemian.info:2001",             // drakos
    "seed.followbtcnews.com:2001",         // followbtcnews
-   "node.mahdiyari.info:2001",            // mahdi.yari
+   "node.mahdiyari.info:2001",            // mahdiyari
    "seed.jerrybanfield.com:2001",         // jerrybanfield
-   "seed.windforce.farm:2001",            // windforce
    "seed.curiesteem.com:2001",            // curie
    "seed.riversteem.com:2001",            // riverhead
    "steem-seed.furion.me:2001",           // furion
    "148.251.237.104:2001",                // steem-bounty
-   "seed1.blockbrothers.io:2001"          // blockbrothers
+   "seed1.blockbrothers.io:2001",         // blockbrothers
+   "steemseed-fin.privex.io:2001",        // privex
+   "seed.jamzed.pl:2001",                 // jamzed
+   "seed.steem.prcolaco.com:2001",        // prc
+   "seed1.cryptobot.news:2001",           // libertyranger
+   "seed.thecryptodrive.com:2001",        // thecryptodrive
+   "seed.brandonfrye.us:2001",            // brandonfrye
+   "seed.firepower.ltd:2001"              // firepower
 };
 #endif
 
