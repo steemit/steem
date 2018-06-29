@@ -75,21 +75,20 @@ if( options.count(name) ) { \
 
         ~plugin_impl() = default;
 
-        void erase_old_blocks() {
-            uint32_t head_block = database.head_block_num();
-            if (history_blocks <= head_block) {
-                uint32_t need_block = head_block - history_blocks + 1;
-                const auto& idx = database.get_index<account_history_index>().indices().get<by_location>();
-                auto it = idx.begin();
-                while (it != idx.end() && it->block <= need_block) {
-                    auto next_it = it;
-                    ++next_it;
-                    applied_operation op(*it);
-                    database.remove(*it);
-                    it = next_it;
-                }
-            }
-        }
+        //void erase_old_blocks() {
+        //    uint32_t head_block = database.head_block_num();
+        //    if (history_blocks <= head_block) {
+        //        uint32_t need_block = head_block - history_blocks + 1;
+        //        const auto& idx = database.get_index<account_history_index>().indices().get<by_location>();
+        //        auto it = idx.begin();
+        //        while (it != idx.end() && it->block <= need_block) {
+        //            auto next_it = it;
+        //            ++next_it;
+        //            database.remove(*it);
+        //            it = next_it;
+        //        }
+        //    }
+        //}
 
         void on_operation(const golos::chain::operation_notification& note) {
             if (!note.stored_in_db) {
@@ -107,7 +106,7 @@ if( options.count(name) ) { \
                     note.op.visit(operation_visitor(database, note, item));
                 }
             }
-            erase_old_blocks();
+            //erase_old_blocks();
         }
 
         std::map<uint32_t, applied_operation> get_account_history(
@@ -395,13 +394,13 @@ if( options.count(name) ) { \
         ilog("account_history plugin: plugin_initialize() begin");
         pimpl = std::make_unique<plugin_impl>();
 
-        if (options.count("history-blocks")) {
-            uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
-            pimpl->history_blocks = history_blocks;
-        } else {
-            pimpl->history_blocks = UINT32_MAX;
-        }
-        ilog("operation_history: history-blocks ${s}", ("s", pimpl->history_blocks));
+        //if (options.count("history-blocks")) {
+        //    uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
+        //    pimpl->history_blocks = history_blocks;
+        //} else {
+        //    pimpl->history_blocks = UINT32_MAX;
+        //}
+        //ilog("operation_history: history-blocks ${s}", ("s", pimpl->history_blocks));
 
         // this is worked, because the appbase initialize required plugins at first
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){

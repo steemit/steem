@@ -106,7 +106,6 @@ namespace golos { namespace plugins { namespace operation_history {
                 while (it != idx.end() && it->block <= need_block) {
                     auto next_it = it;
                     ++next_it;
-                    applied_operation op(*it);
                     database.remove(*it);
                     it = next_it;
                 }
