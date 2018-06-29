@@ -958,7 +958,13 @@ namespace golos { namespace wallet {
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
             market_history::order_book get_order_book( uint32_t limit );
-            vector< database_api::extended_limit_order > get_open_orders( string accountname );
+
+            /**
+             * Gets the orders for selected account
+             *
+             * @param accountname The name of the account owning the order
+             */
+            vector< market_history::limit_order > get_open_orders( string accountname );
 
             /**
              *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
