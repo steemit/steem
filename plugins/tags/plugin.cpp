@@ -522,7 +522,7 @@ namespace golos { namespace plugins { namespace tags {
         std::sort(it, et, DiscussionOrder());
 
         if (query.has_start_comment()) {
-            for (; et != it && it->id == query.start_comment.id; ++it);
+            for (; et != it && it->id != query.start_comment.id; ++it);
             if (et == it) {
                 return result;
             }
