@@ -349,9 +349,6 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(std::vector<std::
                 ++vitr;
             }
         }
-        else {
-            wlog("database_api: No such account with name \"${name}\" in account index", ("name", name) );
-        }
     }
 
     return results;
