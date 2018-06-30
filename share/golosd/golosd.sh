@@ -1,8 +1,11 @@
 #!/bin/bash
 
 export HOME="/var/lib/golosd"
+REPLAY_FLAG="$HOME/replay"
+FORCE_REPLAY_FLAG="$HOME/force-reply"
 
-STEEMD="/usr/local/bin/golosd"
+GOLOSD="/usr/local/bin/golosd"
+
 
 chown -R golosd:golosd $HOME
 
@@ -14,35 +17,52 @@ ARGS=""
 
 # if user did not pass in any desired
 # seed nodes, use the ones above:
-if [[ -z "$STEEMD_SEED_NODES" ]]; then
+if [ -z "$GOLOSD_SEED_NODES" ]; then
     for NODE in $SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
 # if user did pass in desired seed nodes, use
 # the ones the user specified:
-if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
-    for NODE in $STEEMD_SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+if [ ! -z "$GOLOSD_SEED_NODES" ]; then
+    for NODE in $GOLOSD_SEED_NODES ; do
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
-if [[ ! -z "$STEEMD_WITNESS_NAME" ]]; then
-    ARGS+=" --witness=\"$STEEMD_WITNESS_NAME\""
+if [ ! -z "$GOLOSD_WITNESS_NAME" ]; then
+    ARGS+=" --witness=\"$GOLOSD_WITNESS_NAME\""
 fi
 
-if [[ ! -z "$STEEMD_MINER_NAME" ]]; then
-    ARGS+=" --miner=[\"$STEEMD_MINER_NAME\",\"$STEEMD_PRIVATE_KEY\"]"
-    if [[ ! -z "$STEEMD_MINING_THREADS" ]]; then
-        ARGS+=" --mining-threads=$STEEMD_MINING_THREADS"
+if [ ! -z "$GOLOSD_MINER_NAME" ]; then
+    ARGS+=" --miner=[\"$GOLOSD_MINER_NAME\",\"$GOLOSD_PRIVATE_KEY\"]"
+    if [ ! -z "$GOLOSD_MINING_THREADS" ]; then
+        ARGS+=" --mining-threads=$GOLOSD_MINING_THREADS"
     else
         ARGS+=" --mining-threads=$(nproc)"
     fi
 fi
 
-if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
-    ARGS+=" --private-key=$STEEMD_PRIVATE_KEY"
+if [ ! -z "$GOLOSD_PRIVATE_KEY" ]; then
+    ARGS+=" --private-key=$GOLOSD_PRIVATE_KEY"
+fi
+
+# check existing of flag files for replay
+
+if [ -f "$FORCE_REPLAY_FLAG" ]; then
+    rm -f "$FORCE_REPLAY_FLAG"
+    rm -f "$REPLAY_FLAG"
+    if [ ! -f "$FORCE_REPLAY_FLAG" ] && [ ! -f "$REPLAY_FLAG" ]; then
+        ARGS+=" --force-replay-blockchain"
+    fi
+fi
+
+if [ -f "$REPLAY_FLAG" ]; then
+    rm -f "$REPLAY_FLAG"
+    if [ ! -f "$REPLAY_FLAG" ]; then
+        ARGS+=" --replay-blockchain"
+    fi
 fi
 
 # overwrite local config with image one
@@ -50,8 +70,8 @@ cp /etc/golosd/config.ini $HOME/config.ini
 
 chown golosd:golosd $HOME/config.ini
 
-if [[ ! -d $HOME/blockchain ]]; then
-    if [[ -e /var/cache/golosd/blocks.tbz2 ]]; then
+if [ ! -d $HOME/blockchain ]; then
+    if [ -e /var/cache/golosd/blocks.tbz2 ]; then
         # init with blockchain cached in image
         ARGS+=" --replay-blockchain"
         mkdir -p $HOME/blockchain/database
@@ -68,23 +88,30 @@ cd $HOME
 # slow down restart loop if flapping
 sleep 1
 
-if [[ ! -z "$STEEMD_RPC_ENDPOINT" ]]; then
-    RPC_ENDPOINT=$STEEMD_RPC_ENDPOINT
+if [ ! -z "$GOLOSD_HTTP_ENDPOINT" ]; then
+    HTTP_ENDPOINT=$GOLOSD_HTTP_ENDPOINT
 else
-    RPC_ENDPOINT="0.0.0.0:8090"
+    HTTP_ENDPOINT="0.0.0.0:8090"
 fi
 
-if [[ ! -z "$STEEMD_P2P_ENDPOINT" ]]; then
-    P2P_ENDPOINT=$STEEMD_P2P_ENDPOINT
+if [ ! -z "$GOLOSD_WS_ENDPOINT" ]; then
+    WS_ENDPOINT=$GOLOSD_WS_ENDPOINT
 else
-    P2P_ENDPOINT="0.0.0.0:2001"
+    WS_ENDPOINT="0.0.0.0:8091"
+fi
+
+if [ ! -z "$GOLOSD_P2P_ENDPOINT" ]; then
+    P2P_ENDPOINT=$GOLOSD_P2P_ENDPOINT
+else
+    P2P_ENDPOINT="0.0.0.0:4243"
 fi
 
 exec chpst -ugolosd \
-    $STEEMD \
-        --rpc-endpoint=${RPC_ENDPOINT} \
+    $GOLOSD \
+        --webserver-http-endpoint=${HTTP_ENDPOINT} \
+        --webserver-ws-endpoint=${WS_ENDPOINT} \
         --p2p-endpoint=${P2P_ENDPOINT} \
         --data-dir=$HOME \
         $ARGS \
-        $STEEMD_EXTRA_OPTS \
+        $GOLOSD_EXTRA_OPTS \
         2>&1

@@ -97,6 +97,9 @@ RUN \
         /usr/include \
         /usr/local/include
 
+ADD share/golosd/golosdctl /usr/local/bin/golosdctl
+RUN chmod +x /usr/local/bin/golosdctl
+
 RUN useradd -s /bin/bash -m -d /var/lib/golosd golosd
 
 RUN mkdir /var/cache/golosd && \
@@ -114,7 +117,7 @@ EXPOSE 8090
 # ws
 EXPOSE 8091
 # p2p service:
-EXPOSE 2001
+EXPOSE 4243
 
 RUN mkdir -p /etc/service/golosd
 ADD share/golosd/golosd.sh /etc/service/golosd/run

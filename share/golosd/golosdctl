@@ -1,0 +1,33 @@
+#!/bin/bash
+
+GOLOSD=golosd
+HOME="/var/lib/golosd"
+REPLAY_FLAG="$HOME/replay"
+FORCE_REPLAY_FLAG="$HOME/force-reply"
+
+USAGE="Usage: `basename $0` start | stop | restart | status | replay | force-replay"
+
+if [ $# -ne 1 ]; then
+   echo "${USAGE}" >&2
+   exit 1
+fi
+
+ACTION="${1}"
+
+case "${ACTION}" in
+    start|stop|restart|status)
+        exec sv "${ACTION}" "${GOLOSD}"
+        ;;
+    replay)
+        touch "${REPLAY_FLAG}"
+        exec sv restart "${GOLOSD}"
+        ;;
+    force-replay)
+        touch "${FORCE_REPLAY_FLAG}"
+        exec sv restart "${GOLOSD}"
+        ;;
+    *)
+        echo "${USAGE}" >&2
+        exit 1
+        ;;
+esac
