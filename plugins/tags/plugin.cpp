@@ -495,7 +495,7 @@ namespace golos { namespace plugins { namespace tags {
                     }
                     query.reset_start_comment();
                     itr = idx.iterator_to(*citr);
-                    itr++;
+                    ++itr;
                 }
 
                 unordered.reserve(query.limit);
