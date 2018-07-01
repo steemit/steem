@@ -47,6 +47,7 @@ const std::vector< std::string > default_seeds = {
    "seed1.cryptobot.news:2001",           // libertyranger
    "seed.thecryptodrive.com:2001",        // thecryptodrive
    "seed.brandonfrye.us:2001",            // brandonfrye
+   "seed.minnowshares.net:2001",          // reggaemuffin
    "seed.firepower.ltd:2001"              // firepower
 };
 #endif
