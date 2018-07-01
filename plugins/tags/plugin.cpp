@@ -490,12 +490,12 @@ namespace golos { namespace plugins { namespace tags {
                 if (query.has_start_comment()) {
                     const auto& cidx = indices.get<tags::by_comment>();
                     const auto citr = cidx.find(query.start_comment.id);
-                    if (citr != cidx.end()) {
+                    if (citr == cidx.end()) {
                         return false;
                     }
-
                     query.reset_start_comment();
                     itr = idx.iterator_to(*citr);
+                    ++itr;
                 }
 
                 unordered.reserve(query.limit);
