@@ -229,14 +229,14 @@ namespace chain {
             ) (
                 "enable-plugins-on-push-transaction", boost::program_options::value<bool>()->default_value(true),
                 "enable calling of plugins for operations on push_transaction"
+            ) (
+                "replay-if-corrupted", boost::program_options::bool_switch()->default_value(true),
+                "replay all blocks if shared memory is corrupted"
             );
         cli.add_options()
             (
                 "replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and replay all blocks"
-            ) (
-                "replay-if-corrupted", boost::program_options::bool_switch()->default_value(true),
-                "replay all blocks if shared memory is corrupted"
             ) (
                 "force-replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "force clear chain database and replay all blocks"
