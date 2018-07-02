@@ -24,6 +24,7 @@ target_link_libraries(
         golos_account_history
         golos_market_history
         golos_debug_node
+        golos::api
         fc ${PLATFORM_SPECIFIC_LIBS})
 
 add_test(NAME chain_test_run COMMAND chain_test)
