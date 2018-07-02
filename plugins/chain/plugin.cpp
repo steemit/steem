@@ -250,7 +250,6 @@ namespace chain {
                 "validate-database-invariants", boost::program_options::bool_switch()->default_value(false),
                 "Validate all supply invariants check out"
             );
-        cfg.add(cli);
     }
 
     void plugin::plugin_initialize(const boost::program_options::variables_map &options) {
