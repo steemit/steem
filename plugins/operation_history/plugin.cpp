@@ -115,8 +115,12 @@ namespace golos { namespace plugins { namespace operation_history {
         }
 
         void on_operation(golos::chain::operation_notification& note) {
-            note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
-            erase_old_blocks();
+            if (filter_content) {
+                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
+                erase_old_blocks();
+            } else {
+                note.op.visit(operation_visitor(database, note, start_block));
+            }
         }
 
         std::vector<applied_operation> get_ops_in_block(
@@ -150,9 +154,10 @@ namespace golos { namespace plugins { namespace operation_history {
             FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
         }
 
+        bool filter_content = false;
         uint32_t start_block = 0;
         uint32_t history_blocks = UINT32_MAX;
-        bool blacklist = false;
+        bool blacklist = true;
         fc::flat_set<std::string> ops_list;
         golos::chain::database& database;
     };
@@ -233,16 +238,19 @@ namespace golos { namespace plugins { namespace operation_history {
                 !options.count("history-blacklist-ops"),
                 "history-blacklist-ops and history-whitelist-ops can't be specified together");
 
+            pimpl->filter_content = true;
             pimpl->blacklist = false;
             split_list(options.at("history-whitelist-ops").as<std::vector<std::string>>());
             ilog("operation_history: whitelisting ops ${o}", ("o", pimpl->ops_list));
         } else if (options.count("history-blacklist-ops")) {
+            pimpl->filter_content = true;
             pimpl->blacklist = true;
             split_list(options.at("history-blacklist-ops").as<std::vector<std::string>>());
             ilog("operation_history: blacklisting ops ${o}", ("o", pimpl->ops_list));
         }
 
         if (options.count("history-start-block")) {
+            pimpl->filter_content = true;
             pimpl->start_block = options.at("history-start-block").as<uint32_t>();
         } else {
             pimpl->start_block = 0;
@@ -250,6 +258,7 @@ namespace golos { namespace plugins { namespace operation_history {
         ilog("operation_history: start_block ${s}", ("s", pimpl->start_block));
 
         if (options.count("history-blocks")) {
+            pimpl->filter_content = true;
             uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
             pimpl->history_blocks = history_blocks;
         } else {

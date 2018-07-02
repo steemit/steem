@@ -99,11 +99,12 @@ namespace golos { namespace chain {
             FC_LOG_AND_RETHROW()
         }
 
-        template<class plugin_type>
         struct app_initialise {
-            plugin_type* _plg;
+            app_initialise() = default;
+            ~app_initialise() = default;
 
-            app_initialise() {
+            template<class plugin_type>
+            plugin_type* get_plugin() {
                 int argc = boost::unit_test::framework::master_test_suite().argc;
                 char **argv = boost::unit_test::framework::master_test_suite().argv;
                 for (int i = 1; i < argc; i++) {
@@ -117,16 +118,16 @@ namespace golos { namespace chain {
                                   << std::endl;
                     }
                 }
-                _plg = &appbase::app().register_plugin<plugin_type>();
-                BOOST_REQUIRE(_plg);
+                auto plg = &appbase::app().register_plugin<plugin_type>();
                 appbase::app().initialize<plugin_type>(argc, argv);
+                return plg;
             }
         };
 
         add_operations_database_fixture::add_operations_database_fixture() : _plg(nullptr) {
             try {
                 ilog("add_operations_database_fixture: begin");
-                _plg = app_initialise<golos::plugins::operation_history::plugin>()._plg;
+                _plg = app_initialise().get_plugin<plugin_type>();
                 initialize();
                 open_database();
             } catch (const fc::exception &e) {
@@ -220,21 +221,23 @@ namespace golos { namespace chain {
             validate_database();
         } FC_LOG_AND_RETHROW();
 
-        add_account_database_fixture::add_account_database_fixture() : _plg(nullptr) {
+        add_accounts_database_fixture::add_accounts_database_fixture() : _plg(nullptr) {
             try {
-                ilog("add_operations_database_fixture: begin");
-                _plg = app_initialise<golos::plugins::account_history::plugin>()._plg;
+                ilog("add_accounts_database_fixture: begin");
+                _plg = app_initialise().get_plugin<plugin_type>();
+                initialize();
+                open_database();
             } catch (const fc::exception &e) {
                 edump((e.to_detail_string()));
                 throw;
             }
         }
 
-        add_account_database_fixture::~add_account_database_fixture() try {
+        add_accounts_database_fixture::~add_accounts_database_fixture() {
+            ilog("add_accounts_database_fixture: end");
+        }
 
-        } FC_LOG_AND_RETHROW();
-
-        void add_account_database_fixture::add_accounts() try {
+        void add_accounts_database_fixture::add_accounts() try {
 
         } FC_LOG_AND_RETHROW();
 

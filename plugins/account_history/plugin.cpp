@@ -52,7 +52,7 @@ if( options.count(name) ) { \
         void operator()(Op &&) const {
             const auto& idx = database.get_index<account_history_index>().indices().get<by_account>();
 
-            auto itr = idx.lower_bound(std::make_tuple(account, note.block, uint32_t(-1)));
+            auto itr = idx.lower_bound(std::make_tuple(account, uint32_t(-1)));
             uint32_t sequence = 0;
             if (itr != idx.end() && itr->account == account) {
                 sequence = itr->sequence + 1;

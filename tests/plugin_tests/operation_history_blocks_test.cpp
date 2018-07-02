@@ -33,11 +33,11 @@ BOOST_FIXTURE_TEST_CASE(operation_history_blocks, operation_options_fixture) {
     init_plugin(tops);
 
     size_t _chacked_ops_count = 0;
-    for (auto it = _finded_ops.begin(); it != _finded_ops.end(); ++it) {
+    for (auto it = _founded_ops.begin(); it != _founded_ops.end(); ++it) {
         auto iter = _db_init._added_ops.find(it->first);
-        bool is_finded = (iter != _db_init._added_ops.end());
-        BOOST_CHECK(is_finded);
-        if (is_finded) {
+        bool is_found= (iter != _db_init._added_ops.end());
+        BOOST_CHECK(is_found);
+        if (is_found) {
             BOOST_CHECK_EQUAL(iter->second, it->second);
             if (iter->second == it->second) {
                 ++_chacked_ops_count;

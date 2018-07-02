@@ -306,24 +306,27 @@ namespace golos { namespace chain {
         };
 
         struct add_operations_database_fixture : public database_fixture {
+            typedef golos::plugins::operation_history::plugin plugin_type;
             add_operations_database_fixture();
 
             ~add_operations_database_fixture() override;
 
             void add_operations();
 
-            golos::plugins::operation_history::plugin* _plg;
+            plugin_type* _plg;
             std::map<std::string, std::string> _added_ops;
         };
 
-        struct add_account_database_fixture : public database_fixture {
-            add_account_database_fixture();
+        struct add_accounts_database_fixture : public database_fixture {
+            typedef golos::plugins::account_history::plugin plugin_type;
+            add_accounts_database_fixture();
 
-            ~add_account_database_fixture() override;
+            ~add_accounts_database_fixture() override;
 
             void add_accounts();
 
-            golos::plugins::account_history::plugin* _plg;
+            plugin_type* _plg;
+            std::list<std::string> _added_accs;
         };
 
         namespace test {

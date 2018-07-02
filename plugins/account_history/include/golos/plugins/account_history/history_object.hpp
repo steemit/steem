@@ -65,7 +65,7 @@ namespace golos { namespace plugins { namespace account_history {
             ordered_unique<
                 tag<by_id>,
                 member<account_history_object, account_history_id_type, &account_history_object::id>>,
-            ordered_unique<
+            ordered_non_unique<
                 tag<by_location>,
                 composite_key<
                     account_history_object,

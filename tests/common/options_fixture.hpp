@@ -99,7 +99,7 @@ struct test_options : public opt_type {
 
 struct operation_options_fixture {
     add_operations_database_fixture _db_init;
-    chacked_operation_map _finded_ops;
+    chacked_operation_map _founded_ops;
 
     operation_options_fixture() = default;
     ~operation_options_fixture() = default;
@@ -121,7 +121,7 @@ struct operation_options_fixture {
 
 
 struct account_options_fixture {
-    add_account_database_fixture _db_init;
+    add_accounts_database_fixture _db_init;
 
     account_options_fixture() = default;
     ~account_options_fixture() = default;

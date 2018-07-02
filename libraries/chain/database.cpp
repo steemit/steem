@@ -1080,7 +1080,6 @@ namespace golos { namespace chain {
 
             if (!is_producing() || _enable_plugins_on_push_transaction) {
                 STEEMIT_TRY_NOTIFY(pre_apply_operation, note);
-                pre_apply_operation(note);
             }
         }
 
