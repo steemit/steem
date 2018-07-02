@@ -316,6 +316,16 @@ namespace golos { namespace chain {
             std::map<std::string, std::string> _added_ops;
         };
 
+        struct add_account_database_fixture : public database_fixture {
+            add_account_database_fixture();
+
+            ~add_account_database_fixture() override;
+
+            void add_accounts();
+
+            golos::plugins::account_history::plugin* _plg;
+        };
+
         namespace test {
             bool _push_block(database &db, const signed_block &b, uint32_t skip_flags = 0);
 

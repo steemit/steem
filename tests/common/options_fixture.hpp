@@ -97,12 +97,12 @@ struct test_options : public opt_type {
 };
 
 
-struct options_fixture {
+struct operation_options_fixture {
     add_operations_database_fixture _db_init;
     chacked_operation_map _finded_ops;
 
-    options_fixture() = default;
-    ~options_fixture() = default;
+    operation_options_fixture() = default;
+    ~operation_options_fixture() = default;
 
     template<class test_type>
     void init_plugin(const test_type& tt) {
@@ -117,5 +117,25 @@ struct options_fixture {
     void log_applied_options(const applied_operation &opts) const;
 
     void check_operations();
+};
+
+
+struct account_options_fixture {
+    add_account_database_fixture _db_init;
+
+    account_options_fixture() = default;
+    ~account_options_fixture() = default;
+
+    template<class test_type>
+    void init_plugin(const test_type& tt) {
+        ilog(std::string("init_plugin(") + typeid(test_type).name() + ")");
+        _db_init._plg->plugin_initialize(tt);
+        _db_init._plg->plugin_startup();
+        _db_init.startup();
+        _db_init.add_accounts();
+        check();
+    }
+
+    void check();
 };
 }}

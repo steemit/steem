@@ -25,7 +25,7 @@ struct operation_visitor {
 } ovisit;
 
 
-void options_fixture::log_applied_options(const applied_operation &opts) const {
+void operation_options_fixture::log_applied_options(const applied_operation &opts) const {
     std::stringstream ss;
     ss << "[" << opts.block << "] ";
     ss << opts.trx_id.str() << " : "; /// golos::protocol::transaction_id_type
@@ -35,7 +35,7 @@ void options_fixture::log_applied_options(const applied_operation &opts) const {
 }
 
 
-void options_fixture::check_operations() {
+void operation_options_fixture::check_operations() {
     uint32_t head_block_num = _db_init.db->head_block_num();
     ilog("Check history operations, block num is " + std::to_string(head_block_num));
     for (uint32_t i = 0; i <= head_block_num; ++i) {
@@ -50,4 +50,9 @@ void options_fixture::check_operations() {
             }
         }
     }
+}
+
+
+void account_options_fixture::check() {
+
 }

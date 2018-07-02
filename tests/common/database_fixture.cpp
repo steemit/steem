@@ -99,8 +99,9 @@ namespace golos { namespace chain {
             FC_LOG_AND_RETHROW()
         }
 
+        template<class plugin_type>
         struct app_initialise {
-            golos::plugins::operation_history::plugin* _plg;
+            plugin_type* _plg;
 
             app_initialise() {
                 int argc = boost::unit_test::framework::master_test_suite().argc;
@@ -116,20 +117,22 @@ namespace golos { namespace chain {
                                   << std::endl;
                     }
                 }
-                _plg = &appbase::app().register_plugin<golos::plugins::operation_history::plugin>();
+                _plg = &appbase::app().register_plugin<plugin_type>();
                 BOOST_REQUIRE(_plg);
-                appbase::app().initialize<golos::plugins::operation_history::plugin>(argc, argv);
+                appbase::app().initialize<plugin_type>(argc, argv);
             }
         };
 
-        add_operations_database_fixture::add_operations_database_fixture() try {
-            ilog("add_operations_database_fixture: begin");
-            _plg = app_initialise()._plg;
-            initialize();
-            open_database();
-        } catch (const fc::exception &e) {
-            edump((e.to_detail_string()));
-            throw;
+        add_operations_database_fixture::add_operations_database_fixture() : _plg(nullptr) {
+            try {
+                ilog("add_operations_database_fixture: begin");
+                _plg = app_initialise<golos::plugins::operation_history::plugin>()._plg;
+                initialize();
+                open_database();
+            } catch (const fc::exception &e) {
+                edump((e.to_detail_string()));
+                throw;
+            }
         }
 
         add_operations_database_fixture::~add_operations_database_fixture() try {
@@ -215,6 +218,24 @@ namespace golos { namespace chain {
             tx.signatures.clear();
 
             validate_database();
+        } FC_LOG_AND_RETHROW();
+
+        add_account_database_fixture::add_account_database_fixture() : _plg(nullptr) {
+            try {
+                ilog("add_operations_database_fixture: begin");
+                _plg = app_initialise<golos::plugins::account_history::plugin>()._plg;
+            } catch (const fc::exception &e) {
+                edump((e.to_detail_string()));
+                throw;
+            }
+        }
+
+        add_account_database_fixture::~add_account_database_fixture() try {
+
+        } FC_LOG_AND_RETHROW();
+
+        void add_account_database_fixture::add_accounts() try {
+
         } FC_LOG_AND_RETHROW();
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {

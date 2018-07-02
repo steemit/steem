@@ -71,9 +71,9 @@ add_exec_test(NAME "operation_history_blocks" FILES
     "plugin_tests/main.cpp"
     "plugin_tests/operation_history_blocks_test.cpp")
 
-add_exec_test(NAME "accaunt_history_blocks" FILES
+add_exec_test(NAME "account_history_blocks" FILES
     "plugin_tests/main.cpp"
-    "plugin_tests/accaunt_history_blocks_test.cpp")
+    "plugin_tests/account_history_blocks_test.cpp")
 
 if(MSVC)
     set_source_files_properties(tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj")

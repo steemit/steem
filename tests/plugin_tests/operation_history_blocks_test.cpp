@@ -20,16 +20,16 @@ struct whitelist_key {
 static uint32_t HISTORY_BLOCKS = 2;
 
 
-struct time_limit_key {
+struct blocks_limit_key {
     typedef uint32_t opt_type;
     std::string key = "history-blocks";
     std::string opt = std::to_string(HISTORY_BLOCKS);
 };
 
 
-BOOST_FIXTURE_TEST_CASE(operation_history_blocks, options_fixture) {
+BOOST_FIXTURE_TEST_CASE(operation_history_blocks, operation_options_fixture) {
     auto tops = test_options<combine_postfix<whitelist_key>>();
-    tops.fill_options<time_limit_key>();
+    tops.fill_options<blocks_limit_key>();
     init_plugin(tops);
 
     size_t _chacked_ops_count = 0;
