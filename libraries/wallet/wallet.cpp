@@ -425,8 +425,8 @@ namespace golos { namespace wallet {
                     std::string author,
                     std::string title,
                     std::string memo,
-                    time_point_sec expiration,
-                    time_point_sec review_period_time,
+                    std::string expiration,
+                    std::string review_period_time,
                     bool broadcast
                 ) {
                     FC_ASSERT(_builder_transactions.count(handle));
@@ -434,7 +434,11 @@ namespace golos { namespace wallet {
                     op.author = author;
                     op.title = title;
                     op.memo = memo;
-                    op.expiration_time = expiration;
+
+                    auto dyn_props = _remote_database_api->get_dynamic_global_properties();
+
+                    op.expiration_time = time_converter(expiration,
+                        dyn_props.time, dyn_props.time + STEEMIT_MAX_PROPOSAL_LIFETIME_SEC).time();
 
                     // copy tx to avoid malforming if sign_transaction fails
                     signed_transaction trx = _builder_transactions[handle];
@@ -442,8 +446,10 @@ namespace golos { namespace wallet {
                         trx.operations.begin(), trx.operations.end(), std::back_inserter(op.proposed_operations),
                         [](const operation& op) -> operation_wrapper { return op; });
 
-                    if (review_period_time > time_point_sec::min()) {
-                        op.review_period_time = review_period_time;
+                    auto review_period_time_sec = time_converter(review_period_time,
+                        dyn_props.time, time_point_sec::min()).time();
+                    if (review_period_time_sec > time_point_sec::min()) {
+                        op.review_period_time = review_period_time_sec;
                     }
 
                     trx.operations = {op};
@@ -1286,8 +1292,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             std::string author,
             std::string title,
             std::string memo,
-            time_point_sec expiration,
-            time_point_sec review,
+            std::string expiration,
+            std::string review,
             bool broadcast
         ) {
             return my->propose_builder_transaction(handle, author, title, memo, expiration, review, broadcast);
@@ -1343,10 +1349,59 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             lock();
         }
 
-        map<public_key_type, string> wallet_api::list_keys()
+        vector<key_with_data> wallet_api::list_keys(string account)
         {
             FC_ASSERT(!is_locked());
-            return my->_keys;
+
+            vector<key_with_data> all_keys;
+
+            vector<golos::api::account_api_object> accounts;
+            if (account.empty()) {
+                accounts = list_my_accounts();
+            } else {
+                accounts.push_back(get_account(account));
+            }
+            
+            for (auto it = accounts.begin(); it != accounts.end(); it++) {
+                key_with_data memo_key_data;
+                memo_key_data.public_key = std::string(it->memo_key);
+                memo_key_data.private_key = get_private_key(it->memo_key);
+                memo_key_data.account = std::string(it->name);
+                memo_key_data.type = "memo_key";
+                all_keys.push_back(memo_key_data);
+
+                auto acc_owner_keys = it->owner.get_keys();
+                for (auto it2 = acc_owner_keys.begin(); it2 != acc_owner_keys.end(); it2++) { 
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "owner";
+                    all_keys.push_back(key_data);
+                }
+
+                auto acc_active_keys = it->active.get_keys();
+                for (auto it2 = acc_active_keys.begin(); it2 != acc_active_keys.end(); it2++) { 
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "active";
+                    all_keys.push_back(key_data);
+                }
+
+                auto acc_posting_keys = it->posting.get_keys();
+                for (auto it2 = acc_posting_keys.begin(); it2 != acc_posting_keys.end(); it2++) { 
+                    key_with_data key_data;
+                    key_data.public_key = std::string(*it2);
+                    key_data.private_key = get_private_key(*it2);
+                    key_data.account = std::string(it->name);
+                    key_data.type = "posting";
+                    all_keys.push_back(key_data);
+                }
+            }
+
+            return all_keys;
         }
 
         string wallet_api::get_private_key( public_key_type pubkey )const
@@ -2374,8 +2429,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->_remote_market_history->get_order_book( limit );
         }
 
-        vector< database_api::extended_limit_order > wallet_api::get_open_orders( string owner ) {
-            return my->_remote_database_api->get_open_orders( owner );
+        vector< market_history::limit_order > wallet_api::get_open_orders( string owner ) {
+            return my->_remote_market_history->get_open_orders( owner );
         }
 
         annotated_signed_transaction wallet_api::create_order(string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast) {

@@ -27,6 +27,11 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 
+#include <appbase/application.hpp>
+#include <csignal>
+#include <cerrno>
+#include <cstring>
+
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128_t(uint64_t(-1)) )
 #define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128_t::max_value() )
 
@@ -58,6 +63,7 @@ FC_REFLECT((golos::chain::db_schema), (types)(object_types)(operation_type)(cust
 
 namespace golos { namespace chain {
 
+        using std::sig_atomic_t;
         using boost::container::flat_set;
 
         inline u256 to256(const fc::uint128_t &t) {
@@ -65,6 +71,98 @@ namespace golos { namespace chain {
             v <<= 64;
             v += t.lo;
             return v;
+        }
+
+        class signal_guard {
+            struct sigaction old_hup_action, old_int_action, old_term_action;
+
+            static volatile sig_atomic_t is_interrupted;
+
+            bool is_restored = true;
+
+            static inline void throw_exception();
+
+            public:
+                inline signal_guard();
+
+                inline ~signal_guard();
+
+                void setup();
+
+                void restore();
+
+                static inline sig_atomic_t get_is_interrupted() noexcept;
+        };
+
+        volatile sig_atomic_t signal_guard::is_interrupted = false;
+
+        inline void signal_guard::throw_exception() {
+            FC_THROW_EXCEPTION(database_signal_exception,
+                               "Error setup signal handler: ${e}.",
+                               ("e", strerror(errno)));
+        }
+
+        inline signal_guard::signal_guard() {
+            setup();
+        }
+
+        inline signal_guard::~signal_guard() {
+            try {
+                restore();
+            }
+            FC_CAPTURE_AND_LOG(())
+        }
+
+        void signal_guard::setup() {
+            if (is_restored) {
+                struct sigaction new_action;
+
+                new_action.sa_handler = [](int signum) {
+                    is_interrupted = true;
+                };
+                new_action.sa_flags = SA_RESTART;
+
+                if (sigemptyset(&new_action.sa_mask) == -1) {
+                    throw_exception();
+                }
+
+                if (sigaction(SIGHUP, &new_action, &old_hup_action) == -1) {
+                    throw_exception();
+                }
+
+                if (sigaction(SIGINT, &new_action, &old_int_action) == -1) {
+                    throw_exception();
+                }
+
+                if (sigaction(SIGTERM, &new_action, &old_term_action) == -1) {
+                    throw_exception();
+                }
+
+                is_restored = false;
+            }
+        }
+
+        void signal_guard::restore() {
+            if (!is_restored) {
+                if (sigaction(SIGHUP, &old_hup_action, nullptr) == -1) {
+                    throw_exception();
+                }
+
+                if (sigaction(SIGINT, &old_int_action, nullptr) == -1) {
+                    throw_exception();
+                }
+
+                if (sigaction(SIGTERM, &old_term_action, nullptr) == -1) {
+                    throw_exception();
+                }
+
+                is_interrupted = false;
+                is_restored = true;
+            }
+        }
+
+        inline sig_atomic_t signal_guard::get_is_interrupted() noexcept {
+            return is_interrupted;
         }
 
         class database_impl {
@@ -113,15 +211,23 @@ namespace golos { namespace chain {
 
                     _block_log.open(data_dir / "block_log");
 
-                    auto log_head = _block_log.head();
-
                     // Rewind all undo state. This should return us to the state at the last irreversible block.
                     with_strong_write_lock([&]() {
                         undo_all();
-                        FC_ASSERT(revision() ==
-                                  head_block_num(), "Chainbase revision does not match head block num",
-                                ("rev", revision())("head_block", head_block_num()));
                     });
+
+                    if (revision() != head_block_num()) {
+                        with_strong_read_lock([&]() {
+                            init_hardforks(); // Writes to local state, but reads from db
+                        });
+
+                        FC_THROW_EXCEPTION(database_revision_exception,
+                                           "Chainbase revision does not match head block num, "
+                                           "current revision is ${rev}, "
+                                           "current head block num is ${head}",
+                                           ("rev", revision())
+                                           ("head", head_block_num()));
+                    }
 
                     if (head_block_num()) {
                         auto head_block = _block_log.read_block_by_num(head_block_num());
@@ -143,18 +249,15 @@ namespace golos { namespace chain {
             FC_CAPTURE_LOG_AND_RETHROW((data_dir)(shared_mem_dir)(shared_file_size))
         }
 
-        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint64_t shared_file_size) {
+        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size) {
             try {
-                ilog("Reindexing Blockchain");
-                wipe(data_dir, shared_mem_dir, false);
-                open(data_dir, shared_mem_dir, STEEMIT_INIT_SUPPLY, shared_file_size, chainbase::database::read_write);
+                signal_guard sg;
                 _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
                 auto start = fc::time_point::now();
                 GOLOS_ASSERT(_block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain.");
 
                 ilog("Replaying blocks...");
-
 
                 uint64_t skip_flags =
                         skip_block_size_check |
@@ -170,34 +273,57 @@ namespace golos { namespace chain {
                         skip_block_log;
 
                 with_strong_write_lock([&]() {
-                    auto itr = _block_log.read_block(0);
+                    auto cur_block_num = from_block_num;
                     auto last_block_num = _block_log.head()->block_num();
+                    auto last_block_pos = _block_log.get_block_pos(last_block_num);
+                    int last_reindex_percent = 0;
 
                     set_reserved_memory(1024*1024*1024); // protect from memory fragmentations ...
-                    while (itr.first.block_num() != last_block_num) {
+                    while (cur_block_num < last_block_num) {
+                        if (signal_guard::get_is_interrupted()) {
+                            return;
+                        }
+
                         auto end = fc::time_point::now();
-                        auto cur_block_num = itr.first.block_num();
-                        if (cur_block_num % 100000 == 0) {
+                        auto cur_block_pos = _block_log.get_block_pos(cur_block_num);
+                        auto cur_block = *_block_log.read_block_by_num(cur_block_num);
+
+                        auto reindex_percent = cur_block_pos * 100 / last_block_pos;
+                        if (reindex_percent - last_reindex_percent >= 1) {
                             std::cerr
-                                << "   " << double(cur_block_num * 100) / last_block_num << "%   "
+                                << "   " << reindex_percent << "%   "
                                 << cur_block_num << " of " << last_block_num
                                 << "   ("  << (free_memory() / (1024 * 1024)) << "M free"
                                 << ", elapsed " << double((end - start).count()) / 1000000.0 << " sec)\n";
+
+                            last_reindex_percent = reindex_percent;
                         }
-                        apply_block(itr.first, skip_flags);
-                        check_free_memory(true, itr.first.block_num());
-                        itr = _block_log.read_block(itr.second);
+
+                        apply_block(cur_block, skip_flags);
+
+                        if (cur_block_num % 1000 == 0) {
+                            set_revision(head_block_num());
+                        }
+
+                        check_free_memory(true, cur_block_num);
+                        cur_block_num++;
                     }
 
-                    apply_block(itr.first, skip_flags);
+                    auto cur_block = *_block_log.read_block_by_num(cur_block_num);
+                    apply_block(cur_block, skip_flags);
                     set_reserved_memory(0);
                     set_revision(head_block_num());
                 });
 
+                if (signal_guard::get_is_interrupted()) {
+                    sg.restore();
+
+                    appbase::app().quit();
+                }
+
                 if (_block_log.head()->block_num()) {
                     _fork_db.start_block(*_block_log.head());
                 }
-
                 auto end = fc::time_point::now();
                 ilog("Done reindexing, elapsed time: ${t} sec", ("t",
                         double((end - start).count()) / 1000000.0));
@@ -3164,6 +3290,10 @@ namespace golos { namespace chain {
         void database::set_flush_interval(uint32_t flush_blocks) {
             _flush_blocks = flush_blocks;
             _next_flush_block = 0;
+        }
+
+        const block_log &database::get_block_log() const {
+            return _block_log;
         }
 
 //////////////////// private methods ////////////////////

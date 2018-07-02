@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/wallet/remote_node_api.hpp>
+#include <golos/wallet/time_converter.hpp>
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/account_history/history_object.hpp>
 
@@ -90,6 +91,13 @@ namespace golos { namespace wallet {
             vector<transaction_id_type> transaction_ids;
         };
 
+        struct key_with_data {
+            std::string account;
+            std::string type;
+            std::string public_key;
+            std::string private_key;
+        };
+
         enum authority_type {
             owner,
             active,
@@ -171,6 +179,9 @@ namespace golos { namespace wallet {
              */
             signed_transaction sign_builder_transaction(transaction_handle_type handle, bool broadcast = true);
 
+
+
+
             /**
              * @ingroup Transaction Builder API
              */
@@ -179,8 +190,8 @@ namespace golos { namespace wallet {
                 std::string author,
                 std::string title,
                 std::string memo,
-                time_point_sec expiration = time_point::now() + fc::minutes(1),
-                time_point_sec review_period_time = time_point::min(),
+                std::string expiration = "",
+                std::string review_period_time = "",
                 bool broadcast = true
             );
 
@@ -352,13 +363,13 @@ namespace golos { namespace wallet {
              */
             void    set_password(string password);
 
-            /** Dumps all private keys owned by the wallet.
+            /** Dumps private keys from all accounts owned by the wallet or from the specific account.
              *
              * The keys are printed in WIF format. You can import these keys into another wallet
              * using \c import_key()
-             * @returns a map containing the private keys, indexed by their public key
+             * @returns a vector of key_with_data
              */
-            map<public_key_type, string> list_keys();
+            vector<key_with_data> list_keys(string account);
 
             /** Returns detailed help on a single API command.
              * @param method the name of the API command you want help with
@@ -947,7 +958,13 @@ namespace golos { namespace wallet {
              * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
              */
             market_history::order_book get_order_book( uint32_t limit );
-            vector< database_api::extended_limit_order > get_open_orders( string accountname );
+
+            /**
+             * Gets the orders for selected account
+             *
+             * @param accountname The name of the account owning the order
+             */
+            vector< market_history::limit_order > get_open_orders( string accountname );
 
             /**
              *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
@@ -1114,6 +1131,8 @@ FC_REFLECT_DERIVED((golos::wallet::signed_block_with_info), ((golos::chain::sign
 FC_REFLECT( (golos::wallet::brain_key_info), (brain_priv_key)(wif_priv_key) (pub_key))
 
 FC_REFLECT( (golos::wallet::plain_keys), (checksum)(keys) )
+
+FC_REFLECT( (golos::wallet::key_with_data), (account)(type)(public_key)(private_key) )
 
 FC_REFLECT_ENUM( golos::wallet::authority_type, (owner)(active)(posting) )
 

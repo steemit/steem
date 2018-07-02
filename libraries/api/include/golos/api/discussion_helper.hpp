@@ -30,6 +30,8 @@ namespace golos { namespace api {
             const std::string& author, const std::string& permlink, uint32_t limit
         ) const;
 
+        discussion create_discussion(const std::string& author) const;
+
         discussion create_discussion(const comment_object& o) const;
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit) const;

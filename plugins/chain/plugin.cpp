@@ -14,6 +14,7 @@ namespace golos {
 namespace plugins {
 namespace chain {
 
+    namespace bfs = boost::filesystem;
     using fc::flat_map;
     using protocol::block_id_type;
 
@@ -23,6 +24,8 @@ namespace chain {
         uint64_t shared_memory_size = 0;
         boost::filesystem::path shared_memory_dir;
         bool replay = false;
+        bool replay_if_corrupted = true;
+        bool force_replay = false;
         bool resync = false;
         bool readonly = false;
         bool check_locks = false;
@@ -79,6 +82,8 @@ namespace chain {
         void check_time_in_block(const protocol::signed_block &block);
         bool accept_block(const protocol::signed_block &block, bool currently_syncing, uint32_t skip);
         void accept_transaction(const protocol::signed_transaction &trx);
+        void wipe_db(const bfs::path &data_dir, bool wipe_block_log);
+        void replay_db(const bfs::path &data_dir, bool force_replay);
     };
 
     void plugin::plugin_impl::check_time_in_block(const protocol::signed_block &block) {
@@ -115,6 +120,31 @@ namespace chain {
             return db.push_block(block, skip);
         }
     }
+
+    void plugin::plugin_impl::wipe_db(const bfs::path &data_dir, bool wipe_block_log) {
+        if (wipe_block_log) {
+            ilog("Wiping blockchain with block log.");
+        } else {
+            ilog("Wiping blockchain.");
+        }
+
+        db.wipe(data_dir, shared_memory_dir, wipe_block_log);
+        db.open(data_dir, shared_memory_dir, STEEMIT_INIT_SUPPLY, shared_memory_size, chainbase::database::read_write/*, validate_invariants*/ );
+    };
+
+    void plugin::plugin_impl::replay_db(const bfs::path &data_dir, bool force_replay) {
+        auto head_block_log = db.get_block_log().head();
+        force_replay |= head_block_log && db.revision() >= head_block_log->block_num();
+
+        if (force_replay) {
+            wipe_db(data_dir, false);
+        }
+
+        auto from_block_num = force_replay ? 1 : db.head_block_num() + 1;
+
+        ilog("Replaying blockchain from block num ${from}.", ("from", from_block_num));
+        db.reindex(data_dir, shared_memory_dir, from_block_num, shared_memory_size);
+    };
 
     void plugin::plugin_impl::accept_transaction(const protocol::signed_transaction &trx) {
         uint32_t skip = db.validate_transaction(trx, db.skip_apply_transaction);
@@ -199,11 +229,17 @@ namespace chain {
             ) (
                 "enable-plugins-on-push-transaction", boost::program_options::value<bool>()->default_value(true),
                 "enable calling of plugins for operations on push_transaction"
+            ) (
+                "replay-if-corrupted", boost::program_options::bool_switch()->default_value(true),
+                "replay all blocks if shared memory is corrupted"
             );
         cli.add_options()
             (
                 "replay-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and replay all blocks"
+            ) (
+                "force-replay-blockchain", boost::program_options::bool_switch()->default_value(false),
+                "force clear chain database and replay all blocks"
             ) (
                 "resync-blockchain", boost::program_options::bool_switch()->default_value(false),
                 "clear chain database and block log"
@@ -258,6 +294,8 @@ namespace chain {
         }
 
         my->replay = options.at("replay-blockchain").as<bool>();
+        my->replay_if_corrupted = options.at("replay-if-corrupted").as<bool>();
+        my->force_replay = options.at("force-replay-blockchain").as<bool>();
         my->resync = options.at("resync-blockchain").as<bool>();
         my->check_locks = options.at("check-locks").as<bool>();
         my->validate_invariants = options.at("validate-database-invariants").as<bool>();
@@ -311,22 +349,43 @@ namespace chain {
 
         my->db.enable_plugins_on_push_transaction(my->enable_plugins_on_push_transaction);
 
-        if (my->replay) {
-            ilog("Replaying blockchain on user request.");
-            my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
-        } else {
-            try {
-                ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
-                my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
-            } catch (const fc::exception &e) {
-                wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
+        try {
+            ilog("Opening shared memory from ${path}", ("path", my->shared_memory_dir.generic_string()));
+            my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+            auto head_block_log = my->db.get_block_log().head();
+            my->replay |= head_block_log && my->db.revision() != head_block_log->block_num();
 
+            if (my->replay) {
+                my->replay_db(data_dir, my->force_replay);
+            }
+        } catch (const golos::chain::database_revision_exception &) {
+            if (my->replay_if_corrupted) {
+                wlog("Error opening database, attempting to replay blockchain.");
+                my->force_replay |= my->db.revision() >= my->db.head_block_num();
                 try {
-                    my->db.reindex(data_dir, my->shared_memory_dir, my->shared_memory_size);
-                } catch (golos::chain::block_log &) {
+                    my->replay_db(data_dir, my->force_replay);
+                } catch (const golos::chain::block_log_exception &) {
                     wlog("Error opening block log. Having to resync from network...");
-                    my->db.open(data_dir, my->shared_memory_dir, STEEMIT_INIT_SUPPLY, my->shared_memory_size, chainbase::database::read_write/*, my->validate_invariants*/ );
+                    my->wipe_db(data_dir, true);
                 }
+            } else {
+                wlog("Error opening database, quiting. If should replay, set replay-if-corrupted in config.ini to true.");
+                std::exit(0); // TODO Migrate to appbase::app().quit()
+                return;
+            }
+        } catch (...) {
+            if (my->replay_if_corrupted) {
+                wlog("Error opening database, attempting to replay blockchain.");
+                try {
+                    my->replay_db(data_dir, true);
+                } catch (const golos::chain::block_log_exception &) {
+                    wlog("Error opening block log. Having to resync from network...");
+                    my->wipe_db(data_dir, true);
+                }
+            } else {
+                wlog("Error opening database, quiting. If should replay, set replay-if-corrupted in config.ini to true.");
+                std::exit(0); // TODO Migrate to appbase::app().quit()
+                return;
             }
         }
 

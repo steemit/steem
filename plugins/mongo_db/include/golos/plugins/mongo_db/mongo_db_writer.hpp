@@ -44,7 +44,8 @@ namespace mongo_db {
         mongo_db_writer();
         ~mongo_db_writer();
 
-        bool initialize(const std::string& uri_str, const bool write_raw, const std::vector<std::string>& op);
+        bool initialize(const std::string& uri_str, const bool write_raw, const std::vector<std::string>& op,
+            unsigned int store_history_dgp, unsigned int store_history_wso);
 
         void on_block(const signed_block& block);
         void on_operation(const golos::chain::operation_notification& note);
@@ -71,11 +72,15 @@ namespace mongo_db {
         uint32_t last_irreversible_block_num;
         std::map<uint32_t, signed_block> blocks;
         std::map<uint32_t, operations> virtual_ops;
+        std::map<uint32_t, dynamic_global_property_object> dgp_s;
+        std::map<uint32_t, witness_schedule_object> wso_s;
         // Table name, bulk write
         std::map<std::string, bulk_ptr> formatted_blocks;
 
         bool write_raw_blocks;
         flat_set<std::string> write_operations;
+        unsigned int store_history_mode_dgp;
+        unsigned int store_history_mode_wso;
 
         // Mongo connection members
         mongocxx::instance mongo_inst;

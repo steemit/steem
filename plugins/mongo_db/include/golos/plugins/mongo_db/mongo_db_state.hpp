@@ -32,11 +32,14 @@ namespace mongo_db {
         result_type operator()(const feed_publish_operation& op);
         result_type operator()(const convert_operation& op);
         result_type operator()(const account_create_operation& op);
+        result_type operator()(const account_create_with_delegation_operation& op);
+        result_type operator()(const account_metadata_operation& op);
         result_type operator()(const account_update_operation& op);
         result_type operator()(const witness_update_operation& op);
         result_type operator()(const account_witness_vote_operation& op);
         result_type operator()(const account_witness_proxy_operation& op);
         result_type operator()(const pow_operation& op);
+        result_type operator()(const pow2_operation& op);
         result_type operator()(const custom_operation& op);
         result_type operator()(const report_over_production_operation& op);
         result_type operator()(const delete_comment_operation& op);
@@ -50,10 +53,9 @@ namespace mongo_db {
         result_type operator()(const recover_account_operation& op);
         result_type operator()(const change_recovery_account_operation& op);
         result_type operator()(const escrow_transfer_operation& op);
+        result_type operator()(const escrow_approve_operation& op);
         result_type operator()(const escrow_dispute_operation& op);
         result_type operator()(const escrow_release_operation&op);
-        result_type operator()(const pow2_operation& op);
-        result_type operator()(const escrow_approve_operation& op);
         result_type operator()(const transfer_to_savings_operation& op);
         result_type operator()(const transfer_from_savings_operation& op);
         result_type operator()(const cancel_transfer_from_savings_operation&op);
@@ -62,8 +64,6 @@ namespace mongo_db {
         result_type operator()(const reset_account_operation& op);
         result_type operator()(const set_reset_account_operation& op);
         result_type operator()(const delegate_vesting_shares_operation& op);
-        result_type operator()(const account_create_with_delegation_operation& op);
-        result_type operator()(const account_metadata_operation& op);
         result_type operator()(const proposal_create_operation& op);
         result_type operator()(const proposal_update_operation& op);
         result_type operator()(const proposal_delete_operation& op);
@@ -83,6 +83,12 @@ namespace mongo_db {
         result_type operator()(const return_vesting_delegation_operation& op);
         result_type operator()(const chain_properties_update_operation& op);
 
+        void write_global_property_object(const dynamic_global_property_object& dgpo,
+            const signed_block& current_block, bool history);
+
+        void write_witness_schedule_object(const witness_schedule_object& wso,
+            const signed_block& current_block, bool history);
+
     private:
         database &db_;
 
@@ -92,7 +98,35 @@ namespace mongo_db {
 
         bool format_comment(const std::string& auth, const std::string& perm);
 
+        void format_account(const account_object& account);
+
         void format_account(const std::string& name);
+
+        void format_account_authority(const account_name_type& account_name);
+
+        void format_account_bandwidth(const account_name_type& account, const bandwidth_type& type);
+
+        void format_witness(const witness_object& witness);
+
+        void format_witness(const account_name_type& owner);
+
+        void format_vesting_delegation_object(const vesting_delegation_object& delegation);
+
+        void format_vesting_delegation_object(const account_name_type& delegator,
+            const account_name_type& delegatee);
+
+        void format_escrow(const escrow_object &escrow);
+
+        void format_escrow(const account_name_type &name, uint32_t escrow_id);
+
+        void format_global_property_object();
+
+        void format_proposal(const proposal_object& proposal);
+
+        void format_proposal(const account_name_type& author, const std::string& title);
+
+        void format_required_approval(const required_approval_object& reqapp,
+            const account_name_type& proposal_author, const std::string& proposal_title);
 
         named_document create_document(const std::string& name,
             const std::string& key, const std::string& keyval);

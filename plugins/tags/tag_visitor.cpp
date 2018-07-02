@@ -281,8 +281,6 @@ namespace golos { namespace plugins { namespace tags {
                         });
                         ++citr;
                     }
-                } else {
-                    ilog("unable to find body");
                 }
             }
         }
