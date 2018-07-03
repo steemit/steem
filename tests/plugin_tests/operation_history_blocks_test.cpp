@@ -35,7 +35,7 @@ BOOST_FIXTURE_TEST_CASE(operation_history_blocks, operation_options_fixture) {
     size_t _chacked_ops_count = 0;
     for (auto it = _founded_ops.begin(); it != _founded_ops.end(); ++it) {
         auto iter = _db_init._added_ops.find(it->first);
-        bool is_found= (iter != _db_init._added_ops.end());
+        bool is_found = (iter != _db_init._added_ops.end());
         BOOST_CHECK(is_found);
         if (is_found) {
             BOOST_CHECK_EQUAL(iter->second, it->second);
@@ -47,5 +47,4 @@ BOOST_FIXTURE_TEST_CASE(operation_history_blocks, operation_options_fixture) {
         }
     }
     BOOST_CHECK_EQUAL(_chacked_ops_count, HISTORY_BLOCKS);
-
 }

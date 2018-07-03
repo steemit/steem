@@ -63,19 +63,22 @@ void account_options_fixture::check() {
     ilog("Check history accounts, block num is " + std::to_string(head_block_num));
     auto plg = _db_init._plg;
     if (plg) {
-        fc::flat_map<std::string, std::string> accs = plg->tracked_accounts();
-        for (auto a : accs) {
-            ilog("{\"" + a.first + "\":\"" + a.second + "\"}");
+        for (auto n : _db_init._account_names) {
+            msg_pack mp;
+            mp.args = std::vector<fc::variant>({fc::variant(n), fc::variant(100), fc::variant(100)});
+            auto accs = plg->get_account_history(mp);
+            for (auto a : accs) {
+                auto it = _founded_accs.find(a.second.block);
+                if (it == _founded_accs.end()) {
+                    std::set<std::string> set;
+                    set.insert(n);
+                    _founded_accs.insert(std::make_pair(a.second.block, set));
+                } else {
+                    it->second.insert(n);
+                }
+            }
         }
     }  else {
         ilog("Account history plugin is not inited.");
     }
-
-    //for (uint32_t i = 0; i <= head_block_num; ++i) {
-    //    msg_pack mp;
-    //    std::string account = "";
-    //    uint64_t from = 0;
-    //    uint32_t limit = 0;
-    //    mp.args = std::vector<fc::variant>({fc::variant(account), fc::variant(from), fc::variant(limit)});
-    //}
 }

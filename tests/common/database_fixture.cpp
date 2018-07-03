@@ -127,6 +127,7 @@ namespace golos { namespace chain {
         add_operations_database_fixture::add_operations_database_fixture() : _plg(nullptr) {
             try {
                 ilog("add_operations_database_fixture: begin");
+
                 _plg = app_initialise().get_plugin<plugin_type>();
                 initialize();
                 open_database();
@@ -224,6 +225,12 @@ namespace golos { namespace chain {
         add_accounts_database_fixture::add_accounts_database_fixture() : _plg(nullptr) {
             try {
                 ilog("add_accounts_database_fixture: begin");
+
+                _account_names.insert("alice");
+                _account_names.insert("bob");
+                _account_names.insert("sam");
+                _account_names.insert("dave");
+
                 _plg = app_initialise().get_plugin<plugin_type>();
                 initialize();
                 open_database();
@@ -238,7 +245,7 @@ namespace golos { namespace chain {
         }
 
         void add_accounts_database_fixture::add_accounts() try {
-
+            add_operations_database_fixture::add_operations();
         } FC_LOG_AND_RETHROW();
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {

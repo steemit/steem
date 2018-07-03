@@ -400,7 +400,7 @@ if( options.count(name) ) { \
         } else {
             pimpl->history_blocks = UINT32_MAX;
         }
-        ilog("operation_history: history-blocks ${s}", ("s", pimpl->history_blocks));
+        ilog("account_history: history-blocks ${s}", ("s", pimpl->history_blocks));
 
         // this is worked, because the appbase initialize required plugins at first
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){

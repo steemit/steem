@@ -25,7 +25,8 @@ using namespace golos::chain;
 
 typedef golos::plugins::operation_history::applied_operation applied_operation;
 
-typedef std::map<std::string, std::string> chacked_operation_map; ///<  pair { [itx_id], [operation name] }
+typedef std::map<std::string, std::string> chacked_operations_map; ///<  pair { [itx_id], [operation name] }
+typedef std::map<uint32_t, std::set<std::string>> chacked_accounts_map; ///<  pair { [block], [accaunt names] }
 
 
 template<class key_type_option>
@@ -99,7 +100,7 @@ struct test_options : public opt_type {
 
 struct operation_options_fixture {
     add_operations_database_fixture _db_init;
-    chacked_operation_map _founded_ops;
+    chacked_operations_map _founded_ops;
 
     operation_options_fixture() = default;
     ~operation_options_fixture() = default;
@@ -122,6 +123,7 @@ struct operation_options_fixture {
 
 struct account_options_fixture {
     add_accounts_database_fixture _db_init;
+    chacked_accounts_map _founded_accs;
 
     account_options_fixture() = default;
     ~account_options_fixture() = default;

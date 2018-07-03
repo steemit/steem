@@ -307,8 +307,8 @@ namespace golos { namespace chain {
 
         struct add_operations_database_fixture : public database_fixture {
             typedef golos::plugins::operation_history::plugin plugin_type;
-            add_operations_database_fixture();
 
+            add_operations_database_fixture();
             ~add_operations_database_fixture() override;
 
             void add_operations();
@@ -317,16 +317,17 @@ namespace golos { namespace chain {
             std::map<std::string, std::string> _added_ops;
         };
 
-        struct add_accounts_database_fixture : public database_fixture {
+        struct add_accounts_database_fixture : public add_operations_database_fixture {
             typedef golos::plugins::account_history::plugin plugin_type;
-            add_accounts_database_fixture();
 
+            add_accounts_database_fixture();
             ~add_accounts_database_fixture() override;
 
             void add_accounts();
 
             plugin_type* _plg;
-            std::list<std::string> _added_accs;
+            fc::flat_set<golos::chain::account_name_type> _account_names;
+            //fc::flat_map<std::string, std::string> _added_accounts;
         };
 
         namespace test {
