@@ -140,6 +140,18 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       {
          init_hardforks(); // Writes to local state, but reads from db
       });
+
+      auto account = find< account_object, by_name >( "nijeah" );
+      if( account != nullptr && account->to_withdraw < 0 )
+      {
+         auto session = start_undo_session( true );
+         modify( *account, []( account_object& a )
+         {
+            a.to_withdraw = 0;
+            a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+         });
+         session.squash();
+      }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
