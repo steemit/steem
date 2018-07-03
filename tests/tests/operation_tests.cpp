@@ -1462,18 +1462,28 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       generate_block();
       vest( "alice", ASSET( "10.000 TESTS" ) );
 
-      BOOST_TEST_MESSAGE( "--- Test withdraw of existing VESTS" );
+      BOOST_TEST_MESSAGE( "--- Test failure withdrawing negative VESTS" );
 
       {
       const auto& alice = db->get_account( "alice" );
 
       withdraw_vesting_operation op;
       op.account = "alice";
+      op.vesting_shares = asset( -1, VESTS_SYMBOL );
+
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test withdraw of existing VESTS" );
       op.vesting_shares = asset( alice.vesting_shares.amount / 2, VESTS_SYMBOL );
 
       auto old_vesting_shares = alice.vesting_shares;
 
-      signed_transaction tx;
+      tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
