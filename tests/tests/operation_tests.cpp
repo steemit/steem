@@ -91,7 +91,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
 
       account_create_operation op;
 
-      op.fee = asset( 100, STEEM_SYMBOL );
       op.new_account_name = "alice";
       op.creator = STEEM_INIT_MINER_NAME;
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
@@ -99,10 +98,21 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.memo_key = priv_key.get_public_key();
       op.json_metadata = "{\"foo\":\"bar\"}";
 
-      BOOST_TEST_MESSAGE( "--- Test normal account creation" );
+      idump( (db->get_witness_schedule_object().median_props.account_creation_fee) );
+
+      BOOST_TEST_MESSAGE( "--- Test failure paying more than the fee" );
+      op.fee = asset( 101, STEEM_SYMBOL );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       sign( tx, init_account_priv_key );
+      tx.validate();
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test normal account creation" );
+      op.fee = asset( 100, STEEM_SYMBOL );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( init_account_priv_key, db->get_chain_id() );
       tx.validate();
       db->push_transaction( tx, 0 );
 
@@ -168,17 +178,15 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       generate_block();
 
       tx.clear();
-      op.fee = ASSET( "1.000 TESTS" );
+      op.fee = ASSET( "0.100 TESTS" );
       tx.operations.push_back( op );
       sign( tx, init_account_priv_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test account creation with temp account does not set recovery account" );
-      fund( STEEM_TEMP_ACCOUNT, ASSET( "310.000 TESTS" ) );
-      vest( STEEM_INIT_MINER_NAME, STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
       op.creator = STEEM_TEMP_ACCOUNT;
-      op.fee = ASSET( "300.000 TESTS" );
+      op.fee = ASSET( "0.100 TESTS" );
       op.new_account_name = "bob";
       tx.clear();
       tx.operations.push_back( op );
@@ -7123,7 +7131,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- Test success claiming a second account, but with an excess fee" );
+      BOOST_TEST_MESSAGE( "--- Test failure claiming a with an excess fee" );
       generate_block();
       op.creator = "alice";
       op.fee = ASSET( "10.000 TESTS" );
@@ -7131,6 +7139,17 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
+      generate_block();
+      op.fee = ASSET( "5.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );

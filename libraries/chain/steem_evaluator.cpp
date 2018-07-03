@@ -285,16 +285,22 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) && _db.has_hardfork( STEEM_HARDFORK_0_19__987 ) )
+   const witness_schedule_object& wso = _db.get_witness_schedule_object();
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1771 ) )
    {
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
+      FC_ASSERT( o.fee == wso.median_props.account_creation_fee, "Must pay the exact account creation fee. paid: ${p} fee: ${f}",
+                  ("p", o.fee)
+                  ("f", wso.median_props.account_creation_fee) );
+   }
+   else if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) && _db.has_hardfork( STEEM_HARDFORK_0_19__987 ) )
+   {
       FC_ASSERT( o.fee >= asset( wso.median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee * asset( STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
                  ("p", o.fee) );
    }
    else if( _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
    {
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
@@ -2343,7 +2349,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
    else
    {
       // operation fee could be higher that witness specified fee
-      paid_fee.amount.value = std::min( o.fee.amount.value, creation_fee.amount.value );
+      FC_ASSERT( paid_fee == creation_fee, "Cannot pay more than account creation fee. paid: ${p} fee: ${f}", ("p", paid_fee)("f", creation_fee) );
    }
 
    _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), paid_fee );
