@@ -89,28 +89,19 @@ cd $HOME
 sleep 1
 
 if [ ! -z "$GOLOSD_HTTP_ENDPOINT" ]; then
-    HTTP_ENDPOINT=$GOLOSD_HTTP_ENDPOINT
-else
-    HTTP_ENDPOINT="0.0.0.0:8090"
+    ARGS+=" --webserver-http-endpoint=$GOLOSD_HTTP_ENDPOINT"
 fi
 
 if [ ! -z "$GOLOSD_WS_ENDPOINT" ]; then
-    WS_ENDPOINT=$GOLOSD_WS_ENDPOINT
-else
-    WS_ENDPOINT="0.0.0.0:8091"
+    ARGS+=" --webserver-ws-endpoint=$GOLOSD_WS_ENDPOINT"
 fi
 
 if [ ! -z "$GOLOSD_P2P_ENDPOINT" ]; then
-    P2P_ENDPOINT=$GOLOSD_P2P_ENDPOINT
-else
-    P2P_ENDPOINT="0.0.0.0:4243"
+    ARGS+=" --p2p-endpoint=$GOLOSD_P2P_ENDPOINT"
 fi
 
 exec chpst -ugolosd \
     $GOLOSD \
-        --webserver-http-endpoint=${HTTP_ENDPOINT} \
-        --webserver-ws-endpoint=${WS_ENDPOINT} \
-        --p2p-endpoint=${P2P_ENDPOINT} \
         --data-dir=$HOME \
         $ARGS \
         $GOLOSD_EXTRA_OPTS \
