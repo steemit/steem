@@ -2658,6 +2658,7 @@ void database::init_genesis( uint64_t init_supply )
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEM_MAX_BLOCK_SIZE;
+         p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
       } );
 
       // Nothing to do
@@ -4661,6 +4662,7 @@ void database::apply_hardfork( uint32_t hardfork )
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
                gpo.delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF20;
+               gpo.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20;
             });
 
             const auto& wso = get_witness_schedule_object();

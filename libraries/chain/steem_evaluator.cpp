@@ -1486,10 +1486,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
             {
                /// discount weight by time
                uint128_t w(max_vote_weight);
-               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t(STEEM_REVERSE_AUCTION_WINDOW_SECONDS) );
+               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), dgpo.reverse_auction_seconds );
 
                w *= delta_t;
-               w /= STEEM_REVERSE_AUCTION_WINDOW_SECONDS;
+               w /= dgpo.reverse_auction_seconds;
                cv.weight = w.to_uint64();
             }
          }

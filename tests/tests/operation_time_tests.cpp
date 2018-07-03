@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       db->push_transaction( tx, 0 );
       validate_database();
 
-      generate_blocks( db->head_block_time() + STEEM_REVERSE_AUCTION_WINDOW_SECONDS );
+      generate_blocks( db->head_block_time() + db->get_dynamic_global_properties().reverse_auction_seconds );
 
       vote_operation vote;
       vote.voter = "alice";

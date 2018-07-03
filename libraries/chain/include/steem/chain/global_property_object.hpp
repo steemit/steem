@@ -116,6 +116,7 @@ namespace steem { namespace chain {
 
          uint32_t delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
+         uint64_t reverse_auction_seconds = 0;
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 #endif
@@ -160,6 +161,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (last_irreversible_block_num)
              (vote_power_reserve_rate)
              (delegation_return_period)
+             (reverse_auction_seconds)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif
