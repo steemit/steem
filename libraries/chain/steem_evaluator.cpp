@@ -911,7 +911,10 @@ namespace golos { namespace chain {
             database &_db = db();
 
             const auto &account = _db.get_account(o.account);
-
+            
+            FC_ASSERT(o.vesting_shares.amount >= 0,
+                "Cannot withdraw negative GESTS. account: ${account}, vests:${vests}",
+                ("account", o.account)("vests", o.vesting_shares) );
             FC_ASSERT(account.vesting_shares.amount >= 0,
                 "Account does not have sufficient Golos Power for withdraw.");
             FC_ASSERT(account.available_vesting_shares() >= o.vesting_shares,
