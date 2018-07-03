@@ -183,22 +183,13 @@ namespace fc { namespace ecc {
 
     bool is_bip_0062_canonical( const compact_signature& c )
     {
-       constexpr boost::multiprecision::uint256_t n_2 =
+       using boost::multiprecision::uint256_t;
+       constexpr uint256_t n_2 =
           0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0_cppui256;
-
-       boost::multiprecision::uint256_t sig = 0;
-
-       // boost endian conversions are only supported for native c++ types,
-       // so we need to convert in 64 bit words
-       for( size_t i = 0; i < 4; i++ )
-       {
-          sig <<= 64;
-          sig += boost::endian::big_to_native( *( uint64_t* )( c.data + 33 + ( i * 8 ) ) );
-       }
 
        // BIP-0062 states that sig must be in [1,n/2], however because a sig of value 0 is an invalid
        // signature under all circumstances, the lower bound does not need checking
-       return sig <= n_2;
+       return memcmp( c.data + 33, &n_2, sizeof( uint256_t ) ) <= 0;
     }
 
 
