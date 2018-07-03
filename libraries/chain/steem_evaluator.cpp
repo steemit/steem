@@ -986,6 +986,24 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
    const auto& account = _db.get_account( o.account );
 
+   if( o.vesting_shares.amount < 0 )
+   {
+      // TODO: Update this to a HF 20 check
+#ifndef IS_TEST_NET
+      if( _db.head_block_num() > 23847548 )
+      {
+#endif
+         FC_ASSERT( false, "Cannot withdraw negative VESTS. account: ${account}, vests:${vests}",
+            ("account", o.account)("vests", o.vesting_shares) );
+#ifndef IS_TEST_NET
+      }
+#endif
+
+      // else, no-op
+      return;
+   }
+
+
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
    FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
@@ -1226,7 +1244,7 @@ void calculate_power_shares( i_voting_helper* voting_helper, t_voter_asset_info*
    int64_t elapsed_seconds = (db.head_block_time() - last_vote_time).to_seconds();
 
    if( db.has_hardfork( STEEM_HARDFORK_0_11 ) )
-      FC_ASSERT( elapsed_seconds >= voting_helper->get_minimal_vote_interval(), 
+      FC_ASSERT( elapsed_seconds >= voting_helper->get_minimal_vote_interval(),
                  "Can only vote once every ${sec} seconds.", ("sec", voting_helper->get_minimal_vote_interval()) );
 
    int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / voting_helper->get_vote_regeneration_period();
@@ -1356,7 +1374,7 @@ void cast_vote( i_voting_helper* voting_helper, const t_voter_asset_info& info, 
    }
    voting_helper->update_comment_vote_object( cvo, vote_weight, rshares );
 
-   
+
    if( max_vote_weight ) // Optimization
    {
       voting_helper->increase_comment_total_vote_weight( comment,  max_vote_weight );
