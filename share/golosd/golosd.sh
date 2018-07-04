@@ -11,7 +11,7 @@ chown -R golosd:golosd $HOME
 
 # seed nodes come from documentation/seednodes which is
 # installed by docker into /etc/golosd/seednodes
-SEED_NODES="$(cat /etc/golosd/seednodes | awk -F' ' '{print $1}')"
+SEED_NODES="$(cat /etc/golosd/seednodes | shuf | awk -F' ' '{print $1}')"
 
 ARGS=""
 
@@ -106,3 +106,4 @@ exec chpst -ugolosd \
         $ARGS \
         $GOLOSD_EXTRA_OPTS \
         2>&1
+
