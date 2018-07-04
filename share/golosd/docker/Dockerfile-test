@@ -50,7 +50,7 @@ RUN \
     ./tests/white_options_test --log_level=message --report_level=detailed && \
     ./tests/black_options_test --log_level=message --report_level=detailed && \
     ./tests/operation_history_blocks_test --log_level=message --report_level=detailed && \
-    ./tests/account_history_blocks --log_level=message --report_level=detailed
+    ./tests/account_history_blocks_test --log_level=message --report_level=detailed
 
 # isn't used now, but can be used later ...
 #
