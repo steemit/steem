@@ -152,16 +152,13 @@ namespace fc { namespace ecc {
         my->_key = dat;
     }
 
-    public_key::public_key( const compact_signature& c, const fc::sha256& digest, bool check_canonical )
+    public_key::public_key( const compact_signature& c, const fc::sha256& digest, canonical_signature_type canon_type )
     {
         int nV = c.data[0];
         if (nV<27 || nV>=35)
             FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
 
-        if( check_canonical )
-        {
-            FC_ASSERT( is_canonical( c ), "signature is not canonical" );
-        }
+        FC_ASSERT( is_canonical( c, canon_type ), "signature is not canonical" );
 
         unsigned int pk_len;
         FC_ASSERT( secp256k1_ecdsa_recover_compact( detail::_get_context(), (unsigned char*) digest.data(), (unsigned char*) c.begin() + 1, (unsigned char*) my->_key.begin(), (int*) &pk_len, 1, (*c.begin() - 27) & 3 ) );
@@ -487,24 +484,24 @@ namespace fc { namespace ecc {
         return secp256k1_rangeproof_verify( detail::_get_context(), &min_val, &max_val, (const unsigned char*)&commit, (const unsigned char*)proof.data(), proof.size() );
      }
 
-     std::vector<char>    range_proof_sign( uint64_t min_value, 
-                                       const commitment_type& commit, 
-                                       const blind_factor_type& commit_blind, 
+     std::vector<char>    range_proof_sign( uint64_t min_value,
+                                       const commitment_type& commit,
+                                       const blind_factor_type& commit_blind,
                                        const blind_factor_type& nonce,
                                        int8_t base10_exp,
                                        uint8_t min_bits,
                                        uint64_t actual_value
                                      )
      {
-        int proof_len = 5134; 
+        int proof_len = 5134;
         std::vector<char> proof(proof_len);
 
-        FC_ASSERT( secp256k1_rangeproof_sign( detail::_get_context(), 
-                                              (unsigned char*)proof.data(), 
-                                              &proof_len, min_value, 
-                                              (const unsigned char*)&commit, 
-                                              (const unsigned char*)&commit_blind, 
-                                              (const unsigned char*)&nonce, 
+        FC_ASSERT( secp256k1_rangeproof_sign( detail::_get_context(),
+                                              (unsigned char*)proof.data(),
+                                              &proof_len, min_value,
+                                              (const unsigned char*)&commit,
+                                              (const unsigned char*)&commit_blind,
+                                              (const unsigned char*)&nonce,
                                               base10_exp, min_bits, actual_value ) );
         proof.resize(proof_len);
         return proof;
@@ -513,16 +510,16 @@ namespace fc { namespace ecc {
 
      bool            verify_range_proof_rewind( blind_factor_type& blind_out,
                                                 uint64_t& value_out,
-                                                string& message_out, 
+                                                string& message_out,
                                                 const blind_factor_type& nonce,
-                                                uint64_t& min_val, 
-                                                uint64_t& max_val, 
-                                                commitment_type commit, 
+                                                uint64_t& min_val,
+                                                uint64_t& max_val,
+                                                commitment_type commit,
                                                 const std::vector<char>& proof )
      {
         char msg[4096];
         int  mlen = 0;
-        FC_ASSERT( secp256k1_rangeproof_rewind( detail::_get_context(), 
+        FC_ASSERT( secp256k1_rangeproof_rewind( detail::_get_context(),
                                                 (unsigned char*)&blind_out,
                                                 &value_out,
                                                 (unsigned char*)msg,
@@ -541,12 +538,12 @@ namespace fc { namespace ecc {
      range_proof_info range_get_info( const std::vector<char>& proof )
      {
         range_proof_info result;
-        FC_ASSERT( secp256k1_rangeproof_info( detail::_get_context(), 
-                                              (int*)&result.exp, 
-                                              (int*)&result.mantissa, 
-                                              (uint64_t*)&result.min_value, 
-                                              (uint64_t*)&result.max_value, 
-                                              (const unsigned char*)proof.data(), 
+        FC_ASSERT( secp256k1_rangeproof_info( detail::_get_context(),
+                                              (int*)&result.exp,
+                                              (int*)&result.mantissa,
+                                              (uint64_t*)&result.min_value,
+                                              (uint64_t*)&result.max_value,
+                                              (const unsigned char*)proof.data(),
                                               (int)proof.size() ) );
 
         return result;

@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( undo_object_disapear )
       */
       //Temporary. After fix, this line should be enabled.
       //STEEM_REQUIRE_THROW( ao.modify( obj1, [&]( account_object& obj ){ obj.name = "name00"; obj.proxy = "proxy00"; } ), boost::exception );
-      
+
       //Temporary. After fix, this line should be removed.
       ao.modify( obj1, [&]( account_object& obj ){ obj.name = "nameXYZ"; obj.proxy = "proxyXYZ"; } );
 
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
       tx.operations.push_back( op );
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
       generate_blocks( 1 );
       tx.operations.clear();
@@ -449,7 +449,7 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
       tx.operations.push_back( op );
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
       generate_blocks( 1 );
@@ -469,8 +469,8 @@ BOOST_AUTO_TEST_CASE( undo_generate_blocks )
       tx.operations.push_back( op );
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( dan_private_key, db->get_chain_id() );
-      tx.sign( chuck_private_key, db->get_chain_id() );
+      sign( tx, dan_private_key );
+      sign( tx, chuck_private_key );
 
       db->push_transaction( tx, 0 );
       generate_blocks( 1 );

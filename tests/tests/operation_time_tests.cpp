@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
          }
 
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( author.private_key, db->get_chain_id() );
+         sign( tx, author.private_key );
          db->push_transaction( tx, 0 );
       }
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
          vote.weight = STEEM_100_PERCENT;
          tx.operations.push_back( vote );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( voter.private_key, db->get_chain_id() );
+         sign( tx, voter.private_key );
          db->push_transaction( tx, 0 );
       }
 
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       signed_transaction tx;
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       tx.clear();
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 
       tx.clear();
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE( reward_funds )
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( 5 );
@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE( reward_funds )
       tx.clear();
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time );
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto alice_vshares = util::evaluate_reward_curve( db->get_comment( "alice", string( "test" ) ).net_rshares.value,
@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       tx.clear();
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time );
@@ -416,7 +416,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       com.body = "bar";
       tx.operations.push_back( com );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -424,7 +424,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
 
       com.author = "bob";
       tx.operations.push_back( com );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -438,7 +438,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.permlink = "test";
       vote.weight = STEEM_100_PERCENT;
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -447,7 +447,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.voter = "sam";
       vote.author = "alice";
       tx.operations.push_back( vote );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -456,7 +456,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.voter = "bob";
       vote.author = "bob";
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.voter = "dave";
       vote.author = "bob";
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Generate blocks up until first payout" );
@@ -501,7 +501,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.author = "alice";
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.author = "bob";
       vote.weight = STEEM_1_PERCENT;
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "bob", string( "test" ) ).cashout_time - STEEM_BLOCK_INTERVAL, true );
@@ -522,21 +522,21 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       vote.weight = STEEM_100_PERCENT;
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "sam";
       tx.operations.push_back( vote );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "dave";
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       bob_vest_shares = db->get_account( "bob" ).vesting_shares;
@@ -585,14 +585,14 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       com.body = "bar";
       tx.operations.push_back( com );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       com.author = "bob";
       tx.operations.push_back( com );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "First round of votes." );
@@ -605,14 +605,14 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.permlink = "test";
       vote.weight = STEEM_100_PERCENT;
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "dave";
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -620,14 +620,14 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.voter = "bob";
       vote.author = "bob";
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "sam";
       tx.operations.push_back( vote );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Generating blocks..." );
@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.author = "bob";
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -650,14 +650,14 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.voter = "bob";
       vote.author = "alice";
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "sam";
       tx.operations.push_back( vote );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Generating more blocks..." );
@@ -813,7 +813,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.author = "alice";
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -822,7 +822,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.author = "bob";
       vote.weight = STEEM_1_PERCENT;
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "bob", string( "test" ) ).cashout_time - STEEM_BLOCK_INTERVAL, true );
@@ -834,21 +834,21 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       vote.weight = STEEM_100_PERCENT;
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "sam";
       tx.operations.push_back( vote );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       vote.voter = "dave";
       tx.operations.push_back( vote );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       bob_vest_shares = db->get_account( "bob" ).vesting_shares;
@@ -893,7 +893,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       comment_op.body = "bar";
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( comment_op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       comment_op.author = "bob";
@@ -902,7 +902,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( comment_op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       comment_op.author = "sam";
@@ -910,7 +910,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( comment_op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       comment_op.author = "dave";
@@ -918,7 +918,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( comment_op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -932,7 +932,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       tx.operations.push_back( vote_op );
       vote_op.author = "bob";
       tx.operations.push_back( vote_op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -945,7 +945,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       vote_op.author = "dave";
       vote_op.weight = STEEM_1_PERCENT * 20;
       tx.operations.push_back( vote_op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -954,7 +954,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       vote_op.author = "bob";
       vote_op.weight = STEEM_100_PERCENT;
       tx.operations.push_back( vote_op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time - fc::seconds( STEEM_BLOCK_INTERVAL ), true );
@@ -1206,7 +1206,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       op.vesting_shares = asset( new_alice.vesting_shares.amount / 2, VESTS_SYMBOL );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto next_withdrawal = db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS;
@@ -1332,7 +1332,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( wv );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -1351,7 +1351,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       op.percent = STEEM_1_PERCENT * 30;
       op.auto_vest = false;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Setting up first withdraw" );
@@ -1394,7 +1394,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       op.percent = STEEM_1_PERCENT * 50 + 1;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "Test from_account receiving no withdraw" );
@@ -1405,7 +1405,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       op.to_account = "sam";
       op.percent = STEEM_1_PERCENT * 50;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_account( "alice" ).next_vesting_withdrawal, true );
@@ -1482,7 +1482,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
       {
          txs[i].set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          txs[i].operations.push_back( ops[i] );
-         txs[i].sign( keys[i], db->get_chain_id() );
+         sign( txs[i], keys[i] );
          db->push_transaction( txs[i], 0 );
       }
 
@@ -1507,7 +1507,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
             ops[j].exchange_rate = price( ops[j].exchange_rate.base, asset( ops[j].exchange_rate.quote.amount + 10, STEEM_SYMBOL ) );
             txs[j].set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
             txs[j].operations.push_back( ops[j] );
-            txs[j].sign( keys[j], db->get_chain_id() );
+            sign( txs[j], keys[j] );
             db->push_transaction( txs[j], 0 );
          }
 
@@ -1550,7 +1550,7 @@ BOOST_AUTO_TEST_CASE( convert_delay )
       op.requestid = 2;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Generating Blocks up to conversion block" );
@@ -1801,7 +1801,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( transfer );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto gpo = db->get_dynamic_global_properties();
@@ -1824,7 +1824,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       tx.signatures.clear();
       tx.operations.push_back( transfer );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance.amount.value == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value );
@@ -1842,7 +1842,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       tx.signatures.clear();
       tx.operations.push_back( transfer );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( static_cast<uint64_t>(db->get_account( "alice" ).sbd_balance.amount.value) == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value + ( ( ( ( uint128_t( alice_sbd.amount.value ) * ( db->head_block_time() - start_time ).to_seconds() + alice_coindays ) / STEEM_SECONDS_PER_YEAR ) * gpo.sbd_interest_rate ) / STEEM_100_PERCENT ).to_uint64() );
@@ -1909,7 +1909,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Waiting 10 minutes" );
@@ -1928,7 +1928,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_steem_volume += ( asset( alice_sbd.amount / 20, SBD_SYMBOL ) * exchange_rate ).amount.value;
@@ -1976,7 +1976,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Waiting 10 minutes" );
@@ -1994,7 +1994,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Waiting 30 minutes" );
@@ -2012,7 +2012,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       alice_sbd_volume -= ( alice_sbd.amount.value / 10 ) * 3;
@@ -2070,7 +2070,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + fc::seconds( STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10.to_seconds() / 2 ), true );
@@ -2084,7 +2084,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + fc::seconds( STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10.to_seconds() / 2 ), true );
@@ -2129,7 +2129,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       alice_steem_volume += alice_sbd.amount.value / 20;
@@ -2179,7 +2179,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.push_back( transfer );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "alice";
@@ -2189,7 +2189,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10, true );
@@ -2202,7 +2202,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       alice_sbd_volume += op.amount_to_sell.amount.value;
@@ -2255,7 +2255,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_sbd_volume += op.amount_to_sell.amount.value;
@@ -2308,7 +2308,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.push_back( transfer );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -2318,7 +2318,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10, true );
@@ -2330,7 +2330,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       bob_steem_volume += op.amount_to_sell.amount.value;
@@ -2437,7 +2437,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + ( STEEM_BLOCK_INTERVAL / 2 ) + STEEM_LIQUIDITY_TIMEOUT_SEC, true );
@@ -2459,7 +2459,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       sam_sbd_volume = ASSET( "1.000 TBD" ).amount.value;
@@ -2496,7 +2496,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test1" ) ).reward_weight == STEEM_100_PERCENT );
@@ -2509,7 +2509,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       op.permlink = "test2";
 
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test2" ) ).reward_weight == STEEM_100_PERCENT );
@@ -2522,7 +2522,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       op.permlink = "test3";
 
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test3" ) ).reward_weight == STEEM_100_PERCENT );
@@ -2535,7 +2535,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       op.permlink = "test4";
 
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test4" ) ).reward_weight == STEEM_100_PERCENT );
@@ -2548,7 +2548,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       op.permlink = "test5";
 
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test5" ) ).reward_weight == STEEM_100_PERCENT );
@@ -2585,7 +2585,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       comment.body = "test2";
@@ -2594,7 +2594,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       tx.signatures.clear();
 
       tx.operations.push_back( comment );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       vote_operation vote;
@@ -2607,7 +2607,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       tx.signatures.clear();
 
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test" ) ).last_payout == fc::time_point_sec::min() );
@@ -2626,7 +2626,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test" ) ).cashout_time == fc::time_point_sec::maximum() );
@@ -2641,7 +2641,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_comment( "alice", string( "test" ) ).cashout_time == fc::time_point_sec::maximum() );
@@ -2656,7 +2656,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
 
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_comment( "alice", string( "test" ) ).cashout_time == fc::time_point_sec::maximum() );
@@ -2669,7 +2669,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       tx.signatures.clear();
 
       tx.operations.push_back( comment );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 ); // Works now in #1714
    }
    FC_LOG_AND_RETHROW()
@@ -2708,7 +2708,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       signed_transaction tx;
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       vote_operation vote;
@@ -2721,7 +2721,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       tx.signatures.clear();
 
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
@@ -2843,7 +2843,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time, true );
@@ -2909,7 +2909,7 @@ BOOST_AUTO_TEST_CASE( clear_null_account )
       tx.operations.push_back( save1);
       tx.operations.push_back( save2 );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 

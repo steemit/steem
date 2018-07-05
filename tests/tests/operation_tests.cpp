@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_TEST_MESSAGE( "--- Test normal account creation" );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( init_account_priv_key, db->get_chain_id() );
+      sign( tx, init_account_priv_key );
       tx.validate();
       db->push_transaction( tx, 0 );
 
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.fee = asset( db->get_account( STEEM_INIT_MINER_NAME ).balance.amount + 1, STEEM_SYMBOL );
       op.new_account_name = "bob";
       tx.operations.push_back( op );
-      tx.sign( init_account_priv_key, db->get_chain_id() );
+      sign( tx, init_account_priv_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       tx.clear();
       op.fee = ASSET( "1.000 TESTS" );
       tx.operations.push_back( op );
-      tx.sign( init_account_priv_key, db->get_chain_id() );
+      sign( tx, init_account_priv_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE( account_update_validate )
          signed_transaction tx;
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
 
          BOOST_FAIL( "An exception was not thrown for an invalid account name" );
@@ -246,27 +246,27 @@ BOOST_AUTO_TEST_CASE( account_update_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when wrong signature" );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when containing additional incorrect signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when containing duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( active_key, db->get_chain_id() );
-      tx.sign( active_key, db->get_chain_id() );
+      sign( tx, active_key );
+      sign( tx, active_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success on active key" );
       tx.signatures.clear();
-      tx.sign( active_key, db->get_chain_id() );
+      sign( tx, active_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test success on owner key alone" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "  Tests when owner authority is updated ---" );
@@ -275,27 +275,27 @@ BOOST_AUTO_TEST_CASE( account_update_authorities )
       tx.operations.clear();
       op.owner = authority( 1, active_key.get_public_key(), 1 );
       tx.operations.push_back( op );
-      tx.sign( active_key, db->get_chain_id() );
+      sign( tx, active_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_owner_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when owner key and active key are present" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0), tx_missing_owner_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate owner keys are present" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success when updating the owner authority with an owner key" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       validate_database();
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       signed_transaction tx;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const account_object& acct = db->get_account( "alice" );
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       tx.signatures.clear();
       op.account = "bob";
       tx.operations.push_back( op );
-      tx.sign( new_private_key, db->get_chain_id() );
+      sign( tx, new_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception )
       validate_database();
 
@@ -363,7 +363,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       op.posting->weight_threshold = 1;
       op.posting->add_authorities( "dave", 1 );
       tx.operations.push_back( op );
-      tx.sign( new_private_key, db->get_chain_id() );
+      sign( tx, new_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
@@ -408,22 +408,22 @@ BOOST_AUTO_TEST_CASE( comment_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_posting_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
-      tx.sign( alice_post_key, db->get_chain_id() );
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with post signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_posting_auth );
 
       validate_database();
@@ -454,7 +454,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
 
       BOOST_TEST_MESSAGE( "--- Test Alice posting a root comment" );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const comment_object& alice_comment = db->get_comment( "alice", string( "lorem" ) );
@@ -489,7 +489,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test Bob posting a comment on Alice's comment" );
@@ -498,7 +498,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       const comment_object& bob_comment = db->get_comment( "bob", string( "ipsum" ) );
@@ -525,7 +525,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       const comment_object& sam_comment = db->get_comment( "sam", string( "dolor" ) );
@@ -571,7 +571,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       op.json_metadata = "{\"bar\":\"foo\"}";
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( mod_sam_comment.author == op.author );
@@ -592,7 +592,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( 60 * 5 / STEEM_BLOCK_INTERVAL );
@@ -602,7 +602,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       validate_database();
@@ -644,7 +644,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test failue deleting a comment with positive rshares" );
@@ -654,7 +654,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       op.permlink = "test1";
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
 
@@ -665,7 +665,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( vote );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto test_comment = db->find< comment_object, by_permlink >( boost::make_tuple( "alice", string( "test1" ) ) );
@@ -678,7 +678,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( STEEM_CASHOUT_WINDOW_SECONDS / STEEM_BLOCK_INTERVAL );
@@ -687,7 +687,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
 
@@ -699,7 +699,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( STEEM_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEM_BLOCK_INTERVAL );
@@ -708,13 +708,13 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.permlink = "test2";
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
@@ -772,7 +772,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          comment_op.body = "foo bar";
          tx.operations.push_back( comment_op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
 
          BOOST_TEST_MESSAGE( "--- Testing voting on a non-existent comment" );
@@ -786,7 +786,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          op.permlink = "foo";
          op.weight = STEEM_100_PERCENT;
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
 
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
@@ -798,7 +798,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
 
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
@@ -813,7 +813,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
 
          db->push_transaction( tx, 0 );
 
@@ -842,7 +842,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( comment_op );
-         tx.sign( bob_private_key, db->get_chain_id() );
+         sign( tx, bob_private_key );
          db->push_transaction( tx, 0 );
 
          op.weight = STEEM_100_PERCENT / 2;
@@ -852,7 +852,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
 
          const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
@@ -882,7 +882,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.signatures.clear();
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( bob_private_key, db->get_chain_id() );
+         sign( tx, bob_private_key );
          db->push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_alice_comment.id, new_bob.id ) );
@@ -908,7 +908,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( sam_private_key, db->get_chain_id() );
+         sign( tx, sam_private_key );
          db->push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
@@ -938,7 +938,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( comment_op );
-         tx.sign( sam_private_key, db->get_chain_id() );
+         sign( tx, sam_private_key );
          db->push_transaction( tx, 0 );
 
          op.weight = STEEM_100_PERCENT;
@@ -948,7 +948,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
 
          auto new_rshares = ( ( fc::uint128_t( db->get_account( "alice" ).vesting_shares.amount.value ) * used_power ) / STEEM_100_PERCENT ).to_uint64() - STEEM_VOTE_DUST_THRESHOLD;
@@ -976,7 +976,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
@@ -1006,7 +1006,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
@@ -1033,7 +1033,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
@@ -1054,7 +1054,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
 
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
          validate_database();
@@ -1065,7 +1065,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          validate_database();
 
@@ -1076,7 +1076,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( dave_private_key, db->get_chain_id() );
+         sign( tx, dave_private_key );
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
          validate_database();
       }
@@ -1117,24 +1117,24 @@ BOOST_AUTO_TEST_CASE( transfer_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       validate_database();
@@ -1161,7 +1161,7 @@ BOOST_AUTO_TEST_CASE( signature_stripping )
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( update_op );
 
-      tx.sign( corp_private_key, db->get_chain_id() );
+      sign( tx, corp_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -1174,12 +1174,12 @@ BOOST_AUTO_TEST_CASE( signature_stripping )
 
       tx.operations.push_back( transfer_op );
 
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       signature_type alice_sig = tx.signatures.back();
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       signature_type bob_sig = tx.signatures.back();
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       signature_type sam_sig = tx.signatures.back();
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
@@ -1218,7 +1218,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       BOOST_TEST_MESSAGE( "--- Test normal transaction" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
@@ -1240,7 +1240,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       tx.operations.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
@@ -1252,7 +1252,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       tx.operations.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
@@ -1296,24 +1296,24 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with from signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       validate_database();
@@ -1347,7 +1347,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
       signed_transaction tx;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto new_vest = op.amount * ( shares / vests );
@@ -1367,7 +1367,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       new_vest = asset( ( op.amount * ( shares / vests ) ).amount, VESTS_SYMBOL );
@@ -1429,22 +1429,22 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -1486,7 +1486,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
@@ -1502,7 +1502,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = asset( alice.vesting_shares.amount / 3, VESTS_SYMBOL );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
@@ -1519,7 +1519,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = asset( alice.vesting_shares.amount * 2, VESTS_SYMBOL );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
@@ -1534,7 +1534,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = asset( 0, VESTS_SYMBOL );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
@@ -1547,7 +1547,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = alice.vesting_shares;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_block();
       }
@@ -1576,7 +1576,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = ASSET( "0.000000 VESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).vesting_withdraw_rate == ASSET( "0.000000 VESTS" ) );
@@ -1587,7 +1587,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       op.vesting_shares = db->get_account( "bob" ).vesting_shares;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 ); // We do not need to test the result of this, simply that it works.
    }
    FC_LOG_AND_RETHROW()
@@ -1629,28 +1629,28 @@ BOOST_AUTO_TEST_CASE( witness_update_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.signatures.clear();
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
       validate_database();
    }
@@ -1681,7 +1681,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -1710,7 +1710,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       tx.operations.clear();
       op.url = "bar.foo";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -1737,7 +1737,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       tx.operations.clear();
       op.owner = "bob";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
@@ -1779,30 +1779,30 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( bob_post_key, db->get_chain_id() );
+      sign( tx, bob_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test failure with proxy signature" );
       proxy( "bob", "sam" );
       tx.signatures.clear();
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -1836,7 +1836,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -1849,7 +1849,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( sam_witness.votes.value == 0 );
@@ -1868,7 +1868,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.approve = true;
       op.account = "bob";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -1881,7 +1881,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.signatures.clear();
       op.account = "alice";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
@@ -1894,7 +1894,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.account = "bob";
       op.approve = false;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -1908,7 +1908,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.witness = "dave";
       op.approve = true;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
@@ -1918,7 +1918,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.signatures.clear();
       op.witness = "alice";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
@@ -1957,29 +1957,29 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( bob_post_key, db->get_chain_id() );
+      sign( tx, bob_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test failure with proxy signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -2013,7 +2013,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       signed_transaction tx;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2030,7 +2030,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       tx.signatures.clear();
       op.proxy = "sam";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2059,7 +2059,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       op.proxy = "dave";
       op.account = "sam";
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2081,7 +2081,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       op.proxy = "sam";
       op.account = "alice";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2103,7 +2103,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       op.proxy = STEEM_PROXY_TO_SELF_ACCOUNT;
       op.account = "bob";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2124,7 +2124,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2133,7 +2133,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       op.account = "alice";
       op.proxy = "bob";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2145,7 +2145,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2267,23 +2267,23 @@ BOOST_AUTO_TEST_CASE( feed_publish_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness account signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       validate_database();
@@ -2309,7 +2309,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2324,7 +2324,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       tx.operations.clear();
       tx.signatures.clear();
       op.publisher = "bob";
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
@@ -2334,7 +2334,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       tx.operations.clear();
       tx.signatures.clear();
       op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
@@ -2346,7 +2346,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       op.exchange_rate = price( ASSET(" 1.000 TBD" ), ASSET( "1500.000 TESTS" ) );
       op.publisher = "alice";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -2394,24 +2394,24 @@ BOOST_AUTO_TEST_CASE( convert_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with owner signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       validate_database();
@@ -2446,7 +2446,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       op.owner = "bob";
       op.amount = ASSET( "5.000 TESTS" );
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
@@ -2459,7 +2459,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "7.500 TESTS" ).amount.value );
@@ -2471,7 +2471,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success converting SBD to TESTS" );
@@ -2481,7 +2481,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
@@ -2500,7 +2500,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
@@ -2566,22 +2566,22 @@ BOOST_AUTO_TEST_CASE( limit_order_create_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -2616,7 +2616,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
@@ -2631,7 +2631,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -2646,7 +2646,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -2661,7 +2661,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -2670,7 +2670,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -2690,7 +2690,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -2711,7 +2711,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -2731,7 +2731,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       auto recent_ops = get_last_operations( 1 );
@@ -2764,7 +2764,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "bob", 1 ) );
@@ -2790,7 +2790,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 3 ) ) == limit_order_idx.end() );
@@ -2810,7 +2810,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -2820,7 +2820,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "bob", 4 ) );
@@ -2843,7 +2843,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( can );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
@@ -2858,7 +2858,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -2868,7 +2868,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", 5 ) );
@@ -2911,22 +2911,22 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -2961,7 +2961,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
@@ -2996,7 +2996,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -3011,7 +3011,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -3026,7 +3026,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -3035,7 +3035,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       auto limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -3055,7 +3055,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -3076,7 +3076,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -3096,7 +3096,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       auto recent_ops = get_last_operations( 1 );
@@ -3129,7 +3129,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "bob", 1 ) );
@@ -3155,7 +3155,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 3 ) ) == limit_order_idx.end() );
@@ -3175,7 +3175,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -3185,7 +3185,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "bob", 4 ) );
@@ -3208,7 +3208,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( can );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
@@ -3224,7 +3224,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -3234,7 +3234,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", 5 ) );
@@ -3264,7 +3264,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "sam";
@@ -3274,7 +3274,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "alice";
@@ -3284,7 +3284,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "dave";
@@ -3294,7 +3294,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       db->push_transaction( tx, 0 );
 
       recent_ops = get_last_operations( 3 );
@@ -3358,7 +3358,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_authorities )
       signed_transaction tx;
       tx.operations.push_back( c );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order_cancel_operation op;
@@ -3373,22 +3373,22 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -3416,7 +3416,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
       op.orderid = 5;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test cancel order" );
@@ -3430,7 +3430,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( create );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 5 ) ) != limit_order_idx.end() );
@@ -3438,7 +3438,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 5 ) ) == limit_order_idx.end() );
@@ -3500,7 +3500,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       signed_transaction tx;
       tx.operations.push_back( acc_create );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const auto& bob_auth = db->get< account_authority_object, by_account >( "bob" );
@@ -3519,7 +3519,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( acc_update );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "bob_owner" ) );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( bob_auth.owner == *acc_update.owner );
@@ -3536,7 +3536,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( request );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( bob_auth.owner == *acc_update.owner );
@@ -3555,8 +3555,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "new_key" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "bob_owner" ) );
+      sign( tx, generate_private_key( "new_key" ) );
       db->push_transaction( tx, 0 );
       const auto& owner1 = db->get< account_authority_object, by_account >("bob").owner;
 
@@ -3571,7 +3571,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( request );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -3585,8 +3585,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "idontknow" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "bob_owner" ) );
+      sign( tx, generate_private_key( "idontknow" ) );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       const auto& owner2 = db->get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner2 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
@@ -3601,8 +3601,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.sign( generate_private_key( "foo bar" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "idontknow" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "foo bar" ) );
+      sign( tx, generate_private_key( "idontknow" ) );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       const auto& owner3 = db->get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner3 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
@@ -3617,8 +3617,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "foo bar" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "bob_owner" ) );
+      sign( tx, generate_private_key( "foo bar" ) );
       db->push_transaction( tx, 0 );
 
       const auto& owner4 = db->get< account_authority_object, by_account >("bob").owner;
@@ -3632,7 +3632,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( request );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const auto& request_idx = db->get_index< account_recovery_request_index >().indices();
@@ -3662,8 +3662,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       tx.operations.push_back( recover );
       tx.set_expiration( db->head_block_time() );
-      tx.sign( generate_private_key( "expire" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "expire" ) );
+      sign( tx, generate_private_key( "bob_owner" ) );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       const auto& owner5 = db->get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner5 == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
@@ -3677,7 +3677,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       tx.operations.push_back( acc_update );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( generate_private_key( "foo bar" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "foo bar" ) );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + ( STEEM_OWNER_AUTH_RECOVERY_PERIOD - STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD ) );
@@ -3690,7 +3690,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       tx.operations.push_back( request );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       recover.new_owner_authority = request.new_owner_authority;
@@ -3701,8 +3701,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       tx.operations.push_back( recover );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( generate_private_key( "bob_owner" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "last key" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "bob_owner" ) );
+      sign( tx, generate_private_key( "last key" ) );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       const auto& owner6 = db->get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner6 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
@@ -3714,8 +3714,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       tx.operations.push_back( recover );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( generate_private_key( "foo bar" ), db->get_chain_id() );
-      tx.sign( generate_private_key( "last key" ), db->get_chain_id() );
+      sign( tx, generate_private_key( "foo bar" ) );
+      sign( tx, generate_private_key( "last key" ) );
       db->push_transaction( tx, 0 );
       const auto& owner7 = db->get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner7 == authority( 1, generate_private_key( "last key" ).get_public_key(), 1 ) );
@@ -3740,7 +3740,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
          signed_transaction tx;
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
       };
 
@@ -3754,14 +3754,14 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
          signed_transaction tx;
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( recent_owner_key, db->get_chain_id() );
+         sign( tx, recent_owner_key );
          // only Alice -> throw
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
          tx.signatures.clear();
-         tx.sign( new_owner_key, db->get_chain_id() );
+         sign( tx, new_owner_key );
          // only Sam -> throw
          STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
-         tx.sign( recent_owner_key, db->get_chain_id() );
+         sign( tx, recent_owner_key );
          // Alice+Sam -> OK
          db->push_transaction( tx, 0 );
       };
@@ -3776,7 +3776,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
          signed_transaction tx;
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( recovery_account_key, db->get_chain_id() );
+         sign( tx, recovery_account_key );
          db->push_transaction( tx, 0 );
       };
 
@@ -3789,7 +3789,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
          signed_transaction tx;
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( old_private_key, db->get_chain_id() );
+         sign( tx, old_private_key );
          db->push_transaction( tx, 0 );
       };
 
@@ -3949,7 +3949,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       signed_transaction tx;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- falure when from cannot cover amount + fee" );
@@ -3958,7 +3958,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline is in the past" );
@@ -3967,7 +3967,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when expiration is in the past" );
@@ -3975,7 +3975,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success" );
@@ -3984,7 +3984,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       auto alice_steem_balance = alice.balance - op.steem_amount - op.fee;
       auto alice_sbd_balance = alice.sbd_balance - op.sbd_amount;
@@ -4111,7 +4111,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       signed_transaction tx;
       tx.operations.push_back( et_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
@@ -4126,7 +4126,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       op.approve = true;
 
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4138,7 +4138,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.signatures.clear();
 
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4150,7 +4150,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.signatures.clear();
 
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       auto& escrow = db->get_escrow( op.from, op.escrow_id );
@@ -4170,7 +4170,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.signatures.clear();
 
       tx.set_expiration( db->head_block_time() + STEEM_BLOCK_INTERVAL );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
@@ -4192,7 +4192,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       op.approve = false;
 
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
@@ -4214,7 +4214,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       op.who = op.agent;
 
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       STEEM_REQUIRE_THROW( db->get_escrow( op.from, op.escrow_id ), fc::exception );
@@ -4226,7 +4226,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( et_op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( et_op.ratification_deadline + STEEM_BLOCK_INTERVAL, true );
@@ -4243,7 +4243,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.escrow_expiration = db->head_block_time() + 200;
       tx.operations.push_back( et_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
@@ -4251,7 +4251,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       op.who = op.to;
       op.approve = true;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( et_op.ratification_deadline + STEEM_BLOCK_INTERVAL, true );
@@ -4268,14 +4268,14 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.escrow_expiration = db->head_block_time() + 200;
       tx.operations.push_back( et_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       op.who = op.agent;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( et_op.ratification_deadline + STEEM_BLOCK_INTERVAL, true );
@@ -4292,21 +4292,21 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.escrow_expiration = db->head_block_time() + 200;
       tx.operations.push_back( et_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       op.who = op.to;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       op.who = op.agent;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       {
@@ -4437,8 +4437,8 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.push_back( et_op );
       tx.operations.push_back( ea_b_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -4452,7 +4452,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       const auto& escrow = db->get_escrow( et_op.from, et_op.escrow_id );
@@ -4479,7 +4479,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( ea_s_op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       op.to = "dave";
@@ -4487,7 +4487,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
@@ -4509,7 +4509,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
@@ -4532,7 +4532,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       op.agent = "sam";
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       {
@@ -4562,16 +4562,16 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.push_back( et_op );
       tx.operations.push_back( ea_b_op );
       tx.operations.push_back( ea_s_op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.operations.clear();
       tx.signatures.clear();
       op.escrow_id = et_op.escrow_id;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       {
@@ -4594,7 +4594,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       op.who = "bob";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       {
@@ -4723,7 +4723,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.operations.push_back( et_op );
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -4738,7 +4738,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       escrow_approve_operation ea_b_op;
@@ -4756,15 +4756,15 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( ea_b_op );
       tx.operations.push_back( ea_s_op );
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed escrow to 'to'" );
       op.who = et_op.agent;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4773,7 +4773,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4782,7 +4782,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4792,7 +4792,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4801,7 +4801,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4810,7 +4810,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4820,7 +4820,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4829,7 +4829,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4838,7 +4838,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4847,7 +4847,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.900 TESTS" ) );
@@ -4860,7 +4860,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4869,7 +4869,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4878,7 +4878,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4887,7 +4887,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.800 TESTS" ) );
@@ -4899,7 +4899,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4909,7 +4909,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4922,7 +4922,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 
       tx.clear();
       tx.operations.push_back( ed_op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       tx.clear();
@@ -4932,7 +4932,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.steem_amount = ASSET( "0.100 TESTS" );
       op.sbd_amount = ASSET( "0.000 TBD" );
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4941,7 +4941,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.to;
       op.who = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4950,7 +4950,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.agent;
       op.receiver = "dave";
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4959,7 +4959,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = "dave";
       op.receiver = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
+      sign( tx, dave_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -4968,7 +4968,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.to;
       op.who = et_op.agent;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "bob" ).balance == ASSET( "0.200 TESTS" ) );
@@ -4980,7 +4980,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       op.who = et_op.agent;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "9.100 TESTS" ) );
@@ -4995,7 +4995,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.to;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5004,7 +5004,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.to;
       op.who = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5013,7 +5013,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       op.who = et_op.agent;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "9.200 TESTS" ) );
@@ -5024,7 +5024,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.steem_amount = ASSET( "0.500 TESTS" );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "9.700 TESTS" ) );
@@ -5038,9 +5038,9 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.operations.push_back( ea_b_op );
       tx.operations.push_back( ea_s_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
       generate_blocks( 2 );
 
@@ -5051,7 +5051,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.agent;
       op.steem_amount = ASSET( "0.100 TESTS" );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5059,7 +5059,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5067,7 +5067,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = "dave";
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5076,7 +5076,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.to;
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5084,7 +5084,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = "dave";
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5092,7 +5092,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.to;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "bob" ).balance == ASSET( "0.300 TESTS" ) );
@@ -5103,7 +5103,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "8.700 TESTS" ) );
@@ -5115,7 +5115,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.from;
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5123,7 +5123,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = "dave";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5131,7 +5131,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.to;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "bob" ).balance == ASSET( "0.400 TESTS" ) );
@@ -5142,7 +5142,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.from;
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "8.800 TESTS" ) );
@@ -5153,7 +5153,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.steem_amount = ASSET( "0.600 TESTS" );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "9.400 TESTS" ) );
@@ -5267,7 +5267,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -5278,7 +5278,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -5288,7 +5288,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "9.000 TESTS" ) );
@@ -5301,7 +5301,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "9.000 TBD" ) );
@@ -5315,7 +5315,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "8.000 TESTS" ) );
@@ -5328,7 +5328,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "8.000 TBD" ) );
@@ -5439,13 +5439,13 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       signed_transaction tx;
       tx.operations.push_back( save );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       save.amount = ASSET( "10.000 TBD" );
       tx.clear();
       tx.operations.push_back( save );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -5458,7 +5458,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5468,7 +5468,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5477,7 +5477,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
@@ -5498,7 +5498,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
@@ -5518,7 +5518,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5529,7 +5529,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
@@ -5550,7 +5550,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
@@ -5595,7 +5595,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
          op.request_id = i;
          tx.clear();
          tx.operations.push_back( op );
-         tx.sign( alice_private_key, db->get_chain_id() );
+         sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == i + 1 );
       }
@@ -5603,7 +5603,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       op.request_id = STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT );
       validate_database();
@@ -5692,7 +5692,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( save );
       tx.operations.push_back( withdraw );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -5707,7 +5707,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -5720,7 +5720,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
@@ -5778,7 +5778,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( proxy );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -5789,7 +5789,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       BOOST_TEST_MESSAGE( "--- success" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const auto& request_idx = db->get_index< decline_voting_rights_request_index >().indices().get< by_account >();
@@ -5803,7 +5803,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5811,7 +5811,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       op.decline = false;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       itr = request_idx.find( db->get_account( "alice" ).name );
@@ -5823,7 +5823,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
@@ -5831,7 +5831,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       op.decline = true;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->head_block_time() + STEEM_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEM_BLOCK_INTERVAL ), true );
@@ -5844,7 +5844,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( witness_vote );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       comment_operation comment;
@@ -5861,7 +5861,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       validate_database();
 
@@ -5881,7 +5881,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( witness_vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( db->get_comment( "alice", string( "test" ) ).id, db->get_account( "alice" ).id ) );
@@ -5889,20 +5889,20 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       vote.weight = 0;
       tx.clear();
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       vote.weight = STEEM_1_PERCENT * 50;
       tx.clear();
       tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       proxy.account = "alice";
       proxy.proxy = "bob";
       tx.clear();
       tx.operations.push_back( proxy );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
@@ -5933,7 +5933,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -5949,7 +5949,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
 
       db->push_transaction( tx, 0 );
 
@@ -6109,7 +6109,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       op.json_metadata = "{\"foo\":\"bar\"}";
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
@@ -6167,7 +6167,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
 
@@ -6177,7 +6177,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
       op.reward_vests = ASSET( "5.000000 VESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == alice_steem + op.reward_steem );
@@ -6198,7 +6198,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
       op.reward_sbd = ASSET( "10.000 TBD" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == alice_steem + op.reward_steem );
@@ -6248,7 +6248,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
@@ -6256,19 +6256,19 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
       tx.signatures.clear();
       op.delegatee = "sam";
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( init_account_priv_key, db->get_chain_id() );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, init_account_priv_key );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
       tx.signatures.clear();
-      tx.sign( init_account_priv_key, db->get_chain_id() );
+      sign( tx, init_account_priv_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
       validate_database();
    }
@@ -6305,7 +6305,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_blocks( 1 );
       const account_object& alice_acc = db->get_account( "alice" );
@@ -6326,7 +6326,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       op.vesting_shares = ASSET( "20000000.000000 VESTS");
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_blocks(1);
 
@@ -6348,7 +6348,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       comment_op.body = "foo bar";
       tx.operations.push_back( comment_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       tx.signatures.clear();
       tx.operations.clear();
@@ -6359,7 +6359,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       vote_op.weight = STEEM_100_PERCENT;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( vote_op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       auto old_voting_power = bob_acc.voting_power;
 
       db->push_transaction( tx, 0 );
@@ -6388,7 +6388,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       op.delegator = "sam";
       op.delegatee = "dave";
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
@@ -6396,7 +6396,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       tx.clear();
       op.vesting_shares = asset( sam_vest.amount + 1, VESTS_SYMBOL );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
@@ -6407,19 +6407,19 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       withdraw.account = "sam";
       withdraw.vesting_shares = sam_vest;
       tx.operations.push_back( withdraw );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.clear();
       op.vesting_shares = asset( sam_vest.amount + 2, VESTS_SYMBOL );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
       tx.clear();
       withdraw.vesting_shares = ASSET( "0.000000 VESTS" );
       tx.operations.push_back( withdraw );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
 
@@ -6428,13 +6428,13 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       op.vesting_shares = sam_vest;
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       tx.clear();
       withdraw.vesting_shares = asset( sam_vest.amount, VESTS_SYMBOL );
       tx.operations.push_back( withdraw );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
@@ -6442,7 +6442,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       tx.clear();
       op.vesting_shares = ASSET( "0.000000 VESTS" );
       tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
+      sign( tx, sam_private_key );
       db->push_transaction( tx, 0 );
 
       auto exp_obj = db->get_index< vesting_delegation_expiration_index, by_id >().begin();
@@ -6502,7 +6502,7 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
 
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_block();
       const account_object& alice_acc = db->get_account( "alice" );
@@ -6527,7 +6527,7 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_block();
 
@@ -6632,7 +6632,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       tx.operations.push_back( comment );
       tx.set_expiration( db->head_block_time() + STEEM_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx );
 
       BOOST_TEST_MESSAGE( "--- Test failure on more than 8 benefactors" );
@@ -6649,7 +6649,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       op.extensions.insert( b );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), chain::plugin_exception );
 
 
@@ -6660,7 +6660,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       op.extensions.insert( b );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
@@ -6679,15 +6679,15 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.clear();
       tx.operations.push_back( vote );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test success" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx );
 
 
@@ -6696,14 +6696,14 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), 25 * STEEM_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Payout and verify rewards were split properly" );
       tx.clear();
       tx.operations.push_back( vote );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time - STEEM_BLOCK_INTERVAL );
@@ -6750,7 +6750,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       generate_block();
 
@@ -6868,7 +6868,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test setting runtime parameters" );
@@ -6881,7 +6881,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TESTS" ) );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.props.account_creation_fee == ASSET( "2.000 TESTS" ) );
 
@@ -6890,7 +6890,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "maximum_block_size" ] = fc::raw::pack_to_vector( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
 
@@ -6899,7 +6899,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( 700 );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.props.sbd_interest_rate == 700 );
 
@@ -6911,7 +6911,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "new_signing_key" ] = fc::raw::pack_to_vector( alice_pub );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( old_signing_key, db->get_chain_id() );
+      sign( tx, old_signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.signing_key == alice_pub );
 
@@ -6922,7 +6922,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.sbd_exchange_rate == price( ASSET( "1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
       BOOST_REQUIRE( alice_witness.last_sbd_exchange_update == db->head_block_time() );
@@ -6932,7 +6932,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "url" ] = fc::raw::pack_to_vector( "foo.bar" );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.url == "foo.bar" );
 
@@ -6941,7 +6941,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "extraneous_property" ] = fc::raw::pack_to_vector( "foo" );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
@@ -6950,7 +6950,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( old_signing_key.get_public_key() );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( old_signing_key, db->get_chain_id() );
+      sign( tx, old_signing_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
@@ -6959,7 +6959,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack_to_vector( 1000 );
       tx.clear();
       tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
+      sign( tx, signing_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.props.account_subsidy_limit == 1000 );
 
@@ -7059,7 +7059,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "20.000 TESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7080,7 +7080,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "1.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7089,7 +7089,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
@@ -7111,7 +7111,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "5.000 TESTS" ) );
@@ -7132,7 +7132,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
@@ -7251,7 +7251,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       op.json_metadata = "{\"foo\":\"bar\"}";
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
 
@@ -7267,7 +7267,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       generate_block();
       op.owner = authority( 1, "bob", 1 );
       tx.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
@@ -7276,7 +7276,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
       tx.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       const auto& bob = db->get_account( "bob" );
@@ -7305,7 +7305,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_TEST_MESSAGE( "--- Test failure creating duplicate account name" );
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
