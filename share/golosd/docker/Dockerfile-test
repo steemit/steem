@@ -44,12 +44,16 @@ RUN \
         -DMAX_19_VOTED_WITNESSES=TRUE \
         -DENABLE_MONGO_PLUGIN=FALSE \
         .. && \
-    make -j$(nproc) chain_test plugin_test black_options_test white_options_test operation_history_blocks_test account_history_blocks_test && \
+    make -j$(nproc) chain_test plugin_test \
+                    black_options_test white_options_test short_list_operation_postfix_test \
+                    operation_history_blocks_test \
+                    account_history_blocks_test && \
     ./tests/chain_test --log_level=message --report_level=detailed && \
     ./tests/plugin_test --log_level=message --report_level=detailed && \
     ./tests/white_options_test --log_level=message --report_level=detailed && \
     ./tests/black_options_test --log_level=message --report_level=detailed && \
     ./tests/operation_history_blocks_test --log_level=message --report_level=detailed && \
+    ./tests/short_list_operation_postfix_test --log_level=message --report_level=detailed && \
     ./tests/account_history_blocks_test --log_level=message --report_level=detailed
 
 # isn't used now, but can be used later ...

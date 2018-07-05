@@ -102,7 +102,7 @@ namespace golos { namespace plugins { namespace operation_history {
         void erase_old_blocks() {
             uint32_t head_block = database.head_block_num();
             if (history_blocks <= head_block) {
-                uint32_t need_block = head_block - history_blocks + 1;
+                uint32_t need_block = head_block - history_blocks;
                 const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
                 auto it = idx.begin();
                 while (it != idx.end() && it->block <= need_block) {
@@ -117,7 +117,6 @@ namespace golos { namespace plugins { namespace operation_history {
         void on_operation(golos::chain::operation_notification& note) {
             if (filter_content) {
                 note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
-                erase_old_blocks();
             } else {
                 note.op.visit(operation_visitor(database, note, start_block));
             }
@@ -258,9 +257,11 @@ namespace golos { namespace plugins { namespace operation_history {
         ilog("operation_history: start_block ${s}", ("s", pimpl->start_block));
 
         if (options.count("history-blocks")) {
-            pimpl->filter_content = true;
             uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
             pimpl->history_blocks = history_blocks;
+            pimpl->database.applied_block.connect([&](const signed_block& block){
+                pimpl->erase_old_blocks();
+            });
         } else {
             pimpl->history_blocks = UINT32_MAX;
         }

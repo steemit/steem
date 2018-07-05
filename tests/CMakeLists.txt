@@ -71,6 +71,10 @@ add_exec_test(NAME "operation_history_blocks" FILES
     "plugin_tests/main.cpp"
     "plugin_tests/operation_history_blocks_test.cpp")
 
+add_exec_test(NAME "short_list_operation_postfix" FILES
+    "plugin_tests/main.cpp"
+    "plugin_tests/short_list_operation_postfix_test.cpp")
+
 add_exec_test(NAME "account_history_blocks" FILES
     "plugin_tests/main.cpp"
     "plugin_tests/account_history_blocks_test.cpp")

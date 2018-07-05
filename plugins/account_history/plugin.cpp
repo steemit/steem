@@ -78,7 +78,7 @@ if( options.count(name) ) { \
         void erase_old_blocks() {
             uint32_t head_block = database.head_block_num();
             if (history_blocks <= head_block) {
-                uint32_t need_block = head_block - history_blocks + 1;
+                uint32_t need_block = head_block - history_blocks;
                 const auto& idx = database.get_index<account_history_index>().indices().get<by_location>();
                 auto it = idx.begin();
                 while (it != idx.end() && it->block <= need_block) {
@@ -106,7 +106,6 @@ if( options.count(name) ) { \
                     note.op.visit(operation_visitor(database, note, item));
                 }
             }
-            erase_old_blocks();
         }
 
         std::map<uint32_t, applied_operation> get_account_history(
@@ -397,6 +396,9 @@ if( options.count(name) ) { \
         if (options.count("history-blocks")) {
             uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
             pimpl->history_blocks = history_blocks;
+            pimpl->database.applied_block.connect([&](const signed_block& block){
+                pimpl->erase_old_blocks();
+            });
         } else {
             pimpl->history_blocks = UINT32_MAX;
         }
