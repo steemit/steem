@@ -26,12 +26,16 @@ script:
     elif [ -n "$TRAVIS_TAG" ]; then
       export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
       export EXPORTNAME="$DOCKERNAME";
-    else
+    elif [ "$DOCKERNAME" == "-testnet" ] || [ "$DOCKERNAME" == "-test" ]; then
       export DOCKERNAME=develop"$DOCKERNAME";
+    else
+      export DOCKERNAME="";
     fi
   - echo "$DOCKERFILE"
   - echo "$DOCKERNAME"
-  - docker build -t goloschain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .
+  - if [ -n "$DOCKERNAME" ]; then
+      docker build -t goloschain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .;
+    fi
 
 after_success:
   - echo "$EXPORTNAME"
