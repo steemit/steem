@@ -183,6 +183,10 @@ namespace golos { namespace protocol {
         void withdraw_vesting_operation::validate() const {
             validate_account_name(account);
             FC_ASSERT(is_asset_type(vesting_shares, VESTS_SYMBOL), "Amount must be GESTS");
+            FC_ASSERT(
+                vesting_shares.amount >= 0,
+                "Cannot withdraw negative GESTS. account: ${account}, vests:${vests}",
+                ("account", account)("vests", vesting_shares));
         }
 
         void set_withdraw_vesting_route_operation::validate() const {
