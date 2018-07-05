@@ -352,6 +352,22 @@ namespace golos { namespace chain {
             return _clear_votes_block > head_block_num();
         }
 
+        void database::set_store_account_metadata(store_metadata_modes store_account_metadata) {
+            _store_account_metadata = store_account_metadata;
+        }
+
+        void database::set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata) {
+            _accounts_to_store_metadata = accounts_to_store_metadata;
+        }
+
+        bool database::store_metadata_for_account(const std::string& name) const {
+            if (_store_account_metadata != store_metadata_for_listed) {
+                return _store_account_metadata == store_metadata_for_all;
+            }
+            auto& v = _accounts_to_store_metadata;
+            return std::find(v.begin(), v.end(), name) != v.end();
+        }
+
         void database::set_skip_virtual_ops() {
             _skip_virtual_ops = true;
         }
@@ -3011,11 +3027,13 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_MINER_ACCOUNT;
                 });
-#ifndef IS_LOW_MEM
-                create<account_metadata_object>([&](account_metadata_object& m) {
-                    m.account = STEEMIT_MINER_ACCOUNT;
-                });
-#endif
+
+                if (store_metadata_for_account(STEEMIT_MINER_ACCOUNT)) {
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = STEEMIT_MINER_ACCOUNT;
+                    });
+                }
+
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_MINER_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -3025,11 +3043,13 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_NULL_ACCOUNT;
                 });
-#ifndef IS_LOW_MEM
-                create<account_metadata_object>([&](account_metadata_object& m) {
-                    m.account = STEEMIT_NULL_ACCOUNT;
-                });
-#endif
+                
+                if (store_metadata_for_account(STEEMIT_NULL_ACCOUNT)) {
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = STEEMIT_NULL_ACCOUNT;
+                    });
+                }
+                
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_NULL_ACCOUNT;
                     auth.owner.weight_threshold = 1;
@@ -3039,11 +3059,13 @@ namespace golos { namespace chain {
                 create<account_object>([&](account_object &a) {
                     a.name = STEEMIT_TEMP_ACCOUNT;
                 });
-#ifndef IS_LOW_MEM
-                create<account_metadata_object>([&](account_metadata_object& m) {
-                    m.account = STEEMIT_TEMP_ACCOUNT;
-                });
-#endif
+
+                if (store_metadata_for_account(STEEMIT_TEMP_ACCOUNT)) {
+                    create<account_metadata_object>([&](account_metadata_object& m) {
+                        m.account = STEEMIT_TEMP_ACCOUNT;
+                    });
+                }
+
                 create<account_authority_object>([&](account_authority_object &auth) {
                     auth.account = STEEMIT_TEMP_ACCOUNT;
                     auth.owner.weight_threshold = 0;
@@ -3057,11 +3079,13 @@ namespace golos { namespace chain {
                         a.memo_key = init_public_key;
                         a.balance = asset(i ? 0 : init_supply, STEEM_SYMBOL);
                     });
-#ifndef IS_LOW_MEM
-                    create<account_metadata_object>([&](account_metadata_object& m) {
-                        m.account = name;
-                    });
-#endif
+
+                    if (store_metadata_for_account(name)) {
+                        create<account_metadata_object>([&](account_metadata_object& m) {
+                            m.account = name;
+                        });
+                    }
+
                     create<account_authority_object>([&](account_authority_object &auth) {
                         auth.account = name;
                         auth.owner.add_authority(init_public_key, 1);
@@ -3120,12 +3144,14 @@ namespace golos { namespace chain {
                         a.memo_key = account.keys.memo_key;
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
                     });
-#ifndef IS_LOW_MEM
-                    create<account_metadata_object>([&](account_metadata_object& m) {
-                        m.account = account.name;
-                        m.json_metadata = "{created_at: 'GENESIS'}";
-                    });
-#endif
+
+                    if (store_metadata_for_account(account.name)) {
+                        create<account_metadata_object>([&](account_metadata_object& m) {
+                            m.account = account.name;
+                            m.json_metadata = "{created_at: 'GENESIS'}";
+                        });
+                    }
+                    
                     create<account_authority_object>([&](account_authority_object& auth) {
                         auth.account = account.name;
                         auth.owner.weight_threshold = 1;

@@ -72,6 +72,12 @@ namespace golos { namespace chain {
                 skip_database_locking = 1 << 15 ///< used to skip locking of database
             };
 
+            enum store_metadata_modes {
+                store_metadata_for_all,
+                store_metadata_for_listed,
+                store_metadata_for_nobody
+            };
+
             /**
              * @brief Open a database, creating a new one if necessary
              *
@@ -99,6 +105,9 @@ namespace golos { namespace chain {
             void set_clear_votes(uint32_t clear_votes_block);
             void set_skip_virtual_ops();
             bool clear_votes();
+            void set_store_account_metadata(store_metadata_modes store_account_metadata);
+            void set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata);
+            bool store_metadata_for_account(const std::string& name) const;
 
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -618,6 +627,8 @@ namespace golos { namespace chain {
             uint32_t _clear_votes_block = 0;
             bool _skip_virtual_ops = false;
             bool _enable_plugins_on_push_transaction = true;
+            store_metadata_modes _store_account_metadata = store_metadata_for_all;
+            std::vector<std::string> _accounts_to_store_metadata;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

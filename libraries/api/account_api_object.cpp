@@ -44,10 +44,10 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     posting = authority(auth.posting);
     last_owner_update = auth.last_owner_update;
 
-#ifndef IS_LOW_MEM
-    const auto& meta = db.get<account_metadata_object, by_account>(name);
-    json_metadata = golos::chain::to_string(meta.json_metadata);
-#endif
+    auto meta = db.find<account_metadata_object, by_account>(name);
+    if (meta != nullptr) {
+        json_metadata = golos::chain::to_string(meta->json_metadata);
+    }
 
     auto post = db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(name, bandwidth_type::post));
     if (post != nullptr) {

@@ -55,6 +55,10 @@ namespace chain {
 
         bool single_write_thread = false;
 
+        golos::chain::database::store_metadata_modes store_account_metadata; 
+
+        std::vector<std::string> accounts_to_store_metadata;
+
         plugin_impl() {
             // get default settings
             read_wait_micro = db.read_wait_micro();
@@ -232,6 +236,12 @@ namespace chain {
             ) (
                 "replay-if-corrupted", boost::program_options::bool_switch()->default_value(true),
                 "replay all blocks if shared memory is corrupted"
+            ) (
+                "store-account-metadata", boost::program_options::value<bool>(),
+                "store account metadata for all accounts if true, for no one if else, otherwise for specified in store-account-metadata-list"
+            ) (
+                "store-account-metadata-list", boost::program_options::value<std::string>(),
+                "names of accounts to store metadata"
             );
         cli.add_options()
             (
@@ -313,6 +323,22 @@ namespace chain {
                 my->loaded_checkpoints[item.first] = item.second;
             }
         }
+
+        if (options.count("store-account-metadata")) {
+            if (options.at("store-account-metadata").as<bool>()) {
+                my->store_account_metadata = golos::chain::database::store_metadata_for_all;
+            } else {
+                my->store_account_metadata = golos::chain::database::store_metadata_for_nobody;
+                wlog("Account metadata will be not stored for any item of store-account-metadata-list because store-account-metadata is false");
+            }
+        } else {
+            my->store_account_metadata = golos::chain::database::store_metadata_for_listed;
+        }
+
+        if (options.count("store-account-metadata-list")) {
+            std::string str_accs = options["store-account-metadata-list"].as<std::string>();
+            my->accounts_to_store_metadata = fc::json::from_string(str_accs).as<std::vector<std::string>>();
+        }
     }
 
     void plugin::plugin_startup() {
@@ -338,6 +364,10 @@ namespace chain {
         my->db.set_min_free_shared_memory_size(my->min_free_shared_memory_size);
 
         my->db.set_clear_votes(my->clear_votes_before_block);
+
+        my->db.set_store_account_metadata(my->store_account_metadata);
+
+        my->db.set_accounts_to_store_metadata(my->accounts_to_store_metadata);
 
         if(my->skip_virtual_ops) {
             my->db.set_skip_virtual_ops();
