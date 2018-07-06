@@ -990,17 +990,8 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-inline const void database::push_virtual_operation( const operation& op, bool force )
+inline const void database::push_virtual_operation( const operation& op )
 {
-   /*
-   if( !force )
-   {
-      #if defined( IS_LOW_MEM ) && ! defined( IS_TEST_NET )
-      return;
-      #endif
-   }
-   */
-
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
    ++_current_virtual_op;
@@ -4716,7 +4707,7 @@ void database::apply_hardfork( uint32_t hardfork )
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
 
-   push_virtual_operation( hardfork_operation( hardfork ), true );
+   push_virtual_operation( hardfork_operation( hardfork ) );
 }
 
 void database::retally_liquidity_weight() {
