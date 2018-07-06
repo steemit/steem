@@ -1131,11 +1131,12 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
    return assets;
 }
 
-/**
- * @param to_account - the account to receive the new vesting shares
- * @param liquid     - STEEM or liquid SMT to be converted to vesting shares
- */
-asset database::create_vesting( const account_object& to_account, asset liquid, bool to_reward_balance )
+
+// Create vesting, then a caller-supplied callback after determining how many shares to create, but before
+// we modify the database.
+// This allows us to implement virtual op pre-notifications in the Before function.
+template< typename Before >
+asset create_vesting2( database& db, const account_object& to_account, asset liquid, bool to_reward_balance, Before&& f )
 {
    try
    {
@@ -1163,18 +1164,19 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
          // Get share price.
-         const auto& smt = get< smt_token_object, by_symbol >( liquid.symbol );
+         const auto& smt = db.get< smt_token_object, by_symbol >( liquid.symbol );
          FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
+         f( new_vesting );
          // Add new vesting to owner's balance.
          if( to_reward_balance )
-            adjust_reward_balance( to_account, liquid, new_vesting );
+            db.adjust_reward_balance( to_account, liquid, new_vesting );
          else
-            adjust_balance( to_account, new_vesting );
+            db.adjust_balance( to_account, new_vesting );
          // Update global vesting pool numbers.
-         modify( smt, [&]( smt_token_object& smt_object )
+         db.modify( smt, [&]( smt_token_object& smt_object )
          {
             if( to_reward_balance )
             {
@@ -1197,17 +1199,18 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       FC_ASSERT( liquid.symbol == STEEM_SYMBOL );
       // ^ A novelty, needed but risky in case someone managed to slip SBD/TESTS here in blockchain history.
       // Get share price.
-      const auto& cprops = get_dynamic_global_properties();
+      const auto& cprops = db.get_dynamic_global_properties();
       price vesting_share_price = to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price();
       // Calculate new vesting from provided liquid using share price.
       asset new_vesting = calculate_new_vesting( vesting_share_price );
+      f( new_vesting );
       // Add new vesting to owner's balance.
       if( to_reward_balance )
-         adjust_reward_balance( to_account, liquid, new_vesting );
+         db.adjust_reward_balance( to_account, liquid, new_vesting );
       else
-         adjust_balance( to_account, new_vesting );
+         db.adjust_balance( to_account, new_vesting );
       // Update global vesting pool numbers.
-      modify( cprops, [&]( dynamic_global_property_object& props )
+      db.modify( cprops, [&]( dynamic_global_property_object& props )
       {
          if( to_reward_balance )
          {
@@ -1222,11 +1225,20 @@ asset database::create_vesting( const account_object& to_account, asset liquid, 
       } );
       // Update witness voting numbers.
       if( !to_reward_balance )
-         adjust_proxied_witness_votes( to_account, new_vesting.amount );
+         db.adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
       return new_vesting;
    }
    FC_CAPTURE_AND_RETHROW( (to_account.name)(liquid) )
+}
+
+/**
+ * @param to_account - the account to receive the new vesting shares
+ * @param liquid     - STEEM or liquid SMT to be converted to vesting shares
+ */
+asset database::create_vesting( const account_object& to_account, asset liquid, bool to_reward_balance )
+{
+   return create_vesting2( *this, to_account, liquid, to_reward_balance, []( asset vests_created ) {} );
 }
 
 fc::sha256 database::get_pow_target()const
