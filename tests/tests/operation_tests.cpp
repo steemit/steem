@@ -6290,7 +6290,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
    {
       BOOST_TEST_MESSAGE( "Testing: delegate_vesting_shares_apply" );
       signed_transaction tx;
-      ACTORS( (alice)(bob) )
+      ACTORS( (alice)(bob)(charlie) )
       generate_block();
 
       vest( "alice", ASSET( "1000.000 TESTS" ) );
@@ -6345,6 +6345,16 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "20000000.000000 VESTS"));
       BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "20000000.000000 VESTS"));
 
+      BOOST_TEST_MESSAGE( "--- Test failure delegating delgated VESTS." );
+
+      op.delegator = "bob";
+      op.delegatee = "charlie";
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
       BOOST_TEST_MESSAGE( "--- Test that effective vesting shares is accurate and being applied." );
       tx.operations.clear();
       tx.signatures.clear();
@@ -6373,8 +6383,6 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( vote_op );
       sign( tx, bob_private_key );
-
-      auto old_voting_power = get_voting_power( bob_acc );
 
       db->push_transaction( tx, 0 );
       generate_blocks(1);

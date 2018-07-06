@@ -1809,10 +1809,10 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
             /// discount weight by time
             uint128_t w(max_vote_weight);
-            uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( STEEM_REVERSE_AUCTION_WINDOW_SECONDS ) );
+            uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
 
             w *= delta_t;
-            w /= STEEM_REVERSE_AUCTION_WINDOW_SECONDS;
+            w /= dgpo.reverse_auction_seconds;
             cv.weight = w.to_uint64();
          }
          else
@@ -2693,13 +2693,18 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
    {
+      auto max_mana = util::get_effective_vesting_shares( delegator );
+
       _db.modify( delegator, [&]( account_object& a )
       {
-         util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+         util::manabar_params params( max_mana, STEEM_VOTING_MANA_REGENERATION_SECONDS );
          a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
+
+      // Assume delegated VESTS are used first when consuming mana. You cannot delegate received vesting shares
+      available_shares.amount = std::min( available_shares.amount, max_mana - delegator.received_vesting_shares.amount );
 
       if( delegator.next_vesting_withdrawal < fc::time_point_sec::maximum()
          && delegator.to_withdraw - delegator.withdrawn > delegator.vesting_withdraw_rate.amount )
