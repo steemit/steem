@@ -305,6 +305,31 @@ namespace golos { namespace chain {
             fc::path _chain_dir;
         };
 
+        struct add_operations_database_fixture : public database_fixture {
+            typedef golos::plugins::operation_history::plugin plugin_type;
+
+            add_operations_database_fixture();
+            ~add_operations_database_fixture() override;
+
+            void add_operations();
+
+            plugin_type* _plg;
+            std::map<std::string, std::string> _added_ops;
+        };
+
+        struct add_accounts_database_fixture : public add_operations_database_fixture {
+            typedef golos::plugins::account_history::plugin plugin_type;
+
+            add_accounts_database_fixture();
+            ~add_accounts_database_fixture() override;
+
+            void add_accounts();
+
+            plugin_type* _plg;
+            fc::flat_set<golos::chain::account_name_type> _account_names;
+            //fc::flat_map<std::string, std::string> _added_accounts;
+        };
+
         namespace test {
             bool _push_block(database &db, const signed_block &b, uint32_t skip_flags = 0);
 

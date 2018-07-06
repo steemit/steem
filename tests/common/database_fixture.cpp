@@ -14,6 +14,8 @@
 
 //using namespace golos::chain::test;
 
+#define STEEM_NAMESPACE_PREFIX std::string("golos::protocol::")
+
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
 namespace golos { namespace chain {
@@ -96,6 +98,155 @@ namespace golos { namespace chain {
             }
             FC_LOG_AND_RETHROW()
         }
+
+        struct app_initialise {
+            app_initialise() = default;
+            ~app_initialise() = default;
+
+            template<class plugin_type>
+            plugin_type* get_plugin() {
+                int argc = boost::unit_test::framework::master_test_suite().argc;
+                char **argv = boost::unit_test::framework::master_test_suite().argv;
+                for (int i = 1; i < argc; i++) {
+                    const std::string arg = argv[i];
+                    if (arg == "--record-assert-trip") {
+                        fc::enable_record_assert_trip = true;
+                    }
+                    if (arg == "--show-test-names") {
+                        std::cout << "running test "
+                                  << boost::unit_test::framework::current_test_case().p_name
+                                  << std::endl;
+                    }
+                }
+                auto plg = &appbase::app().register_plugin<plugin_type>();
+                appbase::app().initialize<plugin_type>(argc, argv);
+                return plg;
+            }
+        };
+
+        add_operations_database_fixture::add_operations_database_fixture() : _plg(nullptr) {
+            try {
+                ilog("add_operations_database_fixture: begin");
+
+                _plg = app_initialise().get_plugin<plugin_type>();
+                initialize();
+                open_database();
+            } catch (const fc::exception &e) {
+                edump((e.to_detail_string()));
+                throw;
+            }
+        }
+
+        add_operations_database_fixture::~add_operations_database_fixture() try {
+            ilog("add_operations_database_fixture: end");
+        } FC_LOG_AND_RETHROW();
+
+        void add_operations_database_fixture::add_operations() try {
+            ACTORS((alice)(bob)(sam))
+            fund("alice", 10000);
+            vest("alice", 10000);
+            fund("bob", 7500);
+            vest("bob", 7500);
+            fund("sam", 8000);
+            vest("sam", 8000);
+
+            db->set_clear_votes(0xFFFFFFFF);
+
+            signed_transaction tx;
+
+            comment_operation com;
+            com.author = "bob";
+            com.permlink = "test";
+            com.parent_author = "";
+            com.parent_permlink = "test";
+            com.title = "foo";
+            com.body = "bar";
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.operations.push_back(com);
+            tx.sign(bob_private_key, db->get_chain_id());
+            db->push_transaction(tx, 0);
+            generate_block();
+            _added_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "comment_operation"));
+            ilog("Generate: " + tx.id().str() + " comment_operation");
+            tx.operations.clear();
+            tx.signatures.clear();
+
+            vote_operation vote;
+            vote.voter = "alice";
+            vote.author = "bob";
+            vote.permlink = "test";
+            vote.weight = -1; ///< Nessary for the posiblity of delet_comment_operation.
+            tx.operations.push_back(vote);
+            vote.voter = "bob";
+            tx.operations.push_back(vote);
+            vote.voter = "sam";
+            tx.operations.push_back(vote);
+            tx.sign(alice_private_key, db->get_chain_id());
+            tx.sign(bob_private_key, db->get_chain_id());
+            tx.sign(sam_private_key, db->get_chain_id());
+            db->push_transaction(tx, 0);
+            generate_block();
+            _added_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "vote_operation"));
+            ilog("Generate: " + tx.id().str() + " vote_operation");
+            tx.operations.clear();
+            tx.signatures.clear();
+
+            delete_comment_operation dco;
+            dco.author = "bob";
+            dco.permlink = "test";
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.operations.push_back(dco);
+            tx.sign(bob_private_key, db->get_chain_id());
+            db->push_transaction(tx, 0);
+            generate_block();
+            _added_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "delete_comment_operation"));
+            ilog("Generate: " + tx.id().str() + " delete_comment_operation");
+            tx.operations.clear();
+            tx.signatures.clear();
+
+            account_create_operation aco;
+            aco.new_account_name = "dave";
+            aco.creator = STEEMIT_INIT_MINER_NAME;
+            aco.owner = authority(1, init_account_pub_key, 1);
+            aco.active = aco.owner;
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.operations.push_back(aco);
+            tx.sign(init_account_priv_key, db->get_chain_id());
+            db->push_transaction(tx, 0);
+            generate_block();
+            _added_ops.insert(std::make_pair(tx.id().str(), STEEM_NAMESPACE_PREFIX + "account_create_operation"));
+            ilog("Generate: " + tx.id().str() + " account_create_operation");
+            tx.operations.clear();
+            tx.signatures.clear();
+
+            validate_database();
+        } FC_LOG_AND_RETHROW();
+
+        add_accounts_database_fixture::add_accounts_database_fixture() : _plg(nullptr) {
+            try {
+                ilog("add_accounts_database_fixture: begin");
+
+                _account_names.insert("alice");
+                _account_names.insert("bob");
+                _account_names.insert("sam");
+                _account_names.insert("dave");
+
+                _plg = app_initialise().get_plugin<plugin_type>();
+                initialize();
+                open_database();
+            } catch (const fc::exception &e) {
+                edump((e.to_detail_string()));
+                throw;
+            }
+        }
+
+        add_accounts_database_fixture::~add_accounts_database_fixture() {
+            ilog("add_accounts_database_fixture: end");
+        }
+
+        void add_accounts_database_fixture::add_accounts() try {
+            add_operations_database_fixture::add_operations();
+        } FC_LOG_AND_RETHROW();
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {
             return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));

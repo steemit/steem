@@ -6,9 +6,12 @@
 #include <boost/algorithm/string.hpp>
 
 #define STEEM_NAMESPACE_PREFIX "golos::protocol::"
+#define OPERATION_POSTFIX "_operation"
 
 #define CHECK_ARG_SIZE(s) \
    FC_ASSERT( args.args->size() == s, "Expected #s argument(s), was ${n}", ("n", args.args->size()) );
+
+
 
 namespace golos { namespace plugins { namespace operation_history {
 
@@ -20,35 +23,40 @@ namespace golos { namespace plugins { namespace operation_history {
     struct operation_visitor {
         operation_visitor(
             golos::chain::database& db,
-            golos::chain::operation_notification& op_note)
+            golos::chain::operation_notification& op_note,
+            uint32_t start_block)
             : database(db),
-              note(op_note) {
+              note(op_note),
+              start_block(start_block) {
         }
 
         using result_type = void;
 
         golos::chain::database& database;
         golos::chain::operation_notification& note;
+        uint32_t start_block;
 
         template<typename Op>
         void operator()(Op&&) const {
-            note.stored_in_db = true;
+            if (start_block <= database.head_block_num()) {
+                note.stored_in_db = true;
 
-            database.create<operation_object>([&](operation_object& obj) {
-                note.db_id = obj.id._id;
+                database.create<operation_object>([&](operation_object& obj) {
+                    note.db_id = obj.id._id;
 
-                obj.trx_id = note.trx_id;
-                obj.block = note.block;
-                obj.trx_in_block = note.trx_in_block;
-                obj.op_in_trx = note.op_in_trx;
-                obj.virtual_op = note.virtual_op;
-                obj.timestamp = database.head_block_time();
+                    obj.trx_id = note.trx_id;
+                    obj.block = note.block;
+                    obj.trx_in_block = note.trx_in_block;
+                    obj.op_in_trx = note.op_in_trx;
+                    obj.virtual_op = note.virtual_op;
+                    obj.timestamp = database.head_block_time();
 
-                const auto size = fc::raw::pack_size(note.op);
-                obj.serialized_op.resize(size);
-                fc::datastream<char*> ds(obj.serialized_op.data(), size);
-                fc::raw::pack(ds, note.op);
-            });
+                    const auto size = fc::raw::pack_size(note.op);
+                    obj.serialized_op.resize(size);
+                    fc::datastream<char*> ds(obj.serialized_op.data(), size);
+                    fc::raw::pack(ds, note.op);
+                });
+            }
         }
     };
 
@@ -60,7 +68,7 @@ namespace golos { namespace plugins { namespace operation_history {
             const fc::flat_set<std::string>& ops_list,
             bool is_blacklist,
             uint32_t block)
-            : operation_visitor(db, note),
+            : operation_visitor(db, note, block),
               filter(ops_list),
               blacklist(is_blacklist),
               start_block(block) {
@@ -72,9 +80,6 @@ namespace golos { namespace plugins { namespace operation_history {
 
         template <typename T>
         void operator()(const T& op) const {
-            if (database.head_block_num() < start_block) {
-                return;
-            }
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
                 if (!blacklist) {
                     operation_visitor::operator()(op);
@@ -94,11 +99,26 @@ namespace golos { namespace plugins { namespace operation_history {
 
         ~plugin_impl() = default;
 
+        void erase_old_blocks() {
+            uint32_t head_block = database.head_block_num();
+            if (history_blocks <= head_block) {
+                uint32_t need_block = head_block - history_blocks;
+                const auto& idx = database.get_index<operation_index>().indices().get<by_location>();
+                auto it = idx.begin();
+                while (it != idx.end() && it->block <= need_block) {
+                    auto next_it = it;
+                    ++next_it;
+                    database.remove(*it);
+                    it = next_it;
+                }
+            }
+        }
+
         void on_operation(golos::chain::operation_notification& note) {
             if (filter_content) {
                 note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
             } else {
-                note.op.visit(operation_visitor(database, note));
+                note.op.visit(operation_visitor(database, note, start_block));
             }
         }
 
@@ -135,7 +155,8 @@ namespace golos { namespace plugins { namespace operation_history {
 
         bool filter_content = false;
         uint32_t start_block = 0;
-        bool blacklist = false;
+        uint32_t history_blocks = UINT32_MAX;
+        bool blacklist = true;
         fc::flat_set<std::string> ops_list;
         golos::chain::database& database;
     };
@@ -173,6 +194,10 @@ namespace golos { namespace plugins { namespace operation_history {
             "history-start-block",
             boost::program_options::value<uint32_t>()->composing(),
             "Defines starting block from which recording stats."
+        ) (
+            "history-blocks",
+            boost::program_options::value<uint32_t>()->composing(),
+            "Defines depth of history for recording stats."
         );
 
         cfg.add(cli);
@@ -196,7 +221,12 @@ namespace golos { namespace plugins { namespace operation_history {
 
                 for (const auto& op : ops) {
                     if (op.size()) {
-                        pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
+                        std::size_t pos = op.find(OPERATION_POSTFIX);
+                        if (pos not_eq std::string::npos and (pos + strlen(OPERATION_POSTFIX)) == op.size()) {
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op);
+                        } else {
+                            pimpl->ops_list.insert(STEEM_NAMESPACE_PREFIX + op + OPERATION_POSTFIX);
+                        }
                     }
                 }
             }
@@ -225,6 +255,18 @@ namespace golos { namespace plugins { namespace operation_history {
             pimpl->start_block = 0;
         }
         ilog("operation_history: start_block ${s}", ("s", pimpl->start_block));
+
+        if (options.count("history-blocks")) {
+            uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
+            pimpl->history_blocks = history_blocks;
+            pimpl->database.applied_block.connect([&](const signed_block& block){
+                pimpl->erase_old_blocks();
+            });
+        } else {
+            pimpl->history_blocks = UINT32_MAX;
+        }
+        ilog("operation_history: history-blocks ${s}", ("s", pimpl->history_blocks));
+
         JSON_RPC_REGISTER_API(name());
         ilog("operation_history plugin: plugin_initialize() end");
     }

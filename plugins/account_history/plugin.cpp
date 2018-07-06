@@ -18,7 +18,7 @@ namespace golos { namespace plugins { namespace account_history {
 
 using namespace golos::protocol;
 using namespace golos::chain;
-// 
+//
 template<typename T>
 T dejsonify(const string &s) {
     return fc::json::from_string(s).as<T>();
@@ -30,7 +30,7 @@ if( options.count(name) ) { \
     const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
     std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
 }
-// 
+//
 
     struct operation_visitor final {
         operation_visitor(
@@ -59,6 +59,7 @@ if( options.count(name) ) { \
             }
 
             database.create<account_history_object>([&](account_history_object& history) {
+                history.block = note.block;
                 history.account = account;
                 history.sequence = sequence;
                 history.op = operation_history::operation_id_type(note.db_id);
@@ -73,6 +74,21 @@ if( options.count(name) ) { \
         }
 
         ~plugin_impl() = default;
+
+        void erase_old_blocks() {
+            uint32_t head_block = database.head_block_num();
+            if (history_blocks <= head_block) {
+                uint32_t need_block = head_block - history_blocks;
+                const auto& idx = database.get_index<account_history_index>().indices().get<by_location>();
+                auto it = idx.begin();
+                while (it != idx.end() && it->block <= need_block) {
+                    auto next_it = it;
+                    ++next_it;
+                    database.remove(*it);
+                    it = next_it;
+                }
+            }
+        }
 
         void on_operation(const golos::chain::operation_notification& note) {
             if (!note.stored_in_db) {
@@ -115,6 +131,7 @@ if( options.count(name) ) { \
 
         fc::flat_map<std::string, std::string> tracked_accounts;
         golos::chain::database& database;
+        uint32_t history_blocks = UINT32_MAX;
     };
 
     DEFINE_API(plugin, get_account_history) {
@@ -375,6 +392,18 @@ if( options.count(name) ) { \
     void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
         ilog("account_history plugin: plugin_initialize() begin");
         pimpl = std::make_unique<plugin_impl>();
+
+        if (options.count("history-blocks")) {
+            uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();
+            pimpl->history_blocks = history_blocks;
+            pimpl->database.applied_block.connect([&](const signed_block& block){
+                pimpl->erase_old_blocks();
+            });
+        } else {
+            pimpl->history_blocks = UINT32_MAX;
+        }
+        ilog("account_history: history-blocks ${s}", ("s", pimpl->history_blocks));
+
         // this is worked, because the appbase initialize required plugins at first
         pimpl->database.pre_apply_operation.connect([&](golos::chain::operation_notification& note){
             pimpl->on_operation(note);
