@@ -990,13 +990,30 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-inline const void database::push_virtual_operation( const operation& op )
+void database::push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
+   notify_post_apply_operation( note );
+}
+
+void database::pre_push_virtual_operation( const operation& op )
+{
+   FC_ASSERT( is_virtual_operation( op ) );
+   operation_notification note(op);
+   ++_current_virtual_op;
+   note.virtual_op = _current_virtual_op;
+   notify_pre_apply_operation( note );
+}
+
+void database::post_push_virtual_operation( const operation& op )
+{
+   FC_ASSERT( is_virtual_operation( op ) );
+   operation_notification note(op);
+   note.virtual_op = _current_virtual_op;
    notify_post_apply_operation( note );
 }
 
@@ -1541,6 +1558,10 @@ void database::process_vesting_withdrawals()
             {
                const auto& to_account = get< account_object, by_name >( itr->to_account );
 
+               operation vop = fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL ), asset( to_deposit, VESTS_SYMBOL ) );
+
+               pre_push_virtual_operation( vop );
+
                modify( to_account, [&]( account_object& a )
                {
                   a.vesting_shares.amount += to_deposit;
@@ -1548,7 +1569,7 @@ void database::process_vesting_withdrawals()
 
                adjust_proxied_witness_votes( to_account, to_deposit );
 
-               push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL ), asset( to_deposit, VESTS_SYMBOL ) ) );
+               post_push_virtual_operation( vop );
             }
          }
       }
@@ -1568,6 +1589,10 @@ void database::process_vesting_withdrawals()
 
             if( to_deposit > 0 )
             {
+               operation vop = fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL), converted_steem );
+
+               pre_push_virtual_operation( vop );
+
                modify( to_account, [&]( account_object& a )
                {
                   a.balance += converted_steem;
@@ -1579,7 +1604,7 @@ void database::process_vesting_withdrawals()
                   o.total_vesting_shares.amount -= to_deposit;
                });
 
-               push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL), converted_steem ) );
+               post_push_virtual_operation( vop );
             }
          }
       }
@@ -1588,6 +1613,8 @@ void database::process_vesting_withdrawals()
       FC_ASSERT( to_convert >= 0, "Deposited more vests than were supposed to be withdrawn" );
 
       auto converted_steem = asset( to_convert, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+      operation vop = fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_convert, VESTS_SYMBOL ), converted_steem );
+      pre_push_virtual_operation( vop );
 
       modify( from_account, [&]( account_object& a )
       {
@@ -1615,7 +1642,7 @@ void database::process_vesting_withdrawals()
       if( to_withdraw > 0 )
          adjust_proxied_witness_votes( from_account, -to_withdraw );
 
-      push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_convert, VESTS_SYMBOL ), converted_steem ) );
+      post_push_virtual_operation( vop );
    }
 }
 
@@ -1681,9 +1708,13 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
             {
                unclaimed_rewards -= claim;
                const auto& voter = get( item->voter );
-               auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-
-               push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
+               operation vop = curation_reward_operation( voter.name, asset(0, VESTS_SYMBOL), c.author, to_string( c.permlink ) );
+               create_vesting2( *this, voter, asset( claim, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ),
+                  [&]( const asset& reward )
+                  {
+                     vop.get< curation_reward_operation >().reward = reward;
+                     pre_push_virtual_operation( vop );
+                  } );
 
                #ifndef IS_LOW_MEM
                   modify( voter, [&]( account_object& a )
@@ -1691,6 +1722,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                      a.curation_rewards += claim;
                   });
                #endif
+               post_push_virtual_operation( vop );
             }
          }
       }
@@ -1743,8 +1775,15 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             for( auto& b : comment.beneficiaries )
             {
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEM_100_PERCENT;
-               auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-               push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
+               operation vop = comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, VESTS_SYMBOL ) );
+
+               create_vesting2( *this, get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ),
+                  [&]( const asset& reward )
+                  {
+                     vop.get< comment_benefactor_reward_operation >().reward = reward;
+                     pre_push_virtual_operation( vop );
+                  } );
+               post_push_virtual_operation( vop );
                total_beneficiary += benefactor_tokens;
             }
 
@@ -1754,13 +1793,22 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             auto vesting_steem = author_tokens - sbd_steem;
 
             const auto& author = get_account( comment.author );
-            auto vest_created = create_vesting( author, asset( vesting_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
             auto sbd_payout = create_sbd( author, asset( sbd_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+            operation vop = author_reward_operation( comment.author, to_string( comment.permlink ), sbd_payout.first, sbd_payout.second, asset( 0, VESTS_SYMBOL ) );
+
+            create_vesting2( *this, author, asset( vesting_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ),
+               [&]( const asset& vesting_payout )
+               {
+                  vop.get< author_reward_operation >().vesting_payout = vesting_payout;
+                  pre_push_virtual_operation( vop );
+               } );
 
             adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( curation_tokens, STEEM_SYMBOL ) ), to_sbd( asset( total_beneficiary, STEEM_SYMBOL ) ) );
 
-            push_virtual_operation( author_reward_operation( comment.author, to_string( comment.permlink ), sbd_payout.first, sbd_payout.second, vest_created ) );
-            push_virtual_operation( comment_reward_operation( comment.author, to_string( comment.permlink ), to_sbd( asset( claimed_reward, STEEM_SYMBOL ) ) ) );
+            post_push_virtual_operation( vop );
+            vop = comment_reward_operation( comment.author, to_string( comment.permlink ), to_sbd( asset( claimed_reward, STEEM_SYMBOL ) ) );
+            pre_push_virtual_operation( vop );
+            post_push_virtual_operation( vop );
 
             #ifndef IS_LOW_MEM
                modify( comment, [&]( comment_object& c )
@@ -2023,9 +2071,14 @@ void database::process_funds()
          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      const auto& producer_reward = create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
-      push_virtual_operation( producer_reward_operation( cwit.owner, producer_reward ) );
-
+      operation vop = producer_reward_operation( cwit.owner, asset( 0, VESTS_SYMBOL ) );
+      create_vesting2( *this, get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ), false,
+         [&]( const asset& vesting_shares )
+         {
+            vop.get< producer_reward_operation >().vesting_shares = vesting_shares;
+            pre_push_virtual_operation( vop );
+         } );
+      post_push_virtual_operation( vop );
    }
    else
    {
@@ -2142,10 +2195,17 @@ asset database::get_producer_reward()
    const auto& witness_account = get_account( props.current_witness );
 
    /// pay witness in vesting shares
-   if( props.head_block_number >= STEEM_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
+   if( props.head_block_number >= STEEM_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) )
+   {
       // const auto& witness_obj = get_witness( props.current_witness );
-      const auto& producer_reward = create_vesting( witness_account, pay );
-      push_virtual_operation( producer_reward_operation( witness_account.name, producer_reward ) );
+      operation vop = producer_reward_operation( witness_account.name, asset( 0, VESTS_SYMBOL ) );
+      create_vesting2( *this, witness_account, pay, false,
+         [&]( const asset& vesting_shares )
+         {
+            vop.get< producer_reward_operation >().vesting_shares = vesting_shares;
+            pre_push_virtual_operation( vop );
+         } );
+      post_push_virtual_operation( vop );
    }
    else
    {

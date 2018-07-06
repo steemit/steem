@@ -239,7 +239,9 @@ namespace steem { namespace chain {
          void pop_block();
          void clear_pending();
 
-         inline const void push_virtual_operation( const operation& op ); // vops are not needed for low mem. Force will push them on low mem.
+         void push_virtual_operation( const operation& op );
+         void pre_push_virtual_operation( const operation& op );
+         void post_push_virtual_operation( const operation& op );
 
          /**
           *  This method is used to track applied operations during the evaluation of a block, these
