@@ -211,8 +211,10 @@
 
 #define STEEM_MIN_PAYOUT_SBD                  (asset(20,SBD_SYMBOL))
 
-#define STEEM_SBD_STOP_PERCENT                (5*STEEM_1_PERCENT ) // Stop printing SBD at 5% Market Cap
-#define STEEM_SBD_START_PERCENT               (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
+#define STEEM_SBD_STOP_PERCENT_HF14           (5*STEEM_1_PERCENT ) // Stop printing SBD at 5% Market Cap
+#define STEEM_SBD_STOP_PERCENT_HF20           (10*STEEM_1_PERCENT ) // Stop printing SBD at 10% Market Cap
+#define STEEM_SBD_START_PERCENT_HF14          (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
+#define STEEM_SBD_START_PERCENT_HF20          (9*STEEM_1_PERCENT) // Start reducing printing of SBD at 9% Market Cap
 
 #define STEEM_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEM_MAX_ACCOUNT_NAME_LENGTH         16
