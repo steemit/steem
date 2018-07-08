@@ -1731,16 +1731,16 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
                if( has_hardfork( STEEM_HARDFORK_0_20__2022 ) )
                {
-                              auto benefactor_sbd_steem     = ( benefactor_tokens * comment.percent_steem_dollars ) / ( 2 * STEEM_100_PERCENT ) ;
-                              auto benefactor_vesting_steem = benefactor_tokens - benefactor_sbd_steem;
-                              auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_vesting_steem, STEEM_SYMBOL ), true );
-                              auto sbd_payout = create_sbd( get_account( b.account ), asset( benefactor_sbd_steem, STEEM_SYMBOL ), true );
-                              push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), sbd_payout.first, sbd_payout.second, vest_created ) );
+                  auto benefactor_sbd_steem     = ( benefactor_tokens * comment.percent_steem_dollars ) / ( 2 * STEEM_100_PERCENT ) ;
+                  auto benefactor_vesting_steem = benefactor_tokens - benefactor_sbd_steem;
+                  auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_vesting_steem, STEEM_SYMBOL ), true );
+                  auto sbd_payout = create_sbd( get_account( b.account ), asset( benefactor_sbd_steem, STEEM_SYMBOL ), true );
+                  push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), sbd_payout.first, sbd_payout.second, vest_created ) );
                }
                else
                {
-                              auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-                              push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), vest_created ) );
+                  auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+                  push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), vest_created ) );
                }
 
                total_beneficiary += benefactor_tokens;
