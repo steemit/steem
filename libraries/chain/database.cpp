@@ -1153,7 +1153,7 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
 // we modify the database.
 // This allows us to implement virtual op pre-notifications in the Before function.
 template< typename Before >
-asset create_vesting2( database& db, const account_object& to_account, asset liquid, bool to_reward_balance, Before&& f )
+asset create_vesting2( database& db, const account_object& to_account, asset liquid, bool to_reward_balance, Before&& before_vesting_callback )
 {
    try
    {
@@ -1186,7 +1186,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
          price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
-         f( new_vesting );
+         before_vesting_callback( new_vesting );
          // Add new vesting to owner's balance.
          if( to_reward_balance )
             db.adjust_reward_balance( to_account, liquid, new_vesting );
@@ -1220,7 +1220,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       price vesting_share_price = to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price();
       // Calculate new vesting from provided liquid using share price.
       asset new_vesting = calculate_new_vesting( vesting_share_price );
-      f( new_vesting );
+      before_vesting_callback( new_vesting );
       // Add new vesting to owner's balance.
       if( to_reward_balance )
          db.adjust_reward_balance( to_account, liquid, new_vesting );
