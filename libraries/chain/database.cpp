@@ -1229,12 +1229,12 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       }
       else
       {
-         if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         if( db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             db.modify( to_account, [&]( account_object& a )
             {
                util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-               a.voting_manabar.regenerate_mana( params, head_block_time() );
+               a.voting_manabar.regenerate_mana( params, db.head_block_time() );
                a.voting_manabar.use_mana( -new_vesting.amount.value );
             });
          }
