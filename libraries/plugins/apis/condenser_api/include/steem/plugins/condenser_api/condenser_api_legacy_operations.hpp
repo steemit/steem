@@ -915,7 +915,9 @@ namespace steem { namespace plugins { namespace condenser_api {
          benefactor( op.benefactor ),
          author( op.author ),
          permlink( op.permlink ),
-         reward( legacy_asset::from_asset( op.reward ) )
+         sbd_payout( legacy_asset::from_asset( op.sbd_payout ) ),
+         steem_payout( legacy_asset::from_asset( op.steem_payout ) ),
+         vesting_payout( legacy_asset::from_asset( op.vesting_payout ) )
       {}
 
       operator comment_benefactor_reward_operation()const
@@ -924,14 +926,18 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.benefactor = benefactor;
          op.author = author;
          op.permlink = permlink;
-         op.reward = reward;
+         op.sbd_payout = sbd_payout;
+         op.steem_payout = steem_payout;
+         op.vesting_payout = vesting_payout;
          return op;
       }
 
       account_name_type benefactor;
       account_name_type author;
       string            permlink;
-      legacy_asset      reward;
+      legacy_asset      sbd_payout;
+      legacy_asset      steem_payout;
+      legacy_asset      vesting_payout;
    };
 
    struct legacy_producer_reward_operation
@@ -1547,7 +1553,7 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_fill_vesting_withdraw_operatio
 FC_REFLECT( steem::plugins::condenser_api::legacy_fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_operation, (account)(vesting_shares) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
 
