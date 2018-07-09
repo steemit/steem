@@ -4481,6 +4481,9 @@ void database::apply_hardfork( uint32_t hardfork )
 {
    if( _log_hardforks )
       elog( "HARDFORK ${hf} at block ${b}", ("hf", hardfork)("b", head_block_num()) );
+   operation hardfork_vop = hardfork_operation( hardfork );
+
+   pre_push_virtual_operation( hardfork_vop );
 
    switch( hardfork )
    {
@@ -4779,7 +4782,7 @@ void database::apply_hardfork( uint32_t hardfork )
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
 
-   push_virtual_operation( hardfork_operation( hardfork ) );
+   post_push_virtual_operation( hardfork_vop );
 }
 
 void database::retally_liquidity_weight() {
