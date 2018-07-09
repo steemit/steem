@@ -1697,7 +1697,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
       a.voting_manabar.regenerate_mana( params, now );
    });
-   FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account currently does not have power shares." );
+   FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account does not have enough mana to vote." );
 
    int16_t abs_weight = abs( o.weight );
    uint128_t used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
@@ -1708,7 +1708,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_ASSERT( max_vote_denom > 0 );
 
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
-   FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough power to vote." );
+   FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough mana to vote." );
 
    int64_t abs_rshares = used_mana.to_uint64();
 
@@ -2593,10 +2593,16 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
    _db.modify( acnt, [&]( account_object& a )
    {
+      if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+      {
+         util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+         a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
+         a.voting_manabar.use_mana( op.reward_vests.amount.value );
+      }
+
       a.vesting_shares += op.reward_vests;
       a.reward_vesting_balance -= op.reward_vests;
       a.reward_vesting_steem -= reward_vesting_steem_to_move;
-      a.voting_manabar.current_mana += op.reward_vests.amount.value;
    });
 
    _db.modify( _db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
@@ -2710,18 +2716,23 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          && delegator.to_withdraw - delegator.withdrawn > delegator.vesting_withdraw_rate.amount )
       {
          /*
-         current power shares does not include the current week's power down:
+         current voting mana does not include the current week's power down:
 
          std::min(
             account.vesting_withdraw_rate.amount.value,           // Weekly amount
             account.to_withdraw.value - account.withdrawn.value   // Or remainder
             );
 
-         But an account cannot delegate **any** power shares that they are powering down.
+         But an account cannot delegate **any** VESTS that they are powering down.
          The remaining withdrawal needs to be added in but then the current week is double counted.
          */
 
-        available_shares += delegator.vesting_withdraw_rate - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+         auto weekly_withdraw = asset( std::min(
+            delegator.vesting_withdraw_rate.amount.value,           // Weekly amount
+            delegator.to_withdraw.value - delegator.withdrawn.value   // Or remainder
+            ), VESTS_SYMBOL );
+
+         available_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
       }
    }
    else
@@ -2743,7 +2754,8 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
    {
-      FC_ASSERT( available_shares >= op.vesting_shares, "Account does not have enough vesting shares to delegate." );
+      FC_ASSERT( available_shares >= op.vesting_shares, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
+         ("acc", op.delegator)("r", op.vesting_shares)("a", available_shares) );
       FC_ASSERT( op.vesting_shares >= min_delegation, "Account must delegate a minimum of ${v}", ("v", min_delegation) );
 
       _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& obj )
@@ -2770,7 +2782,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          {
             util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
             a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
-            a.voting_manabar.current_mana += op.vesting_shares.amount.value;
+            a.voting_manabar.use_mana( -op.vesting_shares.amount.value );
          }
 
          a.received_vesting_shares += op.vesting_shares;
@@ -2782,7 +2794,8 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       auto delta = op.vesting_shares - delegation->vesting_shares;
 
       FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a difference. min_update: ${min}", ("min", min_update) );
-      FC_ASSERT( available_shares >= delta, "Account does not have enough vesting shares to delegate." );
+      FC_ASSERT( available_shares >= delta, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
+         ("acc", op.delegator)("r", delta)("a", available_shares) );
 
       _db.modify( delegator, [&]( account_object& a )
       {
@@ -2800,7 +2813,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          {
             util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
             a.voting_manabar.regenerate_mana( params, _db.head_block_time() );
-            a.voting_manabar.current_mana += delta.amount.value;
+            a.voting_manabar.use_mana( -delta.amount.value );
          }
 
          a.received_vesting_shares += delta;
