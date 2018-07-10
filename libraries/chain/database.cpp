@@ -1776,22 +1776,22 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             {
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEM_100_PERCENT;
                auto benefactor_vesting_steem = benefactor_tokens;
-               operation vop = comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), asset( 0, VESTS_SYMBOL ) );
+               auto vop = comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), asset( 0, VESTS_SYMBOL ) );
 
                if( has_hardfork( STEEM_HARDFORK_0_20__2022 ) )
                {
                   auto benefactor_sbd_steem = ( benefactor_tokens * comment.percent_steem_dollars ) / ( 2 * STEEM_100_PERCENT ) ;
                   benefactor_vesting_steem  = benefactor_tokens - benefactor_sbd_steem;
                   auto sbd_payout           = create_sbd( get_account( b.account ), asset( benefactor_sbd_steem, STEEM_SYMBOL ), true );
-                  
+
                   vop.sbd_payout   = sbd_payout.first; // SBD portion
                   vop.steem_payout = sbd_payout.second; // STEEM portion
                }
-               
+
                create_vesting2( *this, get_account( b.account ), asset( benefactor_vesting_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ),
                [&]( const asset& reward )
                {
-                  vop.get< comment_benefactor_reward_operation >().vesting_payout = reward;
+                  vop.vesting_payout = reward;
                   pre_push_virtual_operation( vop );
                });
 
