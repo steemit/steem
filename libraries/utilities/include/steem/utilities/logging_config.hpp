@@ -12,16 +12,13 @@
 
 namespace steem { namespace utilities {
 
-struct console_appender_args
-{
-   std::string appender;
-   std::string stream;
-};
-
-struct file_appender_args
+struct appender_args
 {
    std::string appender;
    std::string file;
+   std::string stream;
+
+   void validate();
 };
 
 struct logger_args
@@ -29,6 +26,8 @@ struct logger_args
    std::string name;
    std::string level;
    std::string appender;
+
+   void validate();
 };
 
 void set_logging_program_options( boost::program_options::options_description& options );
@@ -37,6 +36,5 @@ fc::optional<fc::logging_config> load_logging_config( const boost::program_optio
 
 } } // steem::utilities
 
-FC_REFLECT( steem::utilities::console_appender_args, (appender)(stream) )
-FC_REFLECT( steem::utilities::file_appender_args, (appender)(file) )
+FC_REFLECT( steem::utilities::appender_args, (appender)(file)(stream) )
 FC_REFLECT( steem::utilities::logger_args, (name)(level)(appender) )
