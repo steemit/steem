@@ -84,7 +84,6 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     else
       aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.lz4
       aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.lz4 --acl public-read
-      aws s3 cp $HOME/logs/benchmark/ops.log s3://$S3_BUCKET/ops-$VERSION.log
     fi
     if [[ ! $? -eq 0 ]]; then
       echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
