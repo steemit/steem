@@ -161,8 +161,8 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       ACTORS( (alice)(bob) )
       generate_block();
 
-      vest( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
@@ -1532,7 +1532,7 @@ BOOST_AUTO_TEST_CASE( convert_delay )
    {
       ACTORS( (alice) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "25.000 TBD" ) );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.250 TESTS" ) ) );
@@ -1776,8 +1776,8 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
    {
       ACTORS( (alice)(bob) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
@@ -1861,10 +1861,10 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
-      vest( "sam", ASSET( "10.000 TESTS" ) );
-      vest( "dave", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "sam", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "dave", ASSET( "10.000 TESTS" ) );
 
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 
@@ -2821,7 +2821,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
    {
       ACTORS( (alice) );
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
 
       price exchange_rate( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
       set_price_feed( exchange_rate );

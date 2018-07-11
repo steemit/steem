@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
 
       BOOST_TEST_MESSAGE( "--- Test account creation with temp account does not set recovery account" );
       fund( STEEM_TEMP_ACCOUNT, ASSET( "310.000 TESTS" ) );
-      vest( STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
       op.creator = STEEM_TEMP_ACCOUNT;
       op.fee = ASSET( "300.000 TESTS" );
       op.new_account_name = "bob";
@@ -622,7 +622,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       ACTORS( (alice) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -751,11 +751,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
       validate_database();
-      vest( "bob" , ASSET( "10.000 TESTS" ) );
-      vest( "sam" , ASSET( "10.000 TESTS" ) );
-      vest( "dave" , ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob" , ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "sam" , ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "dave" , ASSET( "10.000 TESTS" ) );
       generate_block();
 
       const auto& vote_idx = db->get_index< comment_vote_index >().indices().get< by_comment_voter >();
@@ -1460,7 +1460,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
       ACTORS( (alice)(bob) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
 
       BOOST_TEST_MESSAGE( "--- Test failure withdrawing negative VESTS" );
 
@@ -5767,8 +5767,8 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
 
       ACTORS( (alice)(bob) );
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
       generate_block();
 
       account_witness_proxy_operation proxy;
@@ -5915,9 +5915,9 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       BOOST_TEST_MESSAGE( "Testing: account_bandwidth" );
       ACTORS( (alice)(bob) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
 
       generate_block();
       db->skip_transaction_delta_check = false;
@@ -6080,7 +6080,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       //auto gpo = db->get_dynamic_global_properties();
       generate_blocks(1);
       fund( "alice", ASSET("1510.000 TESTS") );
-      vest( "alice", ASSET("1000.000 TESTS") );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET("1000.000 TESTS") );
 
       private_key_type priv_key = generate_private_key( "temp_key" );
 
@@ -6234,7 +6234,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
       BOOST_TEST_MESSAGE( "Testing: delegate_vesting_shares_authorities" );
       signed_transaction tx;
       ACTORS( (alice)(bob) )
-      vest( "alice", ASSET( "10000.000000 VESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10000.000 TESTS" ) );
 
       delegate_vesting_shares_operation op;
       op.vesting_shares = ASSET( "300.000000 VESTS");
@@ -6284,7 +6284,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       ACTORS( (alice)(bob) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -6377,7 +6377,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       ACTORS( (sam)(dave) )
       generate_block();
 
-      vest( "sam", ASSET( "1000.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "sam", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -6480,7 +6480,7 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
       ACTORS( (alice)(bob) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -7234,7 +7234,7 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_TEST_MESSAGE( "Testing: create_claimed_account_apply" );
 
       ACTORS( (alice) )
-      vest( STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
       generate_block();
 
       signed_transaction tx;
