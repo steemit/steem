@@ -469,9 +469,6 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 {
    try
    {
-      // Keep the key in a static variable to avoid regenerating it on every call
-      static const fc::ecc::private_key init_private_key = STEEM_INIT_PRIVATE_KEY;
-
       FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
 
       transfer_to_vesting_operation op;
@@ -486,7 +483,7 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
       // This sign() call fixes some tests, like withdraw_vesting_apply, that use this method
       //   with debug_plugin such that trx may be re-applied with less generous skip flags.
       if( from == STEEM_INIT_MINER_NAME )
-         sign( trx, init_private_key );
+         sign( trx, init_account_priv_key );
 
       db->push_transaction( trx, ~0 );
       trx.operations.clear();
