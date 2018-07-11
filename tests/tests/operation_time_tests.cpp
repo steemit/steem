@@ -3061,7 +3061,7 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
       op.fee = ASSET( "0.000 TESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
@@ -3084,7 +3084,7 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
       });
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
 
@@ -3110,7 +3110,7 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
       });
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
 
@@ -3136,7 +3136,7 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
       });
       tx.signatures.clear();
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_witness( next_witness ).recent_account_subsidies == 1000000 );
