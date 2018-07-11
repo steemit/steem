@@ -176,8 +176,7 @@ struct api_account_object
       lifetime_vote_count( a.lifetime_vote_count ),
       post_count( a.post_count ),
       can_vote( a.can_vote ),
-      voting_power( a.voting_power ),
-      last_vote_time( a.last_vote_time ),
+      voting_manabar( a.voting_manabar ),
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -205,7 +204,8 @@ struct api_account_object
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
-      last_root_post( a.last_root_post )
+      last_root_post( a.last_root_post ),
+      last_vote_time( a.last_vote_time )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -250,8 +250,7 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
-   uint16_t          voting_power = 0;
-   time_point_sec    last_vote_time;
+   util::manabar     voting_manabar;
 
    asset             balance;
    asset             savings_balance;
@@ -287,10 +286,11 @@ struct api_account_object
 
    vector< share_type > proxied_vsf_votes;
 
-   uint16_t          witnesses_voted_for;
+   uint16_t          witnesses_voted_for = 0;
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+   time_point_sec    last_vote_time;
 
    bool              is_smt = false;
 };
@@ -552,7 +552,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -562,7 +562,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)
+             (last_post)(last_root_post)(last_vote_time)
              (is_smt)
           )
 

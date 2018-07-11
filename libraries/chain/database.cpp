@@ -22,6 +22,7 @@
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/uint256.hpp>
 #include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/manabar.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -1223,9 +1224,23 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       before_vesting_callback( new_vesting );
       // Add new vesting to owner's balance.
       if( to_reward_balance )
+      {
          db.adjust_reward_balance( to_account, liquid, new_vesting );
+      }
       else
+      {
+         if( db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            db.modify( to_account, [&]( account_object& a )
+            {
+               util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+               a.voting_manabar.regenerate_mana( params, db.head_block_time() );
+               a.voting_manabar.use_mana( -new_vesting.amount.value );
+            });
+         }
+
          db.adjust_balance( to_account, new_vesting );
+      }
       // Update global vesting pool numbers.
       db.modify( cprops, [&]( dynamic_global_property_object& props )
       {
@@ -3895,6 +3910,13 @@ void database::clear_expired_delegations()
    {
       modify( get_account( itr->delegator ), [&]( account_object& a )
       {
+         if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+         {
+            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+            a.voting_manabar.regenerate_mana( params, head_block_time() );
+            a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
+         }
+
          a.delegated_vesting_shares -= itr->vesting_shares;
       });
 

@@ -4,6 +4,7 @@
 
 #include <fc/saturation.hpp>
 #include <fc/uint128.hpp>
+#include <fc/time.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/reflect/reflect.hpp>
 
@@ -58,16 +59,54 @@ struct manabar
       last_update_time = now;
    }
 
+   void regenerate_mana( const manabar_params& params, fc::time_point_sec now )
+   {
+      regenerate_mana( params, now.sec_since_epoch() );
+   }
+
    bool has_mana( int64_t mana_needed )const
    {
       return (mana_needed <= 0) || (current_mana >= mana_needed);
+   }
+
+   bool has_mana( uint64_t mana_needed )const
+   {
+      FC_ASSERT( mana_needed <= std::numeric_limits< int64_t >::max() );
+      return has_mana( (int64_t) mana_needed );
    }
 
    void use_mana( int64_t mana_used )
    {
       current_mana = fc::signed_sat_sub( current_mana, mana_used );
    }
+
+   void use_mana( uint64_t mana_used )
+   {
+      FC_ASSERT( mana_used <= std::numeric_limits< int64_t >::max() );
+      use_mana( (int64_t) mana_used );
+   }
 };
+
+template< typename T >
+int64_t get_effective_vesting_shares( const T& account )
+{
+   int64_t effective_vesting_shares =
+        account.vesting_shares.amount.value              // base vesting shares
+      + account.received_vesting_shares.amount.value     // incoming delegations
+      - account.delegated_vesting_shares.amount.value;   // outgoing delegations
+
+   // If there is a power down occuring, also reduce effective vesting shares by this week's power down amount
+   if( account.next_vesting_withdrawal != fc::time_point_sec::maximum() )
+   {
+      effective_vesting_shares -=
+         std::min(
+            account.vesting_withdraw_rate.amount.value,           // Weekly amount
+            account.to_withdraw.value - account.withdrawn.value   // Or remainder
+            );
+   }
+
+   return effective_vesting_shares;
+}
 
 } } } // steem::chain::util
 
