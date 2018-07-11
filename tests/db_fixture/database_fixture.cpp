@@ -70,15 +70,6 @@ clean_database_fixture::clean_database_fixture()
    db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
-   db_plugin->debug_update( [=]( database& db )
-   {
-      db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-      {
-         wso.median_props.account_creation_fee = ASSET( "0.100 TESTS" );
-      });
-   });
-   generate_block();
-
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
@@ -285,10 +276,13 @@ const account_object& database_fixture::account_create(
 {
    try
    {
+      auto actual_fee = std::min( fee, db->get_witness_schedule_object().median_props.account_creation_fee.amount );
+      auto fee_remainder = fee - actual_fee;
+
       account_create_operation op;
       op.new_account_name = name;
       op.creator = creator;
-      op.fee = asset( fee, STEEM_SYMBOL );
+      op.fee = asset( actual_fee, STEEM_SYMBOL );
       op.owner = authority( 1, key, 1 );
       op.active = authority( 1, key, 1 );
       op.posting = authority( 1, post_key, 1 );
@@ -303,6 +297,12 @@ const account_object& database_fixture::account_create(
       db->push_transaction( trx, 0 );
       trx.operations.clear();
       trx.signatures.clear();
+
+      if( fee_remainder > 0 )
+      {
+         idump( (fee_remainder) );
+         vest( name, fee_remainder );
+      }
 
       const account_object& acct = db->get_account( name );
 
@@ -323,7 +323,7 @@ const account_object& database_fixture::account_create(
          name,
          STEEM_INIT_MINER_NAME,
          init_account_priv_key,
-         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount, share_type( 100 ) ),
+         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
          key,
          post_key,
          "" );
@@ -352,7 +352,6 @@ const witness_object& database_fixture::witness_create(
       op.owner = owner;
       op.url = url;
       op.block_signing_key = signing_key;
-      op.props.account_creation_fee = legacy_steem_asset::from_asset( ASSET( "0.100 TESTS" ) );
       op.fee = asset( fee, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
