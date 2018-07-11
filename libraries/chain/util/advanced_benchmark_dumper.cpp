@@ -78,14 +78,13 @@ namespace steem { namespace chain { namespace util {
       }
    }
 
-   void advanced_benchmark_dumper::dump( bool log )
-   {
 #ifdef DEFAULT_LOGGER
-#pragma push_macro( "DEFAULT_LOGGER" )
-#define OLD_DEFAULT
-#undef DEFAULT_LOGGER
+# undef DEFAULT_LOGGER
 #endif
 #define DEFAULT_LOGGER "benchmark"
+
+   void advanced_benchmark_dumper::dump( bool log )
+   {
       total_info< std::multiset< ritem > > rinfo( info.total_time );
       std::for_each(info.items.begin(), info.items.end(), [&rinfo, log]( const item& obj )
       {
@@ -112,12 +111,6 @@ namespace steem { namespace chain { namespace util {
 
       dump_impl( info, file_name );
       dump_impl( rinfo, "r_" + file_name );
-#undef DEFAULT_LOGGER
-#ifdef OLD_DEFAULT
-#undef DEFAULT_LOGGER
-#undef OLD_DEFAULT
-#pragma pop_macro( "DEFAULT_LOGGER" )
-#endif
    }
 
 } } } // steem::chain::util
