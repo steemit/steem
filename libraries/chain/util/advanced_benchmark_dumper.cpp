@@ -1,6 +1,10 @@
 
 #include <steem/chain/util/advanced_benchmark_dumper.hpp>
+
+#include <appbase/application.hpp>
+
 #include <chrono>
+#include <fstream>
 
 namespace steem { namespace chain { namespace util {
 
@@ -86,6 +90,7 @@ namespace steem { namespace chain { namespace util {
    void advanced_benchmark_dumper::dump( bool log )
    {
       total_info< std::multiset< ritem > > rinfo( info.total_time );
+
       std::for_each(info.items.begin(), info.items.end(), [&rinfo, log]( const item& obj )
       {
          //rinfo.items.emplace( obj.op_name, obj.time );
@@ -98,15 +103,23 @@ namespace steem { namespace chain { namespace util {
 
       if( log )
       {
+         std::ofstream bench_file;
+         bench_file.open( ( appbase::app().data_dir() / "bench.log" ).string() );
+
          for( auto op_itr = timings.begin(); op_itr != timings.end(); ++op_itr )
          {
             ilog( "${op}", ("op", op_itr->first) );
+            bench_file << op_itr->first << std::endl;
 
             for( auto time_itr = op_itr->second.begin(); time_itr != op_itr->second.end(); ++time_itr )
             {
                ilog( "${size}, ${time}", ("size", time_itr->first)("time", time_itr->second) );
+               bench_file << time_itr->first << ", " << time_itr->second << std::endl;
             }
          }
+
+         bench_file.flush();
+         bench_file.close();
       }
 
       dump_impl( info, file_name );
