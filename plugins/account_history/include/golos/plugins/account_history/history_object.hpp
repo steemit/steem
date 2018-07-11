@@ -35,6 +35,12 @@ namespace golos { namespace plugins { namespace account_history {
         account_history_object_type = (ACCOUNT_HISTORY_SPACE_ID << 8)
     };
 
+    enum operation_direction_type : uint8_t {
+        sender = 0,
+        receiver,
+        any,
+    };
+
     using namespace golos::chain;
     using namespace chainbase;
 
@@ -53,10 +59,12 @@ namespace golos { namespace plugins { namespace account_history {
         uint32_t block = 0;
         uint32_t sequence = 0;
         operation_id_type op;
+        operation_direction_type dir;
     };
 
     using account_history_id_type = object_id<account_history_object>;
 
+    struct by_direction;
     struct by_location;
     struct by_account;
     using account_history_index = multi_index_container<
@@ -70,6 +78,11 @@ namespace golos { namespace plugins { namespace account_history {
                 composite_key<
                     account_history_object,
                     member<account_history_object, uint32_t, &account_history_object::block>>>,
+            ordered_non_unique<
+                tag<by_direction>,
+                composite_key<
+                    account_history_object,
+                    member<account_history_object, operation_direction_type, &account_history_object::dir>>>,
             ordered_unique<
                 tag<by_account>,
                 composite_key<account_history_object,

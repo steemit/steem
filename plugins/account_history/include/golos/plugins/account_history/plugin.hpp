@@ -86,6 +86,7 @@ namespace golos { namespace plugins { namespace account_history {
              *
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
+             *  @param dir - the direction for which the operation is performed.
              */
             (get_account_history)
         )
