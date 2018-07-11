@@ -393,8 +393,6 @@ void chain_plugin::plugin_startup()
 
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
 
-   my->start_write_processing();
-
    if(my->resync)
    {
       wlog("resync requested: deleting block log and shared memory");
@@ -525,6 +523,8 @@ void chain_plugin::plugin_startup()
 
    ilog( "Started on blockchain with ${n} blocks", ("n", my->db.head_block_num()) );
    on_sync();
+
+   my->start_write_processing();
 }
 
 void chain_plugin::plugin_shutdown()
