@@ -110,9 +110,9 @@ int main( int argc, char** argv )
          if( logging_config )
             fc::configure_logging( *logging_config );
       }
-      catch( const fc::exception& )
+      catch( const fc::exception& e )
       {
-         wlog( "Error parsing logging config" );
+         wlog( "Error parsing logging config. ${e}", ("e", e.to_string()) );
       }
 
       if( args.at( "backtrace" ).as< string >() == "yes" )
