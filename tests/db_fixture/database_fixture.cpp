@@ -465,6 +465,32 @@ void database_fixture::transfer(
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
+void database_fixture::vest( const string& from, const string& to, const asset& amount )
+{
+   try
+   {
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+
+      transfer_to_vesting_operation op;
+      op.from = from;
+      op.to = to;
+      op.amount = amount;
+
+      trx.operations.push_back( op );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      trx.validate();
+
+      // This sign() call fixes some tests, like withdraw_vesting_apply, that use this method
+      //   with debug_plugin such that trx may be re-applied with less generous skip flags.
+      if( from == STEEM_INIT_MINER_NAME )
+         sign( trx, init_account_priv_key );
+
+      db->push_transaction( trx, ~0 );
+      trx.operations.clear();
+      trx.signatures.clear();
+   } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
+}
+
 void database_fixture::vest( const string& from, const share_type& amount )
 {
    try
@@ -480,24 +506,6 @@ void database_fixture::vest( const string& from, const share_type& amount )
       db->push_transaction( trx, ~0 );
       trx.operations.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(amount) )
-}
-
-void database_fixture::vest( const string& account, const asset& amount )
-{
-   if( amount.symbol != STEEM_SYMBOL )
-      return;
-
-   db_plugin->debug_update( [=]( database& db )
-   {
-      db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-      {
-         gpo.current_supply += amount;
-      });
-
-      db.create_vesting( db.get_account( account ), amount );
-
-      db.update_virtual_supply();
-   }, default_skip );
 }
 
 void database_fixture::proxy( const string& account, const string& proxy )
