@@ -42,6 +42,21 @@ namespace steem { namespace chain { namespace util {
    void advanced_benchmark_dumper::end( const std::string& str, const uint64_t size )
    {
       uint64_t time = (uint64_t) ( fc::time_point::now() - time_begin ).count();
+
+      if( str == "condenser_api<-block"
+       || str == "debug_node<-block" )
+      {
+         return;
+      }
+
+      if( str == "steem::protocol::comment_operation"
+       || str == "steem::protocol::vote_operation"
+       || str == "steem::protocol::custom_json_operation"
+       || str == "steem::protocol::claim_reward_balance_operation" )
+      {
+         if( ( static_cast<float>(std::rand()) / RAND_MAX ) < 0.75 ) return;
+      }
+
       auto res = info.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, size, 1, time );
 
       if( !res.second )
