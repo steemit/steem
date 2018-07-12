@@ -9,6 +9,7 @@
 #include <boost/filesystem.hpp>
 
 #include <golos/plugins/operation_history/plugin.hpp>
+#include <golos/plugins/account_history/plugin.hpp>
 #include <golos/chain/operation_notification.hpp>
 
 #include "database_fixture.hpp"
@@ -24,6 +25,7 @@ using namespace golos::protocol;
 using namespace golos::chain;
 
 typedef golos::plugins::operation_history::applied_operation applied_operation;
+typedef golos::plugins::account_history::operation_direction_type operation_direction_type;
 
 typedef std::map<std::string, std::string> chacked_operations_map; ///<  pair { [itx_id], [operation name] }
 typedef std::map<uint32_t, std::set<std::string>> chacked_accounts_map; ///<  pair { [block], [accaunt names] }
@@ -139,5 +141,25 @@ struct account_options_fixture {
     }
 
     void check();
+};
+
+
+struct account_direction_fixture {
+    accounts_direction_database_fixture _db_init;
+    chacked_accounts_map _founded_accs;
+
+    account_direction_fixture() = default;
+    ~account_direction_fixture() = default;
+
+    template<class test_type>
+    void init_plugin(const test_type& tt) {
+        ilog(std::string("init_plugin(") + typeid(test_type).name() + ")");
+        _db_init._plg->plugin_initialize(tt);
+        _db_init._plg->plugin_startup();
+        _db_init.startup();
+        _db_init.add_accounts();
+    }
+
+    void check(operation_direction_type dir);
 };
 }}

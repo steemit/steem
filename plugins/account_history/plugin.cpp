@@ -33,6 +33,18 @@ if( options.count(name) ) { \
 }
 //
 
+std::string to_string(operation_direction_type dir) {
+    switch (dir) {
+        case operation_direction_type::sender:
+            return "sender";
+        case operation_direction_type::receiver:
+            return "receaver";
+        default:
+            return "any";
+    }
+    return "any";
+}
+
     struct operation_visitor final {
         operation_visitor(
             golos::chain::database& db,
@@ -159,7 +171,8 @@ if( options.count(name) ) { \
         ) {
             FC_ASSERT(limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l", limit));
             FC_ASSERT(from >= limit, "From must be greater than limit");
-            FC_ASSERT(dir > operation_direction_type::any, "Invalid direction ${l} type", ("l", static_cast<uint8_t>(dir)));
+            FC_ASSERT(static_cast<uint8_t>(dir) <= static_cast<uint8_t>(operation_direction_type::any),
+                      "Invalid direction ${l} type", ("l", static_cast<uint8_t>(dir)));
             //   idump((account)(from)(limit));
             const auto& idx = database.get_index<account_history_index>().indices().get<by_account>();
             auto itr = idx.lower_bound(std::make_tuple(account, from));
@@ -182,11 +195,15 @@ if( options.count(name) ) { \
     };
 
     DEFINE_API(plugin, get_account_history) {
-        CHECK_ARG_SIZE(3)
+        auto n_args = args.args->size();
+        FC_ASSERT(3 <= n_args && n_args <= 4);
         auto account = args.args->at(0).as<std::string>();
         auto from = args.args->at(1).as<uint64_t>();
         auto limit = args.args->at(2).as<uint32_t>();
-        auto dir = static_cast<operation_direction_type>(args.args->at(3).as<uint8_t>());
+        auto dir = operation_direction_type::any;
+        if (3 < n_args) {
+            dir = static_cast<operation_direction_type>(args.args->at(3).as<uint8_t>());
+        }
 
         return pimpl->database.with_weak_read_lock([&]() {
             return pimpl->get_account_history(account, from, limit, dir);
@@ -256,9 +273,13 @@ if( options.count(name) ) { \
         }
 
         void operator()(const vote_operation& op) {
-            ilog("vote_operation: voter: " + op.voter + ", author: " + op.author);
-            impacted.insert(make_pair(op.voter, operation_direction_type::any));
-            impacted.insert(make_pair(op.author, operation_direction_type::any));
+            operation_direction_type dir = operation_direction_type::sender;
+            if (op.voter != op.author) {
+                dir = operation_direction_type::receiver;
+            }
+            ilog("vote_operation: voter: " + op.voter + ", author: " + op.author + ", dir: " + to_string(dir));
+            impacted.insert(make_pair(op.voter, dir));
+            impacted.insert(make_pair(op.author, dir));
         }
 
         void operator()(const author_reward_operation& op) {
@@ -433,12 +454,6 @@ if( options.count(name) ) { \
             insert_fn(op.active_approvals_to_remove);
             insert_fn(op.owner_approvals_to_remove);
             insert_fn(op.posting_approvals_to_remove);
-            //impacted.insert(op.active_approvals_to_add.begin(), op.active_approvals_to_add.end());
-            //impacted.insert(op.owner_approvals_to_add.begin(), op.owner_approvals_to_add.end());
-            //impacted.insert(op.posting_approvals_to_add.begin(), op.posting_approvals_to_add.end());
-            //impacted.insert(op.active_approvals_to_remove.begin(), op.active_approvals_to_remove.end());
-            //impacted.insert(op.owner_approvals_to_remove.begin(), op.owner_approvals_to_remove.end());
-            //impacted.insert(op.posting_approvals_to_remove.begin(), op.posting_approvals_to_remove.end());
         }
 
         void operator()(const proposal_delete_operation& op) {

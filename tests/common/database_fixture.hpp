@@ -323,11 +323,17 @@ namespace golos { namespace chain {
             add_accounts_database_fixture();
             ~add_accounts_database_fixture() override;
 
-            void add_accounts();
+            virtual void add_accounts();
 
             plugin_type* _plg;
             fc::flat_set<golos::chain::account_name_type> _account_names;
-            //fc::flat_map<std::string, std::string> _added_accounts;
+        };
+
+        struct accounts_direction_database_fixture : public add_accounts_database_fixture {
+            accounts_direction_database_fixture();
+            ~accounts_direction_database_fixture() override;
+
+            virtual void add_accounts() override;
         };
 
         namespace test {

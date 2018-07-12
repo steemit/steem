@@ -226,11 +226,6 @@ namespace golos { namespace chain {
             try {
                 ilog("add_accounts_database_fixture: begin");
 
-                _account_names.insert("alice");
-                _account_names.insert("bob");
-                _account_names.insert("sam");
-                _account_names.insert("dave");
-
                 _plg = app_initialise().get_plugin<plugin_type>();
                 initialize();
                 open_database();
@@ -244,9 +239,26 @@ namespace golos { namespace chain {
             ilog("add_accounts_database_fixture: end");
         }
 
-        void add_accounts_database_fixture::add_accounts() try {
+        void add_accounts_database_fixture::add_accounts() {
             add_operations_database_fixture::add_operations();
-        } FC_LOG_AND_RETHROW();
+            _account_names.insert("alice");
+            _account_names.insert("bob");
+            _account_names.insert("sam");
+            _account_names.insert("dave");
+        }
+
+        accounts_direction_database_fixture::accounts_direction_database_fixture() {
+            ilog("accounts_direction_database_fixture: begin");
+        }
+
+        accounts_direction_database_fixture::~accounts_direction_database_fixture() {
+            ilog("accounts_direction_database_fixture: end");
+        }
+
+        void accounts_direction_database_fixture::add_accounts() {
+            add_accounts_database_fixture::add_accounts();
+            _account_names.insert("cyberfounder");
+        }
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {
             return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
