@@ -95,13 +95,14 @@ void account_direction_fixture::check(operation_direction_type dir) {
                                                fc::variant(static_cast<uint8_t>(dir))});
             auto accs = plg->get_account_history(mp);
             for (auto a : accs) {
+                std::string save = "[" + n + "] " + a.second.op.visit(ovisit);
                 auto it = _founded_accs.find(a.second.block);
                 if (it == _founded_accs.end()) {
                     std::set<std::string> set;
-                    set.insert(n);
+                    set.insert(save);
                     _founded_accs.insert(std::make_pair(a.second.block, set));
                 } else {
-                    it->second.insert(n);
+                    it->second.insert(save);
                 }
             }
         }
