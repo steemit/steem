@@ -118,23 +118,23 @@ namespace steem { namespace chain { namespace util {
 
       if( log )
       {
-         std::ofstream bench_file;
-         bench_file.open( ( appbase::app().data_dir() / "bench.log" ).string() );
+
 
          for( auto op_itr = timings.begin(); op_itr != timings.end(); ++op_itr )
          {
             ilog( "${op}", ("op", op_itr->first) );
-            bench_file << op_itr->first << std::endl;
+            std::ofstream bench_file;
+            bench_file.open( ( appbase::app().data_dir() / ( "bench_" + op_itr->first ) ).string() );
 
             for( auto time_itr = op_itr->second.begin(); time_itr != op_itr->second.end(); ++time_itr )
             {
                ilog( "${size}, ${time}", ("size", time_itr->first)("time", time_itr->second) );
                bench_file << time_itr->first << ", " << time_itr->second << std::endl;
             }
-         }
 
-         bench_file.flush();
-         bench_file.close();
+            bench_file.flush();
+            bench_file.close();
+         }
       }
 
       dump_impl( info, file_name );
