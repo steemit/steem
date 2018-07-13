@@ -1291,7 +1291,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
-   uint32_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
+   int64_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
@@ -1369,8 +1369,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a ){
          a.voting_manabar.current_mana = current_power - used_power;
-         a.voting_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
          a.last_vote_time = _db.head_block_time();
+         a.voting_manabar.last_update_time = a.last_vote_time.sec_since_epoch();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
@@ -1553,8 +1553,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a ){
          a.voting_manabar.current_mana = current_power - used_power;
-         a.voting_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
          a.last_vote_time = _db.head_block_time();
+         a.voting_manabar.last_update_time = a.last_vote_time.sec_since_epoch();
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
