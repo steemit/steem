@@ -271,7 +271,7 @@ struct database_fixture {
 
    vector< operation > get_last_operations( uint32_t ops );
 
-   void validate_database( void );
+   void validate_database();
 };
 
 struct clean_database_fixture : public database_fixture
@@ -280,6 +280,7 @@ struct clean_database_fixture : public database_fixture
    virtual ~clean_database_fixture();
 
    void resize_shared_mem( uint64_t size );
+   void validate_database();
 };
 
 struct live_database_fixture : public database_fixture
