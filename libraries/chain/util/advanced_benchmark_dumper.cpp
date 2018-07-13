@@ -3,6 +3,8 @@
 
 #include <appbase/application.hpp>
 
+#include <boost/filesystem.hpp>
+
 #include <chrono>
 #include <fstream>
 
@@ -54,7 +56,7 @@ namespace steem { namespace chain { namespace util {
        || str == "steem::protocol::custom_json_operation"
        || str == "steem::protocol::claim_reward_balance_operation" )
       {
-         if( ( static_cast<float>(std::rand()) / RAND_MAX ) < 0.75 ) return;
+         if( ( static_cast<float>(std::rand()) / RAND_MAX ) < 0.90 ) return;
       }
 
       auto res = info.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, size, 1, time );
@@ -118,13 +120,21 @@ namespace steem { namespace chain { namespace util {
 
       if( log )
       {
-
+         boost::filesystem::path bench_dir = appbase::app().data_dir() / "benchmarks";
+         if( boost::filesystem::exists( bench_dir ) )
+         {
+            if( !boost::filesystem::is_directory( bench_dir ) ) return;
+         }
+         else
+         {
+            boost::filesystem::create_directory( bench_dir );
+         }
 
          for( auto op_itr = timings.begin(); op_itr != timings.end(); ++op_itr )
          {
             ilog( "${op}", ("op", op_itr->first) );
             std::ofstream bench_file;
-            bench_file.open( ( appbase::app().data_dir() / ( "bench_" + op_itr->first ) ).string() );
+            bench_file.open( ( bench_dir / ( "bench_" + op_itr->first ) ).string() );
 
             for( auto time_itr = op_itr->second.begin(); time_itr != op_itr->second.end(); ++time_itr )
             {
