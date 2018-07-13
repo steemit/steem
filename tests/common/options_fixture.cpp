@@ -84,29 +84,28 @@ void account_options_fixture::check() {
 }
 
 
-void account_direction_fixture::check(operation_direction_type dir) {
-    uint32_t head_block_num = _db_init.db->head_block_num();
-    ilog("Check history accounts, block num is " + std::to_string(head_block_num));
-    auto plg = _db_init._plg;
-    if (plg) {
-        for (auto n : _db_init._account_names) {
-            msg_pack mp;
-            mp.args = std::vector<fc::variant>({fc::variant(n), fc::variant(100), fc::variant(100),
-                                               fc::variant(static_cast<uint8_t>(dir))});
-            auto accs = plg->get_account_history(mp);
-            for (auto a : accs) {
-                std::string save = "[" + n + "] " + a.second.op.visit(ovisit);
-                auto it = _founded_accs.find(a.second.block);
-                if (it == _founded_accs.end()) {
-                    std::set<std::string> set;
-                    set.insert(save);
-                    _founded_accs.insert(std::make_pair(a.second.block, set));
-                } else {
-                    it->second.insert(save);
+void account_direction_fixture::check() {
+    auto check_fn = [this](operation_direction_type dir) {
+        chacked_accounts_set founded_accs;
+        uint32_t head_block_num = _db_init.db->head_block_num();
+        ilog("Check history accounts, block num is " + std::to_string(head_block_num));
+        auto plg = _db_init._plg;
+        if (plg) {
+            for (auto n : _db_init._account_names) {
+                msg_pack mp;
+                mp.args = std::vector<fc::variant>({fc::variant(n), fc::variant(100), fc::variant(100),
+                                                   fc::variant(static_cast<uint8_t>(dir))});
+                auto accs = plg->get_account_history(mp);
+                for (auto a : accs) {
+                    founded_accs.insert("[" + n + "] " + a.second.op.visit(ovisit));
                 }
             }
+        } else {
+            ilog("Account history plugin is not inited.");
         }
-    } else {
-        ilog("Account history plugin is not inited.");
-    }
+        return founded_accs;
+    };
+    _any_founded_accs = check_fn(operation_direction_type::any);
+    _sender_founded_accs = check_fn(operation_direction_type::sender);
+    _receiver_founded_accs = check_fn(operation_direction_type::receiver);
 }

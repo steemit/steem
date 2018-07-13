@@ -74,23 +74,6 @@ std::string to_string(operation_direction_type dir) {
                 sequence = itr->sequence + 1;
             }
 
-            //operation_direction_type dir = get_direction(note.op, item);
-//            ilog(">>>>");
-//            auto for_fn = [this](fc::flat_set<golos::chain::account_name_type>& impd) {
-//                for (auto i : impd) {
-//                    ilog(account + ": " + i);
-//                }
-//                impd.clear();
-//            };
-//            fc::flat_set<golos::chain::account_name_type> impd;
-//            note.op.get_required_posting_authorities(impd);
-//            for_fn(impd);
-//            note.op.get_required_active_authorities(impd);
-//            for_fn(impd);
-//            note.op.get_required_owner_authorities(impd);
-//            for_fn(impd);
-//            ilog("____");
-
             database.create<account_history_object>([&](account_history_object& history) {
                 history.block = note.block;
                 history.account = account;
@@ -137,27 +120,6 @@ std::string to_string(operation_direction_type dir) {
                 if (!tracked_accounts.size() ||
                     (itr != tracked_accounts.end() && itr->first <= item.first && item.first <= itr->second)
                 ) {
-//                    ilog("# { ");
-//                    auto for_fn = [item](const std::string &type_name, fc::flat_set<golos::chain::account_name_type>& impd) {
-//                        for (auto i : impd) {
-//                            ilog(type_name + ": \"" + item + "\": " + i);
-//                        }
-//                    };
-//                    flat_set<account_name_type> required_owner;
-//                    flat_set<account_name_type> required_active;
-//                    flat_set<account_name_type> required_posting;
-//                    flat_set<account_name_type> required_total;
-//                    std::vector<authority> other;
-//                    operation_get_required_authorities(note.op, required_active, required_owner, required_posting, other);
-//                    for_fn("required_owner", required_owner);
-//                    for_fn("required_active", required_active);
-//                    for_fn("required_posting", required_posting);
-//                    for_fn("required_total", required_total);
-//                    for (auto o : other) {
-//                        ilog(type_name + ": \"" + item + "\": " + o);
-//                    }
-//                    ilog("}\n");
-
                     note.op.visit(operation_visitor(database, note, item.first, item.second));
                 }
             }
@@ -231,67 +193,58 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const account_create_operation& op) {
-            ilog("account_create_operation: fee: creator: " + op.creator +
-                 ", new: " + op.new_account_name);
-            impacted.insert(make_pair(op.new_account_name, operation_direction_type::any));
-            impacted.insert(make_pair(op.creator, operation_direction_type::any));
+            impacted.insert(make_pair(op.new_account_name, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.creator, operation_direction_type::sender));
         }
 
         void operator()(const account_create_with_delegation_operation& op) {
-            ilog("account_create_with_delegation_operation: delegation: " + op.delegation.to_string() +
-                 ", creator: " + op.creator +
-                 ", new: " + op.new_account_name);
-            impacted.insert(make_pair(op.new_account_name, operation_direction_type::any));
-            impacted.insert(make_pair(op.creator, operation_direction_type::any));
+            impacted.insert(make_pair(op.new_account_name, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.creator, operation_direction_type::sender));
         }
 
         void operator()(const account_update_operation& op) {
-            ilog("account_update_operation: account: " + op.account);
             impacted.insert(make_pair(op.account, operation_direction_type::any));
         }
 
         void operator()(const account_metadata_operation& op) {
-            ilog("account_metadata_operation: ");
             impacted.insert(make_pair(op.account, operation_direction_type::any));
         }
 
         void operator()(const comment_operation& op) {
-            ilog("comment_operation: parent_author: " + op.parent_author +
-                 ", parent_permlink: " + op.parent_permlink +
-                 ", author: " + op.author +
-                 ", permlink: " + op.permlink);
-            impacted.insert(make_pair(op.author, operation_direction_type::any));
-            if (op.parent_author.size()) {
-                impacted.insert(make_pair(op.parent_author, operation_direction_type::any));
+            if (op.author == op.parent_author) {
+                impacted.insert(make_pair(op.author, operation_direction_type::any));
+            } else {
+                if (op.parent_author.size()) {
+                    impacted.insert(make_pair(op.author, operation_direction_type::receiver));
+                } else {
+                    impacted.insert(make_pair(op.author, operation_direction_type::sender));
+                }
             }
         }
 
         void operator()(const delete_comment_operation& op) {
-            ilog("delete_comment_operation: author: " + op.author +
-                 ", permlink: " + op.permlink);
             impacted.insert(make_pair(op.author, operation_direction_type::any));
         }
 
         void operator()(const vote_operation& op) {
-            operation_direction_type dir = operation_direction_type::sender;
-            if (op.voter != op.author) {
-                dir = operation_direction_type::receiver;
+            if (op.voter == op.author) {
+                impacted.insert(make_pair(op.voter, operation_direction_type::any));
+                impacted.insert(make_pair(op.author, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.voter, operation_direction_type::sender));
+                impacted.insert(make_pair(op.author, operation_direction_type::receiver));
             }
-            ilog("vote_operation: voter: " + op.voter + ", author: " + op.author + ", dir: " + to_string(dir));
-            impacted.insert(make_pair(op.voter, dir));
-            impacted.insert(make_pair(op.author, dir));
         }
 
         void operator()(const author_reward_operation& op) {
-            impacted.insert(make_pair(op.author, operation_direction_type::any));
+            impacted.insert(make_pair(op.author, operation_direction_type::receiver));
         }
 
         void operator()(const curation_reward_operation& op) {
-            impacted.insert(make_pair(op.curator, operation_direction_type::any));
+            impacted.insert(make_pair(op.curator, operation_direction_type::receiver));
         }
 
         void operator()(const liquidity_reward_operation& op) {
-            ilog("liquidity_reward_operation: owner: " + op.owner);
             impacted.insert(make_pair(op.owner, operation_direction_type::any));
         }
 
@@ -304,15 +257,24 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const transfer_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
+            if (op.from == op.to) {
+                impacted.insert(make_pair(op.from, operation_direction_type::any));
+                impacted.insert(make_pair(op.to, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.from, operation_direction_type::sender));
+                impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            }
         }
 
         void operator()(const transfer_to_vesting_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-
-            if (op.to != golos::chain::account_name_type() && op.to != op.from) {
+            if (op.from == op.to) {
+                impacted.insert(make_pair(op.from, operation_direction_type::any));
                 impacted.insert(make_pair(op.to, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.from, operation_direction_type::sender));
+                if (op.to != golos::chain::account_name_type() && op.to != op.from) {
+                    impacted.insert(make_pair(op.from, operation_direction_type::receiver));
+                }
             }
         }
 
@@ -325,13 +287,13 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const account_witness_vote_operation& op) {
-            impacted.insert(make_pair(op.account, operation_direction_type::any));
-            impacted.insert(make_pair(op.witness, operation_direction_type::any));
+            impacted.insert(make_pair(op.account, operation_direction_type::sender));
+            impacted.insert(make_pair(op.witness, operation_direction_type::receiver));
         }
 
         void operator()(const account_witness_proxy_operation& op) {
-            impacted.insert(make_pair(op.account, operation_direction_type::any));
-            impacted.insert(make_pair(op.proxy, operation_direction_type::any));
+            impacted.insert(make_pair(op.account, operation_direction_type::sender));
+            impacted.insert(make_pair(op.proxy, operation_direction_type::receiver));
         }
 
         void operator()(const feed_publish_operation& op) {
@@ -343,8 +305,8 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const fill_order_operation& op) {
-            impacted.insert(make_pair(op.current_owner, operation_direction_type::any));
-            impacted.insert(make_pair(op.open_owner, operation_direction_type::any));
+            impacted.insert(make_pair(op.current_owner, operation_direction_type::sender));
+            impacted.insert(make_pair(op.open_owner, operation_direction_type::receiver));
         }
 
         void operator()(const limit_order_cancel_operation& op) {
@@ -356,8 +318,13 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const fill_vesting_withdraw_operation& op) {
-            impacted.insert(make_pair(op.from_account, operation_direction_type::any));
-            impacted.insert(make_pair(op.to_account, operation_direction_type::any));
+            if (op.from_account == op.to_account) {
+                impacted.insert(make_pair(op.from_account, operation_direction_type::any));
+                impacted.insert(make_pair(op.to_account, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.from_account, operation_direction_type::sender));
+                impacted.insert(make_pair(op.to_account, operation_direction_type::receiver));
+            }
         }
 
         void operator()(const shutdown_witness_operation& op) {
@@ -383,37 +350,47 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const escrow_transfer_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
-            impacted.insert(make_pair(op.agent, operation_direction_type::any));
+            impacted.insert(make_pair(op.from, operation_direction_type::sender));
+            impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.agent, operation_direction_type::receiver));
         }
 
         void operator()(const escrow_approve_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
-            impacted.insert(make_pair(op.agent, operation_direction_type::any));
+            impacted.insert(make_pair(op.from, operation_direction_type::sender));
+            impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.agent, operation_direction_type::receiver));
         }
 
         void operator()(const escrow_dispute_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
-            impacted.insert(make_pair(op.agent, operation_direction_type::any));
+            impacted.insert(make_pair(op.from, operation_direction_type::sender));
+            impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.agent, operation_direction_type::receiver));
         }
 
         void operator()(const escrow_release_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
-            impacted.insert(make_pair(op.agent, operation_direction_type::any));
+            impacted.insert(make_pair(op.from, operation_direction_type::sender));
+            impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.agent, operation_direction_type::receiver));
         }
 
         void operator()(const transfer_to_savings_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
+            if (op.from == op.to) {
+                impacted.insert(make_pair(op.from, operation_direction_type::any));
+                impacted.insert(make_pair(op.to, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.from, operation_direction_type::sender));
+                impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            }
         }
 
         void operator()(const transfer_from_savings_operation& op) {
-            impacted.insert(make_pair(op.from, operation_direction_type::any));
-            impacted.insert(make_pair(op.to, operation_direction_type::any));
+            if (op.from == op.to) {
+                impacted.insert(make_pair(op.from, operation_direction_type::any));
+                impacted.insert(make_pair(op.to, operation_direction_type::any));
+            } else {
+                impacted.insert(make_pair(op.from, operation_direction_type::sender));
+                impacted.insert(make_pair(op.to, operation_direction_type::receiver));
+            }
         }
 
         void operator()(const cancel_transfer_from_savings_operation& op) {
@@ -425,17 +402,17 @@ std::string to_string(operation_direction_type dir) {
         }
 
         void operator()(const comment_benefactor_reward_operation& op) {
-            impacted.insert(make_pair(op.benefactor, operation_direction_type::any));
-            impacted.insert(make_pair(op.author, operation_direction_type::any));
+            impacted.insert(make_pair(op.benefactor, operation_direction_type::receiver));
+            impacted.insert(make_pair(op.author, operation_direction_type::sender));
         }
 
         void operator()(const delegate_vesting_shares_operation& op) {
-            impacted.insert(make_pair(op.delegator, operation_direction_type::any));
-            impacted.insert(make_pair(op.delegatee, operation_direction_type::any));
+            impacted.insert(make_pair(op.delegator, operation_direction_type::sender));
+            impacted.insert(make_pair(op.delegatee, operation_direction_type::receiver));
         }
 
         void operator()(const return_vesting_delegation_operation& op) {
-            impacted.insert(make_pair(op.account, operation_direction_type::any));
+            impacted.insert(make_pair(op.account, operation_direction_type::receiver));
         }
 
         void operator()(const proposal_create_operation& op) {

@@ -28,7 +28,8 @@ typedef golos::plugins::operation_history::applied_operation applied_operation;
 typedef golos::plugins::account_history::operation_direction_type operation_direction_type;
 
 typedef std::map<std::string, std::string> chacked_operations_map; ///<  pair { [itx_id], [operation name] }
-typedef std::map<uint32_t, std::set<std::string>> chacked_accounts_map; ///<  pair { [block], [accaunt names] }
+typedef std::map<uint32_t, std::set<std::string>> chacked_accounts_map; ///<  pair { [block], [[accaunt names] operations]}
+typedef std::set<std::string> chacked_accounts_set; ///<  pair { [[accaunt names] operations] }
 
 
 template<class key_type_option>
@@ -146,7 +147,9 @@ struct account_options_fixture {
 
 struct account_direction_fixture {
     accounts_direction_database_fixture _db_init;
-    chacked_accounts_map _founded_accs;
+    chacked_accounts_set _any_founded_accs;
+    chacked_accounts_set _sender_founded_accs;
+    chacked_accounts_set _receiver_founded_accs;
 
     account_direction_fixture() = default;
     ~account_direction_fixture() = default;
@@ -158,8 +161,9 @@ struct account_direction_fixture {
         _db_init._plg->plugin_startup();
         _db_init.startup();
         _db_init.add_accounts();
+        check();
     }
 
-    void check(operation_direction_type dir);
+    void check();
 };
 }}
