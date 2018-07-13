@@ -1413,67 +1413,118 @@ void database::clear_null_account_balance()
    const auto& null_account = get_account( STEEM_NULL_ACCOUNT );
    asset total_steem( 0, STEEM_SYMBOL );
    asset total_sbd( 0, SBD_SYMBOL );
+   asset total_vests( 0, VESTS_SYMBOL );
+
+   asset vesting_shares_steem_value = asset( 0, STEEM_SYMBOL );
 
    if( null_account.balance.amount > 0 )
    {
       total_steem += null_account.balance;
-      adjust_balance( null_account, -null_account.balance );
    }
 
    if( null_account.savings_balance.amount > 0 )
    {
       total_steem += null_account.savings_balance;
-      adjust_savings_balance( null_account, -null_account.savings_balance );
    }
 
    if( null_account.sbd_balance.amount > 0 )
    {
       total_sbd += null_account.sbd_balance;
-      adjust_balance( null_account, -null_account.sbd_balance );
    }
 
    if( null_account.savings_sbd_balance.amount > 0 )
    {
       total_sbd += null_account.savings_sbd_balance;
+   }
+
+   if( null_account.vesting_shares.amount > 0 )
+   {
+      const auto& gpo = get_dynamic_global_properties();
+      vesting_shares_steem_value = null_account.vesting_shares * gpo.get_vesting_share_price();
+      total_steem += vesting_shares_steem_value;
+      total_vests += null_account.vesting_shares;
+   }
+
+   if( null_account.reward_steem_balance.amount > 0 )
+   {
+      total_steem += null_account.reward_steem_balance;
+   }
+
+   if( null_account.reward_sbd_balance.amount > 0 )
+   {
+      total_sbd += null_account.reward_sbd_balance;
+   }
+
+   if( null_account.reward_vesting_balance.amount > 0 )
+   {
+      total_steem += null_account.reward_vesting_steem;
+      total_vests += null_account.reward_vesting_balance;
+   }
+
+   if( (total_steem.amount.value == 0) && (total_sbd.amount.value == 0) && (total_vests.amount.value == 0) )
+      return;
+
+   operation vop_op = clear_null_account_balance_operation();
+   clear_null_account_balance_operation& vop = vop_op.get< clear_null_account_balance_operation >();
+   if( total_steem.amount.value > 0 )
+      vop.total_cleared.push_back( total_steem );
+   if( total_vests.amount.value > 0 )
+      vop.total_cleared.push_back( total_vests );
+   if( total_sbd.amount.value > 0 )
+      vop.total_cleared.push_back( total_sbd );
+   pre_push_virtual_operation( vop_op );
+
+   /////////////////////////////////////////////////////////////////////////////////////
+
+   if( null_account.balance.amount > 0 )
+   {
+      adjust_balance( null_account, -null_account.balance );
+   }
+
+   if( null_account.savings_balance.amount > 0 )
+   {
+      adjust_savings_balance( null_account, -null_account.savings_balance );
+   }
+
+   if( null_account.sbd_balance.amount > 0 )
+   {
+      adjust_balance( null_account, -null_account.sbd_balance );
+   }
+
+   if( null_account.savings_sbd_balance.amount > 0 )
+   {
       adjust_savings_balance( null_account, -null_account.savings_sbd_balance );
    }
 
    if( null_account.vesting_shares.amount > 0 )
    {
       const auto& gpo = get_dynamic_global_properties();
-      auto converted_steem = null_account.vesting_shares * gpo.get_vesting_share_price();
 
       modify( gpo, [&]( dynamic_global_property_object& g )
       {
          g.total_vesting_shares -= null_account.vesting_shares;
-         g.total_vesting_fund_steem -= converted_steem;
+         g.total_vesting_fund_steem -= vesting_shares_steem_value;
       });
 
       modify( null_account, [&]( account_object& a )
       {
          a.vesting_shares.amount = 0;
       });
-
-      total_steem += converted_steem;
    }
 
    if( null_account.reward_steem_balance.amount > 0 )
    {
-      total_steem += null_account.reward_steem_balance;
       adjust_reward_balance( null_account, -null_account.reward_steem_balance );
    }
 
    if( null_account.reward_sbd_balance.amount > 0 )
    {
-      total_sbd += null_account.reward_sbd_balance;
       adjust_reward_balance( null_account, -null_account.reward_sbd_balance );
    }
 
    if( null_account.reward_vesting_balance.amount > 0 )
    {
       const auto& gpo = get_dynamic_global_properties();
-
-      total_steem += null_account.reward_vesting_steem;
 
       modify( gpo, [&]( dynamic_global_property_object& g )
       {
@@ -1488,11 +1539,15 @@ void database::clear_null_account_balance()
       });
    }
 
+   //////////////////////////////////////////////////////////////
+
    if( total_steem.amount > 0 )
       adjust_supply( -total_steem );
 
    if( total_sbd.amount > 0 )
       adjust_supply( -total_sbd );
+
+   post_push_virtual_operation( vop_op );
 }
 
 /**
