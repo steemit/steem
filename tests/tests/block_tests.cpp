@@ -784,5 +784,58 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_FIXTURE_TEST_CASE( generate_block_size, clean_database_fixture )
+{
+   try
+   {
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT;
+         });
+      });
+      generate_block();
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+
+      transfer_operation op;
+      op.from = STEEMIT_INIT_MINER_NAME;
+      op.to = STEEMIT_TEMP_ACCOUNT;
+      op.amount = asset( 1000, STEEM_SYMBOL );
+
+      // tx minus op is 79 bytes
+      // op is 33 bytes (32 for op + 1 byte static variant tag)
+      // total is 65254
+      // Original generation logic only allowed 115 bytes for the header
+      // We are targetting a size (minus header) of 65421 which creates a block of "size" 65535
+      // This block will actually be larger because the header estimates is too small
+
+      for( size_t i = 0; i < 1975; i++ )
+      {
+         tx.operations.push_back( op );
+      }
+
+      tx.sign( init_account_priv_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      // Second transaction, tx minus op is 78 (one less byte for operation vector size)
+      // We need a 88 byte op. We need a 22 character memo (1 byte for length) 55 = 32 (old op) + 55 + 1
+      op.memo = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123";
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, init_account_priv_key );
+      db.push_transaction( tx, 0 );
+
+      generate_block();
+      auto head_block = db.fetch_block_by_number( db.head_block_num() );
+
+      // The last transfer should have been delayed due to size
+      BOOST_REQUIRE( head_block->transactions.size() == 1 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
