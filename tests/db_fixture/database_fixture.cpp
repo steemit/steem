@@ -3,12 +3,15 @@
 
 #include <steem/utilities/tempdir.hpp>
 
-#include <steem/chain/steem_objects.hpp>
 #include <steem/chain/history_object.hpp>
+#include <steem/chain/steem_objects.hpp>
+
 #include <steem/plugins/account_history/account_history_plugin.hpp>
-#include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
+
 #include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -50,14 +53,23 @@ clean_database_fixture::clean_database_fixture()
 
    appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
    db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   appbase::app().register_plugin< steem::plugins::rc::rc_plugin >();
    appbase::app().register_plugin< steem::plugins::witness::witness_plugin >();
 
    db_plugin->logging = false;
    appbase::app().initialize<
       steem::plugins::account_history::account_history_plugin,
       steem::plugins::debug_node::debug_node_plugin,
+      steem::plugins::rc::rc_plugin,
       steem::plugins::witness::witness_plugin
       >( argc, argv );
+
+   steem::plugins::rc::rc_plugin_skip_flags rc_skip;
+   rc_skip.skip_reject_not_enough_rc = 1;
+   rc_skip.skip_deduct_rc = 0;
+   rc_skip.skip_negative_rc_balance = 1;
+   rc_skip.skip_reject_unknown_delta_vests = 0;
+   appbase::app().get_plugin< steem::plugins::rc::rc_plugin >().set_rc_plugin_skip_flags( rc_skip );
 
    db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
    BOOST_REQUIRE( db );
@@ -104,6 +116,12 @@ clean_database_fixture::~clean_database_fixture()
    return;
 } FC_CAPTURE_AND_LOG( () )
    exit(1);
+}
+
+void clean_database_fixture::validate_database()
+{
+   database_fixture::validate_database();
+   appbase::app().get_plugin< steem::plugins::rc::rc_plugin >().validate_database();
 }
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
@@ -587,7 +605,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
    return ops;
 }
 
-void database_fixture::validate_database( void )
+void database_fixture::validate_database()
 {
    try
    {

@@ -11,6 +11,14 @@ using namespace appbase;
 
 #define STEEM_RC_PLUGIN_NAME "rc"
 
+struct rc_plugin_skip_flags
+{
+   uint32_t skip_reject_not_enough_rc       : 1;
+   uint32_t skip_deduct_rc                  : 1;
+   uint32_t skip_negative_rc_balance        : 1;
+   uint32_t skip_reject_unknown_delta_vests : 1;
+};
+
 class rc_plugin : public appbase::plugin< rc_plugin >
 {
    public:
@@ -25,6 +33,9 @@ class rc_plugin : public appbase::plugin< rc_plugin >
       virtual void plugin_initialize( const variables_map& options ) override;
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
+
+      void set_rc_plugin_skip_flags( rc_plugin_skip_flags skip );
+      void validate_database();
 
    private:
       std::unique_ptr< detail::rc_plugin_impl > my;
