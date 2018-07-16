@@ -64,9 +64,14 @@ namespace steem { namespace chain {
 
          bool is_producing()const { return _is_producing; }
          void set_producing( bool p ) { _is_producing = p;  }
+
+         bool is_pending_tx()const { return _is_pending_tx; }
+         void set_pending_tx( bool p ) { _is_pending_tx = p; }
+
          bool is_processing_block()const { return _currently_processing_block_id.valid(); }
 
          bool _is_producing = false;
+         bool _is_pending_tx = false;
 
          bool _log_hardforks = true;
 
@@ -371,6 +376,7 @@ namespace steem { namespace chain {
          void process_funds();
          void process_conversions();
          void process_savings_withdraws();
+         void process_subsidized_accounts();
 #ifdef STEEM_ENABLE_SMT
          void process_smt_objects();
 #endif

@@ -773,16 +773,19 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
       {
          FC_ASSERT( fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256) );
          set_producing( true );
+         set_pending_tx( true );
          detail::with_skip_flags( *this, skip,
             [&]()
             {
                _push_transaction( trx );
             });
          set_producing( false );
+         set_pending_tx( false );
       }
       catch( ... )
       {
          set_producing( false );
+         set_pending_tx( false );
          throw;
       }
    }
@@ -867,6 +870,16 @@ signed_block database::_generate_block(
    _pending_tx_session.reset();
    _pending_tx_session = start_undo_session();
 
+   FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
+   if( has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      /// modify current witness so transaction evaluators can know who included the transaction
+      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
+      {
+         dgp.current_witness = scheduled_witness;
+      });
+   }
+
    uint64_t postponed_tx_count = 0;
    // pop pending state (reset to head block state)
    for( const signed_transaction& tx : _pending_tx )
@@ -919,6 +932,8 @@ signed_block database::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
    pending_block.witness = witness_owner;
+
+   FC_TODO( "Remove HF5 check because no more pre HF5 blocks will ever be created" );
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) )
    {
       const auto& witness = get_witness( witness_owner );
@@ -2123,8 +2138,8 @@ void database::process_funds()
          witness_reward *= wso.timeshare_weight;
       else if( cwit.schedule == witness_object::miner )
          witness_reward *= wso.miner_weight;
-      else if( cwit.schedule == witness_object::top19 )
-         witness_reward *= wso.top19_weight;
+      else if( cwit.schedule == witness_object::elected )
+         witness_reward *= wso.elected_weight;
       else
          wlog( "Encountered unknown witness type for witness: ${w}", ("w", cwit.owner) );
 
@@ -2193,6 +2208,18 @@ void database::process_savings_withdraws()
      remove( *itr );
      itr = idx.begin();
   }
+}
+
+void database::process_subsidized_accounts()
+{
+   const auto& wso = get_witness_schedule_object();
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   {
+      gpo.available_account_subsidies = std::min(
+         uint64_t( wso.median_props.account_subsidy_limit ) * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * STEEM_ACCOUNT_SUBSIDY_PRECISION,
+         gpo.available_account_subsidies + wso.account_subsidy_print_rate );
+   });
 }
 
 #ifdef STEEM_ENABLE_SMT
@@ -3128,6 +3155,7 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    process_savings_withdraws();
+   process_subsidized_accounts();
    pay_liquidity_reward();
    update_virtual_supply();
 
@@ -4800,7 +4828,6 @@ void database::apply_hardfork( uint32_t hardfork )
             }
          }
          break;
-#ifdef IS_TEST_NET
       case STEEM_HARDFORK_0_20:
          {
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
@@ -4829,6 +4856,7 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
+   #ifdef IS_TEST_NET
       case STEEM_HARDFORK_0_21:
          break;
 #endif

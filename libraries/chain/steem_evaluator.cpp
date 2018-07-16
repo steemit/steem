@@ -285,16 +285,22 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) && _db.has_hardfork( STEEM_HARDFORK_0_19__987 ) )
+   const witness_schedule_object& wso = _db.get_witness_schedule_object();
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1771 ) )
    {
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
+      FC_ASSERT( o.fee == wso.median_props.account_creation_fee, "Must pay the exact account creation fee. paid: ${p} fee: ${f}",
+                  ("p", o.fee)
+                  ("f", wso.median_props.account_creation_fee) );
+   }
+   else if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) && _db.has_hardfork( STEEM_HARDFORK_0_19__987 ) )
+   {
       FC_ASSERT( o.fee >= asset( wso.median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee * asset( STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
                  ("p", o.fee) );
    }
    else if( _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
    {
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
@@ -2286,15 +2292,71 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
-               ("f", wso.median_props.account_creation_fee)
-               ("p", o.fee) );
+   const auto& creation_fee = wso.median_props.account_creation_fee;
 
-   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), o.fee );
+   asset paid_fee = o.fee;
+
+   if( paid_fee < creation_fee )
+   {
+      // This is optimized because STEEM_100_PERCENT == STEEM_ACCOUNT_SUBSIDY_PRECISION
+      uint64_t percent_unpaid = ( ( creation_fee.amount.value - paid_fee.amount.value ) * STEEM_100_PERCENT ) / creation_fee.amount.value;
+      const auto& gpo = _db.get_dynamic_global_properties();
+
+      // This block is a little wierd. We want to enforce that only elected witnesses can include the transaction, but
+      // we do not want to prevent the transaction from propogating on the p2p network. Because we do not know what type of
+      // witness will have produced the last block whent he tx in broadcast, we need to disregard this assertion when the tx
+      // is propogating, but require it when applying the block.
+      if( !_db.is_pending_tx() )
+      {
+         const auto& current_witness = _db.get_witness( gpo.current_witness );
+         FC_ASSERT( current_witness.schedule == witness_object::elected, "Subsidized accounts can only be claimed by elected witnesses" );
+
+         uint32_t delta_time = ( _db.head_block_time() - current_witness.last_subsidy_update ).to_seconds();
+
+         // linear decay to enforce no more than 10% max by a single witness over 48 hours.
+         uint64_t recovered_subsidies = ( delta_time * STEEM_100_PERCENT * wso.single_witness_subsidy_limit )
+            / ( fc::days( STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ).to_seconds() * STEEM_100_PERCENT );
+         uint64_t new_subsidies = current_witness.recent_account_subsidies;
+
+         if( recovered_subsidies > new_subsidies )
+         {
+            new_subsidies = 0;
+         }
+         else
+         {
+            new_subsidies -= recovered_subsidies;
+         }
+
+         new_subsidies += STEEM_ACCOUNT_SUBSIDY_PRECISION;
+
+         FC_ASSERT( new_subsidies <= wso.single_witness_subsidy_limit, "Witness has claimed too many subsidized accounts recents. Claimed: ${claimed} Limit: ${limit}",
+            ("claiemd", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
+
+         _db.modify( current_witness, [&]( witness_object& w )
+         {
+            w.recent_account_subsidies = new_subsidies;
+            w.last_subsidy_update = _db.head_block_time();
+         });
+      }
+
+      FC_ASSERT( gpo.available_account_subsidies >= percent_unpaid, "There are not enough subsidized accounts to claim" );
+
+      _db.modify( gpo, [&]( dynamic_global_property_object& gpo )
+      {
+         gpo.available_account_subsidies -= percent_unpaid;
+      });
+   }
+   else
+   {
+      // operation fee could be higher that witness specified fee
+      FC_ASSERT( paid_fee == creation_fee, "Cannot pay more than account creation fee. paid: ${p} fee: ${f}", ("p", paid_fee)("f", creation_fee) );
+   }
+
+   _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), paid_fee );
 
    _db.modify( creator, [&]( account_object& a )
    {
-      a.balance -= o.fee;
+      a.balance -= paid_fee;
       a.pending_claimed_accounts++;
    });
 }

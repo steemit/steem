@@ -81,6 +81,15 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+         {
+            wso.median_props.account_creation_fee = ASSET( "0.100 TESTS" );
+         });
+      });
+      generate_block();
+
       signed_transaction tx;
       private_key_type priv_key = generate_private_key( "alice" );
 
@@ -91,7 +100,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
 
       account_create_operation op;
 
-      op.fee = asset( 100, STEEM_SYMBOL );
       op.new_account_name = "alice";
       op.creator = STEEM_INIT_MINER_NAME;
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
@@ -99,8 +107,17 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.memo_key = priv_key.get_public_key();
       op.json_metadata = "{\"foo\":\"bar\"}";
 
-      BOOST_TEST_MESSAGE( "--- Test normal account creation" );
+      BOOST_TEST_MESSAGE( "--- Test failure paying more than the fee" );
+      op.fee = asset( 101, STEEM_SYMBOL );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      sign( tx, init_account_priv_key );
+      tx.validate();
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Test normal account creation" );
+      op.fee = asset( 100, STEEM_SYMBOL );
+      tx.clear();
       tx.operations.push_back( op );
       sign( tx, init_account_priv_key );
       tx.validate();
@@ -168,17 +185,18 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       generate_block();
 
       tx.clear();
-      op.fee = ASSET( "1.000 TESTS" );
+      op.fee = ASSET( "0.100 TESTS" );
       tx.operations.push_back( op );
       sign( tx, init_account_priv_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test account creation with temp account does not set recovery account" );
-      fund( STEEM_TEMP_ACCOUNT, ASSET( "310.000 TESTS" ) );
+      fund( STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
       vest( STEEM_INIT_MINER_NAME, STEEM_TEMP_ACCOUNT, ASSET( "10.000 TESTS" ) );
+
+      BOOST_TEST_MESSAGE( "--- Test account creation with temp account does not set recovery account" );
       op.creator = STEEM_TEMP_ACCOUNT;
-      op.fee = ASSET( "300.000 TESTS" );
+      op.fee = ASSET( "10.000 TESTS" );
       op.new_account_name = "bob";
       tx.clear();
       tx.operations.push_back( op );
@@ -3492,11 +3510,22 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       ACTORS( (alice) );
       fund( "alice", 1000000 );
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+         {
+            wso.median_props.account_creation_fee = ASSET( "0.100 TESTS" );
+         });
+      });
+
+      generate_block();
 
       BOOST_TEST_MESSAGE( "Creating account bob with alice" );
 
       account_create_operation acc_create;
-      acc_create.fee = ASSET( "10.000 TESTS" );
+      acc_create.fee = ASSET( "0.100 TESTS" );
       acc_create.creator = "alice";
       acc_create.new_account_name = "bob";
       acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
@@ -7060,14 +7089,21 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       ACTORS( (alice) )
       generate_block();
 
-      fund( "alice", ASSET( "15.000 TESTS" ) );
+      fund( "alice", ASSET( "20.000 TESTS" ) );
       generate_block();
 
       db_plugin->debug_update( [=]( database& db )
       {
-         db.modify( db.get_witness_schedule_object(), [&](witness_schedule_object& wso )
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
+            wso.median_props.account_subsidy_limit = 10;
+            wso.account_subsidy_print_rate = 34;
+         });
+
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.available_account_subsidies = 200000;
          });
       });
       generate_block();
@@ -7077,7 +7113,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
 
       BOOST_TEST_MESSAGE( "--- Test failure when creator cannot cover fee" );
       op.creator = "alice";
-      op.fee = ASSET( "20.000 TESTS" );
+      op.fee = ASSET( "30.000 TESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
@@ -7085,9 +7121,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       validate_database();
 
 
-      // This test will be removed when soft forking for discount creation is implemented
-      BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
-
+      BOOST_TEST_MESSAGE( "--- Test success claiming an account" );
       generate_block();
       db_plugin->debug_update( [=]( database& db )
       {
@@ -7098,23 +7132,15 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       });
       generate_block();
 
-      op.fee = ASSET( "1.000 TESTS" );
-      tx.clear();
-      tx.operations.push_back( op );
-      sign( tx, alice_private_key );
-      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
-      validate_database();
-
-
-      BOOST_TEST_MESSAGE( "--- Test success claiming an account" );
       op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
-      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "15.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
       validate_database();
 
 
@@ -7126,17 +7152,70 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
+      BOOST_TEST_MESSAGE( "--- Test failure claiming a with an excess fee" );
       generate_block();
       op.creator = "alice";
+      op.fee = ASSET( "10.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
+      generate_block();
+      op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
-      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "5.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
       validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming an subsidized account" );
+      op.creator = "alice";
+      op.fee = ASSET( "0.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 190000 );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success claiming a partial subsidized account" );
+      op.fee = ASSET( "2.500 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 4 );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "7.500 TESTS" ) );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 185000 );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure with no available subsidized accounts" );
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.available_account_subsidies = 0;
+         });
+      });
+      generate_block();
+      op.fee = ASSET( "0.000 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test failure on claim overflow" );
@@ -7150,6 +7229,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       });
       generate_block();
 
+      op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );

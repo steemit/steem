@@ -294,10 +294,13 @@ const account_object& database_fixture::account_create(
 {
    try
    {
+      auto actual_fee = std::min( fee, db->get_witness_schedule_object().median_props.account_creation_fee.amount );
+      auto fee_remainder = fee - actual_fee;
+
       account_create_operation op;
       op.new_account_name = name;
       op.creator = creator;
-      op.fee = asset( fee, STEEM_SYMBOL );
+      op.fee = asset( actual_fee, STEEM_SYMBOL );
       op.owner = authority( 1, key, 1 );
       op.active = authority( 1, key, 1 );
       op.posting = authority( 1, post_key, 1 );
@@ -310,8 +313,12 @@ const account_object& database_fixture::account_create(
       sign( trx, creator_key );
       trx.validate();
       db->push_transaction( trx, 0 );
-      trx.operations.clear();
-      trx.signatures.clear();
+      trx.clear();
+
+      if( fee_remainder > 0 )
+      {
+         vest( STEEM_INIT_MINER_NAME, name, asset( fee_remainder, STEEM_SYMBOL ) );
+      }
 
       const account_object& acct = db->get_account( name );
 
@@ -368,8 +375,7 @@ const witness_object& database_fixture::witness_create(
       sign( trx, owner_key );
       trx.validate();
       db->push_transaction( trx, 0 );
-      trx.operations.clear();
-      trx.signatures.clear();
+      trx.clear();
 
       return db->get_witness( owner );
    }
@@ -478,8 +484,14 @@ void database_fixture::transfer(
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
+
+      if( from == STEEM_INIT_MINER_NAME )
+      {
+         sign( trx, init_account_priv_key );
+      }
+
       db->push_transaction( trx, ~0 );
-      trx.operations.clear();
+      trx.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
@@ -501,11 +513,12 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
       // This sign() call fixes some tests, like withdraw_vesting_apply, that use this method
       //   with debug_plugin such that trx may be re-applied with less generous skip flags.
       if( from == STEEM_INIT_MINER_NAME )
+      {
          sign( trx, init_account_priv_key );
+      }
 
       db->push_transaction( trx, ~0 );
-      trx.operations.clear();
-      trx.signatures.clear();
+      trx.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
@@ -521,8 +534,14 @@ void database_fixture::vest( const string& from, const share_type& amount )
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
+
+      if( from == STEEM_INIT_MINER_NAME )
+      {
+         sign( trx, init_account_priv_key );
+      }
+
       db->push_transaction( trx, ~0 );
-      trx.operations.clear();
+      trx.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(amount) )
 }
 
@@ -535,7 +554,7 @@ void database_fixture::proxy( const string& account, const string& proxy )
       op.proxy = proxy;
       trx.operations.push_back( op );
       db->push_transaction( trx, ~0 );
-      trx.operations.clear();
+      trx.clear();
    } FC_CAPTURE_AND_RETHROW( (account)(proxy) )
 }
 
@@ -570,7 +589,7 @@ void database_fixture::set_witness_props( const flat_map< string, vector< char >
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       db->push_transaction( trx, ~0 );
-      trx.operations.clear();
+      trx.clear();
    }
 
    generate_blocks( STEEM_BLOCKS_PER_HOUR );

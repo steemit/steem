@@ -471,7 +471,7 @@ struct api_witness_schedule_object
       current_virtual_time( w.current_virtual_time ),
       next_shuffle_block_num( w.next_shuffle_block_num ),
       num_scheduled_witnesses( w.num_scheduled_witnesses ),
-      top19_weight( w.top19_weight ),
+      elected_weight( w.elected_weight ),
       timeshare_weight( w.timeshare_weight ),
       miner_weight( w.miner_weight ),
       witness_pay_normalization_factor( w.witness_pay_normalization_factor ),
@@ -490,7 +490,7 @@ struct api_witness_schedule_object
    uint32_t                      next_shuffle_block_num = 1;
    vector< account_name_type >   current_shuffled_witnesses;
    uint8_t                       num_scheduled_witnesses = 1;
-   uint8_t                       top19_weight = 1;
+   uint8_t                       elected_weight = 1;
    uint8_t                       timeshare_weight = 5;
    uint8_t                       miner_weight = 1;
    uint32_t                      witness_pay_normalization_factor = 25;
@@ -1186,7 +1186,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_witness_schedule_object,
              (next_shuffle_block_num)
              (current_shuffled_witnesses)
              (num_scheduled_witnesses)
-             (top19_weight)
+             (elected_weight)
              (timeshare_weight)
              (miner_weight)
              (witness_pay_normalization_factor)

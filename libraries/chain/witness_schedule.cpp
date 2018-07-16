@@ -72,6 +72,11 @@ void update_median_witness_props( database& db )
       _wso.median_props.maximum_block_size      = median_maximum_block_size;
       _wso.median_props.sbd_interest_rate       = median_sbd_interest_rate;
       _wso.median_props.account_subsidy_limit   = median_account_subsidy_limit;
+
+      _wso.account_subsidy_print_rate =
+         ( uint64_t( median_account_subsidy_limit ) * STEEM_ACCOUNT_SUBSIDY_PRECISION ) / STEEM_BLOCKS_PER_DAY;
+      _wso.single_witness_subsidy_limit =
+         ( median_account_subsidy_limit * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * STEEM_WITNESS_SUBSIDY_PERCENT ) / STEEM_100_PERCENT;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )
@@ -100,7 +105,7 @@ void update_witness_schedule4( database& db )
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
-      db.modify( *itr, [&]( witness_object& wo ) { wo.schedule = witness_object::top19; } );
+      db.modify( *itr, [&]( witness_object& wo ) { wo.schedule = witness_object::elected; } );
    }
 
    auto num_elected = active_witnesses.size();
@@ -279,7 +284,7 @@ void update_witness_schedule4( database& db )
 
       _wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
       _wso.witness_pay_normalization_factor =
-           _wso.top19_weight * num_elected
+           _wso.elected_weight * num_elected
          + _wso.miner_weight * num_miners
          + _wso.timeshare_weight * num_timeshare;
 
