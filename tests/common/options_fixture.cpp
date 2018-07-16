@@ -97,7 +97,7 @@ void account_direction_fixture::check() {
                                                    fc::variant(static_cast<uint8_t>(dir))});
                 auto accs = plg->get_account_history(mp);
                 for (auto a : accs) {
-                    founded_accs.insert("[" + n + "] " + a.second.op.visit(ovisit));
+                    founded_accs.insert(n + ": " + a.second.op.visit(ovisit));
                 }
             }
         } else {

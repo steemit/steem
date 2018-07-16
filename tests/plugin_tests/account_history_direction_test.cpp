@@ -22,56 +22,56 @@ typedef std::vector<std::string> founded_need;
 
 struct any_founded_need {
     founded_need v = {
-        "[cyberfounder] golos::protocol::custom_operation",
-        "[alice] golos::protocol::account_create_operation",
-        "[alice] golos::protocol::transfer_operation",
-        "[alice] golos::protocol::transfer_to_vesting_operation",
-        "[bob] golos::protocol::account_create_operation",
-        "[bob] golos::protocol::comment_operation",
-        "[bob] golos::protocol::transfer_operation",
-        "[bob] golos::protocol::transfer_to_vesting_operation",
-        "[cyberfounder] golos::protocol::account_create_operation",
-        "[cyberfounder] golos::protocol::transfer_operation",
-        "[cyberfounder] golos::protocol::transfer_to_vesting_operation",
-        "[sam] golos::protocol::account_create_operation",
-        "[sam] golos::protocol::transfer_operation",
-        "[sam] golos::protocol::transfer_to_vesting_operation",
-        "[alice] golos::protocol::vote_operation",
-        "[bob] golos::protocol::vote_operation",
-        "[sam] golos::protocol::vote_operation",
-        "[bob] golos::protocol::delete_comment_operation",
-        "[cyberfounder] golos::protocol::account_create_operation",
-        "[dave] golos::protocol::account_create_operation"
+        "cyberfounder: golos::protocol::custom_operation",
+        "alice: golos::protocol::account_create_operation",
+        "alice: golos::protocol::transfer_operation",
+        "alice: golos::protocol::transfer_to_vesting_operation",
+        "bob: golos::protocol::account_create_operation",
+        "bob: golos::protocol::comment_operation",
+        "bob: golos::protocol::transfer_operation",
+        "bob: golos::protocol::transfer_to_vesting_operation",
+        "cyberfounder: golos::protocol::account_create_operation",
+        "cyberfounder: golos::protocol::transfer_operation",
+        "cyberfounder: golos::protocol::transfer_to_vesting_operation",
+        "sam: golos::protocol::account_create_operation",
+        "sam: golos::protocol::transfer_operation",
+        "sam: golos::protocol::transfer_to_vesting_operation",
+        "alice: golos::protocol::vote_operation",
+        "bob: golos::protocol::vote_operation",
+        "sam: golos::protocol::vote_operation",
+        "bob: golos::protocol::delete_comment_operation",
+        "cyberfounder: golos::protocol::account_create_operation",
+        "dave: golos::protocol::account_create_operation"
     };
 };
 
 
 struct sender_founded_need {
     founded_need v = {
-        "[alice] golos::protocol::transfer_to_vesting_operation",
-        "[bob] golos::protocol::comment_operation",
-        "[bob] golos::protocol::transfer_to_vesting_operation",
-        "[cyberfounder] golos::protocol::account_create_operation",
-        "[cyberfounder] golos::protocol::transfer_operation",
-        "[cyberfounder] golos::protocol::transfer_to_vesting_operation",
-        "[sam] golos::protocol::transfer_to_vesting_operation",
-        "[alice] golos::protocol::vote_operation",
-        "[sam] golos::protocol::vote_operation",
-        "[cyberfounder] golos::protocol::account_create_operation"
+        "alice: golos::protocol::transfer_to_vesting_operation",
+        "bob: golos::protocol::comment_operation",
+        "bob: golos::protocol::transfer_to_vesting_operation",
+        "cyberfounder: golos::protocol::account_create_operation",
+        "cyberfounder: golos::protocol::transfer_operation",
+        "cyberfounder: golos::protocol::transfer_to_vesting_operation",
+        "sam: golos::protocol::transfer_to_vesting_operation",
+        "alice: golos::protocol::vote_operation",
+        "sam: golos::protocol::vote_operation",
+        "cyberfounder: golos::protocol::account_create_operation"
     };
 };
 
 
 struct receiver_founded_need {
     founded_need v = {
-        "[alice] golos::protocol::account_create_operation",
-        "[alice] golos::protocol::transfer_operation",
-        "[bob] golos::protocol::account_create_operation",
-        "[bob] golos::protocol::transfer_operation",
-        "[sam] golos::protocol::account_create_operation",
-        "[sam] golos::protocol::transfer_operation",
-        "[bob] golos::protocol::vote_operation",
-        "[dave] golos::protocol::account_create_operation"
+        "alice: golos::protocol::account_create_operation",
+        "alice: golos::protocol::transfer_operation",
+        "bob: golos::protocol::account_create_operation",
+        "bob: golos::protocol::transfer_operation",
+        "sam: golos::protocol::account_create_operation",
+        "sam: golos::protocol::transfer_operation",
+        "bob: golos::protocol::vote_operation",
+        "dave: golos::protocol::account_create_operation"
     };
 };
 
