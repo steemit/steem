@@ -8,6 +8,47 @@
 #include <chrono>
 #include <fstream>
 
+std::map< std::string, float > initialize_filter_map()
+{
+   std::map< std::string, float > filter;
+   filter[ "steem::protocol::account_create_operation" ]                   = 1.0;
+   filter[ "steem::protocol::account_create_with_delegation_operation" ]   = 1.0;
+   filter[ "steem::protocol::account_update_operation" ]                   = 0.5;
+   filter[ "steem::protocol::account_witness_proxy_operation" ]            = 1.0;
+   filter[ "steem::protocol::account_witness_vote_operation" ]             = 1.0;
+   filter[ "steem::protocol::cancel_transfer_from_savings_operation" ]     = 1.0;
+   filter[ "steem::protocol::change_recovery_account_operation" ]          = 1.0;
+   filter[ "steem::protocol::claim_reward_balance_operation" ]             = 1.0;
+   filter[ "steem::protocol::comment_operation" ]                          = 0.01;
+   filter[ "steem::protocol::comment_options_operation" ]                  = 0.2;
+   filter[ "steem::protocol::convert_operation" ]                          = 1.0;
+   filter[ "steem::protocol::custom_json_operation" ]                      = 0.01;
+   filter[ "steem::protocol::custom_operation" ]                           = 1.0;
+   filter[ "steem::protocol::decline_voting_rights_operation" ]            = 1.0;
+   filter[ "steem::protocol::delegate_vesting_shares_operation" ]          = 0.5;
+   filter[ "steem::protocol::delete_comment_operation" ]                   = 1.0;
+   filter[ "steem::protocol::escrow_approve_operation" ]                   = 1.0;
+   filter[ "steem::protocol::escrow_dispute_operation" ]                   = 1.0;
+   filter[ "steem::protocol::escrow_release_operation" ]                   = 1.0;
+   filter[ "steem::protocol::escrow_transfer_operation" ]                  = 1.0;
+   filter[ "steem::protocol::feed_publish_operation" ]                     = 1.0;
+   filter[ "steem::protocol::limit_order_cancel_operation" ]               = 1.0;
+   filter[ "steem::protocol::limit_order_create_operation" ]               = 0.5;
+   filter[ "steem::protocol::limit_order_create2_operation" ]              = 1.0;
+   filter[ "steem::protocol::recover_account_operation" ]                  = 1.0;
+   filter[ "steem::protocol::request_account_recovery_operation" ]         = 1.0;
+   filter[ "steem::protocol::set_withdraw_vesting_route_operation" ]       = 1.0;
+   filter[ "steem::protocol::transfer_from_savings_operation" ]            = 1.0;
+   filter[ "steem::protocol::transfer_operation" ]                         = 0.08;
+   filter[ "steem::protocol::transfer_to_savings_operation" ]              = 1.0;
+   filter[ "steem::protocol::transfer_to_vesting_operation" ]              = 1.0;
+   filter[ "steem::protocol::vote_operation" ]                             = 0.005;
+   filter[ "steem::protocol::withdraw_vesting_operation" ]                 = 1.0;
+   filter[ "steem::protocol::witness_update_operation" ]                   = 1.0;
+
+   return filter;
+}
+
 namespace steem { namespace chain { namespace util {
 
    uint32_t advanced_benchmark_dumper::cnt = 0;
@@ -43,21 +84,12 @@ namespace steem { namespace chain { namespace util {
    template< bool APPLY_CONTEXT >
    void advanced_benchmark_dumper::end( const std::string& str, const uint64_t size )
    {
+      static const std::map< std::string, float > filter = initialize_filter_map();
       uint64_t time = (uint64_t) ( fc::time_point::now() - time_begin ).count();
 
-      if( str == "condenser_api<-block"
-       || str == "debug_node<-block" )
-      {
-         return;
-      }
-
-      if( str == "steem::protocol::comment_operation"
-       || str == "steem::protocol::vote_operation"
-       || str == "steem::protocol::custom_json_operation"
-       || str == "steem::protocol::claim_reward_balance_operation" )
-      {
-         if( ( static_cast<float>(std::rand()) / RAND_MAX ) < 0.90 ) return;
-      }
+      auto itr = filter.find( str );
+      if( itr == filter.end() ) return;
+      if( ( static_cast<float>( std::rand() ) / RAND_MAX ) > itr->second ) return;
 
       auto res = info.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, size, 1, time );
 
