@@ -96,8 +96,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       const account_object& init = db->get_account( STEEM_INIT_MINER_NAME );
       asset init_starting_balance = init.balance;
 
-      const auto& gpo = db->get_dynamic_global_properties();
-
       account_create_operation op;
 
       op.new_account_name = "alice";
@@ -125,9 +123,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
 
       const account_object& acct = db->get_account( "alice" );
       const account_authority_object& acct_auth = db->get< account_authority_object, by_account >( "alice" );
-
-      auto vest_shares = gpo.total_vesting_shares;
-      auto vests = gpo.total_vesting_fund_steem;
 
       BOOST_REQUIRE( acct.name == "alice" );
       BOOST_REQUIRE( acct_auth.owner == authority( 1, priv_key.get_public_key(), 1 ) );
