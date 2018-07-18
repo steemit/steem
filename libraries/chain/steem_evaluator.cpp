@@ -1681,6 +1681,10 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 #endif
       return;
    }
+   else
+   {
+      FC_ASSERT( _db.head_block_time() < comment.cashout_time, "Comment is actively being rewarded. Cannot vote on comment." );
+   }
 
    const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
@@ -1721,16 +1725,19 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
 
+   uint32_t cashout_delta = ( comment.cashout_time - _db.head_block_time() ).to_seconds();
+
+   if( cashout_delta < STEEM_UPVOTE_LOCKOUT_SECONDS )
+   {
+      abs_rshares = (int64_t) ( ( uint128_t( abs_rshares ) * cashout_delta ) / STEEM_UPVOTE_LOCKOUT_SECONDS ).to_uint64();
+   }
+
    if( itr == comment_vote_idx.end() )
    {
       FC_ASSERT( o.weight != 0, "Vote weight cannot be 0." );
       /// this is the rshares voting for or against the post
-      int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( rshares > 0 )
-      {
-         FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEM_UPVOTE_LOCKOUT_HF17, "Cannot increase payout within last twelve hours before payout." );
-      }
+      int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
 
       _db.modify( voter, [&]( account_object& a )
       {
@@ -1840,13 +1847,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       FC_ASSERT( itr->num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
       FC_ASSERT( itr->vote_percent != o.weight, "Your current vote on this comment is identical to this vote." );
 
-      /// this is the rshares voting for or against the post
       int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
-
-      if( itr->rshares < rshares )
-      {
-         FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEM_UPVOTE_LOCKOUT_HF17, "Cannot increase payout within last twelve hours before payout." );
-      }
 
       _db.modify( voter, [&]( account_object& a )
       {

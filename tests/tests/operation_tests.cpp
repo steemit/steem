@@ -1073,38 +1073,54 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
+         BOOST_TEST_MESSAGE( "--- Test reduced effectiveness when increasing rshares within lockout period" );
 
          generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEM_UPVOTE_LOCKOUT_HF17 ).sec_since_epoch() + STEEM_BLOCK_INTERVAL ), true );
 
+         old_manabar = db->get_account( "dave" ).voting_manabar;
+         params.max_mana = util::get_effective_vesting_shares( db->get_account( "dave" ) );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
+
+         op.voter = "dave";
          op.weight = STEEM_100_PERCENT;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         sign( tx, alice_private_key );
+         sign( tx, dave_private_key );
+         db->push_transaction( tx, 0 );
 
-         STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+         new_rshares = old_manabar.current_mana - db->get_account( "dave" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
+         new_rshares = ( new_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
+         account_id_type dave_id = db->get_account( "dave" ).id;
+         comment_id_type bob_comment_id = db->get_comment( "bob", string( "foo" ) ).id;
+
+         {
+            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( bob_comment_id, dave_id ) );
+            BOOST_REQUIRE( dave_bob_vote.rshares = new_rshares );
+         }
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Test success when reducing rshares within lockout period" );
+         BOOST_TEST_MESSAGE( "--- Test rediced effectiveness when reducing rshares within lockout period" );
+
+         generate_block();
+         old_manabar = db->get_account( "dave" ).voting_manabar;
+         params.max_mana = util::get_effective_vesting_shares( db->get_account( "dave" ) );
+         old_manabar.regenerate_mana( params, db->head_block_time() );
 
          op.weight = -1 * STEEM_100_PERCENT;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         sign( tx, alice_private_key );
-         db->push_transaction( tx, 0 );
-         validate_database();
-
-         BOOST_TEST_MESSAGE( "--- Test failure with a new vote within lockout period" );
-
-         op.weight = STEEM_100_PERCENT;
-         op.voter = "dave";
-         tx.operations.clear();
-         tx.signatures.clear();
-         tx.operations.push_back( op );
          sign( tx, dave_private_key );
-         STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+         db->push_transaction( tx, 0 );
+
+         new_rshares = old_manabar.current_mana - db->get_account( "dave" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
+         new_rshares = ( new_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
+
+         {
+            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( bob_comment_id, dave_id ) );
+            BOOST_REQUIRE( dave_bob_vote.rshares = new_rshares );
+         }
          validate_database();
       }
    }
