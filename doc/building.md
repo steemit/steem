@@ -36,6 +36,60 @@ We ship a Dockerfile.  This builds both common node type binaries.
     cd steem
     docker build -t steemit/steem .
 
+## Building on Ubuntu 18.04 [[1]][building-ubuntu-1804-lts]
+
+Since Ubuntu 18.04 comes with built-in unsupported yet dependencies, there are changes needed after we aquire packages from the `apt`manager.
+
+    # Required packages
+    sudo apt install -y \
+        autoconf \
+        automake \
+        cmake \
+        gcc-5 \
+        g++-5 \
+        libbz2-dev \
+        libsnappy-dev \
+        libssl1.0-dev \
+        libtool \
+        make \
+        pkg-config \
+        python3 \
+        python3-jinja2
+    
+    # Optional packages
+    sudo apt install -y \
+        doxygen \
+        libncurses5-dev \
+        libreadline-dev \
+        perl
+    
+    # Remove worthless versions of compilers and create symlinks to the right ones.
+    sudo apt remove -y gcc g++
+    ln -s /usr/bin/gcc-5 /usr/bin/gcc
+    ln -s /usr/bin/gcc-5 /usr/bin/cc
+    ln -s /usr/bin/g++-5 /usr/bin/g++
+    ln -s /usr/bin/g++-5 /usr/bin/cxx
+    
+    # Installing libboost 1.60
+    cd ~/
+    wget 'http://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.bz2'
+    tar -xvf boost_1_60_0.tar.bz2
+    cd boost_1_60_0
+    ./bootstrap.sh
+    sudo ./b2 install
+    cd ..
+    rm -rf boost_1_60_0*
+    
+    # Actual build
+    git clone https://github.com/steemit/steem
+    cd steem
+    git submodule update --init --recursive
+    mkdir build && cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make -j$(nproc) steemd cli_wallet
+    # optional
+    make install  # defaults to /usr/local
+
 ## Building on Ubuntu 16.04
 
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
@@ -228,3 +282,5 @@ This will only build `steemd`.
   Intel and Microsoft compilers. These compilers may work, but the
   developers do not use them. Pull requests fixing warnings / errors from
   these compilers are accepted.
+  
+[building-ubuntu-1804-lts]: https://steemit.com/steem/@perduta/how-to-compile-steem-under-ubuntu-18-04-lts
