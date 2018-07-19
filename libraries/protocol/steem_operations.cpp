@@ -141,6 +141,12 @@ namespace steem { namespace protocol {
       validate_account_name( creator );
       FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
+      FC_ASSERT( fee <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Account creation fee cannot be too large" );
+      FC_ASSERT( is_asset_type( fee_discount, STEEM_SYMBOL ), "Fee discount must be STEEM" );
+      FC_ASSERT( fee_discount >= asset( 0, STEEM_SYMBOL ), "Fee discount cannot be negative" );
+      FC_ASSERT( fee_discount <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Fee discount cannot be too large" );
+      FC_ASSERT( fee + fee_discount <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Sum of fee and discount cannot be too large" );
+
       FC_ASSERT( extensions.size() == 0, "There are no extensions for claim_account_operation." );
    }
 
@@ -227,7 +233,7 @@ namespace steem { namespace protocol {
          asset account_creation_fee;
          fc::raw::unpack_from_vector( itr->second, account_creation_fee );
          FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
-         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE , "account_creation_fee smaller than minimum account creation fee" );
+         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE, "account_creation_fee smaller than minimum account creation fee" );
       }
 
       itr = props.find( "maximum_block_size" );
