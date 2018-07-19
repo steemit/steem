@@ -2310,7 +2310,8 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
       if( !_db.is_pending_tx() )
       {
          const auto& current_witness = _db.get_witness( gpo.current_witness );
-         FC_ASSERT( current_witness.schedule == witness_object::elected, "Subsidized accounts can only be claimed by elected witnesses" );
+         FC_ASSERT( current_witness.schedule == witness_object::elected, "Subsidized accounts can only be claimed by elected witnesses. current_witness:${w} witness_type:${t}",
+            ("w",current_witness.owner)("t",current_witness.schedule) );
 
          uint32_t delta_time = ( _db.head_block_time() - current_witness.last_subsidy_update ).to_seconds();
 
@@ -2331,7 +2332,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
          new_subsidies += STEEM_ACCOUNT_SUBSIDY_PRECISION;
 
          FC_ASSERT( new_subsidies <= wso.single_witness_subsidy_limit, "Witness has claimed too many subsidized accounts recents. Claimed: ${claimed} Limit: ${limit}",
-            ("claiemd", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
+            ("claimed", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
 
          _db.modify( current_witness, [&]( witness_object& w )
          {

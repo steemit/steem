@@ -365,11 +365,18 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             }
             block_info.dt[i] = dt;
 
-            block_info.decay[i] = compute_pool_decay( params.decay_params, pool, dt );
-            block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
-            block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
+            if( i == resource_new_accounts )
+            {
+               pool = _db.get_dynamic_global_properties().available_account_subsidies / STEEM_ACCOUNT_SUBSIDY_PRECISION;
+            }
+            else
+            {
+               block_info.decay[i] = compute_pool_decay( params.decay_params, pool, dt );
+               block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
+               block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
 
-            pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+               pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+            }
 
             if( debug_print )
             {
@@ -394,6 +401,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 
 void rc_plugin_impl::on_first_block()
 {
+   // Initial values are located at `libraries/jsonball/data/resource_parameters.json`
    std::string resource_params_json = steem::jsonball::get_resource_parameters();
    fc::variant resource_params_var = fc::json::from_string( resource_params_json, fc::json::strict_parser );
    std::vector< std::pair< fc::variant, std::pair< fc::variant_object, fc::variant_object > > > resource_params_pairs;

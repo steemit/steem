@@ -10,6 +10,8 @@
 
 #include <steem/chain/util/reward.hpp>
 
+#include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/resource_count.hpp>
 #include <steem/plugins/witness/witness_objects.hpp>
 
 #include <fc/macros.hpp>
@@ -7113,13 +7115,14 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
-            wso.median_props.account_subsidy_limit = 10;
+            wso.median_props.account_subsidy_limit = 100;
             wso.account_subsidy_print_rate = 34;
+            wso.single_witness_subsidy_limit = 100000;
          });
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.available_account_subsidies = 200000;
+            gpo.available_account_subsidies = 2000000;
          });
       });
       generate_block();
@@ -7156,7 +7159,8 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "15.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
       validate_database();
 
 
@@ -7190,11 +7194,12 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 200000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- Test success claiming an subsidized account" );
+      BOOST_TEST_MESSAGE( "--- Test success claiming a subsidized account" );
       op.creator = "alice";
       op.fee = ASSET( "0.000 TESTS" );
       tx.clear();
@@ -7203,8 +7208,28 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 190000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1990000 );
 
+      // Cost is not changed within a block
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
+         uint32_t next_slot = db.get_slot_at_time( next_block_time );
+         account_name_type next_witness = db.get_scheduled_witness( next_slot );
+
+         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
+         {
+            w.schedule = witness_object::elected;
+         });
+      });
+      generate_block();
+
+      // RC update at the end of the block
+      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1990034 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1990034 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       BOOST_TEST_MESSAGE( "--- Test success claiming a partial subsidized account" );
       op.fee = ASSET( "2.500 TESTS" );
@@ -7214,7 +7239,8 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 4 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "7.500 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 185000 );
+      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1985034 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1990034 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
 
       BOOST_TEST_MESSAGE( "--- Test failure with no available subsidized accounts" );

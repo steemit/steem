@@ -12,6 +12,8 @@
 #include <steem/chain/util/reward.hpp>
 
 #include <steem/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/resource_count.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -2976,6 +2978,7 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
       generate_block();
 
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
 
       db_plugin->debug_update( [=]( database& db )
       {
@@ -2987,12 +2990,15 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
       });
 
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
 
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000 );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       db_plugin->debug_update( [=]( database& db )
       {
@@ -3006,6 +3012,8 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
 
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ]
+         == ( 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ) / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       validate_database();
    }
