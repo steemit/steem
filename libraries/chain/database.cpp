@@ -2843,6 +2843,8 @@ void database::init_genesis( uint64_t init_supply )
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEM_MAX_BLOCK_SIZE;
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
+         p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
+         p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
       } );
 
       // Nothing to do
@@ -3658,12 +3660,12 @@ void database::update_virtual_supply()
          auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
             / dgp.virtual_supply.amount.value ).to_uint64() );
 
-         if( percent_sbd <= STEEM_SBD_START_PERCENT )
+         if( percent_sbd <= dgp.sbd_start_percent )
             dgp.sbd_print_rate = STEEM_100_PERCENT;
-         else if( percent_sbd >= STEEM_SBD_STOP_PERCENT )
+         else if( percent_sbd >= dgp.sbd_stop_percent )
             dgp.sbd_print_rate = 0;
          else
-            dgp.sbd_print_rate = ( ( STEEM_SBD_STOP_PERCENT - percent_sbd ) * STEEM_100_PERCENT ) / ( STEEM_SBD_STOP_PERCENT - STEEM_SBD_START_PERCENT );
+            dgp.sbd_print_rate = ( ( dgp.sbd_stop_percent - percent_sbd ) * STEEM_100_PERCENT ) / ( dgp.sbd_stop_percent - dgp.sbd_start_percent );
       }
    });
 } FC_CAPTURE_AND_RETHROW() }
@@ -4846,6 +4848,8 @@ void database::apply_hardfork( uint32_t hardfork )
             {
                gpo.delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF20;
                gpo.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20;
+               gpo.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF20;
+               gpo.sbd_start_percent = STEEM_SBD_START_PERCENT_HF20;
             });
 
             const auto& wso = get_witness_schedule_object();
