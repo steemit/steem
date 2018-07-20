@@ -313,9 +313,12 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       verify_authority_accounts_exist( _db, o.posting, o.new_account_name, authority::posting );
    }
 
-   _db.modify( creator, [&]( account_object& c ){
-      c.balance -= o.fee;
-   });
+   _db.adjust_balance( creator, -o.fee );
+
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1762 ) )
+   {
+      _db.adjust_balance( _db.get< account_object, by_name >( STEEM_NULL_ACCOUNT ), o.fee );
+   }
 
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
@@ -334,8 +337,10 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       auth.last_owner_update = fc::time_point_sec::min();
    });
 
-   if( o.fee.amount > 0 )
+   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1762 ) && o.fee.amount > 0 )
+   {
       _db.create_vesting( new_account, o.fee );
+   }
 }
 
 void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
@@ -390,6 +395,11 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       c.delegated_vesting_shares += o.delegation;
    });
 
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__1762 ) )
+   {
+      _db.adjust_balance( _db.get< account_object, by_name >( STEEM_NULL_ACCOUNT ), o.fee );
+   }
+
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
@@ -420,8 +430,10 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       });
    }
 
-   if( o.fee.amount > 0 )
+   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1762 ) && o.fee.amount > 0 )
+   {
       _db.create_vesting( new_account, o.fee );
+   }
 }
 
 
