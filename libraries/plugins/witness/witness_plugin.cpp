@@ -93,9 +93,10 @@ namespace detail {
       block_production_condition::block_production_condition_enum block_production_loop();
       block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
 
-      bool _production_enabled = false;
-      uint32_t _required_witness_participation = 33 * STEEM_1_PERCENT;
-      uint32_t _production_skip_flags = chain::database::skip_nothing;
+      bool     _production_enabled              = false;
+      uint32_t _required_witness_participation  = 33 * STEEM_1_PERCENT;
+      uint32_t _production_skip_flags           = chain::database::skip_nothing;
+      bool     _enforce_bandwidth               = false;
 
       std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steem::protocol::account_name_type >                     _witnesses;
@@ -442,7 +443,10 @@ namespace detail {
 
          has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
 
-         if( _db.is_producing() )
+         // Prior to hf 20, we don't want to listen to the enforce bandwidth arg and always want to enforce bandwidth
+         // When hf 20 goes live this will default enforcement to the rc plugin.
+         if( ( !_db.has_hardfork( STEEM_HARDFORK_0_20 ) ||  _enforce_bandwidth ) && _db.is_producing() )
+         {
             STEEM_ASSERT( has_bandwidth,  plugin_exception,
                "Account: ${account} bandwidth limit exceeded. Please wait to transact or power up STEEM.",
                ("account", a.name)
@@ -450,6 +454,8 @@ namespace detail {
                ("account_average_bandwidth", account_average_bandwidth)
                ("max_virtual_bandwidth", max_virtual_bandwidth)
                ("total_vesting_shares", total_vshares) );
+         }
+
          std::shared_ptr< exp_witness_data_object > export_data =
             steem::plugins::block_data_export::find_export_data< exp_witness_data_object >( STEEM_WITNESS_PLUGIN_NAME );
          if( export_data )
@@ -626,11 +632,12 @@ void witness_plugin::set_program_options(
 {
    string witness_id_example = "initwitness";
    cfg.add_options()
-         ("enable-stale-production", bpo::bool_switch()->default_value(false), "Enable block production, even if the chain is stale.")
+         ("enable-stale-production", bpo::bool_switch()->default_value( false ), "Enable block production, even if the chain is stale.")
          ("required-participation", bpo::value< uint32_t >()->default_value( 33 ), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
          ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
             ("name of witness controlled by this node (e.g. " + witness_id_example + " )" ).c_str() )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
+         ("witness-enforce-bandwidth", bpo::bool_switch()->default_value( false ), "Enforce bandwidth restrictions. Default is off in favor of rc_plugin." )
          ;
 }
 
@@ -661,6 +668,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    }
 
    my->_production_enabled = options.at( "enable-stale-production" ).as< bool >();
+   my->_enforce_bandwidth = options.at( "witness-enforce-bandwidth" ).as< bool >();
 
    if( options.count( "required-participation" ) )
    {
