@@ -97,7 +97,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
       aws s3api put-object-acl --bucket $S3_BUCKET --key block_log-latest --acl public-read
 
       tar cf op-benchmarks.tar.lz4 --use-compress-prog=lz4 -C $HOME benchmarks
-      aws s3 cp benchmarks.tar.lz4 s3://$S3_BUCKET/op-benchmarks-`date '+%Y%m%d-%H%M%S'`.log
+      aws s3 cp op-benchmarks.tar.lz4 s3://$S3_BUCKET/op-benchmarks-`date '+%Y%m%d-%H%M%S'`.tar.lz4
     fi
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation
