@@ -4,6 +4,8 @@ FROM phusion/baseimage:0.9.19
 
 ARG STEEM_STATIC_BUILD=ON
 ENV STEEM_STATIC_BUILD ${STEEM_STATIC_BUILD}
+ARG BUILD_STEP
+ENV BUILD_STEP ${BUILD_STEP}
 
 ENV LANG=en_US.UTF-8
 
@@ -51,6 +53,7 @@ RUN \
 ADD . /usr/local/src/steem
 
 RUN \
+    if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
@@ -71,9 +74,11 @@ RUN \
     PYTHONPATH=programs/build_helpers \
     python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
-    rm -rf /usr/local/src/steem/build
+    rm -rf /usr/local/src/steem/build ; \
+    fi
 
 RUN \
+    if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
@@ -98,9 +103,11 @@ RUN \
     PYTHONPATH=programs/build_helpers \
     python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
-    rm -rf /usr/local/src/steem/build
+    rm -rf /usr/local/src/steem/build ; \
+    fi
 
 RUN \
+    if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
@@ -120,9 +127,11 @@ RUN \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --output="/var/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
-    rm -rf /usr/local/src/steem/build
+    rm -rf /usr/local/src/steem/build ; \
+    fi
 
 RUN \
+    if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
@@ -162,7 +171,8 @@ RUN \
     && \
     make -j$(nproc) && \
     make install && \
-    rm -rf /usr/local/src/steem
+    rm -rf /usr/local/src/steem ; \
+    fi
 
 RUN \
     apt-get remove -y \

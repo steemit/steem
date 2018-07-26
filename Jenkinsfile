@@ -4,7 +4,17 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        sh 'ciscripts/triggerbuild.sh'
+        parallel ( "Build tests":
+        {
+          node {
+            sh 'ciscripts/triggertests.sh'
+          }
+        },
+        "Build docker image": {
+          node {
+            sh 'ciscripts/triggerbuild.sh'
+          }
+        })
       }
     }
   }
