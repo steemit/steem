@@ -6,12 +6,12 @@ pipeline {
       steps {
         parallel ( "Build tests":
         {
-          node {
+          node() {
             sh 'ciscripts/triggertests.sh'
           }
         },
         "Build docker image": {
-          node {
+          node() {
             sh 'ciscripts/triggerbuild.sh'
           }
         })
