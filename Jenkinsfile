@@ -4,7 +4,14 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        sh 'ciscripts/triggerbuild.sh'
+        parallel ( "Build tests":
+        {
+          sh 'ciscripts/triggertests.sh'
+          step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: '**/cobertura/coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+        },
+        "Build docker image": {
+          sh 'ciscripts/triggerbuild.sh'
+        })
       }
     }
   }
