@@ -53,6 +53,8 @@ class rc_plugin_impl
 
       void on_first_block();
       void validate_database();
+      bool before_first_block()
+      { return (_db.count< rc_account_object >() == 0); }
 
       database&                     _db;
       rc_plugin&                    _self;
@@ -696,6 +698,9 @@ struct post_apply_operation_visitor
 
 void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
+   if( before_first_block() )
+      return;
+
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    pre_apply_operation_visitor vtor( _shared_state, _db );
 
@@ -732,6 +737,9 @@ void update_last_vesting( database& db, const std::vector< account_name_type >& 
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
+   if( before_first_block() )
+      return;
+
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
