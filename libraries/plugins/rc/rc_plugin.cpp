@@ -367,7 +367,8 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 
             if( i == resource_new_accounts )
             {
-               pool = _db.get_dynamic_global_properties().available_account_subsidies / STEEM_ACCOUNT_SUBSIDY_PRECISION;
+               assert( params.resource_unit == STEEM_ACCOUNT_SUBSIDY_PRECISION );
+               pool = ( _db.get_dynamic_global_properties().available_account_subsidies ) / STEEM_ACCOUNT_SUBSIDY_PRECISION;
             }
             else
             {
