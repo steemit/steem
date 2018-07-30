@@ -2994,11 +2994,11 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
 
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1000 );
 
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000 / STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000 );
 
       db_plugin->debug_update( [=]( database& db )
       {
@@ -3013,7 +3013,7 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
       generate_block();
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
       BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ]
-         == ( 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ) / STEEM_ACCOUNT_SUBSIDY_PRECISION );
+         == ( 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ) );
 
       validate_database();
    }
