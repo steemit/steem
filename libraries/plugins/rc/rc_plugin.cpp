@@ -367,8 +367,13 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 
             if( i == resource_new_accounts )
             {
-               assert( params.resource_unit == STEEM_ACCOUNT_SUBSIDY_PRECISION );
-               pool = ( _db.get_dynamic_global_properties().available_account_subsidies ) / STEEM_ACCOUNT_SUBSIDY_PRECISION;
+               /*
+                * Does not need overflow checking. account_subsidy_limit is the witness voted daily print rate and is capped
+                * via consensus as a uint32_t. STEEM_ACCOUNT_SUBSIDY_PRECISION is 10000, so params.resource_unit would need
+                * to be greater than 2^28 to cause overflow. Currently, it is also set to 10000
+                * (confirm in jsonball/data/resource_parameters.json)
+                */
+               pool = ( _db.get_dynamic_global_properties().available_account_subsidies * params.resource_unit ) / STEEM_ACCOUNT_SUBSIDY_PRECISION;
             }
             else
             {
