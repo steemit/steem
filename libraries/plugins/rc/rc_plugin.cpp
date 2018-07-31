@@ -85,7 +85,7 @@ class rc_plugin_impl
       visitor_shared_state          _shared_state;
 
       rc_plugin_skip_flags          _skip;
-      std::map< account_name_type, asset > _account_to_vests;
+      std::map< account_name_type, int64_t > _account_to_max_rc;
 
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -131,7 +131,7 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
       rca.max_rc = rca.rc_manabar.current_mana;
-      rca.last_vesting_shares = account.vesting_shares;
+      rca.last_max_rc = get_maximum_rc( account, rca );
    } );
 }
 
@@ -318,6 +318,11 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
 
+   if( gpo.head_block_number == 1 )
+   {
+      on_first_block();
+   }
+
    /*
    const auto& idx = _db.get_index< account_index >().indices().get< by_name >();
 
@@ -325,16 +330,18 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
    ilog( "Block ${b}", ("b", note.block_num) );
    for( const account_object& acct : idx )
    {
-      auto it = _account_to_vests.find( acct.name );
-      if( it == _account_to_vests.end() )
+      auto it = _account_to_max_rc.find( acct.name );
+      const rc_account_object& rc_account = _db.get< rc_account_object, by_name >( acct.name );
+      int64_t max_rc = get_maximum_rc( acct, rc_account );
+      if( it == _account_to_max_rc.end() )
       {
-         ilog( "NEW ${n} : ${v}", ("n", acct.name)("v", acct.vesting_shares) );
-         _account_to_vests.emplace( acct.name, acct.vesting_shares );
+         ilog( "NEW ${n} : ${v}", ("n", acct.name)("v", max_rc) );
+         _account_to_max_rc.emplace( acct.name, max_rc );
       }
-      else if( acct.vesting_shares != it->second )
+      else if( max_rc != it->second )
       {
-         ilog( "${n} : ${v}", ("n", acct.name)("v", acct.vesting_shares) );
-         _account_to_vests[ acct.name ] = acct.vesting_shares;
+         ilog( "${n} : ${v}", ("n", acct.name)("v", max_rc) );
+         _account_to_max_rc[ acct.name ] = max_rc;
       }
    }
    for( const signed_transaction& tx : note.block.transactions )
@@ -342,11 +349,6 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       ilog( "${tx}", ("tx", tx) );
    }
    */
-
-   if( gpo.head_block_number == 1 )
-   {
-      on_first_block();
-   }
 
    if( gpo.total_vesting_shares.amount <= 0 )
    {
@@ -530,24 +532,24 @@ struct pre_apply_operation_visitor
 
       // ilog( "regenerate(${a})", ("a", account.name) );
 
-      if( account.vesting_shares != rc_account.last_vesting_shares )
+      manabar_params mbparams;
+      mbparams.max_mana = get_maximum_rc( account, rc_account );
+      mbparams.regen_time = STEEM_RC_REGEN_TIME;
+
+      if( mbparams.max_mana != rc_account.last_max_rc )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
             STEEM_ASSERT( false, plugin_exception,
-               "Account ${a} VESTS changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
-               ("a", account.name)("old", rc_account.last_vesting_shares)("new", account.vesting_shares)("b", _db.head_block_num()) );
+               "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
+               ("a", account.name)("old", rc_account.last_max_rc)("new", mbparams.max_mana)("b", _db.head_block_num()) );
          }
          else
          {
-            elog( "Account ${a} VESTS changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
-               ("a", account.name)("old", rc_account.last_vesting_shares)("new", account.vesting_shares)("b", _db.head_block_num()) );
+            elog( "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
+               ("a", account.name)("old", rc_account.last_max_rc)("new", mbparams.max_mana)("b", _db.head_block_num()) );
          }
       }
-
-      manabar_params mbparams;
-      mbparams.max_mana = get_maximum_rc( account, rc_account );
-      mbparams.regen_time = STEEM_RC_REGEN_TIME;
 
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
@@ -766,7 +768,7 @@ void update_last_vesting( database& db, const std::vector< account_name_type >& 
       const rc_account_object& rc_account = db.get< rc_account_object, by_name >( name );
       db.modify( rc_account, [&]( rc_account_object& rca )
       {
-         rca.last_vesting_shares = account.vesting_shares;
+         rca.last_max_rc = get_maximum_rc( account, rca );
       } );
    }
 }
@@ -797,9 +799,11 @@ void rc_plugin_impl::validate_database()
    for( const rc_account_object& rc_account : rc_idx )
    {
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
-      FC_ASSERT( account.vesting_shares == rc_account.last_vesting_shares,
-         "Account ${a} VESTS changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
-         ("a", account.name)("old", rc_account.last_vesting_shares)("new", account.vesting_shares)("b", _db.head_block_num()) );
+      int64_t max_rc = get_maximum_rc( account, rc_account );
+
+      FC_ASSERT( max_rc == rc_account.last_max_rc,
+         "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
+         ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
    }
 }
 
