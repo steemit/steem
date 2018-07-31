@@ -1,0 +1,5 @@
+{
+   "plugin_name": "rc_api",
+   "plugin_namespace": "rc",
+   "plugin_project": "rc_api_plugin"
+}
