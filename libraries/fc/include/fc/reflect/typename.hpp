@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <map>
+#include <set>
 #include <vector>
 
 #include <fc/string.hpp>
@@ -67,6 +68,15 @@ namespace fc {
      static const char* name()  {
          static std::string n = std::string("std::map<") + get_typename<K>::name() + ","+get_typename<V>::name()+">";
          return n.c_str();
+     }
+  };
+
+  template<typename E> struct get_typename< std::set<E> >
+  {
+     static const char* name()
+     {
+        static std::string n = std::string("std::set<") + std::string(get_typename<E>::name()) + std::string(">");
+        return n.c_str();
      }
   };
 
