@@ -70,6 +70,15 @@ namespace fc {
      }
   };
 
+  template<typename A, typename B> struct get_typename< std::pair<A,B> >
+  {
+      static const char* name()
+      {
+         static std::string n = std::string("std::pair<") + get_typename<A>::name() + "," + get_typename<B>::name() + ">";
+         return n.c_str();
+      }
+  };
+
   struct signed_int;
   struct unsigned_int;
   template<> struct get_typename<signed_int>   { static const char* name()   { return "signed_int";   } };
