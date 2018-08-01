@@ -16,7 +16,7 @@ template< typename T >
 struct schema_oid_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_TEMPLATE_CLASS_BODY( schema_oid_impl )
+   STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_oid_impl )
 };
 
 template< typename T >

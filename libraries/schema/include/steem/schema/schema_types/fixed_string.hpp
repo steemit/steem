@@ -16,7 +16,7 @@ template<typename Storage>
 struct schema_fixed_string_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_TEMPLATE_CLASS_BODY( schema_fixed_string_impl )
+   STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_fixed_string_impl )
 };
 
 template<typename Storage>

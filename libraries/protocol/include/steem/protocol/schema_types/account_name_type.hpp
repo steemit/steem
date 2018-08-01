@@ -15,7 +15,7 @@ namespace steem { namespace schema { namespace detail {
 struct schema_account_name_type_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_CLASS_BODY( schema_account_name_type_impl )
+   STEEM_SCHEMA_CLASS_BODY( schema_account_name_type_impl )
 };
 
 }
