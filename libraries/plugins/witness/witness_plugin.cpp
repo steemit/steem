@@ -670,6 +670,13 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my->_production_enabled = options.at( "enable-stale-production" ).as< bool >();
    my->_enforce_bandwidth = options.at( "witness-enforce-bandwidth" ).as< bool >();
 
+   if( my->_witnesses.size() > 0 )
+   {
+      // It is safe to access rc plugin here because of APPBASE_REQUIRES_PLUGIN
+      FC_ASSERT( my->_enforce_bandwidth != appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
+         "To produce blocks either bandwidth (witness-enforce-bandwidth=true) or rc rejection (rc-skip-reject-not-enough-rc=false) must be set." );
+   }
+
    if( options.count( "required-participation" ) )
    {
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();

@@ -35,6 +35,8 @@ class rc_plugin : public appbase::plugin< rc_plugin >
       virtual void plugin_shutdown() override;
 
       void set_rc_plugin_skip_flags( rc_plugin_skip_flags skip );
+      const rc_plugin_skip_flags& get_rc_plugin_skip_flags() const;
+
       void validate_database();
 
    private:

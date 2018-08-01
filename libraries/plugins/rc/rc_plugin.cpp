@@ -764,7 +764,12 @@ void rc_plugin_impl::validate_database()
 rc_plugin::rc_plugin() {}
 rc_plugin::~rc_plugin() {}
 
-void rc_plugin::set_program_options( options_description& cli, options_description& cfg ){}
+void rc_plugin::set_program_options( options_description& cli, options_description& cfg )
+{
+   cfg.add_options()
+      ("rc-skip-reject-not-enough-rc", bpo::bool_switch()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ;
+}
 
 void rc_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
@@ -798,6 +803,9 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_resource_param_index >(db);
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
+
+      auto skip_flags = my->_skip;
+      skip_flags.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -816,6 +824,11 @@ void rc_plugin::plugin_shutdown()
 void rc_plugin::set_rc_plugin_skip_flags( rc_plugin_skip_flags skip )
 {
    my->_skip = skip;
+}
+
+const rc_plugin_skip_flags& rc_plugin::get_rc_plugin_skip_flags() const
+{
+   return my->_skip;
 }
 
 void rc_plugin::validate_database()
