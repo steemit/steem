@@ -66,10 +66,11 @@ template< typename ObjectType >                                 \
 struct schema_impl< ObjectType, is_reflected, is_enum >         \
    : public abstract_schema                                     \
 {                                                               \
-GRAPHENE_SCHEMA_CLASS_BODY( schema_impl )                       \
+GRAPHENE_SCHEMA_TEMPLATE_CLASS_BODY( schema_impl )              \
 };
 
-#define GRAPHENE_SCHEMA_CLASS_BODY( CLASSNAME )                 \
+// Templated version of macro includes some method definitions
+#define GRAPHENE_SCHEMA_TEMPLATE_CLASS_BODY( CLASSNAME )        \
    CLASSNAME( int64_t id, const std::string& name ) : _id(id), _name(name) {} \
    virtual ~CLASSNAME() {}                                      \
                                                                 \
@@ -85,6 +86,33 @@ GRAPHENE_SCHEMA_CLASS_BODY( schema_impl )                       \
    std::string str_schema;                                      \
    int64_t _id = -1;                                            \
    std::string _name;
+
+// Non-template version puts method definitions in separate macro
+//    to avoid linker errors
+#define GRAPHENE_SCHEMA_CLASS_BODY( CLASSNAME )                 \
+   CLASSNAME( int64_t id, const std::string& name );            \
+   virtual ~CLASSNAME();                                        \
+                                                                \
+   virtual void get_deps(                                       \
+      std::vector< std::shared_ptr< abstract_schema > >& deps   \
+      ) override;                                               \
+   virtual void get_name( std::string& name ) override;         \
+   virtual void get_str_schema( std::string& s ) override;      \
+   virtual int64_t get_id() override;                           \
+                                                                \
+   std::string str_schema;                                      \
+   int64_t _id = -1;                                            \
+   std::string _name;
+
+// Non-template classes have to call this macro in a .cpp file
+#define GRAPHENE_SCHEMA_DEFINE_CLASS_METHODS( CLASSNAME )       \
+   CLASSNAME::CLASSNAME( int64_t id, const std::string& name )  \
+      : _id(id), _name(name) {}                                 \
+   CLASSNAME::~CLASSNAME() {}                                   \
+   void CLASSNAME::get_name( std::string& name )                \
+   { name = _name; }                                            \
+   int64_t CLASSNAME::get_id()                                  \
+   { return _id; }
 
 GRAPHENE_DECLARE_SCHEMA_CLASS( false, false )
 GRAPHENE_DECLARE_SCHEMA_CLASS(  true, false )
