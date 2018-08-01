@@ -4005,6 +4005,9 @@ void database::clear_expired_delegations()
    auto itr = delegations_by_exp.begin();
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
+      operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
+      pre_push_virtual_operation( vop );
+
       modify( get_account( itr->delegator ), [&]( account_object& a )
       {
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
@@ -4017,7 +4020,7 @@ void database::clear_expired_delegations()
          a.delegated_vesting_shares -= itr->vesting_shares;
       });
 
-      push_virtual_operation( return_vesting_delegation_operation( itr->delegator, itr->vesting_shares ) );
+      post_push_virtual_operation( vop );
 
       remove( *itr );
       itr = delegations_by_exp.begin();
