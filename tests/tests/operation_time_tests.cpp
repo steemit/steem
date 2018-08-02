@@ -2984,7 +2984,7 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
       {
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
-            wso.median_props.account_subsidy_limit = 1000;
+            wso.median_props.account_subsidy_daily_rate = 1000;
             wso.account_subsidy_print_rate = 1000;
          });
       });
@@ -3055,7 +3055,7 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
             wso.median_props.account_creation_fee = ASSET( "5.000 TESTS" );
-            wso.median_props.account_subsidy_limit = 1000;
+            wso.median_props.account_subsidy_daily_rate = 1000;
             wso.account_subsidy_print_rate = 347;
             wso.single_witness_subsidy_limit = 1000000;
          });

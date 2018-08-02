@@ -2229,7 +2229,7 @@ void database::process_subsidized_accounts()
    modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
    {
       gpo.available_account_subsidies = std::min(
-         uint64_t( wso.median_props.account_subsidy_limit ) * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * STEEM_ACCOUNT_SUBSIDY_PRECISION,
+         uint64_t( wso.median_props.account_subsidy_daily_rate ) * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * STEEM_ACCOUNT_SUBSIDY_PRECISION,
          gpo.available_account_subsidies + wso.account_subsidy_print_rate );
    });
 }

@@ -7020,12 +7020,12 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
       prop_op.props[ "key" ].clear();
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
-      prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack_to_vector( 1000 );
+      prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 1000 );
       tx.clear();
       tx.operations.push_back( prop_op );
       sign( tx, signing_key );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( alice_witness.props.account_subsidy_limit == 1000 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_daily_rate == 1000 );
 
       validate_database();
    }
@@ -7111,7 +7111,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
-            wso.median_props.account_subsidy_limit = 100;
+            wso.median_props.account_subsidy_daily_rate = 100;
             wso.account_subsidy_print_rate = 34;
             wso.single_witness_subsidy_limit = 100000;
          });

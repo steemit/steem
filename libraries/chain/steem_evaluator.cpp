@@ -178,10 +178,10 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
       sbd_interest_changed = true;
    }
 
-   itr = o.props.find( "account_subsidy_limit" );
+   itr = o.props.find( "account_subsidy_daily_rate" );
    if( itr != o.props.end() )
    {
-      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_limit );
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_daily_rate );
       account_subsidy_changed = true;
    }
 
@@ -219,7 +219,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
          w.props.sbd_interest_rate = props.sbd_interest_rate;
 
       if( account_subsidy_changed )
-         w.props.account_subsidy_limit = props.account_subsidy_limit;
+         w.props.account_subsidy_daily_rate = props.account_subsidy_daily_rate;
 
       if( key_changed )
          w.signing_key = signing_key;
