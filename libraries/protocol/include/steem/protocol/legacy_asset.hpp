@@ -121,6 +121,15 @@ inline void from_variant( const fc::variant& v, steem::protocol::legacy_steem_as
    leg = steem::protocol::legacy_steem_asset::from_asset( a );
 }
 
+template<>
+struct get_typename< steem::protocol::legacy_steem_asset_symbol_type >
+{
+   static const char* name()
+   {
+      return "steem::protocol::legacy_steem_asset_symbol_type";
+   }
+};
+
 } // fc
 
 FC_REFLECT( steem::protocol::legacy_steem_asset,
