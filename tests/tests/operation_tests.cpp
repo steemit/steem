@@ -6858,6 +6858,15 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       prop_op.props[ "url" ] = fc::raw::pack_to_vector( "\xE0\x80\x80" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy rate overflows" );
+      prop_op.props.clear();
+      prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 0x0000000100000000LL );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy pool cap overflows" );
+      prop_op.props.clear();
+      prop_op.props[ "account_subsidy_pool_cap" ] = fc::raw::pack_to_vector( 0x0000000100000000LL );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -7017,7 +7026,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       sign( tx, old_signing_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
+      BOOST_TEST_MESSAGE( "--- Testing setting account subsidy rate" );
       prop_op.props[ "key" ].clear();
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
       prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 1000 );
