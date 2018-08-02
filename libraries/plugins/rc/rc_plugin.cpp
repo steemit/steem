@@ -804,8 +804,7 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
 
-      auto skip_flags = my->_skip;
-      skip_flags.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
+      my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
    }
    FC_CAPTURE_AND_RETHROW()
 }
