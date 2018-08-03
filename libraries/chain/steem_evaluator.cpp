@@ -129,6 +129,18 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
 }
 
+struct witness_properties_change_flags
+{
+   uint32_t account_creation_changed      : 1;
+   uint32_t max_block_changed             : 1;
+   uint32_t sbd_interest_changed          : 1;
+   uint32_t account_subsidy_changed       : 1;
+   uint32_t account_subsidy_pool_changed  : 1;
+   uint32_t key_changed                   : 1;
+   uint32_t sbd_exchange_changed          : 1;
+   uint32_t url_changed                   : 1;
+};
+
 void witness_set_properties_evaluator::do_apply( const witness_set_properties_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1620 ), "witness_set_properties_evaluator not enabled until HF 20" );
@@ -142,13 +154,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    time_point_sec    last_sbd_exchange_update;
    string            url;
 
-   bool account_creation_changed = false;
-   bool max_block_changed        = false;
-   bool sbd_interest_changed     = false;
-   bool account_subsidy_changed  = false;
-   bool key_changed              = false;
-   bool sbd_exchange_changed     = false;
-   bool url_changed              = false;
+   witness_properties_change_flags flags;
 
    auto itr = o.props.find( "key" );
 
@@ -158,80 +164,104 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
       ("key", signing_key)("signing_key", witness.signing_key) );
 
    itr = o.props.find( "account_creation_fee" );
-   if( itr != o.props.end() )
+   flags.account_creation_changed = itr != o.props.end();
+   if( flags.account_creation_changed )
    {
       fc::raw::unpack_from_vector( itr->second, props.account_creation_fee );
-      account_creation_changed = true;
    }
 
    itr = o.props.find( "maximum_block_size" );
-   if( itr != o.props.end() )
+   flags.max_block_changed = itr != o.props.end();
+   if( flags.max_block_changed )
    {
       fc::raw::unpack_from_vector( itr->second, props.maximum_block_size );
-      max_block_changed = true;
    }
 
    itr = o.props.find( "sbd_interest_rate" );
-   if( itr != o.props.end() )
+   flags.sbd_interest_changed = itr != o.props.end();
+   if( flags.sbd_interest_changed )
    {
       fc::raw::unpack_from_vector( itr->second, props.sbd_interest_rate );
-      sbd_interest_changed = true;
    }
 
-   itr = o.props.find( "account_subsidy_limit" );
-   if( itr != o.props.end() )
+   itr = o.props.find( "account_subsidy_daily_rate" );
+   flags.account_subsidy_changed = itr != o.props.end();
+   if( flags.account_subsidy_changed )
    {
-      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_limit );
-      account_subsidy_changed = true;
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_daily_rate );
+   }
+
+   itr = o.props.find( "account_subsidy_pool_cap" );
+   flags.account_subsidy_pool_changed = itr != o.props.end();
+   if( flags.account_subsidy_pool_changed )
+   {
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_pool_cap );
    }
 
    itr = o.props.find( "new_signing_key" );
-   if( itr != o.props.end() )
+   flags.key_changed = itr != o.props.end();
+   if( flags.key_changed )
    {
       fc::raw::unpack_from_vector( itr->second, signing_key );
-      key_changed = true;
    }
 
    itr = o.props.find( "sbd_exchange_rate" );
-   if( itr != o.props.end() )
+   flags.sbd_exchange_changed = itr != o.props.end();
+   if( flags.sbd_exchange_changed )
    {
       fc::raw::unpack_from_vector( itr->second, sbd_exchange_rate );
       last_sbd_exchange_update = _db.head_block_time();
-      sbd_exchange_changed = true;
    }
 
    itr = o.props.find( "url" );
-   if( itr != o.props.end() )
+   flags.url_changed = itr != o.props.end();
+   if( flags.url_changed )
    {
       fc::raw::unpack_from_vector< std::string >( itr->second, url );
-      url_changed = true;
    }
 
    _db.modify( witness, [&]( witness_object& w )
    {
-      if( account_creation_changed )
+      if( flags.account_creation_changed )
+      {
          w.props.account_creation_fee = props.account_creation_fee;
+      }
 
-      if( max_block_changed )
+      if( flags.max_block_changed )
+      {
          w.props.maximum_block_size = props.maximum_block_size;
+      }
 
-      if( sbd_interest_changed )
+      if( flags.sbd_interest_changed )
+      {
          w.props.sbd_interest_rate = props.sbd_interest_rate;
+      }
 
-      if( account_subsidy_changed )
-         w.props.account_subsidy_limit = props.account_subsidy_limit;
+      if( flags.account_subsidy_changed )
+      {
+         w.props.account_subsidy_daily_rate = props.account_subsidy_daily_rate;
+      }
 
-      if( key_changed )
+      if( flags.account_subsidy_pool_changed )
+      {
+         w.props.account_subsidy_pool_cap = props.account_subsidy_pool_cap;
+      }
+
+      if( flags.key_changed )
+      {
          w.signing_key = signing_key;
+      }
 
-      if( sbd_exchange_changed )
+      if( flags.sbd_exchange_changed )
       {
          w.sbd_exchange_rate = sbd_exchange_rate;
          w.last_sbd_exchange_update = last_sbd_exchange_update;
       }
 
-      if( url_changed )
+      if( flags.url_changed )
+      {
          from_string( w.url, url );
+      }
    });
 }
 
