@@ -16,7 +16,7 @@ template< typename K, typename V >
 struct schema_flat_map_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_CLASS_BODY( schema_flat_map_impl )
+   STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_flat_map_impl )
 };
 
 template< typename K, typename V >
