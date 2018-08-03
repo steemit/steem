@@ -96,7 +96,7 @@ namespace detail {
       bool     _production_enabled              = false;
       uint32_t _required_witness_participation  = 33 * STEEM_1_PERCENT;
       uint32_t _production_skip_flags           = chain::database::skip_nothing;
-      bool     _enforce_bandwidth               = false;
+      bool     _skip_enforce_bandwidth          = true;
 
       std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steem::protocol::account_name_type >                     _witnesses;
@@ -445,7 +445,8 @@ namespace detail {
 
          // Prior to hf 20, we don't want to listen to the enforce bandwidth arg and always want to enforce bandwidth
          // When hf 20 goes live this will default enforcement to the rc plugin.
-         if( ( !_db.has_hardfork( STEEM_HARDFORK_0_20 ) ||  _enforce_bandwidth ) && _db.is_producing() )
+         FC_TODO( "Remove HF 20 check after HF 20" );
+         if( ( !_db.has_hardfork( STEEM_HARDFORK_0_20 ) ||  !_skip_enforce_bandwidth ) && _db.is_producing() )
          {
             STEEM_ASSERT( has_bandwidth,  plugin_exception,
                "Account: ${account} bandwidth limit exceeded. Please wait to transact or power up STEEM.",
@@ -637,7 +638,7 @@ void witness_plugin::set_program_options(
          ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
             ("name of witness controlled by this node (e.g. " + witness_id_example + " )" ).c_str() )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
-         ("witness-enforce-bandwidth", bpo::bool_switch()->default_value( false ), "Enforce bandwidth restrictions. Default is off in favor of rc_plugin." )
+         ("witness-skip-enforce-bandwidth", bpo::bool_switch()->default_value( true ), "Skip enforcing bandwidth restrictions. Default is true in favor of rc_plugin." )
          ;
 }
 
@@ -668,13 +669,13 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    }
 
    my->_production_enabled = options.at( "enable-stale-production" ).as< bool >();
-   my->_enforce_bandwidth = options.at( "witness-enforce-bandwidth" ).as< bool >();
+   my->_skip_enforce_bandwidth = options.at( "witness-skip-enforce-bandwidth" ).as< bool >();
 
    if( my->_witnesses.size() > 0 )
    {
       // It is safe to access rc plugin here because of APPBASE_REQUIRES_PLUGIN
-      FC_ASSERT( my->_enforce_bandwidth != appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
-         "To produce blocks either bandwidth (witness-enforce-bandwidth=true) or rc rejection (rc-skip-reject-not-enough-rc=false) must be set." );
+      FC_ASSERT( my->_skip_enforce_bandwidth != appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
+         "To produce blocks either bandwidth (witness-skip-enforce-bandwidth=false) or rc rejection (rc-skip-reject-not-enough-rc=false) must be set." );
    }
 
    if( options.count( "required-participation" ) )
