@@ -54,8 +54,32 @@ class rc_plugin_impl
       void on_first_block();
       void validate_database();
 
+      bool before_first_block()
+      {
+         //
+         // This method returns _db.count< rc_account_object >() == 0.
+         // But we know that if this check ever returns false, all
+         // subsequent executions of the check will return false.
+         //
+         // So we can do an optimization which saves the per-op count()
+         // call in the common case with a simple caching algorithm:
+         //
+         // - Initialize the cached check result to true
+         // - Cache a false check result forever
+         // - Don't cache a true check result (i.e. re-run the check
+         // if the cached result is true)
+         //
+         if( _before_first_block_last_result )
+         {
+            _before_first_block_last_result = (_db.count< rc_account_object >() == 0);
+         }
+         return _before_first_block_last_result;
+      }
+
       database&                     _db;
       rc_plugin&                    _self;
+
+      bool                          _before_first_block_last_result = true;
 
       // State is shared between the pre- and post- visitor
       visitor_shared_state          _shared_state;
@@ -710,6 +734,9 @@ struct post_apply_operation_visitor
 
 void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
+   if( before_first_block() )
+      return;
+
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    pre_apply_operation_visitor vtor( _shared_state, _db );
 
@@ -746,6 +773,9 @@ void update_last_vesting( database& db, const std::vector< account_name_type >& 
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
 {
+   if( before_first_block() )
+      return;
+
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
