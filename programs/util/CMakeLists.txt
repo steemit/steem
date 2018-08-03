@@ -55,6 +55,17 @@ install( TARGETS
    ARCHIVE DESTINATION lib
 )
 
+add_executable( dump_steem_schema dump_steem_schema.cpp )
+target_link_libraries( dump_steem_schema
+                       PRIVATE steem_chain steem_protocol fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+install( TARGETS
+   dump_steem_schema
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)
+
 add_executable( schema_test schema_test.cpp )
 target_link_libraries( schema_test
                        PRIVATE steem_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )

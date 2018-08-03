@@ -12,21 +12,21 @@ namespace steem { namespace schema { namespace detail {
 // fixed_string                             //
 //////////////////////////////////////////////
 
-template<typename Storage>
+template< size_t N >
 struct schema_fixed_string_impl
    : public abstract_schema
 {
    STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_fixed_string_impl )
 };
 
-template<typename Storage>
-void schema_fixed_string_impl<Storage>::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
+template< size_t N >
+void schema_fixed_string_impl<N>::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
 {
    return;
 }
 
-template<typename Storage>
-void schema_fixed_string_impl<Storage>::get_str_schema( std::string& s )
+template< size_t N >
+void schema_fixed_string_impl<N>::get_str_schema( std::string& s )
 {
    if( str_schema != "" )
    {
@@ -38,7 +38,9 @@ void schema_fixed_string_impl<Storage>::get_str_schema( std::string& s )
    get_name( my_name );
    fc::mutable_variant_object mvo;
    mvo("name", my_name)
-      ("type", "prim");
+      ("type", "string")
+      ("max_size", N)
+      ;
 
    str_schema = fc::json::to_string( mvo );
    s = str_schema;
@@ -47,10 +49,10 @@ void schema_fixed_string_impl<Storage>::get_str_schema( std::string& s )
 
 }
 
-template<typename Storage>
-struct schema_reflect< typename fc::fixed_string<Storage> >
+template< size_t N >
+struct schema_reflect< typename steem::protocol::fixed_string_impl_for_size<N> >
 {
-   typedef detail::schema_fixed_string_impl< Storage >        schema_impl_type;
+   typedef detail::schema_fixed_string_impl< N >        schema_impl_type;
 };
 
 } }

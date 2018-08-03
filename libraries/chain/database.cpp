@@ -5333,4 +5333,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
 }
 #endif
 
+index_info::index_info() {}
+index_info::~index_info() {}
+
 } } //steem::chain
