@@ -683,7 +683,8 @@ public:
          { return (get_account_from_lut( account_name ).owner); },
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).posting); },
-         STEEM_MAX_SIG_CHECK_DEPTH
+         STEEM_MAX_SIG_CHECK_DEPTH,
+         true
          );
 
       for( const public_key_type& k : minimal_signing_keys )

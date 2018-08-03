@@ -294,6 +294,14 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
+
    if( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) )
    {
       verify_authority_accounts_exist( _db, o.owner, o.new_account_name, authority::owner );
@@ -356,6 +364,14 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
    FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
+
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
 
    for( const auto& a : o.owner.account_auths )
    {

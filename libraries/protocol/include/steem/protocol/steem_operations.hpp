@@ -9,6 +9,8 @@
 
 namespace steem { namespace protocol {
 
+   void validate_auth_size( const authority& a );
+
    struct account_create_operation : public base_operation
    {
       asset             fee;
