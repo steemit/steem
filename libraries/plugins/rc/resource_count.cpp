@@ -3,8 +3,21 @@
 
 #include <steem/protocol/transaction.hpp>
 
-#define STATE_BYTES_SCALE              10000
-#define STATE_TRANSACTION_BYTE_SIZE      175
+#define STATE_BYTES_SCALE                       10000
+
+// These numbers are obtained from computations in state_byte_hours.py script
+//
+// $ ./state_byte_hours.py
+// {"seconds":196608}
+// 174
+// {"days":3}
+// 229
+// {"days":28}
+// 1940
+
+#define STATE_TRANSACTION_BYTE_SIZE               174
+#define STATE_TRANSFER_FROM_SAVINGS_BYTE_SIZE     229
+#define STATE_LIMIT_ORDER_BYTE_SIZE              1940
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -45,7 +58,10 @@ struct state_object_size_info
    int64_t escrow_object_base_size            = 119    *STATE_BYTES_SCALE;
 
    // limit_order_object
-   int64_t limit_order_object_base_size       = 76     *STATE_BYTES_SCALE;
+   int64_t limit_order_object_base_size       = 76     *STATE_LIMIT_ORDER_BYTE_SIZE;
+
+   // savigns_withdraw_object
+   int64_t savings_withdraw_object_byte_size  = 64     *STATE_TRANSFER_FROM_SAVINGS_BYTE_SIZE;
 
    // transaction_object
    int64_t transaction_object_base_size       =  35    *STATE_TRANSACTION_BYTE_SIZE;
@@ -217,6 +233,7 @@ struct count_operation_visitor
    void operator()( const transfer_from_savings_operation& )const
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
+      state_bytes_count += _w.savings_withdraw_object_byte_size;
    }
 
    void operator()( const claim_reward_balance_operation& op )const
