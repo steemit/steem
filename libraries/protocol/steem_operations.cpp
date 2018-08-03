@@ -142,10 +142,6 @@ namespace steem { namespace protocol {
       FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
       FC_ASSERT( fee <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Account creation fee cannot be too large" );
-      FC_ASSERT( is_asset_type( fee_discount, STEEM_SYMBOL ), "Fee discount must be STEEM" );
-      FC_ASSERT( fee_discount >= asset( 0, STEEM_SYMBOL ), "Fee discount cannot be negative" );
-      FC_ASSERT( fee_discount <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Fee discount cannot be too large" );
-      FC_ASSERT( fee + fee_discount <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Sum of fee and discount cannot be too large" );
 
       FC_ASSERT( extensions.size() == 0, "There are no extensions for claim_account_operation." );
    }

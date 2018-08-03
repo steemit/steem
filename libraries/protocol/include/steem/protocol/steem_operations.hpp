@@ -206,7 +206,6 @@ namespace steem { namespace protocol {
    {
       account_name_type creator;
       asset             fee;
-      asset             fee_discount;
       extensions_type   extensions;
 
       void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( creator ); }
@@ -1143,7 +1142,7 @@ FC_REFLECT( steem::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(s
 FC_REFLECT( steem::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steem::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
 FC_REFLECT( steem::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
-FC_REFLECT( steem::protocol::claim_account_operation, (creator)(fee)(fee_discount)(extensions) );
+FC_REFLECT( steem::protocol::claim_account_operation, (creator)(fee)(extensions) );
 FC_REFLECT( steem::protocol::create_claimed_account_operation, (creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions) );
 FC_REFLECT( steem::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );

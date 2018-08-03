@@ -2354,12 +2354,11 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
    FC_TODO( "Remove min() after HF20" );
    int64_t creation_fee = std::min( wso.median_props.account_creation_fee.amount.value, STEEM_MAX_ACCOUNT_CREATION_FEE );
 
-   FC_ASSERT( o.fee.amount.value + o.fee_discount.amount.value == creation_fee, "Incorrect fee:  Fee ${f} plus discount ${d} does not add up to median account creation fee ${m}",
-               ("m", wso.median_props.account_creation_fee)
-               ("f", o.fee)
-               ("d", o.fee_discount) );
+   FC_ASSERT( o.fee.amount.value <= creation_fee, "Cannot pay more than account creation fee. paid: ${p} fee: ${f}", ("p", o.fee.amount.value)("f", creation_fee) );
 
-   if( o.fee_discount.amount.value > 0 )
+   int64_t fee_discount = creation_fee - o.fee.amount.value;
+
+   if( fee_discount > 0 )
    {
       // The calculation we want to do is:
       //
@@ -2401,7 +2400,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
          "Following computation will overflow" );
 
       // creation_fee cannot be zero since fee_discount > 0 and validate() enforces fee, fee_discount are non-negative and add to creation_fee
-      int64_t current_subsidy = ( o.fee_discount.amount.value * STEEM_ACCOUNT_SUBSIDY_PRECISION + creation_fee - 1 ) / creation_fee;
+      int64_t current_subsidy = ( fee_discount * STEEM_ACCOUNT_SUBSIDY_PRECISION + creation_fee - 1 ) / creation_fee;
       const auto& gpo = _db.get_dynamic_global_properties();
 
       // This block is a little weird. We want to enforce that only elected witnesses can include the transaction, but
