@@ -6,7 +6,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <vector>
 
-#define STEEM_NUM_RESOURCE_TYPES     3
+#define STEEM_NUM_RESOURCE_TYPES     4
 
 namespace steem { namespace protocol {
 struct signed_transaction;
@@ -18,7 +18,8 @@ enum rc_resource_types
 {
    resource_history_bytes,
    resource_new_accounts,
-   resource_market_bytes
+   resource_market_bytes,
+   resource_state_bytes
 };
 
 typedef fc::int_array< int64_t, STEEM_NUM_RESOURCE_TYPES > resource_count_type;
@@ -38,6 +39,7 @@ FC_REFLECT_ENUM( steem::plugins::rc::rc_resource_types,
     (resource_history_bytes)
     (resource_new_accounts)
     (resource_market_bytes)
+    (resource_state_bytes)
    )
 
 FC_REFLECT( steem::plugins::rc::count_resources_result,
