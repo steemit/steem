@@ -7036,6 +7036,15 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.props.account_subsidy_daily_rate == 1000 );
 
+      BOOST_TEST_MESSAGE( "--- Testing setting account subsidy pool cap" );
+      prop_op.props.erase( "account_subsidy_daily_rate" );
+      prop_op.props[ "account_subsidy_pool_cap" ] = fc::raw::pack_to_vector( 2000 );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      sign( tx, signing_key );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_pool_cap == 2000 );
+
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -7121,6 +7130,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
          {
             wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
             wso.median_props.account_subsidy_daily_rate = 100;
+            wso.median_props.account_subsidy_pool_cap = 200;
             wso.account_subsidy_print_rate = 34;
             wso.single_witness_subsidy_limit = 100000;
          });

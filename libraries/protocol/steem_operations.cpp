@@ -283,6 +283,14 @@ namespace steem { namespace protocol {
          fc::raw::unpack_from_vector( itr->second, account_subsidy_daily_rate ); // Checks that the value can be deserialized
          FC_UNUSED( account_subsidy_daily_rate );
       }
+
+      itr = props.find( "account_subsidy_pool_cap" );
+      if( itr != props.end() )
+      {
+         uint32_t account_subsidy_pool_cap;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_pool_cap ); // Checks that the value can be deserialized
+         FC_UNUSED( account_subsidy_pool_cap );
+      }
    }
 
    void account_witness_vote_operation::validate() const
