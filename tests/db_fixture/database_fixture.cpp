@@ -866,7 +866,6 @@ json_rpc_database_fixture::json_rpc_database_fixture()
    appbase::app().initialize<
       steem::plugins::account_history::account_history_plugin,
       steem::plugins::debug_node::debug_node_plugin,
-      steem::plugins::witness::witness_plugin,
       steem::plugins::json_rpc::json_rpc_plugin,
       steem::plugins::block_api::block_api_plugin,
       steem::plugins::database_api::database_api_plugin,
