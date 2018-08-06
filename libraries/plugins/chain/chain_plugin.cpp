@@ -131,9 +131,9 @@ struct write_request_visitor
 
       try
       {
-         STATSD_START_TIMER( "chain", "write_time", "push_tx", 1.0f )
+         STATSD_START_TIMER( "chain", "write_time", "push_transaction", 1.0f )
          db->push_transaction( *trx );
-         STATSD_STOP_TIMER( "chain", "write_time", "push_tx" )
+         STATSD_STOP_TIMER( "chain", "write_time", "push_transaction" )
 
          result = true;
       }
