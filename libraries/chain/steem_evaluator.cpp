@@ -61,6 +61,12 @@ struct strcmp_equal
    }
 };
 
+void validate_auth_size( const authority& a )
+{
+   size_t size = a.account_auths.size() + a.key_auths.size();
+   FC_ASSERT( size <= STEEMIT_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+}
+
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    _db.get_account( o.owner ); // verify owner exists
@@ -128,6 +134,13 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
+   }
+
+   if( _db.is_producing() )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
    }
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
@@ -214,6 +227,13 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
    FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
+
+   if( _db.is_producing() )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
 
    for( auto& a : o.owner.account_auths )
    {

@@ -16,15 +16,21 @@ bool sign_state::signed_by( const public_key_type& k )
    return itr->second = true;
 }
 
-bool sign_state::check_authority( string id )
+bool sign_state::check_authority( string id, bool enforce_membership_limit )
 {
    if( approved_by.find(id) != approved_by.end() ) return true;
-   return check_authority( get_active(id) );
+   return check_authority( get_active(id), enforce_membership_limit );
 }
 
-bool sign_state::check_authority( const authority& auth, uint32_t depth )
+bool sign_state::check_authority( const authority& auth, bool enforce_membership_limit )
+{
+   return check_authority( auth, 0, enforce_membership_limit );
+}
+
+bool sign_state::check_authority( const authority& auth, uint32_t depth, bool enforce_membership_limit )
 {
    uint32_t total_weight = 0;
+   size_t membership = 0;
    for( const auto& k : auth.key_auths )
    {
       if( signed_by( k.first ) )
@@ -32,6 +38,12 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth )
          total_weight += k.second;
          if( total_weight >= auth.weight_threshold )
             return true;
+      }
+
+      membership++;
+      if( enforce_membership_limit && membership >= STEEMIT_MAX_AUTHORITY_MEMBERSHIP )
+      {
+         return false;
       }
    }
 
@@ -41,7 +53,7 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth )
       {
          if( depth == max_recursion )
             continue;
-         if( check_authority( get_active( a.first ), depth+1 ) )
+         if( check_authority( get_active( a.first ), depth+1, enforce_membership_limit ) )
          {
             approved_by.insert( a.first );
             total_weight += a.second;
@@ -54,6 +66,12 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth )
          total_weight += a.second;
          if( total_weight >= auth.weight_threshold )
             return true;
+      }
+
+      membership++;
+      if( enforce_membership_limit && membership >= STEEMIT_MAX_AUTHORITY_MEMBERSHIP )
+      {
+         return false;
       }
    }
    return total_weight >= auth.weight_threshold;

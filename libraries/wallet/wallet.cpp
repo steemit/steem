@@ -682,7 +682,8 @@ public:
          { return (get_account_from_lut( account_name ).owner); },
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).posting); },
-         STEEMIT_MAX_SIG_CHECK_DEPTH
+         STEEMIT_MAX_SIG_CHECK_DEPTH,
+         true
          );
 
       for( const public_key_type& k : minimal_signing_keys )
@@ -1766,7 +1767,7 @@ annotated_signed_transaction wallet_api::vote_for_witness(string voting_account,
 void wallet_api::check_memo( const string& memo, const account_api_obj& account )const
 {
    vector< public_key_type > keys;
-      
+
    try
    {
       // Check if memo is a private key

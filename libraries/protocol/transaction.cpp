@@ -90,7 +90,8 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                        bool  allow_committe,
                        const flat_set< account_name_type >& active_aprovals,
                        const flat_set< account_name_type >& owner_approvals,
-                       const flat_set< account_name_type >& posting_approvals
+                       const flat_set< account_name_type >& posting_approvals,
+                       bool enforce_membership_limit
                        )
 { try {
    flat_set< account_name_type > required_active;
@@ -119,9 +120,9 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
          s.approved_by.insert( id );
       for( auto id : required_posting )
       {
-         STEEMIT_ASSERT( s.check_authority(id) ||
-                          s.check_authority(get_active(id)) ||
-                          s.check_authority(get_owner(id)),
+         STEEMIT_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+                          s.check_authority(get_active(id), enforce_membership_limit) ||
+                          s.check_authority(get_owner(id), enforce_membership_limit),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
                           ("id",id)
                           ("posting",get_posting(id))
@@ -146,21 +147,21 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 
    for( const auto& auth : other )
    {
-      STEEMIT_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      STEEMIT_ASSERT( s.check_authority(auth, enforce_membership_limit), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
    for( auto id : required_active )
    {
-      STEEMIT_ASSERT( s.check_authority(id) ||
-                       s.check_authority(get_owner(id)),
+      STEEMIT_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+                       s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
    for( auto id : required_owner )
    {
       STEEMIT_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
-                       s.check_authority(get_owner(id)),
+                       s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 
@@ -210,7 +211,7 @@ set<public_key_type> signed_transaction::get_required_signatures(
       FC_ASSERT( !required_owner.size() );
       FC_ASSERT( !required_active.size() );
       for( auto& posting : required_posting )
-         s.check_authority( posting  );
+         s.check_authority( posting );
 
       s.remove_unused_signatures();
 
@@ -251,7 +252,8 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,
-   uint32_t max_recursion
+   uint32_t max_recursion,
+   bool enforce_membership_limit
    ) const
 {
    set< public_key_type > s = get_required_signatures( chain_id, available_keys, get_active, get_owner, get_posting, max_recursion );
@@ -262,7 +264,18 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         steemit::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
+         steemit::protocol::verify_authority(
+            operations,
+            result,
+            get_active,
+            get_owner,
+            get_posting,
+            max_recursion,
+            false,
+            flat_set< account_name_type >(),
+            flat_set< account_name_type >(),
+            flat_set< account_name_type >(),
+            enforce_membership_limit );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -279,9 +292,21 @@ void signed_transaction::verify_authority(
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,
-   uint32_t max_recursion )const
+   uint32_t max_recursion,
+   bool enforce_membership_limit )const
 { try {
-   steemit::protocol::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
+   steemit::protocol::verify_authority(
+      operations,
+      get_signature_keys( chain_id ),
+      get_active,
+      get_owner,
+      get_posting,
+      max_recursion,
+      false,
+      flat_set< account_name_type >(),
+      flat_set< account_name_type >(),
+      flat_set< account_name_type >(),
+      enforce_membership_limit );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 } } // steemit::protocol
