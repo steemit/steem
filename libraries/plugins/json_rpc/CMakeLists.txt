@@ -4,7 +4,7 @@ add_library( json_rpc_plugin
              json_rpc_plugin.cpp
              ${HEADERS} )
 
-target_link_libraries( json_rpc_plugin chainbase appbase fc )
+target_link_libraries( json_rpc_plugin statsd_plugin chainbase appbase fc )
 target_include_directories( json_rpc_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
