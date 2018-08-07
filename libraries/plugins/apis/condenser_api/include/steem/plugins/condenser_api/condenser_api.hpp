@@ -147,7 +147,15 @@ struct api_account_object
       last_root_post( a.last_root_post ),
       last_vote_time( a.last_vote_time )
    {
-      voting_power = (uint16_t)( a.voting_manabar.current_mana / chain::util::get_effective_vesting_shares( a ) );
+      if( a.voting_manabar.last_update_time <= STEEM_HARDFORK_0_20_TIME )
+      {
+         voting_power = (uint16_t) a.voting_manabar.current_mana;
+      }
+      else
+      {
+         auto vests = chain::util::get_effective_vesting_shares( a );
+         voting_power = vests <= 0 ? 0 : (uint16_t)( ( STEEM_100_PERCENT * a.voting_manabar.current_mana ) / vests );
+      }
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
