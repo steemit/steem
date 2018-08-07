@@ -82,7 +82,7 @@ will build out of the box without further effort:
 
     git clone https://github.com/steemit/steem
     cd steem
-    git checkout stable
+    git checkout master
     git submodule update --init --recursive
     mkdir build
     cd build
@@ -148,7 +148,7 @@ Then the instructions are the same as for steem:
 
     git clone https://github.com/steemit/steem
     cd steem
-    git checkout stable
+    git checkout master
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -213,7 +213,7 @@ steem. Until then, this will allow you to install boost 1.60.0.
     export SNAPPY_LIBRARIES=$(brew --prefix)/Cellar/snappy/1.1.7_1/lib/
     export SNAPPY_INCLUDE_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1/include/
     export ZLIB_LIBRARIES=$(brew --prefix)/Cellar/zlib/1.2.11/lib/
-    git checkout stable
+    git checkout master
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DBOOST_ROOT="$BOOST_ROOT" -DCMAKE_BUILD_TYPE=Release ..
