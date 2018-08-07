@@ -61,6 +61,12 @@ struct strcmp_equal
    }
 };
 
+void validate_auth_size( const authority& a )
+{
+   size_t size = a.account_auths.size() + a.key_auths.size();
+   FC_ASSERT( size <= STEEMIT_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+}
+
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    _db.get_account( o.owner ); // verify owner exists
@@ -128,6 +134,13 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
+   }
+
+   if( _db.is_producing() )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
    }
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
@@ -215,6 +228,13 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
 
+   if( _db.is_producing() )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
+
    for( auto& a : o.owner.account_auths )
    {
       _db.get_account( a.first );
@@ -287,6 +307,16 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    const auto& account = _db.get_account( o.account );
    const auto& account_auth = _db.get< account_authority_object, by_account >( o.account );
+
+   if( _db.is_producing() )
+   {
+      if( o.owner )
+         validate_auth_size( *o.owner );
+      if( o.active )
+         validate_auth_size( *o.active );
+      if( o.posting )
+         validate_auth_size( *o.posting );
+   }
 
    if( o.owner )
    {
@@ -1524,14 +1554,21 @@ void custom_evaluator::do_apply( const custom_operation& o )
 {
    database& d = db();
    if( d.is_producing() )
+   {
       FC_ASSERT( o.data.size() <= 8192, "custom_operation data must be less than 8k" );
+      FC_ASSERT( o.required_auths.size() <= STEEMIT_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", o.required_auths.size()) );
+   }
 }
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
    database& d = db();
    if( d.is_producing() )
+   {
       FC_ASSERT( o.json.length() <= 8192, "custom_json_operation json must be less than 8k" );
+      size_t num_auths = o.required_auths.size() + o.required_posting_auths.size();
+      FC_ASSERT( num_auths <= STEEMIT_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+   }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -1560,6 +1597,14 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    {
       FC_ASSERT( false, "custom_binary_operation is deprecated" );
       FC_ASSERT( o.data.size() <= 8192, "custom_binary_operation data must be less than 8k" );
+
+      size_t num_auths = o.required_owner_auths.size() + o.required_active_auths.size() + o.required_posting_auths.size();
+      for( const auto& auth : o.required_auths )
+      {
+         num_auths += auth.key_auths.size() + auth.account_auths.size();
+      }
+
+      FC_ASSERT( num_auths <= STEEMIT_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
    }
    FC_ASSERT( d.has_hardfork( STEEMIT_HARDFORK_0_14__317 ) );
 
@@ -1935,6 +1980,11 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
    {
       FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover using an impossible authority." );
       FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover using an open authority." );
+
+      if( _db.is_producing() )
+      {
+         validate_auth_size( o.new_owner_authority );
+      }
 
       // Check accounts in the new authority exist
       if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
