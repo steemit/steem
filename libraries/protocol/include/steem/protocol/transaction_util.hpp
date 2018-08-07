@@ -13,7 +13,8 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
                        bool allow_committe = false,
                        const flat_set< account_name_type >& active_approvals = flat_set< account_name_type >(),
                        const flat_set< account_name_type >& owner_approvals = flat_set< account_name_type >(),
-                       const flat_set< account_name_type >& posting_approvals = flat_set< account_name_type >()
+                       const flat_set< account_name_type >& posting_approvals = flat_set< account_name_type >(),
+                       bool enforce_membership_limit = false
                        )
 { try {
    flat_set< account_name_type > required_active;
@@ -44,9 +45,9 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
          s.approved_by.insert( id );
       for( const auto& id : required_posting )
       {
-         STEEM_ASSERT( s.check_authority(id) ||
-                          s.check_authority(get_active(id)) ||
-                          s.check_authority(get_owner(id)),
+         STEEM_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+                          s.check_authority(get_active(id), enforce_membership_limit) ||
+                          s.check_authority(get_owner(id), enforce_membership_limit),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
                           ("id",id)
                           ("posting",get_posting(id))
@@ -71,21 +72,21 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
 
    for( const auto& auth : other )
    {
-      STEEM_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      STEEM_ASSERT( s.check_authority(auth, enforce_membership_limit), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
    for( const auto& id : required_active )
    {
-      STEEM_ASSERT( s.check_authority(id) ||
-                       s.check_authority(get_owner(id)),
+      STEEM_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+                       s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
    for( const auto& id : required_owner )
    {
       STEEM_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
-                       s.check_authority(get_owner(id)),
+                       s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 

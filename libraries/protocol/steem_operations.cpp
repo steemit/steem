@@ -8,6 +8,12 @@
 
 namespace steem { namespace protocol {
 
+   void validate_auth_size( const authority& a )
+   {
+      size_t size = a.account_auths.size() + a.key_auths.size();
+      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+   }
+
    void account_create_operation::validate() const
    {
       validate_account_name( new_account_name );
@@ -151,6 +157,9 @@ namespace steem { namespace protocol {
       owner.validate();
       active.validate();
       posting.validate();
+      validate_auth_size( owner );
+      validate_auth_size( active );
+      validate_auth_size( posting );
 
       if( json_metadata.size() > 0 )
       {

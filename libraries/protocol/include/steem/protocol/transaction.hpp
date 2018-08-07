@@ -71,7 +71,9 @@ namespace steem { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH )const;
+         uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH*/,
+         bool enforce_membership_limit
+         )const;
 
       set<public_key_type> minimize_required_signatures(
          const chain_id_type& chain_id,
@@ -79,7 +81,8 @@ namespace steem { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH,
+         bool enforce_membership_limit = false
          ) const;
 
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;

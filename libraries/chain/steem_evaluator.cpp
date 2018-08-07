@@ -294,6 +294,14 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
+
    if( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) )
    {
       verify_authority_accounts_exist( _db, o.owner, o.new_account_name, authority::owner );
@@ -356,6 +364,14 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
    FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
+
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
 
    for( const auto& a : o.owner.account_auths )
    {
@@ -422,6 +438,16 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    const auto& account = _db.get_account( o.account );
    const auto& account_auth = _db.get< account_authority_object, by_account >( o.account );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      if( o.owner )
+         validate_auth_size( *o.owner );
+      if( o.active )
+         validate_auth_size( *o.active );
+      if( o.posting )
+         validate_auth_size( *o.posting );
+   }
 
    if( o.owner )
    {
@@ -1642,6 +1668,11 @@ void custom_evaluator::do_apply( const custom_operation& o )
    database& d = db();
    if( d.is_producing() )
       FC_ASSERT( o.data.size() <= 8192, "custom_operation must be less than 8k" );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      FC_ASSERT( o.required_auths.size() <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", o.required_auths.size()) );
+   }
 }
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
@@ -1650,6 +1681,12 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 
    if( d.is_producing() )
       FC_ASSERT( o.json.length() <= 8192, "custom_json_operation json must be less than 8k" );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      size_t num_auths = o.required_auths.size() + o.required_posting_auths.size();
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+   }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -1680,6 +1717,17 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
       FC_ASSERT( false, "custom_binary_operation is deprecated" );
    }
    FC_ASSERT( d.has_hardfork( STEEM_HARDFORK_0_14__317 ) );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      size_t num_auths = o.required_owner_auths.size() + o.required_active_auths.size() + o.required_posting_auths.size();
+      for( const auto& auth : o.required_auths )
+      {
+         num_auths += auth.key_auths.size() + auth.account_auths.size();
+      }
+
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+   }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -2081,6 +2129,11 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
    {
       FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover using an impossible authority." );
       FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover using an open authority." );
+
+      if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+      {
+         validate_auth_size( o.new_owner_authority );
+      }
 
       // Check accounts in the new authority exist
       if( ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) )

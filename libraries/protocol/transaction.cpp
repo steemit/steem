@@ -161,7 +161,8 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,
-   uint32_t max_recursion
+   uint32_t max_recursion,
+   bool enforce_membership_limit
    ) const
 {
    set< public_key_type > s = get_required_signatures( chain_id, available_keys, get_active, get_owner, get_posting, max_recursion );
@@ -172,7 +173,18 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         steem::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
+         steem::protocol::verify_authority(
+            operations,
+            result,
+            get_active,
+            get_owner,
+            get_posting,
+            max_recursion,
+            false,
+            flat_set< account_name_type >(),
+            flat_set< account_name_type >(),
+            flat_set< account_name_type >(),
+            enforce_membership_limit );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -189,9 +201,21 @@ void signed_transaction::verify_authority(
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,
-   uint32_t max_recursion )const
+   uint32_t max_recursion,
+   bool enforce_membership_limit )const
 { try {
-   steem::protocol::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
+   steem::protocol::verify_authority(
+      operations,
+      get_signature_keys( chain_id ),
+      get_active,
+      get_owner,
+      get_posting,
+      max_recursion,
+      false,
+      flat_set< account_name_type >(),
+      flat_set< account_name_type >(),
+      flat_set< account_name_type >(),
+      enforce_membership_limit );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 } } // steem::protocol

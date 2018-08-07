@@ -13,13 +13,14 @@ struct sign_state
        * produce a signature for this key, else returns false.
        */
       bool signed_by( const public_key_type& k );
-      bool check_authority( string id );
+      bool check_authority( string id, bool enforce_membership_limit = false );
 
       /**
        *  Checks to see if we have signatures of the active authorites of
        *  the accounts specified in authority or the keys specified.
        */
-      bool check_authority( const authority& au, uint32_t depth = 0 );
+      bool check_authority( const authority& au, uint32_t depth = 0, bool enforce_membership_limit = false );
+      bool check_authority( const authority& au, bool enforce_membership_limit );
 
       bool remove_unused_signatures();
 
