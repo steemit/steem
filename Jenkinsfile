@@ -11,7 +11,7 @@ pipeline {
         },
         "Build docker image": {
           sh 'ciscripts/triggerbuild.sh'
-        })
+        }, failFast: true )
       }
     }
   }
