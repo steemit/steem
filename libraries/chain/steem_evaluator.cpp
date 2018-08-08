@@ -96,7 +96,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
 
    // May be we can move this check to - validate.hpp
-   if( _db.is_producing() && _db.has_hardfor( STEEM_MAX_BLOCK_SIZE_HF20 ))
+   if( _db.is_producing() && _db.has_hardfork( STEEM_MAX_BLOCK_SIZE_HF20 ))
    {
       FC_ASSERT( o.props.maximum_block_size <= _db.get_dynamic_global_properties().maximum_block_size, "Max block size cannot be more than 2MiB" );
    }
