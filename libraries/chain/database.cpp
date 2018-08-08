@@ -4853,6 +4853,7 @@ void database::apply_hardfork( uint32_t hardfork )
                gpo.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20;
                gpo.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF20;
                gpo.sbd_start_percent = STEEM_SBD_START_PERCENT_HF20;
+               gpo.maximum_block_size = STEEM_MAX_BLOCK_SIZE_HF20;
             });
 
             const auto& wso = get_witness_schedule_object();
