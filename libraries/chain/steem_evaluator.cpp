@@ -95,7 +95,14 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
       wlog( "Wrong fee symbol in block ${b}", ("b", _db.head_block_num()+1) );
    }
 
-   if( _db.is_producing() && _db.has_hardfork( STEEM_HARDFORK_0_20__2642 ))
+   #pragma message( "TODO: This needs to be part of HF 20 and moved to validate if not triggered in previous blocks" )
+   if( _db.is_producing() )
+   {
+      FC_ASSERT( o.props.maximum_block_size <= STEEM_SOFT_MAX_BLOCK_SIZE, "Max block size cannot be more than 2MiB" );
+   }
+
+   #pragma message( "TODO: This needs to be part of HF 20 and moved to validate if not triggered in previous blocks" )
+   if( _db.is_producing() )
    {
       FC_ASSERT( o.props.maximum_block_size <= STEEM_SOFT_MAX_BLOCK_SIZE, "Max block size cannot be more than 2MiB" );
    }
