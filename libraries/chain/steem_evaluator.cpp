@@ -95,10 +95,9 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
       wlog( "Wrong fee symbol in block ${b}", ("b", _db.head_block_num()+1) );
    }
 
-   // May be we can move this check to - validate.hpp
-   if( _db.is_producing() && _db.has_hardfork( STEEM_MAX_BLOCK_SIZE_HF20 ))
+   if( _db.is_producing() && _db.has_hardfork( STEEM_HARDFORK_0_20 ))
    {
-      FC_ASSERT( o.props.maximum_block_size <= _db.get_dynamic_global_properties().maximum_block_size, "Max block size cannot be more than 2MiB" );
+      FC_ASSERT( o.props.maximum_block_size <= STEEM_SOFT_MAX_BLOCK_SIZE, "Max block size cannot be more than 2MiB" );
    }
 
    const auto& by_witness_name_idx = _db.get_index< witness_index >().indices().get< by_name >();
