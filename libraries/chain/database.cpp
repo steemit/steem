@@ -3599,21 +3599,30 @@ void database::update_global_dynamic_data( const signed_block& b )
       for( uint32_t i = 0; i < missed_blocks; ++i )
       {
          const auto& witness_missed = get_witness( get_scheduled_witness( i + 1 ) );
-         if(  witness_missed.owner != b.witness )
+
+         modify( witness_missed, [&]( witness_object& w )
          {
-            modify( witness_missed, [&]( witness_object& w )
+            w.current_run = 0;
+            if( witness_missed.owner != b.witness )
             {
+               //
+               // total_missed does not increment when witness_missed.owner == b.witness
+               //    because a low total_missed is a "prestige" item and a witness that
+               //    restarts a dead network is "rewarded" by not having total_missed
+               //    increase for any blocks they missed in the gap.
+               // Also, this prevents initminer from having a large total_missed.
+               //
+
                w.total_missed++;
-               if( has_hardfork( STEEM_HARDFORK_0_14__278 ) )
+               if(    (_dgp.head_block_number - w.last_confirmed_block_num > STEEM_BLOCKS_PER_DAY)
+                   && has_hardfork( STEEM_HARDFORK_0_14__278 )
+                 )
                {
-                  if( head_block_num() - w.last_confirmed_block_num  > STEEM_BLOCKS_PER_DAY )
-                  {
-                     w.signing_key = public_key_type();
-                     push_virtual_operation( shutdown_witness_operation( w.owner ) );
-                  }
+                  w.signing_key = public_key_type();
+                  push_virtual_operation( shutdown_witness_operation( w.owner ) );
                }
-            } );
-         }
+            }
+         } );
       }
    }
 
@@ -3679,6 +3688,9 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    {
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
+      if( _wit.current_run >= STEEM_IRREVERSIBLE_SUPPORT_MIN_RUN )
+         _wit.last_supported_block_num = _wit.last_confirmed_block_num;
+      _wit.current_run++;
    } );
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -3691,13 +3703,15 @@ void database::update_last_irreversible_block()
     * Prior to voting taking over, we must be more conservative...
     *
     */
-   if( head_block_num() < STEEM_START_MINER_VOTING_BLOCK )
+   if( dpo.head_block_number < STEEM_START_MINER_VOTING_BLOCK )
    {
-      modify( dpo, [&]( dynamic_global_property_object& _dpo )
+      if ( dpo.head_block_number > STEEM_MAX_WITNESSES )
       {
-         if ( head_block_num() > STEEM_MAX_WITNESSES )
-            _dpo.last_irreversible_block_num = head_block_num() - STEEM_MAX_WITNESSES;
-      } );
+         modify( dpo, [&]( dynamic_global_property_object& _dpo )
+         {
+            _dpo.last_irreversible_block_num = _dpo.head_block_number - STEEM_MAX_WITNESSES;
+         } );
+      }
    }
    else
    {
@@ -3719,10 +3733,10 @@ void database::update_last_irreversible_block()
       std::nth_element( wit_objs.begin(), wit_objs.begin() + offset, wit_objs.end(),
          []( const witness_object* a, const witness_object* b )
          {
-            return a->last_confirmed_block_num < b->last_confirmed_block_num;
+            return a->last_supported_block_num < b->last_supported_block_num;
          } );
 
-      uint32_t new_last_irreversible_block_num = wit_objs[offset]->last_confirmed_block_num;
+      uint32_t new_last_irreversible_block_num = wit_objs[offset]->last_supported_block_num;
 
       if( new_last_irreversible_block_num > dpo.last_irreversible_block_num )
       {

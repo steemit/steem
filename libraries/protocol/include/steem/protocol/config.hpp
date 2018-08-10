@@ -259,6 +259,8 @@
 #define STEEM_MAX_URL_LENGTH                  127
 
 #define STEEM_IRREVERSIBLE_THRESHOLD          (75 * STEEM_1_PERCENT)
+/** Irreversibility only counts blocks produced if wit.current_run >= STEEM_IRREVERSIBLE_SUPPORT_MIN_RUN */
+#define STEEM_IRREVERSIBLE_SUPPORT_MIN_RUN    2
 
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
