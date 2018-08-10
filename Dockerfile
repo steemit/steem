@@ -87,8 +87,6 @@ RUN \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-testnet \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="-march=sandybridge" \
-        -DCMAKE_CXX_FLAGS="-march=sandybridge" \
         -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
@@ -142,8 +140,6 @@ RUN \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="-march=sandybridge" \
-        -DCMAKE_CXX_FLAGS="-march=sandybridge" \
         -DLOW_MEMORY_NODE=ON \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=OFF \
@@ -167,8 +163,6 @@ RUN \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="-march=sandybridge" \
-        -DCMAKE_CXX_FLAGS="-march=sandybridge" \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=OFF \
         -DSKIP_BY_TX_ID=ON \
