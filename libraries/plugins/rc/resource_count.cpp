@@ -169,7 +169,6 @@ struct count_operation_visitor
          + get_authority_byte_count( op.active )
          + get_authority_byte_count( op.posting );
       execution_time_count += _e.account_create_operation_exec_time;
-      new_account_op_count++;
    }
 
    void operator()( const account_create_with_delegation_operation& op )const
@@ -182,7 +181,6 @@ struct count_operation_visitor
          + get_authority_byte_count( op.posting )
          + _w.vesting_delegation_object_base_size;
       execution_time_count += _e.account_create_with_delegation_operation_exec_time;
-      new_account_op_count++;
    }
 
    void operator()( const account_witness_vote_operation& op )const
@@ -353,9 +351,14 @@ struct count_operation_visitor
       execution_time_count += _e.change_recovery_account_operation_exec_time;
    }
 
-   void operator()( const claim_account_operation& )const
+   void operator()( const claim_account_operation& o )const
    {
       execution_time_count += _e.claim_account_operation_exec_time;
+
+      if( o.fee.amount == 0 )
+      {
+         new_account_op_count++;
+      }
    }
 
    void operator()( const custom_operation& )const
