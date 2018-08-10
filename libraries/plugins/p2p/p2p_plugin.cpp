@@ -616,6 +616,9 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       }
    }
 
+   sort( my->seeds.begin(), my->seeds.end() );
+   my->seeds.erase( unique( my->seeds.begin(), my->seeds.end() ), my->seeds.end() );
+
    my->force_validate = options.at( "p2p-force-validate" ).as< bool >();
 
    if( !my->force_validate && options.at( "force-validate" ).as< bool >() )
