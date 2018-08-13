@@ -65,9 +65,12 @@ exec chpst -usteemd \
 sleep 120
 
 # set start_date in the tinman configuration to a date in the near-past so the testnet won't run out of blocks before it can be used.
-setDate=`date +%Y-%m-%dT%H:%M:%S -d "4 days ago"`
-tmp=$(mktemp)
-jq  --arg setDate $setDate '.start_time = $setDate' txgen.list > "$tmp" && mv "$tmp" txgen.list
+# disable by setting environment variable $USE_SNAPSHOT_TIME to truthy value
+if [ ! $USE_SNAPSHOT_TIME ]; then
+  setDate=`date +%Y-%m-%dT%H:%M:%S -d "4 days ago"`
+  tmp=$(mktemp)
+  jq  --arg setDate $setDate '.start_time = $setDate' txgen.list > "$tmp" && mv "$tmp" txgen.list
+fi
 
 # pipe the transactions through keysub and into the fastgen node
 echo steemd-testnet: pipelining transactions into fastgen node, this may take some time
