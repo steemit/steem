@@ -69,7 +69,7 @@ sleep 120
 if [ ! $USE_SNAPSHOT_TIME ]; then
   setDate=`date +%Y-%m-%dT%H:%M:%S -d "4 days ago"`
   tmp=$(mktemp)
-  jq  --arg setDate $setDate '.start_time = $setDate' txgen.list > "$tmp" && mv "$tmp" txgen.list
+  jq  --arg setDate $setDate '.start_time = $setDate' txgen.conf > "$tmp" && mv "$tmp" txgen.conf
 fi
 
 # pipe the transactions through keysub and into the fastgen node
