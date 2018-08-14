@@ -104,7 +104,9 @@ set<public_key_type> signed_transaction::get_required_signatures(
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,
-   uint32_t max_recursion_depth )const
+   uint32_t max_recursion_depth,
+   uint32_t max_membership,
+   uint32_t max_account_auths )const
 {
    flat_set< account_name_type > required_active;
    flat_set< account_name_type > required_owner;
@@ -116,6 +118,8 @@ set<public_key_type> signed_transaction::get_required_signatures(
    if( required_posting.size() ) {
       sign_state s(get_signature_keys( chain_id ),get_posting,available_keys);
       s.max_recursion = max_recursion_depth;
+      s.max_membership = max_membership;
+      s.max_account_auths = max_account_auths;
 
       FC_ASSERT( !required_owner.size() );
       FC_ASSERT( !required_active.size() );
@@ -136,6 +140,8 @@ set<public_key_type> signed_transaction::get_required_signatures(
 
    sign_state s(get_signature_keys( chain_id ),get_active,available_keys);
    s.max_recursion = max_recursion_depth;
+   s.max_membership = max_membership;
+   s.max_account_auths = max_account_auths;
 
    for( const auto& auth : other )
       s.check_authority( auth );
@@ -162,8 +168,8 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
    const authority_getter& get_owner,
    const authority_getter& get_posting,
    uint32_t max_recursion,
-   bool enforce_membership_limit
-   ) const
+   uint32_t max_membership,
+   uint32_t max_account_auths )const
 {
    set< public_key_type > s = get_required_signatures( chain_id, available_keys, get_active, get_owner, get_posting, max_recursion );
    flat_set< public_key_type > result( s.begin(), s.end() );
@@ -180,11 +186,12 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
             get_owner,
             get_posting,
             max_recursion,
+            max_membership,
+            max_account_auths,
             false,
             flat_set< account_name_type >(),
             flat_set< account_name_type >(),
-            flat_set< account_name_type >(),
-            enforce_membership_limit );
+            flat_set< account_name_type >() );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -202,7 +209,8 @@ void signed_transaction::verify_authority(
    const authority_getter& get_owner,
    const authority_getter& get_posting,
    uint32_t max_recursion,
-   bool enforce_membership_limit )const
+   uint32_t max_membership,
+   uint32_t max_account_auths )const
 { try {
    steem::protocol::verify_authority(
       operations,
@@ -211,11 +219,12 @@ void signed_transaction::verify_authority(
       get_owner,
       get_posting,
       max_recursion,
+      max_membership,
+      max_account_auths,
       false,
       flat_set< account_name_type >(),
       flat_set< account_name_type >(),
-      flat_set< account_name_type >(),
-      enforce_membership_limit );
+      flat_set< account_name_type >() );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 } } // steem::protocol

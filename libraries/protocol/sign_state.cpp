@@ -16,13 +16,19 @@ bool sign_state::signed_by( const public_key_type& k )
    return itr->second = true;
 }
 
-bool sign_state::check_authority( string id, bool enforce_membership_limit )
+bool sign_state::check_authority( string id )
 {
    if( approved_by.find(id) != approved_by.end() ) return true;
-   return check_authority( get_active(id), enforce_membership_limit );
+   uint32_t account_auth_count = 1;
+   return check_authority_impl( get_active(id), 0, &account_auth_count );
 }
 
-bool sign_state::check_authority( const authority& auth, uint32_t depth, bool enforce_membership_limit )
+bool sign_state::check_authority( const authority& auth, uint32_t depth, uint32_t account_auth_count )
+{
+   return check_authority_impl( auth, depth, &account_auth_count );
+}
+
+bool sign_state::check_authority_impl( const authority& auth, uint32_t depth, uint32_t* account_auth_count )
 {
    uint32_t total_weight = 0;
    size_t membership = 0;
@@ -36,7 +42,7 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth, bool en
       }
 
       membership++;
-      if( enforce_membership_limit && membership >= STEEM_MAX_AUTHORITY_MEMBERSHIP )
+      if( membership >= max_membership )
       {
          return false;
       }
@@ -48,7 +54,15 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth, bool en
       {
          if( depth == max_recursion )
             continue;
-         if( check_authority( get_active( a.first ), depth + 1, enforce_membership_limit ) )
+
+         if( *account_auth_count >= max_account_auths )
+         {
+            return false;
+         }
+
+         (*account_auth_count)++;
+
+         if( check_authority_impl( get_active( a.first ), depth + 1, account_auth_count ) )
          {
             approved_by.insert( a.first );
             total_weight += a.second;
@@ -64,17 +78,12 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth, bool en
       }
 
       membership++;
-      if( enforce_membership_limit && membership >= STEEM_MAX_AUTHORITY_MEMBERSHIP )
+      if( membership >= max_membership )
       {
          return false;
       }
    }
    return total_weight >= auth.weight_threshold;
-}
-
-bool sign_state::check_authority( const authority& auth, bool enforce_membership_limit )
-{
-   return check_authority( auth, 0, enforce_membership_limit );
 }
 
 bool sign_state::remove_unused_signatures()

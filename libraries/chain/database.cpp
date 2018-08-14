@@ -3160,7 +3160,8 @@ void database::_apply_transaction(const signed_transaction& trx)
       try
       {
          trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH,
-            has_hardfork( STEEM_HARDFORK_0_20 ) || is_producing() );
+            has_hardfork( STEEM_HARDFORK_0_20 ) ? STEEM_MAX_AUTHORITY_MEMBERSHIP : ~0,
+            has_hardfork( STEEM_HARDFORK_0_20 ) ? STEEM_MAX_SIG_CHECK_ACCOUNTS : ~0 );
       }
       catch( protocol::tx_missing_active_auth& e )
       {

@@ -221,6 +221,7 @@
 #define STEEM_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEM_MAX_SATOSHIS                    int64_t(4611686018427387903ll)
 #define STEEM_MAX_SIG_CHECK_DEPTH             2
+#define STEEM_MAX_SIG_CHECK_ACCOUNTS          125
 
 #define STEEM_MIN_TRANSACTION_SIZE_LIMIT      1024
 #define STEEM_SECONDS_PER_YEAR                (uint64_t(60*60*24*365ll))
@@ -249,7 +250,7 @@
 #define STEEM_BLOCKCHAIN_PRECISION_DIGITS     3
 #define STEEM_MAX_INSTANCE_ID                 (uint64_t(-1)>>16)
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
-#define STEEM_MAX_AUTHORITY_MEMBERSHIP        10
+#define STEEM_MAX_AUTHORITY_MEMBERSHIP        40
 #define STEEM_MAX_ASSET_WHITELIST_AUTHORITIES 10
 #define STEEM_MAX_URL_LENGTH                  127
 
