@@ -30,6 +30,7 @@
 
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE          0
+#define STEEM_MAX_ACCOUNT_CREATION_FEE          int64_t(1000000000)
 
 #define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
@@ -62,6 +63,7 @@
 #define STEEM_UPVOTE_LOCKOUT_HF17             (fc::seconds(12))
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE           1
+#define STEEM_MAX_ACCOUNT_CREATION_FEE           int64_t(1000000000)
 
 #define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::days(30)
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)

@@ -84,7 +84,11 @@ void update_median_witness_props( database& db )
       _wso.account_subsidy_print_rate =
          ( uint64_t( median_account_subsidy_daily_rate ) * STEEM_ACCOUNT_SUBSIDY_PRECISION ) / STEEM_BLOCKS_PER_DAY;
       _wso.single_witness_subsidy_limit =
-         ( median_account_subsidy_daily_rate * STEEM_ACCOUNT_SUBSIDY_PRECISION * median_account_subsidy_pool_cap * STEEM_WITNESS_SUBSIDY_PERCENT ) / STEEM_100_PERCENT;
+         (   uint64_t( median_account_subsidy_daily_rate )
+           * uint64_t( median_account_subsidy_pool_cap )
+           * ( uint64_t( STEEM_ACCOUNT_SUBSIDY_PRECISION )
+           *   uint64_t( STEEM_WITNESS_SUBSIDY_PERCENT   ) )
+         ) / STEEM_100_PERCENT;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )
