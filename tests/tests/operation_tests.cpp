@@ -7246,16 +7246,12 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1990034 );
       BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1990034 );
 
-      BOOST_TEST_MESSAGE( "--- Test success claiming a partial subsidized account" );
+      BOOST_TEST_MESSAGE( "--- Test failure claiming a partial subsidized account" );
       op.fee = ASSET( "2.500 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       sign( tx, alice_private_key );
-      db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 4 );
-      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "7.500 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1985034 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1990034 );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test failure with no available subsidized accounts" );
