@@ -14,8 +14,11 @@ def compute_parameters(args):
     result = collections.OrderedDict()
     result2 = collections.OrderedDict()
 
+    result["resource_dynamics_params"] = collections.OrderedDict()
+    rdparams = result["resource_dynamics_params"]
+
     time_unit = args.get("time_unit", "seconds")
-    result["time_unit"] = "rc_time_unit_"+time_unit
+    result2["time_unit"] = "rc_time_unit_"+time_unit
 
     if time_unit == "seconds":
         time_unit_sec = 1
@@ -70,17 +73,17 @@ def compute_parameters(args):
 
     result2["resource_unit_exponent"] = resource_unit_exponent
     resource_unit = resource_unit_base**resource_unit_exponent
-    result["resource_unit"] = resource_unit
+    rdparams["resource_unit"] = resource_unit
 
     budget_per_sec *= resource_unit
     budget_per_time_unit = budget_per_sec * time_unit_sec
 
     result2["budget_per_sec"] = int(budget_per_sec+0.5)
-    result["budget_per_time_unit"] = int(budget_per_time_unit+0.5)
+    rdparams["budget_per_time_unit"] = int(budget_per_time_unit+0.5)
 
     pool_eq = budget_per_sec / decay_per_sec_float
-    result["pool_eq"] = int(pool_eq+1)
-    result["max_pool_size"] = str(int(pool_eq*2.0 + 0.5))
+    rdparams["pool_eq"] = int(pool_eq+1)
+    rdparams["max_pool_size"] = str(int(pool_eq*2.0 + 0.5))
 
     # Find k such that 1-1/(1+k*a) = u
     # 1-u = 1/(1+k*a)
@@ -111,11 +114,11 @@ def compute_parameters(args):
     curve_shift_float = math.log( (2.0**64-1) / A ) / math.log(2)
     curve_shift = int(math.floor(curve_shift_float))
 
-    result["curve_params"] = collections.OrderedDict()
-    result["curve_params"]["coeff_a"] = str(int(A*(2.0**curve_shift)+0.5))
-    result["curve_params"]["coeff_b"] = str(int(B+0.5))
-    result["curve_params"]["coeff_d"] = str(int(D*(2.0**curve_shift)+0.5))
-    result["curve_params"]["shift"] = curve_shift
+    result["price_curve_params"] = collections.OrderedDict()
+    result["price_curve_params"]["coeff_a"] = str(int(A*(2.0**curve_shift)+0.5))
+    result["price_curve_params"]["coeff_b"] = str(int(B+0.5))
+    result["price_curve_params"]["coeff_d"] = str(int(D*(2.0**curve_shift)+0.5))
+    result["price_curve_params"]["shift"] = curve_shift
 
     decay_per_time_unit_float = -math.expm1(-time_unit_sec*math.log(2.0) / half_life_sec)
 
@@ -124,7 +127,7 @@ def compute_parameters(args):
     #compound_per_sec = int(compound_per_sec_float * compound_per_sec_denom)
     result2["decay_per_time_unit_float"] = decay_per_time_unit_float
 
-    result["decay_params"] = collections.OrderedDict()
+    rdparams["decay_params"] = collections.OrderedDict()
 
     # The decay amount is equal to:
     #       Decay parameter (x bits)
@@ -137,8 +140,8 @@ def compute_parameters(args):
     decay_per_time_unit_denom_shift = int(math.floor( decay_per_time_unit_denom_shift_float ))
     decay_per_time_unit = int( decay_per_time_unit_float * (2.0**decay_per_time_unit_denom_shift) + 0.5 )
 
-    result["decay_params"]["decay_per_time_unit"] = str(decay_per_time_unit)
-    result["decay_params"]["decay_per_time_unit_denom_shift"] = decay_per_time_unit_denom_shift
+    rdparams["decay_params"]["decay_per_time_unit"] = str(decay_per_time_unit)
+    rdparams["decay_params"]["decay_per_time_unit_denom_shift"] = decay_per_time_unit_denom_shift
 
     result2 = collections.OrderedDict()
 

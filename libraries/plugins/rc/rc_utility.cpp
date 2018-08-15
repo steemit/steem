@@ -9,7 +9,7 @@ namespace steem { namespace plugins { namespace rc {
 using fc::uint128_t;
 
 int64_t compute_rc_cost_of_resource(
-   const rc_curve_params& curve_params,
+   const rc_price_curve_params& curve_params,
    int64_t current_pool,
    int64_t resource_count,
    int64_t rc_regen
@@ -49,33 +49,6 @@ int64_t compute_rc_cost_of_resource(
    // err on the side of rounding not in the user's favor
    // ilog( "result: ${r}", ("r", num_denom.to_uint64()+1) );
    return num_denom.to_uint64()+1;
-}
-
-int64_t compute_pool_decay(
-   const rc_decay_params& decay_params,
-   int64_t current_pool,
-   uint32_t dt
-   )
-{
-   /*
-   ilog( "compute_pool_decay( ${params}, ${pool}, ${dt} )",
-      ("params", decay_params)
-      ("pool", current_pool)
-      ("dt", dt) );
-   */
-
-   if( current_pool < 0 )
-      return -compute_pool_decay( decay_params, -current_pool, dt );
-
-   uint128_t decay_amount = uint64_t( decay_params.decay_per_time_unit ) * uint64_t( dt );
-   decay_amount *= uint64_t( current_pool );
-   decay_amount >>= decay_params.decay_per_time_unit_denom_shift;
-   uint64_t result = decay_amount.to_uint64();
-   return (
-           (result > uint64_t( current_pool ))
-           ? current_pool
-           : int64_t(result)
-          );
 }
 
 } } }

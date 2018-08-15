@@ -36,7 +36,6 @@ struct resource_pool_api_object
 struct get_resource_pool_return
 {
    variant_object                                           resource_pool;
-   fc::time_point_sec                                       last_update;
 };
 
 struct rc_account_api_object
@@ -96,7 +95,6 @@ FC_REFLECT( steem::plugins::rc::resource_pool_api_object,
 
 FC_REFLECT( steem::plugins::rc::get_resource_pool_return,
    (resource_pool)
-   (last_update)
    )
 
 FC_REFLECT( steem::plugins::rc::rc_account_api_object,
