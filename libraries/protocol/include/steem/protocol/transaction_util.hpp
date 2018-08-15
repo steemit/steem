@@ -10,11 +10,12 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
                        const authority_getter& get_owner,
                        const authority_getter& get_posting,
                        uint32_t max_recursion_depth = STEEM_MAX_SIG_CHECK_DEPTH,
+                       uint32_t max_membership = STEEM_MAX_AUTHORITY_MEMBERSHIP,
+                       uint32_t max_account_auths = STEEM_MAX_SIG_CHECK_ACCOUNTS,
                        bool allow_committe = false,
                        const flat_set< account_name_type >& active_approvals = flat_set< account_name_type >(),
                        const flat_set< account_name_type >& owner_approvals = flat_set< account_name_type >(),
-                       const flat_set< account_name_type >& posting_approvals = flat_set< account_name_type >(),
-                       bool enforce_membership_limit = false
+                       const flat_set< account_name_type >& posting_approvals = flat_set< account_name_type >()
                        )
 { try {
    flat_set< account_name_type > required_active;
@@ -41,13 +42,15 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
       flat_set< public_key_type > avail;
       sign_state s(sigs,get_posting,avail);
       s.max_recursion = max_recursion_depth;
+      s.max_membership = max_membership;
+      s.max_account_auths = max_account_auths;
       for( auto& id : posting_approvals )
          s.approved_by.insert( id );
       for( const auto& id : required_posting )
       {
-         STEEM_ASSERT( s.check_authority(id, enforce_membership_limit) ||
-                          s.check_authority(get_active(id), enforce_membership_limit) ||
-                          s.check_authority(get_owner(id), enforce_membership_limit),
+         STEEM_ASSERT( s.check_authority(id) ||
+                          s.check_authority(get_active(id)) ||
+                          s.check_authority(get_owner(id)),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
                           ("id",id)
                           ("posting",get_posting(id))
@@ -65,6 +68,8 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
    flat_set< public_key_type > avail;
    sign_state s(sigs,get_active,avail);
    s.max_recursion = max_recursion_depth;
+   s.max_membership = max_membership;
+   s.max_account_auths = max_account_auths;
    for( auto& id : active_approvals )
       s.approved_by.insert( id );
    for( auto& id : owner_approvals )
@@ -72,21 +77,21 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
 
    for( const auto& auth : other )
    {
-      STEEM_ASSERT( s.check_authority(auth, enforce_membership_limit), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      STEEM_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
    for( const auto& id : required_active )
    {
-      STEEM_ASSERT( s.check_authority(id, enforce_membership_limit) ||
-                       s.check_authority(get_owner(id), enforce_membership_limit),
+      STEEM_ASSERT( s.check_authority(id) ||
+                       s.check_authority(get_owner(id)),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
    for( const auto& id : required_owner )
    {
       STEEM_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
-                       s.check_authority(get_owner(id), enforce_membership_limit),
+                       s.check_authority(get_owner(id)),
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 
