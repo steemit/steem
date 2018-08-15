@@ -42,7 +42,7 @@ bool sign_state::check_authority_impl( const authority& auth, uint32_t depth, ui
       }
 
       membership++;
-      if( membership >= max_membership )
+      if( max_membership > 0 && membership >= max_membership )
       {
          return false;
       }
@@ -55,7 +55,7 @@ bool sign_state::check_authority_impl( const authority& auth, uint32_t depth, ui
          if( depth == max_recursion )
             continue;
 
-         if( *account_auth_count >= max_account_auths )
+         if( max_account_auths > 0 && *account_auth_count >= max_account_auths )
          {
             return false;
          }
@@ -78,7 +78,7 @@ bool sign_state::check_authority_impl( const authority& auth, uint32_t depth, ui
       }
 
       membership++;
-      if( membership >= max_membership )
+      if( max_membership > 0 && membership >= max_membership )
       {
          return false;
       }
