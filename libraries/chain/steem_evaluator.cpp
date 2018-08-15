@@ -2351,56 +2351,8 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   FC_TODO( "Remove min() after HF20" );
-   int64_t creation_fee = std::min( wso.median_props.account_creation_fee.amount.value, STEEM_MAX_ACCOUNT_CREATION_FEE );
-
-   FC_ASSERT( o.fee.amount.value <= creation_fee, "Cannot pay more than account creation fee. paid: ${p} fee: ${f}", ("p", o.fee.amount.value)("f", creation_fee) );
-
-   int64_t fee_discount = creation_fee - o.fee.amount.value;
-
-   if( fee_discount > 0 )
+   if( o.fee.amount == 0 )
    {
-      // The calculation we want to do is:
-      //
-      //     current_subsidy = fee_discount / creation_fee
-      //
-      // However, this value is between 0 and 1, so we multiply by STEEM_ACCOUNT_SUBSIDY_PRECISION.
-      // To make sure the numerator doesn't overflow, we want to statically enforce that:
-      //
-      //     x < numeric_limits<int64_t>::max()
-      //
-      // where x, y are the numerator, denominator:
-      //
-      //     x = fee_discount * STEEM_ACCOUNT_SUBSIDY_PRECISION
-      //     y = creation_fee
-      //
-      // In order to round-against-the-user, we actually want the division to round up, i.e.
-      //
-      //     current_subsidy = ceil(x/y) = floor( (x+y-1)/y )
-      //
-      // (The second step is actually an identity which applies to any integers x, y with
-      // y > 0.)  We now need to make sure that the numerator x+y-1 does not overflow.
-      // We know that:
-      //
-      //     fee_discount <= STEEM_MAX_ACCOUNT_CREATION_FEE
-      //     y-1 < STEEM_MAX_ACCOUNT_CREATION_FEE
-      //
-      // So we know that:
-      //
-      //     x+y-1 = fee_discount * STEEM_ACCOUNT_SUBSIDY_PRECISION + y-1
-      //           < STEEM_MAX_ACCOUNT_CRAETION_FEE * STEEM_ACCOUNT_SUBSIDY_PRECISION + STEEM_MAX_ACCOUNT_CREATION_FEE
-      //           = STEEM_MAX_ACCOUNT_CREATION_FEE * (STEEM_ACCOUNT_SUBSIDY_PRECISION + 1)
-      //
-      // To check that this product does not exceed numeric_limits< int64_t >::max(), we can rearrange
-      // the inequality, obtaining:
-      //
-      //     STEEM_MAX_ACCOUNT_CREATION_FEE < numeric_limits<int64_t>::max() / (STEEM_ACCOUNT_SUBSIDY_PRECISION + 1)
-      //
-      static_assert( STEEM_MAX_ACCOUNT_CREATION_FEE < (std::numeric_limits< int64_t >::max() / (STEEM_ACCOUNT_SUBSIDY_PRECISION + 1)),
-         "Following computation will overflow" );
-
-      // creation_fee cannot be zero since fee_discount > 0 and validate() enforces fee, fee_discount are non-negative and add to creation_fee
-      int64_t current_subsidy = ( fee_discount * STEEM_ACCOUNT_SUBSIDY_PRECISION + creation_fee - 1 ) / creation_fee;
       const auto& gpo = _db.get_dynamic_global_properties();
 
       // This block is a little weird. We want to enforce that only elected witnesses can include the transaction, but
@@ -2420,7 +2372,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
                 / (STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * 60 * 60 * 24);
          uint64_t new_subsidies = current_witness.recent_account_subsidies - std::min( current_witness.recent_account_subsidies, recovered_subsidies );
 
-         new_subsidies += current_subsidy;
+         new_subsidies += STEEM_ACCOUNT_SUBSIDY_PRECISION;
 
          FC_ASSERT( new_subsidies <= wso.single_witness_subsidy_limit, "Witness has claimed too many subsidized accounts recents. Claimed: ${claimed} Limit: ${limit}",
             ("claimed", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
@@ -2432,12 +2384,19 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
          });
       }
 
-      FC_ASSERT( uint64_t( current_subsidy ) <= gpo.available_account_subsidies, "There are not enough subsidized accounts to claim" );
+      FC_ASSERT( gpo.available_account_subsidies >= STEEM_ACCOUNT_SUBSIDY_PRECISION, "There are not enough subsidized accounts to claim" );
 
       _db.modify( gpo, [&]( dynamic_global_property_object& gpo )
       {
-         gpo.available_account_subsidies -= current_subsidy;
+         gpo.available_account_subsidies -= STEEM_ACCOUNT_SUBSIDY_PRECISION;
       });
+   }
+   else
+   {
+      FC_ASSERT( o.fee == wso.median_props.account_creation_fee,
+         "Cannot pay more than account creation fee. paid: ${p} fee: ${f}",
+         ("p", o.fee.amount.value)
+         ("f", wso.median_props.account_creation_fee) );
    }
 
    _db.adjust_balance( _db.get_account( STEEM_NULL_ACCOUNT ), o.fee );
