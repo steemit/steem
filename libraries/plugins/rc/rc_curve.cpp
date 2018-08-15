@@ -32,9 +32,7 @@ rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
       uint32_t time_unit_sec = params.time_unit == rc_time_unit_seconds ? 1 : STEEM_BLOCK_INTERVAL;
       fc::microseconds budget_time = params.budget_time;
       fc::microseconds half_life = params.half_life;
-      double inelasticity_threshold = double( params.inelasticity_threshold_num ) / params.inelasticity_threshold_denom;
-
-      idump( (half_life.to_seconds()) );
+      double inelasticity_threshold = double( params.inelasticity_threshold_num ) / double( params.inelasticity_threshold_denom );
 
       double tau = half_life.to_seconds() / log_2;
       double decay_per_sec_float = -1 * std::expm1( -1.0 / tau );
@@ -48,7 +46,6 @@ rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
       }
       else
       {
-         idump( (budget_per_sec)(decay_per_sec_float)(params.small_stockpile_size) );
          double pool_eq = budget_per_sec / decay_per_sec_float;
          double resource_unit_exponent_float = std::log( params.small_stockpile_size / pool_eq ) / std::log( params.resource_unit_base );
          resource_unit_exponent = std::max( 0, check_and_cast< int32_t >( std::ceil( resource_unit_exponent_float ) ) );
