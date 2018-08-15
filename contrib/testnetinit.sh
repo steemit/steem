@@ -25,8 +25,8 @@ chown steemd:steemd $HOME/testnet_datadir/config.ini
 
 cd $HOME
 
-echo chain-id = $CHAIN_ID >> config.ini
-echo chain-id = $CHAIN_ID >> testnet_datadir/config.ini
+echo -en '\nchain-id = $CHAIN_ID' >> config.ini
+echo -en '\nchain-id = $CHAIN_ID' >> testnet_datadir/config.ini
 
 mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
@@ -85,7 +85,7 @@ tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transacti
 i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let i=i+1 ; done
 
 # add keys derived from shared secret to config file
-$UTILS/get_dev_key $SHARED_SECRET block-init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
+$UTILS/get_dev_key $SHARED_SECRET init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
 
 # let's get going
 echo steemd-testnet: bringing up witness / full node
