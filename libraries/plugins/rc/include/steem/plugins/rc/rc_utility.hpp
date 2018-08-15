@@ -1,10 +1,14 @@
 #pragma once
 
-#include <steem/plugins/rc/rd_dynamics.hpp>
+#include <steem/chain/util/rd_dynamics.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
 namespace steem { namespace plugins { namespace rc {
+
+using steem::chain::util::rd_decay_params;
+using steem::chain::util::rd_dynamics_params;
+using steem::chain::util::rd_compute_pool_decay;
 
 struct rc_price_curve_params
 {

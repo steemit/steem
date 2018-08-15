@@ -5,7 +5,6 @@ add_library( rc_plugin
              rc_utility.cpp
              resource_count.cpp
              resource_user.cpp
-             rd.cpp
            )
 
 target_link_libraries( rc_plugin chain_plugin block_data_export_plugin steem_chain steem_jsonball steem_protocol )

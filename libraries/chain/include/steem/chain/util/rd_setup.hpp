@@ -18,7 +18,7 @@
 #define STEEM_RD_MIN_BUDGET        1
 #define STEEM_RD_MAX_DECAY         (uint32_t(0xFFFFFFFF))
 
-namespace steem { namespace plugins { namespace rc {
+namespace steem { namespace chain { namespace util {
 
 // Parameters settable by users.
 struct rd_user_params
@@ -43,12 +43,12 @@ void rd_setup_dynamics_params(
 
 } } }
 
-FC_REFLECT( steem::plugins::rc::rd_user_params,
+FC_REFLECT( steem::chain::util::rd_user_params,
    (budget_per_time_unit)
    (decay_per_time_unit)
    )
 
-FC_REFLECT( steem::plugins::rc::rd_system_params,
+FC_REFLECT( steem::chain::util::rd_system_params,
    (resource_unit)
    (decay_per_time_unit_denom_shift)
    )

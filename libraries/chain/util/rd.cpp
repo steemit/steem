@@ -1,6 +1,6 @@
 
-#include <steem/plugins/rc/rd_setup.hpp>
-#include <steem/plugins/rc/rd_dynamics.hpp>
+#include <steem/chain/util/rd_setup.hpp>
+#include <steem/chain/util/rd_dynamics.hpp>
 
 #include <fc/uint128.hpp>
 #include <fc/exception/exception.hpp>
@@ -9,7 +9,7 @@
 
 // max_decay = (uint64_t(1) << (MAX_POOL_BITS + MIN_DECAY_BITS - DECAY_DENOM_SHIFT))-1;
 
-namespace steem { namespace plugins { namespace rc {
+namespace steem { namespace chain { namespace util {
 
 void rd_validate_user_params(
    const rd_user_params& user_params )
