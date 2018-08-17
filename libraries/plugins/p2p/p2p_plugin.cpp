@@ -204,13 +204,12 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
          if( !sync_mode )
          {
             fc::microseconds latency = fc::time_point::now() - blk_msg.block.timestamp;
-            int64_t latency_ms = latency.count() / 1000;
-            STATSD_TIMER( "p2p", "latency", "block_arrival", latency_ms, 1.0f )
+            STATSD_TIMER( "p2p", "latency", "block_arrival", latency, 1.0f )
             ilog( "Got ${t} transactions on block ${b} by ${w} -- latency: ${l} ms",
                ("t", blk_msg.block.transactions.size())
                ("b", blk_msg.block.block_num())
                ("w", blk_msg.block.witness)
-               ("l", latency_ms) );
+               ("l", latency.count() / 1000) );
          }
 
          return result;
