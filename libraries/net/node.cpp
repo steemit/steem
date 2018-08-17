@@ -123,6 +123,8 @@
 
 namespace graphene { namespace net {
 
+  static inline void send_message_timing_to_statsd( peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash );
+
   namespace detail
   {
     namespace bmi = boost::multi_index;
@@ -1787,6 +1789,7 @@ namespace graphene { namespace net {
       activity_tracer aTracer(__FUNCTION__, *this);
 
       message_hash_type message_hash = received_message.id();
+      send_message_timing_to_statsd( originating_peer, received_message, message_hash );
       dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
            ("type", graphene::net::core_message_type_enum(received_message.msg_type))("hash", message_hash)
            ("size", received_message.size)
@@ -5663,5 +5666,25 @@ namespace graphene { namespace net {
 #undef INVOKE_AND_COLLECT_STATISTICS
 
   } // end namespace detail
+
+  static inline void send_message_timing_to_statsd( peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash )
+  {
+     if( steem::plugins::statsd::util::statsd_enabled() )
+     {
+        fc::time_point message_receive_time = fc::time_point::now();
+
+        auto iter = originating_peer->items_requested_from_peer.find( item_id( received_message.msg_type, message_hash ) );
+        if( iter != originating_peer->items_requested_from_peer.end() )
+        {
+           steem::plugins::statsd::util::get_statsd().timing(
+              "p2p",
+              "latency",
+              fc::variant( core_message_type_enum( received_message.msg_type ) ).as_string(),
+              steem::plugins::statsd::util::timing_helper( message_receive_time - iter->second ),
+              0.1f
+           );
+        }
+     }
+  }
 
 } } // end namespace graphene::net
