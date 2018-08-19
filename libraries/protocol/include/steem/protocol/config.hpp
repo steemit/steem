@@ -276,7 +276,8 @@
 #define STEEM_RD_MAX_POOL_BITS               64
 #define STEEM_RD_MAX_BUDGET_1                ((uint64_t(1) << (STEEM_RD_MAX_POOL_BITS + STEEM_RD_MIN_DECAY_BITS - STEEM_RD_DECAY_DENOM_SHIFT))-1)
 #define STEEM_RD_MAX_BUDGET_2                ((uint64_t(1) << (64-STEEM_RD_DECAY_DENOM_SHIFT))-1)
-#define STEEM_RD_MAX_BUDGET                  ((STEEM_RD_MAX_BUDGET_1 < STEEM_RD_MAX_BUDGET_2) ? STEEM_RD_MAX_BUDGET_1 : STEEM_RD_MAX_BUDGET_2)
+#define STEEM_RD_MAX_BUDGET_3                (uint64_t( std::numeric_limits<int32_t>::max() ))
+#define STEEM_RD_MAX_BUDGET                  (int32_t( std::min( { STEEM_RD_MAX_BUDGET_1, STEEM_RD_MAX_BUDGET_2, STEEM_RD_MAX_BUDGET_3 } )) )
 #define STEEM_RD_MIN_DECAY                   (uint32_t(1) << STEEM_RD_MIN_DECAY_BITS)
 #define STEEM_RD_MIN_BUDGET                  1
 #define STEEM_RD_MAX_DECAY                   (uint32_t(0xFFFFFFFF))
