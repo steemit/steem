@@ -68,7 +68,7 @@ exec chpst -usteemd \
         2>&1&
 
 # give the fastgen node some time to startup
-sleep 240
+sleep 480
 
 # set start_date in the tinman configuration to a date in the near-past so the testnet won't run out of blocks before it can be used.
 # disable by setting environment variable $USE_SNAPSHOT_TIME to truthy value
