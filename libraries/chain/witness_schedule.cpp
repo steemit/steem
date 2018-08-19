@@ -3,9 +3,15 @@
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
+#include <steem/chain/util/rd_setup.hpp>
+
 #include <steem/protocol/config.hpp>
 
 namespace steem { namespace chain {
+
+using steem::chain::util::rd_system_params;
+using steem::chain::util::rd_user_params;
+using steem::chain::util::rd_validate_user_params;
 
 void reset_virtual_schedule_time( database& db )
 {
@@ -59,36 +65,63 @@ void update_median_witness_props( database& db )
    } );
    uint16_t median_sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
 
-   /// sort them by account_subsidy_daily_rate
+   /// sort them by account_subsidy_budget
    std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b )
    {
-      return a->props.account_subsidy_daily_rate < b->props.account_subsidy_daily_rate;
+      return a->props.account_subsidy_budget < b->props.account_subsidy_budget;
    } );
-   uint32_t median_account_subsidy_daily_rate = active[active.size()/2]->props.account_subsidy_daily_rate;
+   int32_t median_account_subsidy_budget = active[active.size()/2]->props.account_subsidy_budget;
 
-   /// sort them by account_subsidy_pool_cap
+   /// sort them by account_subsidy_decay
    std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b )
    {
-      return a->props.account_subsidy_pool_cap < b->props.account_subsidy_pool_cap;
+      return a->props.account_subsidy_decay < b->props.account_subsidy_decay;
    });
-   uint32_t median_account_subsidy_pool_cap = active[active.size()/2]->props.account_subsidy_pool_cap;
+   uint32_t median_account_subsidy_decay = active[active.size()/2]->props.account_subsidy_decay;
+
+   // sort them by pool level
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b )
+   {
+      return a->available_witness_account_subsidies < b->available_witness_account_subsidies;
+   });
+   int64_t median_available_witness_account_subsidies = active[active.size()/2]->available_witness_account_subsidies;
+
+   rd_system_params account_subsidy_system_params;
+   account_subsidy_system_params.resource_unit = STEEM_ACCOUNT_SUBSIDY_PRECISION;
+   account_subsidy_system_params.decay_per_time_unit_denom_shift = STEEM_RD_DECAY_DENOM_SHIFT;
+   rd_user_params account_subsidy_user_params;
+   account_subsidy_user_params.budget_per_time_unit = median_account_subsidy_budget;
+   account_subsidy_user_params.decay_per_time_unit = median_account_subsidy_decay;
+
+   rd_user_params account_subsidy_per_witness_user_params;
+   int64_t w_budget = median_account_subsidy_budget;
+   w_budget = (w_budget * STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT) / STEEM_100_PERCENT;
+   w_budget = std::min( w_budget, int64_t(std::numeric_limits<int32_t>::max()) );
+   uint64_t w_decay = median_account_subsidy_decay;
+   w_decay = (w_decay * STEEM_WITNESS_SUBSIDY_DECAY_PERCENT) / STEEM_100_PERCENT;
+   w_decay = std::min( w_decay, uint64_t(std::numeric_limits<uint32_t>::max()) );
+
+   account_subsidy_per_witness_user_params.budget_per_time_unit = int32_t(w_budget);
+   account_subsidy_per_witness_user_params.decay_per_time_unit = uint32_t(w_decay);
+
+   // Should never fail, as validate_user_params() is checked and median of valid params should always be valid
+   rd_validate_user_params( account_subsidy_user_params );
 
    db.modify( wso, [&]( witness_schedule_object& _wso )
    {
       _wso.median_props.account_creation_fee       = median_account_creation_fee;
       _wso.median_props.maximum_block_size         = median_maximum_block_size;
       _wso.median_props.sbd_interest_rate          = median_sbd_interest_rate;
-      _wso.median_props.account_subsidy_daily_rate = median_account_subsidy_daily_rate;
-      _wso.median_props.account_subsidy_pool_cap   = median_account_subsidy_pool_cap;
+      _wso.median_props.account_subsidy_budget     = median_account_subsidy_budget;
+      _wso.median_props.account_subsidy_decay      = median_account_subsidy_decay;
 
-      _wso.account_subsidy_print_rate =
-         ( uint64_t( median_account_subsidy_daily_rate ) * STEEM_ACCOUNT_SUBSIDY_PRECISION ) / STEEM_BLOCKS_PER_DAY;
-      _wso.single_witness_subsidy_limit =
-         (   uint64_t( median_account_subsidy_daily_rate )
-           * uint64_t( median_account_subsidy_pool_cap )
-           * ( uint64_t( STEEM_ACCOUNT_SUBSIDY_PRECISION )
-           *   uint64_t( STEEM_WITNESS_SUBSIDY_PERCENT   ) )
-         ) / STEEM_100_PERCENT;
+      rd_setup_dynamics_params( account_subsidy_user_params, account_subsidy_system_params, _wso.account_subsidy_rd );
+      rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, _wso.account_subsidy_witness_rd );
+
+      int64_t median_decay = rd_compute_pool_decay( _wso.account_subsidy_witness_rd.decay_params, median_available_witness_account_subsidies, 1 );
+      median_decay = std::max( median_decay, int64_t(0) );
+      int64_t min_decay = (fc::uint128( median_decay ) * STEEM_DECAY_BACKSTOP_PERCENT / STEEM_100_PERCENT).to_int64();
+      _wso.min_witness_account_subsidy_decay = min_decay;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )

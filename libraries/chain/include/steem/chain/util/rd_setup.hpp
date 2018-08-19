@@ -17,7 +17,7 @@ namespace steem { namespace chain { namespace util {
 // Parameters settable by users.
 struct rd_user_params
 {
-   uint64_t        budget_per_time_unit = 0;
+   int32_t         budget_per_time_unit = 0;
    uint32_t        decay_per_time_unit = 0;
 };
 
@@ -29,6 +29,9 @@ struct rd_system_params
 };
 
 struct rd_dynamics_params;
+
+void rd_validate_user_params(
+   const rd_user_params& user_params );
 
 void rd_setup_dynamics_params(
    const rd_user_params& user_params,

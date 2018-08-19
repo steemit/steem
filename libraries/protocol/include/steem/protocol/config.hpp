@@ -283,8 +283,21 @@
 #define STEEM_RD_MAX_DECAY                   (uint32_t(0xFFFFFFFF))
 
 #define STEEM_ACCOUNT_SUBSIDY_PRECISION      (STEEM_100_PERCENT)
-#define STEEM_ACCOUNT_SUBSIDY_BURST_DAYS     (2)
-#define STEEM_WITNESS_SUBSIDY_PERCENT        (10 * STEEM_1_PERCENT)
+
+// We want the global subsidy to run out first in normal (Poisson)
+// conditions, so we boost the per-witness subsidy a little.
+#define STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT (125 * STEEM_1_PERCENT)
+
+// Since witness decay only procs once per round, multiplying the decay
+// constant by the number of witnesses means the per-witness pools have
+// the same effective decay rate in real-time terms.
+#define STEEM_WITNESS_SUBSIDY_DECAY_PERCENT  (STEEM_MAX_WITNESSES * STEEM_100_PERCENT)
+
+// 347321 corresponds to a 5-day halflife
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_DECAY  (347321)
+// Default rate is 0.5 accounts per block
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (STEEM_ACCOUNT_SUBSIDY_PRECISION/2)
+#define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
 /**
  *  Reserved Account IDs with special meaning

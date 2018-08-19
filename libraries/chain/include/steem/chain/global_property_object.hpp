@@ -118,7 +118,7 @@ namespace steem { namespace chain {
 
          uint64_t reverse_auction_seconds = 0;
 
-         uint64_t available_account_subsidies = 0;
+         int64_t available_account_subsidies = 0;
 
          uint16_t sbd_stop_percent = 0;
          uint16_t sbd_start_percent = 0;

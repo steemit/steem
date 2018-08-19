@@ -2223,14 +2223,48 @@ void database::process_savings_withdraws()
 
 void database::process_subsidized_accounts()
 {
-   const auto& wso = get_witness_schedule_object();
+   const witness_schedule_object& wso = get_witness_schedule_object();
+   const dynamic_global_property_object& gpo = get_dynamic_global_properties();
 
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   // Update global pool.
    {
-      gpo.available_account_subsidies = std::min(
-         uint64_t( wso.median_props.account_subsidy_pool_cap ) * STEEM_ACCOUNT_SUBSIDY_PRECISION,
-         gpo.available_account_subsidies + wso.account_subsidy_print_rate );
-   });
+      const rd_dynamics_params& rd = wso.account_subsidy_rd;
+      int64_t decay = rd_compute_pool_decay( rd.decay_params, gpo.available_account_subsidies, 1 );
+      int64_t budget = rd.budget_per_time_unit;
+      int64_t max_pool_size = rd.max_pool_size;
+      int64_t pool = gpo.available_account_subsidies;
+
+      int64_t new_pool = pool + budget - decay;
+      new_pool = std::min( new_pool, max_pool_size );
+      new_pool = std::max( new_pool, int64_t(0) );
+
+      modify( gpo, [&]( dynamic_global_property_object& g )
+      {
+         g.available_account_subsidies = new_pool;
+      });
+   }
+
+   // Update per-witness pool for current witness.
+   const witness_object& current_witness = get_witness( gpo.current_witness );
+   if( current_witness.schedule == witness_object::elected )
+   {
+      const rd_dynamics_params& rd = wso.account_subsidy_witness_rd;
+      int64_t decay = rd_compute_pool_decay( rd.decay_params, current_witness.available_witness_account_subsidies, 1 );
+      int64_t budget = rd.budget_per_time_unit;
+      int64_t max_pool_size = rd.max_pool_size;
+      int64_t pool = gpo.available_account_subsidies;
+
+      decay = std::max( decay, wso.min_witness_account_subsidy_decay );
+
+      int64_t new_pool = pool + budget - decay;
+      new_pool = std::min( new_pool, max_pool_size );
+      new_pool = std::max( new_pool, int64_t(0) );
+
+      modify( current_witness, [&]( witness_object& w )
+      {
+         w.available_witness_account_subsidies = new_pool;
+      } );
+   }
 }
 
 #ifdef STEEM_ENABLE_SMT
