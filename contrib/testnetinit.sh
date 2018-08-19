@@ -44,9 +44,6 @@ cd $HOME
 
 # setup tinman
 git clone https://github.com/steemit/tinman
-cd tinman/tinman
-git clone https://github.com/steemit/simple_steem_client
-cd $HOME
 virtualenv -p $(which python3) ~/ve/tinman
 source ~/ve/tinman/bin/activate
 pip install ./tinman
