@@ -43,7 +43,7 @@ ARGS+=" --tags-skip-startup-update"
 cd $HOME
 
 # setup tinman
-apt-get libyajl-dev -y
+apt-get install libyajl-dev -y
 pip install pipenv && pipenv install
 git clone https://github.com/steemit/tinman
 virtualenv -p $(which python3) ~/ve/tinman
