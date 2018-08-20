@@ -46,8 +46,11 @@ cd $HOME
 git clone https://github.com/steemit/tinman
 virtualenv -p $(which python3) ~/ve/tinman
 source ~/ve/tinman/bin/activate
+cd tinman
 pip install pipenv && pipenv install
-pip install ./tinman
+pip install .
+
+cd $HOME
 
 # get latest tx-gen from s3
 aws s3 cp s3://$S3_BUCKET/txgen-latest.list ./txgen.list
