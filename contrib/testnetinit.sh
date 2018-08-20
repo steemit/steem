@@ -43,10 +43,10 @@ ARGS+=" --tags-skip-startup-update"
 cd $HOME
 
 # setup tinman
-pip install pipenv && pipenv install
 git clone https://github.com/steemit/tinman
 virtualenv -p $(which python3) ~/ve/tinman
 source ~/ve/tinman/bin/activate
+pip install pipenv && pipenv install
 pip install ./tinman
 
 # get latest tx-gen from s3
