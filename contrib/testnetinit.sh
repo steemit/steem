@@ -69,7 +69,7 @@ exec chpst -usteemd \
         2>&1&
 
 # give the fastgen node some time to startup
-sleep 480
+sleep 120
 
 # set start_date in the tinman configuration to a date in the near-past so the testnet won't run out of blocks before it can be used.
 # disable by setting environment variable $USE_SNAPSHOT_TIME to truthy value
@@ -86,7 +86,7 @@ echo steemd-testnet: pipelining transactions into fastgen node, this may take so
   cat txgen.list \
 ) | \
 tinman keysub --get-dev-key $UTILS/get_dev_key | \
-tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json
+tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
 
 # add witness names to config file
 i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let i=i+1 ; done
