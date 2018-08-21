@@ -127,15 +127,19 @@ fc::optional<fc::logging_config> load_logging_config( const boost::program_optio
 
          for( string& s : loggers )
          {
-            auto logger = fc::json::from_string( s ).as< logger_args >();
+            std::size_t pos = 0;
+            while ((pos = s.find("{", pos)) != std::string::npos)
+            {
+               auto logger = fc::json::from_string( s.substr( pos++ ) ).as< logger_args >();
 
-            fc::logger_config logger_config( logger.name );
-            logger_config.level = fc::variant( logger.level ).as< fc::log_level >();
-            boost::split( logger_config.appenders, logger.appender,
-                          boost::is_any_of(" ,"),
-                          boost::token_compress_on );
-            logging_config.loggers.push_back( logger_config );
-            found_logging_config = true;
+               fc::logger_config logger_config( logger.name );
+               logger_config.level = fc::variant( logger.level ).as< fc::log_level >();
+               boost::split( logger_config.appenders, logger.appender,
+                             boost::is_any_of(" ,"),
+                             boost::token_compress_on );
+               logging_config.loggers.push_back( logger_config );
+               found_logging_config = true;
+            }
          }
       }
 
