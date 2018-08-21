@@ -95,6 +95,7 @@ i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let 
 $UTILS/get_dev_key $SHARED_SECRET block-init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
 
 # loop until bootstrap catches up to the head block in real time
+sleep 60
 finished=0
 while [[ $finished == 0 ]]
 do
