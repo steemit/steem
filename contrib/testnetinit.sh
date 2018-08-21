@@ -52,14 +52,15 @@ pip install .
 
 cd $HOME
 
-# get latest tx-gen from s3
+# get latest actions and witness update list from s3
 aws s3 cp s3://$S3_BUCKET/txgen-latest.list ./txgen.list
+aws s3 cp s3://$S3_BUCKET/witness-update-latest.list ./witness-update.list
 cp tinman/txgen.conf.example ./txgen.conf
 
 chown -R steemd:steemd $HOME/*
 
-echo steemd-testnet: starting fastgen node
-# start the fastgen node
+echo steemd-testnet: starting bootstrap node
+# start the bootstrap node
 exec chpst -usteemd \
     $STEEMD \
         --webserver-ws-endpoint=0.0.0.0:9990 \
@@ -94,7 +95,8 @@ i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let 
 # add keys derived from shared secret to config file
 $UTILS/get_dev_key $SHARED_SECRET block-init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
 
-# loop until bootstrap catches up to the head block in real time
+# loop until bootstrap starts producing blocks with 0 transactions
+echo steemd-testnet: starting loop to wait for blocks with 0 transactions
 sleep 60
 finished=0
 while [[ $finished == 0 ]]
@@ -121,4 +123,22 @@ exec chpst -usteemd \
         --p2p-endpoint=0.0.0.0:2001 \
         --data-dir=$HOME \
         $ARGS \
-        2>&1
+        2>&1&
+
+# update the witness block production keys
+# ...but wait 10 minutes before doing so
+sleep 600
+echo steemd-testnet: updating witness block production keys
+( \
+  echo [\"set_secret\", {\"secret\":\"$SHARED_SECRET\"}] ; \
+  cat witness-update.list \
+) | \
+tinman keysub --get-dev-key $UTILS/get_dev_key | \
+tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
+
+# infinite loop to prevent container from exiting
+finished=0
+while [[ $finished == 0 ]]
+do
+  sleep 1000
+done
