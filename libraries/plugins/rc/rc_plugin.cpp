@@ -24,14 +24,6 @@ namespace detail {
 using chain::plugin_exception;
 using steem::chain::util::manabar_params;
 
-struct visitor_shared_state
-{
-   std::vector< account_name_type >   regen_accounts;
-
-   void clear()
-   {  regen_accounts.clear();   }
-};
-
 class rc_plugin_impl
 {
    public:
@@ -42,7 +34,7 @@ class rc_plugin_impl
          _skip.skip_reject_not_enough_rc = 0;
          _skip.skip_deduct_rc = 0;
          _skip.skip_negative_rc_balance = 0;
-         _skip.skip_reject_unknown_delta_vests = 0;
+         _skip.skip_reject_unknown_delta_vests = 1;
       }
 
       void on_post_apply_block( const block_notification& note );
@@ -80,9 +72,6 @@ class rc_plugin_impl
       rc_plugin&                    _self;
 
       bool                          _before_first_block_last_result = true;
-
-      // State is shared between the pre- and post- visitor
-      visitor_shared_state          _shared_state;
 
       rc_plugin_skip_flags          _skip;
       std::map< account_name_type, int64_t > _account_to_max_rc;
@@ -272,7 +261,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    bool debug_print = (gpo.head_block_number > 160785) && (gpo.head_block_number < 160795);
    if( debug_print )
    {
-      ilog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
+      dlog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
    }
    int64_t rc_regen = gpo.total_vesting_shares.amount.value / STEEM_RC_REGEN_TIME;
 
@@ -308,7 +297,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
    if( (gpo.head_block_number % 10000) == 0 )
    {
-      ilog( "${t} : ${i}", ("t", gpo.time)("i", tx_info) );
+      dlog( "${t} : ${i}", ("t", gpo.time)("i", tx_info) );
    }
    if( export_data )
       export_data->tx_info.push_back( tx_info );
@@ -415,12 +404,12 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
                double k = 27.027027027027028;
                double a = double(params.pool_eq - pool);
                a /= k*double(pool);
-               ilog( "a=${a}   aR=${aR}", ("a", a)("aR", a*gpo.total_vesting_shares.amount.value/STEEM_RC_REGEN_TIME) );
+               dlog( "a=${a}   aR=${aR}", ("a", a)("aR", a*gpo.total_vesting_shares.amount.value/STEEM_RC_REGEN_TIME) );
             }
          }
          if( debug_print )
          {
-            ilog( "${t} : ${i}", ("t", gpo.time)("i", block_info) );
+            dlog( "${t} : ${i}", ("t", gpo.time)("i", block_info) );
          }
          pool_obj.last_update = gpo.time;
       } );
@@ -452,7 +441,7 @@ void rc_plugin_impl::on_first_block()
             fc::from_variant( fc::variant( mvo ), params_obj.resource_param_array[ k ] );
          }
 
-         ilog( "Genesis params_obj is ${o}", ("o", params_obj) );
+         dlog( "Genesis params_obj is ${o}", ("o", params_obj) );
       } );
 
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
@@ -506,7 +495,6 @@ struct pre_apply_operation_visitor
 {
    typedef void result_type;
 
-   visitor_shared_state&                    _shared_state;
    database&                                _db;
    uint32_t                                 _current_time = 0;
    uint32_t                                 _current_block_number = 0;
@@ -514,10 +502,7 @@ struct pre_apply_operation_visitor
    fc::optional< price >                    _vesting_share_price;
    rc_plugin_skip_flags                     _skip;
 
-   pre_apply_operation_visitor(
-      visitor_shared_state& ss,
-      database& db
-      ) : _shared_state(ss), _db(db)
+   pre_apply_operation_visitor( database& db ) : _db(db)
    {}
 
    void regenerate( const account_object& account, const rc_account_object& rc_account )const
@@ -546,7 +531,7 @@ struct pre_apply_operation_visitor
          }
          else
          {
-            elog( "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
+            wlog( "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
                ("a", account.name)("old", rc_account.last_max_rc)("new", mbparams.max_mana)("b", _db.head_block_num()) );
          }
       }
@@ -555,8 +540,6 @@ struct pre_apply_operation_visitor
       {
          rca.rc_manabar.regenerate_mana( mbparams, _current_time );
       } );
-
-      _shared_state.regen_accounts.push_back( account.name );
    }
 
    template< bool account_may_not_exist = false >
@@ -696,15 +679,19 @@ struct post_apply_operation_visitor
 {
    typedef void result_type;
 
-   visitor_shared_state&                    _shared_state;
+   vector< account_name_type >&             _mod_accounts;
    database&                                _db;
    uint32_t                                 _current_time = 0;
+   uint32_t                                 _current_block_number = 0;
+   account_name_type                        _current_witness;
 
    post_apply_operation_visitor(
-      visitor_shared_state& ss,
+      vector< account_name_type >& ma,
       database& db,
-      uint32_t t
-      ) : _shared_state(ss), _db(db), _current_time(t)
+      uint32_t t,
+      uint32_t b,
+      account_name_type w
+      ) : _mod_accounts(ma), _db(db), _current_time(t), _current_block_number(b), _current_witness(w)
    {}
 
    void operator()( const account_create_operation& op )const
@@ -715,17 +702,104 @@ struct post_apply_operation_visitor
    void operator()( const account_create_with_delegation_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee );
+      _mod_accounts.push_back( op.creator );
    }
 
    void operator()( const pow_operation& op )const
    {
       // ilog( "handling post-apply pow_operation" );
       create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ) );
+      _mod_accounts.push_back( op.worker_account );
+      _mod_accounts.push_back( _current_witness );
    }
 
    void operator()( const pow2_operation& op )const
    {
-      create_rc_account< true >( _db, _current_time, get_worker_name( op.work ), asset( 0, STEEM_SYMBOL ) );
+      auto worker_name = get_worker_name( op.work );
+      create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ) );
+      _mod_accounts.push_back( worker_name );
+      _mod_accounts.push_back( _current_witness );
+   }
+
+   void operator()( const transfer_to_vesting_operation& op )
+   {
+      account_name_type target = op.to.size() ? op.to : op.from;
+      _mod_accounts.push_back( target );
+   }
+
+   void operator()( const withdraw_vesting_operation& op )const
+   {
+      _mod_accounts.push_back( op.account );
+   }
+
+   void operator()( const delegate_vesting_shares_operation& op )const
+   {
+      _mod_accounts.push_back( op.delegator );
+      _mod_accounts.push_back( op.delegatee );
+   }
+
+   void operator()( const author_reward_operation& op )const
+   {
+      _mod_accounts.push_back( op.author );
+   }
+
+   void operator()( const curation_reward_operation& op )const
+   {
+      _mod_accounts.push_back( op.curator );
+   }
+
+   // Is this one actually necessary?
+   void operator()( const comment_reward_operation& op )const
+   {
+      _mod_accounts.push_back( op.author );
+   }
+
+   void operator()( const fill_vesting_withdraw_operation& op )const
+   {
+      _mod_accounts.push_back( op.from_account );
+      _mod_accounts.push_back( op.to_account );
+   }
+
+   void operator()( const claim_reward_balance_operation& op )const
+   { try {
+      _mod_accounts.push_back( op.account );
+      } FC_LOG_AND_RETHROW()
+   }
+
+   void operator()( const hardfork_operation& op )const
+   {
+      if( op.hardfork_id == STEEM_HARDFORK_0_1 )
+      {
+         const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
+         for( auto it=idx.begin(); it!=idx.end(); ++it )
+         {
+            _mod_accounts.push_back( it->name );
+         }
+      }
+   }
+
+   void operator()( const return_vesting_delegation_operation& op )const
+   {
+      _mod_accounts.push_back( op.account );
+   }
+
+   void operator()( const comment_benefactor_reward_operation& op )const
+   {
+      _mod_accounts.push_back( op.benefactor );
+   }
+
+   void operator()( const producer_reward_operation& op )const
+   {
+      // Producer reward for block 1 doesn't trigger regen because
+      //   it doesn't exist.  We could possibly handle this better
+      //   by implementing the first block check in a pre-handler.
+      if( _current_block_number > 1 )
+         _mod_accounts.push_back( op.producer );
+   }
+
+   void operator()( const clear_null_account_balance_operation& op )const
+   {
+      _mod_accounts.push_back( STEEM_NULL_ACCOUNT );
    }
 
    // TODO create_claimed_account_operation
@@ -745,12 +819,7 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
       return;
 
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
-   pre_apply_operation_visitor vtor( _shared_state, _db );
-
-   // If another operation somehow executed its pre-apply without ever getting to
-   // post-apply (for example due to an exception), _shared_state might have unclean
-   // data.  So it's cleaned here.
-   vtor._shared_state.clear();
+   pre_apply_operation_visitor vtor( _db );
 
    // TODO: Add issue number to HF constant
    if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
@@ -786,15 +855,13 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
+   vector< account_name_type > modified_accounts;
+
    // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
-   post_apply_operation_visitor vtor( _shared_state, _db, now );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
    note.op.visit( vtor );
 
-   update_last_vesting( _db, _shared_state.regen_accounts );
-
-   // This isn't really necessary as _shared_state will be cleared by the next
-   // pre-op.
-   _shared_state.clear();
+   update_last_vesting( _db, modified_accounts );
 }
 
 void rc_plugin_impl::validate_database()
