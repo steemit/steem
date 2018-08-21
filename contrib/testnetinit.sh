@@ -86,13 +86,23 @@ echo steemd-testnet: pipelining transactions into fastgen node, this may take so
   cat txgen.list \
 ) | \
 tinman keysub --get-dev-key $UTILS/get_dev_key | \
-tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
+tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000 &
 
 # add witness names to config file
 i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let i=i+1 ; done
 
 # add keys derived from shared secret to config file
 $UTILS/get_dev_key $SHARED_SECRET block-init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
+
+# loop until bootstrap catches up to the head block in real time
+finished=0
+while [[ $finished == 0 ]]
+do
+  head_block_num=$(curl -s --data '{"jsonrpc":"2.0","id":39,"method":"database_api.get_dynamic_global_properties"}' http://localhost:9990 | jq '.result.last_irreversible_block_num')
+  num=$(curl -s --data "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [\"block_api\", \"get_block\", {\"block_num\":$head_block_num}], \"id\": 1}" http://localhost:9990 | jq '.result.block.transactions | length')
+  if [[ $num == 0 ]]; then finished=1; fi
+  sleep 60
+done
 
 # let's get going
 echo steemd-testnet: bringing up witness / full node
