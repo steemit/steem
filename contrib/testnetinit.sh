@@ -69,7 +69,7 @@ exec chpst -usteemd \
         --data-dir=$HOME/testnet_datadir \
         2>&1&
 
-# give the fastgen node some time to startup
+# give the bootstrap node some time to startup
 sleep 120
 
 # set start_date in the tinman configuration to a date in the near-past so the testnet won't run out of blocks before it can be used.
@@ -81,7 +81,7 @@ if [ ! $USE_SNAPSHOT_TIME ]; then
 fi
 
 # pipe the transactions through keysub and into the fastgen node
-echo steemd-testnet: pipelining transactions into fastgen node, this may take some time
+echo steemd-testnet: pipelining transactions into bootstrap node, this may take some time
 ( \
   echo [\"set_secret\", {\"secret\":\"$SHARED_SECRET\"}] ; \
   cat txgen.list \
@@ -126,15 +126,32 @@ exec chpst -usteemd \
         2>&1&
 
 # update the witness block production keys
-# ...but wait 10 minutes before doing so
-sleep 600
+# ...but wait for seed to be synced to do so
+sleep 60
+echo steemd-testnet: starting loop to check when seed is synced
+BLOCK_AGE=500
+while [[ BLOCK_AGE -ge 1 ]]
+do
+BLOCKCHAIN_TIME=$(
+    curl --silent --max-time 3 \
+        --data '{"jsonrpc":"2.0","id":39,"method":"database_api.get_dynamic_global_properties"}' \
+        localhost:8091 | jq -r .result.time
+)
+BLOCKCHAIN_SECS=`date -d $BLOCKCHAIN_TIME +%s`
+CURRENT_SECS=`date +%s`
+BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
+echo steemd-testnet: seed seconds behind: $BLOCK_AGE
+sleep 60
+done
+
+# update witness block production keys
 echo steemd-testnet: updating witness block production keys
 ( \
   echo [\"set_secret\", {\"secret\":\"$SHARED_SECRET\"}] ; \
   cat witness-update.list \
 ) | \
 tinman keysub --get-dev-key $UTILS/get_dev_key | \
-tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
+tinman submit --realtime -t http://127.0.0.1:8091 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
 
 # infinite loop to prevent container from exiting
 finished=0
