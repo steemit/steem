@@ -12,6 +12,15 @@ struct rd_decay_params
 {
    uint32_t        decay_per_time_unit = 0;
    uint8_t         decay_per_time_unit_denom_shift = 0;
+
+   bool operator==( const rd_decay_params& other )const
+   {
+      return std::tie( decay_per_time_unit, decay_per_time_unit_denom_shift )
+          == std::tie( other.decay_per_time_unit, other.decay_per_time_unit_denom_shift );
+   }
+
+   bool operator!=( const rd_decay_params& other )const
+   {  return !((*this) == other);   }
 };
 
 struct rd_dynamics_params
@@ -24,6 +33,25 @@ struct rd_dynamics_params
    uint64_t        max_pool_size = 0;
 
    rd_decay_params decay_params;
+
+   bool operator==( const rd_dynamics_params& other )const
+   {
+      return std::tie(
+             resource_unit,
+             budget_per_time_unit,
+             pool_eq,
+             max_pool_size,
+             decay_params )
+          == std::tie(
+             other.resource_unit,
+             other.budget_per_time_unit,
+             other.pool_eq,
+             other.max_pool_size,
+             other.decay_params );
+   }
+
+   bool operator!=( const rd_dynamics_params& other )const
+   {  return !((*this) == other);   }
 };
 
 int64_t rd_compute_pool_decay(
