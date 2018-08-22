@@ -531,7 +531,7 @@ struct pre_apply_operation_visitor
          }
          else
          {
-            wlog( "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
+            wlog( "NOTIFYALERT! Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b}",
                ("a", account.name)("old", rc_account.last_max_rc)("new", mbparams.max_mana)("b", _db.head_block_num()) );
          }
       }
