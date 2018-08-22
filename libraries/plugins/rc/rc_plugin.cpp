@@ -705,6 +705,11 @@ struct post_apply_operation_visitor
       _mod_accounts.push_back( op.creator );
    }
 
+   void operator()( const create_claimed_account_operation& op )const
+   {
+      create_rc_account( _db, _current_time, op.new_account_name, _db.get_witness_schedule_object().median_props.account_creation_fee );
+   }
+
    void operator()( const pow_operation& op )const
    {
       // ilog( "handling post-apply pow_operation" );
@@ -807,8 +812,6 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.push_back( STEEM_NULL_ACCOUNT );
    }
-
-   // TODO create_claimed_account_operation
 
    template< typename Op >
    void operator()( const Op& op )const
