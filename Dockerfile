@@ -22,6 +22,7 @@ RUN \
         gdb \
         git \
         libboost-all-dev \
+        libyajl-dev \
         libreadline-dev \
         libssl-dev \
         libtool \

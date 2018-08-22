@@ -13,10 +13,10 @@ rm -rf $HOME/*
 
 mkdir -p $HOME/testnet_datadir
 
-# for the startup node to connect to the fastgen
+# for the startup node to connect to the bootstrap node
 ARGS+=" --p2p-seed-node=127.0.0.1:12001"
 
-# copy over config for testnet init and fastgen nodes
+# copy over config for testnet init and bootstrap nodes
 cp /etc/steemd/testnet.config.ini $HOME/config.ini
 cp /etc/steemd/fastgen.config.ini $HOME/testnet_datadir/config.ini
 
@@ -44,21 +44,21 @@ cd $HOME
 
 # setup tinman
 git clone https://github.com/steemit/tinman
-cd tinman/tinman
-git clone https://github.com/steemit/simple_steem_client
-cd $HOME
 virtualenv -p $(which python3) ~/ve/tinman
 source ~/ve/tinman/bin/activate
-pip install ./tinman
+cd tinman
+pip install pipenv && pipenv install
+pip install .
 
-# get latest tx-gen from s3
+cd $HOME
+
+# get latest actions list from s3
 aws s3 cp s3://$S3_BUCKET/txgen-latest.list ./txgen.list
-cp tinman/txgen.conf.example ./txgen.conf
 
 chown -R steemd:steemd $HOME/*
 
-echo steemd-testnet: starting fastgen node
-# start the fastgen node
+echo steemd-testnet: starting bootstrap node
+# start the bootstrap node
 exec chpst -usteemd \
     $STEEMD \
         --webserver-ws-endpoint=0.0.0.0:9990 \
@@ -67,27 +67,17 @@ exec chpst -usteemd \
         --data-dir=$HOME/testnet_datadir \
         2>&1&
 
-# give the fastgen node some time to startup
+# give the bootstrap node some time to startup
 sleep 120
 
-# set start_date in the tinman configuration to a date in the near-past so the testnet won't run out of blocks before it can be used.
-# disable by setting environment variable $USE_SNAPSHOT_TIME to truthy value
-if [ ! $USE_SNAPSHOT_TIME ]; then
-  setDate=`date +%Y-%m-%dT%H:%M:%S -d "4 days ago"`
-  tmp=$(mktemp)
-  jq  --arg setDate $setDate '.start_time = $setDate' txgen.conf > "$tmp" && mv "$tmp" txgen.conf
-fi
-
 # pipe the transactions through keysub and into the fastgen node
-echo steemd-testnet: pipelining transactions into fastgen node, this may take some time
+echo steemd-testnet: pipelining transactions into bootstrap node, this may take some time
 ( \
   echo [\"set_secret\", {\"secret\":\"$SHARED_SECRET\"}] ; \
   cat txgen.list \
 ) | \
 tinman keysub --get-dev-key $UTILS/get_dev_key | \
-tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json &
-
-sleep 120
+tinman submit --realtime -t http://127.0.0.1:9990 --signer $UTILS/sign_transaction -f fail.json --timeout 1000
 
 # add witness names to config file
 i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let i=i+1 ; done
@@ -95,8 +85,11 @@ i=0 ; while [ $i -lt 21 ] ; do echo witness = '"'init-$i'"' >> config.ini ; let 
 # add keys derived from shared secret to config file
 $UTILS/get_dev_key $SHARED_SECRET block-init-0:21 | cut -d '"' -f 4 | sed 's/^/private-key = /' >> config.ini
 
+# sleep for an arbitrary amount of time before starting the seed
+sleep 300
+
 # let's get going
-echo steemd-testnet: bringing up witness / full node
+echo steemd-testnet: bringing up witness / seed / full node
 cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
 echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
 echo } >> /etc/nginx/healthcheck.conf
