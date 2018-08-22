@@ -249,8 +249,6 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
 ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
 ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
-ADD contrib/testnet.config.ini /etc/steemd/testnet.config.ini
-ADD contrib/fastgen.config.ini /etc/steemd/fastgen.config.ini
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
@@ -262,12 +260,12 @@ ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
 
 # add PaaS startup script and service script
 ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
-ADD contrib/testnetinit.sh /usr/local/bin/testnetinit.sh
+ADD contrib/pulltestnetscripts.sh /usr/local/bin/pulltestnetscripts.sh
 ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
 ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
 ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/startpaassteemd.sh
-RUN chmod +x /usr/local/bin/testnetinit.sh
+RUN chmod +x /usr/local/bin/pulltestnetscripts.sh
 RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
