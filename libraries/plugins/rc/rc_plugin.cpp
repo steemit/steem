@@ -761,10 +761,16 @@ struct post_apply_operation_visitor
    }
 
    void operator()( const claim_reward_balance_operation& op )const
-   { try {
+   {
       _mod_accounts.push_back( op.account );
-      } FC_LOG_AND_RETHROW()
    }
+
+#ifdef STEEM_ENABLE_SMT
+   void operator()( const claim_reward_balance2_operation& op )const
+   {
+      _mod_accounts.push_back( op.account );
+   }
+#endif
 
    void operator()( const hardfork_operation& op )const
    {
