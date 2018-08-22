@@ -363,9 +363,20 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       count_resources( tx, count );
    }
 
+   const witness_schedule_object& wso = _db.get_witness_schedule_object();
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
 
    rc_block_info block_info;
+
+   if( params_obj.resource_param_array[ resource_new_accounts ].resource_dynamics_params !=
+       wso.account_subsidy_rd )
+   {
+      ilog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
+      _db.modify( params_obj, [&]( rc_resource_param_object& p )
+      {
+         p.resource_param_array[ resource_new_accounts ].resource_dynamics_params = wso.account_subsidy_rd;
+      } );
+   }
 
    _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ),
       [&]( rc_pool_object& pool_obj )
@@ -385,7 +396,23 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
             block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
 
-            pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+            int64_t new_pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+
+            if( i == resource_new_accounts )
+            {
+               int64_t new_consensus_pool = _db.get_dynamic_global_properties().available_account_subsidies;
+               block_info.adjustment[i] = new_consensus_pool - new_pool;
+               if( block_info.adjustment[i] != 0 )
+               {
+                  ilog( "resource_new_accounts adjustment on block ${b}: ${a}", ("a", block_info.adjustment[i])("b", gpo.head_block_number) );
+               }
+            }
+            else
+            {
+               block_info.adjustment[i] = 0;
+            }
+
+            pool = new_pool + block_info.adjustment[i];
 
             if( debug_print )
             {
