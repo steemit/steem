@@ -26,13 +26,6 @@ int64_t rd_compute_pool_decay(
    uint32_t dt
    )
 {
-   /*
-   ilog( "compute_pool_decay( ${params}, ${pool}, ${dt} )",
-      ("params", decay_params)
-      ("pool", current_pool)
-      ("dt", dt) );
-   */
-
    if( current_pool < 0 )
       return -rd_compute_pool_decay( decay_params, -current_pool, dt );
 
