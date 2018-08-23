@@ -3603,7 +3603,9 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
-               if( has_hardfork( STEEM_HARDFORK_0_14__278 ) )
+#ifndef IS_TEST_NET
+FC_TODO( "HF 20 issue number" );
+               if( has_hardfork( STEEM_HARDFORK_0_14__278 ) && !has_hardfork( STEEM_HARDFORK_0_20__SP190 ) )
                {
                   if( head_block_num() - w.last_confirmed_block_num  > STEEM_BLOCKS_PER_DAY )
                   {
@@ -3611,6 +3613,7 @@ void database::update_global_dynamic_data( const signed_block& b )
                      push_virtual_operation( shutdown_witness_operation( w.owner ) );
                   }
                }
+#endif
             } );
          }
       }
