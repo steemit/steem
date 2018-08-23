@@ -560,10 +560,20 @@ void database_fixture::proxy( const string& account, const string& proxy )
 
 void database_fixture::set_price_feed( const price& new_price )
 {
-   flat_map< string, vector< char > > props;
-   props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( new_price );
+   for( size_t i = 1; i < 8; i++ )
+   {
+      witness_set_properties_operation op;
+      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i );
+      op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( new_price );
+      op.props[ "key" ] = fc::raw::pack_to_vector( init_account_pub_key );
 
-   set_witness_props( props );
+      trx.operations.push_back( op );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      db->push_transaction( trx, ~0 );
+      trx.clear();
+   }
+
+   generate_blocks( STEEM_BLOCKS_PER_HOUR );
 
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
@@ -575,16 +585,14 @@ void database_fixture::set_price_feed( const price& new_price )
 
 void database_fixture::set_witness_props( const flat_map< string, vector< char > >& props )
 {
-   for( size_t i = 1; i < 8; i++ )
+   trx.clear();
+   for( size_t i=0; i<STEEM_MAX_WITNESSES; i++ )
    {
       witness_set_properties_operation op;
-      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i );
+      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i+1 );
       op.props = props;
-
-      if( op.props.find( "key" ) == op.props.end() )
-      {
-         op.props[ "key" ] = fc::raw::pack_to_vector( init_account_pub_key );
-      }
+      if( props.find( "key" ) == props.end() )
+         op.props["key"] = fc::raw::pack_to_vector( init_account_pub_key );
 
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -592,7 +600,17 @@ void database_fixture::set_witness_props( const flat_map< string, vector< char >
       trx.clear();
    }
 
-   generate_blocks( STEEM_BLOCKS_PER_HOUR );
+   const witness_schedule_object* wso = &(db->get_witness_schedule_object());
+   uint32_t old_next_shuffle = wso->next_shuffle_block_num;
+
+   for( size_t i=0; i<2*STEEM_MAX_WITNESSES+1; i++ )
+   {
+      generate_block();
+      wso = &(db->get_witness_schedule_object());
+      if( wso->next_shuffle_block_num != old_next_shuffle )
+         return;
+   }
+   FC_ASSERT( false, "Couldn't apply properties in ${n} blocks", ("n", 2*STEEM_MAX_WITNESSES+1) );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
