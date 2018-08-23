@@ -83,7 +83,7 @@ rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
 
       double decay_per_time_unit_float = -1 * std::expm1( -1 * ( time_unit_sec * log_2 ) / half_life.to_seconds() );
 
-      double decay_per_time_unit_denom_shift_float = std::log( 0xFFFFFFFF / decay_per_time_unit_float ) / log_2;
+      double decay_per_time_unit_denom_shift_float = std::log( ((uint64_t)UINT32_MAX) / decay_per_time_unit_float ) / log_2;
       uint64_t decay_per_time_unit_denom_shift = check_and_cast< uint64_t >( std::floor( decay_per_time_unit_denom_shift_float ) );
       uint64_t decay_per_time_unit = check_and_cast< uint64_t >( decay_per_time_unit_float * std::pow( 2.0, decay_per_time_unit_denom_shift ) + 0.5 );
 
