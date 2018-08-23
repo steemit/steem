@@ -51,11 +51,11 @@ struct rc_curve_gen_params
 {
    rc_time_unit_type       time_unit = rc_time_unit_seconds;
    rc_time_type            budget_time;
-   uint64_t                budget;
+   uint64_t                budget                        = 0;
    rc_time_type            half_life;
    uint32_t                inelasticity_threshold_num    = 1;
    uint32_t                inelasticity_threshold_denom  = 128;
-   uint64_t                small_stockpile_size          = 0x0000000100000000ull; // 2^32
+   uint64_t                small_stockpile_size          = (1ull << 32);
    uint32_t                resource_unit_base            = 10;
    fc::optional< int32_t > resource_unit_exponent;
    uint32_t                a_point_num                   = 1;
@@ -77,7 +77,7 @@ FC_REFLECT( steem::plugins::rc::rc_time_type,
    (months)
    (years)
    )
-//*
+
 FC_REFLECT( steem::plugins::rc::rc_curve_gen_params,
    (time_unit)
    (budget_time)
@@ -93,4 +93,3 @@ FC_REFLECT( steem::plugins::rc::rc_curve_gen_params,
    (u_point_num)
    (u_point_denom)
    )
-//*/
