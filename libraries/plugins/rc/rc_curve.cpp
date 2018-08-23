@@ -29,6 +29,7 @@ rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
 
       result.time_unit = params.time_unit;
 
+      // Convert time unit to seconds. 1 for seconds, 3 (block interval) for blocks
       uint32_t time_unit_sec = params.time_unit == rc_time_unit_seconds ? 1 : STEEM_BLOCK_INTERVAL;
       fc::microseconds budget_time = params.budget_time;
       fc::microseconds half_life = params.half_life;
@@ -71,10 +72,10 @@ rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
       if( A < 1.0 || B < 1.0 )
       {
          wlog( "Bad parameter vlaue (is time too short?)" );
-         FC_ASSERT( false, "Bad parameter vlaue (is time too short?)" );
+         FC_ASSERT( false, "Bad parameter vlaue (is time too short?) A: {$A} B: {$B} Params: ${P}", ("A", A)("B", B)("P", params) );
       }
 
-      double curve_shift_float = std::log( (0xFFFFFFFFFFFFFFFFull) / A ) / log_2;
+      double curve_shift_float = std::log( ((uint64_t)UINT64_MAX) / A ) / log_2;
       uint64_t curve_shift = check_and_cast< uint64_t >( std::floor( curve_shift_float ) );
       result.curve_params.coeff_a = check_and_cast< uint64_t >( A * ( std::pow( 2, curve_shift ) + 0.5 ) );
       result.curve_params.coeff_b = check_and_cast< uint64_t >( B + 0.5 );
