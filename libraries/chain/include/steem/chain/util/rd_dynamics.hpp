@@ -78,4 +78,5 @@ FC_REFLECT( steem::chain::util::rd_dynamics_params,
    (pool_eq)
    (max_pool_size)
    (decay_params)
+   (min_decay)
    )
