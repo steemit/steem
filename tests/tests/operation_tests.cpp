@@ -7165,7 +7165,6 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: claim_account_apply" );
-      FC_TODO( "Rewrite account subsidy tests" );
       ACTORS( (alice) )
       generate_block();
 
