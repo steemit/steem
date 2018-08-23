@@ -90,10 +90,7 @@ database_impl::database_impl( database& self )
    : _self(self), _evaluator_registry(self) {}
 
 database::database()
-   : _my( new database_impl(*this) )
-{
-   set_chain_id( STEEM_CHAIN_ID_NAME );
-}
+   : _my( new database_impl(*this) ) {}
 
 database::~database()
 {
@@ -402,9 +399,11 @@ chain_id_type database::get_chain_id() const
    return steem_chain_id;
 }
 
-void database::set_chain_id( const std::string& _chain_id_name )
+void database::set_chain_id( const chain_id_type& chain_id )
 {
-   steem_chain_id = generate_chain_id( _chain_id_name );
+   steem_chain_id = chain_id;
+
+   idump( (steem_chain_id) );
 }
 
 void database::foreach_block(std::function<bool(const signed_block_header&, const signed_block&)> processor) const

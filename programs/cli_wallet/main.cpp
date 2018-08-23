@@ -81,7 +81,7 @@ int main( int argc, char** argv )
          ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
 #ifdef IS_TEST_NET
-         ("chain-id", bpo::value< std::string >()->implicit_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
+         ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
          ;
       vector<string> allowed_ips;
@@ -104,7 +104,18 @@ int main( int argc, char** argv )
 
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
-            _steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
+      {
+         auto chain_id_str = options.at("chain-id").as< std::string >();
+
+         try
+         {
+            _steem_chain_id = chain_id_type( chain_id_str);
+         }
+         catch( fc::exception& )
+         {
+            FC_ASSERT( false, "Could not parse chain_id as hex string. Chain ID String: ${s}", ("s", chain_id_str) );
+         }
+      }
 #endif
 
       fc::path data_dir;
