@@ -2223,14 +2223,24 @@ void database::process_savings_withdraws()
 
 void database::process_subsidized_accounts()
 {
-   const auto& wso = get_witness_schedule_object();
+   const witness_schedule_object& wso = get_witness_schedule_object();
+   const dynamic_global_property_object& gpo = get_dynamic_global_properties();
 
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   // Update global pool.
+   modify( gpo, [&]( dynamic_global_property_object& g )
    {
-      gpo.available_account_subsidies = std::min(
-         uint64_t( wso.median_props.account_subsidy_pool_cap ) * STEEM_ACCOUNT_SUBSIDY_PRECISION,
-         gpo.available_account_subsidies + wso.account_subsidy_print_rate );
-   });
+      g.available_account_subsidies = rd_apply( wso.account_subsidy_rd, gpo.available_account_subsidies );
+   } );
+
+   // Update per-witness pool for current witness.
+   const witness_object& current_witness = get_witness( gpo.current_witness );
+   if( current_witness.schedule == witness_object::elected )
+   {
+      modify( current_witness, [&]( witness_object& w )
+      {
+         w.available_witness_account_subsidies = rd_apply( wso.account_subsidy_witness_rd, w.available_witness_account_subsidies );
+      } );
+   }
 }
 
 #ifdef STEEM_ENABLE_SMT

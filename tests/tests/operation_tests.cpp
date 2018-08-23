@@ -6823,8 +6823,11 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       prop_op.owner = "alice";
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
+      BOOST_TEST_MESSAGE( "--- success when signing key is present" );
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
       prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TBD" ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
@@ -6858,15 +6861,59 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       prop_op.props[ "url" ] = fc::raw::pack_to_vector( "\xE0\x80\x80" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when account subsidy rate overflows" );
+      BOOST_TEST_MESSAGE( "--- success when account subsidy rate is reasonable" );
       prop_op.props.clear();
-      prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 0x0000000100000000LL );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( 5000 ) );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- failure when budget is zero" );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( 0 ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when account subsidy pool cap overflows" );
-      prop_op.props.clear();
-      prop_op.props[ "account_subsidy_pool_cap" ] = fc::raw::pack_to_vector( 0x0000000100000000LL );
+      BOOST_TEST_MESSAGE( "--- failure when budget is negative" );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( -5000 ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- success when budget is just under too big" );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( 268435455 ) );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy budget is just a little too big" );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( 268435456 ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy budget is enormous" );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( int32_t( 0x50000000 ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- success when account subsidy decay is reasonable" );
+      prop_op.props.clear();
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( 300000 ) );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy decay is zero" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( 0 ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when account subsidy decay is very small" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( 40 ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      uint64_t unit = uint64_t(1) << STEEM_RD_DECAY_DENOM_SHIFT;
+
+      BOOST_TEST_MESSAGE( "--- success when account subsidy decay is one year" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( unit / STEEM_BLOCKS_PER_YEAR ) );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- success when account subsidy decay is one day" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( unit / STEEM_BLOCKS_PER_DAY ) );
+      prop_op.validate();
+
+      BOOST_TEST_MESSAGE( "--- success when account subsidy decay is one hour" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( uint32_t( unit / ((60*60)/STEEM_BLOCK_INTERVAL) ) );
+      prop_op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -7029,21 +7076,22 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy rate" );
       prop_op.props[ "key" ].clear();
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
-      prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 1000 );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( STEEM_ACCOUNT_SUBSIDY_PRECISION );
       tx.clear();
       tx.operations.push_back( prop_op );
       sign( tx, signing_key );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( alice_witness.props.account_subsidy_daily_rate == 1000 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_budget == STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy pool cap" );
-      prop_op.props.erase( "account_subsidy_daily_rate" );
-      prop_op.props[ "account_subsidy_pool_cap" ] = fc::raw::pack_to_vector( 2000 );
+      uint64_t day_decay = ( uint64_t(1) << STEEM_RD_DECAY_DENOM_SHIFT ) / STEEM_BLOCKS_PER_DAY;
+      prop_op.props.erase( "account_subsidy_decay" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( day_decay );
       tx.clear();
       tx.operations.push_back( prop_op );
       sign( tx, signing_key );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( alice_witness.props.account_subsidy_pool_cap == 2000 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_decay == day_decay );
 
       validate_database();
    }
@@ -7117,30 +7165,33 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: claim_account_apply" );
-
       ACTORS( (alice) )
       generate_block();
 
       fund( "alice", ASSET( "20.000 TESTS" ) );
       generate_block();
 
-      db_plugin->debug_update( [=]( database& db )
+      auto set_subsidy_budget = [&]( int32_t budget, uint32_t decay )
       {
-         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-         {
-            wso.median_props.account_creation_fee = ASSET( "20.000 TESTS" );
-            wso.median_props.account_subsidy_daily_rate = 100;
-            wso.median_props.account_subsidy_pool_cap = 200;
-            wso.account_subsidy_print_rate = 34;
-            wso.single_witness_subsidy_limit = 100000;
-         });
+         flat_map< string, vector<char> > props;
+         props["account_subsidy_budget"] = fc::raw::pack_to_vector( budget );
+         props["account_subsidy_decay"] = fc::raw::pack_to_vector( decay );
+         set_witness_props( props );
+      };
 
-         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-         {
-            gpo.available_account_subsidies = 2000000;
-         });
-      });
-      generate_block();
+      auto get_subsidy_pools = [&]( int64_t& con_subs, int64_t &ncon_subs )
+      {
+         // get consensus and non-consensus subsidies
+         con_subs = db->get_dynamic_global_properties().available_account_subsidies;
+         ncon_subs = db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ];
+      };
+
+      // set_subsidy_budget creates a lot of blocks, so there should be enough for a few accounts
+      // half-life of 10 minutes
+      set_subsidy_budget( 5000, 249617279 );
+
+      // generate a half hour worth of blocks to warm up the per-witness pools, etc.
+      generate_blocks( STEEM_BLOCKS_PER_HOUR/2 );
 
       signed_transaction tx;
       claim_account_operation op;
@@ -7166,18 +7217,23 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       });
       generate_block();
 
+      int64_t prev_c_subs = 0, prev_nc_subs = 0,
+              c_subs = 0, nc_subs = 0;
+
+      get_subsidy_pools( prev_c_subs, prev_nc_subs );
       op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
+      get_subsidy_pools( c_subs, nc_subs );
+
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "15.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 );
+      BOOST_CHECK_EQUAL( c_subs, prev_c_subs );
+      BOOST_CHECK_EQUAL( nc_subs, prev_nc_subs );
       validate_database();
-
 
       BOOST_TEST_MESSAGE( "--- Test claiming from a non-existent account" );
       op.creator = "bob";
@@ -7187,7 +7243,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- Test failure claiming a with an excess fee" );
+      BOOST_TEST_MESSAGE( "--- Test failure claiming account with an excess fee" );
       generate_block();
       op.creator = "alice";
       op.fee = ASSET( "10.000 TESTS" );
@@ -7201,50 +7257,65 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
 
       BOOST_TEST_MESSAGE( "--- Test success claiming a second account" );
       generate_block();
+      get_subsidy_pools( prev_c_subs, prev_nc_subs );
       op.fee = ASSET( "5.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
+      get_subsidy_pools( c_subs, nc_subs );
+
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 );
+      BOOST_REQUIRE( c_subs == prev_c_subs );
+      BOOST_REQUIRE( nc_subs == prev_nc_subs );
       validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- Test success claiming a subsidized account" );
+      generate_block();    // Put all previous test transactions into a block
+
+      while( true )
+      {
+         account_name_type next_witness = db->get_scheduled_witness( 1 );
+         if( db->get_witness( next_witness ).schedule == witness_object::elected )
+            break;
+         generate_block();
+      }
+
+      get_subsidy_pools( prev_c_subs, prev_nc_subs );
       op.creator = "alice";
       op.fee = ASSET( "0.000 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
       sign( tx, alice_private_key );
+      ilog( "Pushing transaction: ${t}", ("t", tx) );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
-      BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1990000 );
+      get_subsidy_pools( c_subs, nc_subs );
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 3 );
+      BOOST_CHECK( db->get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      // Non-consensus isn't updated until end of block
+      BOOST_CHECK_EQUAL( c_subs, prev_c_subs - STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_CHECK_EQUAL( nc_subs, prev_nc_subs );
 
-      // Cost is not changed within a block
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000000 );
-
-      db_plugin->debug_update( [=]( database& db )
-      {
-         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
-         uint32_t next_slot = db.get_slot_at_time( next_block_time );
-         account_name_type next_witness = db.get_scheduled_witness( next_slot );
-
-         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
-         {
-            w.schedule = witness_object::elected;
-         });
-      });
       generate_block();
 
       // RC update at the end of the block
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 3 );
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1990034 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1990034 );
+      get_subsidy_pools( c_subs, nc_subs );
+      block_id_type hbid = db->head_block_id();
+      optional<signed_block> block = db->fetch_block_by_id(hbid);
+      BOOST_REQUIRE( block.valid() );
+      BOOST_CHECK_EQUAL( block->transactions.size(), 1 );
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 3 );
+
+      int64_t new_value = prev_c_subs - STEEM_ACCOUNT_SUBSIDY_PRECISION;     // Usage applied before decay
+      new_value = new_value
+          + 5000                                                             // Budget
+          - ((new_value*249617279) >> STEEM_RD_DECAY_DENOM_SHIFT);           // Decay
+
+      BOOST_CHECK_EQUAL( c_subs, new_value );
+      BOOST_CHECK_EQUAL( nc_subs, new_value );
 
       BOOST_TEST_MESSAGE( "--- Test failure claiming a partial subsidized account" );
       op.fee = ASSET( "2.500 TESTS" );

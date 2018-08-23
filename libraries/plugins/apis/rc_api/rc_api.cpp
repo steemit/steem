@@ -54,7 +54,6 @@ DEFINE_API_IMPL( rc_api_impl, get_resource_pool )
    }
 
    result.resource_pool = mvo;
-   result.last_update = pool_obj.last_update;
    return result;
 }
 

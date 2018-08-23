@@ -52,7 +52,6 @@ class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
       id_type               id;
       fc::int_array< int64_t, STEEM_NUM_RESOURCE_TYPES >
                             pool_array;
-      time_point_sec        last_update;
 };
 
 class rc_account_object : public object< rc_account_object_type, rc_account_object >
@@ -108,7 +107,7 @@ typedef multi_index_container<
 FC_REFLECT( steem::plugins::rc::rc_resource_param_object, (id)(resource_param_array) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_resource_param_object, steem::plugins::rc::rc_resource_param_index )
 
-FC_REFLECT( steem::plugins::rc::rc_pool_object, (id)(pool_array)(last_update) )
+FC_REFLECT( steem::plugins::rc::rc_pool_object, (id)(pool_array) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_pool_object, steem::plugins::rc::rc_pool_index )
 
 FC_REFLECT( steem::plugins::rc::rc_account_object,

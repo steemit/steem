@@ -284,8 +284,9 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
          const rc_resource_params& params = params_obj.resource_param_array[i];
          int64_t pool = pool_obj.pool_array[i];
 
-         tx_info.usage.resource_count[i] *= int64_t( params.resource_unit );
-         tx_info.cost[i] = compute_rc_cost_of_resource( params.curve_params, pool, tx_info.usage.resource_count[i], rc_regen );
+         // TODO:  Move this multiplication to resource_count.cpp
+         tx_info.usage.resource_count[i] *= int64_t( params.resource_dynamics_params.resource_unit );
+         tx_info.cost[i] = compute_rc_cost_of_resource( params.price_curve_params, pool, tx_info.usage.resource_count[i], rc_regen );
          total_cost += tx_info.cost[i];
       }
    }
@@ -351,9 +352,20 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       count_resources( tx, count );
    }
 
+   const witness_schedule_object& wso = _db.get_witness_schedule_object();
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
 
    rc_block_info block_info;
+
+   if( params_obj.resource_param_array[ resource_new_accounts ].resource_dynamics_params !=
+       wso.account_subsidy_rd )
+   {
+      ilog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
+      _db.modify( params_obj, [&]( rc_resource_param_object& p )
+      {
+         p.resource_param_array[ resource_new_accounts ].resource_dynamics_params = wso.account_subsidy_rd;
+      } );
+   }
 
    _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ),
       [&]( rc_pool_object& pool_obj )
@@ -362,42 +374,34 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
          {
-            const rc_resource_params& params = params_obj.resource_param_array[i];
+            const rd_dynamics_params& params = params_obj.resource_param_array[i].resource_dynamics_params;
             int64_t& pool = pool_obj.pool_array[i];
-            uint32_t dt = 0;
+            uint32_t dt = 1;
 
             block_info.pool[i] = pool;
-            switch( params.time_unit )
-            {
-               case rc_time_unit_blocks:
-                  dt = 1;
-                  break;
-               case rc_time_unit_seconds:
-                  dt = gpo.time.sec_since_epoch() - pool_obj.last_update.sec_since_epoch();
-                  break;
-               default:
-                  FC_ASSERT( false, "unknown time unit in RC parameter object" );
-            }
             block_info.dt[i] = dt;
+
+            block_info.decay[i] = rd_compute_pool_decay( params.decay_params, pool, dt );
+            block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
+            block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
+
+            int64_t new_pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
 
             if( i == resource_new_accounts )
             {
-               /*
-                * Does not need overflow checking. account_subsidy_limit is the witness voted daily print rate and is capped
-                * via consensus as a uint32_t. STEEM_ACCOUNT_SUBSIDY_PRECISION is 10000, so params.resource_unit would need
-                * to be greater than 2^28 to cause overflow. Currently, it is also set to 10000
-                * (confirm in jsonball/data/resource_parameters.json)
-                */
-               pool = ( _db.get_dynamic_global_properties().available_account_subsidies * params.resource_unit ) / STEEM_ACCOUNT_SUBSIDY_PRECISION;
+               int64_t new_consensus_pool = _db.get_dynamic_global_properties().available_account_subsidies;
+               block_info.adjustment[i] = new_consensus_pool - new_pool;
+               if( block_info.adjustment[i] != 0 )
+               {
+                  ilog( "resource_new_accounts adjustment on block ${b}: ${a}", ("a", block_info.adjustment[i])("b", gpo.head_block_number) );
+               }
             }
             else
             {
-               block_info.decay[i] = compute_pool_decay( params.decay_params, pool, dt );
-               block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
-               block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
-
-               pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
+               block_info.adjustment[i] = 0;
             }
+
+            pool = new_pool + block_info.adjustment[i];
 
             if( debug_print )
             {
@@ -411,7 +415,6 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
          {
             dlog( "${t} : ${i}", ("t", gpo.time)("i", block_info) );
          }
-         pool_obj.last_update = gpo.time;
       } );
 
    std::shared_ptr< exp_rc_data > export_data =
@@ -437,7 +440,6 @@ void rc_plugin_impl::on_first_block()
             auto k = kv.first.as< rc_resource_types >();
             fc::variant_object& vo = kv.second.first;
             fc::mutable_variant_object mvo(vo);
-            mvo["time_unit"] = int8_t( vo["time_unit"].as< rc_time_unit_type >() );
             fc::from_variant( fc::variant( mvo ), params_obj.resource_param_array[ k ] );
          }
 
@@ -452,9 +454,8 @@ void rc_plugin_impl::on_first_block()
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
          {
             const rc_resource_params& params = params_obj.resource_param_array[i];
-            pool_obj.pool_array[i] = params.pool_eq;
+            pool_obj.pool_array[i] = params.resource_dynamics_params.pool_eq;
          }
-         pool_obj.last_update = now;
 
          ilog( "Genesis pool_obj is ${o}", ("o", pool_obj) );
       } );

@@ -28,6 +28,7 @@ struct rc_block_info
    resource_count_type       decay;
    resource_count_type       budget;
    resource_count_type       usage;
+   resource_count_type       adjustment;
    resource_count_type       pool;
 };
 
@@ -56,6 +57,7 @@ FC_REFLECT( steem::plugins::rc::rc_block_info,
    (decay)
    (budget)
    (usage)
+   (adjustment)
    (pool)
 )
 

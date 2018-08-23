@@ -130,14 +130,14 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
 struct witness_properties_change_flags
 {
-   uint32_t account_creation_changed      : 1;
-   uint32_t max_block_changed             : 1;
-   uint32_t sbd_interest_changed          : 1;
-   uint32_t account_subsidy_changed       : 1;
-   uint32_t account_subsidy_pool_changed  : 1;
-   uint32_t key_changed                   : 1;
-   uint32_t sbd_exchange_changed          : 1;
-   uint32_t url_changed                   : 1;
+   uint32_t account_creation_changed       : 1;
+   uint32_t max_block_changed              : 1;
+   uint32_t sbd_interest_changed           : 1;
+   uint32_t account_subsidy_budget_changed : 1;
+   uint32_t account_subsidy_decay_changed  : 1;
+   uint32_t key_changed                    : 1;
+   uint32_t sbd_exchange_changed           : 1;
+   uint32_t url_changed                    : 1;
 };
 
 void witness_set_properties_evaluator::do_apply( const witness_set_properties_operation& o )
@@ -188,18 +188,18 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
       fc::raw::unpack_from_vector( itr->second, props.sbd_interest_rate );
    }
 
-   itr = o.props.find( "account_subsidy_daily_rate" );
-   flags.account_subsidy_changed = itr != o.props.end();
-   if( flags.account_subsidy_changed )
+   itr = o.props.find( "account_subsidy_budget" );
+   flags.account_subsidy_budget_changed = itr != o.props.end();
+   if( flags.account_subsidy_budget_changed )
    {
-      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_daily_rate );
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_budget );
    }
 
-   itr = o.props.find( "account_subsidy_pool_cap" );
-   flags.account_subsidy_pool_changed = itr != o.props.end();
-   if( flags.account_subsidy_pool_changed )
+   itr = o.props.find( "account_subsidy_decay" );
+   flags.account_subsidy_decay_changed = itr != o.props.end();
+   if( flags.account_subsidy_decay_changed )
    {
-      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_pool_cap );
+      fc::raw::unpack_from_vector( itr->second, props.account_subsidy_decay );
    }
 
    itr = o.props.find( "new_signing_key" );
@@ -241,14 +241,14 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
          w.props.sbd_interest_rate = props.sbd_interest_rate;
       }
 
-      if( flags.account_subsidy_changed )
+      if( flags.account_subsidy_budget_changed )
       {
-         w.props.account_subsidy_daily_rate = props.account_subsidy_daily_rate;
+         w.props.account_subsidy_budget = props.account_subsidy_budget;
       }
 
-      if( flags.account_subsidy_pool_changed )
+      if( flags.account_subsidy_decay_changed )
       {
-         w.props.account_subsidy_pool_cap = props.account_subsidy_pool_cap;
+         w.props.account_subsidy_decay = props.account_subsidy_decay;
       }
 
       if( flags.key_changed )
@@ -2365,22 +2365,12 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
          FC_ASSERT( current_witness.schedule == witness_object::elected, "Subsidized accounts can only be claimed by elected witnesses. current_witness:${w} witness_type:${t}",
             ("w",current_witness.owner)("t",current_witness.schedule) );
 
-         uint32_t delta_time = ( _db.head_block_time() - current_witness.last_subsidy_update ).to_seconds();
-
-         // linear decay to enforce no more than 10% max by a single witness over 48 hours.
-         uint64_t recovered_subsidies = ( uint64_t( delta_time ) * uint64_t( wso.single_witness_subsidy_limit ) )
-                / (STEEM_ACCOUNT_SUBSIDY_BURST_DAYS * 60 * 60 * 24);
-         uint64_t new_subsidies = current_witness.recent_account_subsidies - std::min( current_witness.recent_account_subsidies, recovered_subsidies );
-
-         new_subsidies += STEEM_ACCOUNT_SUBSIDY_PRECISION;
-
-         FC_ASSERT( new_subsidies <= wso.single_witness_subsidy_limit, "Witness has claimed too many subsidized accounts recents. Claimed: ${claimed} Limit: ${limit}",
-            ("claimed", new_subsidies)("limit", wso.single_witness_subsidy_limit) );
+         FC_ASSERT( current_witness.available_witness_account_subsidies >= STEEM_ACCOUNT_SUBSIDY_PRECISION, "Witness ${w} does not have enough subsidized accounts to claim",
+            ("w", current_witness.owner) );
 
          _db.modify( current_witness, [&]( witness_object& w )
          {
-            w.recent_account_subsidies = new_subsidies;
-            w.last_subsidy_update = _db.head_block_time();
+            w.available_witness_account_subsidies -= STEEM_ACCOUNT_SUBSIDY_PRECISION;
          });
       }
 

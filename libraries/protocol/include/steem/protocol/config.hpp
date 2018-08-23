@@ -270,9 +270,34 @@
 #define STEEM_DELEGATION_RETURN_PERIOD_HF0   (STEEM_CASHOUT_WINDOW_SECONDS)
 #define STEEM_DELEGATION_RETURN_PERIOD_HF20  (STEEM_VOTING_MANA_REGENERATION_SECONDS * 2)
 
+#define STEEM_RD_MIN_DECAY_BITS               6
+#define STEEM_RD_MAX_DECAY_BITS              32
+#define STEEM_RD_DECAY_DENOM_SHIFT           36
+#define STEEM_RD_MAX_POOL_BITS               64
+#define STEEM_RD_MAX_BUDGET_1                ((uint64_t(1) << (STEEM_RD_MAX_POOL_BITS + STEEM_RD_MIN_DECAY_BITS - STEEM_RD_DECAY_DENOM_SHIFT))-1)
+#define STEEM_RD_MAX_BUDGET_2                ((uint64_t(1) << (64-STEEM_RD_DECAY_DENOM_SHIFT))-1)
+#define STEEM_RD_MAX_BUDGET_3                (uint64_t( std::numeric_limits<int32_t>::max() ))
+#define STEEM_RD_MAX_BUDGET                  (int32_t( std::min( { STEEM_RD_MAX_BUDGET_1, STEEM_RD_MAX_BUDGET_2, STEEM_RD_MAX_BUDGET_3 } )) )
+#define STEEM_RD_MIN_DECAY                   (uint32_t(1) << STEEM_RD_MIN_DECAY_BITS)
+#define STEEM_RD_MIN_BUDGET                  1
+#define STEEM_RD_MAX_DECAY                   (uint32_t(0xFFFFFFFF))
+
 #define STEEM_ACCOUNT_SUBSIDY_PRECISION      (STEEM_100_PERCENT)
-#define STEEM_ACCOUNT_SUBSIDY_BURST_DAYS     (2)
-#define STEEM_WITNESS_SUBSIDY_PERCENT        (10 * STEEM_1_PERCENT)
+
+// We want the global subsidy to run out first in normal (Poisson)
+// conditions, so we boost the per-witness subsidy a little.
+#define STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT (125 * STEEM_1_PERCENT)
+
+// Since witness decay only procs once per round, multiplying the decay
+// constant by the number of witnesses means the per-witness pools have
+// the same effective decay rate in real-time terms.
+#define STEEM_WITNESS_SUBSIDY_DECAY_PERCENT  (STEEM_MAX_WITNESSES * STEEM_100_PERCENT)
+
+// 347321 corresponds to a 5-day halflife
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_DECAY  (347321)
+// Default rate is 0.5 accounts per block
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (STEEM_ACCOUNT_SUBSIDY_PRECISION/2)
+#define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
 /**
  *  Reserved Account IDs with special meaning

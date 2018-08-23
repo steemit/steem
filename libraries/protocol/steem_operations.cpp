@@ -278,20 +278,22 @@ namespace steem { namespace protocol {
          FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       }
 
-      itr = props.find( "account_subsidy_daily_rate" );
+      itr = props.find( "account_subsidy_budget" );
       if( itr != props.end() )
       {
-         uint32_t account_subsidy_daily_rate;
-         fc::raw::unpack_from_vector( itr->second, account_subsidy_daily_rate ); // Checks that the value can be deserialized
-         FC_UNUSED( account_subsidy_daily_rate );
+         int32_t account_subsidy_budget;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_budget ); // Checks that the value can be deserialized
+         FC_ASSERT( account_subsidy_budget >= STEEM_RD_MIN_BUDGET, "Budget must be at least ${n}", ("n", STEEM_RD_MIN_BUDGET) );
+         FC_ASSERT( account_subsidy_budget <= STEEM_RD_MAX_BUDGET, "Budget must be at most ${n}", ("n", STEEM_RD_MAX_BUDGET) );
       }
 
-      itr = props.find( "account_subsidy_pool_cap" );
+      itr = props.find( "account_subsidy_decay" );
       if( itr != props.end() )
       {
-         uint32_t account_subsidy_pool_cap;
-         fc::raw::unpack_from_vector( itr->second, account_subsidy_pool_cap ); // Checks that the value can be deserialized
-         FC_UNUSED( account_subsidy_pool_cap );
+         uint32_t account_subsidy_decay;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_decay ); // Checks that the value can be deserialized
+         FC_ASSERT( account_subsidy_decay >= STEEM_RD_MIN_DECAY, "Decay must be at least ${n}", ("n", STEEM_RD_MIN_DECAY) );
+         FC_ASSERT( account_subsidy_decay <= STEEM_RD_MAX_DECAY, "Decay must be at most ${n}", ("n", STEEM_RD_MAX_DECAY) );
       }
    }
 
