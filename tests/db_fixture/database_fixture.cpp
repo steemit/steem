@@ -589,7 +589,7 @@ void database_fixture::set_witness_props( const flat_map< string, vector< char >
    for( size_t i=0; i<STEEM_MAX_WITNESSES; i++ )
    {
       witness_set_properties_operation op;
-      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i+1 );
+      op.owner = STEEM_INIT_MINER_NAME + (i == 0 ? "" : fc::to_string( i ));
       op.props = props;
       if( props.find( "key" ) == props.end() )
          op.props["key"] = fc::raw::pack_to_vector( init_account_pub_key );
