@@ -10,89 +10,80 @@
 
 namespace steem { namespace plugins { namespace rc {
 
-template< typename T >
-T check_and_cast( double num )
+void rc_curve_gen_params::validate()const
 {
-   FC_ASSERT( num >= std::numeric_limits< T >::min() && num <= std::numeric_limits< T >::max(),
-      "Unexpected value out of range. value: ${v} type: ${t}", ("v", num)("t", fc::get_typename< T >::name()) );
+   FC_ASSERT( inelasticity_threshold_num > 0 );
+   FC_ASSERT( inelasticity_threshold_denom > inelasticity_threshold_num );
 
-   return (T)num;
+   FC_ASSERT( a_point_num > 0 );
+   FC_ASSERT( a_point_denom > a_point_num );
+
+   FC_ASSERT( u_point_num > 0 );
+   FC_ASSERT( u_point_denom > u_point_num );
 }
 
-rc_resource_params generate_rc_curve( const rc_curve_gen_params& params )
+void generate_rc_curve_params(
+   rc_resource_params& resource_params,
+   const rc_curve_gen_params& curve_gen_params )
 {
-   try
-   {
-      const static double log_2 = std::log( 2.0 );
+   // Fillin curve_params based on computations
 
-      rc_resource_params result;
+   // B = inelasticity_threshold * pool_eq
+   // A = tau / k
+   // tau = characteristic time
+   //
+   // -> (1-r)^tau = 1/e
+   //
+   // where r = decay_per_time_unit / 2^decay_per_time_unit_denom_shift
+   //
+   // -> tau log(1-r) = log(1/e) = -log(e) = -1
+   // -> tau = -1 / log(1-r)
+   //        = -1 / log1p(-r)
+   //        ~  1 / r
+   //        = N / decay_per_time_unit
+   // where N = 2^decay_per_time_unit_denom_shift
+   //
+   //
+   // k = u / (a * (1-u))
+   // -> A = tau / k = tau * 1/k
+   //      ~ (1/r) / (u/(a*(1-u)))
+   //      = a*(1-u) / (r*u)
+   //      = (a - a*u) / (r*u)
+   //      = a / (r*u) - a/r
+   //
+   //      = (a_point_num / a_point_denom) / ((N / decay_per_time_unit) * (u_point_num / u_point_denom)) - (a_point_num / a_point_denom) / (N / decay_per_time_unit)
+   //      = (a_point_num * decay_per_time_unit * u_point_denom) / (a_point_denom * N * u_point_num ) - (a_point_num * decay_per_time_unit) / (a_point_denom * N)
+   //      = (a_point_num * decay_per_time_unit * u_point_denom - a_point_num * decay_per_time_unit * u_point_num) / (a_point_denom * N * u_point_num)
 
-      result.time_unit = params.time_unit;
+   FC_ASSERT( resource_params.decay_params.decay_per_time_unit > 0 );
 
-      // Convert time unit to seconds. 1 for seconds, 3 (block interval) for blocks
-      uint32_t time_unit_sec = params.time_unit == rc_time_unit_seconds ? 1 : STEEM_BLOCK_INTERVAL;
-      fc::microseconds budget_time = params.budget_time;
-      fc::microseconds half_life = params.half_life;
-      double inelasticity_threshold = double( params.inelasticity_threshold_num ) / double( params.inelasticity_threshold_denom );
+   uint64_t A_num_cf = uint64_t( curve_gen_params.a_point_num ) * uint64_t( resource_params.decay_params.decay_per_time_unit );
+   uint64_t A_num = A_num_cf * (curve_gen_params.u_point_denom - curve_gen_params.u_point_num);
+   uint32_t A_denom = uint32_t( curve_gen_params.a_point_denom ) * uint32_t( curve_gen_params.u_point_num );
 
-      double tau = half_life.to_seconds() / log_2;
-      double decay_per_sec_float = -1 * std::expm1( -1.0 / tau );
+   // A_denom still needs to be multiplied by N
+   A_num = std::max( A_num, uint64_t(1) );
+   A_denom = std::max( A_denom, uint32_t(1) );
 
-      double budget_per_sec = double( params.budget ) / double( budget_time.to_seconds() );
+   // How many places are needed to shift A_num left until leading 1 bit is in the top bit position of uint64_t?
+   int8_t shift1 = 63 - boost::multiprecision::detail::find_msb( A_num );
+   uint64_t A_1 = (A_num << shift1) / A_denom;
+   // n.b. A_1 cannot be smaller than 2^31 because we are dividing a number at least 2^63 by uint32_t
+   // How many places are needed to shift A_1 left until leading 1 bit is in the top bit position of uint64_t?
+   int8_t shift2 = 63 - boost::multiprecision::detail::find_msb( A_1 );
+   fc::uint128_t u128_A = A_num;
+   resource_params.curve_params.shift = uint8_t( shift1+shift2 );
+   // We now know how much to shift A_num so that it's 64 bits, the only thing left to do is calculate A
+   // at 128-bit precision so we know what the low bits are.
 
-      uint32_t resource_unit_exponent = 0;
-      if( params.resource_unit_exponent )
-      {
-         resource_unit_exponent = *(params.resource_unit_exponent);
-      }
-      else
-      {
-         double pool_eq = budget_per_sec / decay_per_sec_float;
-         double resource_unit_exponent_float = std::log( params.small_stockpile_size / pool_eq ) / std::log( params.resource_unit_base );
-         resource_unit_exponent = std::max( 0, check_and_cast< int32_t >( std::ceil( resource_unit_exponent_float ) ) );
-      }
+   u128_A <<= resource_params.curve_params.shift;
+   u128_A /= A_denom;
+   resource_params.curve_params.coeff_a = u128_A.to_uint64();
 
-      result.resource_unit = check_and_cast< uint64_t >( std::pow( params.resource_unit_base, resource_unit_exponent ) );
-
-      budget_per_sec *= result.resource_unit;
-      double budget_per_time_unit = budget_per_sec * time_unit_sec;
-      result.budget_per_time_unit = check_and_cast< int32_t >( budget_per_time_unit + 0.5 );
-
-      double pool_eq = budget_per_sec / decay_per_sec_float;
-      result.pool_eq = check_and_cast< uint64_t >( pool_eq + 1 );
-      result.max_pool_size = check_and_cast< uint64_t >( ( pool_eq * 2.0 ) + 0.5 );
-
-      double a_point = (double)( params.a_point_num ) / (double)( params.a_point_denom );
-      double u_point = (double)( params.u_point_num ) / (double)( params.u_point_denom );
-      double k = u_point / ( a_point * ( 1.0 - u_point ) );
-
-      double B = inelasticity_threshold * pool_eq;
-      double A = tau / k;
-
-      if( A < 1.0 || B < 1.0 )
-      {
-         wlog( "Bad parameter vlaue (is time too short?)" );
-         FC_ASSERT( false, "Bad parameter vlaue (is time too short?) A: {$A} B: {$B} Params: ${P}", ("A", A)("B", B)("P", params) );
-      }
-
-      double curve_shift_float = std::log( ((uint64_t)UINT64_MAX) / A ) / log_2;
-      uint64_t curve_shift = check_and_cast< uint64_t >( std::floor( curve_shift_float ) );
-      result.curve_params.coeff_a = check_and_cast< uint64_t >( A * ( std::pow( 2, curve_shift ) + 0.5 ) );
-      result.curve_params.coeff_b = check_and_cast< uint64_t >( B + 0.5 );
-      result.curve_params.shift = check_and_cast< uint8_t >( curve_shift );
-
-      double decay_per_time_unit_float = -1 * std::expm1( -1 * ( time_unit_sec * log_2 ) / half_life.to_seconds() );
-
-      double decay_per_time_unit_denom_shift_float = std::log( 0xFFFFFFFF / decay_per_time_unit_float ) / log_2;
-      uint64_t decay_per_time_unit_denom_shift = check_and_cast< uint64_t >( std::floor( decay_per_time_unit_denom_shift_float ) );
-      uint64_t decay_per_time_unit = check_and_cast< uint64_t >( decay_per_time_unit_float * std::pow( 2.0, decay_per_time_unit_denom_shift ) + 0.5 );
-
-      result.decay_params.decay_per_time_unit = decay_per_time_unit;
-      result.decay_params.decay_per_time_unit_denom_shift = decay_per_time_unit_denom_shift;
-
-      return result;
-   }
-   FC_CAPTURE_LOG_AND_RETHROW( (params) )
+   fc::uint128_t u128_B = resource_params.pool_eq;
+   u128_B *= curve_gen_params.inelasticity_threshold_num;
+   u128_B /= curve_gen_params.inelasticity_threshold_denom;
+   resource_params.curve_params.coeff_b = u128_B.to_uint64();
 }
 
 } } } //steed::plugins::rc
