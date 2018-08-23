@@ -41,7 +41,7 @@ Below are some example values:
 
 ### maximum_block_size
 
-The maximum size of a single block in bytes. The value must be larger than `65536`.
+The maximum size of a single block in bytes. The value must be not less than `65536`.
 
 ### sbd_interest_rate
 
