@@ -3603,8 +3603,8 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
+FC_TODO( "#ifndef not needed after HF 20 is live" );
 #ifndef IS_TEST_NET
-FC_TODO( "HF 20 issue number" );
                if( has_hardfork( STEEM_HARDFORK_0_14__278 ) && !has_hardfork( STEEM_HARDFORK_0_20__SP190 ) )
                {
                   if( head_block_num() - w.last_confirmed_block_num  > STEEM_BLOCKS_PER_DAY )
