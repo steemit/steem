@@ -1,12 +1,12 @@
-#include "rc_curve.hpp"
 
+#include <steem/plugins/rc/rc_curve.hpp>
 #include <steem/protocol/config.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/uint128.hpp>
 
-#include <math.h>
-#include <limits>
+#include <cstdint>
 
 namespace steem { namespace plugins { namespace rc {
 

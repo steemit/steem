@@ -1,10 +1,3 @@
-/**
- * Note:
- *
- * This header is contained within a source directory because it is not meant to be used anywhere
- * EXCEPT the rc plugin. The implementation uses floating point arithmetic which can be
- * non-deterministic. This implementation is NOT suitable for a consensus level protocol.
- */
 
 #pragma once
 #include <steem/plugins/rc/rc_utility.hpp>
