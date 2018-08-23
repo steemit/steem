@@ -19,25 +19,27 @@ This is the fee in STEEM that must be paid to create an account. This field must
 ### account_subsidy_budget
 
 The account subsidies to be added to the account subisidy per block. This is the maximum rate that accounts can be created via subsidization.
-The value must be between `1` and `268435455`.
+The value must be between `1` and `268435455` where `10000` is one account per block.
 
 ### account_subsidy_decay
 
-The per block decay of the account subsidy pool. Must be between `64` and `4294967295` where `4294967295` is 100% decay per block.
+The per block decay of the account subsidy pool. Must be between `64` and `4294967295 (2^32)` where `68719476736 (2^36)` is 100% decay per block.
 
 Below are some example values:
 
 | Half-Life | `account_subsidy_decay` |
 |:----------|------------------------:|
-| 1 Hour | 2480150 |
-| 2 Hours | 1240260 |
-| 4 Hours | 620173 |
-| 8 Hours | 310098 |
-| 12 Hours | 206734 |
-| 1 Day | 103368 |
-| 2 Days | 51684 |
-| 4 Days | 25842 |
-| 1 Week | 14767 |
+| 12 Hours | 3307750 |
+| 1 Day | 1653890 |
+| 2 Days | 826952 |
+| 3 Days | 551302 |
+| 4 Days | 413477 |
+| 5 Days | 330782 |
+| 6 Days | 275652 |
+| 1 Week | 236273 |
+| 2 Weeks | 118137 |
+| 3 Weeks | 78757 |
+| 4 Weeks | 59068 |
 
 ### maximum_block_size
 
