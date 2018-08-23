@@ -7073,27 +7073,25 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       sign( tx, old_signing_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
-      FC_TODO( "Rewrite account subsidy tests" );
-/*
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy rate" );
       prop_op.props[ "key" ].clear();
       prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
-      prop_op.props[ "account_subsidy_daily_rate" ] = fc::raw::pack_to_vector( 1000 );
+      prop_op.props[ "account_subsidy_budget" ] = fc::raw::pack_to_vector( STEEM_ACCOUNT_SUBSIDY_PRECISION );
       tx.clear();
       tx.operations.push_back( prop_op );
       sign( tx, signing_key );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( alice_witness.props.account_subsidy_daily_rate == 1000 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_budget == STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy pool cap" );
-      prop_op.props.erase( "account_subsidy_daily_rate" );
-      prop_op.props[ "account_subsidy_pool_cap" ] = fc::raw::pack_to_vector( 2000 );
+      uint64_t day_decay = ( uint64_t(1) << STEEM_RD_DECAY_DENOM_SHIFT ) / STEEM_BLOCKS_PER_DAY;
+      prop_op.props.erase( "account_subsidy_decay" );
+      prop_op.props[ "account_subsidy_decay" ] = fc::raw::pack_to_vector( day_decay );
       tx.clear();
       tx.operations.push_back( prop_op );
       sign( tx, signing_key );
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( alice_witness.props.account_subsidy_pool_cap == 2000 );
-*/
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_decay == day_decay );
 
       validate_database();
    }
