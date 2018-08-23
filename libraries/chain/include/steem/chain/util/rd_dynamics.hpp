@@ -34,6 +34,8 @@ struct rd_dynamics_params
 
    rd_decay_params decay_params;
 
+   int64_t         min_decay = 0;
+
    bool operator==( const rd_dynamics_params& other )const
    {
       return std::tie(
@@ -41,19 +43,22 @@ struct rd_dynamics_params
              budget_per_time_unit,
              pool_eq,
              max_pool_size,
-             decay_params )
+             decay_params,
+             min_decay )
           == std::tie(
              other.resource_unit,
              other.budget_per_time_unit,
              other.pool_eq,
              other.max_pool_size,
-             other.decay_params );
+             other.decay_params,
+             other.min_decay );
    }
 
    bool operator!=( const rd_dynamics_params& other )const
    {  return !((*this) == other);   }
 };
 
+int64_t rd_apply( const rd_dynamics_params& rd, int64_t pool );
 int64_t rd_compute_pool_decay(
    const rd_decay_params& decay_params,
    int64_t current_pool,

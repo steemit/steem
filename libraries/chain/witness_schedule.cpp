@@ -121,7 +121,7 @@ void update_median_witness_props( database& db )
       int64_t median_decay = rd_compute_pool_decay( _wso.account_subsidy_witness_rd.decay_params, median_available_witness_account_subsidies, 1 );
       median_decay = std::max( median_decay, int64_t(0) );
       int64_t min_decay = (fc::uint128( median_decay ) * STEEM_DECAY_BACKSTOP_PERCENT / STEEM_100_PERCENT).to_int64();
-      _wso.min_witness_account_subsidy_decay = min_decay;
+      _wso.account_subsidy_witness_rd.min_decay = min_decay;
    } );
 
    db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dgpo )

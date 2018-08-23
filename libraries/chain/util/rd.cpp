@@ -40,6 +40,19 @@ int64_t rd_compute_pool_decay(
           );
 }
 
+int64_t rd_apply( const rd_dynamics_params& rd, int64_t pool )
+{
+   // Apply resource dynamics, hardcoded dt=1
+   int64_t decay = rd_compute_pool_decay( rd.decay_params, pool, 1 );
+   int64_t budget = rd.budget_per_time_unit;
+   int64_t max_pool_size = rd.max_pool_size;
+   decay = std::max( decay, rd.min_decay );
+   int64_t new_pool = pool + budget - decay;
+   new_pool = std::min( new_pool, max_pool_size );
+   new_pool = std::max( new_pool, int64_t(0) );
+   return new_pool;
+}
+
 void rd_setup_dynamics_params(
    const rd_user_params& user_params,
    const rd_system_params& system_params,
