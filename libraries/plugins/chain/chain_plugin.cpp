@@ -315,7 +315,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef IS_TEST_NET
-         ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
+         ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
          ;
 }
@@ -374,7 +374,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
-      my->db.set_chain_id( options.at("chain-id").as< std::string >() );
+   {
+      auto chain_id_str = options.at("chain-id").as< std::string >();
+
+      try
+      {
+         my->db.set_chain_id( chain_id_type( chain_id_str) );
+      }
+      catch( fc::exception& )
+      {
+         FC_ASSERT( false, "Could not parse chain_id as hex string. Chain ID String: ${s}", ("s", chain_id_str) );
+      }
+   }
 #endif
 }
 

@@ -160,9 +160,9 @@ namespace steem { namespace chain {
          const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         chain_id_type steem_chain_id;
+         chain_id_type steem_chain_id = STEEM_CHAIN_ID;
          chain_id_type get_chain_id() const;
-         void set_chain_id( const std::string& _chain_id_name );
+         void set_chain_id( const chain_id_type& chain_id );
 
          /** Allows to visit all stored blocks until processor returns true. Caller is responsible for block disasembling
           * const signed_block_header& - header of previous block
