@@ -2,6 +2,7 @@
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -37,6 +38,7 @@ public:
    APPBASE_PLUGIN_REQUIRES(
       (steem::plugins::chain::chain_plugin)
       (steem::plugins::p2p::p2p_plugin)
+      (steem::plugins::rc::rc_plugin)
    )
 
    witness_plugin();

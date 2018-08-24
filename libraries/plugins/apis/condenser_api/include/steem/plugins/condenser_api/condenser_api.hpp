@@ -116,8 +116,7 @@ struct api_account_object
       lifetime_vote_count( a.lifetime_vote_count ),
       post_count( a.post_count ),
       can_vote( a.can_vote ),
-      voting_power( a.voting_power ),
-      last_vote_time( a.last_vote_time ),
+      voting_manabar( a.voting_manabar ),
       balance( legacy_asset::from_asset( a.balance ) ),
       savings_balance( legacy_asset::from_asset( a.savings_balance ) ),
       sbd_balance( legacy_asset::from_asset( a.sbd_balance ) ),
@@ -145,8 +144,18 @@ struct api_account_object
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
-      last_root_post( a.last_root_post )
+      last_root_post( a.last_root_post ),
+      last_vote_time( a.last_vote_time )
    {
+      if( a.voting_manabar.last_update_time <= STEEM_HARDFORK_0_20_TIME )
+      {
+         voting_power = (uint16_t) a.voting_manabar.current_mana;
+      }
+      else
+      {
+         auto vests = chain::util::get_effective_vesting_shares( a );
+         voting_power = vests <= 0 ? 0 : (uint16_t)( ( STEEM_100_PERCENT * a.voting_manabar.current_mana ) / vests );
+      }
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
@@ -176,8 +185,8 @@ struct api_account_object
    uint32_t          post_count = 0;
 
    bool              can_vote = false;
+   util::manabar     voting_manabar;
    uint16_t          voting_power = 0;
-   time_point_sec    last_vote_time;
 
    legacy_asset      balance;
    legacy_asset      savings_balance;
@@ -217,6 +226,7 @@ struct api_account_object
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+   time_point_sec    last_vote_time;
 };
 
 struct extended_account : public api_account_object
@@ -469,7 +479,7 @@ struct api_witness_schedule_object
       current_virtual_time( w.current_virtual_time ),
       next_shuffle_block_num( w.next_shuffle_block_num ),
       num_scheduled_witnesses( w.num_scheduled_witnesses ),
-      top19_weight( w.top19_weight ),
+      elected_weight( w.elected_weight ),
       timeshare_weight( w.timeshare_weight ),
       miner_weight( w.miner_weight ),
       witness_pay_normalization_factor( w.witness_pay_normalization_factor ),
@@ -488,7 +498,7 @@ struct api_witness_schedule_object
    uint32_t                      next_shuffle_block_num = 1;
    vector< account_name_type >   current_shuffled_witnesses;
    uint8_t                       num_scheduled_witnesses = 1;
-   uint8_t                       top19_weight = 1;
+   uint8_t                       elected_weight = 1;
    uint8_t                       timeshare_weight = 5;
    uint8_t                       miner_weight = 1;
    uint32_t                      witness_pay_normalization_factor = 25;
@@ -1125,7 +1135,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(voting_power)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -1135,7 +1145,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)
+             (last_post)(last_root_post)(last_vote_time)
           )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::condenser_api::api_account_object),
@@ -1184,7 +1194,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_witness_schedule_object,
              (next_shuffle_block_num)
              (current_shuffled_witnesses)
              (num_scheduled_witnesses)
-             (top19_weight)
+             (elected_weight)
              (timeshare_weight)
              (miner_weight)
              (witness_pay_normalization_factor)

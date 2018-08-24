@@ -1,0 +1,68 @@
+[
+ ["resource_history_bytes",
+  {
+   "time_unit" : "blocks",
+   "budget_time" : {"days" : 30},
+   "budget" : "30000000000",
+   "half_life" : {"days" : 15},
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
+  }
+ ],
+
+ ["resource_new_accounts",
+  {
+   "time_unit" : "blocks",
+   "budget_time" : {"days" : 1},
+   "budget" : 1,
+   "half_life" : {"days" : 1000000},
+   "resource_unit_base" : 10,
+   "resource_unit_exponent" : 4,
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
+  }
+ ],
+
+ ["resource_market_bytes",
+  {
+   "time_unit" : "blocks",
+   "budget_time" : {"days" : 30},
+   "budget" : "5000000000",
+   "half_life" : {"hours" : 16},
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
+  }
+ ],
+
+ ["resource_state_bytes",
+  {
+   "time_unit" : "blocks",
+   "budget_time" : {"days" : 30},
+   "budget" : "20000000000000",
+   "half_life" : {"days" : 15},
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
+  }
+ ],
+
+ ["resource_execution_time",
+  {
+   "time_unit" : "blocks",
+   "budget_time" : {"days" : 30},
+   "budget" : "7101369863013",
+   "half_life" : {"days" : 15},
+   "a_point_num" : 37,
+   "a_point_denom" : 1000,
+   "u_point_num" : 1,
+   "u_point_denom" : 2
+  }
+ ]
+]

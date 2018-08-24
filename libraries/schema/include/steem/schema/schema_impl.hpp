@@ -61,15 +61,16 @@ struct get_str_schema_enum_member_visitor
    mutable std::vector< std::pair< std::string, int64_t > > _members;
 };
 
-#define GRAPHENE_DECLARE_SCHEMA_CLASS( is_reflected, is_enum )  \
+#define STEEM_DECLARE_SCHEMA_CLASS( is_reflected, is_enum )  \
 template< typename ObjectType >                                 \
 struct schema_impl< ObjectType, is_reflected, is_enum >         \
    : public abstract_schema                                     \
 {                                                               \
-GRAPHENE_SCHEMA_CLASS_BODY( schema_impl )                       \
+STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_impl )              \
 };
 
-#define GRAPHENE_SCHEMA_CLASS_BODY( CLASSNAME )                 \
+// Templated version of macro includes some method definitions
+#define STEEM_SCHEMA_TEMPLATE_CLASS_BODY( CLASSNAME )        \
    CLASSNAME( int64_t id, const std::string& name ) : _id(id), _name(name) {} \
    virtual ~CLASSNAME() {}                                      \
                                                                 \
@@ -86,9 +87,36 @@ GRAPHENE_SCHEMA_CLASS_BODY( schema_impl )                       \
    int64_t _id = -1;                                            \
    std::string _name;
 
-GRAPHENE_DECLARE_SCHEMA_CLASS( false, false )
-GRAPHENE_DECLARE_SCHEMA_CLASS(  true, false )
-GRAPHENE_DECLARE_SCHEMA_CLASS(  true,  true )
+// Non-template version puts method definitions in separate macro
+//    to avoid linker errors
+#define STEEM_SCHEMA_CLASS_BODY( CLASSNAME )                 \
+   CLASSNAME( int64_t id, const std::string& name );            \
+   virtual ~CLASSNAME();                                        \
+                                                                \
+   virtual void get_deps(                                       \
+      std::vector< std::shared_ptr< abstract_schema > >& deps   \
+      ) override;                                               \
+   virtual void get_name( std::string& name ) override;         \
+   virtual void get_str_schema( std::string& s ) override;      \
+   virtual int64_t get_id() override;                           \
+                                                                \
+   std::string str_schema;                                      \
+   int64_t _id = -1;                                            \
+   std::string _name;
+
+// Non-template classes have to call this macro in a .cpp file
+#define STEEM_SCHEMA_DEFINE_CLASS_METHODS( CLASSNAME )       \
+   CLASSNAME::CLASSNAME( int64_t id, const std::string& name )  \
+      : _id(id), _name(name) {}                                 \
+   CLASSNAME::~CLASSNAME() {}                                   \
+   void CLASSNAME::get_name( std::string& name )                \
+   { name = _name; }                                            \
+   int64_t CLASSNAME::get_id()                                  \
+   { return _id; }
+
+STEEM_DECLARE_SCHEMA_CLASS( false, false )
+STEEM_DECLARE_SCHEMA_CLASS(  true, false )
+STEEM_DECLARE_SCHEMA_CLASS(  true,  true )
 
 template< typename ObjectType >
 void schema_impl< ObjectType, false, false >::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )

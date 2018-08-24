@@ -157,13 +157,15 @@ namespace steem { namespace protocol {
    struct comment_benefactor_reward_operation : public virtual_operation
    {
       comment_benefactor_reward_operation() {}
-      comment_benefactor_reward_operation( const account_name_type& b, const account_name_type& a, const string& p, const asset& r )
-         : benefactor( b ), author( a ), permlink( p ), reward( r ) {}
+      comment_benefactor_reward_operation( const account_name_type& b, const account_name_type& a, const string& p, const asset& s, const asset& st, const asset& v )
+         : benefactor( b ), author( a ), permlink( p ), sbd_payout( s ), steem_payout( st ), vesting_payout( v ) {}
 
       account_name_type benefactor;
       account_name_type author;
       string            permlink;
-      asset             reward;
+      asset             sbd_payout;
+      asset             steem_payout;
+      asset             vesting_payout;
    };
 
    struct producer_reward_operation : public virtual_operation
@@ -174,6 +176,11 @@ namespace steem { namespace protocol {
       account_name_type producer;
       asset             vesting_shares;
 
+   };
+
+   struct clear_null_account_balance_operation : public virtual_operation
+   {
+      vector< asset >   total_cleared;
    };
 
 } } //steem::protocol
@@ -191,5 +198,6 @@ FC_REFLECT( steem::protocol::fill_transfer_from_savings_operation, (from)(to)(am
 FC_REFLECT( steem::protocol::hardfork_operation, (hardfork_id) )
 FC_REFLECT( steem::protocol::comment_payout_update_operation, (author)(permlink) )
 FC_REFLECT( steem::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
-FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
+FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::protocol::producer_reward_operation, (producer)(vesting_shares) )
+FC_REFLECT( steem::protocol::clear_null_account_balance_operation, (total_cleared) )

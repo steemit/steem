@@ -64,9 +64,14 @@ namespace steem { namespace chain {
 
          bool is_producing()const { return _is_producing; }
          void set_producing( bool p ) { _is_producing = p;  }
+
+         bool is_pending_tx()const { return _is_pending_tx; }
+         void set_pending_tx( bool p ) { _is_pending_tx = p; }
+
          bool is_processing_block()const { return _currently_processing_block_id.valid(); }
 
          bool _is_producing = false;
+         bool _is_pending_tx = false;
 
          bool _log_hardforks = true;
 
@@ -155,9 +160,9 @@ namespace steem { namespace chain {
          const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         chain_id_type steem_chain_id;
+         chain_id_type steem_chain_id = STEEM_CHAIN_ID;
          chain_id_type get_chain_id() const;
-         void set_chain_id( const std::string& _chain_id_name );
+         void set_chain_id( const chain_id_type& chain_id );
 
          /** Allows to visit all stored blocks until processor returns true. Caller is responsible for block disasembling
           * const signed_block_header& - header of previous block
@@ -239,7 +244,9 @@ namespace steem { namespace chain {
          void pop_block();
          void clear_pending();
 
-         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
+         void push_virtual_operation( const operation& op );
+         void pre_push_virtual_operation( const operation& op );
+         void post_push_virtual_operation( const operation& op );
 
          /**
           *  This method is used to track applied operations during the evaluation of a block, these
@@ -369,6 +376,7 @@ namespace steem { namespace chain {
          void process_funds();
          void process_conversions();
          void process_savings_withdraws();
+         void process_subsidized_accounts();
 #ifdef STEEM_ENABLE_SMT
          void process_smt_objects();
 #endif

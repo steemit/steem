@@ -150,7 +150,7 @@ private:
       handler_state&      _barrier;
       std::atomic_bool&   _activityFlag;
    };
-   
+
 };
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
@@ -647,9 +647,16 @@ void p2p_plugin::plugin_startup()
 
       for( const auto& seed : my->seeds )
       {
-         ilog("P2P adding seed node ${s}", ("s", seed));
-         my->node->add_node(seed);
-         my->node->connect_to_endpoint(seed);
+         try
+         {
+            ilog("P2P adding seed node ${s}", ("s", seed));
+            my->node->add_node(seed);
+            my->node->connect_to_endpoint(seed);
+         }
+         catch( graphene::net::already_connected_to_requested_peer& )
+         {
+            wlog( "Already connected to seed node ${s}. Is it specified twice in config?", ("s", seed) );
+         }
       }
 
       if( my->max_connections )
@@ -694,7 +701,7 @@ void p2p_plugin::plugin_shutdown() {
    my->running.store(false);
 
    ilog("P2P Plugin: checking handle_block and handle_transaction activity");
-   std::future_status bfState, tfState; 
+   std::future_status bfState, tfState;
    do
    {
       if(my->activeHandleBlock.load())

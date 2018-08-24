@@ -1,6 +1,10 @@
 
 #pragma once
 
+#include <steem/protocol/schema_types.hpp>
+#include <steem/chain/schema_types.hpp>
+#include <steem/schema/schema.hpp>
+
 #include <steem/protocol/steem_operations.hpp>
 #include <steem/protocol/operation_util_impl.hpp>
 #include <steem/protocol/types.hpp>
@@ -8,8 +12,6 @@
 #include <steem/chain/evaluator.hpp>
 #include <steem/chain/evaluator_registry.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
-
-#include <steem/schema/schema.hpp>
 
 #include <fc/variant.hpp>
 

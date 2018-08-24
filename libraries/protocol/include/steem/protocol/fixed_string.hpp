@@ -4,6 +4,7 @@
 #include <fc/io/raw_fwd.hpp>
 
 #include <boost/endian/conversion.hpp>
+#include <boost/utility/identity_type.hpp>
 
 #include <steem/protocol/types_fwd.hpp>
 
@@ -69,7 +70,7 @@ class fixed_string_impl
 {
    public:
       typedef _Storage Storage;
-   
+
       fixed_string_impl() = default;
       fixed_string_impl( const fixed_string_impl& c ) : data( c.data ){}
       fixed_string_impl( const char* str ) : fixed_string_impl( std::string( str ) ) {}
@@ -133,26 +134,54 @@ class fixed_string_impl
 };
 
 // These storage types work with memory layout and should be used instead of a custom template.
-template< size_t N >
-struct fixed_string_impl_for_size;
+template< size_t N > struct fixed_string_impl_for_size;
+template< typename T > struct fixed_string_size_for_impl;
 
-template<>
-struct fixed_string_impl_for_size< 16 >
-{
-   typedef fixed_string_impl< fc::uint128_t >                               t;
+//
+// The main purpose of this macro is to auto-generate the boilerplate
+// for different fixed_string sizes that have different backing types.
+//
+// This "boilerplate" is simply templates which allow us to go from
+// size -> type and from type -> size at compile time.
+//
+// We want to write this one-liner:
+//
+//     STEEM_DEFINE_FIXED_STRING_IMPL( 32, fc::erpair< fc::uint128_t, fc::uint128_t > )
+//
+// Unfortunately, since the preprocessor doesn't do syntactic parsing,
+// this would be regarded as a 3-argument call (since there are three commas,
+// and the PP doesn't "know" enough C++ syntax to "understand" the internal
+// comma separating the two arguments to erpair "shouldn't" be taken
+// as delimiting separate macro arguments).
+//
+// Fortunately, there is a solution that involves using parentheses to "quote"
+// the argument, then using a dummy function type to "unquote" it.
+// This solution is explained here:
+//
+//     https://stackoverflow.com/questions/13842468/comma-in-c-c-macro
+//
+// We don't have to code this preprocessor hack ourselves, as a battle-tested,
+// widely-compatible implementation is available in the Boost Identity Type
+// library.  Which allows our one-liner to be:
+//
+//     STEEM_DEFINE_FIXED_STRING_IMPL( 32, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, fc::uint128_t >)) )
+//
+#define STEEM_DEFINE_FIXED_STRING_IMPL( SIZE, STORAGE_TYPE )       \
+template<>                                                         \
+struct fixed_string_impl_for_size< SIZE >                          \
+{                                                                  \
+   typedef steem::protocol::fixed_string_impl< STORAGE_TYPE > t;   \
+};                                                                 \
+                                                                   \
+template<>                                                         \
+struct fixed_string_size_for_impl< STORAGE_TYPE >                  \
+{                                                                  \
+   static const size_t size = SIZE;                                \
 };
 
-template<>
-struct fixed_string_impl_for_size< 24 >
-{
-   typedef fixed_string_impl< fc::erpair< fc::uint128_t, uint64_t > >       t;
-};
-
-template<>
-struct fixed_string_impl_for_size< 32 >
-{
-   typedef fixed_string_impl< fc::erpair< fc::uint128_t, fc::uint128_t > >  t;
-};
+STEEM_DEFINE_FIXED_STRING_IMPL( 16, BOOST_IDENTITY_TYPE((fc::uint128_t)) )
+STEEM_DEFINE_FIXED_STRING_IMPL( 24, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, uint64_t >)) )
+STEEM_DEFINE_FIXED_STRING_IMPL( 32, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, fc::uint128_t >)) )
 
 template< size_t N >
 using fixed_string = typename fixed_string_impl_for_size<N>::t;
@@ -161,24 +190,45 @@ using fixed_string = typename fixed_string_impl_for_size<N>::t;
 
 namespace fc { namespace raw {
 
-   template< typename Stream, typename Storage >
-   inline void pack( Stream& s, const steem::protocol::fixed_string_impl< Storage >& u )
-   {
-      pack( s, std::string( u ) );
-   }
+template< typename Stream, typename Storage >
+inline void pack( Stream& s, const steem::protocol::fixed_string_impl< Storage >& u )
+{
+   pack( s, std::string( u ) );
+}
 
-   template< typename Stream, typename Storage >
-   inline void unpack( Stream& s, steem::protocol::fixed_string_impl< Storage >& u )
-   {
-      std::string str;
-      unpack( s, str );
-      u = str;
-   }
+template< typename Stream, typename Storage >
+inline void unpack( Stream& s, steem::protocol::fixed_string_impl< Storage >& u )
+{
+   std::string str;
+   unpack( s, str );
+   u = str;
+}
 
 } // raw
-   template< typename Storage >
-   void to_variant(   const steem::protocol::fixed_string_impl< Storage >& s, variant& v ) { v = std::string( s ); }
 
-   template< typename Storage >
-   void from_variant( const variant& v, steem::protocol::fixed_string_impl< Storage >& s ) { s = v.as_string(); }
+template< typename Storage >
+void to_variant(   const steem::protocol::fixed_string_impl< Storage >& s, variant& v )
+{
+   v = std::string( s );
+}
+
+template< typename Storage >
+void from_variant( const variant& v, steem::protocol::fixed_string_impl< Storage >& s )
+{
+   s = v.as_string();
+}
+
+template< typename Storage >
+struct get_typename< steem::protocol::fixed_string_impl< Storage > >
+{
+   static const char* name()
+   {
+      static const std::string n =
+         std::string("steem::protocol::fixed_string<") +
+         std::to_string( steem::protocol::fixed_string_size_for_impl<Storage>::size ) +
+         std::string(">");
+      return n.c_str();
+   }
+};
+
 } // fc

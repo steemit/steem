@@ -154,7 +154,7 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define OP2TX(OP,TX,KEY) \
 TX.operations.push_back( OP ); \
 TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-TX.sign( KEY, db->get_chain_id() );
+TX.sign( KEY, db->get_chain_id(), fc::ecc::bip_0062 );
 
 #define PUSH_OP(OP,KEY) \
 { \
@@ -194,6 +194,7 @@ struct database_fixture {
    string debug_key = steem::utilities::key_to_wif( init_account_priv_key );
    public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
    uint32_t default_skip = 0 | database::skip_undo_history_check | database::skip_authority_check;
+   fc::ecc::canonical_signature_type default_sig_canon = fc::ecc::fc_canonical;
 
    plugins::debug_node::debug_node_plugin* db_plugin;
 
@@ -260,8 +261,8 @@ struct database_fixture {
    void fund( const string& account_name, const asset& amount );
    void transfer( const string& from, const string& to, const asset& amount );
    void convert( const string& account_name, const asset& amount );
+   void vest( const string& from, const string& to, const asset& amount );
    void vest( const string& from, const share_type& amount );
-   void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
    void set_witness_props( const flat_map< string, vector< char > >& new_props );
@@ -270,7 +271,7 @@ struct database_fixture {
 
    vector< operation > get_last_operations( uint32_t ops );
 
-   void validate_database( void );
+   void validate_database();
 };
 
 struct clean_database_fixture : public database_fixture
@@ -279,6 +280,7 @@ struct clean_database_fixture : public database_fixture
    virtual ~clean_database_fixture();
 
    void resize_shared_mem( uint64_t size );
+   void validate_database();
 };
 
 struct live_database_fixture : public database_fixture

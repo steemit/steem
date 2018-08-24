@@ -178,23 +178,25 @@ namespace fc {
     }
 
     template<typename Stream> inline void unpack( Stream& s, signed_int& vi ) {
-      uint32_t v = 0; char b = 0; int by = 0;
+      uint32_t v = 0, by = 0, limit = 0; char b = 0;
       do {
         s.get(b);
         v |= uint32_t(uint8_t(b) & 0x7f) << by;
         by += 7;
-      } while( uint8_t(b) & 0x80 );
+        limit++;
+      } while( uint8_t(b) & 0x80 && limit < 5 );
       vi.value = ((v>>1) ^ (v>>31)) + (v&0x01);
       vi.value = v&0x01 ? vi.value : -vi.value;
       vi.value = -vi.value;
     }
     template<typename Stream> inline void unpack( Stream& s, unsigned_int& vi ) {
-      uint64_t v = 0; char b = 0; uint8_t by = 0;
+      uint32_t v = 0, by = 0, limit = 0; char b = 0;
       do {
           s.get(b);
           v |= uint32_t(uint8_t(b) & 0x7f) << by;
           by += 7;
-      } while( uint8_t(b) & 0x80 );
+          limit++;
+      } while( uint8_t(b) & 0x80 && limit < 5 );
       vi.value = static_cast<uint32_t>(v);
     }
 

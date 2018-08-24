@@ -16,7 +16,7 @@ template< typename... Types >
 struct schema_static_variant_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_CLASS_BODY( schema_static_variant_impl )
+   STEEM_SCHEMA_TEMPLATE_CLASS_BODY( schema_static_variant_impl )
 };
 
 template< typename... Types > struct get_schemas_for_types_impl;
