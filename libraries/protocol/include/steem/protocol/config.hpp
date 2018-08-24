@@ -43,7 +43,7 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 10) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 0) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -296,7 +296,7 @@
 // 347321 corresponds to a 5-day halflife
 #define STEEM_DEFAULT_ACCOUNT_SUBSIDY_DECAY  (347321)
 // Default rate is 0.5 accounts per block
-#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (STEEM_ACCOUNT_SUBSIDY_PRECISION/2)
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
 #define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
 /**
