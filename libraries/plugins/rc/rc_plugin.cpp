@@ -794,6 +794,14 @@ struct post_apply_operation_visitor
             _mod_accounts.push_back( it->name );
          }
       }
+
+      if( op.hardfork_id == STEEM_HARDFORK_0_20 )
+      {
+         _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ), [&]( rc_pool_object& p )
+         {
+            p.pool_array[ resource_new_accounts ] = 0;
+         });
+      }
    }
 
    void operator()( const return_vesting_delegation_operation& op )const
