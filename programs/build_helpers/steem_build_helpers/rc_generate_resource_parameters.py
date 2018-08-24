@@ -21,7 +21,7 @@ def compute_parameters(args):
     result2["time_unit"] = "rc_time_unit_"+time_unit
 
     if time_unit == "seconds":
-        time_unit_sec = 1
+        raise RuntimeError("Seconds are not supported")
     else:
         time_unit_sec = args.get("block_interval", 3)
 
@@ -101,9 +101,13 @@ def compute_parameters(args):
     u_point = u_point_num / u_point_denom
     k = u_point / (a_point * (1.0 - u_point))
 
+    # tau is the characteristic time in seconds.
+    # tau_tu is the characteristic time in time units.
+    tau_tu = tau / time_unit_sec
+
     D = 0
     B = inelasticity_threshold * pool_eq
-    A = tau / k
+    A = tau_tu / k
     if (A < 1.0) or (B < 1.0):
         raise RuntimeError("Bad parameter value (is time too short?)")
 

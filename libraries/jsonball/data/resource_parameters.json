@@ -55,7 +55,7 @@
 
  ["resource_execution_time",
   {
-   "time_unit" : "seconds",
+   "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
    "budget" : "7101369863013",
    "half_life" : {"days" : 15},

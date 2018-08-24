@@ -264,7 +264,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    {
       dlog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
    }
-   int64_t rc_regen = gpo.total_vesting_shares.amount.value / STEEM_RC_REGEN_TIME;
+   int64_t rc_regen = (gpo.total_vesting_shares.amount.value / (STEEM_RC_REGEN_TIME / STEEM_BLOCK_INTERVAL));
 
    rc_transaction_info tx_info;
 
