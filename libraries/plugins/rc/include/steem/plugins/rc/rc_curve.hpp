@@ -10,12 +10,12 @@ namespace steem { namespace plugins { namespace rc {
 
 struct rc_curve_gen_params
 {
-   uint16_t                inelasticity_threshold_num    = 1;
-   uint16_t                inelasticity_threshold_denom  = 128;
-   uint16_t                a_point_num                   = 37;
-   uint16_t                a_point_denom                 = 1000;
-   uint16_t                u_point_num                   = 1;
-   uint16_t                u_point_denom                 = 2;
+   uint64_t                inelasticity_threshold_num    = 1;
+   uint64_t                inelasticity_threshold_denom  = 128;
+   uint64_t                a_point_num                   = 37;
+   uint64_t                a_point_denom                 = 1000;
+   uint64_t                u_point_num                   = 1;
+   uint64_t                u_point_denom                 = 2;
 
    void validate()const;
 };
