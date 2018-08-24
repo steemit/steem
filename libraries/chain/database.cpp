@@ -2229,7 +2229,7 @@ void database::process_subsidized_accounts()
    // Update global pool.
    modify( gpo, [&]( dynamic_global_property_object& g )
    {
-      g.available_account_subsidies = rd_apply( wso.account_subsidy_rd, gpo.available_account_subsidies );
+      g.available_account_subsidies = rd_apply( wso.account_subsidy_rd, g.available_account_subsidies );
    } );
 
    // Update per-witness pool for current witness.

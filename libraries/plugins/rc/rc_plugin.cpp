@@ -1,6 +1,7 @@
 
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 
+#include <steem/plugins/rc/rc_curve.hpp>
 #include <steem/plugins/rc/rc_export_objects.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>
@@ -263,7 +264,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    {
       dlog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
    }
-   int64_t rc_regen = gpo.total_vesting_shares.amount.value / STEEM_RC_REGEN_TIME;
+   int64_t rc_regen = (gpo.total_vesting_shares.amount.value / (STEEM_RC_REGEN_TIME / STEEM_BLOCK_INTERVAL));
 
    rc_transaction_info tx_info;
 
@@ -364,6 +365,11 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       _db.modify( params_obj, [&]( rc_resource_param_object& p )
       {
          p.resource_param_array[ resource_new_accounts ].resource_dynamics_params = wso.account_subsidy_rd;
+         // Hardcoded to use default values of rc_curve_gen_params() fields for now
+         generate_rc_curve_params(
+            p.resource_param_array[ resource_new_accounts ].price_curve_params,
+            p.resource_param_array[ resource_new_accounts ].resource_dynamics_params,
+            rc_curve_gen_params() );
       } );
    }
 
