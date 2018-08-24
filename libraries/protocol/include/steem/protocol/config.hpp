@@ -13,8 +13,7 @@
 
 #define STEEM_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEM_INIT_PUBLIC_KEY_STR             (std::string( steem::protocol::public_key_type(STEEM_INIT_PRIVATE_KEY.get_public_key()) ))
-#define STEEM_CHAIN_ID_NAME "testnet"
-#define STEEM_CHAIN_ID (fc::sha256::hash(STEEM_CHAIN_ID_NAME))
+#define STEEM_CHAIN_ID (fc::sha256::hash("testnet"))
 #define STEEM_ADDRESS_PREFIX                  "TST"
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1451606400))
@@ -25,10 +24,12 @@
 #define STEEM_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
 #define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
 #define STEEM_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
+#define STEEM_UPVOTE_LOCKOUT_SECONDS          (60*5)    /// 5 minutes
 #define STEEM_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
 
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE          0
+#define STEEM_MAX_ACCOUNT_CREATION_FEE          int64_t(1000000000)
 
 #define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
@@ -42,10 +43,9 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 12) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 0) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define STEEM_CHAIN_ID_NAME ""
 #define STEEM_CHAIN_ID fc::sha256()
 #define STEEM_ADDRESS_PREFIX                  "STM"
 
@@ -57,9 +57,11 @@
 #define STEEM_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEM_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
-#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
+#define STEEM_UPVOTE_LOCKOUT_SECONDS          (60*60*12)    /// 12 hours
+#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::seconds(12))
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE           1
+#define STEEM_MAX_ACCOUNT_CREATION_FEE           int64_t(1000000000)
 
 #define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::days(30)
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
@@ -106,9 +108,10 @@
 #define STEEM_MAX_WITHDRAW_ROUTES             10
 #define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
 #define STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
-#define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
+#define STEEM_VOTING_MANA_REGENERATION_SECONDS (5*60*60*24) // 5 day
 #define STEEM_MAX_VOTE_CHANGES                5
-#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6 (60*30) /// 30 minutes
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 (60*15) /// 15 minutes
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
 
@@ -208,8 +211,10 @@
 
 #define STEEM_MIN_PAYOUT_SBD                  (asset(20,SBD_SYMBOL))
 
-#define STEEM_SBD_STOP_PERCENT                (5*STEEM_1_PERCENT ) // Stop printing SBD at 5% Market Cap
-#define STEEM_SBD_START_PERCENT               (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
+#define STEEM_SBD_STOP_PERCENT_HF14           (5*STEEM_1_PERCENT ) // Stop printing SBD at 5% Market Cap
+#define STEEM_SBD_STOP_PERCENT_HF20           (10*STEEM_1_PERCENT ) // Stop printing SBD at 10% Market Cap
+#define STEEM_SBD_START_PERCENT_HF14          (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
+#define STEEM_SBD_START_PERCENT_HF20          (9*STEEM_1_PERCENT) // Start reducing printing of SBD at 9% Market Cap
 
 #define STEEM_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEM_MAX_ACCOUNT_NAME_LENGTH         16
@@ -264,7 +269,36 @@
 
 #define STEEM_MAX_LIMIT_ORDER_EXPIRATION     (60*60*24*28) // 28 days
 #define STEEM_DELEGATION_RETURN_PERIOD_HF0   (STEEM_CASHOUT_WINDOW_SECONDS)
-#define STEEM_DELEGATION_RETURN_PERIOD_HF20  (STEEM_VOTE_REGENERATION_SECONDS * 2)
+#define STEEM_DELEGATION_RETURN_PERIOD_HF20  (STEEM_VOTING_MANA_REGENERATION_SECONDS * 2)
+
+#define STEEM_RD_MIN_DECAY_BITS               6
+#define STEEM_RD_MAX_DECAY_BITS              32
+#define STEEM_RD_DECAY_DENOM_SHIFT           36
+#define STEEM_RD_MAX_POOL_BITS               64
+#define STEEM_RD_MAX_BUDGET_1                ((uint64_t(1) << (STEEM_RD_MAX_POOL_BITS + STEEM_RD_MIN_DECAY_BITS - STEEM_RD_DECAY_DENOM_SHIFT))-1)
+#define STEEM_RD_MAX_BUDGET_2                ((uint64_t(1) << (64-STEEM_RD_DECAY_DENOM_SHIFT))-1)
+#define STEEM_RD_MAX_BUDGET_3                (uint64_t( std::numeric_limits<int32_t>::max() ))
+#define STEEM_RD_MAX_BUDGET                  (int32_t( std::min( { STEEM_RD_MAX_BUDGET_1, STEEM_RD_MAX_BUDGET_2, STEEM_RD_MAX_BUDGET_3 } )) )
+#define STEEM_RD_MIN_DECAY                   (uint32_t(1) << STEEM_RD_MIN_DECAY_BITS)
+#define STEEM_RD_MIN_BUDGET                  1
+#define STEEM_RD_MAX_DECAY                   (uint32_t(0xFFFFFFFF))
+
+#define STEEM_ACCOUNT_SUBSIDY_PRECISION      (STEEM_100_PERCENT)
+
+// We want the global subsidy to run out first in normal (Poisson)
+// conditions, so we boost the per-witness subsidy a little.
+#define STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT (125 * STEEM_1_PERCENT)
+
+// Since witness decay only procs once per round, multiplying the decay
+// constant by the number of witnesses means the per-witness pools have
+// the same effective decay rate in real-time terms.
+#define STEEM_WITNESS_SUBSIDY_DECAY_PERCENT  (STEEM_MAX_WITNESSES * STEEM_100_PERCENT)
+
+// 347321 corresponds to a 5-day halflife
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_DECAY  (347321)
+// Default rate is 0.5 accounts per block
+#define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
+#define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
 /**
  *  Reserved Account IDs with special meaning

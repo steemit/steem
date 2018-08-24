@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include <steem/schema/schema_types/fixed_string.hpp>
 #include <steem/schema/schema_types/flat_map.hpp>
 #include <steem/schema/schema_types/flat_set.hpp>
 #include <steem/schema/schema_types/static_variant.hpp>

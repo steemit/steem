@@ -24,6 +24,7 @@ add_library( steem_protocol
              smt_operations.cpp
              steem_operations.cpp
              types.cpp
+             schema_types.cpp
              authority.cpp
              operations.cpp
              sign_state.cpp
@@ -38,7 +39,7 @@ add_library( steem_protocol
              "${CMAKE_CURRENT_BINARY_DIR}/include/steem/protocol/hardfork.hpp"
            )
 
-target_link_libraries( steem_protocol fc )
+target_link_libraries( steem_protocol steem_schema fc )
 target_include_directories( steem_protocol
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 

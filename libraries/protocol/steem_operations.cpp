@@ -147,6 +147,8 @@ namespace steem { namespace protocol {
       validate_account_name( creator );
       FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
+      FC_ASSERT( fee <= asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ), "Account creation fee cannot be too large" );
+
       FC_ASSERT( extensions.size() == 0, "There are no extensions for claim_account_operation." );
    }
 
@@ -236,7 +238,7 @@ namespace steem { namespace protocol {
          asset account_creation_fee;
          fc::raw::unpack_from_vector( itr->second, account_creation_fee );
          FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
-         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE , "account_creation_fee smaller than minimum account creation fee" );
+         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE, "account_creation_fee smaller than minimum account creation fee" );
       }
 
       itr = props.find( "maximum_block_size" );
@@ -285,12 +287,22 @@ namespace steem { namespace protocol {
          FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       }
 
-      itr = props.find( "account_subsidy_limit" );
+      itr = props.find( "account_subsidy_budget" );
       if( itr != props.end() )
       {
-         uint32_t account_subsidy_limit;
-         fc::raw::unpack_from_vector( itr->second, account_subsidy_limit ); // Checks that the value can be deserialized
-         FC_UNUSED( account_subsidy_limit );
+         int32_t account_subsidy_budget;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_budget ); // Checks that the value can be deserialized
+         FC_ASSERT( account_subsidy_budget >= STEEM_RD_MIN_BUDGET, "Budget must be at least ${n}", ("n", STEEM_RD_MIN_BUDGET) );
+         FC_ASSERT( account_subsidy_budget <= STEEM_RD_MAX_BUDGET, "Budget must be at most ${n}", ("n", STEEM_RD_MAX_BUDGET) );
+      }
+
+      itr = props.find( "account_subsidy_decay" );
+      if( itr != props.end() )
+      {
+         uint32_t account_subsidy_decay;
+         fc::raw::unpack_from_vector( itr->second, account_subsidy_decay ); // Checks that the value can be deserialized
+         FC_ASSERT( account_subsidy_decay >= STEEM_RD_MIN_DECAY, "Decay must be at least ${n}", ("n", STEEM_RD_MIN_DECAY) );
+         FC_ASSERT( account_subsidy_decay <= STEEM_RD_MAX_DECAY, "Decay must be at most ${n}", ("n", STEEM_RD_MAX_DECAY) );
       }
    }
 
@@ -387,13 +399,14 @@ namespace steem { namespace protocol {
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
    {
       input  = i;
-      signature = w.sign_compact(input,false);
+      signature = w.sign_compact( input, fc::ecc::non_canonical );
 
       auto sig_hash            = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, fc::ecc::non_canonical );
 
       work = fc::sha256::hash(recover);
    }
+
    void pow2::create( const block_id_type& prev, const account_name_type& account_name, uint64_t n )
    {
       input.worker_account = account_name;
@@ -402,7 +415,7 @@ namespace steem { namespace protocol {
 
       auto prv_key = fc::sha256::hash( input );
       auto input = fc::sha256::hash( prv_key );
-      auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input);
+      auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact( input, fc::ecc::fc_canonical );
 
       auto sig_hash            = fc::sha256::hash( signature );
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
@@ -425,9 +438,9 @@ namespace steem { namespace protocol {
    void pow::validate()const
    {
       FC_ASSERT( work != fc::sha256() );
-      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, false )) == worker );
+      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, fc::ecc::non_canonical ) ) == worker );
       auto sig_hash = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, fc::ecc::non_canonical );
       FC_ASSERT( work == fc::sha256::hash(recover) );
    }
 
@@ -496,7 +509,7 @@ namespace steem { namespace protocol {
                   ),
                "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
 
-      FC_ASSERT( (amount_to_sell * exchange_rate).amount > 0, "Amount to sell cannot round to 0 when traded" );
+      FC_ASSERT( ( amount_to_sell * exchange_rate ).amount > 0, "Amount to sell cannot round to 0 when traded" );
    }
 
    void limit_order_cancel_operation::validate()const
