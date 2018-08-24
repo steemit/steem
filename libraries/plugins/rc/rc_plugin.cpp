@@ -361,7 +361,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
    if( params_obj.resource_param_array[ resource_new_accounts ].resource_dynamics_params !=
        wso.account_subsidy_rd )
    {
-      ilog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
+      dlog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
       _db.modify( params_obj, [&]( rc_resource_param_object& p )
       {
          p.resource_param_array[ resource_new_accounts ].resource_dynamics_params = wso.account_subsidy_rd;

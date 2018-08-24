@@ -23,6 +23,7 @@
 #include <steem/chain/util/uint256.hpp>
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/manabar.hpp>
+#include <steem/chain/util/rd_setup.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -2868,7 +2869,28 @@ void database::init_genesis( uint64_t init_supply )
       // Create witness scheduler
       create< witness_schedule_object >( [&]( witness_schedule_object& wso )
       {
+         FC_TODO( "Copied from witness_schedule.cpp, do we want to abstract this to a separate function?" );
          wso.current_shuffled_witnesses[0] = STEEM_INIT_MINER_NAME;
+         util::rd_system_params account_subsidy_system_params;
+         account_subsidy_system_params.resource_unit = STEEM_ACCOUNT_SUBSIDY_PRECISION;
+         account_subsidy_system_params.decay_per_time_unit_denom_shift = STEEM_RD_DECAY_DENOM_SHIFT;
+         util::rd_user_params account_subsidy_user_params;
+         account_subsidy_user_params.budget_per_time_unit = wso.median_props.account_subsidy_budget;
+         account_subsidy_user_params.decay_per_time_unit = wso.median_props.account_subsidy_decay;
+
+         util::rd_user_params account_subsidy_per_witness_user_params;
+         int64_t w_budget = wso.median_props.account_subsidy_budget;
+         w_budget = (w_budget * STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT) / STEEM_100_PERCENT;
+         w_budget = std::min( w_budget, int64_t(std::numeric_limits<int32_t>::max()) );
+         uint64_t w_decay = wso.median_props.account_subsidy_decay;
+         w_decay = (w_decay * STEEM_WITNESS_SUBSIDY_DECAY_PERCENT) / STEEM_100_PERCENT;
+         w_decay = std::min( w_decay, uint64_t(std::numeric_limits<uint32_t>::max()) );
+
+         account_subsidy_per_witness_user_params.budget_per_time_unit = int32_t(w_budget);
+         account_subsidy_per_witness_user_params.decay_per_time_unit = uint32_t(w_decay);
+
+         util::rd_setup_dynamics_params( account_subsidy_user_params, account_subsidy_system_params, wso.account_subsidy_rd );
+         util::rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, wso.account_subsidy_witness_rd );
       } );
    }
    FC_CAPTURE_AND_RETHROW()
