@@ -501,8 +501,7 @@ void chain_plugin::plugin_startup()
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
-         appbase::app().quit();
-         return;
+         exit(EXIT_SUCCESS);
       }
    }
    else
@@ -520,17 +519,8 @@ void chain_plugin::plugin_startup()
       }
       catch( const fc::exception& e )
       {
-         wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
-
-         try
-         {
-            my->db.reindex( db_open_args );
-         }
-         catch( steem::chain::block_log_exception& )
-         {
-            wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( db_open_args );
-         }
+         wlog("Error opening database. If the binary or configuration has changed, replay the blockchain explicitly. Error: ${e}", ("e", e));
+         exit(EXIT_FAILURE);
       }
    }
 
