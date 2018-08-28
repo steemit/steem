@@ -29,6 +29,11 @@ class database_api
          (get_config)
 
          /**
+          * @brief Return version information and chain_id of running node
+          */
+         (get_version)
+
+         /**
          * @brief Retrieve the current @ref dynamic_global_property_object
          */
          (get_dynamic_global_properties)
