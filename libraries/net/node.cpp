@@ -776,6 +776,7 @@ namespace graphene { namespace net {
          return fc::schedule( wrapper, t, desc, prio );
       }
 
+      void send_message_timing_to_statsd(peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash);
    }; // end class node_impl
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1787,6 +1788,7 @@ namespace graphene { namespace net {
       activity_tracer aTracer(__FUNCTION__, *this);
 
       message_hash_type message_hash = received_message.id();
+      send_message_timing_to_statsd( originating_peer, received_message, message_hash );
       dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
            ("type", graphene::net::core_message_type_enum(received_message.msg_type))("hash", message_hash)
            ("size", received_message.size)
@@ -3604,7 +3606,7 @@ namespace graphene { namespace net {
                                           const message_hash_type& message_hash)
     {
       VERIFY_CORRECT_THREAD();
-      fc::time_point message_receive_time = fc::time_point::now();
+
       // find out whether we requested this item while we were synchronizing or during normal operation
       // (it's possible that we request an item during normal operation and then get kicked into sync
       // mode before we receive and process the item.  In that case, we should process the item as a normal
@@ -3613,7 +3615,6 @@ namespace graphene { namespace net {
       auto item_iter = originating_peer->items_requested_from_peer.find(item_id(graphene::net::block_message_type, message_hash));
       if (item_iter != originating_peer->items_requested_from_peer.end())
       {
-        STATSD_TIMER( "p2p", "latency", "block_message_type", message_receive_time - item_iter->second, 1.0f );
         originating_peer->items_requested_from_peer.erase(item_iter);
         process_block_during_normal_operation(originating_peer, block_message_to_process, message_hash);
         if (originating_peer->idle())
@@ -3964,7 +3965,6 @@ namespace graphene { namespace net {
       }
       else
       {
-        STATSD_TIMER( "p2p", "latency", fc::variant( core_message_type_enum( message_to_process.msg_type ) ).as_string(), message_receive_time - iter->second, 0.1f );
         originating_peer->items_requested_from_peer.erase( iter );
         if (originating_peer->idle())
           trigger_fetch_items_loop();
@@ -5235,6 +5235,24 @@ namespace graphene { namespace net {
       auto iter = std::upper_bound(_hard_fork_block_numbers.begin(), _hard_fork_block_numbers.end(),
                                    block_number);
       return iter != _hard_fork_block_numbers.end() ? *iter : 0;
+    }
+
+    void node_impl::send_message_timing_to_statsd( peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash )
+    {
+      if( steem::plugins::statsd::util::statsd_enabled() )
+      {
+        auto iter = originating_peer->items_requested_from_peer.find( item_id( received_message.msg_type, message_hash ) );
+        if( iter != originating_peer->items_requested_from_peer.end() )
+        {
+          steem::plugins::statsd::util::get_statsd().timing(
+            "p2p",
+            "latency",
+            fc::variant( core_message_type_enum( received_message.msg_type ) ).as_string(),
+            steem::plugins::statsd::util::timing_helper( fc::time_point::now() - iter->second ),
+            0.1f
+          );
+        }
+      }
     }
 
   }  // end namespace detail
