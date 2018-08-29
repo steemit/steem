@@ -8,7 +8,6 @@ should be implemented in the code as per-block limits, e.g. the block size limit
 The resources currently implemented in the code are:
 
 - Subsidized accounts.  Users can occasionally create accounts for free.
-- Account creation.  Normal account creation with a fee.
 - History bytes.  The amount of space stuff takes up in blocks.
 - Market bytes.  A different kind of space, it exists for historical reasons.  It might go away at some point.
 - State bytes.   The amount of space stuff takes up in chain state.
@@ -175,7 +174,7 @@ checking makes upgrades painful:
 The subsidized account resource limit is consensus.  Other resource limits are non-consensus.  Why were things
 divided that way?  It has to do with the consequences of violating the limits:
 
-- If a witness ignores the subsidized account limit, people will get new accounts for free, that normally cost Steem to create.  This is a medium-sized economic problem.
+- If a witness ignores the subsidized account limit, people will get new accounts for free, that normally cost STEEM to create.  This is a medium-sized economic problem.
 - If a witness ignores the other resource limits, their blocks might take a little longer [1] to process or use more memory.  This is a tiny IT problem.
 
 For resource limits, having witness-only upgrades outweighs the problem.  Witnesses who have been around a long time know that, in the ancient past, Steem's bandwidth
@@ -189,4 +188,4 @@ we should never implement such operations in the Steem source code!  Even the wo
 
 # Setting consensus parameters
 
-Currently, only the consensus parameter (subsidized account creation) can be set.  It is settable by 
+Currently, only the consensus parameter (subsidized account creation) can be set.  It is settable through  `witness_set_parameters_operation`. See [here](../witness_parameters.md) for more details on the operation.
