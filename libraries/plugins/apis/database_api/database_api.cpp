@@ -7,6 +7,10 @@
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/transaction_util.hpp>
 
+#include <steem/utilities/git_revision.hpp>
+
+#include <fc/git_revision.hpp>
+
 namespace steem { namespace plugins { namespace database_api {
 
 class database_api_impl
@@ -18,6 +22,7 @@ class database_api_impl
       DECLARE_API_IMPL
       (
          (get_config)
+         (get_version)
          (get_dynamic_global_properties)
          (get_witness_schedule)
          (get_hardfork_properties)
@@ -117,6 +122,17 @@ database_api_impl::~database_api_impl() {}
 DEFINE_API_IMPL( database_api_impl, get_config )
 {
    return steem::protocol::get_config();
+}
+
+DEFINE_API_IMPL( database_api_impl, get_version )
+{
+   return get_version_return
+   (
+      fc::string( STEEM_BLOCKCHAIN_VERSION ),
+      fc::string( steem::utilities::git_revision_sha ),
+      fc::string( fc::git_revision_sha ),
+      _db.get_chain_id()
+   );
 }
 
 DEFINE_API_IMPL( database_api_impl, get_dynamic_global_properties )
@@ -1439,7 +1455,7 @@ DEFINE_API_IMPL( database_api_impl, get_smt_next_identifier )
 }
 #endif
 
-DEFINE_LOCKLESS_APIS( database_api, (get_config) )
+DEFINE_LOCKLESS_APIS( database_api, (get_config)(get_version) )
 
 DEFINE_READ_APIS( database_api,
    (get_dynamic_global_properties)
