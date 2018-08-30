@@ -387,9 +387,9 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             block_info.pool[i] = pool;
             block_info.dt[i] = dt;
 
-            block_info.decay[i] = rd_compute_pool_decay( params.decay_params, pool, dt );
             block_info.budget[i] = int64_t( params.budget_per_time_unit ) * int64_t( dt );
             block_info.usage[i] = count.resource_count[i]*int64_t( params.resource_unit );
+            block_info.decay[i] = rd_compute_pool_decay( params.decay_params, pool - block_info.usage[i], dt );
 
             int64_t new_pool = pool - block_info.decay[i] + block_info.budget[i] - block_info.usage[i];
 
