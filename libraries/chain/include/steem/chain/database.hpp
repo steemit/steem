@@ -364,6 +364,12 @@ namespace steem { namespace chain {
          /** this updates the vote of a single witness as a result of a vote being added or removed*/
          void adjust_witness_vote( const witness_object& obj, share_type delta );
 
+         /** this is called during block generation to ensure the witness votes for a hardfork that matches the binary configuration */
+         void adjust_witness_hardfork_version_vote( const witness_object& witness, signed_block& pending_block );
+
+         /** this applies pending transactions to a newly created block */
+         void apply_pending_transactions( const account_name_type& witness_owner, fc::time_point_sec when, signed_block& pending_block );
+
          /** clears all vote records for a particular account but does not update the
           * witness vote totals.  Vote totals should be updated first via a call to
           * adjust_proxied_witness_votes( a, -a.witness_vote_weight() )

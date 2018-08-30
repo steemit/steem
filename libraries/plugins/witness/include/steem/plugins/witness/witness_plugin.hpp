@@ -55,6 +55,7 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
+   chain::signed_block generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip);
 private:
    std::unique_ptr< detail::witness_plugin_impl > my;
 };
