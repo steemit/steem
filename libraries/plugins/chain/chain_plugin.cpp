@@ -2,6 +2,7 @@
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/statsd/utility.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
 
@@ -99,6 +100,7 @@ struct write_request_visitor
    database* db;
    uint32_t  skip = 0;
    fc::optional< fc::exception >* except;
+   steem::plugins::witness::witness_plugin* witness_plugin = nullptr;
 
    typedef bool result_type;
 
@@ -156,8 +158,11 @@ struct write_request_visitor
 
       try
       {
+         if( !witness_plugin || witness_plugin->get_state() != appbase::abstract_plugin::started )
+            FC_THROW_EXCEPTION( plugin_exception, "Received a generate block request, but the witness plugin has not started." );
+
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
-         req->block = db->generate_block(
+         req->block = witness_plugin->generate_block(
             req->when,
             req->witness_owner,
             req->block_signing_private_key,
@@ -203,6 +208,7 @@ void chain_plugin_impl::start_write_processing()
       fc::time_point_sec start = fc::time_point::now();
       write_request_visitor req_visitor;
       req_visitor.db = &db;
+      req_visitor.witness_plugin = appbase::app().find_plugin< plugins::witness::witness_plugin >();
 
       request_promise_visitor prom_visitor;
 
