@@ -646,10 +646,7 @@ namespace detail {
       pending_block.timestamp = when;
       pending_block.witness = witness_owner;
 
-      if( _db.has_hardfork( STEEM_HARDFORK_0_5__54 ) )
-      {
-         _db.adjust_witness_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
-      }
+      _db.adjust_witness_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
 
       _db.apply_pending_transactions( witness_owner, when, pending_block );
 
