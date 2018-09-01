@@ -25,11 +25,13 @@ class debug_node_plugin_impl
       virtual ~debug_node_plugin_impl();
 
       chain::database&                          _db;
+      witness::witness_plugin&                  _witness_plugin;
       boost::signals2::connection               _post_apply_block_conn;
 };
 
 debug_node_plugin_impl::debug_node_plugin_impl() :
-   _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
+   _db( appbase::app().get_plugin< chain::chain_plugin >().db() ),
+   _witness_plugin( appbase::app().get_plugin< witness::witness_plugin >() ) {}
 debug_node_plugin_impl::~debug_node_plugin_impl() {}
 
 }
@@ -247,7 +249,7 @@ void debug_node_plugin::debug_generate_blocks(
             break;
       }
 
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
+      my->_witness_plugin.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
       ++produced;
       slot = new_slot;
    }

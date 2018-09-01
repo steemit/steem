@@ -1,6 +1,7 @@
 
 #pragma once
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -44,7 +45,7 @@ class debug_node_plugin : public plugin< debug_node_plugin >
       debug_node_plugin();
       virtual ~debug_node_plugin();
 
-      APPBASE_PLUGIN_REQUIRES( (chain::chain_plugin) )
+      APPBASE_PLUGIN_REQUIRES( (chain::chain_plugin) (witness::witness_plugin) )
 
       static const std::string& name() { static std::string name = STEEM_DEBUG_NODE_PLUGIN_NAME; return name; }
 
