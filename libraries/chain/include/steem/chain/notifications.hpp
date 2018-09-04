@@ -40,11 +40,18 @@ struct operation_notification
    const operation&    op;
 };
 
-struct action_notification
+struct required_action_notification
 {
-   action_notification( const automated_action& a ) : action(a) {}
+   required_action_notification( const required_automated_action& a ) : action(a) {}
 
-   const automated_action& action;
+   const required_automated_action& action;
+};
+
+struct optional_action_notification
+{
+   optional_action_notification( const optional_automated_action& a ) : action(a) {}
+
+   const optional_automated_action& action;
 };
 
 } }
