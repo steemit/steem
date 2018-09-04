@@ -4,7 +4,6 @@
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 namespace steem { namespace plugins { namespace account_by_key {
 

@@ -3,13 +3,11 @@
  */
 #pragma once
 #include <steem/chain/block_log.hpp>
-#include <steem/chain/block_notification.hpp>
 #include <steem/chain/fork_database.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/hardfork_property_object.hpp>
 #include <steem/chain/node_property_object.hpp>
-#include <steem/chain/operation_notification.hpp>
-#include <steem/chain/transaction_notification.hpp>
+#include <steem/chain/notifications.hpp>
 
 #include <steem/chain/util/advanced_benchmark_dumper.hpp>
 #include <steem/chain/util/signal.hpp>

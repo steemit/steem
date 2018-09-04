@@ -15,7 +15,6 @@
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
 #include <steem/chain/util/asset.hpp>

@@ -2,7 +2,6 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 #include <fc/io/json.hpp>
 
