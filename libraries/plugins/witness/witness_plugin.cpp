@@ -108,7 +108,7 @@ namespace detail {
 
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
-      block_producer                _block_producer;
+      witness::block_producer       _block_producer;
       boost::signals2::connection   _pre_apply_block_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -742,7 +742,7 @@ void witness_plugin::plugin_shutdown()
    }
 }
 
-block_producer& witness_plugin::block_producer()
+witness::block_producer& witness_plugin::block_producer()
 {
    return my->_block_producer;
 }
