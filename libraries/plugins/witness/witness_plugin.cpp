@@ -79,7 +79,8 @@ namespace detail {
       witness_plugin_impl( boost::asio::io_service& io ) :
          _timer(io),
          _chain_plugin( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
-         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() )
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
+         _block_producer( _db )
          {}
 
       void on_pre_apply_block( const chain::block_notification& note );
@@ -93,7 +94,6 @@ namespace detail {
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
       block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
-      signed_block generate_block(fc::time_point_sec when, const account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key);
 
       bool     _production_enabled              = false;
       uint32_t _required_witness_participation  = 33 * STEEM_1_PERCENT;
@@ -108,6 +108,7 @@ namespace detail {
 
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
+      block_producer                _block_producer;
       boost::signals2::connection   _pre_apply_block_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -622,53 +623,6 @@ namespace detail {
       appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().broadcast_block( block );
       return block_production_condition::produced;
    }
-
-   signed_block witness_plugin_impl::generate_block(
-                  fc::time_point_sec when,
-                  const account_name_type& witness_owner,
-                  const fc::ecc::private_key& block_signing_private_key
-                  )
-   {
-      uint32_t skip = _db.get_node_properties().skip_flags;
-      uint32_t slot_num = _db.get_slot_at_time( when );
-      FC_ASSERT( slot_num > 0 );
-      string scheduled_witness = _db.get_scheduled_witness( slot_num );
-      FC_ASSERT( scheduled_witness == witness_owner );
-
-      const auto& witness_obj = _db.get_witness( witness_owner );
-
-      if( !(skip & chain::database::skip_witness_signature) )
-         FC_ASSERT( witness_obj.signing_key == block_signing_private_key.get_public_key() );
-
-      signed_block pending_block;
-
-      pending_block.previous = _db.head_block_id();
-      pending_block.timestamp = when;
-      pending_block.witness = witness_owner;
-
-      _db.adjust_witness_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
-
-      _db.apply_pending_transactions( witness_owner, when, pending_block );
-
-      // We have temporarily broken the invariant that
-      // _pending_tx_session is the result of applying _pending_tx, as
-      // _pending_tx now consists of the set of postponed transactions.
-      // However, the push_block() call below will re-create the
-      // _pending_tx_session.
-
-      if( !(skip & chain::database::skip_witness_signature) )
-         pending_block.sign( block_signing_private_key, _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
-
-      // TODO:  Move this to _push_block() so session is restored.
-      if( !(skip & chain::database::skip_block_size_check) )
-      {
-         FC_ASSERT( fc::raw::pack_size(pending_block) <= STEEM_MAX_BLOCK_SIZE );
-      }
-
-      _db.push_block( pending_block, skip );
-
-      return pending_block;
-   }
 } // detail
 
 
@@ -788,26 +742,9 @@ void witness_plugin::plugin_shutdown()
    }
 }
 
-signed_block witness_plugin::generate_block(
-   fc::time_point_sec when,
-   const account_name_type& witness_owner,
-   const fc::ecc::private_key& block_signing_private_key,
-   uint32_t skip /* = 0 */
-   )
+block_producer& witness_plugin::block_producer()
 {
-   signed_block result;
-   steem::chain::detail::with_skip_flags(
-      my->_db,
-      skip,
-      [&]()
-      {
-         try
-         {
-            result = my->generate_block( when, witness_owner, block_signing_private_key );
-         }
-         FC_CAPTURE_AND_RETHROW( (witness_owner) )
-      });
-   return result;
+   return my->_block_producer;
 }
 
 } } } // steem::plugins::witness

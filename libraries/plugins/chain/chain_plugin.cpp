@@ -162,7 +162,7 @@ struct write_request_visitor
             FC_THROW_EXCEPTION( plugin_exception, "Received a generate block request, but the witness plugin has not started." );
 
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
-         req->block = witness_plugin->generate_block(
+         req->block = witness_plugin->block_producer().generate_block(
             req->when,
             req->witness_owner,
             req->block_signing_private_key,
