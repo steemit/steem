@@ -468,7 +468,12 @@ namespace detail {
 
    void witness_plugin_impl::schedule_production_loop() {
       // Sleep for 200ms, before checking the block production
-      _timer.expires_from_now( boost::posix_time::microseconds( BLOCK_PRODUCTION_LOOP_SLEEP_TIME ) );
+      fc::time_point now = fc::time_point::now();
+      int64_t time_to_sleep = BLOCK_PRODUCTION_LOOP_SLEEP_TIME - (now.time_since_epoch().count() % BLOCK_PRODUCTION_LOOP_SLEEP_TIME);
+      if (time_to_sleep < 50000) // we must sleep for at least 50ms
+          time_to_sleep += BLOCK_PRODUCTION_LOOP_SLEEP_TIME;
+      
+      _timer.expires_from_now( boost::posix_time::microseconds( time_to_sleep ) );
       _timer.async_wait( boost::bind( &witness_plugin_impl::block_production_loop, this ) );
    }
 
