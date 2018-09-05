@@ -152,7 +152,7 @@ void block_producer::apply_pending_transactions(
       try
       {
          auto temp_session = _db.start_undo_session();
-         _db.apply_transaction( tx );
+         _db._apply_transaction( tx );
          temp_session.squash();
 
          total_block_size += fc::raw::pack_size( tx );
