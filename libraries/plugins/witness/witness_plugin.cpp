@@ -11,7 +11,6 @@
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/index.hpp>
 #include <steem/chain/util/impacted.hpp>
-#include <steem/chain/db_with.hpp>
 
 #include <steem/utilities/key_conversion.hpp>
 #include <steem/utilities/plugin_utilities.hpp>
