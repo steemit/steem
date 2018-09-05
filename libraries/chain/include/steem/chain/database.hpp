@@ -507,7 +507,8 @@ namespace steem { namespace chain {
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
          void apply_operation( const operation& op );
-
+         void process_actions( const automated_actions& actions );
+         void apply_action( const automated_action& a );
 
          ///Steps involved in applying a new block
          ///@{
@@ -523,7 +524,7 @@ namespace steem { namespace chain {
          void clear_expired_transactions();
          void clear_expired_orders();
          void clear_expired_delegations();
-         void process_header_extensions( const signed_block& next_block );
+         void process_header_extensions( const signed_block& next_block, automated_actions& actions );
 
          void init_hardforks();
          void process_hardforks();

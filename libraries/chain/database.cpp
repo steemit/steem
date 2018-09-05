@@ -1044,8 +1044,22 @@ void database::notify_pre_apply_operation( operation_notification& note )
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
 }
 
+struct action_validate_visitor
+{
+   typedef void result_type;
+
+   template< typename Action >
+   void operator()( const Action& a )const
+   {
+      a.validate();
+   }
+};
+
 void database::push_required_action( const required_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
    {
       pending_action.action = a;
@@ -3190,8 +3204,9 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   automated_actions actions;
    /// parse witness version reporting
-   process_header_extensions( next_block );
+   process_header_extensions( next_block, actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3247,6 +3262,8 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
+   process_actions( actions );
+
    process_hardforks();
 
    // notify observers that the block has been applied
@@ -3259,11 +3276,15 @@ FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, automated_actions& actions, database& db ) :
+      _witness( witness ),
+      _actions( actions ),
+      _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
+   automated_actions& _actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3301,6 +3322,7 @@ struct process_header_visitor
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( actions.begin(), actions.end(), _actions.end() );
    }
 
    void operator()( const optional_automated_actions& opt_actions ) const
@@ -3309,9 +3331,9 @@ struct process_header_visitor
    }
 };
 
-void database::process_header_extensions( const signed_block& next_block )
+void database::process_header_extensions( const signed_block& next_block, automated_actions& actions )
 {
-   process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3495,6 +3517,61 @@ void database::apply_operation(const operation& op)
    notify_post_apply_operation( note );
 }
 
+struct action_equal_visitor
+{
+   typedef bool result_type;
+
+   const automated_action& action_a;
+
+   action_equal_visitor( const automated_action& a ) : action_a( a ) {}
+
+   template< typename Action >
+   bool operator()( const Action& action_b )const
+   {
+      if( action_a.which() != automated_action::tag< Action >::value ) return false;
+
+      return action_a.get< Action >() == action_b;
+   }
+};
+
+void database::process_actions( const automated_actions& actions )
+{
+   static const required_action_visitor required_visitor;
+   const auto& pending_action_idx = get_index< pending_action_index, by_required >();
+   auto pending_itr = pending_action_idx.begin();
+   auto actions_itr = actions.begin();
+
+   while( pending_itr != pending_action_idx.end() && actions_itr != actions.end() )
+   {
+      // Optional actions may be out of order. So long as we are expecting a required action,
+      // check equality. This will also detect if an optional action is included prior
+      // to a required action. All pending actions have already been statelessly validated
+      // so checking equality of incoming actions implicitly validates them.
+      if( pending_itr->action.visit( required_visitor ) )
+      {
+         action_equal_visitor equal_visitor( pending_itr->action );
+         FC_ASSERT( actions_itr->visit( equal_visitor ),
+            "Unexpected action included. Expected: ${e} Observed: #{o}",
+            ("e", pending_itr->action)("o", *actions_itr) );
+      }
+
+      apply_action( *actions_itr );
+
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+      ++actions_itr;
+   }
+}
+
+void database::apply_action( const automated_action& a )
+{
+   action_notification note( a );
+   notify_pre_apply_action( note );
+
+   _my->_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_action( note );
+}
 
 template <typename TFunction> struct fcall {};
 

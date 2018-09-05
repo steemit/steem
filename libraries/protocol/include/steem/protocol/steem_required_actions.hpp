@@ -15,6 +15,8 @@ namespace steem { namespace protocol {
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(account); }
+
+      friend bool operator==( const required_action& lhs, const required_action& rhs );
    };
 
 } } // steem::protocol
