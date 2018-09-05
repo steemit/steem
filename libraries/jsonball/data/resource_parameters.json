@@ -15,9 +15,9 @@
  ["resource_new_accounts",
   {
    "time_unit" : "blocks",
-   "budget_time" : {"days" : 1},
-   "budget" : 1,
-   "half_life" : {"days" : 1000000},
+   "budget_time" : {"seconds" : 30000},
+   "budget" : 797,
+   "half_life" : {"days" : 5},
    "resource_unit_base" : 10,
    "resource_unit_exponent" : 4,
    "a_point_num" : 37,
