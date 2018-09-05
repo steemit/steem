@@ -1,5 +1,9 @@
 #include <steem/plugins/witness/block_producer.hpp>
 
+#include <steem/protocol/base.hpp>
+#include <steem/protocol/config.hpp>
+#include <steem/protocol/version.hpp>
+
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
 #include <steem/chain/witness_objects.hpp>
@@ -44,7 +48,7 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
    pending_block.timestamp = when;
    pending_block.witness = witness_owner;
 
-   _db.adjust_witness_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
+   adjust_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
 
    _db.apply_pending_transactions( witness_owner, when, pending_block );
 
@@ -66,6 +70,29 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
    _db.push_block( pending_block, skip );
 
    return pending_block;
+}
+
+void block_producer::adjust_hardfork_version_vote(const chain::witness_object& witness, chain::signed_block& pending_block)
+{
+   using namespace steem::protocol;
+
+   if( witness.running_version != STEEM_BLOCKCHAIN_VERSION )
+      pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
+
+   const auto& hfp = _db.get_hardfork_property_object();
+
+   if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
+      && ( witness.hardfork_version_vote != hfp.next_hardfork || witness.hardfork_time_vote != hfp.next_hardfork_time ) ) // Witness vote does not match binary configuration
+   {
+      // Make vote match binary configuration
+      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.next_hardfork, hfp.next_hardfork_time ) ) );
+   }
+   else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+            && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
+   {
+      // Make vote match binary configuration. This is vote to not apply the new hardfork.
+      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.current_hardfork_version, hfp.processed_hardforks.back() ) ) );
+   }
 }
 
 } } } // steem::plugins::witness

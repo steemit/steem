@@ -1219,30 +1219,6 @@ void database::adjust_witness_votes( const account_object& a, share_type delta )
    }
 }
 
-void database::adjust_witness_hardfork_version_vote(
-         const witness_object& witness,
-         signed_block& pending_block
-         )
-{
-   if( witness.running_version != STEEM_BLOCKCHAIN_VERSION )
-      pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
-
-   const auto& hfp = get_hardfork_property_object();
-
-   if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
-      && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
-   {
-      // Make vote match binary configuration
-      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
-   }
-   else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
-           && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
-   {
-      // Make vote match binary configuration. This is vote to not apply the new hardfork.
-      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
-   }
-}
-
 void database::apply_pending_transactions(
          const account_name_type& witness_owner,
          fc::time_point_sec when,
