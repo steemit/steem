@@ -23,6 +23,7 @@
 
 using namespace steem;
 using namespace steem::chain;
+using namespace steem::chain::util;
 using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
@@ -2973,52 +2974,50 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: generate_account_subsidies" );
-      FC_TODO( "Rewrite account subsidy tests" );
-/*
-      generate_block();
-      generate_block();
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
+      // The purpose of this test is to validate the dynamics of available_account_subsidies.
 
-      db_plugin->debug_update( [=]( database& db )
+      // set_subsidy_budget creates a lot of blocks, so there should be enough for a few accounts
+      // half-life of 10 minutes
+      flat_map< string, vector<char> > props;
+      props["account_subsidy_budget"] = fc::raw::pack_to_vector( int32_t( 5123 ) );
+      props["account_subsidy_decay"] = fc::raw::pack_to_vector( uint32_t( 249617279 ) );
+      set_witness_props( props );
+
+      while( true )
       {
-         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-         {
-            wso.median_props.account_subsidy_daily_rate = 1000;
-            wso.median_props.account_subsidy_pool_cap = 2000;
-            wso.account_subsidy_print_rate = 1000;
-         });
-      });
+         const witness_schedule_object& wso = db->get_witness_schedule_object();
+         if(    (wso.account_subsidy_rd.budget_per_time_unit == 5123)
+             && (wso.account_subsidy_rd.decay_params.decay_per_time_unit == 249617279) )
+            break;
+         generate_block();
+      }
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
-
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1000 );
-
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000 );
-
-      db_plugin->debug_update( [=]( database& db )
+      auto is_pool_in_equilibrium = []( int64_t pool, int32_t budget, const rd_decay_params& decay_params ) -> bool
       {
-         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-         {
-            gpo.available_account_subsidies = 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS;
-         });
-      });
+         int64_t decay = rd_compute_pool_decay( decay_params, pool, 1 );
+         return (decay == budget);
+      };
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
+      const witness_schedule_object& wso = db->get_witness_schedule_object();
+      BOOST_CHECK_EQUAL( wso.account_subsidy_rd.resource_unit, STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_CHECK_EQUAL( wso.account_subsidy_rd.budget_per_time_unit, 5123 );
+      BOOST_CHECK(  is_pool_in_equilibrium( int64_t( wso.account_subsidy_rd.pool_eq )  , wso.account_subsidy_rd.budget_per_time_unit, wso.account_subsidy_rd.decay_params ) );
+      BOOST_CHECK( !is_pool_in_equilibrium( int64_t( wso.account_subsidy_rd.pool_eq )-1, wso.account_subsidy_rd.budget_per_time_unit, wso.account_subsidy_rd.decay_params ) );
 
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ]
-         == ( 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ) );
+      int64_t pool = db->get_dynamic_global_properties().available_account_subsidies;
+
+      while( true )
+      {
+         const dynamic_global_property_object& gpo = db->get_dynamic_global_properties();
+         BOOST_CHECK_EQUAL( pool, gpo.available_account_subsidies );
+         if( gpo.available_account_subsidies >= 100 * STEEM_ACCOUNT_SUBSIDY_PRECISION )
+            break;
+         generate_block();
+         pool = pool + 5123 - ((249617279 * pool) >> STEEM_RD_DECAY_DENOM_SHIFT);
+      }
 
       validate_database();
-*/
    }
    FC_LOG_AND_RETHROW()
 }
