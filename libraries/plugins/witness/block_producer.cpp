@@ -50,7 +50,7 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
 
    adjust_hardfork_version_vote( _db.get_witness( witness_owner ), pending_block );
 
-   _db.apply_pending_transactions( witness_owner, when, pending_block );
+   apply_pending_transactions( witness_owner, when, pending_block );
 
    // We have temporarily broken the invariant that
    // _pending_tx_session is the result of applying _pending_tx, as
@@ -93,6 +93,86 @@ void block_producer::adjust_hardfork_version_vote(const chain::witness_object& w
       // Make vote match binary configuration. This is vote to not apply the new hardfork.
       pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.current_hardfork_version, hfp.processed_hardforks.back() ) ) );
    }
+}
+
+void block_producer::apply_pending_transactions(
+        const chain::account_name_type& witness_owner,
+        fc::time_point_sec when,
+        chain::signed_block& pending_block)
+{
+   // The 4 is for the max size of the transaction vector length
+   size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
+   auto maximum_block_size = _db.get_dynamic_global_properties().maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
+
+   //
+   // The following code throws away existing pending_tx_session and
+   // rebuilds it by re-applying pending transactions.
+   //
+   // This rebuild is necessary because pending transactions' validity
+   // and semantics may have changed since they were received, because
+   // time-based semantics are evaluated based on the current block
+   // time.  These changes can only be reflected in the database when
+   // the value of the "when" variable is known, which means we need to
+   // re-apply pending transactions in this method.
+   //
+   _db.pending_transaction_session().reset();
+   _db.pending_transaction_session() = _db.start_undo_session();
+
+   FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      /// modify current witness so transaction evaluators can know who included the transaction
+      _db.modify(
+             _db.get_dynamic_global_properties(),
+             [&]( chain::dynamic_global_property_object& dgp )
+             {
+                dgp.current_witness = witness_owner;
+             });
+   }
+
+   uint64_t postponed_tx_count = 0;
+   // pop pending state (reset to head block state)
+   for( const chain::signed_transaction& tx : _db._pending_tx )
+   {
+      // Only include transactions that have not expired yet for currently generating block,
+      // this should clear problem transactions and allow block production to continue
+
+      if( tx.expiration < when )
+         continue;
+
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+
+      // postpone transaction if it would make block too big
+      if( new_total_size >= maximum_block_size )
+      {
+         postponed_tx_count++;
+         continue;
+      }
+
+      try
+      {
+         auto temp_session = _db.start_undo_session();
+         _db.apply_transaction( tx );
+         temp_session.squash();
+
+         total_block_size += fc::raw::pack_size( tx );
+         pending_block.transactions.push_back( tx );
+      }
+      catch ( const fc::exception& e )
+      {
+         // Do nothing, transaction will not be re-applied
+         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+         //wlog( "The transaction was ${t}", ("t", tx) );
+      }
+   }
+   if( postponed_tx_count > 0 )
+   {
+      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+   }
+
+   _db.pending_transaction_session().reset();
+
+   pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 }
 
 } } } // steem::plugins::witness

@@ -25,6 +25,11 @@ private:
       const fc::ecc::private_key& block_signing_private_key);
 
    void adjust_hardfork_version_vote( const chain::witness_object& witness, chain::signed_block& pending_block );
+
+   void apply_pending_transactions(
+      const chain::account_name_type& witness_owner,
+      fc::time_point_sec when,
+      chain::signed_block& pending_block);
 };
 
 } } } // steem::plugins::witness

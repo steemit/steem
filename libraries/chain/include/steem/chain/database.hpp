@@ -352,9 +352,6 @@ namespace steem { namespace chain {
          /** this updates the vote of a single witness as a result of a vote being added or removed*/
          void adjust_witness_vote( const witness_object& obj, share_type delta );
 
-         /** this applies pending transactions to a newly created block */
-         void apply_pending_transactions( const account_name_type& witness_owner, fc::time_point_sec when, signed_block& pending_block );
-
          /** clears all vote records for a particular account but does not update the
           * witness vote totals.  Vote totals should be updated first via a call to
           * adjust_proxied_witness_votes( a, -a.witness_vote_weight() )
@@ -454,6 +451,10 @@ namespace steem { namespace chain {
          void set_flush_interval( uint32_t flush_blocks );
          void check_free_memory( bool force_print, uint32_t current_block_num );
 
+         void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+
+         optional< chainbase::database::session >& pending_transaction_session();
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
@@ -482,7 +483,6 @@ namespace steem { namespace chain {
          optional< chainbase::database::session > _pending_tx_session;
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
-         void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
          void apply_operation( const operation& op );
