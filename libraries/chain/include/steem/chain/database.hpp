@@ -229,18 +229,6 @@ namespace steem { namespace chain {
          bool _push_block( const signed_block& b );
          void _push_transaction( const signed_transaction& trx );
 
-         signed_block generate_block(
-            const fc::time_point_sec when,
-            const account_name_type& witness_owner,
-            const fc::ecc::private_key& block_signing_private_key,
-            uint32_t skip
-            );
-         signed_block _generate_block(
-            const fc::time_point_sec when,
-            const account_name_type& witness_owner,
-            const fc::ecc::private_key& block_signing_private_key
-            );
-
          void pop_block();
          void clear_pending();
 
