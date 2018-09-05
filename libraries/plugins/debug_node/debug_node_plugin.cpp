@@ -1,5 +1,6 @@
 #include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
+#include <steem/plugins/witness/block_producer.hpp>
 #include <steem/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
@@ -217,6 +218,7 @@ void debug_node_plugin::debug_generate_blocks(
    }
 
    chain::database& db = database();
+   witness::block_producer bp( db );
    uint32_t slot = args.miss_blocks+1, produced = 0;
    while( produced < args.count )
    {
@@ -247,7 +249,7 @@ void debug_node_plugin::debug_generate_blocks(
             break;
       }
 
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
+      bp.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
       ++produced;
       slot = new_slot;
    }
