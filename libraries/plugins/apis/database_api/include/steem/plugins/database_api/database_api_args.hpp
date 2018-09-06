@@ -556,6 +556,23 @@ struct verify_signatures_return
    bool valid;
 };
 
+/*struct find_transaction_args
+{
+   transaction_id_type trx_id;
+   uint32_t      expiration;
+};*/
+struct find_transaction_args
+{
+    fc::variant  trx_id;
+    fc::variant  expiration;
+};
+    
+struct find_transaction_return
+{
+   uint32_t trx_status_code;
+};
+
+
 #ifdef STEEM_ENABLE_SMT
 typedef void_type get_smt_next_identifier_args;
 
@@ -784,6 +801,13 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_args,
 
 FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
+
+FC_REFLECT( steem::plugins::database_api::find_transaction_args,
+   (trx_id)
+   (expiration) )
+
+FC_REFLECT( steem::plugins::database_api::find_transaction_return,
+   (trx_status_code) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,

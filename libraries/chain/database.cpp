@@ -296,6 +296,36 @@ bool database::is_known_transaction( const transaction_id_type& id )const
    return trx_idx.find( id ) != trx_idx.end();
 } FC_CAPTURE_AND_RETHROW() }
 
+//uint32_t database::find_transaction( const transaction_id_type& id, const time_point_sec& expiration_time ) const
+uint32_t database::find_transaction( const transaction_id_type& id, const time_point_sec& expiration_time )const
+{
+    /*
+     * Return values
+     * 0 - Not aware of the transaction (if transaction not found)
+     * 1 - Aware of the transaction (if transaction is found)
+     * 2 - Expiration time in future, transaction not included in block or mempool
+     * 3 - Transaction in mempool
+     * 4 - Transaction has been included in block, block not irreversible
+     * 5 - Transaction has been included in block, block is irreversible
+     * 6 - Transaction has expired, transaction is not irreversible (transaction could be in a fork)
+     * 7 - Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
+     * 8 - Transaction is too old, I don't know about it
+     */
+
+    
+    uint32_t result = 0;
+
+    // Transaction in mempool
+    const auto& trx_idx = database::get_index<transaction_index>().indices().get<by_trx_id>();
+    if (trx_idx.find( id ) != trx_idx.end())
+    {
+        result = 3;
+        return result; // Transaction in mempool
+    }
+    
+    return result;
+}
+
 block_id_type database::find_block_id_for_num( uint32_t block_num )const
 {
    try

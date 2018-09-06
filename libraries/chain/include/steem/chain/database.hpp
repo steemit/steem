@@ -145,6 +145,31 @@ namespace steem { namespace chain {
 
          //////////////////// db_block.cpp ////////////////////
 
+        /**
+          * 0 - Not aware of the transaction (if transaction not found)
+          * 1 - Aware of the transaction (if transaction is found)
+          * 2 - Expiration time in future, transaction not included in block or mempool
+          * 3 - Transaction in mempool
+          * 4 - Transaction has been included in block, block not irreversible
+          * 5 - Transaction has been included in block, block is irreversible
+          * 6 - Transaction has expired, transaction is not irreversible (transaction could be in a fork)
+          * 7 - Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
+          * 8 - Transaction is too old, I don't know about it
+          */
+         enum transaction_status_codes
+         {
+             not_aware_of_trx = 0,
+             aware_of_trx,
+             exp_time_future_trx_not_in_block_or_mempool,
+             trx_in_mempool,
+             trx_inclided_in_block_and_block_not_irreversible,
+             trx_included_in_block_and_block_irreversible,
+             trx_expired_trx_is_not_irreversible,
+             trx_expired_trx_is_irreversible,
+             trx_is_too_old
+         };
+         uint32_t find_transaction( const transaction_id_type& id, const time_point_sec& expiration_time )const;
+       
          /**
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
