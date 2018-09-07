@@ -170,6 +170,36 @@ void block_producer::apply_pending_transactions(
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
    }
 
+   const auto& pending_action_idx = get_index< pending_action_index, by_required >();
+   auto pending_itr = pending_action_idx.begin();
+   automated_actions actions;
+
+   while( pending_itr != pending_action_idx.begin() )
+   {
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_itr->action );
+
+      if( new_total_size >= maximum_block_size )
+         break;
+
+      try
+      {
+         auto temp_session = start_undo_session();
+         apply_action( pending_itr->action );
+         temp_session.squash();
+         total_block_size = new_total_size;
+         actions.push_back( pending_itr->action );
+      }
+      catch( const fc::exception& e )
+      {
+         FC_ASSERT( !pending_itr->is_required(), "A required automatic action was rejected. ${a}", ("a", pending_itr->action) );
+      }
+   }
+
+   if( actions.size() )
+   {
+      pending_block.extensions.insert( actions );
+   }
+
    _db.pending_transaction_session().reset();
 
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
