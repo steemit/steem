@@ -2,7 +2,6 @@
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/statsd/utility.hpp>
-#include <steem/plugins/witness/witness_plugin.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
 
@@ -91,6 +90,7 @@ class chain_plugin_impl
       int16_t                          write_lock_hold_time = 500;
 
       database  db;
+      fc::optional< chain_plugin::block_generator_func > block_generator;
 };
 
 struct write_request_visitor
@@ -100,7 +100,7 @@ struct write_request_visitor
    database* db;
    uint32_t  skip = 0;
    fc::optional< fc::exception >* except;
-   steem::plugins::witness::witness_plugin* witness_plugin = nullptr;
+   fc::optional< chain_plugin::block_generator_func > block_generator;
 
    typedef bool result_type;
 
@@ -158,11 +158,11 @@ struct write_request_visitor
 
       try
       {
-         if( !witness_plugin || witness_plugin->get_state() != appbase::abstract_plugin::started )
-            FC_THROW_EXCEPTION( plugin_exception, "Received a generate block request, but the witness plugin has not started." );
+         if( !block_generator.valid() )
+            FC_THROW_EXCEPTION( plugin_exception, "Received a generate block request, but no block generator has been registered." );
 
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
-         req->block = witness_plugin->block_producer().generate_block(
+         req->block = block_generator.operator*()(
             req->when,
             req->witness_owner,
             req->block_signing_private_key,
@@ -208,7 +208,7 @@ void chain_plugin_impl::start_write_processing()
       fc::time_point_sec start = fc::time_point::now();
       write_request_visitor req_visitor;
       req_visitor.db = &db;
-      req_visitor.witness_plugin = appbase::app().find_plugin< plugins::witness::witness_plugin >();
+      req_visitor.block_generator = block_generator;
 
       request_promise_visitor prom_visitor;
 
@@ -634,6 +634,11 @@ void chain_plugin::check_time_in_block( const steem::chain::signed_block& block 
    uint64_t max_accept_time = now.sec_since_epoch();
    max_accept_time += my->allow_future_time;
    FC_ASSERT( block.timestamp.sec_since_epoch() <= max_accept_time );
+}
+
+void chain_plugin::register_block_generator( block_generator_func func )
+{
+   my->block_generator = func;
 }
 
 } } } // namespace steem::plugis::chain::chain_apis

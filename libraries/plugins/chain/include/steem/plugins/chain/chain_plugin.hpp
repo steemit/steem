@@ -3,7 +3,7 @@
 #include <steem/chain/database.hpp>
 
 #include <boost/signals2.hpp>
-
+#include <functional>
 #define STEEM_CHAIN_PLUGIN_NAME "chain"
 
 namespace steem { namespace plugins { namespace chain {
@@ -41,6 +41,16 @@ public:
       const fc::ecc::private_key& block_signing_private_key,
       uint32_t skip = database::skip_nothing
       );
+
+   typedef std::function
+      < signed_block (
+         fc::time_point_sec,
+         const account_name_type&,
+         const fc::ecc::private_key&,
+         uint32_t ) >
+            block_generator_func;
+
+   void register_block_generator( block_generator_func func );
 
    /**
     * Sets the time (in ms) that the write thread will hold the lock for.
