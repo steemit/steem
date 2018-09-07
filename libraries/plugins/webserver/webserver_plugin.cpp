@@ -254,6 +254,7 @@ void webserver_plugin_impl::handle_http_message( websocket_server_type* server, 
       try
       {
          con->set_body( api->call( body ) );
+         con->append_header( "Content-Type", "application/json" );
          con->set_status( websocketpp::http::status_code::ok );
       }
       catch( fc::exception& e )
