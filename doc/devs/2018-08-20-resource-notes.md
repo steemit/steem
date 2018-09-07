@@ -56,7 +56,7 @@ Every user has a "manabar" called *resource credits* (RC).
 
 - The maximum RC an account can have is equal to its Steem Power (technically, VESTS).
 - It takes 5 days for RC to regenerate from 0% to 100%.  (So more SP means more RC's per hour.)
-- Users automatically spend RC whenever they transact.
+- Users automatically spend RC whenever they transact. RCs are charged based on various resources a transaction can consume. Resources are things like execution time, state size, transaction size. The sum of costs of all resources are charges to the user's RCs. The one RC pool pays for _all_ resources.
 - A user who doesn't have enough RC is unable to transact.
 - The amount of RC required per byte [1] is a decreasing function of the number of bytes in the pool (so-called "price curve").
 
