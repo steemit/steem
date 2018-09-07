@@ -159,7 +159,7 @@ struct write_request_visitor
       try
       {
          if( !block_generator.valid() )
-            FC_THROW_EXCEPTION( plugin_exception, "Received a generate block request, but no block generator has been registered." );
+            FC_THROW_EXCEPTION( chain_exception, "Received a generate block request, but no block generator has been registered." );
 
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
          req->block = block_generator.operator*()(
