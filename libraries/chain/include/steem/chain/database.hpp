@@ -452,7 +452,6 @@ namespace steem { namespace chain {
          void check_free_memory( bool force_print, uint32_t current_block_num );
 
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
-         void _apply_transaction( const signed_transaction& trx );
 
          optional< chainbase::database::session >& pending_transaction_session();
 
@@ -485,6 +484,7 @@ namespace steem { namespace chain {
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
+         void _apply_transaction( const signed_transaction& trx );
          void apply_operation( const operation& op );
 
 
