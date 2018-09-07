@@ -1425,14 +1425,14 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
 
 DEFINE_API_IMPL( database_api_impl, find_transaction )
 {
-    
     // Yet to check the argument list
     // FC_ASSERT ( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
     // auto trx_id = { args[0].as< transaction_id_type >() };
     // auto expiration_time = { args[1].as< time_point_sec >() };
     
     find_transaction_return result;
-    result.trx_status_code = 0; // 0 - Not aware of the transaction
+    //transaction_status_codes result;
+    result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
     
     auto trx_id = args.trx_id.as<transaction_id_type>();
     
@@ -1442,24 +1442,23 @@ DEFINE_API_IMPL( database_api_impl, find_transaction )
         try {
             if (_db.is_known_transaction(trx_id))
             {
-                result.trx_status_code = 1; // 1 - Aware of the transaction
+                result.trx_status_code = transaction_status_codes::aware_of_trx; // 1 - Aware of the transaction
             }
             else
             {
-                result.trx_status_code = 0; // 0 - Not aware of the transaction
+                result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
             }
-        
         } catch ( const fc::exception&  ) {
-            result.trx_status_code = 0; // 0 - Not aware of the transaction
+            result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
         }
         return result;
     }
     //else
-    {
+    {/*
         auto expiration_time = args.expiration.as<time_point_sec>();
         
-        result.trx_status_code = _db.find_transaction(trx_id, expiration_time);
-    }
+        result = _db(trx_id, expiration_time);
+    */}
     
     return result;
 }

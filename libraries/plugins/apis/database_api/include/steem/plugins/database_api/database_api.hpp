@@ -133,7 +133,7 @@ class database_api
          (verify_signatures)
 
          /**
-         * This is a transaction ipolling api. This api takes transaction id and expiration (optional) as arguments
+         * This is a transaction polling api. This api takes transaction id and expiration (optional) as arguments
          * @return the state of the transaction (integer)
          *
          * Only transaction id is provided (no expiration time), then it returns 
