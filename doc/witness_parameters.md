@@ -41,6 +41,8 @@ Below are some example values:
 | 3 Weeks | 78757 |
 | 4 Weeks | 59068 |
 
+A more detailed explanation of resource dynamics can be found [here](./devs/2018-08-20-resource-notes.md).
+
 ### maximum_block_size
 
 The maximum size of a single block in bytes. The value must be not less than `65536`.
