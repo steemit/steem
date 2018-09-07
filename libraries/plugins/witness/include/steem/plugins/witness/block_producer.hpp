@@ -14,7 +14,7 @@ public:
       fc::time_point_sec when,
       const chain::account_name_type& witness_owner,
       const fc::ecc::private_key& block_signing_private_key,
-      uint32_t skip = 0);
+      uint32_t skip = chain::database::skip_nothing);
 
 private:
    chain::database& _db;
