@@ -550,6 +550,7 @@ public:
       signed_transaction tx,
       bool broadcast = false )
    {
+      static const authority null_auth( 0, public_key_type(), 0 );
       flat_set< account_name_type >   req_active_approvals;
       flat_set< account_name_type >   req_owner_approvals;
       flat_set< account_name_type >   req_posting_approvals;
@@ -594,11 +595,21 @@ public:
          approving_account_lut[ approving_acct->name ] =  *approving_acct;
          i++;
       }
-      auto get_account_from_lut = [&]( const std::string& name ) -> const condenser_api::api_account_object&
+      auto get_account_from_lut = [&]( const std::string& name ) -> fc::optional< const condenser_api::api_account_object* >
       {
+         fc::optional< const condenser_api::api_account_object* > result;
          auto it = approving_account_lut.find( name );
-         FC_ASSERT( it != approving_account_lut.end() );
-         return it->second;
+         if( it != approving_account_lut.end() )
+         {
+            result = &(it->second);
+         }
+         else
+         {
+            elog( "Tried to access authority for account ${a}.", ("a", name) );
+            elog( "Is it possible you are using an account authority? Signing with an account authority is currently not supported." );
+         }
+
+         return result;
       };
 
       flat_set<public_key_type> approving_key_set;
@@ -678,11 +689,29 @@ public:
          steem_chain_id,
          available_keys,
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).active); },
+         {
+            auto maybe_account = get_account_from_lut( account_name );
+            if( maybe_account.valid() )
+               return (*maybe_account)->active;
+
+            return null_auth;
+         },
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).owner); },
+         {
+            auto maybe_account = get_account_from_lut( account_name );
+            if( maybe_account.valid() )
+               return (*maybe_account)->active;
+
+            return null_auth;
+         },
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).posting); },
+         {
+            auto maybe_account = get_account_from_lut( account_name );
+            if( maybe_account.valid() )
+               return (*maybe_account)->active;
+
+            return null_auth;
+         },
          STEEM_MAX_SIG_CHECK_DEPTH,
          STEEM_MAX_AUTHORITY_MEMBERSHIP,
          STEEM_MAX_SIG_CHECK_ACCOUNTS,
