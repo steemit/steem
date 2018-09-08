@@ -162,7 +162,7 @@ struct write_request_visitor
             FC_THROW_EXCEPTION( chain_exception, "Received a generate block request, but no block generator has been registered." );
 
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
-         req->block = block_generator.operator*()(
+         req->block = (*block_generator)(
             req->when,
             req->witness_owner,
             req->block_signing_private_key,
