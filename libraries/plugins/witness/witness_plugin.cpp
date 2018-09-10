@@ -649,12 +649,13 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my = std::make_unique< detail::witness_plugin_impl >( appbase::app().get_io_service() );
 
    my->_chain_plugin.register_block_generator(
+      get_name(),
       [this] (fc::time_point_sec when,
               const chain::account_name_type& witness_owner,
               const fc::ecc::private_key& block_signing_private_key,
               uint32_t skip) -> chain::signed_block
       {
-        return block_producer().generate_block(when, witness_owner, block_signing_private_key, skip);
+        return my->_block_producer.generate_block(when, witness_owner, block_signing_private_key, skip);
       });
 
    block_data_export_plugin* export_plugin = appbase::app().find_plugin< block_data_export_plugin >();
@@ -748,11 +749,6 @@ void witness_plugin::plugin_shutdown()
    {
       edump( (e.to_detail_string()) );
    }
-}
-
-witness::block_producer& witness_plugin::block_producer()
-{
-   return my->_block_producer;
 }
 
 } } } // steem::plugins::witness

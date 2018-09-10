@@ -56,7 +56,6 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
-   witness::block_producer& block_producer();
 private:
    std::unique_ptr< detail::witness_plugin_impl > my;
 };

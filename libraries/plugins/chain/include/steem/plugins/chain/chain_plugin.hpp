@@ -50,7 +50,14 @@ public:
          uint32_t ) >
             block_generator_func;
 
-   void register_block_generator( block_generator_func func );
+   /**
+    * Set a function to be called for block generation.
+    *
+    * This function must be called during abtract_plugin::plugin_initialize().
+    * Calling this during abstract_plugin::plugin_startup() will be too late
+    * and will not take effect.
+    */
+   void register_block_generator( const std::string& plugin_name, block_generator_func func );
 
    /**
     * Sets the time (in ms) that the write thread will hold the lock for.

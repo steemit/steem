@@ -10,6 +10,12 @@ class block_producer {
 public:
    block_producer( chain::database& db ) : _db( db ) {}
 
+   /**
+    * This function contains block generation logic.
+    *
+    * Calling this function invokes a lockless write and therefore
+    * should be avoided. Instead, one should call chain_plugin::generate_block().
+    */
    chain::signed_block generate_block(
       fc::time_point_sec when,
       const chain::account_name_type& witness_owner,

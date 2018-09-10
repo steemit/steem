@@ -90,6 +90,7 @@ class chain_plugin_impl
       int16_t                          write_lock_hold_time = 500;
 
       database  db;
+      std::string block_generator_registrant;
       fc::optional< chain_plugin::block_generator_func > block_generator;
 };
 
@@ -636,8 +637,12 @@ void chain_plugin::check_time_in_block( const steem::chain::signed_block& block 
    FC_ASSERT( block.timestamp.sec_since_epoch() <= max_accept_time );
 }
 
-void chain_plugin::register_block_generator( block_generator_func func )
+void chain_plugin::register_block_generator( const std::string& plugin_name, block_generator_func func )
 {
+   if ( my->block_generator.valid() )
+      wlog( "Overriding a previously registered block generator by: ${registrant}", ("registrant", my->block_generator_registrant) );
+
+   my->block_generator_registrant = plugin_name;
    my->block_generator = func;
 }
 
