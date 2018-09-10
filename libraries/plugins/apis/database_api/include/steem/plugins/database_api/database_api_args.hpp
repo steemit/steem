@@ -557,6 +557,7 @@ struct verify_signatures_return
 };
 
 /**
+ * Transaction status description and return codes
  * 0 - Not aware of the transaction (if transaction not found)
  * 1 - Aware of the transaction (if transaction is found)
  * 2 - Expiration time in future, transaction not included in block or mempool
@@ -569,7 +570,7 @@ struct verify_signatures_return
 */
 enum transaction_status_codes
 {
-   not_aware_of_trx,
+   not_aware_of_trx = 0,
    aware_of_trx,
    exp_time_future_trx_not_in_block_or_mempool,
    trx_in_mempool,
@@ -580,13 +581,7 @@ enum transaction_status_codes
    trx_is_too_old
 };
 
-struct find_transaction_args
-{
-    fc::variant  trx_id;
-    fc::variant  expiration;
-};
-    
-struct find_transaction_return
+struct find_transaction
 {
    transaction_status_codes trx_status_code;
 };
@@ -599,6 +594,15 @@ struct get_smt_next_identifier_return
    vector< asset_symbol_type > nais;
 };
 #endif
+
+#define DEFINE_API_ARGS( api_name, arg_type, return_type )  \
+typedef arg_type api_name ## _args;                         \
+typedef return_type api_name ## _return;
+    
+/*               API,                                    args,                return */
+DEFINE_API_ARGS( find_transaction,                      vector< variant >,    find_transaction  )
+
+#undef DEFINE_API_ARGS
 
 } } } // steem::database_api
 
@@ -831,11 +835,12 @@ FC_REFLECT_ENUM( steem::plugins::database_api::transaction_status_codes,
 FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
 
-FC_REFLECT( steem::plugins::database_api::find_transaction_args,
+/*FC_REFLECT( steem::plugins::database_api::find_transaction_args,
    (trx_id)
    (expiration) )
+*/
 
-FC_REFLECT( steem::plugins::database_api::find_transaction_return,
+FC_REFLECT( steem::plugins::database_api::find_transaction,
    (trx_status_code) )
 
 #ifdef STEEM_ENABLE_SMT

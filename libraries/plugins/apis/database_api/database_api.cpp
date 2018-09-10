@@ -1425,40 +1425,94 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
 
 DEFINE_API_IMPL( database_api_impl, find_transaction )
 {
-    // Yet to check the argument list
-    // FC_ASSERT ( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
-    // auto trx_id = { args[0].as< transaction_id_type >() };
-    // auto expiration_time = { args[1].as< time_point_sec >() };
+    FC_ASSERT ( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
     
     find_transaction_return result;
-    //transaction_status_codes result;
-    result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
     
-    auto trx_id = args.trx_id.as<transaction_id_type>();
+    time_point_sec expiration;
+    transaction_id_type id = { args[0].as< transaction_id_type >() };
+    const auto& trx_idx = _db.get_index<transaction_index>().indices().get<by_trx_id>();
+    const auto itr_idx_tx = trx_idx.find(id);
     
-    // Only transaction id is provided
-    //if (args.size() == 1)
+    const auto itr_pending_tx = std::find_if(_db._pending_tx.begin(), _db._pending_tx.end(),
+                                    [&](const signed_transaction& t) {
+                                        return t.id() == id;
+                                    });
+    bool trx_in_mempool = itr_pending_tx != _db._pending_tx.end() ? true : false;
+    bool trx_in_index = itr_idx_tx != trx_idx.end() ? true : false;
+    
+    switch (args.size())
     {
-        try {
-            if (_db.is_known_transaction(trx_id))
+        case 1:
+            // 0 - Not aware of the transaction
+            if (!trx_in_mempool && !trx_in_index)
             {
-                result.trx_status_code = transaction_status_codes::aware_of_trx; // 1 - Aware of the transaction
+                result.trx_status_code = transaction_status_codes::not_aware_of_trx;
+                break;
             }
-            else
+            // 1 - Aware of the transaction
+            if (trx_in_mempool || trx_in_index)
             {
-                result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
+                result.trx_status_code = transaction_status_codes::aware_of_trx;
+                break;
             }
-        } catch ( const fc::exception&  ) {
-            result.trx_status_code = transaction_status_codes::not_aware_of_trx; // 0 - Not aware of the transaction
-        }
-        return result;
+            
+        case 2:
+            // 2 - Expiration time in future, transaction not included in block or mempool
+            if (!trx_in_mempool && !trx_in_index)
+            {
+                result.trx_status_code = transaction_status_codes::exp_time_future_trx_not_in_block_or_mempool;
+                break;
+            }
+            
+            // 3 - Transaction in mempool
+            if (trx_in_mempool)
+            {
+                result.trx_status_code = transaction_status_codes::trx_in_mempool;
+                break;
+            }
+            
+            expiration = { args[1].as< time_point_sec >() };
+            fc::time_point_sec now = _db.head_block_time();
+            
+            // 4 - Transaction has been included in block, block not irreversible
+            if (!trx_in_mempool && trx_in_index
+                && expiration > now - fc::seconds(STEEM_MAX_TIME_UNTIL_EXPIRATION))
+            {
+                result.trx_status_code = transaction_status_codes::trx_inclided_in_block_and_block_not_irreversible;
+                break;
+            }
+            
+            // 5 - Transaction has been included in block, block is irreversible
+            if (!trx_in_mempool && trx_in_index
+                && expiration <= now - fc::seconds(STEEM_MAX_TIME_UNTIL_EXPIRATION))
+            {
+                result.trx_status_code = transaction_status_codes::trx_included_in_block_and_block_irreversible;
+                break;
+            }
+            // 6 - Transaction has expired, transaction is not irreversible (transaction could be in a fork)
+            if (!trx_in_mempool && !trx_in_index
+                && expiration > now - fc::seconds(STEEM_MAX_TIME_UNTIL_EXPIRATION))
+            {
+                result.trx_status_code = transaction_status_codes::trx_expired_trx_is_not_irreversible;
+                break;
+            }
+            // 7 - Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
+            if (!trx_in_mempool && !trx_in_index
+                && expiration <= now - fc::seconds(STEEM_MAX_TIME_UNTIL_EXPIRATION))
+            {
+                result.trx_status_code = transaction_status_codes::trx_expired_trx_is_irreversible;
+                break;
+            }
+            
+            // 8 - Transaction is too old, I don't know about it
+            if (expiration <= now - fc::seconds(STEEM_MAX_TIME_UNTIL_EXPIRATION))
+            {
+                result.trx_status_code = transaction_status_codes::trx_is_too_old;
+                break;
+            }
+            break;
     }
-    //else
-    {/*
-        auto expiration_time = args.expiration.as<time_point_sec>();
-        
-        result = _db(trx_id, expiration_time);
-    */}
     
     return result;
 }
