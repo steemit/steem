@@ -3259,10 +3259,14 @@ struct process_header_visitor
          });
    }
 
-   template<typename T>
-   void operator()( const T& unknown_obj ) const
+   void operator()( const required_automated_actions& req_actions ) const
    {
-      FC_ASSERT( false, "Unknown extension in block header" );
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+   }
+
+   void operator()( const optional_automated_actions& opt_actions ) const
+   {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
    }
 };
 
