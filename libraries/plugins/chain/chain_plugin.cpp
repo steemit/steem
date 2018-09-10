@@ -639,6 +639,8 @@ void chain_plugin::check_time_in_block( const steem::chain::signed_block& block 
 
 void chain_plugin::register_block_generator( const std::string& plugin_name, block_generator_func func )
 {
+   FC_ASSERT( get_state() != appbase::abstract_plugin::state::started, "Can only register a block generator when the chain_plugin is not started." );
+
    if ( my->block_generator.valid() )
       wlog( "Overriding a previously registered block generator by: ${registrant}", ("registrant", my->block_generator_registrant) );
 
