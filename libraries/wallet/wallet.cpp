@@ -700,7 +700,7 @@ public:
          {
             auto maybe_account = get_account_from_lut( account_name );
             if( maybe_account.valid() )
-               return (*maybe_account)->active;
+               return (*maybe_account)->owner;
 
             return null_auth;
          },
@@ -708,7 +708,7 @@ public:
          {
             auto maybe_account = get_account_from_lut( account_name );
             if( maybe_account.valid() )
-               return (*maybe_account)->active;
+               return (*maybe_account)->posting;
 
             return null_auth;
          },
