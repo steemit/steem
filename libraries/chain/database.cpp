@@ -10,12 +10,13 @@
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/index.hpp>
+#include <steem/chain/pending_required_action_object.hpp>
+#include <steem/chain/pending_optional_action_object.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
 #include <steem/chain/util/asset.hpp>
@@ -1041,6 +1042,42 @@ void database::notify_pre_apply_operation( operation_notification& note )
    note.op_in_trx    = _current_op_in_trx;
 
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
+}
+
+void database::push_required_action( const required_automated_action& a )
+{
+   create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+   {
+      pending_action.action = a;
+   });
+}
+
+void database::push_optional_action( const optional_automated_action& a )
+{
+   create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+   {
+      pending_action.action = a;
+   });
+}
+
+void database::notify_pre_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_required_action_signal, note );
+}
+
+void database::notify_post_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_required_action_signal, note );
+}
+
+void database::notify_pre_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_optional_action_signal, note );
+}
+
+void database::notify_post_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_optional_action_signal, note );
 }
 
 void database::notify_post_apply_operation( const operation_notification& note )
@@ -2690,6 +2727,8 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+   add_core_index< pending_required_action_index           >(*this);
+   add_core_index< pending_optional_action_index           >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
    add_core_index< smt_event_token_index                   >(*this);
@@ -3534,6 +3573,30 @@ boost::signals2::connection database::any_apply_operation_handler_impl( const ap
       return _pre_apply_operation_signal.connect(group, complex_func);
    else
       return _post_apply_operation_signal.connect(group, complex_func);
+}
+
+boost::signals2::connection database::add_pre_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_required_action_signal, func, plugin, group, "->required_action");
+}
+
+boost::signals2::connection database::add_post_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_required_action_signal, func, plugin, group, "<-required_action");
+}
+
+boost::signals2::connection database::add_pre_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_optional_action_signal, func, plugin, group, "->optional_action");
+}
+
+boost::signals2::connection database::add_post_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_optional_action_signal, func, plugin, group, "<-optional_action");
 }
 
 boost::signals2::connection database::add_pre_apply_operation_handler( const apply_operation_handler_t& func,

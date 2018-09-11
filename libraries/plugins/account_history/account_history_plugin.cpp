@@ -4,7 +4,6 @@
 
 #include <steem/protocol/config.hpp>
 
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/history_object.hpp>
 
 #include <steem/utilities/plugin_utilities.hpp>

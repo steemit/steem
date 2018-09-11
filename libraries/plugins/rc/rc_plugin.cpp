@@ -10,7 +10,6 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 #include <steem/jsonball/jsonball.hpp>
 
