@@ -1,16 +1,19 @@
 #pragma once
 #include <steem/protocol/base.hpp>
-#include <steem/protocol/automated_actions.hpp>
+#include <steem/protocol/required_automated_actions.hpp>
+#include <steem/protocol/optional_automated_actions.hpp>
 
 namespace steem { namespace protocol {
 
-   typedef vector< automated_action > automated_actions;
+   typedef vector< required_automated_action > required_automated_actions;
+   typedef vector< optional_automated_action > optional_automated_actions;
 
    typedef static_variant<
       void_t,
       version,                // Normal witness version reporting, for diagnostics and voting
       hardfork_version_vote,  // Voting for the next hardfork to trigger
-      automated_actions
+      required_automated_actions,
+      optional_automated_actions
       >                                block_header_extensions;
 
    typedef flat_set<block_header_extensions > block_header_extensions_type;
