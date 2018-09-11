@@ -159,6 +159,9 @@ namespace steem { namespace chain {
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
          const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
+         const time_point_sec       get_hardfork_db_head_time() const;
+         bool                       is_known_block_in_hardfork_db(uint32_t block_num) const;
+
 
          chain_id_type steem_chain_id = STEEM_CHAIN_ID;
          chain_id_type get_chain_id() const;
@@ -205,7 +208,7 @@ namespace steem { namespace chain {
          const feed_history_object&             get_feed_history()const;
          const witness_schedule_object&         get_witness_schedule_object()const;
          const hardfork_property_object&        get_hardfork_property_object()const;
-
+       
          const time_point_sec                   calculate_discussion_payout_time( const comment_object& comment )const;
          const reward_fund_object&              get_reward_fund( const comment_object& c )const;
 

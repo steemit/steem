@@ -394,6 +394,20 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
    return result;
 } FC_CAPTURE_AND_RETHROW() }
 
+const time_point_sec database::get_hardfork_db_head_time() const
+{
+    return _fork_db.head()->data.timestamp;;
+}
+
+bool database::is_known_block_in_hardfork_db(uint32_t block_num) const
+{
+    auto blocks = _fork_db.fetch_block_by_number(block_num);
+    if (blocks.size() == 0)
+        return false;
+    
+    return true;
+}
+
 chain_id_type database::get_chain_id() const
 {
    return steem_chain_id;
