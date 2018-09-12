@@ -84,12 +84,14 @@ class database_impl
    public:
       database_impl( database& self );
 
-      database&                              _self;
-      evaluator_registry< operation >        _evaluator_registry;
+      database&                                       _self;
+      evaluator_registry< operation >                 _evaluator_registry;
+      evaluator_registry< required_automated_action > _req_action_evaluator_registry;
+      evaluator_registry< optional_automated_action > _opt_action_evaluator_registry;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _req_action_evaluator_registry(self), _opt_action_evaluator_registry(self) {}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -3204,9 +3206,10 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
-   automated_actions actions;
+   required_automated_actions req_actions;
+   optional_automated_actions opt_actions;
    /// parse witness version reporting
-   process_header_extensions( next_block, actions );
+   process_header_extensions( next_block, req_actions, opt_actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3262,7 +3265,8 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
-   process_actions( actions );
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
 
    process_hardforks();
 
@@ -3276,15 +3280,17 @@ FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, automated_actions& actions, database& db ) :
+   process_header_visitor( const std::string& witness, required_automated_actions& req_actions, optional_automated_actions& opt_actions, database& db ) :
       _witness( witness ),
-      _actions( actions ),
+      _req_actions( req_actions ),
+      _opt_actions( opt_actions ),
       _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
-   automated_actions& _actions;
+   required_automated_actions& _req_actions;
+   optional_automated_actions& _opt_actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3322,18 +3328,19 @@ struct process_header_visitor
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
-      std::copy( actions.begin(), actions.end(), _actions.end() );
+      std::copy( req_actions.begin(), req_actions.end(), _req_actions.end() );
    }
 
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( opt_actions.begin(), opt_actions.end(), _opt_actions.end() );
    }
 };
 
-void database::process_header_extensions( const signed_block& next_block, automated_actions& actions )
+void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
 {
-   process_header_visitor _v( next_block.witness, actions, *this );
+   process_header_visitor _v( next_block.witness, req_actions, opt_actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3521,21 +3528,22 @@ struct action_equal_visitor
 {
    typedef bool result_type;
 
-   const automated_action& action_a;
+   const required_automated_action& action_a;
 
-   action_equal_visitor( const automated_action& a ) : action_a( a ) {}
+   action_equal_visitor( const required_automated_action& a ) : action_a( a ) {}
 
    template< typename Action >
    bool operator()( const Action& action_b )const
    {
-      if( action_a.which() != automated_action::tag< Action >::value ) return false;
+      if( action_a.which() != required_automated_action::tag< Action >::value ) return false;
 
       return action_a.get< Action >() == action_b;
    }
 };
 
-void database::process_actions( const automated_actions& actions )
+void database::process_required_actions( const required_automated_actions& actions )
 {
+   /*
    static const required_action_visitor required_visitor;
    const auto& pending_action_idx = get_index< pending_action_index, by_required >();
    auto pending_itr = pending_action_idx.begin();
@@ -3560,17 +3568,32 @@ void database::process_actions( const automated_actions& actions )
       remove( *pending_itr );
       pending_itr = pending_action_idx.begin();
       ++actions_itr;
-   }
+   }*/
 }
 
-void database::apply_action( const automated_action& a )
+void database::process_optional_actions( const optional_automated_actions& actions )
 {
-   action_notification note( a );
-   notify_pre_apply_action( note );
 
-   _my->_evaluator_registry.get_evaluator( a ).apply( a );
+}
 
-   notify_post_apply_action( note );
+void database::apply_required_action( const required_automated_action& a )
+{
+   required_action_notification note( a );
+   notify_pre_apply_required_action( note );
+
+   _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_required_action( note );
+}
+
+void database::apply_optional_action( const optional_automated_action& a )
+{
+   optional_action_notification note( a );
+   notify_pre_apply_optional_action( note );
+
+   _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_optional_action( note );
 }
 
 template <typename TFunction> struct fcall {};
