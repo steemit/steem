@@ -472,7 +472,7 @@ namespace detail {
       int64_t time_to_sleep = BLOCK_PRODUCTION_LOOP_SLEEP_TIME - (now.time_since_epoch().count() % BLOCK_PRODUCTION_LOOP_SLEEP_TIME);
       if (time_to_sleep < 50000) // we must sleep for at least 50ms
           time_to_sleep += BLOCK_PRODUCTION_LOOP_SLEEP_TIME;
-      
+
       _timer.expires_from_now( boost::posix_time::microseconds( time_to_sleep ) );
       _timer.async_wait( boost::bind( &witness_plugin_impl::block_production_loop, this ) );
    }
@@ -549,7 +549,7 @@ namespace detail {
    block_production_condition::block_production_condition_enum witness_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture)
    {
       fc::time_point now_fine = fc::time_point::now();
-      fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
+      fc::time_point_sec now = now_fine + fc::microseconds( BLOCK_PRODUCTION_LOOP_SLEEP_TIME );
 
       // If the next block production opportunity is in the present or future, we're synced.
       if( !_production_enabled )
