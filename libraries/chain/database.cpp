@@ -1070,9 +1070,13 @@ void database::push_required_action( const required_automated_action& a )
 
 void database::push_optional_action( const optional_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
    {
       pending_action.action = a;
+      pending_action.pushed_block_num = head_block_num();
    });
 }
 
@@ -3543,37 +3547,23 @@ struct action_equal_visitor
 
 void database::process_required_actions( const required_automated_actions& actions )
 {
-   /*
-   static const required_action_visitor required_visitor;
-   const auto& pending_action_idx = get_index< pending_action_index, by_required >();
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
    auto pending_itr = pending_action_idx.begin();
    auto actions_itr = actions.begin();
 
    while( pending_itr != pending_action_idx.end() && actions_itr != actions.end() )
    {
-      // Optional actions may be out of order. So long as we are expecting a required action,
-      // check equality. This will also detect if an optional action is included prior
-      // to a required action. All pending actions have already been statelessly validated
-      // so checking equality of incoming actions implicitly validates them.
-      if( pending_itr->action.visit( required_visitor ) )
-      {
-         action_equal_visitor equal_visitor( pending_itr->action );
-         FC_ASSERT( actions_itr->visit( equal_visitor ),
-            "Unexpected action included. Expected: ${e} Observed: #{o}",
-            ("e", pending_itr->action)("o", *actions_itr) );
-      }
+      action_equal_visitor equal_visitor( pending_itr->action );
+      FC_ASSERT( actions_itr->visit( equal_visitor ),
+         "Unexpected action included. Expected: ${e} Observed: #{o}",
+         ("e", pending_itr->action)("o", *actions_itr) );
 
-      apply_action( *actions_itr );
+      apply_required_action( *actions_itr );
 
       remove( *pending_itr );
       pending_itr = pending_action_idx.begin();
       ++actions_itr;
-   }*/
-}
-
-void database::process_optional_actions( const optional_automated_actions& actions )
-{
-
+   }
 }
 
 void database::apply_required_action( const required_automated_action& a )
@@ -3584,6 +3574,31 @@ void database::apply_required_action( const required_automated_action& a )
    _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
 
    notify_post_apply_required_action( note );
+}
+
+void database::process_optional_actions( const optional_automated_actions& actions )
+{
+   static const action_validate_visitor validate_visitor;
+
+   for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
+   {
+      actions_itr->visit( validate_visitor );
+
+      apply_optional_action( *actions_itr );
+   }
+
+   // Clear out "expired" optional_actions. If the block when an optional action was generated
+   // has become irreversible then a super majority of witnesses have chosen to not include it
+   // and it is safe to delete.
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_id >();
+   auto pending_itr = pending_action_idx.begin();
+   auto lib = get_dynamic_global_properties().last_irreversible_block_num;
+
+   while( pending_itr != pending_action_idx.end() && pending_itr->pushed_block_num <= lib )
+   {
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+   }
 }
 
 void database::apply_optional_action( const optional_automated_action& a )
