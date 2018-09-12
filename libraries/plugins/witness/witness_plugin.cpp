@@ -79,7 +79,7 @@ namespace detail {
          _timer(io),
          _chain_plugin( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
          _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
-         _block_producer( _db )
+         _block_producer( std::make_shared< witness::block_producer >( _db ) )
          {}
 
       void on_pre_apply_block( const chain::block_notification& note );
@@ -107,12 +107,13 @@ namespace detail {
 
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
-      witness::block_producer       _block_producer;
       boost::signals2::connection   _pre_apply_block_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
+
+      std::shared_ptr< witness::block_producer >                         _block_producer;
    };
 
    struct comment_options_extension_visitor
@@ -648,15 +649,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    ilog( "Initializing witness plugin" );
    my = std::make_unique< detail::witness_plugin_impl >( appbase::app().get_io_service() );
 
-   my->_chain_plugin.register_block_generator(
-      get_name(),
-      [this] (fc::time_point_sec when,
-              const chain::account_name_type& witness_owner,
-              const fc::ecc::private_key& block_signing_private_key,
-              uint32_t skip) -> chain::signed_block
-      {
-        return my->_block_producer.generate_block(when, witness_owner, block_signing_private_key, skip);
-      });
+   my->_chain_plugin.register_block_generator( get_name(), my->_block_producer );
 
    block_data_export_plugin* export_plugin = appbase::app().find_plugin< block_data_export_plugin >();
    if( export_plugin != nullptr )

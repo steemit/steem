@@ -1,9 +1,10 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <steem/chain/database.hpp>
+#include <steem/plugins/chain/abstract_block_producer.hpp>
 
 #include <boost/signals2.hpp>
-#include <functional>
+
 #define STEEM_CHAIN_PLUGIN_NAME "chain"
 
 namespace steem { namespace plugins { namespace chain {
@@ -42,22 +43,14 @@ public:
       uint32_t skip = database::skip_nothing
       );
 
-   typedef std::function
-      < signed_block (
-         fc::time_point_sec,
-         const account_name_type&,
-         const fc::ecc::private_key&,
-         uint32_t ) >
-            block_generator_func;
-
    /**
-    * Set a function to be called for block generation.
+    * Set a class to be called for block generation.
     *
     * This function must be called during abtract_plugin::plugin_initialize().
     * Calling this during abstract_plugin::plugin_startup() will be too late
     * and will not take effect.
     */
-   void register_block_generator( const std::string& plugin_name, block_generator_func func );
+   void register_block_generator( const std::string& plugin_name, std::shared_ptr< abstract_block_producer > block_producer );
 
    /**
     * Sets the time (in ms) that the write thread will hold the lock for.

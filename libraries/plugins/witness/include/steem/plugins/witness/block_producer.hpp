@@ -2,11 +2,12 @@
 
 #include <fc/time.hpp>
 
+#include <steem/plugins/chain/abstract_block_producer.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 namespace steem { namespace plugins { namespace witness {
 
-class block_producer {
+class block_producer : public chain::abstract_block_producer {
 public:
    block_producer( chain::database& db ) : _db( db ) {}
 
