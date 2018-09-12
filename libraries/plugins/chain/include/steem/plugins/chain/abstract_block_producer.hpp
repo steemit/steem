@@ -8,6 +8,8 @@ namespace steem { namespace plugins { namespace chain {
    
 class abstract_block_producer {
 public:
+   virtual ~abstract_block_producer() = default;
+
    virtual steem::chain::signed_block generate_block(
       fc::time_point_sec when,
       const steem::chain::account_name_type& witness_owner,
