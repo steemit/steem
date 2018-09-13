@@ -132,7 +132,7 @@ void webserver_plugin_impl::start_webserver()
             if( http_endpoint && http_endpoint == ws_endpoint )
             {
                ws_server.set_http_handler( boost::bind( &webserver_plugin_impl::handle_http_message, this, &ws_server, _1 ) );
-               ilog( "start listending for http requests" );
+               ilog( "start listening for http requests" );
             }
 
             ilog( "start listening for ws requests" );
