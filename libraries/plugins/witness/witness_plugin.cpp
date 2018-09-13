@@ -472,7 +472,7 @@ namespace detail {
       int64_t time_to_sleep = BLOCK_PRODUCTION_LOOP_SLEEP_TIME - (now.time_since_epoch().count() % BLOCK_PRODUCTION_LOOP_SLEEP_TIME);
       if (time_to_sleep < 50000) // we must sleep for at least 50ms
           time_to_sleep += BLOCK_PRODUCTION_LOOP_SLEEP_TIME;
-      
+
       _timer.expires_from_now( boost::posix_time::microseconds( time_to_sleep ) );
       _timer.async_wait( boost::bind( &witness_plugin_impl::block_production_loop, this ) );
    }
