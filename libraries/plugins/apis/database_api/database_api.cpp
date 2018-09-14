@@ -63,7 +63,6 @@ class database_api_impl
          (verify_authority)
          (verify_account_authority)
          (verify_signatures)
-         (find_transaction)
 #ifdef STEEM_ENABLE_SMT
          (get_smt_next_identifier)
 #endif
@@ -1423,101 +1422,6 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
    return result;
 }
 
-
-DEFINE_API_IMPL( database_api_impl, find_transaction )
-{
-    FC_ASSERT ( !args.trx_id.is_null() || !args.trx_id.get_string().empty(), "Expect transaction id, experation time is optional" );
-    
-    transaction_id_type id = args.trx_id.as<transaction_id_type>();
-    auto& index = _db.get_index<transaction_index>().indices().get<by_trx_id>();
-    const auto itr = index.find(id);
-    bool trx_in_index = itr != index.end() ? true : false;
-    
-    find_transaction_return result;
-    fc::variant expiration = args.expiration;
-    if (expiration.is_null() || expiration.get_string().empty())
-    {
-        // Expiration time is not provided, according to specs, return whether transaction exist or not
-        // If the transaction is not in the index, then, transaction might have invalid or did't make it
-        if (trx_in_index)
-        {
-            result.trx_status_code = transaction_status_codes::not_aware_of_trx;
-        }
-        else
-        {
-            // According to specs just return aware of transaction
-            result.trx_status_code = transaction_status_codes::aware_of_trx;
-            
-            // Since we know the transaction, we could return more appropriate code, if that is the intent
-            /* fc::time_point_sec trx_exp = trx_object.expiration;
-            
-            signed_transaction trx_object;
-            if (trx_in_index)
-            {
-                fc::raw::unpack_from_buffer(itr->packed_trx, trx_object);
-            }
-            */
-        }
-    }
-    else
-    {
-        // Get Last irreversible block and head block time
-        const auto libb = _db.fetch_block_by_number(_db.get_dynamic_global_properties().last_irreversible_block_num);
-        fc::time_point_sec lib_time = libb->timestamp;
-        fc::time_point_sec hb_time = _db.head_block_time();
-        fc::time_point_sec hfdb_hb_time = _db.get_hardfork_db_head_time();
-        
-        fc::time_point_sec exp_time = args.expiration.as< fc::time_point_sec >();
-        
-        // Transaction is too old, don't know about it
-        if ((!trx_in_index && exp_time < hb_time && exp_time < hfdb_hb_time && exp_time < lib_time))
-            result.trx_status_code = transaction_status_codes::trx_is_too_old;
-            
-        //if (hfdb_hb_time < lib_time)
-        //{
-            // The transactions are not in hardfork_db
-            if (!trx_in_index && exp_time > hb_time)
-                result.trx_status_code = transaction_status_codes::exp_time_future_trx_not_in_block_or_mempool;
-            else if (!trx_in_index && exp_time < lib_time)
-                result.trx_status_code = transaction_status_codes::not_aware_of_trx;
-            else if (trx_in_index && exp_time > lib_time && exp_time < hb_time)
-                result.trx_status_code = transaction_status_codes::trx_inclided_in_block_and_block_not_irreversible;
-            else if (trx_in_index && exp_time < lib_time)
-                result.trx_status_code = transaction_status_codes::trx_included_in_block_and_block_irreversible;
-            else if (!trx_in_index && exp_time < lib_time)
-                result.trx_status_code = transaction_status_codes::trx_expired_trx_is_not_irreversible;
-        //}
-        /*
-        else
-        {
-            if (!trx_in_index && exp_time > lib_time)
-            {
-                
-            }
-                result.trx_status_code = transaction_status_codes::trx_inclided_in_block_and_block_not_irreversible;
-            else if (trx_in_index && exp_time < lib_time)
-                result.trx_status_code = transaction_status_codes::trx_included_in_block_and_block_irreversible;
-            
-         
-            signed_transaction trx_object;
-            if (trx_in_index)
-            {
-                fc::raw::unpack_from_buffer(itr->packed_trx, trx_object);
-                uint16_t bnum = trx_object.ref_block_num;
-                
-                if (_db.is_known_block_in_hardfork_db(bnum))
-                {
-                    if (exp_time > lib_time && exp_time < hfdb_hb_time)
-                        result.trx_status_code = transaction_status_codes::trx_inclided_in_block_and_block_not_irreversible;
-                }
-            }
-         
-        }*/
-    }
-    
-    return result;
-}
-
 #ifdef STEEM_ENABLE_SMT
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
@@ -1581,7 +1485,6 @@ DEFINE_READ_APIS( database_api,
    (verify_authority)
    (verify_account_authority)
    (verify_signatures)
-   (find_transaction)
 #ifdef STEEM_ENABLE_SMT
    (get_smt_next_identifier)
 #endif

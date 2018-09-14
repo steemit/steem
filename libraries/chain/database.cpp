@@ -17,6 +17,7 @@
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/operation_notification.hpp>
 #include <steem/chain/witness_schedule.hpp>
+#include <steem/chain/transaction_status_object.hpp>
 
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
@@ -2703,6 +2704,7 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+   add_core_index< transaction_status_index                >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
    add_core_index< smt_event_token_index                   >(*this);
@@ -3179,6 +3181,7 @@ void database::_apply_block( const signed_block& next_block )
 
    create_block_summary(next_block);
    clear_expired_transactions();
+   clear_expired_transaction_status_index();
    clear_expired_orders();
    clear_expired_delegations();
    update_witness_schedule(*this);
@@ -3410,6 +3413,12 @@ void database::_apply_transaction(const signed_transaction& trx)
       });
    }
 
+   // Add new tansaction to track transaction status
+   create<transaction_status_object>([&](transaction_status_object& transaction) {
+        transaction.trx_id_in_block = trx_id;
+        transaction.block_num = _current_block_num;
+   });
+    
    notify_pre_apply_transaction( note );
 
    //Finally process the operations
@@ -4009,7 +4018,20 @@ void database::clear_expired_transactions()
    auto& transaction_idx = get_index< transaction_index >();
    const auto& dedupe_index = transaction_idx.indices().get< by_expiration >();
    while( ( !dedupe_index.empty() ) && ( head_block_time() > dedupe_index.begin()->expiration ) )
-      remove( *dedupe_index.begin() );
+      remove( *dedupe_index.begin());
+}
+
+void database::clear_expired_transaction_status_index()
+{
+    // Yet to add logic to remove.
+    
+    // Remove all transactions of the first block in the TaPoS window
+    //auto& transaction_idx = get_index< transaction_status_index >();
+    //const auto& dedupe_index = transaction_idx.indices().get< by_block_num >();
+    //while( ( !dedupe_index.empty() ) && ( _current_block_num == dedupe_index.begin()->block_num ) )
+    //    remove( *dedupe_index.begin());
+
+    return;
 }
 
 void database::clear_expired_orders()

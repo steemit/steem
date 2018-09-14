@@ -556,42 +556,6 @@ struct verify_signatures_return
    bool valid;
 };
 
-/**
- * Transaction status description and return codes
- * 0 - Not aware of the transaction (if transaction not found)
- * 1 - Aware of the transaction (if transaction is found)
- * 2 - Expiration time in future, transaction not included in block or mempool
- * 3 - Transaction in mempool
- * 4 - Transaction has been included in block, block not irreversible
- * 5 - Transaction has been included in block, block is irreversible
- * 6 - Transaction has expired, transaction is not irreversible (transaction could be in a fork)
- * 7 - Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
- * 8 - Transaction is too old, I don't know about it
-*/
-enum transaction_status_codes
-{
-   not_aware_of_trx = 0,
-   aware_of_trx,
-   exp_time_future_trx_not_in_block_or_mempool,
-   trx_in_mempool,
-   trx_inclided_in_block_and_block_not_irreversible,
-   trx_included_in_block_and_block_irreversible,
-   trx_expired_trx_is_not_irreversible,
-   trx_expired_trx_is_irreversible,
-   trx_is_too_old
-};
-
-struct find_transaction_args
-{
-    fc::variant trx_id;
-    fc::variant expiration;
-};
-
-struct find_transaction_return
-{
-   transaction_status_codes trx_status_code;
-};
-
 #ifdef STEEM_ENABLE_SMT
 typedef void_type get_smt_next_identifier_args;
 
@@ -820,24 +784,6 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_args,
 
 FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
-
-FC_REFLECT_ENUM( steem::plugins::database_api::transaction_status_codes,
-                (not_aware_of_trx)
-                (aware_of_trx)
-                (exp_time_future_trx_not_in_block_or_mempool)
-                (trx_in_mempool)
-                (trx_inclided_in_block_and_block_not_irreversible)
-                (trx_included_in_block_and_block_irreversible)
-                (trx_expired_trx_is_not_irreversible)
-                (trx_expired_trx_is_irreversible)
-                (trx_is_too_old) )
-
-FC_REFLECT( steem::plugins::database_api::find_transaction_args,
-   (trx_id)
-   (expiration) )
-
-FC_REFLECT( steem::plugins::database_api::find_transaction_return,
-   (trx_status_code) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,

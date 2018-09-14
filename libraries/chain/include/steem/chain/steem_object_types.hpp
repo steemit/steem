@@ -66,6 +66,7 @@ enum object_type
    reward_fund_object_type,
    vesting_delegation_object_type,
    vesting_delegation_expiration_object_type,
+   transaction_status_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
@@ -104,6 +105,7 @@ class block_stats_object;
 class reward_fund_object;
 class vesting_delegation_object;
 class vesting_delegation_expiration_object;
+class transaction_status_object;
 
 #ifdef STEEM_ENABLE_SMT
 class smt_token_object;
@@ -141,6 +143,7 @@ typedef oid< block_stats_object                     > block_stats_id_type;
 typedef oid< reward_fund_object                     > reward_fund_id_type;
 typedef oid< vesting_delegation_object              > vesting_delegation_id_type;
 typedef oid< vesting_delegation_expiration_object   > vesting_delegation_expiration_id_type;
+typedef oid< transaction_status_object              > transaction_status_object_id_type;
 
 #ifdef STEEM_ENABLE_SMT
 typedef oid< smt_token_object                       > smt_token_id_type;
@@ -239,6 +242,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (reward_fund_object_type)
                  (vesting_delegation_object_type)
                  (vesting_delegation_expiration_object_type)
+                 (transaction_status_object_type)
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)

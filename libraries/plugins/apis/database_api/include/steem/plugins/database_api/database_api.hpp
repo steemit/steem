@@ -132,25 +132,6 @@ class database_api
           */
          (verify_signatures)
 
-         /**
-         * This is a transaction polling api. This api takes transaction id and expiration (optional) as arguments
-         * @return the state of the transaction (integer)
-         *
-         * Only transaction id is provided (no expiration time), then it returns 
-         * 0 - Not aware of the transaction (if transaction not found)
-         * 1 - It is aware of the transaction (if transaction is found)
-         *
-         * Both transaction id and expiration time are provided, then it returns 
-         * 2 - Expiration time in future, transaction not included in block or mempool
-         * 3 - Transaction in mempool
-         * 4 - Transaction has been included in block, block not irreversible
-         * 5 - Transaction has been included in block, block is irreversible
-         * 6 - Transaction has expired, transaction is not irreversible (transaction could be in a fork)
-         * 7 - Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
-         * 8 - Transaction is too old, I don't know about it
-         */
-         (find_transaction)
-
 #ifdef STEEM_ENABLE_SMT
          /**
          * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
