@@ -102,6 +102,8 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset   account_creation_fee;
       uint32_t       maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t       sbd_interest_rate = STEEM_DEFAULT_SBD_INTEREST_RATE;
+      int32_t        account_subsidy_budget = STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET;
+      uint32_t       account_subsidy_decay = STEEM_DEFAULT_ACCOUNT_SUBSIDY_DECAY;
    };
 
    struct legacy_account_create_operation
@@ -1501,7 +1503,7 @@ void old_sv_from_variant( const fc::variant& v, T& sv )
 }
 
 FC_REFLECT( steem::plugins::condenser_api::api_chain_properties,
-            (account_creation_fee)(maximum_block_size)(sbd_interest_rate)
+            (account_creation_fee)(maximum_block_size)(sbd_interest_rate)(account_subsidy_budget)(account_subsidy_decay)
           )
 
 FC_REFLECT( steem::plugins::condenser_api::legacy_price, (base)(quote) )
