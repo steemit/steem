@@ -23,7 +23,7 @@ class pending_optional_action_object : public object< pending_optional_action_ob
       id_type           id;
 
       optional_automated_action  action;
-      uint32_t                   pushed_block_num;
+      uint32_t                   pushed_block_num = 0;
 };
 
 typedef multi_index_container<

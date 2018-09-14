@@ -3,7 +3,7 @@
 
 namespace steem { namespace protocol {
 
-void optional_action::validate()const
+void example_optional_action::validate()const
 {
    validate_account_name( account );
 }

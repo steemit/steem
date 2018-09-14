@@ -3335,13 +3335,13 @@ struct process_header_visitor
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
-      std::copy( req_actions.begin(), req_actions.end(), _req_actions.end() );
+      std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
-      std::copy( opt_actions.begin(), opt_actions.end(), _opt_actions.end() );
+      std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
 };
 
@@ -3558,7 +3558,7 @@ void database::process_required_actions( const required_automated_actions& actio
    {
       action_equal_visitor equal_visitor( pending_itr->action );
       FC_ASSERT( actions_itr->visit( equal_visitor ),
-         "Unexpected action included. Expected: ${e} Observed: #{o}",
+         "Unexpected action included. Expected: ${e} Observed: ${o}",
          ("e", pending_itr->action)("o", *actions_itr) );
 
       apply_required_action( *actions_itr );

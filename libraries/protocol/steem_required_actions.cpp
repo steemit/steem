@@ -3,12 +3,12 @@
 
 namespace steem { namespace protocol {
 
-void required_action::validate()const
+void example_required_action::validate()const
 {
    validate_account_name( account );
 }
 
-bool operator==( const required_action& lhs, const required_action& rhs )
+bool operator==( const example_required_action& lhs, const example_required_action& rhs )
 {
    return lhs.account == rhs.account;
 }
