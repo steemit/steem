@@ -3225,6 +3225,9 @@ void database::_apply_block( const signed_block& next_block )
       );
    }
 
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
+
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -3269,8 +3272,8 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
-   process_required_actions( req_actions );
-   process_optional_actions( opt_actions );
+   generate_required_actions();
+   generate_optional_actions();
 
    process_hardforks();
 
@@ -3766,6 +3769,12 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
+}
+
+boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -4673,6 +4682,17 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
       default: // Note no savings balance for SMT per comments in issue 1682.
          FC_ASSERT( !"invalid symbol" );
    }
+}
+
+void database::generate_required_actions()
+{
+
+}
+
+void database::generate_optional_actions()
+{
+   static const generate_optional_actions_notification note;
+   STEEM_TRY_NOTIFY( _generate_optional_actions_signal, note );
 }
 
 void database::init_hardforks()

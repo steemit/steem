@@ -50,6 +50,8 @@ namespace steem { namespace chain {
       uint32_t last_block_number = 0;
    };
 
+   struct generate_optional_actions_notification {};
+
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -275,6 +277,7 @@ namespace steem { namespace chain {
          using apply_block_handler_t = std::function< void(const block_notification&) >;
          using irreversible_block_handler_t = std::function< void(uint32_t) >;
          using reindex_handler_t = std::function< void(const reindex_notification&) >;
+         using generate_optional_actions_handler_t = std::function< void(const generate_optional_actions_notification&) >;
 
 
       private:
@@ -289,19 +292,20 @@ namespace steem { namespace chain {
 
       public:
 
-         boost::signals2::connection add_pre_apply_required_action_handler ( const apply_required_action_handler_t&  func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_required_action_handler( const apply_required_action_handler_t&  func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_optional_action_handler ( const apply_optional_action_handler_t&  func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_optional_action_handler( const apply_optional_action_handler_t&  func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_operation_handler       ( const apply_operation_handler_t&        func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_operation_handler      ( const apply_operation_handler_t&        func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_transaction_handler     ( const apply_transaction_handler_t&      func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_transaction_handler    ( const apply_transaction_handler_t&      func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_apply_block_handler           ( const apply_block_handler_t&            func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_apply_block_handler          ( const apply_block_handler_t&            func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_irreversible_block_handler        ( const irreversible_block_handler_t&     func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_pre_reindex_handler               ( const reindex_handler_t&                func, const abstract_plugin& plugin, int32_t group = -1 );
-         boost::signals2::connection add_post_reindex_handler              ( const reindex_handler_t&                func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_required_action_handler ( const apply_required_action_handler_t&     func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_required_action_handler( const apply_required_action_handler_t&     func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_optional_action_handler ( const apply_optional_action_handler_t&     func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_optional_action_handler( const apply_optional_action_handler_t&     func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_operation_handler       ( const apply_operation_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_operation_handler      ( const apply_operation_handler_t&           func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_transaction_handler     ( const apply_transaction_handler_t&         func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_transaction_handler    ( const apply_transaction_handler_t&         func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_apply_block_handler           ( const apply_block_handler_t&               func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_apply_block_handler          ( const apply_block_handler_t&               func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_irreversible_block_handler        ( const irreversible_block_handler_t&        func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_pre_reindex_handler               ( const reindex_handler_t&                   func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_post_reindex_handler              ( const reindex_handler_t&                   func, const abstract_plugin& plugin, int32_t group = -1 );
+         boost::signals2::connection add_generate_optional_actions_handler ( const generate_optional_actions_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -530,6 +534,9 @@ namespace steem { namespace chain {
          void clear_expired_delegations();
          void process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions );
 
+         void generate_required_actions();
+         void generate_optional_actions();
+
          void init_hardforks();
          void process_hardforks();
          void apply_hardfork( uint32_t hardfork );
@@ -636,6 +643,8 @@ namespace steem { namespace chain {
           * Emitted when reindexing finishes
           */
          fc::signal<void(const reindex_notification&)>         _post_reindex_signal;
+
+         fc::signal<void(const generate_optional_actions_notification& )> _generate_optional_actions_signal;
 
          /**
           *  Emitted After a block has been applied and committed.  The callback
