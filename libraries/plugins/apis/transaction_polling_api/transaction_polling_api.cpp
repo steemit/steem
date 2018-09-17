@@ -78,6 +78,13 @@ DEFINE_API_IMPL( transaction_polling_api_impl, find_transaction )
             auto trx_in_status_idx_time = _db.fetch_block_by_number(sitr->block_num);
             tx_block_time = trx_in_status_idx_time->timestamp;
         }
+        
+        //
+        // {b[n]...[n+10].....b[n+lib]b[n+lib+1].........b[n+lib+21]..........................}
+        // {<------------------------ TaPoS ----------------------->}
+        // {<----------------- trx_in_status_index ---------------->}{<--- trx_in_mempool --->}
+        // {.....................---------  trx_in_index ------------------------------------>}
+        //
         // Transaction status matrix (all the way to first block time in TaPoS window)
         // exp_time > hb_time | trx_in_status_index | trx_in_index | trx_in_mempool | Valid State | Status Code |
         //  Y (Not Expired)   |            N        |       N      |       N        |   Valid     |      2      |
@@ -137,9 +144,26 @@ DEFINE_API_IMPL( transaction_polling_api_impl, find_transaction )
             if (exp_time > lib_time)
                 result.trx_status_code = transaction_status_codes::trx_expired_trx_is_not_irreversible_could_be_in_fork;
             else
+            {
+                auto& bindex = _db.get_index<transaction_status_index>().indices().get<by_block_num>();
+                
+                auto block_itr = bindex.begin();
+                if ( block_itr != bindex.end() )
+                {
+                    auto first_block_num = block_itr->block_num;
+                    fc::time_point_sec block_time;
+                    auto trx_in_status_idx_time = _db.fetch_block_by_number(first_block_num);
+                    block_time = trx_in_status_idx_time->timestamp;
+                
+                    if (exp_time > block_time)
+                        result.trx_status_code = transaction_status_codes::trx_expired_trx_is_irreversible_could_be_in_fork;
+                    else
+                        result.trx_status_code = transaction_status_codes::trx_is_too_old;
+                }
+                
                 result.trx_status_code = transaction_status_codes::trx_expired_trx_is_irreversible_could_be_in_fork;
-            
-            return result;
+                return result;
+            }
         }
     }
     

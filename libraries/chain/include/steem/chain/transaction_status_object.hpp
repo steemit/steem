@@ -12,11 +12,6 @@ namespace steem { namespace chain {
 
    /**
     * The purpose of this object is to track the time of LIB and the first block in the TaPoS window
-    * |<----------------------- TaPoS Windows -------------------->|
-    * +---+---+   +----+   +-----+   +-----+   +------+------------+
-    * |   0   |...|1033|...| LIB |...|LIB+3|...|LIB+20| HB=LIB+21  |
-    * +---+---+   +----+   +-----+   +-----+   +------+-----+------+
-    * |<-----  Tx Expired  ----->|<----      Tx in Mempool   ----->|<--- Future Tx --->        |
     */
    class transaction_status_object : public object< transaction_status_object_type, transaction_status_object >
    {
@@ -31,7 +26,7 @@ namespace steem { namespace chain {
 
          id_type                     id;
          transaction_id_type         trx_id_in_block;
-         ref_block_num_id_type       block_num;
+         block_num_id_type           block_num;
    };
 
    struct by_trx_id;
@@ -41,7 +36,7 @@ namespace steem { namespace chain {
       indexed_by<
          ordered_unique< tag< by_id >, member< transaction_status_object, transaction_status_object_id_type, &transaction_status_object::id > >,
          hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_status_object, transaction_id_type, trx_id_in_block), std::hash<transaction_id_type> >,
-         ordered_non_unique< tag< by_block_num >, member< transaction_status_object, ref_block_num_id_type, &transaction_status_object::block_num > >
+         ordered_non_unique< tag< by_block_num >, member< transaction_status_object, block_num_id_type, &transaction_status_object::block_num > >
       >, allocator< transaction_status_object >
    > transaction_status_index;
 

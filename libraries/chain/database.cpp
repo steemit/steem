@@ -3067,7 +3067,7 @@ void database::_apply_block( const signed_block& next_block )
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
    _current_virtual_op   = 0;
-
+    
    if( BOOST_UNLIKELY( next_block_num == 1 ) )
    {
       // For every existing before the head_block_time (genesis time), apply the hardfork
@@ -3173,7 +3173,7 @@ void database::_apply_block( const signed_block& next_block )
    _current_trx_in_block = -1;
    _current_op_in_trx = 0;
    _current_virtual_op = 0;
-
+    
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
 
@@ -3181,7 +3181,7 @@ void database::_apply_block( const signed_block& next_block )
 
    create_block_summary(next_block);
    clear_expired_transactions();
-   clear_expired_transaction_status_index();
+    clear_transaction_status_index();
    clear_expired_orders();
    clear_expired_delegations();
    update_witness_schedule(*this);
@@ -3415,10 +3415,10 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    // Add new tansaction to track transaction status
    create<transaction_status_object>([&](transaction_status_object& transaction) {
-        transaction.trx_id_in_block = trx_id;
-        transaction.block_num = _current_block_num;
+       transaction.trx_id_in_block = trx_id;
+       transaction.block_num = _current_block_num;
    });
-    
+
    notify_pre_apply_transaction( note );
 
    //Finally process the operations
@@ -4021,16 +4021,22 @@ void database::clear_expired_transactions()
       remove( *dedupe_index.begin());
 }
 
-void database::clear_expired_transaction_status_index()
+void database::clear_transaction_status_index()
 {
-    // Yet to add logic to remove.
+    auto& trx_status_idx = get_index< transaction_status_index >();
+    const auto& block_index = trx_status_idx.indices().get< by_block_num >();
+    auto rb_itr = block_index.rbegin();
+    auto block_itr = block_index.begin();
+    auto first_block_num = block_itr->block_num;
+ 
+    if ( (block_itr != block_index.end() ) &&
+         (rb_itr->block_num == _current_block_num ) && (first_block_num == _current_block_num + 1) )
+    {
+        // Remove all transactions of the first block in the TaPoS window
+        while ( ( !block_index.empty() ) && ( first_block_num == block_index.begin()->block_num ) )
+            remove (*block_index.begin());
+    }
     
-    // Remove all transactions of the first block in the TaPoS window
-    //auto& transaction_idx = get_index< transaction_status_index >();
-    //const auto& dedupe_index = transaction_idx.indices().get< by_block_num >();
-    //while( ( !dedupe_index.empty() ) && ( _current_block_num == dedupe_index.begin()->block_num ) )
-    //    remove( *dedupe_index.begin());
-
     return;
 }
 

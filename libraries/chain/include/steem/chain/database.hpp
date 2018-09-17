@@ -515,7 +515,8 @@ namespace steem { namespace chain {
          void clear_expired_orders();
          void clear_expired_delegations();
          void process_header_extensions( const signed_block& next_block );
-         void clear_expired_transaction_status_index();
+         void clear_transaction_status_index();
+       
  
          void init_hardforks();
          void process_hardforks();
