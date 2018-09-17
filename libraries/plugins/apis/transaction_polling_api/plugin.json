@@ -1,0 +1,5 @@
+{
+   "plugin_name": "transaction_polling_api",
+   "plugin_namespace": "transaction_polling_api",
+   "plugin_project": "transaction_polling_api_plugin"
+}
