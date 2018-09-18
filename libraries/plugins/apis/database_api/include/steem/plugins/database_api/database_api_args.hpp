@@ -575,7 +575,7 @@ typedef void_type get_smt_next_identifier_args;
 
 struct get_smt_next_identifier_return
 {
-   vector< asset_symbol_type > nais;
+   vector< asset_symbol_type > nai_pool;
 };
 #endif
 
@@ -804,5 +804,5 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,
-   (nais) )
+   (nai_pool) )
 #endif

@@ -207,20 +207,30 @@ inline void to_variant( const steem::protocol::asset_symbol_type& sym, fc::varia
 {
    try
    {
-      std::vector< variant > v( 2 );
-      v[0] = sym.decimals();
-      v[1] = sym.to_nai_string();
+      mutable_variant_object o;
+         o( "nai", sym.to_nai_string() )
+          ( "decimals", sym.decimals() );
+      var = std::move( o );
    } FC_CAPTURE_AND_RETHROW()
 }
 
 inline void from_variant( const fc::variant& var, steem::protocol::asset_symbol_type& sym )
 {
+   using steem::protocol::asset_symbol_type;
+
    try
    {
-      auto v = var.as< std::vector< variant > >();
-      FC_ASSERT( v.size() == 2, "Expected tuple of length 2." );
+      FC_ASSERT( var.is_object(), "Expected an object." );
 
-      sym = steem::protocol::asset_symbol_type::from_nai_string( v[1].as< std::string >().c_str(), v[0].as< uint8_t >() );
+      auto& o = var.get_object();
+
+      FC_ASSERT( o.size() == 2, "Expected an object with 2 key value pairs." );
+      FC_ASSERT( o.find( "nai" ) != o.end(), "Expected key 'nai'.");
+      FC_ASSERT( o.find( "decimals" ) != o.end(), "Expected key 'decimals'." );
+      FC_ASSERT( o[ "nai" ].is_string(), "Expected a string type." );
+      FC_ASSERT( o[ "decimals" ].is_uint64(), "Expected an unsigned integer type." );
+
+      sym = asset_symbol_type::from_nai_string( o[ "nai "].as_string().c_str(), o[ "decimals" ].as< uint8_t >() );
    } FC_CAPTURE_AND_RETHROW()
 }
 

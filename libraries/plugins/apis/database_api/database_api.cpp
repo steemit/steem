@@ -1450,7 +1450,7 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
 DEFINE_API_IMPL( database_api_impl, get_smt_next_identifier )
 {
    get_smt_next_identifier_return result;
-   result.nais = _db.get_smt_next_identifier();
+   result.nai_pool = _db.get_smt_next_identifier();
    return result;
 }
 #endif
