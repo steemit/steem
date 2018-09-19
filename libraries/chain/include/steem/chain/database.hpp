@@ -520,6 +520,7 @@ namespace steem { namespace chain {
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
+         void migrate_irreversible_state();
          void clear_expired_transactions();
          void clear_expired_orders();
          void clear_expired_delegations();

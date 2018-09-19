@@ -631,6 +631,29 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
    //fc::time_point begin_time = fc::time_point::now();
 
+   auto block_num = new_block.block_num();
+   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
+   {
+      auto itr = _checkpoints.find( block_num );
+      if( itr != _checkpoints.end() )
+         FC_ASSERT( new_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",new_block.id()) );
+
+      if( _checkpoints.rbegin()->first >= block_num )
+         skip = skip_witness_signature
+              | skip_transaction_signatures
+              | skip_transaction_dupe_check
+              /*| skip_fork_db Fork db cannot be skipped or else blocks will not be written out to block log */
+              | skip_block_size_check
+              | skip_tapos_check
+              | skip_authority_check
+              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
+              | skip_undo_history_check
+              | skip_witness_schedule_check
+              | skip_validate
+              | skip_validate_invariants
+              ;
+   }
+
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
@@ -690,7 +713,7 @@ bool database::_push_block(const signed_block& new_block)
          //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
          {
-            // wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
+            wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
             auto branches = _fork_db.fetch_branch_from(new_head->data.id(), head_block_id());
 
             // pop blocks until we hit the forked block
@@ -700,10 +723,11 @@ bool database::_push_block(const signed_block& new_block)
             // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
             {
-                // ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
+                ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
                 optional<fc::exception> except;
                 try
                 {
+                   _fork_db.set_head( *ritr );
                    auto session = start_undo_session();
                    apply_block( (*ritr)->data, skip );
                    session.push();
@@ -711,14 +735,13 @@ bool database::_push_block(const signed_block& new_block)
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   // wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
+                   wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
                       _fork_db.remove( (*ritr)->data.id() );
                       ++ritr;
                    }
-                   _fork_db.set_head( branches.second.front() );
 
                    // pop all blocks from the bad fork
                    while( head_block_id() != branches.second.back()->data.previous )
@@ -727,6 +750,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
+                      _fork_db.set_head( *ritr );
                       auto session = start_undo_session();
                       apply_block( (*ritr)->data, skip );
                       session.push();
@@ -2987,29 +3011,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    //fc::time_point begin_time = fc::time_point::now();
 
-   auto block_num = next_block.block_num();
-   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
-   {
-      auto itr = _checkpoints.find( block_num );
-      if( itr != _checkpoints.end() )
-         FC_ASSERT( next_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()) );
-
-      if( _checkpoints.rbegin()->first >= block_num )
-         skip = skip_witness_signature
-              | skip_transaction_signatures
-              | skip_transaction_dupe_check
-              | skip_fork_db
-              | skip_block_size_check
-              | skip_tapos_check
-              | skip_authority_check
-              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
-              | skip_undo_history_check
-              | skip_witness_schedule_check
-              | skip_validate
-              | skip_validate_invariants
-              ;
-   }
-
    detail::with_skip_flags( *this, skip, [&]()
    {
       _apply_block( next_block );
@@ -3022,6 +3023,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (next_block) );*/
+
+   auto block_num = next_block.block_num();
 
    //fc::time_point end_time = fc::time_point::now();
    //fc::microseconds dt = end_time - begin_time;
@@ -3253,9 +3256,13 @@ void database::_apply_block( const signed_block& next_block )
    notify_post_apply_block( note );
 
    notify_changed_objects();
-} //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
-FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
-}
+
+   // This moves newly irreversible blocks from the fork db to the block log
+   // and commits irreversible state to the database. This should always be the
+   // last call of applying a block because it is the only thing that is not
+   // reversible.
+   migrate_irreversible_state();
+} FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
 {
@@ -3836,38 +3843,66 @@ void database::update_last_irreversible_block()
       }
    }
 
-   commit( dpo.last_irreversible_block_num );
-
    for( uint32_t i = old_last_irreversible; i <= dpo.last_irreversible_block_num; ++i )
    {
       notify_irreversible_block( i );
    }
-
-   if( !( get_node_properties().skip_flags & skip_block_log ) )
-   {
-      // output to block log based on new last irreverisible block num
-      const auto& tmp_head = _block_log.head();
-      uint64_t log_head_num = 0;
-
-      if( tmp_head )
-         log_head_num = tmp_head->block_num();
-
-      if( log_head_num < dpo.last_irreversible_block_num )
-      {
-         while( log_head_num < dpo.last_irreversible_block_num )
-         {
-            shared_ptr< fork_item > block = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
-            FC_ASSERT( block, "Current fork in the fork database does not contain the last_irreversible_block" );
-            _block_log.append( block->data );
-            log_head_num++;
-         }
-
-         _block_log.flush();
-      }
-   }
-
-   _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
 } FC_CAPTURE_AND_RETHROW() }
+
+void database::migrate_irreversible_state()
+{
+   // This method should happen atomically. We cannot prevent unclean shutdown in the middle
+   // of the call, but all side effects happen at the end to minize the chance that state
+   // invariants will be violated.
+   try
+   {
+      const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+
+      auto fork_head = _fork_db.head();
+      if( fork_head )
+      {
+         FC_ASSERT( fork_head->num == dpo.head_block_number, "Fork Head: ${f} Chain Head: ${c}", ("f",fork_head->num)("c", dpo.head_block_number) );
+      }
+
+      if( !( get_node_properties().skip_flags & skip_block_log ) )
+      {
+         // output to block log based on new last irreverisible block num
+         const auto& tmp_head = _block_log.head();
+         uint64_t log_head_num = 0;
+         vector< item_ptr > blocks_to_write;
+
+         if( tmp_head )
+            log_head_num = tmp_head->block_num();
+
+         if( log_head_num < dpo.last_irreversible_block_num )
+         {
+            // Check for all blocks that we want to write out to the block log but don't write any
+            // unless we are certain they all exist in the fork db
+            while( log_head_num < dpo.last_irreversible_block_num )
+            {
+               item_ptr block_ptr = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
+               FC_ASSERT( block_ptr, "Current fork in the fork database does not contain the last_irreversible_block" );
+               blocks_to_write.push_back( block_ptr );
+               log_head_num++;
+            }
+
+            for( auto block_itr = blocks_to_write.begin(); block_itr != blocks_to_write.end(); ++block_itr )
+            {
+               _block_log.append( block_itr->get()->data );
+            }
+
+            _block_log.flush();
+         }
+      }
+
+      // This deletes blocks from the fork db
+      _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
+
+      // This deletes undo state
+      commit( dpo.last_irreversible_block_num );
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
 
 
 bool database::apply_order( const limit_order_object& new_order_object )

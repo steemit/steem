@@ -17,20 +17,23 @@ namespace steem { namespace chain {
 
    struct fork_item
    {
-      fork_item( signed_block d )
-      :num(d.block_num()),id(d.id()),data( std::move(d) ){}
+      private:
+         fork_item(){}
+      public:
+         fork_item( signed_block d )
+         :num(d.block_num()),id(d.id()),data( std::move(d) ){}
 
-      block_id_type previous_id()const { return data.previous; }
+         block_id_type previous_id()const { return data.previous; }
 
-      weak_ptr< fork_item > prev;
-      uint32_t              num;    // initialized in ctor
-      /**
-       * Used to flag a block as invalid and prevent other blocks from
-       * building on top of it.
-       */
-      bool                  invalid = false;
-      block_id_type         id;
-      signed_block          data;
+         weak_ptr< fork_item > prev;
+         uint32_t              num;    // initialized in ctor
+         /**
+          * Used to flag a block as invalid and prevent other blocks from
+          * building on top of it.
+          */
+         bool                  invalid = false;
+         block_id_type         id;
+         signed_block          data;
    };
    typedef shared_ptr<fork_item> item_ptr;
 
