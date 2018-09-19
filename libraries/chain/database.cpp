@@ -358,10 +358,10 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
 optional<signed_block> database::fetch_block_by_number( uint32_t block_num )const
 { try {
    optional< signed_block > b;
+   shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
 
-   auto results = _fork_db.fetch_block_by_number( block_num );
-   if( results.size() == 1 )
-      b = results[0]->data;
+   if( fitem )
+      b = fitem->data;
    else
       b = _block_log.read_block_by_num( block_num );
 
