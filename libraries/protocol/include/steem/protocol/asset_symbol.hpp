@@ -51,6 +51,9 @@
 #define SMT_ASSET_NUM_CONTROL_MASK     0x10
 #define SMT_ASSET_NUM_VESTING_MASK     0x20
 
+#define ASSET_SYMBOL_NAI_KEY      "nai"
+#define ASSET_SYMBOL_DECIMALS_KEY "decimals"
+
 namespace steem { namespace protocol {
 
 class asset_symbol_type
@@ -208,8 +211,8 @@ inline void to_variant( const steem::protocol::asset_symbol_type& sym, fc::varia
    try
    {
       mutable_variant_object o;
-         o( "nai", sym.to_nai_string() )
-          ( "decimals", sym.decimals() );
+         o( ASSET_SYMBOL_NAI_KEY, sym.to_nai_string() )
+          ( ASSET_SYMBOL_DECIMALS_KEY, sym.decimals() );
       var = std::move( o );
    } FC_CAPTURE_AND_RETHROW()
 }
@@ -224,13 +227,17 @@ inline void from_variant( const fc::variant& var, steem::protocol::asset_symbol_
 
       auto& o = var.get_object();
 
-      FC_ASSERT( o.size() == 2, "Expected an object with 2 key value pairs." );
-      FC_ASSERT( o.find( "nai" ) != o.end(), "Expected key 'nai'.");
-      FC_ASSERT( o.find( "decimals" ) != o.end(), "Expected key 'decimals'." );
-      FC_ASSERT( o[ "nai" ].is_string(), "Expected a string type." );
-      FC_ASSERT( o[ "decimals" ].is_uint64(), "Expected an unsigned integer type." );
+      auto nai = o.find( ASSET_SYMBOL_NAI_KEY );
+      FC_ASSERT( nai != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_NAI_KEY) );
+      FC_ASSERT( nai->value().is_string(), "Expected a string type." );
 
-      sym = asset_symbol_type::from_nai_string( o[ "nai "].as_string().c_str(), o[ "decimals" ].as< uint8_t >() );
+      auto decimals = o.find( ASSET_SYMBOL_DECIMALS_KEY );
+      FC_ASSERT( decimals != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
+      FC_ASSERT( decimals->value().is_uint64(), "Expected an unsigned integer type." );
+      FC_ASSERT( decimals->value().as_uint64() <= STEEM_ASSET_MAX_DECIMALS,
+         "Expected decimals to be less than or equal to ${num}", ("num", STEEM_ASSET_MAX_DECIMALS) );
+
+      sym = asset_symbol_type::from_nai_string( nai->value().as_string().c_str(), decimals->value().as< uint8_t >() );
    } FC_CAPTURE_AND_RETHROW()
 }
 

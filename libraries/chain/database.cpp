@@ -5410,7 +5410,7 @@ void database::retally_witness_vote_counts( bool force )
 //    of liquid/vesting *pairs* of reserved/available NAIs.
 // 6. 45 milions of SMT await for their creators.
 
-vector< asset_symbol_type > database::get_smt_next_identifier()
+vector< asset_symbol_type > database::get_nai_pool()
 {
    // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
    // Although a container of available nais is returned, it contains only one entry for simplicity.

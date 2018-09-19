@@ -489,7 +489,7 @@ namespace steem { namespace chain {
          /**
           * @return a list of available NAIs.
          */
-         vector< asset_symbol_type > get_smt_next_identifier();
+         vector< asset_symbol_type > get_nai_pool();
 
          ///@}
 #endif

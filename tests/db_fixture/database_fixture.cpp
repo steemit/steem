@@ -233,8 +233,8 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
-   auto available_nais =  db->get_smt_next_identifier();
-   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
+   auto available_nais =  db->get_nai_pool();
+   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_nai_pool." );
    const asset_symbol_type& new_nai = available_nais[0];
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
