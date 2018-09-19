@@ -642,7 +642,7 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
          skip = skip_witness_signature
               | skip_transaction_signatures
               | skip_transaction_dupe_check
-              | skip_fork_db
+              /*| skip_fork_db Fork db cannot be skipped or else blocks will not be written out to block log */
               | skip_block_size_check
               | skip_tapos_check
               | skip_authority_check
