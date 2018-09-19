@@ -3857,6 +3857,12 @@ void database::migrate_irreversible_state()
    {
       const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
+      auto fork_head = _fork_db.head();
+      if( fork_head )
+      {
+         FC_ASSERT( fork_head->num == dpo.head_block_number, "Fork Head: ${f} Chain Head: ${c}", ("f",fork_head->num)("c", dpo.head_block_number) );
+      }
+
       if( !( get_node_properties().skip_flags & skip_block_log ) )
       {
          // output to block log based on new last irreverisible block num
@@ -3886,12 +3892,6 @@ void database::migrate_irreversible_state()
 
             _block_log.flush();
          }
-      }
-
-      auto fork_head = _fork_db.head();
-      if( fork_head )
-      {
-         FC_ASSERT( fork_head->num == dpo.head_block_number, "Fork Head: ${f} Chain Head: ${c}", ("f",fork_head->num)("c", dpo.head_block_number) );
       }
 
       // This deletes blocks from the fork db
