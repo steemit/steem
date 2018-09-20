@@ -18,6 +18,8 @@
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/witness_schedule.hpp>
+#include <steem/chain/smt_objects/nai_pool_object.hpp>
+#include <steem/chain/nai_generator.hpp>
 
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
@@ -2734,6 +2736,7 @@ void database::initialize_indexes()
    add_core_index< smt_event_token_index                   >(*this);
    add_core_index< account_regular_balance_index           >(*this);
    add_core_index< account_rewards_balance_index           >(*this);
+   add_core_index< nai_pool_index                          >(*this);
 #endif
 
    _plugin_index_signal();
@@ -3246,6 +3249,13 @@ void database::_apply_block( const signed_block& next_block )
    account_recovery_processing();
    expire_escrow_ratification();
    process_decline_voting_rights();
+
+#ifdef STEEM_ENABLE_SMT
+   //if( has_hardfork( STEEM_SMT_HARDFORK ) )
+   {
+      replenish_nai_pool();
+   }
+#endif
 
    process_hardforks();
 
@@ -5417,7 +5427,7 @@ vector< asset_symbol_type > database::get_nai_pool()
    // Note that no decimal places argument is required from SMT creator at this stage.
    // This is because asset_symbol_type's to_string method omits the precision when serializing.
    // For appropriate use of this method see e.g. smt_database_fixture::create_smt
-
+#if 0
    uint8_t decimal_places = 0;
 
    FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
@@ -5432,9 +5442,57 @@ vector< asset_symbol_type > database::get_nai_pool()
    asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( new_asset_num );
    new_symbol.validate();
    FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
+#endif
+   const auto& idx = get_index< nai_pool_index >().indices().get< by_symbol >();
 
-   return vector< asset_symbol_type >( 1, new_symbol );
+   vector< asset_symbol_type > nai_pool;
+   for ( auto it = idx.begin(); it != idx.end(); ++it )
+   {
+      nai_pool.push_back( it->asset_symbol );
+   }
+
+   return nai_pool;
 }
+
+void database::replenish_nai_pool()
+{
+   try
+   {
+      nai_generator n;
+
+      while ( count< nai_pool_object >() < 10 )
+      {
+         asset_symbol_type next_sym;
+         auto block_id = head_block_id();
+         auto seed = block_id._hash[0] ^ block_id._hash[1];
+         do
+         {
+            next_sym = n( seed++ );
+         }
+         while ( asset_symbol_exists_in_pool( next_sym ) || asset_symbol_is_registered( next_sym ) );
+
+         create< nai_pool_object >( [&]( nai_pool_object& npo ) {
+            npo.asset_symbol = next_sym;
+         });
+      }
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
+
+bool database::asset_symbol_exists_in_pool( asset_symbol_type a )
+{
+   const auto& idx = get_index< nai_pool_index >().indices().get< by_symbol >();
+   return idx.find( a ) != idx.end();
+}
+
+bool database::asset_symbol_is_registered( asset_symbol_type a )
+{
+   const auto& idx = get_index< smt_token_index >().indices().get< by_symbol >();
+   auto stripped_symbol_num = a.get_stripped_precision_smt_num();
+   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
+   return it != idx.end() && it->liquid_symbol.get_stripped_precision_smt_num() == stripped_symbol_num;
+}
+
 #endif
 
 index_info::index_info() {}

@@ -118,6 +118,11 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       token.control_account = o.control_account;
       token.market_maker.token_balance = asset( 0, token.liquid_symbol );
    });
+
+   const auto& nai_pool_idx = _db.get_index< nai_pool_index >().indices().get< by_symbol >();
+   auto npo = nai_pool_idx.find( o.symbol );
+   if ( npo != nai_pool_idx.end() )
+      _db.remove( *npo );
 }
 
 struct smt_setup_evaluator_visitor

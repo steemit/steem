@@ -491,6 +491,9 @@ namespace steem { namespace chain {
          */
          vector< asset_symbol_type > get_nai_pool();
 
+         void replenish_nai_pool();
+         bool asset_symbol_exists_in_pool( asset_symbol_type a );
+         bool asset_symbol_is_registered( asset_symbol_type a );
          ///@}
 #endif
 

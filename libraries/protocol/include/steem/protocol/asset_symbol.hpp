@@ -75,6 +75,7 @@ class asset_symbol_type
       static uint32_t asset_num_from_nai( uint32_t nai, uint8_t decimal_places );
       static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
       {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
+      static uint8_t damm_checksum_8digit(uint32_t value);
 
       std::string to_string()const;
 

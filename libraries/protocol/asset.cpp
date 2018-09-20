@@ -123,7 +123,7 @@ asset_symbol_type asset_symbol_type::from_nai_string( const char* p, uint8_t dec
 
 // Highly optimized implementation of Damm algorithm
 // https://en.wikipedia.org/wiki/Damm_algorithm
-uint8_t damm_checksum_8digit(uint32_t value)
+uint8_t asset_symbol_type::damm_checksum_8digit(uint32_t value)
 {
    FC_ASSERT( value < 100000000 );
 
