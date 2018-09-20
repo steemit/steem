@@ -796,8 +796,17 @@ struct post_apply_operation_visitor
 
       if( op.hardfork_id == STEEM_HARDFORK_0_20 )
       {
+         const auto& params = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
+
          _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ), [&]( rc_pool_object& p )
          {
+            for( size_t i = 0; i < STEEM_NUM_RESOURCE_TYPES; i++ )
+            {
+               p.pool_array[ i ] =
+                  ( ( uint128_t( params.resource_param_array[ i ].resource_dynamics_params.pool_eq ) * 90 * STEEM_1_PERCENT )
+                  / STEEM_100_PERCENT ).to_uint64();
+            }
+
             p.pool_array[ resource_new_accounts ] = 0;
          });
       }
