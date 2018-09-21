@@ -73,11 +73,8 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
    // therefore we use a method that strips the symbol from precision info when searching.
-   const auto& idx = _db.get_index< smt_token_index >().indices().get< by_symbol >();
-   auto stripped_symbol_num = o.symbol.get_stripped_precision_smt_num();
-   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
-   FC_ASSERT( (it == idx.end()) || (it->liquid_symbol.get_stripped_precision_smt_num() != stripped_symbol_num),
-              "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   FC_ASSERT( !_db.asset_symbol_is_an_smt_token( o.symbol ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   FC_ASSERT( _db.asset_symbol_exists_in_nai_pool( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset effective_elevation_fee;
 
@@ -119,10 +116,11 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       token.market_maker.token_balance = asset( 0, token.liquid_symbol );
    });
 
-   const auto& nai_pool_idx = _db.get_index< nai_pool_index >().indices().get< by_symbol >();
-   auto npo = nai_pool_idx.find( o.symbol );
-   if ( npo != nai_pool_idx.end() )
-      _db.remove( *npo );
+   auto nai_from_pool = asset_symbol_type::from_asset_num( o.symbol.get_stripped_precision_smt_num() );
+   const nai_pool_object* npo = _db.find< nai_pool_object, by_symbol >( nai_from_pool );
+   FC_ASSERT(npo, "NAI must have existed in the pool." );
+   _db.remove( *npo );
+   FC_ASSERT( !_db.asset_symbol_exists_in_nai_pool( o.symbol ), "Asset symbol should no longer be in NAI pool." );
 }
 
 struct smt_setup_evaluator_visitor

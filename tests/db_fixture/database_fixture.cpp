@@ -233,9 +233,10 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
+   static std::vector< asset_symbol_type >::size_type next_nai = 0;
    auto available_nais =  db->get_nai_pool();
    FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_nai_pool." );
-   const asset_symbol_type& new_nai = available_nais[0];
+   const asset_symbol_type& new_nai = available_nais[ next_nai++ % available_nais.size() ];
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
 }
@@ -740,6 +741,11 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       retVal[0] = op0.symbol;
       retVal[1] = op1.symbol;
       retVal[2] = op2.symbol;
+      std::sort(retVal.begin(), retVal.end(),
+           [](const asset_symbol_type & a, const asset_symbol_type & b) -> bool
+      {
+         return a.to_nai() < b.to_nai();
+      });
       return retVal;
    }
    FC_LOG_AND_RETHROW();
