@@ -118,9 +118,12 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    auto nai_from_pool = asset_symbol_type::from_asset_num( o.symbol.get_stripped_precision_smt_num() );
    const nai_pool_object* npo = _db.find< nai_pool_object, by_symbol >( nai_from_pool );
-   FC_ASSERT(npo, "NAI must have existed in the pool." );
+   FC_ASSERT( npo, "NAI must have existed in the pool." );
    _db.remove( *npo );
    FC_ASSERT( !_db.asset_symbol_exists_in_nai_pool( o.symbol ), "Asset symbol should no longer be in NAI pool." );
+
+   /* After consumption we replenish our NAI pool */
+   _db.replenish_nai_pool();
 }
 
 struct smt_setup_evaluator_visitor

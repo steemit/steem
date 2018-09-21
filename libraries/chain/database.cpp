@@ -3250,13 +3250,6 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
-#ifdef STEEM_ENABLE_SMT
-   if ( has_hardfork( STEEM_SMT_HARDFORK ) )
-   {
-      replenish_nai_pool();
-   }
-#endif
-
    process_hardforks();
 
    // notify observers that the block has been applied
@@ -4989,8 +4982,16 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-   #ifdef IS_TEST_NET
+FC_TODO( "We need to handle this if we have HF21 that is NOT an SMT hardfork" );
+#if 0
       case STEEM_HARDFORK_0_21:
+         break;
+#endif
+#ifdef IS_TEST_NET
+      case STEEM_SMT_HARDFORK:
+   #ifdef STEEM_ENABLE_SMT
+         replenish_nai_pool();
+   #endif
          break;
 #endif
       default:
