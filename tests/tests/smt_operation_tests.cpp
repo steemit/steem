@@ -11,6 +11,7 @@
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
+#include <steem/chain/nai_generator.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
@@ -1341,6 +1342,75 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
       test_single_smt( smts[2], alice_private_key );
    }
    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_duplicate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_duplicate" );
+
+      ACTORS( (alice) )
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
+
+      /* We should not be able to create the same SMT twice */
+      STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, alice_symbol.to_nai(), alice_symbol.decimals() ), fc::assert_exception)
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_duplicate_differing_decimals )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_duplicate_differing_decimals" );
+
+      ACTORS( (alice) )
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 /* Decimals */ );
+
+      /* We should not be able to create the same SMT twice, even if the decimals are different */
+      STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, alice_symbol.to_nai(), 2 /* Decimals */ ), fc::assert_exception)
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_with_invalid_nai" );
+      ACTORS( (alice) )
+
+      uint32_t seed = 0;
+      nai_generator n;
+      asset_symbol_type ast;
+      do
+         ast = n( seed++ );
+      while ( db->asset_symbol_exists_in_nai_pool( ast ) || db->asset_symbol_is_an_smt_token( ast ) );
+
+      /* This should fail because the NAI we generated has not been added to the NAI pool */
+      STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_nai_pool_removal )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_nai_pool_removal" );
+
+      ACTORS( (alice) )
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
+
+      /* After we create an SMT, it should no longer exist in the NAI pool */
+      BOOST_REQUIRE( !db->asset_symbol_exists_in_nai_pool( alice_symbol ) );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
