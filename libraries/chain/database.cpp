@@ -3251,7 +3251,7 @@ void database::_apply_block( const signed_block& next_block )
    process_decline_voting_rights();
 
 #ifdef STEEM_ENABLE_SMT
-   //if( has_hardfork( STEEM_SMT_HARDFORK ) )
+   if ( has_hardfork( STEEM_SMT_HARDFORK ) )
    {
       replenish_nai_pool();
    }
