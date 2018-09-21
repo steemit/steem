@@ -19,7 +19,6 @@
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/witness_schedule.hpp>
 #include <steem/chain/smt_objects/nai_pool_object.hpp>
-#include <steem/chain/nai_generator.hpp>
 
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
@@ -27,6 +26,7 @@
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/manabar.hpp>
 #include <steem/chain/util/rd_setup.hpp>
+#include <steem/chain/util/nai_generator.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>

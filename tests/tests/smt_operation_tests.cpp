@@ -11,7 +11,8 @@
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
-#include <steem/chain/nai_generator.hpp>
+
+#include <steem/chain/util/nai_generator.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
