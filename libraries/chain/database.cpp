@@ -5436,14 +5436,20 @@ void database::replenish_nai_pool()
    try
    {
       nai_generator n;
-
       while ( count< nai_pool_object >() < SMT_MAX_NAI_POOL_COUNT )
       {
          asset_symbol_type next_sym;
          auto block_id = head_block_id();
          auto seed = block_id._hash[0];
+         uint32_t collisions = 0;
          do
          {
+            if ( collisions++ == SMT_MAX_NAI_GENERATION_TRIES )
+            {
+               wlog( "Encountered ${collisions} collisions while attempting to generate NAI",
+                    ("collisions", collisions) );
+               return;
+            }
             next_sym = n( seed++ );
          }
          while ( asset_symbol_exists_in_nai_pool( next_sym ) || asset_symbol_is_an_smt_token( next_sym ) );
