@@ -5445,7 +5445,7 @@ void database::replenish_nai_pool()
          uint32_t collisions = 0;
          do
          {
-            if ( collisions++ == SMT_MAX_NAI_GENERATION_TRIES )
+            if ( collisions++ >= SMT_MAX_NAI_GENERATION_TRIES )
             {
                wlog( "Encountered ${collisions} collisions while attempting to generate NAI",
                     ("collisions", collisions) );

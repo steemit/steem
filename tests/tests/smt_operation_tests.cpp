@@ -1390,7 +1390,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
       uint32_t collisions = 0;
       do
       {
-         BOOST_REQUIRE( collisions++ != SMT_MAX_NAI_GENERATION_TRIES );
+         BOOST_REQUIRE( collisions++ < SMT_MAX_NAI_GENERATION_TRIES );
          ast = n( seed++ );
       }
       while ( db->asset_symbol_exists_in_nai_pool( ast ) || db->asset_symbol_is_an_smt_token( ast ) );
