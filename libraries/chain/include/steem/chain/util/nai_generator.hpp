@@ -30,7 +30,7 @@ namespace steem { namespace chain {
       asset_symbol_type operator()( uint32_t seed )
       {
          asset_symbol_type new_symbol;
-         uint32_t nai = ( ( hash( seed ) % ( SMT_MAX_NAI - SMT_MIN_NON_RESERVED_NAI ) ) + SMT_MIN_NON_RESERVED_NAI );
+         uint32_t nai = ( ( hash( seed ) % ( ( SMT_MAX_NAI + 1 ) - SMT_MIN_NON_RESERVED_NAI ) ) + SMT_MIN_NON_RESERVED_NAI );
          nai &= ~1;
 
          uint8_t check_digit = asset_symbol_type::damm_checksum_8digit( nai );
