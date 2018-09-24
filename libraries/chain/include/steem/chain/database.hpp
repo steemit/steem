@@ -260,7 +260,7 @@ namespace steem { namespace chain {
           *  as any implied/virtual operations that resulted, such as filling an order.
           *  The applied operations are cleared after post_apply_operation.
           */
-         void notify_pre_apply_operation( operation_notification& note );
+         void notify_pre_apply_operation( const operation_notification& note );
          void notify_post_apply_operation( const operation_notification& note );
          void notify_pre_apply_block( const block_notification& note );
          void notify_post_apply_block( const block_notification& note );
@@ -538,6 +538,16 @@ namespace steem { namespace chain {
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
          void modify_reward_balance( const account_object& a, const asset& value_delta, const asset& share_delta, bool check_balance );
+
+         operation_notification create_operation_notification( const operation& op )const
+         {
+            operation_notification note(op);
+            note.trx_id       = _current_trx_id;
+            note.block        = _current_block_num;
+            note.trx_in_block = _current_trx_in_block;
+            note.op_in_trx    = _current_op_in_trx;
+            return note;
+         }
 
          std::unique_ptr< database_impl > _my;
 

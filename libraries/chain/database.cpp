@@ -1034,7 +1034,7 @@ void database::clear_pending()
 void database::push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -1044,7 +1044,7 @@ void database::push_virtual_operation( const operation& op )
 void database::pre_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -1053,18 +1053,13 @@ void database::pre_push_virtual_operation( const operation& op )
 void database::post_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    note.virtual_op = _current_virtual_op;
    notify_post_apply_operation( note );
 }
 
-void database::notify_pre_apply_operation( operation_notification& note )
+void database::notify_pre_apply_operation( const operation_notification& note )
 {
-   note.trx_id       = _current_trx_id;
-   note.block        = _current_block_num;
-   note.trx_in_block = _current_trx_in_block;
-   note.op_in_trx    = _current_op_in_trx;
-
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
 }
 
@@ -3488,7 +3483,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    notify_pre_apply_operation( note );
 
    if( _benchmark_dumper.is_enabled() )
