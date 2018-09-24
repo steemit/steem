@@ -188,7 +188,7 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
          return STEEM_ASSET_NUM_VESTS;
       default:
          FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
-         return (nai_data_digits << 5) | 0x10 | decimal_places;
+         return (nai_data_digits << STEEM_NAI_SHIFT) | 0x10 | decimal_places;
    }
 }
 
@@ -210,7 +210,7 @@ uint32_t asset_symbol_type::to_nai()const
          break;
       default:
          FC_ASSERT( space() == smt_nai_space );
-         nai_data_digits = (asset_num >> 5);
+         nai_data_digits = (asset_num >> STEEM_NAI_SHIFT);
    }
 
    uint32_t nai_check_digit = damm_checksum_8digit(nai_data_digits);
