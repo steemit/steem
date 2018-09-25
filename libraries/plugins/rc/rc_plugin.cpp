@@ -246,7 +246,7 @@ void use_account_rcs(
             );
       }
 
-      if( (!has_mana) && skip.skip_negative_rc_balance )
+      if( (!has_mana) && ( skip.skip_negative_rc_balance || !db.has_hardfork( STEEM_HARDFORK_0_20 ) ) )
          return;
 
       if( skip.skip_deduct_rc )
