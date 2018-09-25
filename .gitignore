@@ -48,3 +48,7 @@ witness_node_data_dir
 *.pyc
 *.pyo
 *.egg-info/
+
+\.idea/
+
+cmake-build-debug/
