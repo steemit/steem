@@ -3378,8 +3378,16 @@ try {
 #endif
             if( has_hardfork( STEEM_HARDFORK_0_14__230 ) )
             {
+               // This block limits the effective median price to force SBD to remain at or
+               // below 10% of the combined market cap of STEEM and SBD.
+               //
+               // For example, if we have 500 STEEM and 100 SBD, the price is limited to
+               // 900 SBD / 500 STEEM which works out to be $1.80.  At this price, 500 Steem
+               // would be valued at 500 * $1.80 = $900.  100 SBD is by definition always $100,
+               // so the combined market cap is $900 + $100 = $1000.
+
                const auto& gpo = get_dynamic_global_properties();
-               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply ); // This price limits SBD to 10% market cap
+               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
 
                if( min_price > fho.current_median_history )
                   fho.current_median_history = min_price;
