@@ -188,7 +188,7 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
          return STEEM_ASSET_NUM_VESTS;
       default:
          FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
-         return (nai_data_digits << STEEM_NAI_SHIFT) | 0x10 | decimal_places;
+         return (nai_data_digits << STEEM_NAI_SHIFT) | SMT_ASSET_NUM_CONTROL_MASK | decimal_places;
    }
 }
 
@@ -299,12 +299,12 @@ void asset_symbol_type::validate()const
          break;
       default:
       {
-         uint32_t nai_data_digits = (asset_num >> 5);
-         uint32_t nai_1bit = (asset_num & 0x10);
-         uint32_t nai_decimal_places = (asset_num & 0x0F);
+         uint32_t nai_data_digits = (asset_num >> STEEM_NAI_SHIFT);
+         uint32_t nai_1bit = (asset_num & SMT_ASSET_NUM_CONTROL_MASK);
+         uint32_t nai_decimal_places = (asset_num & SMT_ASSET_NUM_PRECISION_MASK);
          FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) &
                     (nai_data_digits <= SMT_MAX_NAI) &
-                    (nai_1bit == 0x10) &
+                    (nai_1bit == SMT_ASSET_NUM_CONTROL_MASK) &
                     (nai_decimal_places <= STEEM_ASSET_MAX_DECIMALS),
                     "Cannot determine space for asset ${n}", ("n", asset_num) );
       }

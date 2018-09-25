@@ -4,8 +4,8 @@
 #include <steem/protocol/types_fwd.hpp>
 
 #define STEEM_ASSET_SYMBOL_PRECISION_BITS    4
-#define STEEM_ASSET_VESTING_BITS             1
-#define STEEM_NAI_SHIFT                      ( STEEM_ASSET_SYMBOL_PRECISION_BITS + STEEM_ASSET_VESTING_BITS )
+#define STEEM_ASSET_CONTROL_BITS             1
+#define STEEM_NAI_SHIFT                      ( STEEM_ASSET_SYMBOL_PRECISION_BITS + STEEM_ASSET_CONTROL_BITS )
 #define SMT_MAX_NAI                          99999999
 #define SMT_MIN_NAI                          1
 #define SMT_MIN_NON_RESERVED_NAI             10000000
@@ -112,7 +112,7 @@ class asset_symbol_type
 
       asset_symbol_space space()const;
       uint8_t decimals()const
-      {  return uint8_t( asset_num & 0x0F );    }
+      {  return uint8_t( asset_num & SMT_ASSET_NUM_PRECISION_MASK );    }
       void validate()const;
 
       friend bool operator == ( const asset_symbol_type& a, const asset_symbol_type& b )
