@@ -92,16 +92,6 @@ inline int64_t get_next_vesting_withdrawal( const account_object& account )
    return is_done ? 0 : next_withdrawal;
 }
 
-int64_t get_maximum_rc( const account_object& account, const rc_account_object& rc_account )
-{
-   int64_t result = account.vesting_shares.amount.value;
-   result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
-   result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
-   result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
-   result = fc::signed_sat_sub( result, get_next_vesting_withdrawal( account ) );
-   return result;
-}
-
 template< bool account_may_exist = false >
 void create_rc_account( database& db, uint32_t now, const account_object& account, asset max_rc_creation_adjustment )
 {
@@ -119,7 +109,6 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
       rca.rc_manabar.current_mana = get_maximum_rc( account, rca );
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
-      rca.max_rc = rca.rc_manabar.current_mana;
       rca.last_max_rc = get_maximum_rc( account, rca );
    } );
 }
@@ -993,6 +982,16 @@ exp_rc_data::~exp_rc_data() {}
 void exp_rc_data::to_variant( fc::variant& v )const
 {
    fc::to_variant( *this, v );
+}
+
+int64_t get_maximum_rc( const account_object& account, const rc_account_object& rc_account )
+{
+   int64_t result = account.vesting_shares.amount.value;
+   result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
+   result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
+   result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
+   result = fc::signed_sat_sub( result, detail::get_next_vesting_withdrawal( account ) );
+   return result;
 }
 
 } } } // steem::plugins::rc

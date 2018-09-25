@@ -3,6 +3,8 @@
 
 #include <steem/plugins/rc/rc_objects.hpp>
 
+#include <steem/chain/account_object.hpp>
+
 #include <fc/variant_object.hpp>
 #include <fc/reflect/variant.hpp>
 
@@ -70,11 +72,13 @@ DEFINE_API_IMPL( rc_api_impl, find_rc_accounts )
       if( rc_account == nullptr )
          continue;
 
+      const account_object& account = _db.get< account_object, by_name >( a );
+
       rc_account_api_object api_rc_account;
       api_rc_account.account = rc_account->account;
       api_rc_account.rc_manabar = rc_account->rc_manabar;
       api_rc_account.max_rc_creation_adjustment = rc_account->max_rc_creation_adjustment;
-      api_rc_account.max_rc = rc_account->max_rc;
+      api_rc_account.max_rc = get_maximum_rc( account, *rc_account );
 
       result.rc_accounts.emplace_back( api_rc_account );
    }
