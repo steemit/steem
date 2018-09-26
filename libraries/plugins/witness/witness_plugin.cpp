@@ -675,6 +675,12 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    if( my->_witnesses.size() > 0 )
    {
       // It is safe to access rc plugin here because of APPBASE_REQUIRES_PLUGIN
+      FC_ASSERT( my->_skip_enforce_bandwidth,
+         "skip-enforce-bandwidth=true is required to produce blocks" );
+      FC_ASSERT( !appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
+         "rc-skip-reject-not-enough-rc=false is required to produce blocks" );
+
+      // This should be a no-op
       FC_ASSERT( my->_skip_enforce_bandwidth != appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
          "To produce blocks either bandwidth (witness-skip-enforce-bandwidth=false) or rc rejection (rc-skip-reject-not-enough-rc=false) must be set." );
    }
