@@ -149,7 +149,7 @@ struct api_account_object
       post_bandwidth( a.post_bandwidth ),
       pending_claimed_accounts( a.pending_claimed_accounts )
    {
-      if( a.voting_manabar.last_update_time <= STEEM_HARDFORK_0_20_TIME )
+      if( a.voting_manabar.last_update_time < STEEM_HARDFORK_0_20_TIME )
       {
          voting_power = (uint16_t) a.voting_manabar.current_mana;
       }
