@@ -149,20 +149,13 @@ struct api_account_object
       post_bandwidth( a.post_bandwidth ),
       pending_claimed_accounts( a.pending_claimed_accounts )
    {
-      if( a.voting_manabar.last_update_time < STEEM_HARDFORK_0_20_TIME )
-      {
-         voting_power = (uint16_t) a.voting_manabar.current_mana;
-      }
-      else
-      {
-         auto vests = chain::util::get_effective_vesting_shares( a );
-         voting_power = vests <= 0 ? 0 : (uint16_t)( ( STEEM_100_PERCENT * a.voting_manabar.current_mana ) / vests );
-      }
+      voting_power = _compute_voting_power(a);
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
-
    api_account_object(){}
+
+   uint16_t _compute_voting_power( const database_api::api_account_object& a );
 
    account_id_type   id;
 

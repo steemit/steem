@@ -2098,6 +2098,41 @@ namespace detail
 
 } // detail
 
+uint16_t api_account_object::_compute_voting_power( const database_api::api_account_object& a )
+{
+   if( a.voting_manabar.last_update_time < STEEM_HARDFORK_0_20_TIME )
+      return (uint16_t) a.voting_manabar.current_mana;
+
+   auto vests = chain::util::get_effective_vesting_shares( a );
+   if( vests <= 0 )
+      return 0;
+
+   //
+   // Let t1 = last_vote_time, t2 = last_update_time
+   // vp_t2 = STEEM_100_PERCENT * current_mana / vests
+   // vp_t1 = vp_t2 - STEEM_100_PERCENT * (t2 - t1) / STEEM_VOTING_MANA_REGENERATION_SECONDS
+   //
+
+   uint32_t t1 = a.last_vote_time.sec_since_epoch();
+   uint32_t t2 = a.voting_manabar.last_update_time;
+   uint64_t dt = (t2 > t1) ? (t2 - t1) : 0;
+   uint64_t vp_dt = STEEM_100_PERCENT * dt / STEEM_VOTING_MANA_REGENERATION_SECONDS;
+
+   uint128_t vp_t2 = STEEM_100_PERCENT;
+   vp_t2 *= a.voting_manabar.current_mana;
+   vp_t2 /= vests;
+
+   uint64_t vp_t2u = vp_t2.to_uint64();
+   if( vp_t2u >= STEEM_100_PERCENT )
+   {
+      wlog( "Truncated vp_t2u to STEEM_100_PERCENT for account ${a}", ("a", a.name) );
+      vp_t2u = STEEM_100_PERCENT;
+   }
+   uint16_t vp_t1 = uint16_t( vp_t2u ) - uint16_t( std::min( vp_t2u, vp_dt ) );
+
+   return vp_t1;
+}
+
 condenser_api::condenser_api()
    : my( new detail::condenser_api_impl() )
 {
