@@ -103,6 +103,21 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
          return;
    }
 
+   if( max_rc_creation_adjustment.symbol == STEEM_SYMBOL )
+   {
+      const dynamic_global_property_object& gpo = db.get_dynamic_global_properties();
+      max_rc_creation_adjustment = max_rc_creation_adjustment * gpo.get_vesting_share_price();
+   }
+   else if( max_rc_creation_adjustment.symbol == VESTS_SYMBOL )
+   {
+      wlog( "Encountered max_rc_creation_adjustment.symbol == VESTS_SYMBOL creating account ${acct}", ("acct", account.name) );
+   }
+   else
+   {
+      elog( "Encountered unknown max_rc_creation_adjustment creating account ${acct}", ("acct", account.name) );
+      max_rc_creation_adjustment = asset( 0, VESTS_SYMBOL );
+   }
+
    db.create< rc_account_object >( [&]( rc_account_object& rca )
    {
       rca.account = account.name;
