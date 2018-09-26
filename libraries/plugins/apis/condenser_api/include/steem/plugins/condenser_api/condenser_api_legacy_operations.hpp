@@ -87,7 +87,9 @@ namespace steem { namespace plugins { namespace condenser_api {
       api_chain_properties( const chain::chain_properties& c ) :
          account_creation_fee( legacy_asset::from_asset( c.account_creation_fee ) ),
          maximum_block_size( c.maximum_block_size ),
-         sbd_interest_rate( c.sbd_interest_rate )
+         sbd_interest_rate( c.sbd_interest_rate ),
+         account_subsidy_budget( c.account_subsidy_budget ),
+         account_subsidy_decay( c.account_subsidy_decay )
       {}
 
       operator legacy_chain_properties() const
