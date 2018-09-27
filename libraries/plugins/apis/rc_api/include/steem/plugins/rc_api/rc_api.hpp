@@ -23,7 +23,9 @@ typedef void_type get_resource_params_args;
 
 struct get_resource_params_return
 {
+   vector< string >                                         resource_names;
    variant_object                                           resource_params;
+   variant_object                                           size_info;
 };
 
 typedef void_type get_resource_pool_args;
@@ -86,7 +88,9 @@ class rc_api
 } } } // steem::plugins::rc
 
 FC_REFLECT( steem::plugins::rc::get_resource_params_return,
+   (resource_names)
    (resource_params)
+   (size_info)
    )
 
 FC_REFLECT( steem::plugins::rc::resource_pool_api_object,
