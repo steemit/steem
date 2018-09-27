@@ -237,7 +237,7 @@ void use_account_rcs(
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
-      rca.rc_manabar.regenerate_mana( mbparams, gpo.time.sec_since_epoch() );
+      rca.rc_manabar.regenerate_mana< true >( mbparams, gpo.time.sec_since_epoch() );
 
       bool has_mana = rc_account.rc_manabar.has_mana( rc );
 
@@ -548,7 +548,7 @@ struct pre_apply_operation_visitor
 
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
-         rca.rc_manabar.regenerate_mana( mbparams, _current_time );
+         rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
       } );
    }
 

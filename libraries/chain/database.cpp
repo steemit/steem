@@ -1305,6 +1305,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             db.modify( to_account, [&]( account_object& a )
             {
                util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
                a.voting_manabar.regenerate_mana( params, db.head_block_time() );
                a.voting_manabar.use_mana( -new_vesting.amount.value );
             });
@@ -4154,6 +4155,7 @@ void database::clear_expired_delegations()
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
             a.voting_manabar.regenerate_mana( params, head_block_time() );
             a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
          }
