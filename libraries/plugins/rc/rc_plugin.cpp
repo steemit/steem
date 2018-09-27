@@ -241,13 +241,31 @@ void use_account_rcs(
 
       bool has_mana = rc_account.rc_manabar.has_mana( rc );
 
-      if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) && db.is_producing() )
+      if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
-         STEEM_ASSERT( has_mana, plugin_exception,
-            "Account: ${account} needs ${rc_needed} RC. Please wait to transact, or power up STEEM.",
-            ("account", account_name)
-            ("rc_needed", rc)
-            );
+         if( db.is_producing() )
+         {
+            STEEM_ASSERT( has_mana, plugin_exception,
+               "Account: ${account} has ${rc_current} RC, needs ${rc_needed} RC. Please wait to transact, or power up STEEM.",
+               ("account", account_name)
+               ("rc_needed", rc)
+               ("rc_current", rca.rc_manabar.current_mana)
+               );
+         }
+         else
+         {
+            if( !has_mana )
+            {
+               const dynamic_global_property_object& gpo = db.get_dynamic_global_properties();
+               ilog( "Accepting transaction by ${account}, has ${rc_current} RC, needs ${rc_needed} RC, block ${b}, witness ${w}.",
+                  ("account", account_name)
+                  ("rc_needed", rc)
+                  ("rc_current", rca.rc_manabar.current_mana)
+                  ("b", gpo.head_block_number)
+                  ("w", gpo.current_witness)
+                  );
+            }
+         }
       }
 
       if( (!has_mana) && ( skip.skip_negative_rc_balance || !db.has_hardfork( STEEM_HARDFORK_0_20 ) ) )
