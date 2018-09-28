@@ -2883,7 +2883,7 @@ void database::init_genesis( uint64_t init_supply )
          {
             a.name = STEEM_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
             a.memo_key = init_public_key;
-            a.balance  = asset( i ? 0 : init_supply, STEEM_SYMBOL );
+            a.balance  = asset( i ? 1 : init_supply, STEEM_SYMBOL );
          } );
 
          create< account_authority_object >( [&]( account_authority_object& auth )
@@ -4784,12 +4784,12 @@ void database::apply_hardfork( uint32_t hardfork )
                if( account == nullptr )
                   continue;
 
-               update_owner_authority( *account, authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 ) );
+               update_owner_authority( *account, authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 ) );
 
                modify( get< account_authority_object, by_account >( account->name ), [&]( account_authority_object& auth )
                {
-                  auth.active  = authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 );
-                  auth.posting = authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 );
+                  auth.active  = authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 );
+                  auth.posting = authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 );
                });
             }
          }
@@ -4831,17 +4831,17 @@ void database::apply_hardfork( uint32_t hardfork )
 
             modify( get< account_authority_object, by_account >( STEEM_MINER_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               auth.posting = authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 );
+               auth.posting = authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 );
             });
 
             modify( get< account_authority_object, by_account >( STEEM_NULL_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               auth.posting = authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 );
+               auth.posting = authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 );
             });
 
             modify( get< account_authority_object, by_account >( STEEM_TEMP_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               auth.posting = authority( 1, public_key_type( "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7" ), 1 );
+               auth.posting = authority( 1, public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" ), 1 );
             });
          }
          break;
