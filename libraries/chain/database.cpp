@@ -2852,6 +2852,7 @@ void database::init_genesis( uint64_t init_supply )
          auth.account = STEEM_MINER_ACCOUNT;
          auth.owner.weight_threshold = 1;
          auth.active.weight_threshold = 1;
+	 auth.posting.weight_threshold = 1;
       });
 
       create< account_object >( [&]( account_object& a )
