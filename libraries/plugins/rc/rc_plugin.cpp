@@ -318,10 +318,12 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
 
    std::shared_ptr< exp_rc_data > export_data =
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
+   /*
    if( (gpo.head_block_number % 10000) == 0 )
    {
       dlog( "${t} : ${i}", ("t", gpo.time)("i", tx_info) );
    }
+   */
    if( export_data )
       export_data->tx_info.push_back( tx_info );
 }
@@ -397,7 +399,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
    _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ),
       [&]( rc_pool_object& pool_obj )
       {
-         bool debug_print = ((gpo.head_block_number % 10000) == 0);
+          //bool debug_print = ((gpo.head_block_number % 10000) == 0);
 
          for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
          {
@@ -429,7 +431,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
             }
 
             pool = new_pool + block_info.adjustment[i];
-
+            /*
             if( debug_print )
             {
                double k = 27.027027027027028;
@@ -437,11 +439,14 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
                a /= k*double(pool);
                dlog( "a=${a}   aR=${aR}", ("a", a)("aR", a*gpo.total_vesting_shares.amount.value/STEEM_RC_REGEN_TIME) );
             }
+            */
          }
+         /*
          if( debug_print )
          {
             dlog( "${t} : ${i}", ("t", gpo.time)("i", block_info) );
          }
+         */
       } );
 
    std::shared_ptr< exp_rc_data > export_data =
