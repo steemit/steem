@@ -888,15 +888,20 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
    note.op.visit( vtor );
 }
 
-void update_last_vesting( database& db, const std::vector< account_name_type >& regen_accounts )
+void update_modified_accounts( database& db, const std::vector< account_name_type >& regen_accounts )
 {
    for( const account_name_type& name : regen_accounts )
    {
       const account_object& account = db.get< account_object, by_name >( name );
       const rc_account_object& rc_account = db.get< rc_account_object, by_name >( name );
+
+      int64_t new_last_max_rc = get_maximum_rc( account, rc_account );
+      int64_t drc = new_last_max_rc - rc_account.last_max_rc;
+
       db.modify( rc_account, [&]( rc_account_object& rca )
       {
-         rca.last_max_rc = get_maximum_rc( account, rca );
+         rca.last_max_rc = new_last_max_rc;
+         rca.rc_manabar.current_mana += std::max( drc, int64_t( 0 ) );
       } );
    }
 }
@@ -915,7 +920,7 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
    note.op.visit( vtor );
 
-   update_last_vesting( _db, modified_accounts );
+   update_modified_accounts( _db, modified_accounts );
 }
 
 void rc_plugin_impl::validate_database()
