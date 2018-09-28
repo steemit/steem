@@ -883,7 +883,7 @@ void update_modified_accounts( database& db, const std::vector< account_name_typ
       db.modify( rc_account, [&]( rc_account_object& rca )
       {
          rca.last_max_rc = new_last_max_rc;
-         rca.rc_manabar.current_mana += std::min( drc, int64_t( 0 ) );
+         rca.rc_manabar.current_mana += std::max( drc, int64_t( 0 ) );
       } );
    }
 }
