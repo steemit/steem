@@ -46,7 +46,7 @@
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 4) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7"
-#define STEEM_CHAIN_ID (fc::sha256::hash("I love Pakistan"))
+#define STEEM_CHAIN_ID fc::sha256()
 #define STEEM_ADDRESS_PREFIX                  "STM"
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1538115108))
@@ -144,7 +144,7 @@
 
 #define STEEM_MAX_RESERVE_RATIO               (20000)
 
-#define STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER 30
+#define STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER 1
 #define STEEM_CREATE_ACCOUNT_DELEGATION_RATIO    5
 #define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
 
