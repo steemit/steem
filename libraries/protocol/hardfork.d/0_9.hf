@@ -12,10 +12,7 @@ inline static const std::set< std::string >& get_compromised_accounts()
 {
    static const std::set< std::string > compromised_accounts
    {
-	"bear",
-    "bilalhaider",
     "bear1",
-    "bear2",
     "bear3",
     "bear4",
     "bear5",
@@ -32,9 +29,7 @@ inline static const std::set< std::string >& get_compromised_accounts()
     "bear16",
     "bear17",
     "bear18",
-    "bear19",
-    "bilal",
-    "bilal-haider"
+    "bear19"
    };
 
    return compromised_accounts;

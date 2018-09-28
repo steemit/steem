@@ -2883,16 +2883,15 @@ void database::init_genesis( uint64_t init_supply )
          {
             a.name = STEEM_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
             a.memo_key = init_public_key;
-            a.balance  = asset( i ? 1 : init_supply, STEEM_SYMBOL );
+            a.balance  = asset( !i ? 0 : init_supply/20, STEEM_SYMBOL );
          } );
 
          create< account_authority_object >( [&]( account_authority_object& auth )
          {
             auth.account = STEEM_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
-            auth.owner.add_authority( init_public_key, 1 );
-            auth.owner.weight_threshold = 1;
-            auth.active  = auth.owner;
-            auth.posting = auth.active;
+            auth.owner   = authority( 1, init_public_key, 1 );
+            auth.active  = authority( 1, init_public_key, 1 );
+            auth.posting = authority( 1, init_public_key, 1 );
          });
 
          create< witness_object >( [&]( witness_object& w )
