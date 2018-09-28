@@ -45,12 +45,12 @@
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 4) )
 
-#define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define STEEM_CHAIN_ID fc::sha256()
+#define STEEM_INIT_PUBLIC_KEY_STR             "STM8PNE9hhsnmn4yw1CcTN1GtZdWuMktmcu1sHK9aHeA4v18QKuL7"
+#define STEEM_CHAIN_ID (fc::sha256::hash("I love Pakistan"))
 #define STEEM_ADDRESS_PREFIX                  "STM"
 
-#define STEEM_GENESIS_TIME                    (fc::time_point_sec(1458835200))
-#define STEEM_MINING_TIME                     (fc::time_point_sec(1458838800))
+#define STEEM_GENESIS_TIME                    (fc::time_point_sec(1538115108))
+#define STEEM_MINING_TIME                     (fc::time_point_sec(1538116108))
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    /// 1 day
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF17 (60*60*12)    /// 12 hours
 #define STEEM_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  /// 7 days
@@ -68,7 +68,7 @@
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
 
-#define STEEM_INIT_SUPPLY                     int64_t(0)
+#define STEEM_INIT_SUPPLY                     (int64_t( 500 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 
 #endif
 
@@ -84,9 +84,9 @@
 #define STEEM_START_VESTING_BLOCK             (STEEM_BLOCKS_PER_DAY * 7)
 #define STEEM_START_MINER_VOTING_BLOCK        (STEEM_BLOCKS_PER_DAY * 30)
 
-#define STEEM_INIT_MINER_NAME                 "initminer"
-#define STEEM_NUM_INIT_MINERS                 1
-#define STEEM_INIT_TIME                       (fc::time_point_sec());
+#define STEEM_INIT_MINER_NAME                 "bear"
+#define STEEM_NUM_INIT_MINERS                 20
+#define STEEM_INIT_TIME                       (fc::time_point_sec(1538116108));
 
 #define STEEM_MAX_WITNESSES                   21
 
