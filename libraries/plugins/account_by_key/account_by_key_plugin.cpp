@@ -150,7 +150,7 @@ struct post_operation_visitor
 
             db.create< key_lookup_object >( [&]( key_lookup_object& o )
             {
-               o.key = public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" );
+               o.key = public_key_type( "STM7HMnFuyuYrRfF3UyPxSeHG8fB3XpjDAuYCoTyKKbwB2EbsCZvA" );
                o.account = account->name;
             });
          }
