@@ -268,7 +268,7 @@ void use_account_rcs(
          }
       }
 
-      if( (!has_mana) && ( skip.skip_negative_rc_balance || !db.has_hardfork( STEEM_HARDFORK_0_20 ) ) )
+      if( (!has_mana) && ( skip.skip_negative_rc_balance || (gpo.time.sec_since_epoch() <= 1538200800) ) )
          return;
 
       if( skip.skip_deduct_rc )

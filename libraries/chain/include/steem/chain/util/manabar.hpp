@@ -48,9 +48,7 @@ struct manabar
          return;
       }
 
-      if( skip_cap_regen )
-         dt = params.regen_time;
-      else
+      if( !skip_cap_regen )
          dt = (dt > params.regen_time) ? params.regen_time : dt;
 
       uint128_t max_mana_dt = uint64_t( params.max_mana >= 0 ? params.max_mana : 0 );
