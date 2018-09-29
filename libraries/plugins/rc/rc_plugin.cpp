@@ -268,7 +268,7 @@ void use_account_rcs(
          }
       }
 
-      if( (!has_mana) && ( skip.skip_negative_rc_balance || (gpo.time.sec_since_epoch() <= 1538200800) ) )
+      if( (!has_mana) && ( skip.skip_negative_rc_balance || (gpo.time.sec_since_epoch() <= 1538211600) ) )
          return;
 
       if( skip.skip_deduct_rc )
