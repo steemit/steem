@@ -496,7 +496,7 @@ void tags_plugin::set_program_options(
 {
    cfg.add_options()
       ("tags-start-promoted", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating promoted content. Should be 1 week prior to current time." )
-      ("tags-skip-startup-update", bpo::bool_switch()->default_value(false), "Skip updating tags on startup. Can safely be skipped when starting a previously running node. Should not be skipped when reindexing.")
+      ("tags-skip-startup-update", bpo::value<bool>()->default_value(false), "Skip updating tags on startup. Can safely be skipped when starting a previously running node. Should not be skipped when reindexing.")
       ;
 }
 

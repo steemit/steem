@@ -947,7 +947,7 @@ rc_plugin::~rc_plugin() {}
 void rc_plugin::set_program_options( options_description& cli, options_description& cfg )
 {
    cfg.add_options()
-      ("rc-skip-reject-not-enough-rc", bpo::bool_switch()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ("rc-skip-reject-not-enough-rc", bpo::value<bool>()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
       ;
 }
 
