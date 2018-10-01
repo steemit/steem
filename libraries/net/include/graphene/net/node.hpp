@@ -197,7 +197,7 @@ namespace graphene { namespace net {
    {
       public:
         node(const std::string& user_agent);
-        virtual ~node();
+        ~node();
 
         void close();
 

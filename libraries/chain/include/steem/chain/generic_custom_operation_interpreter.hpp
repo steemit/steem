@@ -132,7 +132,6 @@ class generic_custom_operation_interpreter
 {
    public:
       generic_custom_operation_interpreter( database& db ) : evaluator_registry< CustomOperationType >(db) {}
-      virtual ~generic_custom_operation_interpreter() = default;
 
       void apply_operations( const vector< CustomOperationType >& custom_operations, const operation& outer_o )
       {
