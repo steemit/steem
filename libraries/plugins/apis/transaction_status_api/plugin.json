@@ -1,0 +1,5 @@
+{
+   "plugin_name": "transaction_status_api",
+   "plugin_namespace": "transaction_status_api",
+   "plugin_project": "transaction_status_api_plugin"
+}
