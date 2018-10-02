@@ -5431,7 +5431,6 @@ void database::replenish_nai_pool()
 {
    try
    {
-      nai_generator n;
       while ( count< nai_pool_object >() < SMT_MAX_NAI_POOL_COUNT )
       {
          asset_symbol_type next_sym;
@@ -5446,7 +5445,7 @@ void database::replenish_nai_pool()
                     ("collisions", collisions) );
                return;
             }
-            next_sym = n( seed++ );
+            next_sym = nai_generator::generate( seed++ );
          }
          while ( asset_symbol_exists_in_nai_pool( next_sym ) || asset_symbol_is_an_smt_token( next_sym ) );
 
