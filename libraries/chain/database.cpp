@@ -4982,11 +4982,6 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-FC_TODO( "We need to handle this if we have HF21 that is NOT an SMT hardfork" );
-#if 0
-      case STEEM_HARDFORK_0_21:
-         break;
-#endif
 #ifdef IS_TEST_NET
       case STEEM_SMT_HARDFORK:
    #ifdef STEEM_ENABLE_SMT
