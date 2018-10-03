@@ -5960,6 +5960,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
    FC_LOG_AND_RETHROW()
 }
 
+/*
 BOOST_AUTO_TEST_CASE( account_bandwidth )
 {
    try
@@ -6012,6 +6013,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
    }
    FC_LOG_AND_RETHROW()
 }
+*/
 
 BOOST_AUTO_TEST_CASE( claim_reward_balance_validate )
 {
