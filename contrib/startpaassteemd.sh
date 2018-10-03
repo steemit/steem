@@ -127,7 +127,7 @@ if [[ $finished == 0 ]]; then
 fi
 
 # for appbase tags plugin loading
-ARGS+=" --tags-skip-startup-update=true"
+ARGS+=" --tags-skip-startup-update"
 
 cd $HOME
 
