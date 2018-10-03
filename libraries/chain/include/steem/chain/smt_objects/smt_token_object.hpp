@@ -2,7 +2,7 @@
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
-
+#include <boost/multi_index/composite_key.hpp>
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain {

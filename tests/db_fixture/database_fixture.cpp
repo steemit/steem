@@ -14,6 +14,8 @@
 
 #include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
+#include <steem/chain/smt_objects/nai_pool_object.hpp>
+
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
 
@@ -234,7 +236,7 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
    static std::vector< asset_symbol_type >::size_type next_nai = 0;
-   auto available_nais =  db->get_nai_pool();
+   auto available_nais = db->get< nai_pool_object >().nai_pool;
    FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_nai_pool." );
    const asset_symbol_type& new_nai = available_nais[ next_nai++ % available_nais.size() ];
    // Note that token's precision is needed now, when creating actual symbol.

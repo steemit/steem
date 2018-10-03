@@ -486,14 +486,6 @@ namespace steem { namespace chain {
          ///Smart Media Tokens related methods
          ///@{
          void validate_smt_invariants()const;
-         /**
-          * @return a list of available NAIs.
-         */
-         vector< asset_symbol_type > get_nai_pool();
-
-         void replenish_nai_pool();
-         bool asset_symbol_exists_in_nai_pool( asset_symbol_type a );
-         bool asset_symbol_is_an_smt_token( asset_symbol_type a );
          ///@}
 #endif
 

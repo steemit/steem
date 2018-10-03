@@ -1389,10 +1389,12 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
       uint32_t collisions = 0;
       do
       {
-         BOOST_REQUIRE( collisions++ < SMT_MAX_NAI_GENERATION_TRIES );
+         BOOST_REQUIRE( collisions < SMT_MAX_NAI_GENERATION_TRIES );
+         collisions++;
+
          ast = nai_generator::generate( seed++ );
       }
-      while ( db->asset_symbol_exists_in_nai_pool( ast ) || db->asset_symbol_is_an_smt_token( ast ) );
+      while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast ) );
 
       /* This should fail because the NAI we generated has not been added to the NAI pool */
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)
@@ -1411,7 +1413,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_removal )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
 
       /* After we create an SMT, it should no longer exist in the NAI pool */
-      BOOST_REQUIRE( !db->asset_symbol_exists_in_nai_pool( alice_symbol ) );
+      BOOST_REQUIRE( !db->get< nai_pool_object >().contains( alice_symbol ) );
       validate_database();
    }
    FC_LOG_AND_RETHROW();

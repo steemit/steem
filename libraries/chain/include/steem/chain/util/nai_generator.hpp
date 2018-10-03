@@ -30,6 +30,15 @@ class nai_generator {
    };
 
 public:
+   // 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
+   // 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
+   // 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
+   //    with [0 : 99,999,999] range.
+   // 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
+   //    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
+   // 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
+   //    of liquid/vesting *pairs* of reserved/available NAIs.
+   // 6. 45 milions of SMT await for their creators.
    static asset_symbol_type generate( uint32_t seed )
    {
       asset_symbol_type new_symbol;
@@ -41,9 +50,6 @@ public:
 
       uint32_t asset_num = asset_symbol_type::asset_num_from_nai( nai, 0 );
       new_symbol = asset_symbol_type::from_asset_num( asset_num );
-
-      new_symbol.validate();
-      FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
 
       return new_symbol;
    }

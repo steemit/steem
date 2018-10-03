@@ -19,6 +19,7 @@
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/witness_schedule.hpp>
 #include <steem/chain/smt_objects/nai_pool_object.hpp>
+#include <steem/chain/smt_objects/nai_pool.hpp>
 
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
@@ -2934,6 +2935,13 @@ void database::init_genesis( uint64_t init_supply )
          util::rd_setup_dynamics_params( account_subsidy_user_params, account_subsidy_system_params, wso.account_subsidy_rd );
          util::rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, wso.account_subsidy_witness_rd );
       } );
+
+#ifdef STEEM_ENABLE_SMT
+      create< nai_pool_object >( [&]( nai_pool_object& npo )
+      {
+
+      } );
+#endif
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -4985,7 +4993,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifdef IS_TEST_NET
       case STEEM_SMT_HARDFORK:
    #ifdef STEEM_ENABLE_SMT
-         replenish_nai_pool();
+         replenish_nai_pool( *this );
    #endif
          break;
 #endif
@@ -5404,78 +5412,6 @@ void database::retally_witness_vote_counts( bool force )
       }
    }
 }
-
-#ifdef STEEM_ENABLE_SMT
-// 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
-// 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
-// 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
-//    with [0 : 99,999,999] range.
-// 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
-//    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
-// 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
-//    of liquid/vesting *pairs* of reserved/available NAIs.
-// 6. 45 milions of SMT await for their creators.
-
-vector< asset_symbol_type > database::get_nai_pool()
-{
-   const auto& idx = get_index< nai_pool_index >().indices().get< by_symbol >();
-
-   vector< asset_symbol_type > nai_pool;
-   for ( auto it = idx.begin(); it != idx.end(); ++it )
-      nai_pool.push_back( it->asset_symbol );
-
-   return nai_pool;
-}
-
-void database::replenish_nai_pool()
-{
-   try
-   {
-      while ( count< nai_pool_object >() < SMT_MAX_NAI_POOL_COUNT )
-      {
-         asset_symbol_type next_sym;
-         auto block_id = head_block_id();
-         auto seed = block_id._hash[0];
-         uint32_t collisions = 0;
-         do
-         {
-            if ( collisions++ >= SMT_MAX_NAI_GENERATION_TRIES )
-            {
-               wlog( "Encountered ${collisions} collisions while attempting to generate NAI",
-                    ("collisions", collisions) );
-               return;
-            }
-            next_sym = nai_generator::generate( seed++ );
-         }
-         while ( asset_symbol_exists_in_nai_pool( next_sym ) || asset_symbol_is_an_smt_token( next_sym ) );
-
-         create< nai_pool_object >( [&]( nai_pool_object& npo ) {
-            npo.asset_symbol = next_sym;
-         });
-
-         FC_ASSERT( asset_symbol_exists_in_nai_pool( next_sym ), "Asset symbol should exist in NAI pool." );
-      }
-   }
-   FC_CAPTURE_AND_RETHROW()
-}
-
-bool database::asset_symbol_exists_in_nai_pool( asset_symbol_type a )
-{
-   const auto& idx = get_index< nai_pool_index >().indices().get< by_symbol >();
-   auto stripped_symbol_num = a.get_stripped_precision_smt_num();
-   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
-   return it != idx.end() && it->asset_symbol.get_stripped_precision_smt_num() == stripped_symbol_num;
-}
-
-bool database::asset_symbol_is_an_smt_token( asset_symbol_type a )
-{
-   const auto& idx = get_index< smt_token_index >().indices().get< by_symbol >();
-   auto stripped_symbol_num = a.get_stripped_precision_smt_num();
-   auto it = idx.lower_bound( asset_symbol_type::from_asset_num( stripped_symbol_num ) );
-   return it != idx.end() && it->liquid_symbol.get_stripped_precision_smt_num() == stripped_symbol_num;
-}
-
-#endif
 
 index_info::index_info() {}
 index_info::~index_info() {}

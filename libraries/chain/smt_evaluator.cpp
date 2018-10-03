@@ -3,7 +3,6 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
-
 #include <steem/chain/util/reward.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
@@ -73,8 +72,8 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
    // therefore we use a method that strips the symbol from precision info when searching.
-   FC_ASSERT( !_db.asset_symbol_is_an_smt_token( o.symbol ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
-   FC_ASSERT( _db.asset_symbol_exists_in_nai_pool( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
+   FC_ASSERT( ( _db.find< smt_token_object, by_symbol >( o.symbol ) == nullptr ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset effective_elevation_fee;
 
@@ -116,14 +115,10 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       token.market_maker.token_balance = asset( 0, token.liquid_symbol );
    });
 
-   auto nai_from_pool = asset_symbol_type::from_asset_num( o.symbol.get_stripped_precision_smt_num() );
-   const nai_pool_object* npo = _db.find< nai_pool_object, by_symbol >( nai_from_pool );
-   FC_ASSERT( npo, "NAI must have existed in the pool." );
-   _db.remove( *npo );
-   FC_ASSERT( !_db.asset_symbol_exists_in_nai_pool( o.symbol ), "Asset symbol should no longer be in NAI pool." );
+   remove_from_nai_pool( _db, o.symbol );
 
-   /* After consumption we replenish our NAI pool */
-   _db.replenish_nai_pool();
+   if ( !_db.is_pending_tx() )
+      replenish_nai_pool( _db );
 }
 
 struct smt_setup_evaluator_visitor
