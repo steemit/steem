@@ -1370,6 +1370,12 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate_differing_decimals )
       ACTORS( (alice) )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 /* Decimals */ );
 
+      /* We add the NAI back to the pool to ensure the test fails for the right reasons */
+      db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
+      {
+         obj.nai_pool.push_back( asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 ) );
+      } );
+
       /* We should not be able to create the same SMT twice, even if the decimals are different */
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, alice_symbol.to_nai(), 2 /* Decimals */ ), fc::assert_exception)
       validate_database();
@@ -1394,7 +1400,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
 
          ast = nai_generator::generate( seed++ );
       }
-      while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast ) );
+      while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast.to_nai() ) );
 
       /* This should fail because the NAI we generated has not been added to the NAI pool */
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)

@@ -43,7 +43,7 @@ void replenish_nai_pool( database& db )
             attempts_per_block++;
 
             /* We must ensure the NAI is not an SMT, and it is not already contained within the NAI pool */
-            if ( ( db.find< smt_token_object, by_symbol >( next_sym ) == nullptr ) && !npo.contains( next_sym ) )
+            if ( ( db.find< smt_token_object, by_symbol >( next_sym.to_nai() ) == nullptr ) && !npo.contains( next_sym ) )
                break;
 
             collisions_per_block++;

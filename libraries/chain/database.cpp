@@ -18,8 +18,6 @@
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/witness_schedule.hpp>
-#include <steem/chain/smt_objects/nai_pool_object.hpp>
-#include <steem/chain/smt_objects/nai_pool.hpp>
 
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
@@ -2937,10 +2935,7 @@ void database::init_genesis( uint64_t init_supply )
       } );
 
 #ifdef STEEM_ENABLE_SMT
-      create< nai_pool_object >( [&]( nai_pool_object& npo )
-      {
-
-      } );
+      create< nai_pool_object >( [&]( nai_pool_object& npo ){} );
 #endif
    }
    FC_CAPTURE_AND_RETHROW()
