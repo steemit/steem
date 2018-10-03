@@ -929,6 +929,10 @@ void rc_plugin::set_program_options( options_description& cli, options_descripti
       ("rc-skip-reject-not-enough-rc", bpo::value<bool>()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
       ("rc-compute-historical-rc", bpo::value<bool>()->default_value( false ), "Generate historical resource credits" )
       ;
+   cli.add_options()
+      ("rc-skip-reject-not-enough-rc", bpo::bool_switch()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ("rc-compute-historical-rc", bpo::bool_switch()->default_value( false ), "Generate historical resource credits" )
+      ;
 }
 
 void rc_plugin::plugin_initialize( const boost::program_options::variables_map& options )
