@@ -236,14 +236,28 @@ struct count_operation_visitor
       execution_time_count += _e.custom_operation_exec_time;
    }
 
-   void operator()( const custom_json_operation& )const
+   void operator()( const custom_json_operation& o )const
    {
-      execution_time_count += _e.custom_json_operation_exec_time;
+      auto exec_time = _e.custom_operation_exec_time;
+
+      if( o.id == "follow" )
+      {
+         exec_time *= EXEC_FOLLOW_CUSTOM_OP_SCALE;
+      }
+
+      execution_time_count += exec_time;
    }
 
-   void operator()( const custom_binary_operation& )const
+   void operator()( const custom_binary_operation& o )const
    {
-      execution_time_count += _e.custom_binary_operation_exec_time;
+      auto exec_time = _e.custom_operation_exec_time;
+
+      if( o.id == "follow" )
+      {
+         exec_time *= EXEC_FOLLOW_CUSTOM_OP_SCALE;
+      }
+
+      execution_time_count += exec_time;
    }
 
    void operator()( const delete_comment_operation& )const
