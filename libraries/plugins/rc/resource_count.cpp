@@ -395,6 +395,8 @@ void count_resources(
         size_info.transaction_object_base_size
       + size_info.transaction_object_byte_size * tx_size
       + vtor.state_bytes_count;
+
+   result.resource_count[ resource_execution_time ] += vtor.execution_time_count;
 }
 
 } } } // steem::plugins::rc
