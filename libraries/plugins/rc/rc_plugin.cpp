@@ -14,6 +14,10 @@
 #include <steem/jsonball/jsonball.hpp>
 
 #define STEEM_RC_REGEN_TIME   (60*60*24*5)
+// 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
+// TODO: What should this value be for testnet?
+#define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
+#define STEEM_HF20_BLOCK_NUM                              26256743
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -48,33 +52,15 @@ class rc_plugin_impl
 
       bool before_first_block()
       {
-         //
-         // This method returns _db.count< rc_account_object >() == 0.
-         // But we know that if this check ever returns false, all
-         // subsequent executions of the check will return false.
-         //
-         // So we can do an optimization which saves the per-op count()
-         // call in the common case with a simple caching algorithm:
-         //
-         // - Initialize the cached check result to true
-         // - Cache a false check result forever
-         // - Don't cache a true check result (i.e. re-run the check
-         // if the cached result is true)
-         //
-         if( _before_first_block_last_result )
-         {
-            _before_first_block_last_result = (_db.count< rc_account_object >() == 0);
-         }
-         return _before_first_block_last_result;
+         return (_db.count< rc_account_object >() == 0);
       }
 
       database&                     _db;
       rc_plugin&                    _self;
 
-      bool                          _before_first_block_last_result = true;
-
       rc_plugin_skip_flags          _skip;
       std::map< account_name_type, int64_t > _account_to_max_rc;
+      uint32_t                      _enable_at_block = 1;
 
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -110,7 +96,8 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
    }
    else if( max_rc_creation_adjustment.symbol == VESTS_SYMBOL )
    {
-      wlog( "Encountered max_rc_creation_adjustment.symbol == VESTS_SYMBOL creating account ${acct}", ("acct", account.name) );
+      // This occurs naturally when rc_account is initialized, so don't logspam
+      // wlog( "Encountered max_rc_creation_adjustment.symbol == VESTS_SYMBOL creating account ${acct}", ("acct", account.name) );
    }
    else
    {
@@ -281,11 +268,9 @@ void use_account_rcs(
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
-   bool debug_print = (gpo.head_block_number > 160785) && (gpo.head_block_number < 160795);
-   if( debug_print )
-   {
-      dlog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
-   }
+   if( before_first_block() )
+      return;
+
    int64_t rc_regen = (gpo.total_vesting_shares.amount.value / (STEEM_RC_REGEN_TIME / STEEM_BLOCK_INTERVAL));
 
    rc_transaction_info tx_info;
@@ -330,10 +315,12 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
-
-   if( gpo.head_block_number == 1 )
+   if( before_first_block() )
    {
-      on_first_block();
+      if( gpo.head_block_number == _enable_at_block )
+         on_first_block();
+      else
+         return;
    }
 
    /*
@@ -491,7 +478,7 @@ void rc_plugin_impl::on_first_block()
    const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
    for( auto it=idx.begin(); it!=idx.end(); ++it )
    {
-      create_rc_account( _db, now.sec_since_epoch(), *it, asset(0, VESTS_SYMBOL ) );
+      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ) );
    }
 
    return;
@@ -676,11 +663,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const producer_reward_operation& op )const
    {
-      // Producer reward for block 1 doesn't trigger regen because
-      //   it doesn't exist.  We could possibly handle this better
-      //   by implementing the first block check in a pre-handler.
-      if( _current_block_number > 1 )
-         regenerate( op.producer );
+      regenerate( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
@@ -847,11 +830,7 @@ struct post_apply_operation_visitor
 
    void operator()( const producer_reward_operation& op )const
    {
-      // Producer reward for block 1 doesn't trigger regen because
-      //   it doesn't exist.  We could possibly handle this better
-      //   by implementing the first block check in a pre-handler.
-      if( _current_block_number > 1 )
-         _mod_accounts.push_back( op.producer );
+      _mod_accounts.push_back( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
@@ -948,6 +927,7 @@ void rc_plugin::set_program_options( options_description& cli, options_descripti
 {
    cfg.add_options()
       ("rc-skip-reject-not-enough-rc", bpo::value<bool>()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ("rc-compute-historical-rc", bpo::value<bool>()->default_value( false ), "Generate historical resource credits" )
       ;
 }
 
@@ -985,6 +965,10 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_account_index >(db);
 
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
+      if( options.at( "rc-compute-historical-rc" ).as<bool>() )
+      {
+         my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
+      }
    }
    FC_CAPTURE_AND_RETHROW()
 }
