@@ -1445,7 +1445,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
       convert( "alice", ASSET( "10000.000 TESTS" ) );
 
       // Drain the NAI pool one at a time
-      for ( int i = 1; i <= SMT_MAX_NAI_POOL_COUNT; i++ )
+      for ( unsigned int i = 1; i <= SMT_MAX_NAI_POOL_COUNT; i++ )
       {
          smt_create_operation op;
          signed_transaction tx;
