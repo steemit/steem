@@ -1354,9 +1354,14 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate )
       ACTORS( (alice) )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
 
-      /* We should not be able to create the same SMT twice */
+      // We add the NAI back to the pool to ensure the test does not fail because the NAI is not in the pool
+      db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
+      {
+         obj.nai_pool.push_back( asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 ) );
+      } );
+
+      // Fail on duplicate SMT lookup
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, alice_symbol.to_nai(), alice_symbol.decimals() ), fc::assert_exception)
-      validate_database();
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1370,15 +1375,14 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate_differing_decimals )
       ACTORS( (alice) )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 /* Decimals */ );
 
-      /* We add the NAI back to the pool to ensure the test fails for the right reasons */
+      // We add the NAI back to the pool to ensure the test does not fail because the NAI is not in the pool
       db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
       {
          obj.nai_pool.push_back( asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 ) );
       } );
 
-      /* We should not be able to create the same SMT twice, even if the decimals are different */
+      // Fail on duplicate SMT lookup
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, alice_symbol.to_nai(), 2 /* Decimals */ ), fc::assert_exception)
-      validate_database();
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1402,9 +1406,8 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
       }
       while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast.to_nai() ) );
 
-      /* This should fail because the NAI we generated has not been added to the NAI pool */
+      // Fail on NAI pool not containing this NAI
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)
-      validate_database();
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1418,9 +1421,56 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_removal )
       ACTORS( (alice) )
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
 
-      /* After we create an SMT, it should no longer exist in the NAI pool */
+      // Ensure the NAI does not exist in the pool after being registered
       BOOST_REQUIRE( !db->get< nai_pool_object >().contains( alice_symbol ) );
-      validate_database();
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_nai_pool_count" );
+
+      // We should begin with a full NAI pool
+      BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT );
+
+      ACTORS( (alice) )
+
+      fund( "alice", 10 * 1000 * 1000 );
+      this->generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( "alice", ASSET( "10000.000 TESTS" ) );
+
+      // Drain the NAI pool one at a time
+      for ( int i = 1; i <= SMT_MAX_NAI_POOL_COUNT; i++ )
+      {
+         smt_create_operation op;
+         signed_transaction tx;
+
+         op.symbol = get_new_smt_symbol( 0, this->db );
+         op.precision = op.symbol.decimals();
+         op.smt_creation_fee = ASSET( "1000.000 TBD" );
+         op.control_account = "alice";
+
+         tx.operations.push_back( op );
+         tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( alice_private_key, this->db->get_chain_id(), fc::ecc::bip_0062 );
+
+         this->db->push_transaction( tx, 0 );
+
+         BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT - i );
+      }
+
+      // At this point, there should be no available NAIs
+      STEEM_REQUIRE_THROW( get_new_smt_symbol( 0, this->db ), fc::assert_exception );
+
+      this->generate_block();
+
+      // We should end with a full NAI pool after block generation
+      BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT );
    }
    FC_LOG_AND_RETHROW();
 }
