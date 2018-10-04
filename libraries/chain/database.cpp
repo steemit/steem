@@ -2935,7 +2935,10 @@ void database::init_genesis( uint64_t init_supply )
       } );
 
 #ifdef STEEM_ENABLE_SMT
-      create< nai_pool_object >( [&]( nai_pool_object& npo ){} );
+      create< nai_pool_object >( [&]( nai_pool_object& npo )
+      {
+         npo.nai_pool.reserve( SMT_MAX_NAI_POOL_COUNT );
+      } );
 #endif
    }
    FC_CAPTURE_AND_RETHROW()

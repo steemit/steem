@@ -7,7 +7,6 @@
 
 #include <steem/protocol/smt_operations.hpp>
 
-#include <steem/protocol/smt_operations.hpp>
 #ifdef STEEM_ENABLE_SMT
 namespace steem { namespace chain {
 
@@ -72,7 +71,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    // Check that SMT with given nai has not been created already.
    // Note that symbols with the same nai and different precision (decimal places) are not allowed,
    // therefore we use a method that strips the symbol from precision info when searching.
-   FC_ASSERT( ( _db.find< smt_token_object, by_symbol >( o.symbol.to_nai() ) == nullptr ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+   FC_ASSERT( ( _db.find< smt_token_object, by_symbol >( o.symbol.to_nai() ) == nullptr ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
    FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset effective_elevation_fee;

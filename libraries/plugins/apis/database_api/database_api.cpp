@@ -1450,7 +1450,9 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
 DEFINE_API_IMPL( database_api_impl, get_nai_pool )
 {
    get_nai_pool_return result;
-   for ( auto& e : _db.get< nai_pool_object >().nai_pool )
+   const auto& nai_pool = _db.get< nai_pool_object >().nai_pool;
+   result.nai_pool.reserve( nai_pool.size() );
+   for ( auto& e : nai_pool )
       result.nai_pool.push_back( e );
    return result;
 }
