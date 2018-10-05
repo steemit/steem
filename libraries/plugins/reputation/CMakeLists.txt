@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/reputation/*.hpp")
 
 add_library( reputation_plugin
              reputation_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( reputation_plugin chain_plugin )
