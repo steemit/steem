@@ -14,9 +14,9 @@ namespace steem { namespace chain {
  *
  * We will attempt to fill the pool with randomly generated NAIs up until
  * the pool is full (SMT_MAX_NAI_POOL_COUNT) or we encounter the maximum
- * acceptable collisions (SMT_MAX_NAI_GENERATION_TRIES). It will once again
- * replenish when this function is called and the database has a new head
- * block ID.
+ * acceptable collisions (SMT_MAX_NAI_GENERATION_TRIES). If we hit the
+ * maximum acceptable collisions, the pool will once again attempt to
+ * replenish when called during the next block.
  */
 void replenish_nai_pool( database& db )
 {
@@ -42,7 +42,7 @@ void replenish_nai_pool( database& db )
          return;
 
       const nai_pool_object& npo = db.get< nai_pool_object >();
-      while ( npo.nai_pool.size() < SMT_MAX_NAI_POOL_COUNT )
+      while ( npo.num_available_nais < SMT_MAX_NAI_POOL_COUNT )
       {
          asset_symbol_type next_sym;
          for (;;)
@@ -67,7 +67,8 @@ void replenish_nai_pool( database& db )
 
          db.modify( npo, [&]( nai_pool_object& obj )
          {
-            obj.nai_pool.push_back( next_sym );
+            obj.nais[ obj.num_available_nais ] = next_sym;
+            obj.num_available_nais++;
          } );
       }
    }
@@ -77,13 +78,16 @@ void replenish_nai_pool( database& db )
 void remove_from_nai_pool( database &db, const asset_symbol_type& a )
 {
    const nai_pool_object& npo = db.get< nai_pool_object >();
-   const auto& nai_pool = npo.nai_pool;
-   auto it = std::find( nai_pool.begin(), nai_pool.end(), asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) );
-   if ( it != nai_pool.end() )
+   const auto& nais = npo.nais;
+   const auto end = nais.begin() + npo.num_available_nais;
+   auto it = std::find( nais.begin(), end, asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) );
+   if ( it != end )
    {
+      auto index = std::distance( nais.begin(), it );
       db.modify( npo, [&] ( nai_pool_object& obj )
       {
-         obj.nai_pool.erase( it );
+         std::swap( obj.nais[ index ], obj.nais[ obj.num_available_nais - 1 ] );
+         obj.num_available_nais--;
       } );
    }
 }

@@ -1357,7 +1357,7 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate )
       // We add the NAI back to the pool to ensure the test does not fail because the NAI is not in the pool
       db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
       {
-         obj.nai_pool.push_back( asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 ) );
+         obj.nais[ 0 ] = alice_symbol;
       } );
 
       // Fail on duplicate SMT lookup
@@ -1378,7 +1378,7 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate_differing_decimals )
       // We add the NAI back to the pool to ensure the test does not fail because the NAI is not in the pool
       db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
       {
-         obj.nai_pool.push_back( asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 ) );
+         obj.nais[ 0 ] = asset_symbol_type::from_nai( alice_symbol.to_nai(), 0 );
       } );
 
       // Fail on duplicate SMT lookup
@@ -1392,6 +1392,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: smt_create_with_invalid_nai" );
+
       ACTORS( (alice) )
 
       uint32_t seed = 0;
@@ -1434,7 +1435,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
       BOOST_TEST_MESSAGE( "Testing: smt_nai_pool_count" );
 
       // We should begin with a full NAI pool
-      BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT );
+      BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT );
 
       ACTORS( (alice) )
 
@@ -1461,7 +1462,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
 
          this->db->push_transaction( tx, 0 );
 
-         BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT - i );
+         BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT - i );
       }
 
       // At this point, there should be no available NAIs
@@ -1470,7 +1471,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
       this->generate_block();
 
       // We should end with a full NAI pool after block generation
-      BOOST_REQUIRE( db->get< nai_pool_object >().nai_pool.size() == SMT_MAX_NAI_POOL_COUNT );
+      BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT );
    }
    FC_LOG_AND_RETHROW();
 }

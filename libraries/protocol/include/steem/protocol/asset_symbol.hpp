@@ -69,7 +69,6 @@ class asset_symbol_type
          smt_nai_space = 2
       };
 
-      asset_symbol_type() {}
       operator uint32_t() { return to_nai(); }
 
       // buf must have space for STEEM_ASSET_SYMBOL_MAX_LENGTH+1

@@ -13,19 +13,25 @@ namespace steem { namespace chain {
 
    public:
       template< typename Constructor, typename Allocator >
-      nai_pool_object( Constructor&& c, allocator< Allocator > a ) : nai_pool( a )
+      nai_pool_object( Constructor&& c, allocator< Allocator > a )
       {
          c( *this );
       }
 
       id_type id;
 
-      using t_nai_pool = chainbase::t_vector< asset_symbol_type >;
-      t_nai_pool nai_pool;
+      uint8_t num_available_nais = 0;
+      fc::array< asset_symbol_type, SMT_MAX_NAI_POOL_COUNT > nais;
+
+      std::vector< asset_symbol_type > pool() const
+      {
+         return std::vector< asset_symbol_type >{ nais.begin(), nais.begin() + num_available_nais };
+      }
 
       bool contains( const asset_symbol_type& a ) const
       {
-         return std::find( nai_pool.begin(), nai_pool.end(), asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) ) != nai_pool.end();
+         const auto end = nais.begin() + num_available_nais;
+         return std::find( nais.begin(), end, asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) ) != end;
       }
    };
 
@@ -39,7 +45,7 @@ namespace steem { namespace chain {
 
 } } // namespace steem::chain
 
-FC_REFLECT( steem::chain::nai_pool_object, (id)(nai_pool) )
+FC_REFLECT( steem::chain::nai_pool_object, (id)(num_available_nais)(nais) )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::nai_pool_object, steem::chain::nai_pool_index )
 
