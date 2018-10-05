@@ -228,17 +228,17 @@ inline void from_variant( const fc::variant& var, steem::protocol::asset_symbol_
 
    try
    {
-      FC_ASSERT( var.is_object(), "Expected an object." );
+      FC_ASSERT( var.is_object(), "Asset symbol is expected to be an object." );
 
       auto& o = var.get_object();
 
       auto nai = o.find( ASSET_SYMBOL_NAI_KEY );
       FC_ASSERT( nai != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_NAI_KEY) );
-      FC_ASSERT( nai->value().is_string(), "Expected a string type." );
+      FC_ASSERT( nai->value().is_string(), "Expected a string type for value '${key}'.", ("key", ASSET_SYMBOL_NAI_KEY) );
 
       auto decimals = o.find( ASSET_SYMBOL_DECIMALS_KEY );
       FC_ASSERT( decimals != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
-      FC_ASSERT( decimals->value().is_uint64(), "Expected an unsigned integer type." );
+      FC_ASSERT( decimals->value().is_uint64(), "Expected an unsigned integer type for value '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
       FC_ASSERT( decimals->value().as_uint64() <= STEEM_ASSET_MAX_DECIMALS,
          "Expected decimals to be less than or equal to ${num}", ("num", STEEM_ASSET_MAX_DECIMALS) );
 

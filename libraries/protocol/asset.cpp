@@ -398,7 +398,7 @@ namespace fc {
    {
       try
       {
-         FC_ASSERT( var.is_object(), "Asset has to treated as object." );
+         FC_ASSERT( var.is_object(), "Asset has to be treated as object." );
 
          const auto& v_object = var.get_object();
 
@@ -407,7 +407,11 @@ namespace fc {
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
 
          FC_ASSERT( v_object.contains( "precision" ), "Precision field doesn't exist." );
+         FC_ASSERT( v_object[ "precision" ].is_uint64(), "Expected an unsigned integer type for value '${key}'.", ("key", "precision") );
+
          FC_ASSERT( v_object.contains( "nai" ), "NAI field doesn't exist." );
+         FC_ASSERT( v_object[ "nai" ].is_string(), "Expected a string type for value '${key}'.", ("key", "nai") );
+
          vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v_object[ "nai" ].as< std::string >().c_str(), v_object[ "precision" ].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
