@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/steem/plugins/database_api/*.hpp")
 add_library( database_api_plugin
              database_api.cpp
              database_api_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( database_api_plugin chain_plugin json_rpc_plugin )

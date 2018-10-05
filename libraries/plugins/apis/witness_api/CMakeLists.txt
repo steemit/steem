@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/witness_api/*.hpp")
 add_library( witness_api_plugin
              witness_api_plugin.cpp
              witness_api.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( witness_api_plugin witness_plugin json_rpc_plugin )

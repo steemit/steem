@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/steem/plugins/block_api/*.hpp")
 add_library( block_api_plugin
              block_api.cpp
              block_api_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( block_api_plugin chain_plugin json_rpc_plugin )
