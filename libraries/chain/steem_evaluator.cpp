@@ -1791,7 +1791,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
       a.voting_manabar.regenerate_mana( params, now );
    });
-   FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account does not have enough mana to vote." );
+   FC_ASSERT( voter.voting_manabar.current_mana >= 0, "Account does not have enough mana to vote." );
 
    int16_t abs_weight = abs( o.weight );
    uint128_t used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
