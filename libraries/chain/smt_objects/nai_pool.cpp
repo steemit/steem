@@ -26,10 +26,12 @@ void replenish_nai_pool( database& db )
       static uint32_t collisions_per_block = 0;
       static uint32_t attempts_per_block = 0;
 
+      auto head_block_id = db.head_block_id();
+
       // If this is the first time we're encountering this block, reset our variables and set the last block */
-      if ( last_block_id != db.head_block_id() )
+      if ( last_block_id != head_block_id )
       {
-         last_block_id = db.head_block_id();
+         last_block_id = head_block_id;
          collisions_per_block = 0;
          attempts_per_block = 0;
       }
