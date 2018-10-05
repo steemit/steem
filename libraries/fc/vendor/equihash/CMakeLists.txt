@@ -5,6 +5,7 @@ set( CMAKE_C_FLAGS "-std=c99" )
 add_library( equihash
              src/pow.cpp
              src/blake2b.c
+             ${HEADERS}
            )
 
 target_link_libraries( equihash )
