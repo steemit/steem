@@ -76,5 +76,5 @@ FC_REFLECT_ENUM( steem::plugins::transaction_status::transaction_status,
                 (pending)
                 (expired) )
 
-FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(trx_id)(expiration)(block_num) )
+FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(trx_id)(expiration)(block_num)(status) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::transaction_status::transaction_status_object, steem::plugins::transaction_status::transaction_status_index )
