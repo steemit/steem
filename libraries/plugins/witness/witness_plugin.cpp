@@ -89,7 +89,7 @@ namespace detail {
       void on_pre_apply_operation( const chain::operation_notification& note );
       void on_post_apply_operation( const chain::operation_notification& note );
 
-//      void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
+      void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
 
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
@@ -98,7 +98,7 @@ namespace detail {
       bool     _production_enabled              = false;
       uint32_t _required_witness_participation  = 33 * STEEM_1_PERCENT;
       uint32_t _production_skip_flags           = chain::database::skip_nothing;
-      //bool     _skip_enforce_bandwidth          = true;
+      bool     _skip_enforce_bandwidth          = true;
 
       std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steem::protocol::account_name_type >                     _witnesses;
@@ -260,7 +260,6 @@ namespace detail {
 
    void witness_plugin_impl::on_pre_apply_transaction( const chain::transaction_notification& note )
    {
-      /*
       const signed_transaction& trx = note.transaction;
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
@@ -282,7 +281,6 @@ namespace detail {
             }
          }
       }
-      */
    }
 
    void witness_plugin_impl::on_pre_apply_operation( const chain::operation_notification& note )
@@ -318,7 +316,6 @@ namespace detail {
 
    void witness_plugin_impl::on_post_apply_block( const block_notification& note )
    { try {
-      /*
       const signed_block& b = note.block;
       int64_t max_block_size = _db.get_dynamic_global_properties().maximum_block_size;
 
@@ -342,7 +339,7 @@ namespace detail {
          _db.modify( *reserve_ratio_ptr, [&]( reserve_ratio_object& r )
          {
             r.average_block_size = ( 99 * r.average_block_size + block_size ) / 100;
-            */
+
             /**
             * About once per minute the average network use is consulted and used to
             * adjust the reserve ratio. Anything above 25% usage reduces the reserve
@@ -356,7 +353,6 @@ namespace detail {
             * different from past observed behavior and make small adjustments when
             * behavior is within expected norms.
             */
-           /*
             if( _db.head_block_num() % 20 == 0 )
             {
                int64_t distance = ( ( r.average_block_size - ( max_block_size / 4 ) ) * DISTANCE_CALC_PRECISION )
@@ -399,12 +395,12 @@ namespace detail {
          steem::plugins::block_data_export::find_export_data< exp_witness_data_object >( STEEM_WITNESS_PLUGIN_NAME );
       if( export_data )
          export_data->reserve_ratio = exp_reserve_ratio_object( *reserve_ratio_ptr, block_size );
-      */
+
       _dupe_customs.clear();
 
    } FC_LOG_AND_RETHROW() }
    #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
-/*
+
    void witness_plugin_impl::update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
    {
       const auto& props = _db.get_dynamic_global_properties();
@@ -469,7 +465,6 @@ namespace detail {
             export_data->bandwidth_updates.emplace_back( *band, trx_size );
       }
    }
-*/
 
    void witness_plugin_impl::schedule_production_loop() {
       // Sleep for 200ms, before checking the block production
@@ -679,23 +674,19 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    }
 
    my->_production_enabled = options.at( "enable-stale-production" ).as< bool >();
-   //my->_skip_enforce_bandwidth = options.at( "witness-skip-enforce-bandwidth" ).as< bool >();
+   my->_skip_enforce_bandwidth = options.at( "witness-skip-enforce-bandwidth" ).as< bool >();
 
    if( my->_witnesses.size() > 0 )
    {
       // It is safe to access rc plugin here because of APPBASE_REQUIRES_PLUGIN
-      /*
       FC_ASSERT( my->_skip_enforce_bandwidth,
          "skip-enforce-bandwidth=true is required to produce blocks" );
-      */
       FC_ASSERT( !appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
          "rc-skip-reject-not-enough-rc=false is required to produce blocks" );
 
       // This should be a no-op
-      /*
       FC_ASSERT( my->_skip_enforce_bandwidth != appbase::app().get_plugin< rc::rc_plugin >().get_rc_plugin_skip_flags().skip_reject_not_enough_rc,
          "To produce blocks either bandwidth (witness-skip-enforce-bandwidth=false) or rc rejection (rc-skip-reject-not-enough-rc=false) must be set." );
-      */
    }
 
    if( options.count( "required-participation" ) )
@@ -714,7 +705,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my->_post_apply_operation_conn = my->_db.add_pre_apply_operation_handler(
       [&]( const chain::operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0);
 
-   //add_plugin_index< account_bandwidth_index >( my->_db );
+   add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
 
    if( my->_witnesses.size() && my->_private_keys.size() )
