@@ -7,6 +7,8 @@
 
 #include <steem/protocol/smt_operations.hpp>
 
+#define SMT_TEST_ARTIFICIAL_VALID_NAI (SMT_MIN_NON_RESERVED_NAI * 10 + 6)
+
 namespace steem { namespace plugins { namespace smt_test {
 
 using namespace steem::protocol;
@@ -73,13 +75,13 @@ void test_alpha()
    uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
 
    // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
-   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder_a",   7 );
-   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder_b",  23 );
-   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder_c",  70 );
+   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder-a",   7 );
+   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder-b",  23 );
+   gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder-c",  70 );
 
    // set token unit, total is 6 token-satoshis = 0.0006 ALPHA
    gpolicy.pre_soft_cap_unit.token_unit.emplace( "$from", 5 );
-   gpolicy.pre_soft_cap_unit.token_unit.emplace( "founder_d", 1 );
+   gpolicy.pre_soft_cap_unit.token_unit.emplace( "founder-d", 1 );
 
    // no soft cap -> no soft cap unit
    gpolicy.post_soft_cap_unit.steem_unit.clear();
@@ -98,12 +100,14 @@ void test_alpha()
    smt_setup_operation setup_op;
    setup_op.control_account = "alpha";
    setup_op.decimal_places = 4;
+   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
 
    setup_op.initial_generation_policy = gpolicy;
 
-   setup_op.generation_begin_time = fc::variant( "2017-08-10T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.generation_end_time   = fc::variant( "2017-08-17T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.announced_launch_time = fc::variant( "2017-08-21T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_begin_time  = fc::variant( "2017-08-10T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_end_time    = fc::variant( "2017-08-17T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.announced_launch_time  = fc::variant( "2017-08-21T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.launch_expiration_time = fc::variant( "2017-08-22T00:00:00" ).as< fc::time_point_sec >();
 
    setup_op.validate();
 
@@ -152,12 +156,14 @@ void test_beta()
    smt_setup_operation setup_op;
    setup_op.control_account = "beta";
    setup_op.decimal_places = 4;
+   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
 
    setup_op.initial_generation_policy = gpolicy;
 
-   setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_begin_time  = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_end_time    = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.announced_launch_time  = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.launch_expiration_time = fc::variant( "2017-07-02T00:00:00" ).as< fc::time_point_sec >();
 
    setup_op.validate();
 
@@ -203,12 +209,14 @@ void test_delta()
    smt_setup_operation setup_op;
    setup_op.control_account = "delta";
    setup_op.decimal_places = 5;
+   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
 
    setup_op.initial_generation_policy = gpolicy;
 
-   setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
-   setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_begin_time  = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.generation_end_time    = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.announced_launch_time  = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
+   setup_op.launch_expiration_time = fc::variant( "2017-07-02T00:00:00" ).as< fc::time_point_sec >();
 
    setup_op.validate();
 
