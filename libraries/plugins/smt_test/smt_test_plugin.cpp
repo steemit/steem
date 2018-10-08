@@ -7,7 +7,7 @@
 
 #include <steem/protocol/smt_operations.hpp>
 
-#define SMT_TEST_ARTIFICIAL_VALID_NAI (SMT_MIN_NON_RESERVED_NAI * 10 + 6)
+#define SMT_TEST_PLUGIN_NAI (SMT_MIN_NON_RESERVED_NAI * 10 + 6)
 
 namespace steem { namespace plugins { namespace smt_test {
 
@@ -99,8 +99,10 @@ void test_alpha()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "alpha";
-   setup_op.decimal_places = 4;
-   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
+
+   asset_symbol_type alpha_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 4 );
+   setup_op.decimal_places = alpha_symbol.decimals();
+   setup_op.symbol = alpha_symbol;
 
    setup_op.initial_generation_policy = gpolicy;
 
@@ -155,8 +157,10 @@ void test_beta()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "beta";
-   setup_op.decimal_places = 4;
-   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
+
+   asset_symbol_type alpha_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 4 );
+   setup_op.decimal_places = alpha_symbol.decimals();
+   setup_op.symbol = alpha_symbol;
 
    setup_op.initial_generation_policy = gpolicy;
 
@@ -208,8 +212,10 @@ void test_delta()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "delta";
-   setup_op.decimal_places = 5;
-   setup_op.symbol = asset_symbol_type::from_nai( SMT_TEST_ARTIFICIAL_VALID_NAI, setup_op.decimal_places );
+
+   asset_symbol_type delta_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 5 );
+   setup_op.decimal_places = delta_symbol.decimals();
+   setup_op.symbol = delta_symbol;
 
    setup_op.initial_generation_policy = gpolicy;
 
