@@ -1,6 +1,5 @@
 #pragma once
 #include <steem/protocol/transaction.hpp>
-//#include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/chain/steem_object_types.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -23,8 +22,8 @@ enum transaction_status
 {
    unknown,    // Expiration time in future, transaction not included in block or mempool
    processing, // Transaction in mempool
-   accepted,   // Transaction has been included in block, block not irreversible
-   pending,    // Transaction has been included in block, block is irreversible
+   pending,    // Transaction has been included in block, block not irreversible
+   accepted,    // Transaction has been included in block, block is irreversible
    // Transaction has expired, transaction is not irreversible (transaction could be in a fork)
    // Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
    expired   // Transaction is too old, I don't know about it
@@ -42,10 +41,10 @@ public:
    }
 
    id_type                     id;
-   transaction_id_type         trx_id;
+   transaction_id_type         transaction_id;
    time_point_sec              expiration;
-   uint32_t                    block_num;
-   transaction_status          status;
+   uint32_t                    block_num    = 0;
+   bool                        irreversible = false;
 };
 
 typedef oid< transaction_status_object > transaction_status_object_id_type;
@@ -58,8 +57,7 @@ typedef multi_index_container<
    transaction_status_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< transaction_status_object, transaction_status_object_id_type, &transaction_status_object::id > >,
-      hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_status_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
-      ordered_non_unique< tag< by_expiration >, member<transaction_status_object, time_point_sec, &transaction_status_object::expiration > >,
+      hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_status_object, transaction_id_type, transaction_id), std::hash<transaction_id_type> >,
       ordered_non_unique< tag< by_block_num >, member< transaction_status_object, uint32_t, &transaction_status_object::block_num > >
    >,
    allocator< transaction_status_object >
@@ -76,5 +74,5 @@ FC_REFLECT_ENUM( steem::plugins::transaction_status::transaction_status,
                 (pending)
                 (expired) )
 
-FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(trx_id)(expiration)(block_num)(status) )
+FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(transaction_id)(expiration)(block_num)(irreversible) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::transaction_status::transaction_status_object, steem::plugins::transaction_status::transaction_status_index )
