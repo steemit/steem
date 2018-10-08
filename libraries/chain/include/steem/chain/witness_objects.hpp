@@ -106,11 +106,12 @@ namespace steem { namespace chain {
 
          chain_properties  props;
          #ifdef IS_TEST_NET
-         price             sbd_exchange_rate = price( asset( 0.1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
+         price             sbd_exchange_rate = price( asset( 1, SBD_SYMBOL ), asset( 10, STEEM_SYMBOL ) );
+         time_point_sec    last_sbd_exchange_update = 1539040723;
          #else
          price             sbd_exchange_rate;
-         #endif /// IS_TEST_NET
          time_point_sec    last_sbd_exchange_update;
+         #endif /// IS_TEST_NET
 
 
          /**
