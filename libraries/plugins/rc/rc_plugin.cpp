@@ -969,10 +969,11 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_account_index >(db);
 
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
-      if( options.at( "rc-compute-historical-rc" ).as<bool>() )
+      if( !options.at( "rc-compute-historical-rc" ).as<bool>() )
       {
          my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
       }
+      ilog( "RC's will be computed starting at block ${b}", ("b", my->_enable_at_block) );
    }
    FC_CAPTURE_AND_RETHROW()
 }
