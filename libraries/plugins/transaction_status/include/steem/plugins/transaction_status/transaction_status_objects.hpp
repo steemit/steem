@@ -20,13 +20,13 @@ enum transaction_status_object_type
 
 enum transaction_status
 {
-   unknown,    // Expiration time in future, transaction not included in block or mempool
-   processing, // Transaction in mempool
-   pending,    // Transaction has been included in block, block not irreversible
-   accepted,    // Transaction has been included in block, block is irreversible
-   // Transaction has expired, transaction is not irreversible (transaction could be in a fork)
-   // Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
-   expired   // Transaction is too old, I don't know about it
+   unknown,                           // Expiration time in future, transaction not included in block or mempool
+   within_mempool,                    // Transaction in mempool
+   within_reversible_block,           // Transaction has been included in block, block not irreversible
+   within_irreversible_block,         // Transaction has been included in block, block is irreversible
+   expired_within_reversible_block,   // Transaction has expired, transaction is not irreversible (transaction could be in a fork)
+   expired_within_irreversible_block, // Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
+   expired                            // Transaction is too old, I don't know about it
 };
 
 class transaction_status_object : public object< transaction_status_object_type, transaction_status_object >
@@ -43,8 +43,7 @@ public:
    id_type                     id;
    transaction_id_type         transaction_id;
    time_point_sec              expiration;
-   uint32_t                    block_num    = 0;
-   bool                        irreversible = false;
+   uint32_t                    block_num = 0;
 };
 
 typedef oid< transaction_status_object > transaction_status_object_id_type;
@@ -69,10 +68,12 @@ typedef multi_index_container<
 
 FC_REFLECT_ENUM( steem::plugins::transaction_status::transaction_status,
                 (unknown)
-                (processing)
-                (accepted)
-                (pending)
+                (within_mempool)
+                (within_reversible_block)
+                (within_irreversible_block)
+                (expired_within_reversible_block)
+                (expired_within_irreversible_block)
                 (expired) )
 
-FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(transaction_id)(expiration)(block_num)(irreversible) )
+FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(transaction_id)(expiration)(block_num) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::transaction_status::transaction_status_object, steem::plugins::transaction_status::transaction_status_index )
