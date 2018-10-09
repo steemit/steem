@@ -29,7 +29,6 @@ void transaction_status_impl::on_post_apply_transaction( const transaction_notif
    _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
    {
       obj.transaction_id = note.transaction_id;
-      obj.expiration = note.transaction.expiration;
    } );
 }
 

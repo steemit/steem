@@ -88,7 +88,6 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       auto tso = db->find< transaction_status_object, by_trx_id >( tx.id() );
       BOOST_REQUIRE( tso != nullptr );
       BOOST_REQUIRE( tso->block_num == 0 );
-      BOOST_REQUIRE( tso->expiration == db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
 
       generate_block();
 

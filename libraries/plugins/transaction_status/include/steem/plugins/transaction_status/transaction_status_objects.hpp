@@ -24,9 +24,9 @@ enum transaction_status
    within_mempool,                    // Transaction in mempool
    within_reversible_block,           // Transaction has been included in block, block not irreversible
    within_irreversible_block,         // Transaction has been included in block, block is irreversible
-   expired_within_reversible_block,   // Transaction has expired, transaction is not irreversible (transaction could be in a fork)
-   expired_within_irreversible_block, // Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
-   expired                            // Transaction is too old, I don't know about it
+   expired_reversible,                // Transaction has expired, transaction is not irreversible (transaction could be in a fork)
+   expired_irreversible,              // Transaction has expired, transaction is irreversible (transaction cannot be in a fork)
+   too_old                            // Transaction is too old, I don't know about it
 };
 
 class transaction_status_object : public object< transaction_status_object_type, transaction_status_object >
@@ -42,7 +42,6 @@ public:
 
    id_type                     id;
    transaction_id_type         transaction_id;
-   time_point_sec              expiration;
    uint32_t                    block_num = 0;
 };
 
@@ -71,9 +70,9 @@ FC_REFLECT_ENUM( steem::plugins::transaction_status::transaction_status,
                 (within_mempool)
                 (within_reversible_block)
                 (within_irreversible_block)
-                (expired_within_reversible_block)
-                (expired_within_irreversible_block)
-                (expired) )
+                (expired_reversible)
+                (expired_irreversible)
+                (too_old) )
 
-FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(transaction_id)(expiration)(block_num) )
+FC_REFLECT( steem::plugins::transaction_status::transaction_status_object, (id)(transaction_id)(block_num) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::transaction_status::transaction_status_object, steem::plugins::transaction_status::transaction_status_index )
