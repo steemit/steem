@@ -134,11 +134,6 @@ vector< database_api::api_withdraw_vesting_route_object > remote_node_api::get_w
    FC_ASSERT( false );
 }
 
-optional< witness::api_account_bandwidth_object > remote_node_api::get_account_bandwidth( account_name_type, witness::bandwidth_type )
-{
-   FC_ASSERT( false );
-}
-
 vector< condenser_api::api_savings_withdraw_object > remote_node_api::get_savings_withdraw_from( account_name_type )
 {
    FC_ASSERT( false );
