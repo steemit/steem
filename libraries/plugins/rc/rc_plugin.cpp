@@ -17,7 +17,10 @@
 // 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
+
+#ifndef IS_TEST_NET
 #define STEEM_HF20_BLOCK_NUM                              26256743
+#endif
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -969,10 +972,12 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_account_index >(db);
 
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
+#ifndef IS_TEST_NET
       if( !options.at( "rc-compute-historical-rc" ).as<bool>() )
       {
          my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
       }
+#endif
       ilog( "RC's will be computed starting at block ${b}", ("b", my->_enable_at_block) );
    }
    FC_CAPTURE_AND_RETHROW()
