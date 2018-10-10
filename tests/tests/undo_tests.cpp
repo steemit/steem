@@ -10,8 +10,6 @@
 
 #include <steem/chain/util/reward.hpp>
 
-#include <steem/plugins/witness/witness_objects.hpp>
-
 #include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>
 

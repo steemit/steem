@@ -47,7 +47,6 @@ struct remote_node_api
    optional< database_api::api_account_recovery_request_object > get_recovery_request( account_name_type );
    optional< condenser_api::api_escrow_object > get_escrow( account_name_type, uint32_t );
    vector< database_api::api_withdraw_vesting_route_object > get_withdraw_routes( account_name_type, condenser_api::withdraw_route_type );
-   optional< witness::api_account_bandwidth_object > get_account_bandwidth( account_name_type, witness::bandwidth_type );
    vector< condenser_api::api_savings_withdraw_object > get_savings_withdraw_from( account_name_type );
    vector< condenser_api::api_savings_withdraw_object > get_savings_withdraw_to( account_name_type );
    vector< condenser_api::api_vesting_delegation_object > get_vesting_delegations( account_name_type, account_name_type, uint32_t );
@@ -138,7 +137,6 @@ FC_API( steem::wallet::remote_node_api,
         (get_recovery_request)
         (get_escrow)
         (get_withdraw_routes)
-        (get_account_bandwidth)
         (get_savings_withdraw_from)
         (get_savings_withdraw_to)
         (get_vesting_delegations)
