@@ -1433,9 +1433,10 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: smt_nai_pool_count" );
+      const auto &npo = db->get< nai_pool_object >();
 
       // We should begin with a full NAI pool
-      BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT );
+      BOOST_REQUIRE( npo.num_available_nais == SMT_MAX_NAI_POOL_COUNT );
 
       ACTORS( (alice) )
 
@@ -1462,7 +1463,8 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
 
          this->db->push_transaction( tx, 0 );
 
-         BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT - i );
+         BOOST_REQUIRE( npo.num_available_nais == SMT_MAX_NAI_POOL_COUNT - i );
+         BOOST_REQUIRE( npo.nais[ npo.num_available_nais ] == asset_symbol_type() );
       }
 
       // At this point, there should be no available NAIs
@@ -1471,7 +1473,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
       this->generate_block();
 
       // We should end with a full NAI pool after block generation
-      BOOST_REQUIRE( db->get< nai_pool_object >().num_available_nais == SMT_MAX_NAI_POOL_COUNT );
+      BOOST_REQUIRE( npo.num_available_nais == SMT_MAX_NAI_POOL_COUNT );
    }
    FC_LOG_AND_RETHROW();
 }
