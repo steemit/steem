@@ -22,6 +22,10 @@
 #define STEEM_HF20_BLOCK_NUM                              26256743
 #endif
 
+// 1.66% is ~2 hours of regen.
+// 2 / ( 24 * 5 ) = 0.01666...
+#define STEEM_RC_MAX_NEGATIVE_PERCENT 166
+
 namespace steem { namespace plugins { namespace rc {
 
 using steem::plugins::block_data_export::block_data_export_plugin;
@@ -264,7 +268,10 @@ void use_account_rcs(
 
       if( skip.skip_deduct_rc )
          return;
-      rca.rc_manabar.use_mana( rc );
+
+      int64_t min_mana = -1 * ( STEEM_RC_MAX_NEGATIVE_PERCENT * mbparams.max_mana ) / STEEM_100_PERCENT;
+
+      rca.rc_manabar.use_mana( rc, min_mana );
    } );
 }
 
