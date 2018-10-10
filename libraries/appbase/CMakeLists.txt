@@ -40,6 +40,7 @@ endif()
 
 add_library( appbase
              application.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( appbase ${Boost_LIBRARIES})

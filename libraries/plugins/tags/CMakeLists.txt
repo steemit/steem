@@ -1,7 +1,9 @@
 file(GLOB HEADERS "include/steem/plugins/tags/*.hpp")
 
 add_library( tags_plugin
-             tags_plugin.cpp )
+             tags_plugin.cpp
+             ${HEADERS}
+           )
 
 target_link_libraries( tags_plugin chain_plugin steem_protocol appbase )
 target_include_directories( tags_plugin

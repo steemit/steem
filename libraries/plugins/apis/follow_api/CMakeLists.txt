@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/follow_api/*.hpp")
 add_library( follow_api_plugin
              follow_api_plugin.cpp
              follow_api.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( follow_api_plugin follow_plugin reputation_api_plugin database_api_plugin json_rpc_plugin )

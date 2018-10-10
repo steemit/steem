@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/account_by_key/*.hpp")
 
 add_library( account_by_key_plugin
              account_by_key_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( account_by_key_plugin chain_plugin steem_chain steem_protocol )
