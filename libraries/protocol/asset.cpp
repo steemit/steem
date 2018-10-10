@@ -5,6 +5,10 @@
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
+#define ASSET_AMOUNT_KEY     "amount"
+#define ASSET_PRECISION_KEY  "precision"
+#define ASSET_NAI_KEY        "nai"
+
 /*
 
 The bounds on asset serialization are as follows:
@@ -123,7 +127,7 @@ asset_symbol_type asset_symbol_type::from_nai_string( const char* p, uint8_t dec
 
 // Highly optimized implementation of Damm algorithm
 // https://en.wikipedia.org/wiki/Damm_algorithm
-uint8_t damm_checksum_8digit(uint32_t value)
+uint8_t asset_symbol_type::damm_checksum_8digit(uint32_t value)
 {
    FC_ASSERT( value < 100000000 );
 
@@ -188,7 +192,7 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
          return STEEM_ASSET_NUM_VESTS;
       default:
          FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
-         return (nai_data_digits << 5) | 0x10 | decimal_places;
+         return (nai_data_digits << STEEM_NAI_SHIFT) | SMT_ASSET_NUM_CONTROL_MASK | decimal_places;
    }
 }
 
@@ -210,7 +214,7 @@ uint32_t asset_symbol_type::to_nai()const
          break;
       default:
          FC_ASSERT( space() == smt_nai_space );
-         nai_data_digits = (asset_num >> 5);
+         nai_data_digits = (asset_num >> STEEM_NAI_SHIFT);
    }
 
    uint32_t nai_check_digit = damm_checksum_8digit(nai_data_digits);
@@ -299,12 +303,12 @@ void asset_symbol_type::validate()const
          break;
       default:
       {
-         uint32_t nai_data_digits = (asset_num >> 5);
-         uint32_t nai_1bit = (asset_num & 0x10);
-         uint32_t nai_decimal_places = (asset_num & 0x0F);
+         uint32_t nai_data_digits = (asset_num >> STEEM_NAI_SHIFT);
+         uint32_t nai_1bit = (asset_num & SMT_ASSET_NUM_CONTROL_MASK);
+         uint32_t nai_decimal_places = (asset_num & SMT_ASSET_NUM_PRECISION_MASK);
          FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) &
                     (nai_data_digits <= SMT_MAX_NAI) &
-                    (nai_1bit == 0x10) &
+                    (nai_1bit == SMT_ASSET_NUM_CONTROL_MASK) &
                     (nai_decimal_places <= STEEM_ASSET_MAX_DECIMALS),
                     "Cannot determine space for asset ${n}", ("n", asset_num) );
       }
@@ -387,9 +391,9 @@ namespace fc {
    {
       try
       {
-         variant v = mutable_variant_object( "amount", boost::lexical_cast< std::string >( var.amount.value ) )
-                                          ( "precision", uint64_t( var.symbol.decimals() ) )
-                                          ( "nai", var.symbol.to_nai_string() );
+         variant v = mutable_variant_object( ASSET_AMOUNT_KEY, boost::lexical_cast< std::string >( var.amount.value ) )
+                                           ( ASSET_PRECISION_KEY, uint64_t( var.symbol.decimals() ) )
+                                           ( ASSET_NAI_KEY, var.symbol.to_nai_string() );
          vo = v;
       } FC_CAPTURE_AND_RETHROW()
    }
@@ -398,17 +402,22 @@ namespace fc {
    {
       try
       {
-         FC_ASSERT( var.is_object(), "Asset has to treated as object." );
+         FC_ASSERT( var.is_object(), "Asset has to be treated as object." );
 
          const auto& v_object = var.get_object();
 
-         FC_ASSERT( v_object.contains( "amount" ), "Amount field doesn't exist." );
-         vo.amount = boost::lexical_cast< int64_t >( v_object[ "amount" ].as< std::string >() );
+         FC_ASSERT( v_object.contains( ASSET_AMOUNT_KEY ), "Amount field doesn't exist." );
+         FC_ASSERT( v_object[ ASSET_AMOUNT_KEY ].is_string(), "Expected a string type for value '${key}'.", ("key", ASSET_AMOUNT_KEY) );
+         vo.amount = boost::lexical_cast< int64_t >( v_object[ ASSET_AMOUNT_KEY ].as< std::string >() );
          FC_ASSERT( vo.amount >= 0, "Asset amount cannot be negative" );
 
-         FC_ASSERT( v_object.contains( "precision" ), "Precision field doesn't exist." );
-         FC_ASSERT( v_object.contains( "nai" ), "NAI field doesn't exist." );
-         vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v_object[ "nai" ].as< std::string >().c_str(), v_object[ "precision" ].as< uint8_t >() );
+         FC_ASSERT( v_object.contains( ASSET_PRECISION_KEY ), "Precision field doesn't exist." );
+         FC_ASSERT( v_object[ ASSET_PRECISION_KEY ].is_uint64(), "Expected an unsigned integer type for value '${key}'.", ("key", ASSET_PRECISION_KEY) );
+
+         FC_ASSERT( v_object.contains( ASSET_NAI_KEY ), "NAI field doesn't exist." );
+         FC_ASSERT( v_object[ ASSET_NAI_KEY ].is_string(), "Expected a string type for value '${key}'.", ("key", ASSET_NAI_KEY) );
+
+         vo.symbol = steem::protocol::asset_symbol_type::from_nai_string( v_object[ ASSET_NAI_KEY ].as< std::string >().c_str(), v_object[ ASSET_PRECISION_KEY ].as< uint8_t >() );
       } FC_CAPTURE_AND_RETHROW()
    }
 }

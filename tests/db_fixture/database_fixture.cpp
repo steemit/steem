@@ -14,6 +14,8 @@
 
 #include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
+#include <steem/chain/smt_objects/nai_pool_object.hpp>
+
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
 
@@ -233,9 +235,10 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
-   auto available_nais =  db->get_smt_next_identifier();
-   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
-   const asset_symbol_type& new_nai = available_nais[0];
+   static std::vector< asset_symbol_type >::size_type next_nai = 0;
+   auto available_nais = db->get< nai_pool_object >().pool();
+   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_nai_pool." );
+   const asset_symbol_type& new_nai = available_nais[ next_nai++ % available_nais.size() ];
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
 }
@@ -650,8 +653,8 @@ void database_fixture::validate_database()
 #ifdef STEEM_ENABLE_SMT
 
 template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
-   uint8_t token_decimal_places )
+asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+   uint32_t nai, uint8_t token_decimal_places )
 {
    smt_create_operation op;
    signed_transaction tx;
@@ -663,7 +666,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
-      op.symbol = this->get_new_smt_symbol( token_decimal_places, this->db );
+      op.symbol = asset_symbol_type::from_nai( nai, token_decimal_places );
       op.precision = op.symbol.decimals();
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = account_name;
@@ -679,6 +682,21 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
    FC_LOG_AND_RETHROW();
 
    return op.symbol;
+}
+
+template< typename T >
+asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
+   uint8_t token_decimal_places )
+{
+   asset_symbol_type symbol;
+   try
+   {
+      auto nai_symbol = this->get_new_smt_symbol( token_decimal_places, this->db );
+      symbol = create_smt_with_nai( account_name, key, nai_symbol.to_nai(), token_decimal_places );
+   }
+   FC_LOG_AND_RETHROW();
+
+   return symbol;
 }
 
 void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)
@@ -733,6 +751,11 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       retVal[0] = op0.symbol;
       retVal[1] = op1.symbol;
       retVal[2] = op2.symbol;
+      std::sort(retVal.begin(), retVal.end(),
+           [](const asset_symbol_type & a, const asset_symbol_type & b) -> bool
+      {
+         return a.to_nai() < b.to_nai();
+      });
       return retVal;
    }
    FC_LOG_AND_RETHROW();

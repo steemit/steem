@@ -73,7 +73,8 @@ enum object_type
    smt_token_object_type,
    smt_event_token_object_type,
    account_regular_balance_object_type,
-   account_rewards_balance_object_type
+   account_rewards_balance_object_type,
+   nai_pool_object_type
 #endif
 };
 
@@ -114,6 +115,7 @@ class smt_token_object;
 class smt_event_token_object;
 class account_regular_balance_object;
 class account_rewards_balance_object;
+class nai_pool_object;
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -153,6 +155,7 @@ typedef oid< smt_token_object                       > smt_token_id_type;
 typedef oid< smt_event_token_object                 > smt_event_token_id_type;
 typedef oid< account_regular_balance_object         > account_regular_balance_id_type;
 typedef oid< account_rewards_balance_object         > account_rewards_balance_id_type;
+typedef oid< nai_pool_object                        > nai_pool_id_type;
 #endif
 
 enum bandwidth_type
@@ -253,6 +256,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (smt_event_token_object_type)
                  (account_regular_balance_object_type)
                  (account_rewards_balance_object_type)
+                 (nai_pool_object_type)
 #endif
                )
 
