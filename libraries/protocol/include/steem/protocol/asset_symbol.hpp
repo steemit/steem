@@ -69,7 +69,7 @@ class asset_symbol_type
          smt_nai_space = 2
       };
 
-      operator uint32_t() { return to_nai(); }
+      explicit operator uint32_t() { return to_nai(); }
 
       // buf must have space for STEEM_ASSET_SYMBOL_MAX_LENGTH+1
       static asset_symbol_type from_string( const std::string& str );

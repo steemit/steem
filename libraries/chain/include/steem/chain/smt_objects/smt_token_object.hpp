@@ -172,10 +172,15 @@ struct vesting_liquid_less
              ( rhs.is_vesting() ? rhs.get_paired_symbol() : rhs );
    }
 
-   bool operator ()( const uint32_t& lhs, const uint32_t& rhs ) const
+   bool operator ()( const uint32_t& lhs, const asset_symbol_type& rhs ) const
    {
       // Use the other operator, adding the same precision to both NAIs.
-      return operator()( asset_symbol_type::from_nai( lhs, 0 ) , asset_symbol_type::from_nai( rhs, 0 ) );
+      return operator()( asset_symbol_type::from_nai( lhs, rhs.decimals() ), rhs );
+   }
+
+   bool operator ()( const asset_symbol_type& lhs, const uint32_t& rhs ) const
+   {
+      return operator()( lhs, asset_symbol_type::from_nai( rhs, lhs.decimals() ) );
    }
 };
 
