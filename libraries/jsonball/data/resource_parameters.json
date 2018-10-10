@@ -3,7 +3,7 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "300000000000",
+   "budget" : "3000000000000",
    "half_life" : {"days" : 15},
    "a_point_num" : 37,
    "a_point_denom" : 1000,
@@ -31,7 +31,7 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "50000000000",
+   "budget" : "500000000000",
    "half_life" : {"hours" : 16},
    "a_point_num" : 37,
    "a_point_denom" : 1000,
@@ -44,7 +44,7 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "200000000000000",
+   "budget" : "2000000000000000",
    "half_life" : {"days" : 15},
    "a_point_num" : 37,
    "a_point_denom" : 1000,
@@ -57,7 +57,7 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "71013698630130",
+   "budget" : "710136986301300",
    "half_life" : {"days" : 15},
    "a_point_num" : 37,
    "a_point_denom" : 1000,
