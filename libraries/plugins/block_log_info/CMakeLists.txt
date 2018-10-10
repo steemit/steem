@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/block_log_info/*.hpp")
 
 add_library( block_log_info_plugin
              block_log_info_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( block_log_info_plugin chain_plugin steem_chain steem_protocol )

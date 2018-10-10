@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/tags_api/*.hpp")
 add_library( tags_api_plugin
              tags_api_plugin.cpp
              tags_api.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( tags_api_plugin tags_plugin follow_api_plugin json_rpc_plugin )
