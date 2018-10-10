@@ -12,13 +12,14 @@ namespace detail {
 class transaction_status_api_impl
 {
 public:
-   transaction_status_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+   transaction_status_api_impl() :
+      _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
+      _tsp( appbase::app().get_plugin< steem::plugins::transaction_status::transaction_status_plugin >() ) {}
 
    DECLARE_API_IMPL( (find_transaction) )
 
    chain::database& _db;
-private:
-   uint32_t block_depth = 64'000;
+   transaction_status::transaction_status_plugin& _tsp;
 };
 
 DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
@@ -39,6 +40,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
             .status = transaction_status::within_irreversible_block,
             .block_num = tso->block_num
          };
+      // If we're in a reversible block
       else
          return {
             .status = transaction_status::within_reversible_block,
@@ -50,27 +52,32 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
    {
       auto expiration = *( args.expiration );
 
-      int64_t earliest_tracked_block_num = _db.get_dynamic_global_properties().head_block_number - block_depth;
-      if ( earliest_tracked_block_num > 0 )
+      // Check if the expiration is before our earliest tracked block
+      uint32_t head_block_num = _db.get_dynamic_global_properties().head_block_number;
+      if ( head_block_num > _tsp.block_depth() )
       {
-         auto earliest_tracked_block = _db.fetch_block_by_number( static_cast<uint32_t>( earliest_tracked_block_num ) );
+         uint32_t earliest_tracked_block_num = head_block_num - _tsp.block_depth();
+         auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
          if ( expiration < earliest_tracked_block->timestamp )
             return {
                .status = transaction_status::too_old
             };
       }
 
+      // If the expiration is on or before our last irreversible block
       auto last_irreversible_block = _db.fetch_block_by_number( last_irreversible_block_num );
-      if ( expiration < last_irreversible_block->timestamp )
+      if ( expiration <= last_irreversible_block->timestamp )
          return {
             .status = transaction_status::expired_irreversible
          };
+      // If our expiration is in the past
       else if ( expiration < fc::time_point::now() )
          return {
             .status = transaction_status::expired_reversible
          };
    }
 
+   // Either the user did not provide an expiration, or it is in the future and we didn't hear about this transaction
    return { .status = transaction_status::unknown };
 }
 

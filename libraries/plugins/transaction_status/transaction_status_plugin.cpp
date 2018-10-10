@@ -5,6 +5,8 @@
 
 #include <fc/io/json.hpp>
 
+#define TRANSACTION_STATUS_BLOCK_DEPTH_KEY "transaction-status-block-depth"
+
 namespace steem { namespace plugins { namespace transaction_status {
 
 namespace detail {
@@ -19,9 +21,9 @@ public:
    void on_post_apply_block( const block_notification& note );
 
    chain::database&              _db;
+   uint32_t                      block_depth;
    boost::signals2::connection   post_apply_transaction_connection;
    boost::signals2::connection   post_apply_block_connection;
-   boost::signals2::connection   add_irreversible_block_connection;
 };
 
 void transaction_status_impl::on_post_apply_transaction( const transaction_notification& note )
@@ -34,6 +36,7 @@ void transaction_status_impl::on_post_apply_transaction( const transaction_notif
 
 void transaction_status_impl::on_post_apply_block( const block_notification& note )
 {
+   // Update all status objects with the transaction current block number
    const auto& transactions = note.block.transactions;
    std::for_each( transactions.begin(), transactions.end(), [&] ( const auto& e )
    {
@@ -43,6 +46,18 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
          obj.block_num = note.block_num;
       } );
    } );
+
+   // Remove elements from the index that are deemed too old for tracking
+   if ( note.block_num > block_depth )
+   {
+      uint32_t earliest_tracked_block = note.block_num - block_depth;
+      const auto& idx = _db.get_index< transaction_status_index >().indices().get< by_block_num >();
+      const auto end = idx.upper_bound( earliest_tracked_block );
+      std::for_each( idx.begin(), end, [&] ( const auto& e )
+      {
+         _db.remove( e );
+      } );
+   }
 }
 
 } // detail
@@ -50,7 +65,12 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
 transaction_status_plugin::transaction_status_plugin() {}
 transaction_status_plugin::~transaction_status_plugin() {}
 
-void transaction_status_plugin::set_program_options( boost::program_options::options_description& cli, boost::program_options::options_description& cfg ) {}
+void transaction_status_plugin::set_program_options( boost::program_options::options_description& cli, boost::program_options::options_description& cfg )
+{
+   cfg.add_options()
+      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( 64000 ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
+      ;
+}
 
 void transaction_status_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
@@ -58,6 +78,9 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
    {
       ilog( "transaction_status: plugin_initialize() begin" );
       my = std::make_unique< detail::transaction_status_impl >();
+
+      if( options.count( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ) )
+         my->block_depth = options.at( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ).as< uint32_t >();
 
       chain::add_plugin_index< transaction_status_index >( my->_db );
 
@@ -74,6 +97,11 @@ void transaction_status_plugin::plugin_shutdown()
 {
    chain::util::disconnect_signal( my->post_apply_transaction_connection );
    chain::util::disconnect_signal( my->post_apply_block_connection );
+}
+
+uint32_t transaction_status_plugin::block_depth()
+{
+   return my->block_depth;
 }
 
 } } } // steem::plugins::transaction_status
