@@ -26,6 +26,8 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
 {
    auto last_irreversible_block_num = _db.get_dynamic_global_properties().last_irreversible_block_num;
    auto tso = _db.find< transaction_status::transaction_status_object, transaction_status::by_trx_id >( args.transaction_id );
+
+   // If we are actively tracking this transaction
    if ( tso != nullptr)
    {
       // If we're not within a block
@@ -40,7 +42,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
             .status = transaction_status::within_irreversible_block,
             .block_num = tso->block_num
          };
-      // If we're in a reversible block
+      // We're in a reversible block
       else
          return {
             .status = transaction_status::within_reversible_block,
@@ -48,6 +50,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
          };
    }
 
+   // If the user has provided us with an expiration
    if ( args.expiration.valid() )
    {
       auto expiration = *( args.expiration );
@@ -77,7 +80,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
          };
    }
 
-   // Either the user did not provide an expiration, or it is in the future and we didn't hear about this transaction
+   // Either the user did not provide an expiration, or it is not expired and we didn't hear about this transaction
    return { .status = transaction_status::unknown };
 }
 
