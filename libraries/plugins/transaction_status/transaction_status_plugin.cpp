@@ -37,15 +37,14 @@ void transaction_status_impl::on_post_apply_transaction( const transaction_notif
 void transaction_status_impl::on_post_apply_block( const block_notification& note )
 {
    // Update all status objects with the transaction current block number
-   const auto& transactions = note.block.transactions;
-   std::for_each( transactions.begin(), transactions.end(), [&] ( const auto& e )
+   for ( const auto& e : note.block.transactions )
    {
       const auto& tx_status_obj = _db.get< transaction_status_object, by_trx_id >( e.id() );
       _db.modify( tx_status_obj, [&] ( transaction_status_object& obj )
       {
          obj.block_num = note.block_num;
       } );
-   } );
+   }
 
    // Remove elements from the index that are deemed too old for tracking
    if ( note.block_num > block_depth )
