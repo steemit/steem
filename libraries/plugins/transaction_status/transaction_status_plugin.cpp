@@ -5,7 +5,8 @@
 
 #include <fc/io/json.hpp>
 
-#define TRANSACTION_STATUS_BLOCK_DEPTH_KEY "transaction-status-block-depth"
+#define TRANSACTION_STATUS_BLOCK_DEPTH_KEY     "transaction-status-block-depth"
+#define TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH  64000
 
 namespace steem { namespace plugins { namespace transaction_status {
 
@@ -67,10 +68,10 @@ transaction_status_plugin::~transaction_status_plugin() {}
 void transaction_status_plugin::set_program_options( boost::program_options::options_description& cli, boost::program_options::options_description& cfg )
 {
    cfg.add_options()
-      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( 64000 ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
+      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
       ;
    cli.add_options()
-      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( 64000 ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
+      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
       ;
 }
 

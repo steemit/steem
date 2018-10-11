@@ -53,7 +53,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
    // If the user has provided us with an expiration
    if ( args.expiration.valid() )
    {
-      auto expiration = *( args.expiration );
+      const auto& expiration = *args.expiration;
 
       // Check if the expiration is before our earliest tracked block
       uint32_t head_block_num = _db.get_dynamic_global_properties().head_block_number;
@@ -80,7 +80,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
          };
    }
 
-   // Either the user did not provide an expiration, or it is not expired and we didn't hear about this transaction
+   // Either the user did not provide an expiration or it is not expired and we didn't hear about this transaction
    return { .status = transaction_status::unknown };
 }
 
