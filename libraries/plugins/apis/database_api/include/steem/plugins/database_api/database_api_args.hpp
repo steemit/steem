@@ -571,11 +571,11 @@ struct verify_signatures_return
 };
 
 #ifdef STEEM_ENABLE_SMT
-typedef void_type get_nai_pool_args;
+typedef void_type get_smt_next_identifier_args;
 
-struct get_nai_pool_return
+struct get_smt_next_identifier_return
 {
-   vector< asset_symbol_type > nai_pool;
+   vector< asset_symbol_type > nais;
 };
 #endif
 
@@ -803,6 +803,6 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
 
 #ifdef STEEM_ENABLE_SMT
-FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
-   (nai_pool) )
+FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,
+   (nais) )
 #endif

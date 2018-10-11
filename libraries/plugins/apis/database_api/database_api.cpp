@@ -69,7 +69,7 @@ class database_api_impl
          (verify_account_authority)
          (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
-         (get_nai_pool)
+         (get_smt_next_identifier)
 #endif
       )
 
@@ -1447,10 +1447,10 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-DEFINE_API_IMPL( database_api_impl, get_nai_pool )
+DEFINE_API_IMPL( database_api_impl, get_smt_next_identifier )
 {
-   get_nai_pool_return result;
-   result.nai_pool = _db.get< nai_pool_object >().pool();
+   get_smt_next_identifier_return result;
+   result.nais = _db.get_smt_next_identifier();
    return result;
 }
 #endif
@@ -1504,7 +1504,7 @@ DEFINE_READ_APIS( database_api,
    (verify_account_authority)
    (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
-   (get_nai_pool)
+   (get_smt_next_identifier)
 #endif
 )
 
