@@ -50,6 +50,10 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       open_database();
 
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
+
       generate_block();
       db->set_hardfork( STEEM_NUM_HARDFORKS );
       generate_block();
@@ -136,6 +140,10 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       // Transaction 2 is too old to be tracked
       tso = db->find< transaction_status_object, by_trx_id >( tx2.id() );
       BOOST_REQUIRE( tso == nullptr );
+
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
    }
    FC_LOG_AND_RETHROW()
 }
