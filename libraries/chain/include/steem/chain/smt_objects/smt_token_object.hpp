@@ -2,7 +2,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
-#include <boost/multi_index/composite_key.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -172,15 +171,10 @@ struct vesting_liquid_less
              ( rhs.is_vesting() ? rhs.get_paired_symbol() : rhs );
    }
 
-   bool operator ()( const uint32_t& lhs, const asset_symbol_type& rhs ) const
+   bool operator ()( const uint32_t& lhs, const uint32_t& rhs ) const
    {
       // Use the other operator, adding the same precision to both NAIs.
-      return operator()( asset_symbol_type::from_nai( lhs, rhs.decimals() ), rhs );
-   }
-
-   bool operator ()( const asset_symbol_type& lhs, const uint32_t& rhs ) const
-   {
-      return operator()( lhs, asset_symbol_type::from_nai( rhs, lhs.decimals() ) );
+      return operator()( asset_symbol_type::from_nai( lhs, 0 ) , asset_symbol_type::from_nai( rhs, 0 ) );
    }
 };
 

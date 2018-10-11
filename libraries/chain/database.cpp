@@ -25,7 +25,6 @@
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/manabar.hpp>
 #include <steem/chain/util/rd_setup.hpp>
-#include <steem/chain/util/nai_generator.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -2755,7 +2754,6 @@ void database::initialize_indexes()
    add_core_index< smt_event_token_index                   >(*this);
    add_core_index< account_regular_balance_index           >(*this);
    add_core_index< account_rewards_balance_index           >(*this);
-   add_core_index< nai_pool_index                          >(*this);
 #endif
 
    _plugin_index_signal();
@@ -2953,10 +2951,6 @@ void database::init_genesis( uint64_t init_supply )
          util::rd_setup_dynamics_params( account_subsidy_user_params, account_subsidy_system_params, wso.account_subsidy_rd );
          util::rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, wso.account_subsidy_witness_rd );
       } );
-
-#ifdef STEEM_ENABLE_SMT
-      create< nai_pool_object >( [&]( nai_pool_object& npo ) {} );
-#endif
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -5025,11 +5019,8 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-#ifdef IS_TEST_NET
-      case STEEM_SMT_HARDFORK:
-   #ifdef STEEM_ENABLE_SMT
-         replenish_nai_pool( *this );
-   #endif
+   #ifdef IS_TEST_NET
+      case STEEM_HARDFORK_0_21:
          break;
 #endif
       default:
@@ -5447,6 +5438,44 @@ void database::retally_witness_vote_counts( bool force )
       }
    }
 }
+
+#ifdef STEEM_ENABLE_SMT
+// 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
+// 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
+// 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
+//    with [0 : 99,999,999] range.
+// 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
+//    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
+// 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
+//    of liquid/vesting *pairs* of reserved/available NAIs.
+// 6. 45 milions of SMT await for their creators.
+
+vector< asset_symbol_type > database::get_smt_next_identifier()
+{
+   // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
+   // Although a container of available nais is returned, it contains only one entry for simplicity.
+   // Note that no decimal places argument is required from SMT creator at this stage.
+   // This is because asset_symbol_type's to_string method omits the precision when serializing.
+   // For appropriate use of this method see e.g. smt_database_fixture::create_smt
+
+   uint8_t decimal_places = 0;
+
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
+   FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
+   // Assume that _next_available_nai value shows the liquid version of NAI.
+   FC_ASSERT( (_next_available_nai & 0x1) == 0, "Can't start with vesting version of NAI." );
+   uint32_t new_nai = _next_available_nai;
+   // Skip vesting version of produced NAI - it differs only by least significant bit set.
+   _next_available_nai += 2;
+
+   uint32_t new_asset_num = (new_nai << 5) | 0x10 | decimal_places;
+   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( new_asset_num );
+   new_symbol.validate();
+   FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
+
+   return vector< asset_symbol_type >( 1, new_symbol );
+}
+#endif
 
 index_info::index_info() {}
 index_info::~index_info() {}
