@@ -1,4 +1,4 @@
-# Introducing Steem (beta)
+# Introducing Steem
 
 Steem is a Delegated Proof of Stake blockchain that uses a "Proof of Brain" social consensus algorithm for token allocation.
 
