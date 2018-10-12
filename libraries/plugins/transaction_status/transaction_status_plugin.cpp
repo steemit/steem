@@ -70,9 +70,6 @@ void transaction_status_plugin::set_program_options( boost::program_options::opt
    cfg.add_options()
       ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
       ;
-   cli.add_options()
-      ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
-      ;
 }
 
 void transaction_status_plugin::plugin_initialize( const boost::program_options::variables_map& options )
