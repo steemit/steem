@@ -68,13 +68,16 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
       }
 
       // If the expiration is on or before our last irreversible block
-      auto last_irreversible_block = _db.fetch_block_by_number( last_irreversible_block_num );
-      if ( expiration <= last_irreversible_block->timestamp )
-         return {
-            .status = transaction_status::expired_irreversible
-         };
+      if ( last_irreversible_block_num > 0 )
+      {
+         auto last_irreversible_block = _db.fetch_block_by_number( last_irreversible_block_num );
+         if ( expiration <= last_irreversible_block->timestamp )
+            return {
+               .status = transaction_status::expired_irreversible
+            };
+      }
       // If our expiration is in the past
-      else if ( expiration < fc::time_point::now() )
+      if ( expiration < fc::time_point::now() )
          return {
             .status = transaction_status::expired_reversible
          };
