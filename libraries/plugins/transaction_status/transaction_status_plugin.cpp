@@ -40,11 +40,20 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
    // Update all status objects with the transaction current block number
    for ( const auto& e : note.block.transactions )
    {
-      const auto& tx_status_obj = _db.get< transaction_status_object, by_trx_id >( e.id() );
-      _db.modify( tx_status_obj, [&] ( transaction_status_object& obj )
-      {
-         obj.block_num = note.block_num;
-      } );
+      const auto* tx_status_obj = _db.find< transaction_status_object, by_trx_id >( e.id() );
+
+      // Transactions we already had in our mem pool
+      if ( tx_status_obj != nullptr )
+         _db.modify( *tx_status_obj, [&] ( transaction_status_object& obj )
+         {
+            obj.block_num = note.block_num;
+         } );
+      else // Transactions we learned about through blocks
+         _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
+         {
+            obj.transaction_id = e.id();
+            obj.block_num = note.block_num;
+         } );
    }
 
    // Remove elements from the index that are deemed too old for tracking
