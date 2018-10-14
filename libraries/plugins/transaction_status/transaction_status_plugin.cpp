@@ -5,8 +5,11 @@
 
 #include <fc/io/json.hpp>
 
-#define TRANSACTION_STATUS_BLOCK_DEPTH_KEY     "transaction-status-block-depth"
-#define TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH  64000
+#define TRANSACTION_STATUS_BLOCK_DEPTH_KEY            "transaction-status-block-depth"
+#define TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH        64000
+
+#define TRANSACTION_STATUS_TRACK_AFTER_KEY            "transaction-status-track-after-block"
+#define TRANSACTION_STATUS_DEFAULT_TRACK_AFTER        0
 
 namespace steem { namespace plugins { namespace transaction_status {
 
@@ -23,49 +26,60 @@ public:
 
    chain::database&              _db;
    uint32_t                      block_depth;
+   uint32_t                      track_after_block;
+   bool                          tracking = false;
    boost::signals2::connection   post_apply_transaction_connection;
    boost::signals2::connection   post_apply_block_connection;
 };
 
 void transaction_status_impl::on_post_apply_transaction( const transaction_notification& note )
 {
-   _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
-   {
-      obj.transaction_id = note.transaction_id;
-   } );
+   if ( tracking )
+      _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
+      {
+         obj.transaction_id = note.transaction_id;
+      } );
 }
 
 void transaction_status_impl::on_post_apply_block( const block_notification& note )
 {
-   // Update all status objects with the transaction current block number
-   for ( const auto& e : note.block.transactions )
+   if ( tracking )
    {
-      const auto* tx_status_obj = _db.find< transaction_status_object, by_trx_id >( e.id() );
-
-      // Transactions we already had in our mem pool
-      if ( tx_status_obj != nullptr )
-         _db.modify( *tx_status_obj, [&] ( transaction_status_object& obj )
-         {
-            obj.block_num = note.block_num;
-         } );
-      else // Transactions we learned about through blocks
-         _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
-         {
-            obj.transaction_id = e.id();
-            obj.block_num = note.block_num;
-         } );
-   }
-
-   // Remove elements from the index that are deemed too old for tracking
-   if ( note.block_num > block_depth )
-   {
-      uint32_t earliest_tracked_block = note.block_num - block_depth;
-      const auto& idx = _db.get_index< transaction_status_index >().indices().get< by_block_num >();
-      const auto end = idx.upper_bound( earliest_tracked_block );
-      std::for_each( idx.begin(), end, [&] ( const auto& e )
+      // Update all status objects with the transaction current block number
+      for ( const auto& e : note.block.transactions )
       {
-         _db.remove( e );
-      } );
+         const auto* tx_status_obj = _db.find< transaction_status_object, by_trx_id >( e.id() );
+
+         // Transactions we already had in our mem pool
+         if ( tx_status_obj != nullptr )
+            _db.modify( *tx_status_obj, [&] ( transaction_status_object& obj )
+            {
+               obj.block_num = note.block_num;
+            } );
+         else // Transactions we learned about through blocks
+            _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
+            {
+               obj.transaction_id = e.id();
+               obj.block_num = note.block_num;
+            } );
+      }
+
+      // Remove elements from the index that are deemed too old for tracking
+      if ( note.block_num > block_depth )
+      {
+         uint32_t earliest_tracked_block = note.block_num - block_depth;
+         const auto& idx = _db.get_index< transaction_status_index >().indices().get< by_block_num >();
+         const auto end = idx.upper_bound( earliest_tracked_block );
+         std::for_each( idx.begin(), end, [&] ( const auto& e )
+         {
+            _db.remove( e );
+         } );
+      }
+   }
+   else if ( track_after_block <= note.block_num )
+   {
+      ilog( "Transaction status tracking activated at block ${block_num}", ("block_num", note.block_num) );
+      tracking = true;
    }
 }
 
@@ -78,6 +92,7 @@ void transaction_status_plugin::set_program_options( boost::program_options::opt
 {
    cfg.add_options()
       ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
+      ( TRANSACTION_STATUS_TRACK_AFTER_KEY, boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_TRACK_AFTER ), "Defines the block number the transaction status plugin will begin tracking." )
       ;
 }
 
@@ -90,6 +105,15 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
 
       if( options.count( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ) )
          my->block_depth = options.at( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ).as< uint32_t >();
+
+      if( options.count( TRANSACTION_STATUS_TRACK_AFTER_KEY ) )
+         my->track_after_block = options.at( TRANSACTION_STATUS_TRACK_AFTER_KEY ).as< uint32_t >();
+
+      if ( !my->track_after_block )
+      {
+         ilog( "Transaction status tracking activated" );
+         my->tracking = true;
+      }
 
       chain::add_plugin_index< transaction_status_index >( my->_db );
 

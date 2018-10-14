@@ -12,11 +12,13 @@
 using namespace steem::chain;
 using namespace steem::protocol;
 
+#define TRANSCATION_STATUS_TRACK_AFTER_BLOCK 100
+#define TRANSCATION_STATUS_TRACK_AFTER_BLOCK_STR BOOST_PP_STRINGIZE( TRANSCATION_STATUS_TRACK_AFTER_BLOCK )
 #define TRANSACTION_STATUS_TEST_BLOCK_DEPTH 30
 #define TRANSACTION_STATUS_TEST_BLOCK_DEPTH_STR BOOST_PP_STRINGIZE( TRANSACTION_STATUS_TEST_BLOCK_DEPTH )
 #define BLOCKS_PER_HOUR ((60*60)/3)
 
-BOOST_FIXTURE_TEST_SUITE( transaction_status, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( transaction_status, database_fixture );
 
 BOOST_AUTO_TEST_CASE( transaction_status_test )
 {
@@ -42,8 +44,13 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       init_account_pub_key = init_account_priv_key.get_public_key();
 
       // We create an argc/argv so that the transaction_status plugin can be initialized with a reasonable block depth
-      int test_argc = 3;
-      const char* test_argv[] = { boost::unit_test::framework::master_test_suite().argv[0], "--transaction-status-block-depth", TRANSACTION_STATUS_TEST_BLOCK_DEPTH_STR };
+      int test_argc = 5;
+      const char* test_argv[] = { boost::unit_test::framework::master_test_suite().argv[0],
+                                  "--transaction-status-block-depth",
+                                  TRANSACTION_STATUS_TEST_BLOCK_DEPTH_STR,
+                                  "--transaction-status-track-after-block",
+                                  TRANSCATION_STATUS_TRACK_AFTER_BLOCK_STR };
+
       db_plugin->logging = false;
       appbase::app().initialize<
          steem::plugins::transaction_status_api::transaction_status_api_plugin,
@@ -88,6 +95,35 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       validate_database();
 
+      signed_transaction tx0;
+      transfer_operation op0;
+      auto tx0_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+
+      op0.from = "alice";
+      op0.to = "bob";
+      op0.amount = ASSET( "5.000 TESTS" );
+
+      // Create transaction 0
+      tx0.operations.push_back( op0 );
+      tx0.set_expiration( tx0_expiration );
+      sign( tx0, alice_private_key );
+      db->push_transaction( tx0, 0 );
+
+      // Tracking should not be enabled until we have reached TRANSCATION_STATUS_TRACK_AFTER_BLOCK blocks
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
+      BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
+
+      // Transaction 0 should not be tracked
+      auto tso = db->find< transaction_status_object, by_trx_id >( tx0.id() );
+      BOOST_REQUIRE( tso == nullptr );
+
+      auto api_return = tx_status_api->api->find_transaction( { .transaction_id = tx0.id() } );
+      BOOST_REQUIRE( api_return.status == unknown );
+      BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      generate_blocks( TRANSCATION_STATUS_TRACK_AFTER_BLOCK - db->head_block_num() );
+
       signed_transaction tx1;
       transfer_operation op1;
       auto tx1_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
@@ -103,11 +139,11 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       db->push_transaction( tx1, 0 );
 
       // Transaction 1 exists in the mem pool
-      auto tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
+      tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
       BOOST_REQUIRE( tso != nullptr );
       BOOST_REQUIRE( tso->block_num == 0 );
 
-      auto api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id() } );
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id() } );
       BOOST_REQUIRE( api_return.status == within_mempool );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
