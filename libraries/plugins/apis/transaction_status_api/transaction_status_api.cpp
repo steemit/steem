@@ -59,7 +59,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
       uint32_t head_block_num = _db.get_dynamic_global_properties().head_block_number;
       if ( head_block_num > _tsp.block_depth() )
       {
-         uint32_t earliest_tracked_block_num = head_block_num - _tsp.block_depth();
+         uint32_t earliest_tracked_block_num = head_block_num - _tsp.block_depth() + 1;
          auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
          if ( expiration < earliest_tracked_block->timestamp )
             return {

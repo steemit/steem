@@ -260,6 +260,26 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id(), tx1_expiration } );
       BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      /* Testing transactions that do not exist, but expirations are provided */
+
+      // The time of our last irreversible block
+      auto lib_time = db->fetch_block_by_number( db->get_dynamic_global_properties().last_irreversible_block_num )->timestamp;
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = transaction_id_type(), .expiration = lib_time } );
+      BOOST_REQUIRE( api_return.status == expired_irreversible );
+      BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      // One second after our last irreversible block
+      auto after_lib_time = lib_time + fc::seconds(1);
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = transaction_id_type(), after_lib_time } );
+      BOOST_REQUIRE( api_return.status == expired_reversible );
+      BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      // One second before our earliest tracked block
+      auto old_time = db->fetch_block_by_number( db->head_block_num() - TRANSACTION_STATUS_TEST_BLOCK_DEPTH + 1 )->timestamp - fc::seconds(1);
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = transaction_id_type(), old_time } );
+      BOOST_REQUIRE( api_return.status == too_old );
+      BOOST_REQUIRE( api_return.block_num.valid() == false );
    }
    FC_LOG_AND_RETHROW()
 }

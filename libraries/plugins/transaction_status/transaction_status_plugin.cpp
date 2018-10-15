@@ -67,13 +67,15 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
       // Remove elements from the index that are deemed too old for tracking
       if ( note.block_num > block_depth )
       {
-         uint32_t earliest_tracked_block = note.block_num - block_depth;
+         uint32_t obsolete_block = note.block_num - block_depth;
          const auto& idx = _db.get_index< transaction_status_index >().indices().get< by_block_num >();
-         const auto end = idx.upper_bound( earliest_tracked_block );
-         std::for_each( idx.begin(), end, [&] ( const auto& e )
+
+         auto itr = idx.lower_bound( obsolete_block );
+         while ( itr != idx.end() && itr->block_num <= obsolete_block )
          {
-            _db.remove( e );
-         } );
+            _db.remove( *itr );
+            itr = idx.lower_bound( obsolete_block );
+         }
       }
    }
    else if ( track_after_block <= note.block_num )
