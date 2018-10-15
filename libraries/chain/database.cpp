@@ -3551,11 +3551,25 @@ struct action_equal_visitor
 void database::process_required_actions( const required_automated_actions& actions )
 {
    const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
-   auto pending_itr = pending_action_idx.begin();
    auto actions_itr = actions.begin();
 
-   while( pending_itr != pending_action_idx.end() && actions_itr != actions.end() )
+   while( true )
    {
+      auto pending_itr = pending_action_idx.begin();
+
+      if( actions_itr == actions.end() )
+      {
+         // We're done processing actions in the block.
+         if( pending_itr != pending_action_idx.end() )
+         {
+            FC_TODO("Check that the block producer stopped including required actions for a good reason, such as running out of space #2722");
+         }
+         break;
+      }
+
+      FC_ASSERT( pending_itr != pending_action_idx.end(),
+         "Block included required action that does not exist in queue" );
+
       action_equal_visitor equal_visitor( pending_itr->action );
       FC_ASSERT( actions_itr->visit( equal_visitor ),
          "Unexpected action included. Expected: ${e} Observed: ${o}",
@@ -3564,7 +3578,6 @@ void database::process_required_actions( const required_automated_actions& actio
       apply_required_action( *actions_itr );
 
       remove( *pending_itr );
-      pending_itr = pending_action_idx.begin();
       ++actions_itr;
    }
 }
