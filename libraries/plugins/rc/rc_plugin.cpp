@@ -818,9 +818,7 @@ struct post_apply_operation_visitor
          {
             for( size_t i = 0; i < STEEM_NUM_RESOURCE_TYPES; i++ )
             {
-               p.pool_array[ i ] =
-                  ( ( uint128_t( params.resource_param_array[ i ].resource_dynamics_params.pool_eq ) * 90 * STEEM_1_PERCENT )
-                  / STEEM_100_PERCENT ).to_uint64();
+               p.pool_array[ i ] = int64_t( params.resource_param_array[ i ].resource_dynamics_params.max_pool_size );
             }
 
             p.pool_array[ resource_new_accounts ] = 0;
