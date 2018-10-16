@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id(), tx1_expiration } );
-      BOOST_REQUIRE( api_return.status == expired_reversible );
+      BOOST_REQUIRE( api_return.status == unknown );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       // Transaction 2 exists in a block
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id(), tx1_expiration } );
-      BOOST_REQUIRE( api_return.status == expired_reversible );
+      BOOST_REQUIRE( api_return.status == unknown );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       // All of our transaction were set to expired in 1 hour, now they should be too old

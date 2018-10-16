@@ -57,15 +57,12 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
 
       // Check if the expiration is before our earliest tracked block
       uint32_t head_block_num = _db.get_dynamic_global_properties().head_block_number;
-      if ( head_block_num > _tsp.block_depth() )
-      {
-         uint32_t earliest_tracked_block_num = head_block_num - _tsp.block_depth() + 1;
-         auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
-         if ( expiration < earliest_tracked_block->timestamp )
-            return {
-               .status = transaction_status::too_old
-            };
-      }
+      uint32_t earliest_tracked_block_num = std::max< int64_t >( 1, head_block_num - _tsp.block_depth() + 1 );
+      auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
+      if ( expiration < earliest_tracked_block->timestamp )
+         return {
+            .status = transaction_status::too_old
+         };
 
       // If the expiration is on or before our last irreversible block
       if ( last_irreversible_block_num > 0 )
@@ -77,7 +74,8 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
             };
       }
       // If our expiration is in the past
-      if ( expiration < fc::time_point::now() )
+      auto head_block = _db.fetch_block_by_number( head_block_num );
+      if ( expiration < head_block->timestamp )
          return {
             .status = transaction_status::expired_reversible
          };
