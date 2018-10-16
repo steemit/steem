@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import requests
 import json
 
@@ -187,7 +188,7 @@ tests = [
    },
    {
       "method": "condenser_api.get_content",
-      "params": ["temp", "temp1"]
+      "params": ["temp", "test1"]
    },
    {
       "method": "condenser_api.get_content_replies",
@@ -247,12 +248,12 @@ tests = [
    },
    {
       "method": "condenser_api.get_replies_by_last_update",
-      "params": ["temp", "temp1", 10]
+      "params": ["temp", "test1", 10]
    },
 # Might be broken
 #   {
 #      "method": "condenser_api.get_discussions_by_author_before_date",
-#      "params": ["temp", "temp1", "1969-12-31T23:59:59", 10]
+#      "params": ["temp", "test1", "1969-12-31T23:59:59", 10]
 #   },
    {
       "method": "condenser_api.get_account_history",
@@ -293,7 +294,7 @@ tests = [
 # Might be broken
 #   {
 #      "method": "condenser_api.get_reblogged_by",
-#      "params": ["temp", "temp1"]
+#      "params": ["temp", "test1"]
 #   },
    {
       "method": "condenser_api.get_blog_authors",
@@ -390,7 +391,7 @@ tests = [
 # Might be broken
 #   {
 #      "method": "condenser_api.get_reblogged_by",
-#      "params": ["temp", "temp1"]
+#      "params": ["temp", "test1"]
 #   },
    {
       "method": "follow_api.get_blog_authors",
@@ -451,7 +452,7 @@ tests = [
    },
    {
       "method": "tags_api.get_discussion",
-      "params": {"author":"temp", "permlink":"temp1"}
+      "params": {"author":"temp", "permlink":"test1"}
    },
    {
       "method": "tags_api.get_content_replies",
@@ -511,12 +512,12 @@ tests = [
    },
    {
       "method": "tags_api.get_replies_by_last_update",
-      "params": {"start_parent_author":"temp", "start_permlink":"temp1", "limit":10}
+      "params": {"start_parent_author":"temp", "start_permlink":"test1", "limit":10}
    },
 # Might be broken
 #   {
 #      "method": "tags_api.get_discussions_by_author_before_date",
-#      "params": {"author":"temp", "start_permlink":"temp1", "before_date":"1969-12-31T23:59:59", "limit":10}
+#      "params": {"author":"temp", "start_permlink":"test1", "before_date":"1969-12-31T23:59:59", "limit":10}
 #   },
    {
       "method": "tags_api.get_active_votes",
@@ -547,7 +548,7 @@ tests = [
       "params": {}
    },
    {
-      "method": "database_api.get_price_feed",
+      "method": "database_api.get_current_price_feed",
       "params": {}
    },
    {
@@ -556,11 +557,11 @@ tests = [
    },
    {
       "method": "database_api.list_witnesses",
-      "params": {"start":"", "limit":10, "order":"by_owner"}
+      "params": {"start":"", "limit":10, "order":"by_name"}
    },
    {
       "method": "database_api.find_witnesses",
-      "params": {"owners":("initminer")}
+      "params": {"owners":["initminer"]}
    },
    {
       "method": "database_api.list_witness_votes",
@@ -608,7 +609,7 @@ tests = [
    },
    {
       "method": "database_api.find_escrows",
-      "params": {"from", "temp"}
+      "params": {"from": "temp"}
    },
    {
       "method": "database_api.list_withdraw_vesting_routes",
@@ -619,7 +620,7 @@ tests = [
       "params": {"account":"temp", "order":"by_destination"}
    },
    {
-      "method": "database_api.list_savings_withdrawls",
+      "method": "database_api.list_savings_withdrawals",
       "params": {"start":["",0], "limit":10, "order":"by_from_id"}
    },
    {
@@ -664,7 +665,7 @@ tests = [
    },
    {
       "method": "database_api.find_comments",
-      "params": {"start":[["temp","temp1"],["temp","foobar"]], "limit":10, "order":"by_account"}
+      "params": {"start":[["temp","test1"],["temp","foobar"]], "limit":10, "order":"by_account"}
    },
    {
       "method": "database_api.list_votes",
@@ -672,11 +673,35 @@ tests = [
    },
    {
       "method": "database_api.find_votes",
-      "params": {"author":"temp", "permlink":"temp1"}
+      "params": {"author":"temp", "permlink":"test1"}
    },
    {
-      "method": "database_api.list_sbd_conversion_requests",
-      "params": {"start":["",0], "limit":10, "order":"by_account"}
+      "method": "database_api.list_limit_orders",
+      "params": {"start":[{"base":{"amount":1000,"precision":3,"nai":"@@000000021"},"quote":{"amount":1,"precision":3,"nai":"@@000000013"}},0], "limit":10, "order":"by_price"}
+   },
+   {
+      "method": "database_api.find_limit_orders",
+      "params": {"account":"temp"}
+   },
+   {
+      "method": "database_api.get_order_book",
+      "params": {"limit":10}
+   },
+   {
+      "method": "database_api.get_transaction_hex",
+      "params": {"trx":{"operations":[{"type":"transfer_operation", "value":{"from":"temp", "to":"null", "ammount":{"base":{"amount":1000,"precision":3,"nai":"@@000000021"}}}}]}}
+   },
+   {
+      "method": "database_api.get_required_signatures",
+      "params": {"trx":{"operations":[{"type":"transfer_operation", "value":{"from":"temp", "to":"null", "ammount":{"base":{"amount":1000,"precision":3,"nai":"@@000000021"}}}}]}, "available_keys":[]}
+   },
+   {
+      "method": "database_api.verify_authority",
+      "params": {"trx":{"operations":[{"type":"transfer_operation", "value":{"from":"temp", "to":"null", "ammount":{"base":{"amount":1000,"precision":3,"nai":"@@000000021"}}}}]}}
+   },
+   {
+      "method": "database_api.verify_signatures",
+      "params": {"required_active":["temp"]}
    },
 ]
 
@@ -702,7 +727,15 @@ def test_api( url, headers, payload ):
    return True
 
 def main():
-   url = "https://api.steemitdev.com/"
+   if len( sys.argv ) == 1:
+      url = "https://api.steemit.com/"
+   elif len( sys.argv ) == 2:
+      url = sys.argv[1]
+   else:
+      exit( "Usage: api_error_smoketest.py <steem_api_endpoint>" )
+
+   print( "Testing against endpoint: " + url )
+
    headers = {'content-type': 'application/json'}
 
    payload = {
