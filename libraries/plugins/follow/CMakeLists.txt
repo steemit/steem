@@ -5,6 +5,7 @@ add_library( follow_plugin
              follow_operations.cpp
              follow_evaluators.cpp
              inc_performance.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( follow_plugin chain_plugin )

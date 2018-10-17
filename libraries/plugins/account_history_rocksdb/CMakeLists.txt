@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/account_history_rocksdb/*.hpp")
 
 add_library( account_history_rocksdb_plugin
              account_history_rocksdb_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( account_history_rocksdb_plugin
