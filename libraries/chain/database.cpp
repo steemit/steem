@@ -84,12 +84,14 @@ class database_impl
    public:
       database_impl( database& self );
 
-      database&                              _self;
-      evaluator_registry< operation >        _evaluator_registry;
+      database&                                       _self;
+      evaluator_registry< operation >                 _evaluator_registry;
+      evaluator_registry< required_automated_action > _req_action_evaluator_registry;
+      evaluator_registry< optional_automated_action > _opt_action_evaluator_registry;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _req_action_evaluator_registry(self), _opt_action_evaluator_registry(self) {}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -1063,8 +1065,22 @@ void database::notify_pre_apply_operation( const operation_notification& note )
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
 }
 
+struct action_validate_visitor
+{
+   typedef void result_type;
+
+   template< typename Action >
+   void operator()( const Action& a )const
+   {
+      a.validate();
+   }
+};
+
 void database::push_required_action( const required_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
    {
       pending_action.action = a;
@@ -1073,9 +1089,13 @@ void database::push_required_action( const required_automated_action& a )
 
 void database::push_optional_action( const optional_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
    {
       pending_action.action = a;
+      pending_action.pushed_block_num = head_block_num();
    });
 }
 
@@ -3189,8 +3209,10 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   required_automated_actions req_actions;
+   optional_automated_actions opt_actions;
    /// parse witness version reporting
-   process_header_extensions( next_block );
+   process_header_extensions( next_block, req_actions, opt_actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3201,6 +3223,9 @@ void database::_apply_block( const signed_block& next_block )
          ("witness",witness)("next_block.witness",next_block.witness)("hardfork_state", hardfork_state)
       );
    }
+
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
 
    for( const auto& trx : next_block.transactions )
    {
@@ -3246,6 +3271,9 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
+   generate_required_actions();
+   generate_optional_actions();
+
    process_hardforks();
 
    // notify observers that the block has been applied
@@ -3262,11 +3290,17 @@ void database::_apply_block( const signed_block& next_block )
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, required_automated_actions& req_actions, optional_automated_actions& opt_actions, database& db ) :
+      _witness( witness ),
+      _req_actions( req_actions ),
+      _opt_actions( opt_actions ),
+      _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
+   required_automated_actions& _req_actions;
+   optional_automated_actions& _opt_actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3304,17 +3338,19 @@ struct process_header_visitor
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
 };
 
-void database::process_header_extensions( const signed_block& next_block )
+void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
 {
-   process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, req_actions, opt_actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3506,6 +3542,88 @@ void database::apply_operation(const operation& op)
    notify_post_apply_operation( note );
 }
 
+struct action_equal_visitor
+{
+   typedef bool result_type;
+
+   const required_automated_action& action_a;
+
+   action_equal_visitor( const required_automated_action& a ) : action_a( a ) {}
+
+   template< typename Action >
+   bool operator()( const Action& action_b )const
+   {
+      if( action_a.which() != required_automated_action::tag< Action >::value ) return false;
+
+      return action_a.get< Action >() == action_b;
+   }
+};
+
+void database::process_required_actions( const required_automated_actions& actions )
+{
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
+   auto pending_itr = pending_action_idx.begin();
+   auto actions_itr = actions.begin();
+
+   while( pending_itr != pending_action_idx.end() && actions_itr != actions.end() )
+   {
+      action_equal_visitor equal_visitor( pending_itr->action );
+      FC_ASSERT( actions_itr->visit( equal_visitor ),
+         "Unexpected action included. Expected: ${e} Observed: ${o}",
+         ("e", pending_itr->action)("o", *actions_itr) );
+
+      apply_required_action( *actions_itr );
+
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+      ++actions_itr;
+   }
+}
+
+void database::apply_required_action( const required_automated_action& a )
+{
+   required_action_notification note( a );
+   notify_pre_apply_required_action( note );
+
+   _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_required_action( note );
+}
+
+void database::process_optional_actions( const optional_automated_actions& actions )
+{
+   static const action_validate_visitor validate_visitor;
+
+   for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
+   {
+      actions_itr->visit( validate_visitor );
+
+      apply_optional_action( *actions_itr );
+   }
+
+   // Clear out "expired" optional_actions. If the block when an optional action was generated
+   // has become irreversible then a super majority of witnesses have chosen to not include it
+   // and it is safe to delete.
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_id >();
+   auto pending_itr = pending_action_idx.begin();
+   auto lib = get_dynamic_global_properties().last_irreversible_block_num;
+
+   while( pending_itr != pending_action_idx.end() && pending_itr->pushed_block_num <= lib )
+   {
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+   }
+}
+
+void database::apply_optional_action( const optional_automated_action& a )
+{
+   optional_action_notification note( a );
+   notify_pre_apply_optional_action( note );
+
+   _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_optional_action( note );
+}
 
 template <typename TFunction> struct fcall {};
 
@@ -3662,6 +3780,12 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
+}
+
+boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -4598,6 +4722,17 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
       default: // Note no savings balance for SMT per comments in issue 1682.
          FC_ASSERT( !"invalid symbol" );
    }
+}
+
+void database::generate_required_actions()
+{
+
+}
+
+void database::generate_optional_actions()
+{
+   static const generate_optional_actions_notification note;
+   STEEM_TRY_NOTIFY( _generate_optional_actions_signal, note );
 }
 
 void database::init_hardforks()

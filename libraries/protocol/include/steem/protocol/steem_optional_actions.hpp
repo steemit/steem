@@ -9,7 +9,7 @@
 
 namespace steem { namespace protocol {
 
-   struct optional_action : public base_operation
+   struct example_optional_action : public base_operation
    {
       account_name_type account;
 
@@ -19,4 +19,4 @@ namespace steem { namespace protocol {
 
 } } // steem::protocol
 
-FC_REFLECT( steem::protocol::optional_action, (account) )
+FC_REFLECT( steem::protocol::example_optional_action, (account) )
