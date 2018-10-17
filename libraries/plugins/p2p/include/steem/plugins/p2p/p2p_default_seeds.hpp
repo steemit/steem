@@ -29,7 +29,7 @@ const std::vector< std::string > default_seeds = {
    "steem.global:2001",                   // klye
    "seed.esteem.ws:2001",                 // good-karma
    "seed.timcliff.com:2001",              // timcliff
-   "104.199.118.92:2001",                 // clayop
+   "steemseed.clayop.com:2001",           // clayop
    "seed.steemviz.com:2001",              // ausbitbank
    "steem-seed.lukestokes.info:2001",     // lukestokes
    "seed.steemian.info:2001",             // drakos
@@ -45,6 +45,8 @@ const std::vector< std::string > default_seeds = {
    "seed.thecryptodrive.com:2001",        // thecryptodrive
    "seed.brandonfrye.us:2001",            // brandonfrye
    "seed.firepower.ltd:2001"              // firepower
+   "witness.chitty.tech:2001"             // chitty
+   "seed1.cervantes.one:2001"             // cervantes
 };
 #endif
 
