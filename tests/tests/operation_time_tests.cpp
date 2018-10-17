@@ -23,6 +23,7 @@
 
 using namespace steem;
 using namespace steem::chain;
+using namespace steem::chain::util;
 using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
@@ -2973,52 +2974,50 @@ BOOST_AUTO_TEST_CASE( generate_account_subsidies )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: generate_account_subsidies" );
-      FC_TODO( "Rewrite account subsidy tests" );
-/*
-      generate_block();
-      generate_block();
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
+      // The purpose of this test is to validate the dynamics of available_account_subsidies.
 
-      db_plugin->debug_update( [=]( database& db )
+      // set_subsidy_budget creates a lot of blocks, so there should be enough for a few accounts
+      // half-life of 10 minutes
+      flat_map< string, vector<char> > props;
+      props["account_subsidy_budget"] = fc::raw::pack_to_vector( int32_t( 5123 ) );
+      props["account_subsidy_decay"] = fc::raw::pack_to_vector( uint32_t( 249617279 ) );
+      set_witness_props( props );
+
+      while( true )
       {
-         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-         {
-            wso.median_props.account_subsidy_daily_rate = 1000;
-            wso.median_props.account_subsidy_pool_cap = 2000;
-            wso.account_subsidy_print_rate = 1000;
-         });
-      });
+         const witness_schedule_object& wso = db->get_witness_schedule_object();
+         if(    (wso.account_subsidy_rd.budget_per_time_unit == 5123)
+             && (wso.account_subsidy_rd.decay_params.decay_per_time_unit == 249617279) )
+            break;
+         generate_block();
+      }
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 0 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 0 );
-
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 1000 );
-
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 2000 );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ] == 2000 );
-
-      db_plugin->debug_update( [=]( database& db )
+      auto is_pool_in_equilibrium = []( int64_t pool, int32_t budget, const rd_decay_params& decay_params ) -> bool
       {
-         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-         {
-            gpo.available_account_subsidies = 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS;
-         });
-      });
+         int64_t decay = rd_compute_pool_decay( decay_params, pool, 1 );
+         return (decay == budget);
+      };
 
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
+      const witness_schedule_object& wso = db->get_witness_schedule_object();
+      BOOST_CHECK_EQUAL( wso.account_subsidy_rd.resource_unit, STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_CHECK_EQUAL( wso.account_subsidy_rd.budget_per_time_unit, 5123 );
+      BOOST_CHECK(  is_pool_in_equilibrium( int64_t( wso.account_subsidy_rd.pool_eq )  , wso.account_subsidy_rd.budget_per_time_unit, wso.account_subsidy_rd.decay_params ) );
+      BOOST_CHECK( !is_pool_in_equilibrium( int64_t( wso.account_subsidy_rd.pool_eq )-1, wso.account_subsidy_rd.budget_per_time_unit, wso.account_subsidy_rd.decay_params ) );
 
-      generate_block();
-      BOOST_REQUIRE( db->get_dynamic_global_properties().available_account_subsidies == 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS );
-      BOOST_REQUIRE( db->get< plugins::rc::rc_pool_object >().pool_array[ plugins::rc::resource_new_accounts ]
-         == ( 1000 * STEEM_ACCOUNT_SUBSIDY_PRECISION * STEEM_ACCOUNT_SUBSIDY_BURST_DAYS ) );
+      int64_t pool = db->get_dynamic_global_properties().available_account_subsidies;
+
+      while( true )
+      {
+         const dynamic_global_property_object& gpo = db->get_dynamic_global_properties();
+         BOOST_CHECK_EQUAL( pool, gpo.available_account_subsidies );
+         if( gpo.available_account_subsidies >= 100 * STEEM_ACCOUNT_SUBSIDY_PRECISION )
+            break;
+         generate_block();
+         pool = pool + 5123 - ((249617279 * pool) >> STEEM_RD_DECAY_DENOM_SHIFT);
+      }
 
       validate_database();
-*/
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3027,136 +3026,95 @@ BOOST_AUTO_TEST_CASE( account_subsidy_witness_limits )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: account sybsidy_witness_limits" );
-      FC_TODO( "Rewrite account subsidy tests" );
+      BOOST_TEST_MESSAGE( "Testing: account_subsidy_witness_limits" );
 
-/*
       ACTORS( (alice) )
       generate_block();
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
-      while( db->get_slot_at_time( db->head_block_time() ) != 0 )
+      claim_account_operation op;
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- Test rejecting claim account when block is generated by a timeshare witness" );
+
+      // set_subsidy_budget creates a lot of blocks, so there should be enough for a few accounts
+      // half-life of 10 minutes
+      flat_map< string, vector<char> > props;
+      props["account_subsidy_budget"] = fc::raw::pack_to_vector( int32_t( 5000 ) );
+      props["account_subsidy_decay"] = fc::raw::pack_to_vector( uint32_t( 249617279 ) );
+      set_witness_props( props );
+
+      while( true )
+      {
+         const dynamic_global_property_object& gpo = db->get_dynamic_global_properties();
+         if( gpo.available_account_subsidies >= 100 * STEEM_ACCOUNT_SUBSIDY_PRECISION )
+            break;
+         generate_block();
+      }
+
+      // Verify the timeshare witness can't create subsidized accounts
+      while( db->get< witness_object, by_name >( db->get_scheduled_witness( 1 ) ).schedule != witness_object::timeshare )
       {
          generate_block();
       }
 
-      claim_account_operation op;
-      signed_transaction tx;
-
-
-      BOOST_TEST_MESSAGE( "--- Test rejecting claim account when block is generated by a timeshare witness" );
-      db_plugin->debug_update( [=]( database& db )
-      {
-         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
-         uint32_t next_slot = db.get_slot_at_time( next_block_time );
-         account_name_type next_witness = db.get_scheduled_witness( next_slot );
-
-         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
-         {
-            w.schedule = witness_object::timeshare;
-         });
-
-         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-         {
-            wso.median_props.account_creation_fee = ASSET( "5.000 TESTS" );
-            wso.median_props.account_subsidy_daily_rate = 1000;
-            wso.median_props.account_subsidy_pool_cap = 2000;
-            wso.account_subsidy_print_rate = 347;
-            wso.single_witness_subsidy_limit = 1000000;
-         });
-
-         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-         {
-            gpo.available_account_subsidies = 20000000;
-         });
-      });
       op.creator = "alice";
       op.fee = ASSET( "0.000 TESTS" );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
+
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 0 );
+      BOOST_CHECK( db->_pending_tx.size() == 0 );
+
+      // Pushes successfully
       db->push_transaction( tx, 0 );
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 1 );
+      BOOST_CHECK( db->_pending_tx.size() == 1 );
 
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
-      generate_block();
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 0 );
-
-
-      BOOST_TEST_MESSAGE( "--- Test pushing pending trx works when block is produced by a timeshare witness" );
-      account_name_type next_witness;
-      db_plugin->debug_update( [=, &next_witness]( database& db )
+      do
       {
-         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
-         uint32_t next_slot = db.get_slot_at_time( next_block_time );
-         next_witness = db.get_scheduled_witness( next_slot );
+         generate_block();
 
-         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
-         {
-            w.schedule = witness_object::elected;
-         });
-      });
-      tx.signatures.clear();
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, alice_private_key );
+         // The transaction fails in generate_block(), meaning it is removed from the local node's transaction list
+         BOOST_CHECK_EQUAL( db->fetch_block_by_number( db->head_block_num() )->transactions.size(), 0 );
+         BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 0 );
+         BOOST_CHECK_EQUAL( db->_pending_tx.size(), 0 );
+      } while( db->get< witness_object, by_name >( db->get_scheduled_witness( 1 ) ).schedule == witness_object::timeshare );
+
       db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
-
-      BOOST_TEST_MESSAGE( "--- Test success including claim account when block is produced by elected witness" );
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 1 );
+      BOOST_CHECK( db->_pending_tx.size() == 1 );
+      // But generate another block, as a non-time-share witness, and it works
       generate_block();
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
-      BOOST_REQUIRE( db->get_witness( next_witness ).recent_account_subsidies == STEEM_ACCOUNT_SUBSIDY_PRECISION );
+      BOOST_CHECK_EQUAL( db->fetch_block_by_number( db->head_block_num() )->transactions.size(), 1 );
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == 1 );
+      BOOST_CHECK_EQUAL( db->_pending_tx.size(), 0 );
 
-
-      BOOST_TEST_MESSAGE( "--- Test pushing pending trx for a fully claimed withess does not fail" );
-      db_plugin->debug_update( [=]( database& db )
+      while( db->get< witness_object, by_name >( db->get_scheduled_witness( 1 ) ).schedule == witness_object::timeshare )
       {
-         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
-         uint32_t next_slot = db.get_slot_at_time( next_block_time );
-         account_name_type next_witness = db.get_scheduled_witness( next_slot );
+         generate_block();
+      }
 
-         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
-         {
-            w.schedule = witness_object::elected;
-            w.recent_account_subsidies = 1000000;
-            w.last_subsidy_update = db.head_block_time();
-         });
-      });
-      tx.signatures.clear();
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, alice_private_key );
-      db->push_transaction( tx, 0 );
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 2 );
+      fc::time_point_sec expiration = db->head_block_time() + fc::seconds(60);
+      size_t n = size_t( db->get< witness_object, by_name >( db->get_scheduled_witness( 1 ) ).available_witness_account_subsidies / STEEM_ACCOUNT_SUBSIDY_PRECISION );
 
-
-      BOOST_TEST_MESSAGE( "--- Test failure when a full witness attempts to claim an account when generating a block" );
-      generate_block();
-      BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
-
-
-      BOOST_TEST_MESSAGE( "--- Test reset claims for witness decreases properly" );
-      db_plugin->debug_update( [=, &next_witness]( database& db )
+      ilog( "Creating ${np1} transactions", ("np1", n+1) );
+      // Create n+1 transactions
+      for( size_t i=0; i<=n; i++ )
       {
-         fc::time_point_sec next_block_time = db.head_block_time() + fc::seconds( STEEM_BLOCK_INTERVAL );
-         uint32_t next_slot = db.get_slot_at_time( next_block_time );
-         next_witness = db.get_scheduled_witness( next_slot );
-
-         db.modify( db.get_witness( next_witness ), [&]( witness_object& w )
-         {
-            w.schedule = witness_object::elected;
-            w.recent_account_subsidies = 1000000;
-            w.last_subsidy_update = db.head_block_time() - fc::days( STEEM_ACCOUNT_SUBSIDY_BURST_DAYS / 2 );
-         });
-      });
-      tx.signatures.clear();
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, alice_private_key );
-      db->push_transaction( tx, 0 );
-
-      BOOST_REQUIRE( db->get_witness( next_witness ).recent_account_subsidies == 1000000 );
+         tx.signatures.clear();
+         tx.set_expiration( expiration );
+         sign( tx, alice_private_key );
+         db->push_transaction( tx, 0 );
+         expiration += fc::seconds(3);
+      }
+      BOOST_CHECK( db->get_account( "alice" ).pending_claimed_accounts == n+2 );
+      BOOST_CHECK_EQUAL( db->_pending_tx.size(), n+1 );
       generate_block();
-      BOOST_REQUIRE( db->get_witness( next_witness ).recent_account_subsidies == 500000 + STEEM_ACCOUNT_SUBSIDY_PRECISION );
-*/
+      BOOST_CHECK_EQUAL( db->fetch_block_by_number( db->head_block_num() )->transactions.size(), n );
+      BOOST_CHECK_EQUAL( db->_pending_tx.size(), 1 );
    }
    FC_LOG_AND_RETHROW()
 }

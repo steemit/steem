@@ -3,10 +3,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "30000000000",
+   "budget" : "37500000000",
    "half_life" : {"days" : 15},
-   "a_point_num" : 37,
-   "a_point_denom" : 1000,
+   "resource_unit_base" : 10,
+   "resource_unit_exponent" : 0,
+   "a_point_num" : 50,
+   "a_point_denom" : 10000,
    "u_point_num" : 1,
    "u_point_denom" : 2
   }
@@ -15,9 +17,9 @@
  ["resource_new_accounts",
   {
    "time_unit" : "blocks",
-   "budget_time" : {"days" : 1},
-   "budget" : 1,
-   "half_life" : {"days" : 1000000},
+   "budget_time" : {"seconds" : 30000},
+   "budget" : 797,
+   "half_life" : {"days" : 5},
    "resource_unit_base" : 10,
    "resource_unit_exponent" : 4,
    "a_point_num" : 37,
@@ -31,10 +33,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "5000000000",
+   "budget" : "6250000000",
    "half_life" : {"hours" : 16},
-   "a_point_num" : 37,
-   "a_point_denom" : 1000,
+   "resource_unit_base" : 10,
+   "resource_unit_exponent" : 1,
+   "a_point_num" : 50,
+   "a_point_denom" : 10000,
    "u_point_num" : 1,
    "u_point_denom" : 2
   }
@@ -44,10 +48,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "20000000000000",
+   "budget" : "30000000000000",
    "half_life" : {"days" : 15},
-   "a_point_num" : 37,
-   "a_point_denom" : 1000,
+   "resource_unit_base" : 10,
+   "resource_unit_exponent" : 0,
+   "a_point_num" : 50,
+   "a_point_denom" : 10000,
    "u_point_num" : 1,
    "u_point_denom" : 2
   }
@@ -57,10 +63,12 @@
   {
    "time_unit" : "blocks",
    "budget_time" : {"days" : 30},
-   "budget" : "7101369863013",
+   "budget" : "8876712328766",
    "half_life" : {"days" : 15},
-   "a_point_num" : 37,
-   "a_point_denom" : 1000,
+   "resource_unit_base" : 10,
+   "resource_unit_exponent" : 0,
+   "a_point_num" : 50,
+   "a_point_denom" : 10000,
    "u_point_num" : 1,
    "u_point_denom" : 2
   }

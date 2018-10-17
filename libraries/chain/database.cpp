@@ -10,12 +10,13 @@
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/index.hpp>
+#include <steem/chain/pending_required_action_object.hpp>
+#include <steem/chain/pending_optional_action_object.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
 #include <steem/chain/util/asset.hpp>
@@ -83,12 +84,14 @@ class database_impl
    public:
       database_impl( database& self );
 
-      database&                              _self;
-      evaluator_registry< operation >        _evaluator_registry;
+      database&                                       _self;
+      evaluator_registry< operation >                 _evaluator_registry;
+      evaluator_registry< required_automated_action > _req_action_evaluator_registry;
+      evaluator_registry< optional_automated_action > _opt_action_evaluator_registry;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _req_action_evaluator_registry(self), _opt_action_evaluator_registry(self) {}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -357,10 +360,10 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
 optional<signed_block> database::fetch_block_by_number( uint32_t block_num )const
 { try {
    optional< signed_block > b;
+   shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
 
-   auto results = _fork_db.fetch_block_by_number( block_num );
-   if( results.size() == 1 )
-      b = results[0]->data;
+   if( fitem )
+      b = fitem->data;
    else
       b = _block_log.read_block_by_num( block_num );
 
@@ -630,6 +633,29 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
    //fc::time_point begin_time = fc::time_point::now();
 
+   auto block_num = new_block.block_num();
+   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
+   {
+      auto itr = _checkpoints.find( block_num );
+      if( itr != _checkpoints.end() )
+         FC_ASSERT( new_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",new_block.id()) );
+
+      if( _checkpoints.rbegin()->first >= block_num )
+         skip = skip_witness_signature
+              | skip_transaction_signatures
+              | skip_transaction_dupe_check
+              /*| skip_fork_db Fork db cannot be skipped or else blocks will not be written out to block log */
+              | skip_block_size_check
+              | skip_tapos_check
+              | skip_authority_check
+              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
+              | skip_undo_history_check
+              | skip_witness_schedule_check
+              | skip_validate
+              | skip_validate_invariants
+              ;
+   }
+
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
@@ -689,7 +715,7 @@ bool database::_push_block(const signed_block& new_block)
          //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
          {
-            // wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
+            wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
             auto branches = _fork_db.fetch_branch_from(new_head->data.id(), head_block_id());
 
             // pop blocks until we hit the forked block
@@ -699,10 +725,11 @@ bool database::_push_block(const signed_block& new_block)
             // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
             {
-                // ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
+                ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
                 optional<fc::exception> except;
                 try
                 {
+                   _fork_db.set_head( *ritr );
                    auto session = start_undo_session();
                    apply_block( (*ritr)->data, skip );
                    session.push();
@@ -710,14 +737,13 @@ bool database::_push_block(const signed_block& new_block)
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   // wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
+                   wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
                       _fork_db.remove( (*ritr)->data.id() );
                       ++ritr;
                    }
-                   _fork_db.set_head( branches.second.front() );
 
                    // pop all blocks from the bad fork
                    while( head_block_id() != branches.second.back()->data.previous )
@@ -726,6 +752,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
+                      _fork_db.set_head( *ritr );
                       auto session = start_undo_session();
                       apply_block( (*ritr)->data, skip );
                       session.push();
@@ -851,7 +878,7 @@ void database::clear_pending()
 void database::push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -861,7 +888,7 @@ void database::push_virtual_operation( const operation& op )
 void database::pre_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -870,19 +897,68 @@ void database::pre_push_virtual_operation( const operation& op )
 void database::post_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    note.virtual_op = _current_virtual_op;
    notify_post_apply_operation( note );
 }
 
-void database::notify_pre_apply_operation( operation_notification& note )
+void database::notify_pre_apply_operation( const operation_notification& note )
 {
-   note.trx_id       = _current_trx_id;
-   note.block        = _current_block_num;
-   note.trx_in_block = _current_trx_in_block;
-   note.op_in_trx    = _current_op_in_trx;
-
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
+}
+
+struct action_validate_visitor
+{
+   typedef void result_type;
+
+   template< typename Action >
+   void operator()( const Action& a )const
+   {
+      a.validate();
+   }
+};
+
+void database::push_required_action( const required_automated_action& a )
+{
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
+   create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+   {
+      pending_action.action = a;
+   });
+}
+
+void database::push_optional_action( const optional_automated_action& a )
+{
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
+   create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+   {
+      pending_action.action = a;
+      pending_action.pushed_block_num = head_block_num();
+   });
+}
+
+void database::notify_pre_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_required_action_signal, note );
+}
+
+void database::notify_post_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_required_action_signal, note );
+}
+
+void database::notify_pre_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_optional_action_signal, note );
+}
+
+void database::notify_post_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_optional_action_signal, note );
 }
 
 void database::notify_post_apply_operation( const operation_notification& note )
@@ -1091,6 +1167,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             db.modify( to_account, [&]( account_object& a )
             {
                util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
                a.voting_manabar.regenerate_mana( params, db.head_block_time() );
                a.voting_manabar.use_mana( -new_vesting.amount.value );
             });
@@ -2532,6 +2609,8 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+   add_core_index< pending_required_action_index           >(*this);
+   add_core_index< pending_optional_action_index           >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
    add_core_index< smt_event_token_index                   >(*this);
@@ -2790,29 +2869,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    //fc::time_point begin_time = fc::time_point::now();
 
-   auto block_num = next_block.block_num();
-   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
-   {
-      auto itr = _checkpoints.find( block_num );
-      if( itr != _checkpoints.end() )
-         FC_ASSERT( next_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()) );
-
-      if( _checkpoints.rbegin()->first >= block_num )
-         skip = skip_witness_signature
-              | skip_transaction_signatures
-              | skip_transaction_dupe_check
-              | skip_fork_db
-              | skip_block_size_check
-              | skip_tapos_check
-              | skip_authority_check
-              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
-              | skip_undo_history_check
-              | skip_witness_schedule_check
-              | skip_validate
-              | skip_validate_invariants
-              ;
-   }
-
    detail::with_skip_flags( *this, skip, [&]()
    {
       _apply_block( next_block );
@@ -2825,6 +2881,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (next_block) );*/
+
+   auto block_num = next_block.block_num();
 
    //fc::time_point end_time = fc::time_point::now();
    //fc::microseconds dt = end_time - begin_time;
@@ -2993,8 +3051,10 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   required_automated_actions req_actions;
+   optional_automated_actions opt_actions;
    /// parse witness version reporting
-   process_header_extensions( next_block );
+   process_header_extensions( next_block, req_actions, opt_actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3005,6 +3065,9 @@ void database::_apply_block( const signed_block& next_block )
          ("witness",witness)("next_block.witness",next_block.witness)("hardfork_state", hardfork_state)
       );
    }
+
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
 
    for( const auto& trx : next_block.transactions )
    {
@@ -3050,23 +3113,36 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
+   generate_required_actions();
+   generate_optional_actions();
+
    process_hardforks();
 
    // notify observers that the block has been applied
    notify_post_apply_block( note );
 
    notify_changed_objects();
-} //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
-FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
-}
+
+   // This moves newly irreversible blocks from the fork db to the block log
+   // and commits irreversible state to the database. This should always be the
+   // last call of applying a block because it is the only thing that is not
+   // reversible.
+   migrate_irreversible_state();
+} FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, required_automated_actions& req_actions, optional_automated_actions& opt_actions, database& db ) :
+      _witness( witness ),
+      _req_actions( req_actions ),
+      _opt_actions( opt_actions ),
+      _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
+   required_automated_actions& _req_actions;
+   optional_automated_actions& _opt_actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3101,16 +3177,22 @@ struct process_header_visitor
          });
    }
 
-   template<typename T>
-   void operator()( const T& unknown_obj ) const
+   void operator()( const required_automated_actions& req_actions ) const
    {
-      FC_ASSERT( false, "Unknown extension in block header" );
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
+   }
+
+   void operator()( const optional_automated_actions& opt_actions ) const
+   {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
 };
 
-void database::process_header_extensions( const signed_block& next_block )
+void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
 {
-   process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, req_actions, opt_actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3175,8 +3257,16 @@ try {
 #endif
             if( has_hardfork( STEEM_HARDFORK_0_14__230 ) )
             {
+               // This block limits the effective median price to force SBD to remain at or
+               // below 10% of the combined market cap of STEEM and SBD.
+               //
+               // For example, if we have 500 STEEM and 100 SBD, the price is limited to
+               // 900 SBD / 500 STEEM which works out to be $1.80.  At this price, 500 Steem
+               // would be valued at 500 * $1.80 = $900.  100 SBD is by definition always $100,
+               // so the combined market cap is $900 + $100 = $1000.
+
                const auto& gpo = get_dynamic_global_properties();
-               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply ); // This price limits SBD to 10% market cap
+               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
 
                if( min_price > fho.current_median_history )
                   fho.current_median_history = min_price;
@@ -3280,7 +3370,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    notify_pre_apply_operation( note );
 
    if( _benchmark_dumper.is_enabled() )
@@ -3294,6 +3384,101 @@ void database::apply_operation(const operation& op)
    notify_post_apply_operation( note );
 }
 
+struct action_equal_visitor
+{
+   typedef bool result_type;
+
+   const required_automated_action& action_a;
+
+   action_equal_visitor( const required_automated_action& a ) : action_a( a ) {}
+
+   template< typename Action >
+   bool operator()( const Action& action_b )const
+   {
+      if( action_a.which() != required_automated_action::tag< Action >::value ) return false;
+
+      return action_a.get< Action >() == action_b;
+   }
+};
+
+void database::process_required_actions( const required_automated_actions& actions )
+{
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
+   auto actions_itr = actions.begin();
+
+   while( true )
+   {
+      auto pending_itr = pending_action_idx.begin();
+
+      if( actions_itr == actions.end() )
+      {
+         // We're done processing actions in the block.
+         if( pending_itr != pending_action_idx.end() )
+         {
+            FC_TODO("Check that the block producer stopped including required actions for a good reason, such as running out of space #2722");
+         }
+         break;
+      }
+
+      FC_ASSERT( pending_itr != pending_action_idx.end(),
+         "Block included required action that does not exist in queue" );
+
+      action_equal_visitor equal_visitor( pending_itr->action );
+      FC_ASSERT( actions_itr->visit( equal_visitor ),
+         "Unexpected action included. Expected: ${e} Observed: ${o}",
+         ("e", pending_itr->action)("o", *actions_itr) );
+
+      apply_required_action( *actions_itr );
+
+      remove( *pending_itr );
+      ++actions_itr;
+   }
+}
+
+void database::apply_required_action( const required_automated_action& a )
+{
+   required_action_notification note( a );
+   notify_pre_apply_required_action( note );
+
+   _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_required_action( note );
+}
+
+void database::process_optional_actions( const optional_automated_actions& actions )
+{
+   static const action_validate_visitor validate_visitor;
+
+   for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
+   {
+      actions_itr->visit( validate_visitor );
+
+      apply_optional_action( *actions_itr );
+   }
+
+   // Clear out "expired" optional_actions. If the block when an optional action was generated
+   // has become irreversible then a super majority of witnesses have chosen to not include it
+   // and it is safe to delete.
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_id >();
+   auto pending_itr = pending_action_idx.begin();
+   auto lib = get_dynamic_global_properties().last_irreversible_block_num;
+
+   while( pending_itr != pending_action_idx.end() && pending_itr->pushed_block_num <= lib )
+   {
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+   }
+}
+
+void database::apply_optional_action( const optional_automated_action& a )
+{
+   optional_action_notification note( a );
+   notify_pre_apply_optional_action( note );
+
+   _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_optional_action( note );
+}
 
 template <typename TFunction> struct fcall {};
 
@@ -3374,6 +3559,30 @@ boost::signals2::connection database::any_apply_operation_handler_impl( const ap
       return _post_apply_operation_signal.connect(group, complex_func);
 }
 
+boost::signals2::connection database::add_pre_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_required_action_signal, func, plugin, group, "->required_action");
+}
+
+boost::signals2::connection database::add_post_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_required_action_signal, func, plugin, group, "<-required_action");
+}
+
+boost::signals2::connection database::add_pre_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_optional_action_signal, func, plugin, group, "->optional_action");
+}
+
+boost::signals2::connection database::add_post_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_optional_action_signal, func, plugin, group, "<-optional_action");
+}
+
 boost::signals2::connection database::add_pre_apply_operation_handler( const apply_operation_handler_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
@@ -3426,6 +3635,12 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
+}
+
+boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3611,38 +3826,66 @@ void database::update_last_irreversible_block()
       }
    }
 
-   commit( dpo.last_irreversible_block_num );
-
    for( uint32_t i = old_last_irreversible; i <= dpo.last_irreversible_block_num; ++i )
    {
       notify_irreversible_block( i );
    }
-
-   if( !( get_node_properties().skip_flags & skip_block_log ) )
-   {
-      // output to block log based on new last irreverisible block num
-      const auto& tmp_head = _block_log.head();
-      uint64_t log_head_num = 0;
-
-      if( tmp_head )
-         log_head_num = tmp_head->block_num();
-
-      if( log_head_num < dpo.last_irreversible_block_num )
-      {
-         while( log_head_num < dpo.last_irreversible_block_num )
-         {
-            shared_ptr< fork_item > block = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
-            FC_ASSERT( block, "Current fork in the fork database does not contain the last_irreversible_block" );
-            _block_log.append( block->data );
-            log_head_num++;
-         }
-
-         _block_log.flush();
-      }
-   }
-
-   _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
 } FC_CAPTURE_AND_RETHROW() }
+
+void database::migrate_irreversible_state()
+{
+   // This method should happen atomically. We cannot prevent unclean shutdown in the middle
+   // of the call, but all side effects happen at the end to minize the chance that state
+   // invariants will be violated.
+   try
+   {
+      const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+
+      auto fork_head = _fork_db.head();
+      if( fork_head )
+      {
+         FC_ASSERT( fork_head->num == dpo.head_block_number, "Fork Head: ${f} Chain Head: ${c}", ("f",fork_head->num)("c", dpo.head_block_number) );
+      }
+
+      if( !( get_node_properties().skip_flags & skip_block_log ) )
+      {
+         // output to block log based on new last irreverisible block num
+         const auto& tmp_head = _block_log.head();
+         uint64_t log_head_num = 0;
+         vector< item_ptr > blocks_to_write;
+
+         if( tmp_head )
+            log_head_num = tmp_head->block_num();
+
+         if( log_head_num < dpo.last_irreversible_block_num )
+         {
+            // Check for all blocks that we want to write out to the block log but don't write any
+            // unless we are certain they all exist in the fork db
+            while( log_head_num < dpo.last_irreversible_block_num )
+            {
+               item_ptr block_ptr = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
+               FC_ASSERT( block_ptr, "Current fork in the fork database does not contain the last_irreversible_block" );
+               blocks_to_write.push_back( block_ptr );
+               log_head_num++;
+            }
+
+            for( auto block_itr = blocks_to_write.begin(); block_itr != blocks_to_write.end(); ++block_itr )
+            {
+               _block_log.append( block_itr->get()->data );
+            }
+
+            _block_log.flush();
+         }
+      }
+
+      // This deletes blocks from the fork db
+      _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
+
+      // This deletes undo state
+      commit( dpo.last_irreversible_block_num );
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
 
 
 bool database::apply_order( const limit_order_object& new_order_object )
@@ -3891,6 +4134,7 @@ void database::clear_expired_delegations()
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
             a.voting_manabar.regenerate_mana( params, head_block_time() );
             a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
          }
@@ -4333,6 +4577,17 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
       default: // Note no savings balance for SMT per comments in issue 1682.
          FC_ASSERT( !"invalid symbol" );
    }
+}
+
+void database::generate_required_actions()
+{
+
+}
+
+void database::generate_optional_actions()
+{
+   static const generate_optional_actions_notification note;
+   STEEM_TRY_NOTIFY( _generate_optional_actions_signal, note );
 }
 
 void database::init_hardforks()

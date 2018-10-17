@@ -12,7 +12,6 @@
 
 #include <steem/plugins/rc/rc_objects.hpp>
 #include <steem/plugins/rc/resource_count.hpp>
-#include <steem/plugins/witness/witness_objects.hpp>
 
 #include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>
@@ -5956,59 +5955,6 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.operations.push_back( proxy );
       sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
-   }
-   FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE( account_bandwidth )
-{
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: account_bandwidth" );
-      ACTORS( (alice)(bob) )
-      generate_block();
-      vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
-      fund( "alice", ASSET( "10.000 TESTS" ) );
-      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
-
-      generate_block();
-      db->skip_transaction_delta_check = false;
-
-      BOOST_TEST_MESSAGE( "--- Test first tx in block" );
-
-      signed_transaction tx;
-      transfer_operation op;
-
-      op.from = "alice";
-      op.to = "bob";
-      op.amount = ASSET( "1.000 TESTS" );
-
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, alice_private_key );
-
-      db->push_transaction( tx, 0 );
-
-      auto last_bandwidth_update = db->get< plugins::witness::account_bandwidth_object, plugins::witness::by_account_bandwidth_type >( boost::make_tuple( "alice", plugins::witness::bandwidth_type::market ) ).last_bandwidth_update;
-      auto average_bandwidth = db->get< plugins::witness::account_bandwidth_object, plugins::witness::by_account_bandwidth_type >( boost::make_tuple( "alice", plugins::witness::bandwidth_type::market ) ).average_bandwidth;
-      BOOST_REQUIRE( last_bandwidth_update == db->head_block_time() );
-      BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEM_BANDWIDTH_PRECISION );
-      auto total_bandwidth = average_bandwidth;
-
-      BOOST_TEST_MESSAGE( "--- Test second tx in block" );
-
-      op.amount = ASSET( "0.100 TESTS" );
-      tx.clear();
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, alice_private_key );
-
-      db->push_transaction( tx, 0 );
-
-      last_bandwidth_update = db->get< plugins::witness::account_bandwidth_object, plugins::witness::by_account_bandwidth_type >( boost::make_tuple( "alice", plugins::witness::bandwidth_type::market ) ).last_bandwidth_update;
-      average_bandwidth = db->get< plugins::witness::account_bandwidth_object, plugins::witness::by_account_bandwidth_type >( boost::make_tuple( "alice", plugins::witness::bandwidth_type::market ) ).average_bandwidth;
-      BOOST_REQUIRE( last_bandwidth_update == db->head_block_time() );
-      BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEM_BANDWIDTH_PRECISION );
    }
    FC_LOG_AND_RETHROW()
 }

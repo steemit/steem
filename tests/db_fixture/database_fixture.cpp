@@ -241,13 +241,6 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
 }
 #endif
 
-string database_fixture::generate_anon_acct_name()
-{
-   // names of the form "anon-acct-x123" ; the "x" is necessary
-   //    to workaround issue #46
-   return "anon-acct-x" + std::to_string( anon_acct_count++ );
-}
-
 void database_fixture::open_database()
 {
    if( !data_dir )

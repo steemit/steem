@@ -34,6 +34,7 @@ struct manabar
    manabar( int64_t m, uint32_t t )
       : current_mana(m), last_update_time(t) {}
 
+   template< bool skip_cap_regen = false >
    void regenerate_mana( const manabar_params& params, uint32_t now )
    {
       params.validate();
@@ -47,7 +48,8 @@ struct manabar
          return;
       }
 
-      dt = (dt > params.regen_time) ? params.regen_time : dt;
+      if( !skip_cap_regen )
+         dt = (dt > params.regen_time) ? params.regen_time : dt;
 
       uint128_t max_mana_dt = uint64_t( params.max_mana >= 0 ? params.max_mana : 0 );
       max_mana_dt *= dt;
@@ -59,9 +61,10 @@ struct manabar
       last_update_time = now;
    }
 
+   template< bool skip_cap_regen = false >
    void regenerate_mana( const manabar_params& params, fc::time_point_sec now )
    {
-      regenerate_mana( params, now.sec_since_epoch() );
+      regenerate_mana< skip_cap_regen >( params, now.sec_since_epoch() );
    }
 
    bool has_mana( int64_t mana_needed )const
@@ -75,15 +78,20 @@ struct manabar
       return has_mana( (int64_t) mana_needed );
    }
 
-   void use_mana( int64_t mana_used )
+   void use_mana( int64_t mana_used, int64_t min_mana = std::numeric_limits< uint64_t >::min() )
    {
       current_mana = fc::signed_sat_sub( current_mana, mana_used );
+
+      if( current_mana < min_mana )
+      {
+         current_mana = min_mana;
+      }
    }
 
-   void use_mana( uint64_t mana_used )
+   void use_mana( uint64_t mana_used, int64_t min_mana = std::numeric_limits< uint64_t >::min() )
    {
       FC_ASSERT( mana_used <= std::numeric_limits< int64_t >::max() );
-      use_mana( (int64_t) mana_used );
+      use_mana( (int64_t) mana_used, min_mana );
    }
 };
 

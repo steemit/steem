@@ -151,8 +151,9 @@ vector<item_ptr> fork_database::fetch_block_by_number(uint32_t num)const
    try
    {
    vector<item_ptr> result;
-   auto itr = _index.get<block_num>().find(num);
-   while( itr != _index.get<block_num>().end() )
+   auto const& block_num_idx = _index.get<block_num>();
+   auto itr = block_num_idx.lower_bound(num);
+   while( itr != block_num_idx.end() && itr->get()->num == num )
    {
       if( (*itr)->num == num )
          result.push_back( *itr );
