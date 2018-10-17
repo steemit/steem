@@ -23,6 +23,7 @@ class pending_optional_action_object : public object< pending_optional_action_ob
       id_type           id;
 
       optional_automated_action  action;
+      uint32_t                   pushed_block_num = 0;
 };
 
 typedef multi_index_container<
@@ -36,5 +37,5 @@ typedef multi_index_container<
 } } //steem::chain
 
 FC_REFLECT( steem::chain::pending_optional_action_object,
-            (id)(action) )
+            (id)(action)(pushed_block_num) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::pending_optional_action_object, steem::chain::pending_optional_action_index )

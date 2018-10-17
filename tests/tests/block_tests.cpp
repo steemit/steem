@@ -31,6 +31,7 @@
 #include <steem/chain/history_object.hpp>
 
 #include <steem/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/witness/block_producer.hpp>
 
 #include <steem/utilities/tempdir.hpp>
 
@@ -41,6 +42,7 @@
 using namespace steem;
 using namespace steem::chain;
 using namespace steem::protocol;
+using namespace steem::plugins;
 
 #define TEST_SHARED_MEM_SIZE (1024 * 1024 * 8)
 
@@ -68,9 +70,10 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       signed_block cutoff_block;
       {
          database db;
+         witness::block_producer bp( db );
          db._log_hardforks = false;
          open_test_database( db, data_dir.path() );
-         b = db.generate_block(db.get_slot_time(1), db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+         b = bp.generate_block(db.get_slot_time(1), db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
          // TODO:  Change this test when we correct #406
          // n.b. we generate STEEM_MIN_UNDO_HISTORY+1 extra blocks which will be discarded on save
@@ -80,7 +83,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             //witness_id_type prev_witness = b.witness;
             string cur_witness = db.get_scheduled_witness(1);
             //BOOST_CHECK( cur_witness != prev_witness );
-            b = db.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
+            b = bp.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
             BOOST_CHECK( b.witness == cur_witness );
             uint32_t cutoff_height = db.get_dynamic_global_properties().last_irreversible_block_num;
             if( cutoff_height >= 200 )
@@ -95,6 +98,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       }
       {
          database db;
+         witness::block_producer bp( db );
          db._log_hardforks = false;
          open_test_database( db, data_dir.path() );
 
@@ -113,7 +117,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             //witness_id_type prev_witness = b.witness;
             string cur_witness = db.get_scheduled_witness(1);
             //BOOST_CHECK( cur_witness != prev_witness );
-            b = db.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
+            b = bp.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
          }
 #ifndef ENABLE_STD_ALLOCATOR
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num()+200 );
@@ -131,6 +135,7 @@ BOOST_AUTO_TEST_CASE( undo_block )
       fc::temp_directory data_dir( steem::utilities::temp_directory_path() );
       {
          database db;
+         witness::block_producer bp( db );
          db._log_hardforks = false;
          open_test_database( db, data_dir.path() );
          fc::time_point_sec now( STEEM_TESTING_GENESIS_TIMESTAMP );
@@ -141,7 +146,7 @@ BOOST_AUTO_TEST_CASE( undo_block )
          {
             now = db.get_slot_time(1);
             time_stack.push_back( now );
-            auto b = db.generate_block( now, db.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing );
+            auto b = bp.generate_block( now, db.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing );
          }
          BOOST_CHECK( db.head_block_num() == 5 );
          BOOST_CHECK( db.head_block_time() == now );
@@ -164,7 +169,7 @@ BOOST_AUTO_TEST_CASE( undo_block )
          {
             now = db.get_slot_time(1);
             time_stack.push_back( now );
-            auto b = db.generate_block( now, db.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing );
+            auto b = bp.generate_block( now, db.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing );
          }
          BOOST_CHECK( db.head_block_num() == 7 );
       }
@@ -183,29 +188,31 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       //TODO This test needs 6-7 ish witnesses prior to fork
 
       database db1;
+      witness::block_producer bp1( db1 );
       db1._log_hardforks = false;
       open_test_database( db1, data_dir1.path() );
       database db2;
+      witness::block_producer bp2( db2 );
       db2._log_hardforks = false;
       open_test_database( db2, data_dir2.path() );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       for( uint32_t i = 0; i < 10; ++i )
       {
-         auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+         auto b = bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
          try {
             PUSH_BLOCK( db2, b );
          } FC_CAPTURE_AND_RETHROW( ("db2") );
       }
       for( uint32_t i = 10; i < 13; ++i )
       {
-         auto b =  db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+         auto b =  bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       }
       string db1_tip = db1.head_block_id().str();
       uint32_t next_slot = 3;
       for( uint32_t i = 13; i < 16; ++i )
       {
-         auto b =  db2.generate_block(db2.get_slot_time(next_slot), db2.get_scheduled_witness(next_slot), init_account_priv_key, database::skip_nothing);
+         auto b =  bp2.generate_block(db2.get_slot_time(next_slot), db2.get_scheduled_witness(next_slot), init_account_priv_key, database::skip_nothing);
          next_slot = 1;
          // notify both databases of the new block.
          // only db2 should switch to the new fork, db1 should not
@@ -220,7 +227,7 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       BOOST_CHECK_EQUAL(db1.head_block_num(), 13);
       BOOST_CHECK_EQUAL(db2.head_block_num(), 13);
       {
-         auto b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+         auto b = bp2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
          good_block = b;
          b.transactions.emplace_back(signed_transaction());
          b.transactions.back().operations.emplace_back(transfer_operation());
@@ -248,6 +255,8 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
                          dir2( steem::utilities::temp_directory_path() );
       database db1,
                db2;
+      witness::block_producer bp1( db1 ),
+                              bp2( db2 );
       db1._log_hardforks = false;
       open_test_database( db1, dir1.path() );
       db2._log_hardforks = false;
@@ -273,14 +282,14 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       // db1 : A
       // db2 : B C D
 
-      auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      auto b = bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
       auto alice_id = db1.get_account( "alice" ).id;
       BOOST_CHECK( db1.get(alice_id).name == "alice" );
 
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
       STEEM_REQUIRE_THROW(db2.get(alice_id), std::exception);
       db1.get(alice_id); /// it should be included in the pending state
@@ -289,7 +298,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 
       PUSH_TX( db2, trx );
 
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
 
       BOOST_CHECK( db1.get(alice_id).name == "alice");
@@ -307,6 +316,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
                          dir2( steem::utilities::temp_directory_path() );
       database db1,
                db2;
+      witness::block_producer bp1( db1 );
       db1._log_hardforks = false;
       open_test_database( db1, dir1.path() );
       db2._log_hardforks = false;
@@ -341,7 +351,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       STEEM_CHECK_THROW(PUSH_TX( db1, trx, skip_sigs ), fc::exception);
 
-      auto b = db1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness( 1 ), init_account_priv_key, skip_sigs );
+      auto b = bp1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness( 1 ), init_account_priv_key, skip_sigs );
       PUSH_BLOCK( db2, b, skip_sigs );
 
       STEEM_CHECK_THROW(PUSH_TX( db1, trx, skip_sigs ), fc::exception);
@@ -359,13 +369,14 @@ BOOST_AUTO_TEST_CASE( tapos )
    try {
       fc::temp_directory dir1( steem::utilities::temp_directory_path() );
       database db1;
+      witness::block_producer bp1( db1 );
       db1._log_hardforks = false;
       open_test_database( db1, dir1.path() );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
 
-      auto b = db1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing);
+      auto b = bp1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing);
 
       BOOST_TEST_MESSAGE( "Creating a transaction with reference block" );
       idump((db1.head_block_id()));
@@ -386,7 +397,7 @@ BOOST_AUTO_TEST_CASE( tapos )
       idump((trx));
       db1.push_transaction(trx);
       BOOST_TEST_MESSAGE( "Generating a block" );
-      b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       trx.clear();
 
       transfer_operation t;
@@ -397,9 +408,9 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.set_expiration( db1.head_block_time() + fc::seconds(2) );
       trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::fc_canonical );
       idump((trx)(db1.head_block_time()));
-      b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       idump((b));
-      b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
+      b = bp1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       trx.signatures.clear();
       trx.sign( init_account_priv_key, db1.get_chain_id(), fc::ecc::fc_canonical );
       BOOST_REQUIRE_THROW( db1.push_transaction(trx, 0/*database::skip_transaction_signatures | database::skip_authority_check*/), fc::exception );
@@ -702,11 +713,12 @@ BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
       BOOST_TEST_MESSAGE( "Skipping blocks through db" );
       BOOST_REQUIRE( db->head_block_num() == 2 );
 
+      witness::block_producer bp( *db );
       int init_block_num = db->head_block_num();
       int miss_blocks = fc::minutes( 1 ).to_seconds() / STEEM_BLOCK_INTERVAL;
       auto witness = db->get_scheduled_witness( miss_blocks );
       auto block_time = db->get_slot_time( miss_blocks );
-      db->generate_block( block_time , witness, init_account_priv_key, 0 );
+      bp.generate_block( block_time , witness, init_account_priv_key, 0 );
 
       BOOST_CHECK_EQUAL( db->head_block_num(), init_block_num + 1 );
       BOOST_CHECK( db->head_block_time() == block_time );

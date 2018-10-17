@@ -84,12 +84,14 @@ class database_impl
    public:
       database_impl( database& self );
 
-      database&                              _self;
-      evaluator_registry< operation >        _evaluator_registry;
+      database&                                       _self;
+      evaluator_registry< operation >                 _evaluator_registry;
+      evaluator_registry< required_automated_action > _req_action_evaluator_registry;
+      evaluator_registry< optional_automated_action > _opt_action_evaluator_registry;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _req_action_evaluator_registry(self), _opt_action_evaluator_registry(self) {}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -838,164 +840,6 @@ void database::_push_transaction( const signed_transaction& trx )
    temp_session.squash();
 }
 
-signed_block database::generate_block(
-   fc::time_point_sec when,
-   const account_name_type& witness_owner,
-   const fc::ecc::private_key& block_signing_private_key,
-   uint32_t skip /* = 0 */
-   )
-{
-   signed_block result;
-   detail::with_skip_flags( *this, skip, [&]()
-   {
-      try
-      {
-         result = _generate_block( when, witness_owner, block_signing_private_key );
-      }
-      FC_CAPTURE_AND_RETHROW( (witness_owner) )
-   });
-   return result;
-}
-
-
-signed_block database::_generate_block(
-   fc::time_point_sec when,
-   const account_name_type& witness_owner,
-   const fc::ecc::private_key& block_signing_private_key
-   )
-{
-   uint32_t skip = get_node_properties().skip_flags;
-   uint32_t slot_num = get_slot_at_time( when );
-   FC_ASSERT( slot_num > 0 );
-   string scheduled_witness = get_scheduled_witness( slot_num );
-   FC_ASSERT( scheduled_witness == witness_owner );
-
-   const auto& witness_obj = get_witness( witness_owner );
-
-   if( !(skip & skip_witness_signature) )
-      FC_ASSERT( witness_obj.signing_key == block_signing_private_key.get_public_key() );
-
-   signed_block pending_block;
-
-   pending_block.previous = head_block_id();
-   pending_block.timestamp = when;
-   pending_block.witness = witness_owner;
-
-   if( has_hardfork( STEEM_HARDFORK_0_5__54 ) )
-   {
-      const auto& witness = get_witness( witness_owner );
-
-      if( witness.running_version != STEEM_BLOCKCHAIN_VERSION )
-         pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
-
-      const auto& hfp = get_hardfork_property_object();
-
-      if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
-         && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
-      {
-         // Make vote match binary configuration
-         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
-      }
-      else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
-         && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
-      {
-         // Make vote match binary configuration. This is vote to not apply the new hardfork.
-         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
-      }
-   }
-
-   // The 4 is for the max size of the transaction vector length
-   size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
-   auto maximum_block_size = get_dynamic_global_properties().maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
-
-   //
-   // The following code throws away existing pending_tx_session and
-   // rebuilds it by re-applying pending transactions.
-   //
-   // This rebuild is necessary because pending transactions' validity
-   // and semantics may have changed since they were received, because
-   // time-based semantics are evaluated based on the current block
-   // time.  These changes can only be reflected in the database when
-   // the value of the "when" variable is known, which means we need to
-   // re-apply pending transactions in this method.
-   //
-   _pending_tx_session.reset();
-   _pending_tx_session = start_undo_session();
-
-   FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
-   if( has_hardfork( STEEM_HARDFORK_0_20 ) )
-   {
-      /// modify current witness so transaction evaluators can know who included the transaction
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
-      {
-         dgp.current_witness = scheduled_witness;
-      });
-   }
-
-   uint64_t postponed_tx_count = 0;
-   // pop pending state (reset to head block state)
-   for( const signed_transaction& tx : _pending_tx )
-   {
-      // Only include transactions that have not expired yet for currently generating block,
-      // this should clear problem transactions and allow block production to continue
-
-      if( tx.expiration < when )
-         continue;
-
-      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
-
-      // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
-      {
-         postponed_tx_count++;
-         continue;
-      }
-
-      try
-      {
-         auto temp_session = start_undo_session();
-         _apply_transaction( tx );
-         temp_session.squash();
-
-         total_block_size += fc::raw::pack_size( tx );
-         pending_block.transactions.push_back( tx );
-      }
-      catch ( const fc::exception& e )
-      {
-         // Do nothing, transaction will not be re-applied
-         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         //wlog( "The transaction was ${t}", ("t", tx) );
-      }
-   }
-   if( postponed_tx_count > 0 )
-   {
-      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
-   }
-
-   _pending_tx_session.reset();
-
-   // We have temporarily broken the invariant that
-   // _pending_tx_session is the result of applying _pending_tx, as
-   // _pending_tx now consists of the set of postponed transactions.
-   // However, the push_block() call below will re-create the
-   // _pending_tx_session.
-
-   pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
-
-   if( !(skip & skip_witness_signature) )
-      pending_block.sign( block_signing_private_key, has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
-
-   // TODO:  Move this to _push_block() so session is restored.
-   if( !(skip & skip_block_size_check) )
-   {
-      FC_ASSERT( fc::raw::pack_size(pending_block) <= STEEM_MAX_BLOCK_SIZE );
-   }
-
-   push_block( pending_block, skip );
-
-   return pending_block;
-}
-
 /**
  * Removes the most recent block from the database and
  * undoes any changes it made.
@@ -1063,8 +907,22 @@ void database::notify_pre_apply_operation( const operation_notification& note )
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
 }
 
+struct action_validate_visitor
+{
+   typedef void result_type;
+
+   template< typename Action >
+   void operator()( const Action& a )const
+   {
+      a.validate();
+   }
+};
+
 void database::push_required_action( const required_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
    {
       pending_action.action = a;
@@ -1073,9 +931,13 @@ void database::push_required_action( const required_automated_action& a )
 
 void database::push_optional_action( const optional_automated_action& a )
 {
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
    create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
    {
       pending_action.action = a;
+      pending_action.pushed_block_num = head_block_num();
    });
 }
 
@@ -3189,8 +3051,10 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   required_automated_actions req_actions;
+   optional_automated_actions opt_actions;
    /// parse witness version reporting
-   process_header_extensions( next_block );
+   process_header_extensions( next_block, req_actions, opt_actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3201,6 +3065,9 @@ void database::_apply_block( const signed_block& next_block )
          ("witness",witness)("next_block.witness",next_block.witness)("hardfork_state", hardfork_state)
       );
    }
+
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
 
    for( const auto& trx : next_block.transactions )
    {
@@ -3246,6 +3113,9 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
+   generate_required_actions();
+   generate_optional_actions();
+
    process_hardforks();
 
    // notify observers that the block has been applied
@@ -3262,11 +3132,17 @@ void database::_apply_block( const signed_block& next_block )
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, required_automated_actions& req_actions, optional_automated_actions& opt_actions, database& db ) :
+      _witness( witness ),
+      _req_actions( req_actions ),
+      _opt_actions( opt_actions ),
+      _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
+   required_automated_actions& _req_actions;
+   optional_automated_actions& _opt_actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3304,17 +3180,19 @@ struct process_header_visitor
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
 };
 
-void database::process_header_extensions( const signed_block& next_block )
+void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
 {
-   process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, req_actions, opt_actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3506,6 +3384,101 @@ void database::apply_operation(const operation& op)
    notify_post_apply_operation( note );
 }
 
+struct action_equal_visitor
+{
+   typedef bool result_type;
+
+   const required_automated_action& action_a;
+
+   action_equal_visitor( const required_automated_action& a ) : action_a( a ) {}
+
+   template< typename Action >
+   bool operator()( const Action& action_b )const
+   {
+      if( action_a.which() != required_automated_action::tag< Action >::value ) return false;
+
+      return action_a.get< Action >() == action_b;
+   }
+};
+
+void database::process_required_actions( const required_automated_actions& actions )
+{
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
+   auto actions_itr = actions.begin();
+
+   while( true )
+   {
+      auto pending_itr = pending_action_idx.begin();
+
+      if( actions_itr == actions.end() )
+      {
+         // We're done processing actions in the block.
+         if( pending_itr != pending_action_idx.end() )
+         {
+            FC_TODO("Check that the block producer stopped including required actions for a good reason, such as running out of space #2722");
+         }
+         break;
+      }
+
+      FC_ASSERT( pending_itr != pending_action_idx.end(),
+         "Block included required action that does not exist in queue" );
+
+      action_equal_visitor equal_visitor( pending_itr->action );
+      FC_ASSERT( actions_itr->visit( equal_visitor ),
+         "Unexpected action included. Expected: ${e} Observed: ${o}",
+         ("e", pending_itr->action)("o", *actions_itr) );
+
+      apply_required_action( *actions_itr );
+
+      remove( *pending_itr );
+      ++actions_itr;
+   }
+}
+
+void database::apply_required_action( const required_automated_action& a )
+{
+   required_action_notification note( a );
+   notify_pre_apply_required_action( note );
+
+   _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_required_action( note );
+}
+
+void database::process_optional_actions( const optional_automated_actions& actions )
+{
+   static const action_validate_visitor validate_visitor;
+
+   for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
+   {
+      actions_itr->visit( validate_visitor );
+
+      apply_optional_action( *actions_itr );
+   }
+
+   // Clear out "expired" optional_actions. If the block when an optional action was generated
+   // has become irreversible then a super majority of witnesses have chosen to not include it
+   // and it is safe to delete.
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_id >();
+   auto pending_itr = pending_action_idx.begin();
+   auto lib = get_dynamic_global_properties().last_irreversible_block_num;
+
+   while( pending_itr != pending_action_idx.end() && pending_itr->pushed_block_num <= lib )
+   {
+      remove( *pending_itr );
+      pending_itr = pending_action_idx.begin();
+   }
+}
+
+void database::apply_optional_action( const optional_automated_action& a )
+{
+   optional_action_notification note( a );
+   notify_pre_apply_optional_action( note );
+
+   _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_optional_action( note );
+}
 
 template <typename TFunction> struct fcall {};
 
@@ -3662,6 +3635,12 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
+}
+
+boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -4600,6 +4579,17 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
    }
 }
 
+void database::generate_required_actions()
+{
+
+}
+
+void database::generate_optional_actions()
+{
+   static const generate_optional_actions_notification note;
+   STEEM_TRY_NOTIFY( _generate_optional_actions_signal, note );
+}
+
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEM_GENESIS_TIME );
@@ -5437,6 +5427,11 @@ void database::retally_witness_vote_counts( bool force )
          } );
       }
    }
+}
+
+optional< chainbase::database::session >& database::pending_transaction_session()
+{
+   return _pending_tx_session;
 }
 
 #ifdef STEEM_ENABLE_SMT
