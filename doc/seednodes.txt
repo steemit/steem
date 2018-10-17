@@ -34,4 +34,5 @@ seed.riversteem.com:2001            # riverhead
 steem-seed.furion.me:2001           # furion
 148.251.237.104:2001                # steem-bounty
 seed1.blockbrothers.io:2001         # blockbrothers
+witness.chitty.tech:2001            # chitty
 seed1.cervantes.one:2001            # cervantes
