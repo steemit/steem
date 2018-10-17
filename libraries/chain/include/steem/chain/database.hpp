@@ -229,18 +229,6 @@ namespace steem { namespace chain {
          bool _push_block( const signed_block& b );
          void _push_transaction( const signed_transaction& trx );
 
-         signed_block generate_block(
-            const fc::time_point_sec when,
-            const account_name_type& witness_owner,
-            const fc::ecc::private_key& block_signing_private_key,
-            uint32_t skip
-            );
-         signed_block _generate_block(
-            const fc::time_point_sec when,
-            const account_name_type& witness_owner,
-            const fc::ecc::private_key& block_signing_private_key
-            );
-
          void pop_block();
          void clear_pending();
 
@@ -479,6 +467,10 @@ namespace steem { namespace chain {
          void set_flush_interval( uint32_t flush_blocks );
          void check_free_memory( bool force_print, uint32_t current_block_num );
 
+         void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+
+         optional< chainbase::database::session >& pending_transaction_session();
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
@@ -507,7 +499,6 @@ namespace steem { namespace chain {
          optional< chainbase::database::session > _pending_tx_session;
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
-         void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
          void apply_operation( const operation& op );
