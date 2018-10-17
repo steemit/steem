@@ -1,10 +1,12 @@
 
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 
+#include <steem/plugins/rc/rc_config.hpp>
 #include <steem/plugins/rc/rc_curve.hpp>
 #include <steem/plugins/rc/rc_export_objects.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/rc_operations.hpp>
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
@@ -13,7 +15,6 @@
 
 #include <steem/jsonball/jsonball.hpp>
 
-#define STEEM_RC_REGEN_TIME   (60*60*24*5)
 // 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
@@ -633,6 +634,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
+      FC_TODO( "Reduce delegations to pools as necessary to enforce get_maximum_rc() >= 0" );
       regenerate( op.from_account );
       regenerate( op.to_account );
    }
@@ -691,6 +693,12 @@ struct pre_apply_operation_visitor
    {
       regenerate< true >( get_worker_name( op.work ) );
       regenerate< false >( _current_witness );
+   }
+
+   void operator()( const delegate_to_pool_operation& op )const
+   {
+      ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      regenerate( op.from_account );
    }
 
    template< typename Op >
@@ -985,6 +993,10 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_resource_param_index >(db);
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
+      add_plugin_index< rc_delegation_pool_index >(db);
+      add_plugin_index< rc_delegation_from_account_index >(db);
+      add_plugin_index< rc_indel_edge_index >(db);
+      add_plugin_index< rc_outdel_drc_edge_index >(db);
 
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
 #ifndef IS_TEST_NET
@@ -1038,6 +1050,7 @@ int64_t get_maximum_rc( const account_object& account, const rc_account_object& 
    result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
    result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
    result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
+   result = fc::signed_sat_sub( result, rc_account.vests_delegated_to_pools.amount.value );
    result = fc::signed_sat_sub( result, detail::get_next_vesting_withdrawal( account ) );
    return result;
 }
