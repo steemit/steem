@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE( smt_creation_fee_test )
 
       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
       FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,
-         "Unexpected symbol for the SMT creation fee, ${s}, on the dynamic global properties object.", ("s", dgpo.smt_creation_fee.symbol) );
+         "Unexpected symbol for the SMT creation fee on the dynamic global properties object: ${s}", ("s", dgpo.smt_creation_fee.symbol) );
 
       smt_create_operation fail_op;
       fail_op.control_account = "alice";
@@ -163,8 +163,6 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       ACTORS( (alice)(bob) )
 
       generate_block();
-
-      FUND( "alice", 10 * 1000 * 1000 );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
