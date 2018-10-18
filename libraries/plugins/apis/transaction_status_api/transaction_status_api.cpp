@@ -74,8 +74,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
             };
       }
       // If our expiration is in the past
-      auto head_block = _db.fetch_block_by_number( head_block_num );
-      if ( expiration < head_block->timestamp )
+      if ( expiration < _db.head_block_time() )
          return {
             .status = transaction_status::expired_reversible
          };
