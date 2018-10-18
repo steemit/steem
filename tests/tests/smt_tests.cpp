@@ -79,52 +79,72 @@ BOOST_AUTO_TEST_CASE( smt_creation_fee_test )
       ACTORS( (alice) );
       generate_block();
 
-      FUND( "alice", ASSET( "2.000 TESTS") );
-      FUND( "alice", ASSET( "1.000 TBD" ) );
-
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "2.000 TESTS" ) ) );
 
+      // This ensures that our actual smt_creation_fee is sane in production (either STEEM or SBD)
       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
       FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,
          "Unexpected symbol for the SMT creation fee on the dynamic global properties object: ${s}", ("s", dgpo.smt_creation_fee.symbol) );
 
-      smt_create_operation fail_op;
-      fail_op.control_account = "alice";
-      fail_op.smt_creation_fee = ASSET( "1.999 TESTS" );
-      fail_op.symbol = get_new_smt_symbol( 3, db );
-      fail_op.precision = fail_op.symbol.decimals();
-      fail_op.validate();
+      for ( int i = 0; i < 2; i++ )
+      {
+         FUND( "alice", ASSET( "2.000 TESTS") );
+         FUND( "alice", ASSET( "1.000 TBD" ) );
 
-      FAIL_WITH_OP( fail_op, alice_private_key, fc::assert_exception );
+         // These values should be equivilant as per our price feed and all tests here should work either way
+         if ( !i ) // First pass
+            db->modify( dgpo, [&] ( dynamic_global_property_object& dgpo )
+            {
+               dgpo.smt_creation_fee = asset( 2000, STEEM_SYMBOL );
+            } );
+         else // Second pass
+            db->modify( dgpo, [&] ( dynamic_global_property_object& dgpo )
+            {
+               dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+            } );
 
-      smt_create_operation fail_op2;
-      fail_op2.control_account = "alice";
-      fail_op2.smt_creation_fee = ASSET( "0.999 TBD" );
-      fail_op2.symbol = get_new_smt_symbol( 3, db );
-      fail_op2.precision = fail_op2.symbol.decimals();
-      fail_op2.validate();
+         smt_create_operation fail_op;
+         fail_op.control_account = "alice";
+         fail_op.smt_creation_fee = ASSET( "1.999 TESTS" );
+         fail_op.symbol = get_new_smt_symbol( 3, db );
+         fail_op.precision = fail_op.symbol.decimals();
+         fail_op.validate();
 
-      FAIL_WITH_OP( fail_op2, alice_private_key, fc::assert_exception );
+         // Fail because we are 0.001 TESTS short of the fee
+         FAIL_WITH_OP( fail_op, alice_private_key, fc::assert_exception );
 
-      // We should be able to pay with STEEM even though the price is defined in SBD
-      smt_create_operation op;
-      op.control_account = "alice";
-      op.smt_creation_fee = ASSET( "2.000 TESTS" );
-      op.symbol = get_new_smt_symbol( 3, db );
-      op.precision = op.symbol.decimals();
-      op.validate();
+         smt_create_operation fail_op2;
+         fail_op2.control_account = "alice";
+         fail_op2.smt_creation_fee = ASSET( "0.999 TBD" );
+         fail_op2.symbol = get_new_smt_symbol( 3, db );
+         fail_op2.precision = fail_op2.symbol.decimals();
+         fail_op2.validate();
 
-      PUSH_OP( op, alice_private_key );
+         // Fail because we are 0.001 TBD short of the fee
+         FAIL_WITH_OP( fail_op2, alice_private_key, fc::assert_exception );
 
-      // We should be able to pay with SBD
-      smt_create_operation op2;
-      op2.control_account = "alice";
-      op2.smt_creation_fee = ASSET( "1.000 TBD" );
-      op2.symbol = get_new_smt_symbol( 3, db );
-      op2.precision = op.symbol.decimals();
-      op2.validate();
+         // We should be able to pay with STEEM even though the price is defined in SBD
+         smt_create_operation op;
+         op.control_account = "alice";
+         op.smt_creation_fee = ASSET( "2.000 TESTS" );
+         op.symbol = get_new_smt_symbol( 3, db );
+         op.precision = op.symbol.decimals();
+         op.validate();
 
-      PUSH_OP( op2, alice_private_key );
+         // Succeed because we have paid the equivilant of 1 TBD or 2 TESTS
+         PUSH_OP( op, alice_private_key );
+
+         // We should be able to pay with SBD
+         smt_create_operation op2;
+         op2.control_account = "alice";
+         op2.smt_creation_fee = ASSET( "1.000 TBD" );
+         op2.symbol = get_new_smt_symbol( 3, db );
+         op2.precision = op.symbol.decimals();
+         op2.validate();
+
+         // Succeed because we have paid the equivilant of 1 TBD or 2 TESTS
+         PUSH_OP( op2, alice_private_key );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
