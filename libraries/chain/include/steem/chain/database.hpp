@@ -468,6 +468,8 @@ namespace steem { namespace chain {
          void check_free_memory( bool force_print, uint32_t current_block_num );
 
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void apply_required_action( const required_automated_action& a );
+         void apply_optional_action( const optional_automated_action& a );
 
          optional< chainbase::database::session >& pending_transaction_session();
 
@@ -504,10 +506,7 @@ namespace steem { namespace chain {
          void apply_operation( const operation& op );
 
          void process_required_actions( const required_automated_actions& actions );
-         void apply_required_action( const required_automated_action& a );
-
          void process_optional_actions( const optional_automated_actions& actions );
-         void apply_optional_action( const optional_automated_action& a );
 
          ///Steps involved in applying a new block
          ///@{

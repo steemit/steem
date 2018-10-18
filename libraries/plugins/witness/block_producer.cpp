@@ -6,6 +6,8 @@
 
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
+#include <steem/chain/pending_required_action_object.hpp>
+#include <steem/chain/pending_optional_action_object.hpp>
 #include <steem/chain/witness_objects.hpp>
 
 #include <fc/macros.hpp>
@@ -170,34 +172,63 @@ void block_producer::apply_pending_transactions(
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
    }
 
-   const auto& pending_action_idx = get_index< pending_action_index, by_required >();
-   auto pending_itr = pending_action_idx.begin();
-   automated_actions actions;
+   const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_id >();
+   auto pending_required_itr = pending_required_action_idx.begin();
+   chain::required_automated_actions required_actions;
 
-   while( pending_itr != pending_action_idx.begin() )
+   while( pending_required_itr != pending_required_action_idx.end() )
    {
-      uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_itr->action );
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_required_itr->action );
 
       if( new_total_size >= maximum_block_size )
          break;
 
       try
       {
-         auto temp_session = start_undo_session();
-         apply_action( pending_itr->action );
+         auto temp_session = _db.start_undo_session();
+         _db.apply_required_action( pending_required_itr->action );
          temp_session.squash();
          total_block_size = new_total_size;
-         actions.push_back( pending_itr->action );
+         required_actions.push_back( pending_required_itr->action );
+         ++pending_required_itr;
       }
-      catch( const fc::exception& e )
+      catch( fc::exception& e )
       {
-         FC_ASSERT( !pending_itr->is_required(), "A required automatic action was rejected. ${a}", ("a", pending_itr->action) );
+         FC_RETHROW_EXCEPTION( e, warn, "A required automatic action was rejected. ${a} ${e}", ("a", pending_required_itr->action)("e", e.to_detail_string()) );
       }
    }
 
-   if( actions.size() )
+   if( required_actions.size() )
    {
-      pending_block.extensions.insert( actions );
+      pending_block.extensions.insert( required_actions );
+   }
+
+   const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_id >();
+   auto pending_optional_itr = pending_optional_action_idx.begin();
+   chain::optional_automated_actions optional_actions;
+
+   while( pending_optional_itr != pending_optional_action_idx.end() )
+   {
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_optional_itr->action );
+
+      if( new_total_size >= maximum_block_size )
+         break;
+
+      try
+      {
+         auto temp_session = _db.start_undo_session();
+         _db.apply_optional_action( pending_optional_itr->action );
+         temp_session.squash();
+         total_block_size = new_total_size;
+         optional_actions.push_back( pending_optional_itr->action );
+      }
+      catch( fc::exception& ) {}
+      ++pending_optional_itr;
+   }
+
+   if( optional_actions.size() )
+   {
+      pending_block.extensions.insert( optional_actions );
    }
 
    _db.pending_transaction_session().reset();
