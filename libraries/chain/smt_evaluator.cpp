@@ -81,30 +81,23 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    asset effective_elevation_fee;
 
-   FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,
-      "Unexpected internal error - wrong symbol ${s} of SMT creation fee.", ("s", dgpo.smt_creation_fee.symbol) );
-   FC_ASSERT( o.smt_creation_fee.symbol == STEEM_SYMBOL || o.smt_creation_fee.symbol == SBD_SYMBOL,
-      "Asset fee must be STEEM or SBD, was ${s}", ("s", o.smt_creation_fee.symbol) );
    if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
    {
-      effective_elevation_fee = dgpo.smt_creation_fee;
+      effective_elevation_fee = o.smt_creation_fee;
    }
    else
    {
       const auto& fhistory = _db.get_feed_history();
-      FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using SBD because there is no price feed." );
-      if( o.smt_creation_fee.symbol == STEEM_SYMBOL )
-      {
-         effective_elevation_fee = _db.to_sbd( o.smt_creation_fee );
-      }
+      FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
+
+      if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
+         effective_elevation_fee = _db.to_steem( o.smt_creation_fee );
       else
-      {
-         effective_elevation_fee = _db.to_steem( o.smt_creation_fee );         
-      }
+         effective_elevation_fee = _db.to_sbd( o.smt_creation_fee );
    }
 
-   FC_ASSERT( o.smt_creation_fee >= effective_elevation_fee, 
-      "Fee of ${of} is too small, must be at least ${ef}", ("of", o.smt_creation_fee)("ef", effective_elevation_fee) );
+   FC_ASSERT( effective_elevation_fee >= dgpo.smt_creation_fee,
+      "Fee of ${ef} is too small, must be at least ${sf}", ("ef", effective_elevation_fee)("sf", dgpo.smt_creation_fee) );
    FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
     "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
 
