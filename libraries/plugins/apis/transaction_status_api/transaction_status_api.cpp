@@ -57,7 +57,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
 
       // Check if the expiration is before our earliest tracked block
       uint32_t head_block_num = _db.get_dynamic_global_properties().head_block_number;
-      uint32_t earliest_tracked_block_num = std::max< int64_t >( 1, head_block_num - _tsp.block_depth() + 1 );
+      uint32_t earliest_tracked_block_num = std::max< int64_t >( int64_t( 1 ), int64_t( head_block_num ) - int64_t( _tsp.block_depth() ) + 1 );
       auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
       if ( expiration < earliest_tracked_block->timestamp )
          return {
