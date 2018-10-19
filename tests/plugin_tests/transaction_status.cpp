@@ -2,6 +2,7 @@
 #include <boost/test/unit_test.hpp>
 #include <steem/chain/account_object.hpp>
 #include <steem/protocol/steem_operations.hpp>
+#include <steem/protocol/config.hpp>
 #include <steem/plugins/transaction_status/transaction_status_plugin.hpp>
 #include <steem/plugins/transaction_status/transaction_status_objects.hpp>
 #include <steem/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
@@ -197,6 +198,36 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH );
 
+      // Transaction 1 is tracked
+      tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
+      BOOST_REQUIRE( tso != nullptr );
+      BOOST_REQUIRE( tso->block_num > 0 );
+
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id() } );
+      BOOST_REQUIRE( api_return.status == within_irreversible_block );
+      BOOST_REQUIRE( *api_return.block_num > 0 );
+
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id(), tx1_expiration } );
+      BOOST_REQUIRE( api_return.status == within_irreversible_block );
+      BOOST_REQUIRE( *api_return.block_num > 0 );
+
+      // Transaction 2 exists in a block
+      tso = db->find< transaction_status_object, by_trx_id >( tx2.id() );
+      BOOST_REQUIRE( tso != nullptr );
+      BOOST_REQUIRE( tso->block_num > 0 );
+
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id() } );
+      BOOST_REQUIRE( api_return.status == within_irreversible_block );
+      BOOST_REQUIRE( api_return.block_num.valid() );
+      BOOST_REQUIRE( *api_return.block_num > 0 );
+
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id(), tx1_expiration } );
+      BOOST_REQUIRE( api_return.status == within_irreversible_block );
+      BOOST_REQUIRE( api_return.block_num.valid() );
+      BOOST_REQUIRE( *api_return.block_num > 0 );
+
+      generate_blocks( STEEM_BLOCKS_PER_HOUR );
+
       // Transaction 1 is no longer tracked
       tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
       BOOST_REQUIRE( tso == nullptr );
@@ -206,7 +237,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id(), tx1_expiration } );
-      BOOST_REQUIRE( api_return.status == unknown );
+      BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       // Transaction 2 exists in a block
@@ -239,11 +270,10 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id(), tx1_expiration } );
-      BOOST_REQUIRE( api_return.status == unknown );
+      BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
-      // All of our transaction were set to expired in 1 hour, now they should be too old
-      generate_blocks( BLOCKS_PER_HOUR );
+      generate_block();
 
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx1.id() } );
       BOOST_REQUIRE( api_return.status == unknown );
@@ -261,7 +291,9 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
-      /* Testing transactions that do not exist, but expirations are provided */
+      /*
+       * Testing transactions that do not exist, but expirations are provided
+       */
 
       // The time of our last irreversible block
       auto lib_time = db->fetch_block_by_number( db->get_dynamic_global_properties().last_irreversible_block_num )->timestamp;
@@ -275,7 +307,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.status == expired_reversible );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
-      // One second before our earliest tracked block
+      // One second before our block depth
       auto old_time = db->fetch_block_by_number( db->head_block_num() - TRANSACTION_STATUS_TEST_BLOCK_DEPTH + 1 )->timestamp - fc::seconds(1);
       api_return = tx_status_api->api->find_transaction( { .transaction_id = transaction_id_type(), old_time } );
       BOOST_REQUIRE( api_return.status == too_old );

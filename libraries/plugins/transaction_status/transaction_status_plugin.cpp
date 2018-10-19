@@ -2,6 +2,7 @@
 #include <steem/plugins/transaction_status/transaction_status_objects.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -25,8 +26,8 @@ public:
    void on_post_apply_block( const block_notification& note );
 
    chain::database&              _db;
-   uint32_t                      block_depth;
-   uint32_t                      track_after_block;
+   uint32_t                      block_depth = 0;
+   uint32_t                      track_after_block = 0;
    bool                          tracking = false;
    boost::signals2::connection   post_apply_transaction_connection;
    boost::signals2::connection   post_apply_block_connection;
@@ -48,20 +49,12 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
       // Update all status objects with the transaction current block number
       for ( const auto& e : note.block.transactions )
       {
-         const auto* tx_status_obj = _db.find< transaction_status_object, by_trx_id >( e.id() );
+         const auto& tx_status_obj = _db.get< transaction_status_object, by_trx_id >( e.id() );
 
-         // Transactions we already had in our mem pool
-         if ( tx_status_obj != nullptr )
-            _db.modify( *tx_status_obj, [&] ( transaction_status_object& obj )
-            {
-               obj.block_num = note.block_num;
-            } );
-         else // Transactions we learned about through blocks
-            _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
-            {
-               obj.transaction_id = e.id();
-               obj.block_num = note.block_num;
-            } );
+         _db.modify( tx_status_obj, [&] ( transaction_status_object& obj )
+         {
+            obj.block_num = note.block_num;
+         } );
       }
 
       // Remove elements from the index that are deemed too old for tracking
@@ -70,11 +63,11 @@ void transaction_status_impl::on_post_apply_block( const block_notification& not
          uint32_t obsolete_block = note.block_num - block_depth;
          const auto& idx = _db.get_index< transaction_status_index >().indices().get< by_block_num >();
 
-         auto itr = idx.lower_bound( obsolete_block );
+         auto itr = idx.begin();
          while ( itr != idx.end() && itr->block_num <= obsolete_block )
          {
             _db.remove( *itr );
-            itr = idx.lower_bound( obsolete_block );
+            itr = idx.begin();
          }
       }
    }
@@ -106,7 +99,8 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
       my = std::make_unique< detail::transaction_status_impl >();
 
       if( options.count( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ) )
-         my->block_depth = options.at( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ).as< uint32_t >();
+         // We need to track an additional 1 hour worth of blocks to give accurate results due to the max 1 hour transaction expiration time
+         my->block_depth = options.at( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ).as< uint32_t >() + STEEM_BLOCKS_PER_HOUR;
 
       if( options.count( TRANSACTION_STATUS_TRACK_AFTER_KEY ) )
          my->track_after_block = options.at( TRANSACTION_STATUS_TRACK_AFTER_KEY ).as< uint32_t >();

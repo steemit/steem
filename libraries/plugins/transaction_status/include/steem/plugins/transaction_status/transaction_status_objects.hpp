@@ -55,8 +55,8 @@ typedef multi_index_container<
    transaction_status_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< transaction_status_object, transaction_status_object_id_type, &transaction_status_object::id > >,
-      hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_status_object, transaction_id_type, transaction_id), std::hash<transaction_id_type> >,
-      ordered_non_unique< tag< by_block_num >, member< transaction_status_object, uint32_t, &transaction_status_object::block_num > >
+      ordered_unique< tag< by_trx_id >, member< transaction_status_object, transaction_id_type, &transaction_status_object::transaction_id > >,
+      ordered_unique< tag< by_block_num >, member< transaction_status_object, uint32_t, &transaction_status_object::block_num > >
    >,
    allocator< transaction_status_object >
 > transaction_status_index;
