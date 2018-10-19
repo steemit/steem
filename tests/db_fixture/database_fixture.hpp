@@ -303,6 +303,8 @@ struct t_smt_database_fixture : public T
 
    asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+   asset_symbol_type create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+      uint32_t nai, uint8_t token_decimal_places );
 
    /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
    std::array<asset_symbol_type, 3> create_smt_3(const char* control_account_name, const fc::ecc::private_key& key);
