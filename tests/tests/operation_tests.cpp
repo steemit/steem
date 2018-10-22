@@ -6961,7 +6961,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
 
       // Setting sbd_interest_rate
-      prop_op.props.erase( "maximim_block_size" );
+      prop_op.props.erase( "maximum_block_size" );
       prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( 700 );
       tx.clear();
       tx.operations.push_back( prop_op );
