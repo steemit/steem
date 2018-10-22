@@ -482,11 +482,6 @@ namespace steem { namespace chain {
          ///Smart Media Tokens related methods
          ///@{
          void validate_smt_invariants()const;
-         /**
-          * @return a list of available NAIs.
-         */
-         vector< asset_symbol_type > get_smt_next_identifier();
-
          ///@}
 #endif
 
@@ -580,8 +575,6 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
-         /// For Initial value see appropriate comment where get_smt_next_identifier is implemented.
-         uint32_t                      _next_available_nai = SMT_MIN_NON_RESERVED_NAI;
 
          uint16_t                      _shared_file_full_threshold = 0;
          uint16_t                      _shared_file_scale_rate = 0;
