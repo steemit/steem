@@ -24,9 +24,13 @@ class transaction_status_plugin : public appbase::plugin< transaction_status_plu
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      uint32_t block_depth();
+      uint32_t earliest_tracked_block_num();
+      bool     state_is_valid();
+      void     rebuild_state();
    private:
       std::unique_ptr< detail::transaction_status_impl > my;
+
+   friend class database_fixture;
 };
 
 } } } // steem::plugins::transaction_status

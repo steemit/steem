@@ -13,14 +13,14 @@
 using namespace steem::chain;
 using namespace steem::protocol;
 
-#define TRANSCATION_STATUS_TRACK_AFTER_BLOCK 100
+#define TRANSCATION_STATUS_TRACK_AFTER_BLOCK 1300
 #define TRANSCATION_STATUS_TRACK_AFTER_BLOCK_STR BOOST_PP_STRINGIZE( TRANSCATION_STATUS_TRACK_AFTER_BLOCK )
 #define TRANSACTION_STATUS_TEST_BLOCK_DEPTH 30
 #define TRANSACTION_STATUS_TEST_BLOCK_DEPTH_STR BOOST_PP_STRINGIZE( TRANSACTION_STATUS_TEST_BLOCK_DEPTH )
 
 BOOST_FIXTURE_TEST_SUITE( transaction_status, database_fixture );
 
-BOOST_AUTO_TEST_CASE( transaction_status_test )
+BOOST_AUTO_TEST_CASE( transaction_status_functionality_test )
 {
    using namespace steem::plugins::transaction_status;
 
@@ -62,11 +62,16 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       auto tx_status_api = &appbase::app().get_plugin< steem::plugins::transaction_status_api::transaction_status_api_plugin >();
       BOOST_REQUIRE( tx_status_api );
 
+      auto tx_status = &appbase::app().get_plugin< steem::plugins::transaction_status::transaction_status_plugin >();
+      BOOST_REQUIRE( tx_status );
+
       open_database();
 
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
 
       generate_block();
       db->set_hardfork( STEEM_NUM_HARDFORKS );
@@ -95,6 +100,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       validate_database();
 
+      BOOST_TEST_MESSAGE(" -- transaction status tracking test" );
+
       signed_transaction tx0;
       transfer_operation op0;
       auto tx0_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
@@ -109,7 +116,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       sign( tx0, alice_private_key );
       db->push_transaction( tx0, 0 );
 
-      // Tracking should not be enabled until we have reached TRANSCATION_STATUS_TRACK_AFTER_BLOCK blocks
+      // Tracking should not be enabled until we have reached TRANSCATION_STATUS_TRACK_AFTER_BLOCK - STEEM_BLOCKS_PER_HOUR blocks
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
@@ -195,6 +202,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.status == within_mempool );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
       generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH );
 
       // Transaction 1 is tracked
@@ -225,6 +234,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() );
       BOOST_REQUIRE( *api_return.block_num > 0 );
 
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
       generate_blocks( STEEM_BLOCKS_PER_HOUR );
 
       // Transaction 1 is no longer tracked
@@ -254,6 +265,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.block_num.valid() );
       BOOST_REQUIRE( *api_return.block_num > 0 );
 
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
       generate_block();
 
       // Transaction 2 is no longer tracked
@@ -271,6 +284,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       api_return = tx_status_api->api->find_transaction( { .transaction_id = tx2.id(), tx1_expiration } );
       BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
 
       generate_block();
 
@@ -290,9 +305,10 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
-      /*
+      /**
        * Testing transactions that do not exist, but expirations are provided
        */
+      BOOST_TEST_MESSAGE( " -- transaction status expiration test" );
 
       // The time of our last irreversible block
       auto lib_time = db->fetch_block_by_number( db->get_dynamic_global_properties().last_irreversible_block_num )->timestamp;
@@ -311,6 +327,67 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       api_return = tx_status_api->api->find_transaction( { .transaction_id = transaction_id_type(), old_time } );
       BOOST_REQUIRE( api_return.status == too_old );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
+      /**
+       * Testing transaction status plugin state
+       */
+      BOOST_TEST_MESSAGE( " -- transaction status state test" );
+
+      signed_transaction tx3;
+      transfer_operation op3;
+      auto tx3_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+
+      op3.from = "alice";
+      op3.to = "bob";
+      op3.amount = ASSET( "5.000 TESTS" );
+
+      // Create transaction 3
+      tx3.operations.push_back( op2 );
+      tx3.set_expiration( tx3_expiration );
+      sign( tx3, alice_private_key );
+      db->push_transaction( tx3, 0 );
+
+      generate_block();
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
+      const auto& tx_status_obj = db->get< transaction_status_object, by_trx_id >( tx3.id() );
+      db->remove( tx_status_obj );
+
+      // Upper bound of transaction status state should cause state to be invalid
+      BOOST_REQUIRE( tx_status->state_is_valid() == false );
+
+      tx_status->rebuild_state();
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
+
+      signed_transaction tx4;
+      transfer_operation op4;
+      auto tx4_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+
+      op4.from = "alice";
+      op4.to = "bob";
+      op4.amount = ASSET( "5.000 TESTS" );
+
+      // Create transaction 4
+      tx4.operations.push_back( op2 );
+      tx4.set_expiration( tx4_expiration );
+      sign( tx4, alice_private_key );
+      db->push_transaction( tx4, 0 );
+
+      generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH + STEEM_BLOCKS_PER_HOUR - 1 );
+
+      const auto& tx_status_obj2 = db->get< transaction_status_object, by_trx_id >( tx4.id() );
+      db->remove( tx_status_obj2 );
+
+      // Lower bound of transaction status state should cause state to be invalid
+      BOOST_REQUIRE( tx_status->state_is_valid() == false );
+
+      tx_status->rebuild_state();
+
+      BOOST_REQUIRE( tx_status->state_is_valid() );
    }
    FC_LOG_AND_RETHROW()
 }
