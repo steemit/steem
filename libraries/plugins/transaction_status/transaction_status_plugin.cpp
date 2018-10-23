@@ -18,21 +18,19 @@
  *                             window of uncertainty              trackable
  *                          .-------------------------. .---------------------------.
  *                         |                           |                             |
- * <- - - - - - - - - - - [*] - - - - - - - - - - - - [*] - - - - - - - - - - - - - [*]
+ *   <- - - - - - - - - - [*] - - - - - - - - - - - - [*] - - - - - - - - - - - - - [*]
  *                        /                            |                              \
  *               actual block depth            nominal block depth                head block
  *
- * Notes:
- *
- * > Within the window of uncertainy, if the transaction is found we will return the status
+ * - Within the window of uncertainy, if the transaction is found we will return the status
  *      If the transaction is not found and an expiration is provided, we will return `too_old`
  *
- * > Within the trackable range, if the transaction is found we will return the status
+ * - Within the trackable range, if the transaction is found we will return the status
  *      If the transaction is not found and an expiration is provided we will return the expiration status
  *
- * > Nominal values are values provided by the user
+ * - Nominal values are values provided by the user
  *
- * > Actual values are calculated and used to determine when tracking needs to begin
+ * - Actual values are calculated and used to determine when tracking needs to begin
  *      see `plugin_initialize`
  */
 

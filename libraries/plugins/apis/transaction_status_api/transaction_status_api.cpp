@@ -60,7 +60,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
       {
          const auto& expiration = *args.expiration;
 
-         // Check if the expiration is before our earliest tracked block
+         // Check if the expiration is before our earliest tracked block plus maximum transaction expiration
          auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
          if ( expiration < earliest_tracked_block->timestamp + STEEM_MAX_TIME_UNTIL_EXPIRATION )
             return {

@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_functionality_test )
 
       generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH );
 
-      // Transaction 1 is tracked
+      // Transaction 1 exists in a block
       tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
       BOOST_REQUIRE( tso != nullptr );
       BOOST_REQUIRE( tso->block_num > 0 );
