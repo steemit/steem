@@ -129,6 +129,10 @@ BOOST_AUTO_TEST_CASE( transaction_status_functionality_test )
       BOOST_REQUIRE( api_return.status == unknown );
       BOOST_REQUIRE( api_return.block_num.valid() == false );
 
+      api_return = tx_status_api->api->find_transaction( { .transaction_id = tx0.id(), tx0_expiration  } );
+      BOOST_REQUIRE( api_return.status == unknown );
+      BOOST_REQUIRE( api_return.block_num.valid() == false );
+
       generate_blocks( TRANSCATION_STATUS_TRACK_AFTER_BLOCK - db->head_block_num() );
 
       signed_transaction tx1;
