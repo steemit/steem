@@ -831,7 +831,7 @@ namespace graphene { namespace net {
       _activeCalls(0)
     {
       _rate_limiter.set_actual_rate_time_constant(fc::seconds(2));
-      fc::rand_pseudo_bytes(&_node_id.data[0], (int)_node_id.size());
+      fc::rand_bytes(&_node_id.data[0], (int)_node_id.size());
 
       _shutdownNotifier.reset(new fc::promise<void>("Node shutdown notifier"));
     }
