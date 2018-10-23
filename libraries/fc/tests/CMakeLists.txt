@@ -60,7 +60,6 @@ add_executable( all_tests all_tests.cpp
                           crypto/bigint_test.cpp
                           crypto/blind.cpp
                           crypto/blowfish_test.cpp
-                          crypto/dh_test.cpp
                           crypto/rand_test.cpp
                           crypto/sha_tests.cpp
                           network/ntp_test.cpp
