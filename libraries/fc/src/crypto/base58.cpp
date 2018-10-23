@@ -1,6 +1,10 @@
 
 #include <base58.h>
 
+#include <fc/crypto/base58.hpp>
+#include <fc/exception/exception.hpp>
+#include <fc/log/logger.hpp>
+
 namespace fc {
 
 std::string to_base58( const char* d, size_t s ) {
