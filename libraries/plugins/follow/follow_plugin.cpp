@@ -357,17 +357,22 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       add_plugin_index< follow_count_index      >( my->_db );
       add_plugin_index< blog_author_stats_index >( my->_db );
 
+      fc::mutable_variant_object state_opts;
 
       if( options.count( "follow-max-feed-size" ) )
       {
          uint32_t feed_size = options[ "follow-max-feed-size" ].as< uint32_t >();
          max_feed_size = feed_size;
+         state_opts[ "follow-max-feed-size" ] = feed_size;
       }
 
       if( options.count( "follow-start-feeds" ) )
       {
          start_feeds = fc::time_point_sec( options[ "follow-start-feeds" ].as< uint32_t >() );
+         state_opts[ "follow-start-feeds" ] = start_feeds;
       }
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
    }
    FC_CAPTURE_AND_RETHROW()
 }

@@ -90,6 +90,9 @@ class chain_plugin_impl
       boost::lockfree::queue< write_context* > write_queue;
       int16_t                          write_lock_hold_time = 500;
 
+      vector< string >                 loaded_plugins;
+      fc::mutable_variant_object       plugin_state_opts;
+
       database  db;
       std::string block_generator_registrant;
       std::shared_ptr< abstract_block_producer > block_generator;
@@ -542,6 +545,12 @@ void chain_plugin::plugin_shutdown()
    my->stop_write_processing();
    my->db.close();
    ilog("database closed successfully");
+}
+
+void chain_plugin::report_state_options( const string& plugin_name, const fc::variant_object& opts )
+{
+   my->loaded_plugins.push_back( plugin_name );
+   my->plugin_state_opts( opts );
 }
 
 bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip )
