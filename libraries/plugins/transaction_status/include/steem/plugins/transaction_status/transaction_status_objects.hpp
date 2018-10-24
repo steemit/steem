@@ -56,7 +56,13 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< transaction_status_object, transaction_status_object_id_type, &transaction_status_object::id > >,
       ordered_unique< tag< by_trx_id >, member< transaction_status_object, transaction_id_type, &transaction_status_object::transaction_id > >,
-      ordered_unique< tag< by_block_num >, member< transaction_status_object, uint32_t, &transaction_status_object::block_num > >
+      ordered_unique< tag< by_block_num >,
+         composite_key< transaction_status_object,
+            member< transaction_status_object, uint32_t, &transaction_status_object::block_num >,
+            member< transaction_status_object, transaction_id_type, &transaction_status_object::transaction_id >
+         >,
+         composite_key_compare< std::less< uint32_t >, std::less< transaction_id_type > >
+      >
    >,
    allocator< transaction_status_object >
 > transaction_status_index;

@@ -124,6 +124,8 @@ fc::optional< transaction_id_type > transaction_status_impl::get_earliest_transa
    {
       const auto block = _db.fetch_block_by_number( block_num );
 
+      FC_ASSERT( block.valid(), "Could not read block ${n}", ("n", block_num) );
+
       if ( block.valid() && block->transactions.size() > 0 )
          return block->transactions.front().id();
    }
@@ -143,6 +145,8 @@ fc::optional< transaction_id_type > transaction_status_impl::get_latest_transact
    for ( uint32_t block_num = last_block_num; block_num >= first_block_num; block_num-- )
    {
       const auto block = _db.fetch_block_by_number( block_num );
+
+      FC_ASSERT( block.valid(), "Could not read block ${n}", ("n", block_num) );
 
       if ( block.valid() && block->transactions.size() > 0 )
          return block->transactions.back().id();
@@ -176,7 +180,7 @@ bool transaction_status_impl::state_is_valid()
    if ( latest_tx.valid() )
       upper_bound_is_valid = _db.find< transaction_status_object, by_trx_id >( *latest_tx ) != nullptr;
    
-   return lower_bound_is_valid && upper_bound_is_valid ? true : false;
+   return lower_bound_is_valid && upper_bound_is_valid;
 }
 
 /**
@@ -192,8 +196,12 @@ void transaction_status_impl::rebuild_state()
 
    // Clear out the transaction status index
    const auto& tx_status_idx = _db.get_index< transaction_status_index >().indices().get< by_trx_id >();
-   for ( auto& e : tx_status_idx )
-      _db.remove( e );
+   auto itr = tx_status_idx.begin();
+   while( itr != tx_status_idx.end() )
+   {
+      _db.remove( *itr );
+      itr = tx_status_idx.begin();
+   }
 
    // Re-build the index from scratch
    const auto head_block_num = _db.head_block_num();
@@ -237,7 +245,9 @@ void transaction_status_plugin::set_program_options( boost::program_options::opt
    cfg.add_options()
       ( TRANSACTION_STATUS_BLOCK_DEPTH_KEY,   boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_BLOCK_DEPTH ), "Defines the number of blocks from the head block that transaction statuses will be tracked." )
       ( TRANSACTION_STATUS_TRACK_AFTER_KEY,   boost::program_options::value<uint32_t>()->default_value( TRANSACTION_STATUS_DEFAULT_TRACK_AFTER ), "Defines the block number the transaction status plugin will begin tracking." )
-      ( TRANSACTION_STATUS_REBUILD_STATE_KEY, boost::program_options::bool_switch()->default_value( false ),                                      "Indicates that the transaction status plugin must re-build its state upon startup." )
+      ;
+   cli.add_options()
+      ( TRANSACTION_STATUS_REBUILD_STATE_KEY, boost::program_options::bool_switch()->default_value( false ), "Indicates that the transaction status plugin must re-build its state upon startup." )
       ;
 }
 
@@ -259,10 +269,10 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
 
       // We need to begin tracking 1 hour of blocks prior to the user provided track after block
       // A value of 0 indicates we should start tracking immediately
-      my->actual_track_after_block = std::max< int64_t >( 0, int64_t( my->nominal_track_after_block ) - int64_t( STEEM_BLOCKS_PER_HOUR ) );
+      my->actual_track_after_block = std::max< int64_t >( 0, int64_t( my->nominal_track_after_block ) - int64_t( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL ) );
 
       // We need to track 1 hour of blocks in addition to the depth the user would like us to track
-      my->actual_block_depth = my->nominal_block_depth + STEEM_BLOCKS_PER_HOUR;
+      my->actual_block_depth = my->nominal_block_depth + ( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL );
 
       dlog( "transaction status initializing" );
       dlog( "  -> nominal block depth: ${block_depth}", ("block_depth", my->nominal_block_depth) );

@@ -25,8 +25,12 @@ class transaction_status_plugin : public appbase::plugin< transaction_status_plu
       virtual void plugin_shutdown() override;
 
       uint32_t earliest_tracked_block_num();
+
+#ifdef IS_TEST_NET
       bool     state_is_valid();
       void     rebuild_state();
+#endif
+
    private:
       std::unique_ptr< detail::transaction_status_impl > my;
 
