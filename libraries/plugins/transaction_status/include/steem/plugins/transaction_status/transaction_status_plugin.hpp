@@ -33,8 +33,6 @@ class transaction_status_plugin : public appbase::plugin< transaction_status_plu
 
    private:
       std::unique_ptr< detail::transaction_status_impl > my;
-
-   friend class database_fixture;
 };
 
 } } } // steem::plugins::transaction_status
