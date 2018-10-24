@@ -211,6 +211,8 @@ void transaction_status_impl::rebuild_state()
    {
       const auto block = _db.fetch_block_by_number( block_num );
 
+      FC_ASSERT( block.valid(), "Could not read block ${n}", ("n", block_num) );
+
       for ( const auto& e : block->transactions )
          _db.create< transaction_status_object >( [&]( transaction_status_object& obj )
          {
@@ -325,6 +327,8 @@ uint32_t transaction_status_plugin::earliest_tracked_block_num()
    return my->get_earliest_tracked_block_num();
 }
 
+#ifdef IS_TEST_NET
+
 bool transaction_status_plugin::state_is_valid()
 {
    return my->state_is_valid();
@@ -334,5 +338,7 @@ void transaction_status_plugin::rebuild_state()
 {
    my->rebuild_state();
 }
+
+#endif
 
 } } } // steem::plugins::transaction_status
