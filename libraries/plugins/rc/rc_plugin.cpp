@@ -697,18 +697,27 @@ struct pre_apply_operation_visitor
    void operator()( const Op& op )const {}
 };
 
+struct account_regen_info
+{
+   account_regen_info( const account_name_type& a, bool r = true )
+      : account_name(a), fill_new_mana(r) {}
+
+   account_name_type         account_name;
+   bool                      fill_new_mana = true;
+};
+
 struct post_apply_operation_visitor
 {
    typedef void result_type;
 
-   vector< account_name_type >&             _mod_accounts;
+   vector< account_regen_info >&            _mod_accounts;
    database&                                _db;
    uint32_t                                 _current_time = 0;
    uint32_t                                 _current_block_number = 0;
    account_name_type                        _current_witness;
 
    post_apply_operation_visitor(
-      vector< account_name_type >& ma,
+      vector< account_regen_info >& ma,
       database& db,
       uint32_t t,
       uint32_t b,
@@ -724,7 +733,7 @@ struct post_apply_operation_visitor
    void operator()( const account_create_with_delegation_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee );
-      _mod_accounts.push_back( op.creator );
+      _mod_accounts.emplace_back( op.creator );
    }
 
    void operator()( const create_claimed_account_operation& op )const
@@ -736,66 +745,66 @@ struct post_apply_operation_visitor
    {
       // ilog( "handling post-apply pow_operation" );
       create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ) );
-      _mod_accounts.push_back( op.worker_account );
-      _mod_accounts.push_back( _current_witness );
+      _mod_accounts.emplace_back( op.worker_account );
+      _mod_accounts.emplace_back( _current_witness );
    }
 
    void operator()( const pow2_operation& op )const
    {
       auto worker_name = get_worker_name( op.work );
       create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ) );
-      _mod_accounts.push_back( worker_name );
-      _mod_accounts.push_back( _current_witness );
+      _mod_accounts.emplace_back( worker_name );
+      _mod_accounts.emplace_back( _current_witness );
    }
 
    void operator()( const transfer_to_vesting_operation& op )
    {
       account_name_type target = op.to.size() ? op.to : op.from;
-      _mod_accounts.push_back( target );
+      _mod_accounts.emplace_back( target );
    }
 
    void operator()( const withdraw_vesting_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account, false );
    }
 
    void operator()( const delegate_vesting_shares_operation& op )const
    {
-      _mod_accounts.push_back( op.delegator );
-      _mod_accounts.push_back( op.delegatee );
+      _mod_accounts.emplace_back( op.delegator );
+      _mod_accounts.emplace_back( op.delegatee );
    }
 
    void operator()( const author_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.author );
+      _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const curation_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.curator );
+      _mod_accounts.emplace_back( op.curator );
    }
 
    // Is this one actually necessary?
    void operator()( const comment_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.author );
+      _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
-      _mod_accounts.push_back( op.from_account );
-      _mod_accounts.push_back( op.to_account );
+      _mod_accounts.emplace_back( op.from_account );
+      _mod_accounts.emplace_back( op.to_account );
    }
 
    void operator()( const claim_reward_balance_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 
 #ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 #endif
 
@@ -806,7 +815,7 @@ struct post_apply_operation_visitor
          const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
          for( auto it=idx.begin(); it!=idx.end(); ++it )
          {
-            _mod_accounts.push_back( it->name );
+            _mod_accounts.emplace_back( it->name );
          }
       }
 
@@ -828,22 +837,22 @@ struct post_apply_operation_visitor
 
    void operator()( const return_vesting_delegation_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 
    void operator()( const comment_benefactor_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.benefactor );
+      _mod_accounts.emplace_back( op.benefactor );
    }
 
    void operator()( const producer_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.producer );
+      _mod_accounts.emplace_back( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
    {
-      _mod_accounts.push_back( STEEM_NULL_ACCOUNT );
+      _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
    }
 
    template< typename Op >
@@ -876,15 +885,16 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
    note.op.visit( vtor );
 }
 
-void update_modified_accounts( database& db, const std::vector< account_name_type >& regen_accounts )
+void update_modified_accounts( database& db, const std::vector< account_regen_info >& modified_accounts )
 {
-   for( const account_name_type& name : regen_accounts )
+   for( const account_regen_info& regen_info : modified_accounts )
    {
-      const account_object& account = db.get< account_object, by_name >( name );
-      const rc_account_object& rc_account = db.get< rc_account_object, by_name >( name );
+      const account_object& account = db.get< account_object, by_name >( regen_info.account_name );
+      const rc_account_object& rc_account = db.get< rc_account_object, by_name >( regen_info.account_name );
 
       int64_t new_last_max_rc = get_maximum_rc( account, rc_account );
       int64_t drc = new_last_max_rc - rc_account.last_max_rc;
+      drc = regen_info.fill_new_mana ? drc : 0;
 
       db.modify( rc_account, [&]( rc_account_object& rca )
       {
@@ -902,7 +912,7 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
-   vector< account_name_type > modified_accounts;
+   vector< account_regen_info > modified_accounts;
 
    // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
    post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
