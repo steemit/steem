@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/stats_export/*.hpp")
 
 add_library( stats_export_plugin
              stats_export_plugin.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( stats_export_plugin block_data_export_plugin chain_plugin steem_chain steem_protocol )

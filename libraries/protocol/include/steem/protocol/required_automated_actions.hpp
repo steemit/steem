@@ -9,7 +9,7 @@ namespace steem { namespace protocol {
    /** NOTE: do not change the order of any actions or it will trigger a hardfork.
     */
    typedef fc::static_variant<
-            required_action
+            example_required_action
          > required_automated_action;
 
 } } // steem::protocol

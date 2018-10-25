@@ -56,7 +56,8 @@ namespace detail {
       witness_plugin_impl( boost::asio::io_service& io ) :
          _timer(io),
          _chain_plugin( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
-         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() )
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
+         _block_producer( std::make_shared< witness::block_producer >( _db ) )
          {}
 
       void on_pre_apply_block( const chain::block_notification& note );
@@ -84,6 +85,8 @@ namespace detail {
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
+
+      std::shared_ptr< witness::block_producer >                         _block_producer;
    };
 
    struct comment_options_extension_visitor
@@ -420,7 +423,6 @@ namespace detail {
       appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().broadcast_block( block );
       return block_production_condition::produced;
    }
-
 } // detail
 
 
@@ -450,6 +452,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 { try {
    ilog( "Initializing witness plugin" );
    my = std::make_unique< detail::witness_plugin_impl >( appbase::app().get_io_service() );
+
+   my->_chain_plugin.register_block_generator( get_name(), my->_block_producer );
 
    STEEM_LOAD_VALUE_SET( options, "witness", my->_witnesses, steem::protocol::account_name_type )
 
