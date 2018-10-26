@@ -74,11 +74,11 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( ( _db.find< smt_token_object, by_symbol >( o.symbol.to_nai() ) == nullptr ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
    FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
-   asset effective_elevation_fee;
+   asset creation_fee;
 
    if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
    {
-      effective_elevation_fee = o.smt_creation_fee;
+      creation_fee = o.smt_creation_fee;
    }
    else
    {
@@ -86,13 +86,13 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
 
       if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
-         effective_elevation_fee = _db.to_steem( o.smt_creation_fee );
+         creation_fee = _db.to_steem( o.smt_creation_fee );
       else
-         effective_elevation_fee = _db.to_sbd( o.smt_creation_fee );
+         creation_fee = _db.to_sbd( o.smt_creation_fee );
    }
 
-   FC_ASSERT( effective_elevation_fee == dgpo.smt_creation_fee,
-      "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", effective_elevation_fee)("sf", dgpo.smt_creation_fee) );
+   FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
+      "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
 
    FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
       "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
