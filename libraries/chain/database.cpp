@@ -3482,12 +3482,18 @@ void database::process_optional_actions( const optional_automated_actions& actio
    // and it is safe to delete.
    const auto& pending_action_idx = get_index< pending_optional_action_index, by_execution >();
    auto pending_itr = pending_action_idx.begin();
-   auto lib_time = fetch_block_by_number( get_dynamic_global_properties().last_irreversible_block_num )->timestamp;
+   auto lib = fetch_block_by_number( get_dynamic_global_properties().last_irreversible_block_num );
 
-   while( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= lib_time )
+   // This is always valid when running on mainnet because there are irreversible blocks
+   // Testnet and unit tests, not so much. Could be ifdeffed with IS_TEST_NET, but seems
+   // like a reasonable check and will be optimized via speculative execution.
+   if( lib.valid() )
    {
-      remove( *pending_itr );
-      pending_itr = pending_action_idx.begin();
+      while( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= lib->timestamp )
+      {
+         remove( *pending_itr );
+         pending_itr = pending_action_idx.begin();
+      }
    }
 }
 
