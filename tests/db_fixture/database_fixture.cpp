@@ -79,7 +79,7 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -152,7 +152,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
 
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -893,7 +893,7 @@ json_rpc_database_fixture::json_rpc_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -917,7 +917,7 @@ json_rpc_database_fixture::json_rpc_database_fixture()
 }
 
 json_rpc_database_fixture::~json_rpc_database_fixture()
-{ try {
+{
    // If we're unwinding due to an exception, don't do any more checks.
    // This way, boost test's last checkpoint tells us approximately where the error was.
    if( !std::uncaught_exception() )
@@ -928,7 +928,7 @@ json_rpc_database_fixture::~json_rpc_database_fixture()
    if( data_dir )
       db->wipe( data_dir->path(), data_dir->path(), true );
    return;
-} FC_CAPTURE_AND_RETHROW() }
+}
 
 fc::variant json_rpc_database_fixture::get_answer( std::string& request )
 {
