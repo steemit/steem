@@ -1354,7 +1354,7 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       BOOST_TEST_MESSAGE( " -- A valid smt_create_operation" );
       smt_create_operation op;
       op.control_account = "alice";
-      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
       op.symbol = get_new_smt_symbol( 3, db );
       op.precision = op.symbol.decimals();
       op.validate();
@@ -1380,7 +1380,7 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       BOOST_TEST_MESSAGE( " -- Invalid currency for SMT creation fee (VESTS)" );
       op.smt_creation_fee = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
 
       BOOST_TEST_MESSAGE( " -- Invalid SMT creation fee: differing decimals" );
       op.precision = 0;
@@ -1420,7 +1420,7 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
       smt_create_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -1507,6 +1507,12 @@ BOOST_AUTO_TEST_CASE( smt_create_with_steem_funds )
    {
       BOOST_TEST_MESSAGE( "Testing: smt_create_with_steem_funds" );
 
+      // This test expects 1.000 TBD smt_creation_fee
+      db->modify( db->get_dynamic_global_properties(), [&] ( dynamic_global_property_object& dgpo )
+      {
+         dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+      } );
+
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       ACTORS( (alice) )
@@ -1541,6 +1547,12 @@ BOOST_AUTO_TEST_CASE( smt_create_with_sbd_funds )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: smt_create_with_sbd_funds" );
+
+      // This test expects 1.000 TBD smt_creation_fee
+      db->modify( db->get_dynamic_global_properties(), [&] ( dynamic_global_property_object& dgpo )
+      {
+         dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+      } );
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
@@ -1721,7 +1733,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
 
          op.symbol = get_new_smt_symbol( 0, this->db );
          op.precision = op.symbol.decimals();
-         op.smt_creation_fee = ASSET( "1000.000 TBD" );
+         op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
          op.control_account = "alice";
 
          tx.operations.push_back( op );

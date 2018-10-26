@@ -91,8 +91,8 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
          effective_elevation_fee = _db.to_sbd( o.smt_creation_fee );
    }
 
-   FC_ASSERT( effective_elevation_fee >= dgpo.smt_creation_fee,
-      "Fee of ${ef} is too small, must be at least ${sf}", ("ef", effective_elevation_fee)("sf", dgpo.smt_creation_fee) );
+   FC_ASSERT( effective_elevation_fee == dgpo.smt_creation_fee,
+      "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", effective_elevation_fee)("sf", dgpo.smt_creation_fee) );
 
    FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
       "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );

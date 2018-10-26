@@ -668,7 +668,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string
 
       op.symbol = asset_symbol_type::from_nai( nai, token_decimal_places );
       op.precision = op.symbol.decimals();
-      op.smt_creation_fee = ASSET( "1000.000 TBD" );
+      op.smt_creation_fee = this->db->get_dynamic_global_properties().smt_creation_fee;
       op.control_account = account_name;
 
       tx.operations.push_back( op );
@@ -699,23 +699,23 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
    return symbol;
 }
 
-void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)
+void sub_set_create_op( smt_create_operation* op, account_name_type control_acount, chain::database& db )
 {
    op->precision = op->symbol.decimals();
-   op->smt_creation_fee = ASSET( "1000.000 TBD" );
+   op->smt_creation_fee = db.get_dynamic_global_properties().smt_creation_fee;
    op->control_account = control_acount;
 }
 
-void set_create_op(chain::database* db, smt_create_operation* op, account_name_type control_account, uint8_t token_decimal_places)
+void set_create_op( smt_create_operation* op, account_name_type control_account, uint8_t token_decimal_places, chain::database& db )
 {
-   op->symbol = database_fixture::get_new_smt_symbol( token_decimal_places, db );
-   sub_set_create_op(op, control_account);
+   op->symbol = database_fixture::get_new_smt_symbol( token_decimal_places, &db );
+   sub_set_create_op( op, control_account, db );
 }
 
-void set_create_op(smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places)
+void set_create_op( smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places, chain::database& db )
 {
    op->symbol.from_nai(token_nai, token_decimal_places);
-   sub_set_create_op(op, control_account);
+   sub_set_create_op( op, control_account, db );
 }
 
 template< typename T >
@@ -733,9 +733,9 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
 
-      set_create_op(this->db, &op0, control_account_name, 0);
-      set_create_op(this->db, &op1, control_account_name, 1);
-      set_create_op(this->db, &op2, control_account_name, 1);
+      set_create_op( &op0, control_account_name, 0, *this->db );
+      set_create_op( &op1, control_account_name, 1, *this->db );
+      set_create_op( &op2, control_account_name, 1, *this->db );
 
       signed_transaction tx;
       tx.operations.push_back( op0 );
@@ -775,7 +775,7 @@ void t_smt_database_fixture< T >::create_invalid_smt( const char* control_accoun
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
-   STEEM_REQUIRE_THROW( set_create_op(this->db, &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
+   STEEM_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
 }
 
 template< typename T >
@@ -784,11 +784,11 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
 {
    // Fail due to the same nai & precision.
    smt_create_operation op_same;
-   set_create_op( &op_same, control_account_name, existing_smt.to_nai(), existing_smt.decimals() );
+   set_create_op( &op_same, control_account_name, existing_smt.to_nai(), existing_smt.decimals(), *this->db );
    push_invalid_operation( op_same, key, this->db );
    // Fail due to the same nai (though different precision).
    smt_create_operation op_same_nai;
-   set_create_op( &op_same_nai, control_account_name, existing_smt.to_nai(), existing_smt.decimals() == 0 ? 1 : 0 );
+   set_create_op( &op_same_nai, control_account_name, existing_smt.to_nai(), existing_smt.decimals() == 0 ? 1 : 0, *this->db );
    push_invalid_operation (op_same_nai, key, this->db );
 }
 

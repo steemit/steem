@@ -1306,7 +1306,7 @@ BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
 /*
  * SMT legacy tests
  *
- * The logic tests in legacy tests *should* be entirely duplicates in smt_operation_tests.cpp
+ * The logic tests in legacy tests *should* be entirely duplicated in smt_operation_tests.cpp
  * We are keeping these tests around to provide an additional layer re-assurance for the time being
  */
 FC_TODO( "Remove SMT legacy tests and ensure code coverage is not reduced" );
