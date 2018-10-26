@@ -1345,6 +1345,99 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_create_validate )
+{
+   try
+   {
+      ACTORS( (alice) );
+
+      BOOST_TEST_MESSAGE( " -- A valid smt_create_operation" );
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
+      op.symbol = get_new_smt_symbol( 3, db );
+      op.precision = op.symbol.decimals();
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " -- Test invalid control account name" );
+      op.control_account = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.control_account = "alice";
+
+      // Test invalid creation fees.
+      BOOST_TEST_MESSAGE( " -- Invalid negative creation fee" );
+      op.smt_creation_fee.amount = -op.smt_creation_fee.amount;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Valid maximum SMT creation fee (STEEM_MAX_SHARE_SUPPLY)" );
+      op.smt_creation_fee.amount = STEEM_MAX_SHARE_SUPPLY;
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation fee (MAX_SHARE_SUPPLY + 1)" );
+      op.smt_creation_fee.amount++;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Invalid currency for SMT creation fee (VESTS)" );
+      op.smt_creation_fee = ASSET( "1.000000 VESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation fee: differing decimals" );
+      op.precision = 0;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.precision = op.symbol.decimals();
+
+      // Test symbol
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: vesting symbol used instead of liquid one" );
+      op.symbol = op.symbol.get_paired_symbol();
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: STEEM cannot be an SMT" );
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: SBD cannot be an SMT" );
+      op.symbol = SBD_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: VESTS cannot be an SMT" );
+      op.symbol = VESTS_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      // If this fails, it could indicate a test above has failed for the wrong reasons
+      op.symbol = get_new_smt_symbol( 3, db );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_authorities )
+{
+   try
+   {
+      SMT_SYMBOL( alice, 3, db );
+
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.symbol = alice_symbol;
+      op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_create_duplicate )
 {
    try
@@ -1387,6 +1480,109 @@ BOOST_AUTO_TEST_CASE( smt_create_duplicate_differing_decimals )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( smt_create_duplicate_different_users )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_duplicate_different_users" );
+
+      ACTORS( (alice)(bob) )
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 0 );
+
+      // We add the NAI back to the pool to ensure the test does not fail because the NAI is not in the pool
+      db->modify( db->get< nai_pool_object >(), [&] ( nai_pool_object& obj )
+      {
+         obj.nais[ 0 ] = alice_symbol;
+      } );
+
+      // Fail on duplicate SMT lookup
+      STEEM_REQUIRE_THROW( create_smt_with_nai( "bob", bob_private_key, alice_symbol.to_nai(), alice_symbol.decimals() ), fc::assert_exception)
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_with_steem_funds )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_with_steem_funds" );
+
+      // This test expects 1.000 TBD smt_creation_fee
+      db->modify( db->get_dynamic_global_properties(), [&] ( dynamic_global_property_object& dgpo )
+      {
+         dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+      } );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+
+      ACTORS( (alice) )
+
+      generate_block();
+
+      FUND( "alice", ASSET( "0.999 TESTS" ) );
+
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.symbol = get_new_smt_symbol( 3, db );
+      op.precision = op.symbol.decimals();
+      op.validate();
+
+      // Fail insufficient funds
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+
+      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) == nullptr ) );
+
+      FUND( "alice", ASSET( "0.001 TESTS" ) );
+
+      PUSH_OP( op, alice_private_key );
+
+      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) != nullptr ) );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_create_with_sbd_funds )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_create_with_sbd_funds" );
+
+      // This test expects 1.000 TBD smt_creation_fee
+      db->modify( db->get_dynamic_global_properties(), [&] ( dynamic_global_property_object& dgpo )
+      {
+         dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+      } );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+
+      ACTORS( (alice) )
+
+      generate_block();
+
+      FUND( "alice", ASSET( "0.999 TBD" ) );
+
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.smt_creation_fee = ASSET( "1.000 TBD" );
+      op.symbol = get_new_smt_symbol( 3, db );
+      op.precision = op.symbol.decimals();
+      op.validate();
+
+      // Fail insufficient funds
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+
+      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) == nullptr ) );
+
+      FUND( "alice", ASSET( "0.001 TBD" ) );
+
+      PUSH_OP( op, alice_private_key );
+
+      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) != nullptr ) );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
 {
    try
@@ -1411,6 +1607,89 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)
    }
    FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_creation_fee_test )
+{
+   try
+   {
+      ACTORS( (alice) );
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "2.000 TESTS" ) ) );
+
+      // This ensures that our actual smt_creation_fee is sane in production (either STEEM or SBD)
+      const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+      FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,
+                "Unexpected symbol for the SMT creation fee on the dynamic global properties object: ${s}", ("s", dgpo.smt_creation_fee.symbol) );
+
+      FC_ASSERT( dgpo.smt_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
+
+      for ( int i = 0; i < 2; i++ )
+      {
+         FUND( "alice", ASSET( "2.000 TESTS" ) );
+         FUND( "alice", ASSET( "1.000 TBD" ) );
+
+         // These values should be equivilant as per our price feed and all tests here should work either way
+         if ( !i ) // First pass
+            db->modify( dgpo, [&] ( dynamic_global_property_object& dgpo )
+            {
+               dgpo.smt_creation_fee = asset( 2000, STEEM_SYMBOL );
+            } );
+         else // Second pass
+            db->modify( dgpo, [&] ( dynamic_global_property_object& dgpo )
+            {
+               dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+            } );
+
+         BOOST_TEST_MESSAGE( " -- Invalid creation fee, 0.001 TESTS short" );
+         smt_create_operation fail_op;
+         fail_op.control_account = "alice";
+         fail_op.smt_creation_fee = ASSET( "1.999 TESTS" );
+         fail_op.symbol = get_new_smt_symbol( 3, db );
+         fail_op.precision = fail_op.symbol.decimals();
+         fail_op.validate();
+
+         // Fail because we are 0.001 TESTS short of the fee
+         FAIL_WITH_OP( fail_op, alice_private_key, fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( " -- Invalid creation fee, 0.001 TBD short" );
+         smt_create_operation fail_op2;
+         fail_op2.control_account = "alice";
+         fail_op2.smt_creation_fee = ASSET( "0.999 TBD" );
+         fail_op2.symbol = get_new_smt_symbol( 3, db );
+         fail_op2.precision = fail_op2.symbol.decimals();
+         fail_op2.validate();
+
+         // Fail because we are 0.001 TBD short of the fee
+         FAIL_WITH_OP( fail_op2, alice_private_key, fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( " -- Valid creation fee, using STEEM" );
+         // We should be able to pay with STEEM
+         smt_create_operation op;
+         op.control_account = "alice";
+         op.smt_creation_fee = ASSET( "2.000 TESTS" );
+         op.symbol = get_new_smt_symbol( 3, db );
+         op.precision = op.symbol.decimals();
+         op.validate();
+
+         // Succeed because we have paid the equivilant of 1 TBD or 2 TESTS
+         PUSH_OP( op, alice_private_key );
+
+         BOOST_TEST_MESSAGE( " -- Valid creation fee, using SBD" );
+         // We should be able to pay with SBD
+         smt_create_operation op2;
+         op2.control_account = "alice";
+         op2.smt_creation_fee = ASSET( "1.000 TBD" );
+         op2.symbol = get_new_smt_symbol( 3, db );
+         op2.precision = op.symbol.decimals();
+         op2.validate();
+
+         // Succeed because we have paid the equivilant of 1 TBD or 2 TESTS
+         PUSH_OP( op2, alice_private_key );
+      }
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_CASE( smt_nai_pool_removal )
@@ -1454,7 +1733,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
 
          op.symbol = get_new_smt_symbol( 0, this->db );
          op.precision = op.symbol.decimals();
-         op.smt_creation_fee = ASSET( "1000.000 TBD" );
+         op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
          op.control_account = "alice";
 
          tx.operations.push_back( op );
