@@ -34,6 +34,8 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
+   void report_state_options( const string& plugin_name, const fc::variant_object& opts );
+
    bool accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip );
    void accept_transaction( const steem::chain::signed_transaction& trx );
    steem::chain::signed_block generate_block(

@@ -986,13 +986,19 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
 
+      fc::mutable_variant_object state_opts;
+
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
+      state_opts["rc-compute-historical-rc"] = options.at( "rc-compute-historical-rc" ).as<bool>();
 #ifndef IS_TEST_NET
       if( !options.at( "rc-compute-historical-rc" ).as<bool>() )
       {
          my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
       }
 #endif
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
+
       ilog( "RC's will be computed starting at block ${b}", ("b", my->_enable_at_block) );
    }
    FC_CAPTURE_AND_RETHROW()

@@ -532,11 +532,16 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    add_plugin_index< tag_stats_index         >( my->_db );
    add_plugin_index< author_tag_stats_index  >( my->_db );
 
+   fc::mutable_variant_object state_opts;
+
    if( options.count( "tags-start-promoted" ) )
    {
       my->_promoted_start_time = fc::time_point_sec( options[ "tags-start-promoted" ].as< uint32_t >() );
+      state_opts["tags-start-promoted"] = my->_promoted_start_time;
       idump( (my->_promoted_start_time) );
    }
+
+   appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
 }
 
 
