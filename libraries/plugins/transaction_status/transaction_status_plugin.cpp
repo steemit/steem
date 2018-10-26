@@ -126,7 +126,7 @@ fc::optional< transaction_id_type > transaction_status_impl::get_earliest_transa
 
       FC_ASSERT( block.valid(), "Could not read block ${n}", ("n", block_num) );
 
-      if ( block.valid() && block->transactions.size() > 0 )
+      if ( block->transactions.size() > 0 )
          return block->transactions.front().id();
    }
 
@@ -148,7 +148,7 @@ fc::optional< transaction_id_type > transaction_status_impl::get_latest_transact
 
       FC_ASSERT( block.valid(), "Could not read block ${n}", ("n", block_num) );
 
-      if ( block.valid() && block->transactions.size() > 0 )
+      if ( block->transactions.size() > 0 )
          return block->transactions.back().id();
    }
 
@@ -260,11 +260,19 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
       ilog( "transaction_status: plugin_initialize() begin" );
       my = std::make_unique< detail::transaction_status_impl >();
 
+      fc::mutable_variant_object state_opts;
+
       if( options.count( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ) )
+      {
          my->nominal_block_depth = options.at( TRANSACTION_STATUS_BLOCK_DEPTH_KEY ).as< uint32_t >();
+         state_opts[ TRANSACTION_STATUS_BLOCK_DEPTH_KEY ] = my->nominal_block_depth;
+      }
 
       if( options.count( TRANSACTION_STATUS_TRACK_AFTER_KEY ) )
+      {
          my->nominal_track_after_block = options.at( TRANSACTION_STATUS_TRACK_AFTER_KEY ).as< uint32_t >();
+         state_opts[ TRANSACTION_STATUS_TRACK_AFTER_KEY ] = my->nominal_track_after_block;
+      }
 
       if( options.count( TRANSACTION_STATUS_REBUILD_STATE_KEY ) )
          my->rebuild_state_flag = options.at( TRANSACTION_STATUS_REBUILD_STATE_KEY ).as< bool >();
@@ -289,6 +297,8 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
       }
 
       chain::add_plugin_index< transaction_status_index >( my->_db );
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
 
       my->post_apply_transaction_connection = my->_db.add_post_apply_transaction_handler( [&]( const transaction_notification& note ) { try { my->on_post_apply_transaction( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->post_apply_block_connection = my->_db.add_post_apply_block_handler( [&]( const block_notification& note ) { try { my->on_post_apply_block( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
