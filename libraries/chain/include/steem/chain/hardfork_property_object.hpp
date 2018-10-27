@@ -32,7 +32,7 @@ namespace steem { namespace chain {
    typedef multi_index_container<
       hardfork_property_object,
       indexed_by<
-         ordered_unique< member< hardfork_property_object, hardfork_property_object::id_type, &hardfork_property_object::id > >
+         ordered_unique< tag< by_id >, member< hardfork_property_object, hardfork_property_object::id_type, &hardfork_property_object::id > >
       >,
       allocator< hardfork_property_object >
    > hardfork_property_index;
