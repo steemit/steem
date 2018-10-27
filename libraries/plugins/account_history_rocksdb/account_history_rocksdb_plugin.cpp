@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
 #include <steem/chain/database.hpp>

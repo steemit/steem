@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>

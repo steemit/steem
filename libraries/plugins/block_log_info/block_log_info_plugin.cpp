@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/block_log_info/block_log_info_plugin.hpp>
 #include <steem/plugins/block_log_info/block_log_info_objects.hpp>
 

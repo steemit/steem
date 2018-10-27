@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/market_history/market_history_plugin.hpp>
 
 #include <steem/chain/database.hpp>
