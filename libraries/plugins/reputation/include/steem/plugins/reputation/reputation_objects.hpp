@@ -3,6 +3,10 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
+namespace steem { namespace chain {
+struct by_account;
+} }
+
 namespace steem { namespace plugins { namespace reputation {
 
 using namespace std;
@@ -39,10 +43,6 @@ class reputation_object : public object< reputation_object_type, reputation_obje
 
 typedef oid< reputation_object > reputation_id_type;
 
-
-struct by_id;
-struct by_account;
-
 typedef multi_index_container<
    reputation_object,
    indexed_by<
@@ -51,7 +51,6 @@ typedef multi_index_container<
    >,
    allocator< reputation_object >
 > reputation_index;
-
 
 } } } // steem::plugins::reputation
 
