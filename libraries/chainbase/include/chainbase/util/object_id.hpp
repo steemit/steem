@@ -1,8 +1,7 @@
-#ifndef __OBJECT_ID_HPP
-#define __OBJECT_ID_HPP
+#pragma once
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 
 namespace chainbase
 {
@@ -31,5 +30,3 @@ public:
 };
 
 } /// namespace chainbase
-
-#endif /// __OBJECT_ID_HPP
