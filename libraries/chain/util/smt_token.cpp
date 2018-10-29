@@ -1,7 +1,6 @@
 #include <steem/chain/util/smt_token.hpp>
-#include <steem/chain/database.hpp>
-#include <steem/chain/smt_objects/smt_token_object.hpp>
-#include <steem/protocol/asset_symbol.hpp>
+
+#ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain { namespace util {
 
@@ -32,3 +31,5 @@ const smt_token_object* smt_token_lookup( database& db, asset_symbol_type symbol
 }
 
 } } } // steem::chain::util
+
+#endif
