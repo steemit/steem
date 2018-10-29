@@ -67,4 +67,5 @@ FC_REFLECT( steem::plugins::rc::rc_block_info,
 FC_REFLECT( steem::plugins::rc::exp_rc_data,
    (block_info)
    (tx_info)
+   (opt_action_info)
 )
