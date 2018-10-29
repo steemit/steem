@@ -2,6 +2,7 @@
 #include <steem/protocol/asset_symbol.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -61,7 +62,7 @@ void replenish_nai_pool( database& db )
             attempts_per_block++;
 
             // We must ensure the NAI is not an SMT, and it is not already contained within the NAI pool
-            if ( db.find< smt_token_object, by_symbol >( next_sym.to_nai() ) == nullptr && !npo.contains( next_sym ) )
+            if ( !util::smt_token_lookup( db, next_sym, true ) && !npo.contains( next_sym ) )
                break;
 
             collisions_per_block++;

@@ -13,6 +13,7 @@
 #include <steem/chain/smt_objects.hpp>
 
 #include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
@@ -1531,13 +1532,13 @@ BOOST_AUTO_TEST_CASE( smt_create_with_steem_funds )
       // Fail insufficient funds
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
 
-      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) == nullptr ) );
+      BOOST_REQUIRE( util::smt_token_lookup( *db, op.symbol, true ) == nullptr );
 
       FUND( "alice", ASSET( "0.001 TESTS" ) );
 
       PUSH_OP( op, alice_private_key );
 
-      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) != nullptr ) );
+      BOOST_REQUIRE( util::smt_token_lookup( *db, op.symbol, true ) != nullptr );
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1572,13 +1573,13 @@ BOOST_AUTO_TEST_CASE( smt_create_with_sbd_funds )
       // Fail insufficient funds
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
 
-      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) == nullptr ) );
+      BOOST_REQUIRE( util::smt_token_lookup( *db, op.symbol, true ) == nullptr );
 
       FUND( "alice", ASSET( "0.001 TBD" ) );
 
       PUSH_OP( op, alice_private_key );
 
-      BOOST_REQUIRE( ( db->find< smt_token_object, by_symbol >( op.symbol.to_nai() ) != nullptr ) );
+      BOOST_REQUIRE( util::smt_token_lookup( *db, op.symbol, true ) != nullptr );
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1601,7 +1602,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
 
          ast = nai_generator::generate( seed++ );
       }
-      while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast.to_nai() ) );
+      while ( db->get< nai_pool_object >().contains( ast ) || util::smt_token_lookup( *db, ast, true ) != nullptr );
 
       // Fail on NAI pool not containing this NAI
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)

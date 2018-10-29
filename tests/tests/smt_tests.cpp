@@ -14,6 +14,8 @@ FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
 
+#include <steem/chain/util/smt_token.hpp>
+
 #include "../db_fixture/database_fixture.hpp"
 
 using namespace steem::chain;
@@ -752,16 +754,16 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
 
       asset_symbol_type liquid_symbol = create_smt("alice", alice_private_key, 6);
       // Use liquid symbol/NAI to confirm smt object was created.
-      auto liquid_object_by_symbol = db->find< smt_token_object, by_symbol >( liquid_symbol );
-      FC_ASSERT( ( liquid_object_by_symbol != nullptr ) );
+      auto liquid_object_by_symbol = util::smt_token_lookup( *db, liquid_symbol );
+      FC_ASSERT( liquid_object_by_symbol != nullptr );
 
       asset_symbol_type vesting_symbol = liquid_symbol.get_paired_symbol();
       // Use vesting symbol/NAI to confirm smt object was created.
-      auto vesting_object_by_symbol = db->find< smt_token_object, by_symbol >( vesting_symbol );
-      FC_ASSERT( ( vesting_object_by_symbol != nullptr ) );
+      auto vesting_object_by_symbol = util::smt_token_lookup( *db, vesting_symbol );
+      FC_ASSERT( vesting_object_by_symbol != nullptr );
 
-      // Check that liquid and vesting objecta are the same one.
-      FC_ASSERT( ( liquid_object_by_symbol == vesting_object_by_symbol ) );
+      // Check that liquid and vesting objects are the same one.
+      FC_ASSERT( liquid_object_by_symbol == vesting_object_by_symbol );
    }
    FC_LOG_AND_RETHROW()
 }
