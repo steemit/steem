@@ -203,6 +203,69 @@ namespace fc
       {
          s.read( (char*)&id._id, sizeof(id._id));
       }
+
+      template< typename Stream >
+      inline void pack( Stream& s, const chainbase::shared_string& ss )
+      {
+         std::string str = steem::chain::to_string( ss );
+         fc::raw::pack( s, str );
+      }
+
+      template< typename Stream >
+      inline void unpack( Stream& s, chainbase::shared_string& ss )
+      {
+         std::string str;
+         fc::raw::unpack( s, str );
+         steem::chain::from_string( ss, str );
+      }
+
+      template< typename Stream, typename E, typename A >
+      inline void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
+      {
+         // This could be optimized
+         std::vector<E> temp;
+         std::copy( dq.begin(), dq.end(), std::back_inserter(temp) );
+         pack( s, temp );
+      }
+
+      template< typename Stream, typename E, typename A >
+      inline void unpack( Stream& s, boost::interprocess::deque<E, A>& dq )
+      {
+         // This could be optimized
+         std::vector<E> temp;
+         unpack( s, temp );
+         std::copy( temp.begin(), temp.end(), std::back_inserter(dq) );
+      }
+
+      template< typename Stream, typename K, typename V, typename C, typename A >
+      inline void pack( Stream& s, const boost::interprocess::flat_map< K, V, C, A >& value )
+      {
+         fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+         auto itr = value.begin();
+         auto end = value.end();
+         while( itr != end )
+         {
+           fc::raw::pack( s, *itr );
+           ++itr;
+         }
+      }
+
+      template< typename Stream, typename K, typename V, typename C, typename A >
+      inline void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value )
+      {
+         unsigned_int size;
+         unpack( s, size );
+         value.clear();
+         FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
+         value.reserve(size.value);
+         for( uint32_t i = 0; i < size.value; ++i )
+         {
+             std::pair<K,V> tmp;
+             fc::raw::unpack( s, tmp );
+             value.insert( std::move(tmp) );
+         }
+      }
+
 #ifndef ENABLE_STD_ALLOCATOR
       template< typename T >
       inline T unpack_from_vector( const steem::chain::buffer_type& s )
