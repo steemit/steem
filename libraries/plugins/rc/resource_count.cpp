@@ -375,9 +375,7 @@ struct count_operation_visitor
    void operator()( const clear_null_account_balance_operation& ) const {}
 
    // Optional Actions
-#ifdef IS_TEST_NET
    void operator()( const example_optional_action& ) const {}
-#endif
 
 
    // TODO:
