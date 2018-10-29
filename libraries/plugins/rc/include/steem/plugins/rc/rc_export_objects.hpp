@@ -22,6 +22,8 @@ struct rc_transaction_info
                              cost;
 };
 
+typedef rc_transaction_info rc_optional_action_info;
+
 struct rc_block_info
 {
    resource_count_type       dt;
@@ -40,8 +42,9 @@ struct exp_rc_data
 
    virtual void to_variant( fc::variant& v )const override;
 
-   rc_block_info                       block_info;
-   std::vector< rc_transaction_info >  tx_info;
+   rc_block_info                          block_info;
+   std::vector< rc_transaction_info >     tx_info;
+   std::vector< rc_optional_action_info > opt_action_info;
 };
 
 } } } // steem::plugins::rc

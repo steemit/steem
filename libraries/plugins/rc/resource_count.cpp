@@ -3,7 +3,6 @@
 #include <steem/plugins/rc/resource_sizes.hpp>
 
 #include <steem/protocol/operations.hpp>
-#include <steem/protocol/transaction.hpp>
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -375,6 +374,11 @@ struct count_operation_visitor
    void operator()( const producer_reward_operation& ) const {}
    void operator()( const clear_null_account_balance_operation& ) const {}
 
+   // Optional Actions
+#ifdef IS_TEST_NET
+   void operator()( const example_optional_action& ) const {}
+#endif
+
 
    // TODO:
    // Should following ops be market ops?
@@ -383,6 +387,8 @@ struct count_operation_visitor
    // transfer_to_savings, transfer_from_savings, cancel_transfer_from_savings,
    // claim_reward_balance, delegate_vesting_shares, any SMT operations
 };
+
+typedef count_operation_visitor count_optional_action_visitor;
 
 void count_resources(
    const signed_transaction& tx,
@@ -409,6 +415,27 @@ void count_resources(
         size_info.transaction_object_base_size
       + size_info.transaction_object_byte_size * tx_size
       + vtor.state_bytes_count;
+
+   result.resource_count[ resource_execution_time ] += vtor.execution_time_count;
+}
+
+void count_resources(
+   const optional_automated_action& action,
+   count_resources_result& result )
+{
+   static const state_object_size_info size_info;
+   static const operation_exec_info exec_info;
+   const int64_t action_size = int64_t( fc::raw::pack_size( action ) );
+   count_optional_action_visitor vtor( size_info, exec_info );
+
+   result.resource_count[ resource_history_bytes ] += action_size;
+
+   action.visit( vtor );
+
+   // Not expecting actions to create accounts, but better to add it for completeness
+   result.resource_count[ resource_new_accounts ] += vtor.new_account_op_count;
+
+   result.resource_count[ resource_state_bytes ] += vtor.state_bytes_count;
 
    result.resource_count[ resource_execution_time ] += vtor.execution_time_count;
 }
