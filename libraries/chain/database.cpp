@@ -920,7 +920,7 @@ struct action_validate_visitor
 
 void database::push_required_action( const required_automated_action& a, const time_point_sec execution_time )
 {
-   FC_ASSERT( execution_time <= head_block_time(), "Cannot push required action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push required action to execute in the past. head_block_time: ${h} execution_time: ${e}",
       ("h", head_block_time())("e", execution_time) );
 
    static const action_validate_visitor validate_visitor;
@@ -940,7 +940,7 @@ void database::push_required_action( const required_automated_action& a )
 
 void database::push_optional_action( const optional_automated_action& a, const time_point_sec execution_time )
 {
-   FC_ASSERT( execution_time <= head_block_time(), "Cannot push optional action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push optional action to execute in the past. head_block_time: ${h} execution_time: ${e}",
       ("h", head_block_time())("e", execution_time) );
 
    static const action_validate_visitor validate_visitor;
