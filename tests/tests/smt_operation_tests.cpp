@@ -1599,7 +1599,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
          BOOST_REQUIRE( collisions < SMT_MAX_NAI_GENERATION_TRIES );
          collisions++;
 
-         ast = nai_generator::generate( seed++ );
+         ast = util::nai_generator::generate( seed++ );
       }
       while ( db->get< nai_pool_object >().contains( ast ) || db->find< smt_token_object, by_symbol >( ast.to_nai() ) );
 
