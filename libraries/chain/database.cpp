@@ -115,10 +115,15 @@ void database::open( const open_args& args )
       initialize_evaluators();
 
       if( !find< dynamic_global_property_object >() )
+      {
          with_write_lock( [&]()
          {
-            init_genesis( args.initial_supply );
+            if( args.genesis_func )
+               (*args.genesis_func)( *this );
+            else
+               init_genesis( args.initial_supply );
          });
+      }
 
       _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
 

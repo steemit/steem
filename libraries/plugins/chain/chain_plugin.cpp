@@ -1,4 +1,5 @@
 #include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/statefile/statefile.hpp>
 
 #include <steem/plugins/chain/abstract_block_producer.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
@@ -82,6 +83,8 @@ class chain_plugin_impl
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
+      std::string                      from_state = "";
+      std::string                      to_state = "";
 
       uint32_t allow_future_time = 5;
 
@@ -315,6 +318,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
+         ("from-state", bpo::value<string>()->default_value(""), "Load from state, then replay subsequent blocks (EXPERIMENTAL)")
+         ("to-state", bpo::value<string>()->default_value(""), "File to save state after --stop-replay-at-block" )
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
@@ -331,7 +336,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ;
 }
 
-void chain_plugin::plugin_initialize(const variables_map& options) {
+void chain_plugin::plugin_initialize(const variables_map& options)
+{
    my->shared_memory_dir = app().data_dir() / "blockchain";
 
    if( options.count("shared-file-dir") )
@@ -351,8 +357,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if( options.count( "shared-file-scale-rate" ) )
       my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
 
-   my->replay              = options.at( "replay-blockchain").as<bool>();
-   my->resync              = options.at( "resync-blockchain").as<bool>();
+   my->from_state          = options.at( "from-state" ).as<string>();
+   my->to_state            = options.at( "to-state" ).as<string>();
+   my->replay              = options.at( "replay-blockchain" ).as<bool>();
+   my->resync              = options.at( "resync-blockchain" ).as<bool>();
    my->stop_replay_at      =
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
@@ -489,12 +497,18 @@ void chain_plugin::plugin_startup()
          ("pm", measure.peak_mem) );
    };
 
-   if(my->replay)
+   if(my->replay || (my->from_state != ""))
    {
       ilog("Replaying blockchain on user request.");
-      uint32_t last_block_number = 0;
       db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
-      last_block_number = my->db.reindex( db_open_args );
+      if( my->from_state != "" )
+      {
+         db_open_args.genesis_func = std::make_shared< std::function<void( database& )> >( [&]( database& db )
+         {
+            statefile::init_genesis_from_state( db, my->from_state );
+         } );
+      }
+      uint32_t last_block_number = my->db.reindex( db_open_args );
 
       if( my->benchmark_interval > 0 )
       {
@@ -510,6 +524,12 @@ void chain_plugin::plugin_startup()
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
+         if( my->to_state != "" )
+         {
+            ilog( "Saving blockchain state" );
+            auto result = statefile::write_state( my->db, my->to_state );
+            ilog( "Blockchain state successful, size=${n} hash=${h}", ("n", result.size)("h", result.hash) );
+         }
          exit(EXIT_SUCCESS);
       }
    }

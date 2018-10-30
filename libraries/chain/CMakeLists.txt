@@ -6,6 +6,8 @@ add_library( steem_chain
              # As database takes the longest to compile, start it first
              database.cpp
              index.cpp
+             statefile/load_state.cpp
+             statefile/save_state.cpp
 
              smt_evaluator.cpp
              smt_objects/smt_market_maker.cpp

@@ -109,6 +109,8 @@ namespace steem { namespace chain {
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
 
+            std::shared_ptr< std::function< void( database& ) > >    genesis_func;
+
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
             TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});

@@ -10,6 +10,7 @@
 
 #ifdef IS_TEST_NET
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
+#define STEEM_NETWORK_TYPE                    "testnet"
 
 #define STEEM_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEM_INIT_PUBLIC_KEY_STR             (std::string( steem::protocol::public_key_type(STEEM_INIT_PRIVATE_KEY.get_public_key()) ))
@@ -44,6 +45,7 @@
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 6) )
+#define STEEM_NETWORK_TYPE                    "mainnet"
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -71,6 +73,9 @@
 #define STEEM_INIT_SUPPLY                     int64_t(0)
 
 #endif
+
+/// Version format string.  The Steem binary will refuse to load a state file where this does not match the built-in version.
+#define STEEM_DB_FORMAT_VERSION               "1"
 
 #define VESTS_SYMBOL  (steem::protocol::asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_VESTS ) )
 #define STEEM_SYMBOL  (steem::protocol::asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_STEEM ) )
