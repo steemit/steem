@@ -56,7 +56,7 @@ void replenish_nai_pool( database& db )
                return;
             }
 
-            next_sym = nai_generator::generate( last_block_id._hash[ NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX ] + attempts_per_block );
+            next_sym = util::nai_generator::generate( last_block_id._hash[ NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX ] + attempts_per_block );
 
             attempts_per_block++;
 

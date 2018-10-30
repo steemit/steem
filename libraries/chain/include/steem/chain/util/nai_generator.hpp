@@ -2,7 +2,7 @@
 
 #include <steem/protocol/asset_symbol.hpp>
 
-namespace steem { namespace chain {
+namespace steem { namespace chain { namespace util {
 
 class nai_generator {
    nai_generator() = delete;
@@ -55,4 +55,4 @@ public:
    }
 };
 
-}  } // steem::chain
+} } } // steem::chain::util
