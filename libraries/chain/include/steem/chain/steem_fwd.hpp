@@ -1,6 +1,6 @@
 #pragma once
 
-// This header forward-declare spack/unpack and to/from variant functions for Steem types.
+// This header forward-declares pack/unpack and to/from variant functions for Steem types.
 // These declarations need to be as early as possible to prevent compiler errors.
 
 #include <chainbase/allocators.hpp>
@@ -31,17 +31,5 @@ template<typename Stream, typename K, typename V, typename C, typename A>
 void pack( Stream& s, const boost::interprocess::flat_map< K, V, C, A >& value );
 template<typename Stream, typename K, typename V, typename C, typename A>
 void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value );
-
-/*
-template<typename Stream, typename K, typename V, typename C, typename A>
-void pack( Stream& s, const boost::interprocess::map< K, V, C, A >& value );
-template<typename Stream, typename K, typename V, typename C, typename A>
-void unpack( Stream& s, boost::interprocess::map< K, V, C, A >& value );
-
-template<typename Stream, typename E, typename C, typename A>
-void pack( Stream& s, const boost::interprocess::set< E, C, A >& value );
-template<typename Stream, typename E, typename C, typename A>
-void unpack( Stream& s, boost::interprocess::set< E, C, A >& value );
-*/
 
 } }
