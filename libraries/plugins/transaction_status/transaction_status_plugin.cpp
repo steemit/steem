@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/transaction_status/transaction_status_plugin.hpp>
 #include <steem/plugins/transaction_status/transaction_status_objects.hpp>
 #include <steem/chain/database.hpp>

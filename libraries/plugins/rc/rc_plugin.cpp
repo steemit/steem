@@ -1,4 +1,6 @@
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 
 #include <steem/plugins/rc/rc_curve.hpp>

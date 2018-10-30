@@ -169,54 +169,125 @@ enum bandwidth_type
 
 namespace fc
 {
-   class variant;
-   inline void to_variant( const steem::chain::shared_string& s, variant& var )
-   {
-      var = fc::string( steem::chain::to_string( s ) );
-   }
+class variant;
 
-   inline void from_variant( const variant& var, steem::chain::shared_string& s )
-   {
-      auto str = var.as_string();
-      s.assign( str.begin(), str.end() );
-   }
+inline void to_variant( const steem::chain::shared_string& s, variant& var )
+{
+   var = fc::string( steem::chain::to_string( s ) );
+}
 
-   template<typename T>
-   void to_variant( const chainbase::oid<T>& var,  variant& vo )
-   {
-      vo = var._id;
-   }
-   template<typename T>
-   void from_variant( const variant& vo, chainbase::oid<T>& var )
-   {
-      var._id = vo.as_int64();
-   }
+inline void from_variant( const variant& var, steem::chain::shared_string& s )
+{
+   auto str = var.as_string();
+   s.assign( str.begin(), str.end() );
+}
 
-   namespace raw {
-      template<typename Stream, typename T>
-      inline void pack( Stream& s, const chainbase::oid<T>& id )
-      {
-         s.write( (const char*)&id._id, sizeof(id._id) );
-      }
-      template<typename Stream, typename T>
-      inline void unpack( Stream& s, chainbase::oid<T>& id )
-      {
-         s.read( (char*)&id._id, sizeof(id._id));
-      }
-#ifndef ENABLE_STD_ALLOCATOR
-      template< typename T >
-      inline T unpack_from_vector( const steem::chain::buffer_type& s )
-      { try  {
-         T tmp;
-         if( s.size() ) {
-         datastream<const char*>  ds( s.data(), size_t(s.size()) );
-         fc::raw::unpack(ds,tmp);
-         }
-         return tmp;
-      } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
-#endif
+template<typename T>
+void to_variant( const chainbase::oid<T>& var,  variant& vo )
+{
+   vo = var._id;
+}
+
+template<typename T>
+void from_variant( const variant& vo, chainbase::oid<T>& var )
+{
+   var._id = vo.as_int64();
+}
+
+namespace raw
+{
+
+template<typename Stream, typename T>
+void pack( Stream& s, const chainbase::oid<T>& id )
+{
+   s.write( (const char*)&id._id, sizeof(id._id) );
+}
+
+template<typename Stream, typename T>
+void unpack( Stream& s, chainbase::oid<T>& id )
+{
+   s.read( (char*)&id._id, sizeof(id._id));
+}
+
+template< typename Stream >
+void pack( Stream& s, const chainbase::shared_string& ss )
+{
+   std::string str = steem::chain::to_string( ss );
+   fc::raw::pack( s, str );
+}
+
+template< typename Stream >
+void unpack( Stream& s, chainbase::shared_string& ss )
+{
+   std::string str;
+   fc::raw::unpack( s, str );
+   steem::chain::from_string( ss, str );
+}
+
+template< typename Stream, typename E, typename A >
+void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
+{
+   // This could be optimized
+   std::vector<E> temp;
+   std::copy( dq.begin(), dq.end(), std::back_inserter(temp) );
+   pack( s, temp );
+}
+
+template< typename Stream, typename E, typename A >
+void unpack( Stream& s, boost::interprocess::deque<E, A>& dq )
+{
+   // This could be optimized
+   std::vector<E> temp;
+   unpack( s, temp );
+   std::copy( temp.begin(), temp.end(), std::back_inserter(dq) );
+}
+
+template< typename Stream, typename K, typename V, typename C, typename A >
+void pack( Stream& s, const boost::interprocess::flat_map< K, V, C, A >& value )
+{
+   fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+   auto itr = value.begin();
+   auto end = value.end();
+   while( itr != end )
+   {
+      fc::raw::pack( s, *itr );
+      ++itr;
    }
 }
+
+template< typename Stream, typename K, typename V, typename C, typename A >
+void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value )
+{
+   unsigned_int size;
+   unpack( s, size );
+   value.clear();
+   FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
+   value.reserve(size.value);
+   for( uint32_t i = 0; i < size.value; ++i )
+   {
+      std::pair<K,V> tmp;
+      fc::raw::unpack( s, tmp );
+      value.insert( std::move(tmp) );
+   }
+}
+
+#ifndef ENABLE_STD_ALLOCATOR
+template< typename T >
+T unpack_from_vector( const steem::chain::buffer_type& s )
+{
+   try
+   {
+      T tmp;
+      if( s.size() )
+      {
+         datastream<const char*>  ds( s.data(), size_t(s.size()) );
+         fc::raw::unpack(ds,tmp);
+      }
+      return tmp;
+   } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) )
+}
+#endif
+} } // namespace fc::raw
 
 FC_REFLECT_ENUM( steem::chain::object_type,
                  (dynamic_global_property_object_type)

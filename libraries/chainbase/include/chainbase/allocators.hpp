@@ -11,6 +11,7 @@
 #include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
+#include <boost/thread/locks.hpp>
 
 #include <type_traits>
 
@@ -18,7 +19,7 @@ namespace chainbase {
 
    namespace bip = boost::interprocess;
 
-   #ifdef ENABLE_STD_ALLOCATOR 
+   #ifdef ENABLE_STD_ALLOCATOR
       template< typename T >
       using allocator = std::allocator< T >;
 
@@ -51,7 +52,6 @@ namespace chainbase {
                               bip::vector<T, allocator<T> >
                               >::type;
 
-   
    template< typename FIRST_TYPE, typename SECOND_TYPE >
    using t_pair = std::pair< FIRST_TYPE, SECOND_TYPE >;
 
@@ -64,22 +64,9 @@ namespace chainbase {
       bip::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >
       >::type;
 
-   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC = std::less<KEY_TYPE>>
-   using t_map = typename std::conditional< _ENABLE_STD_ALLOCATOR,
-                              std::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >,
-                              bip::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >
-                              >::type;
-
    template< typename T >
    using t_deque = typename std::conditional< _ENABLE_STD_ALLOCATOR,
                   std::deque< T, allocator< T > >,
                   bip::deque< T, allocator< T > >
                   >::type;
-
-   template< typename T, typename LESS_FUNC >
-   using t_set = typename std::conditional< _ENABLE_STD_ALLOCATOR,
-                  std::set< T, LESS_FUNC, allocator< T > >,
-                  bip::set< T, LESS_FUNC, allocator< T >  >
-                  >::type;
-
 }

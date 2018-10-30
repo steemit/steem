@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/reputation/reputation_plugin.hpp>
 #include <steem/plugins/reputation/reputation_objects.hpp>
 

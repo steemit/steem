@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/tags/tags_plugin.hpp>
 
 #include <steem/protocol/config.hpp>
