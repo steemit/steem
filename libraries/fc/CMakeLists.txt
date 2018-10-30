@@ -217,7 +217,6 @@ set( fc_sources
      src/crypto/sha256.cpp
      src/crypto/sha224.cpp
      src/crypto/sha512.cpp
-     src/crypto/dh.cpp
      src/crypto/blowfish.cpp
      src/crypto/elliptic_common.cpp
      src/crypto/equihash.cpp
@@ -369,6 +368,7 @@ target_include_directories(fc
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cyoencode-1.0.2/src
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/secp256k1-zkp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/equihash
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bitcoin/src
   )
 
 #target_link_libraries( fc PUBLIC ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${ECC_LIB} )

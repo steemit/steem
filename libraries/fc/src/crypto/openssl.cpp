@@ -8,6 +8,9 @@
 #include <string>
 #include <stdlib.h>
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// TODO: Replace OPENSSL_config()
+
 namespace  fc 
 {
     struct openssl_scope
