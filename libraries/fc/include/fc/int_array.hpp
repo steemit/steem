@@ -52,18 +52,7 @@ void from_variant( const variant& var, fc::int_array<T,N>& a )
 
    for( size_t i=0; i<N; i++ )
    {
-      if( std::numeric_limits<T>::is_signed )
-      {
-         int64_t temp = varray[i].as_int64();
-         FC_ASSERT( (temp >= std::numeric_limits<T>::min()) && (temp <= std::numeric_limits<T>::max()) );
-         a[i] = temp;
-      }
-      else
-      {
-         uint64_t temp = varray[i].as_uint64();
-         FC_ASSERT( temp <= std::numeric_limits<T>::max() );
-         a[i] = temp;
-      }
+      from_variant( varray[i], a[i] );
    }
 }
 
