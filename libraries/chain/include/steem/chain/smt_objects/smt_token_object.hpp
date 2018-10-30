@@ -160,37 +160,13 @@ public:
 struct by_symbol;
 struct by_control_account;
 
-/**Comparison operators that allow to return the same object representation
- * for both liquid and vesting symbol/nai.
- */
-struct vesting_liquid_less
-{
-   bool operator ()( const asset_symbol_type& lhs, const asset_symbol_type& rhs ) const
-   {
-      // Compare as if both symbols represented liquid version.
-      return ( lhs.is_vesting() ? lhs.get_paired_symbol() : lhs ) <
-             ( rhs.is_vesting() ? rhs.get_paired_symbol() : rhs );
-   }
-
-   bool operator ()( const uint32_t& lhs, const asset_symbol_type& rhs ) const
-   {
-      // Use the other operator, adding the same precision to both NAIs.
-      return operator()( asset_symbol_type::from_nai( lhs, rhs.decimals() ), rhs );
-   }
-
-   bool operator ()( const asset_symbol_type& lhs, const uint32_t& rhs ) const
-   {
-      return operator()( lhs, asset_symbol_type::from_nai( rhs, lhs.decimals() ) );
-   }
-};
-
 typedef multi_index_container <
    smt_token_object,
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
-         member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol >, vesting_liquid_less >,
+         member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol > >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,

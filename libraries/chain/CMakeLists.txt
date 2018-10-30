@@ -25,6 +25,7 @@ add_library( steem_chain
              util/reward.cpp
              util/impacted.cpp
              util/advanced_benchmark_dumper.cpp
+             util/smt_token.cpp
 
              ${HEADERS}
            )

@@ -4,6 +4,7 @@
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
 
@@ -68,10 +69,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   // Check that SMT with given nai has not been created already.
-   // Note that symbols with the same nai and different precision (decimal places) are not allowed,
-   // therefore we use a method that strips the symbol from precision info when searching.
-   FC_ASSERT( ( _db.find< smt_token_object, by_symbol >( o.symbol.to_nai() ) == nullptr ), "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
+   FC_ASSERT( util::find_smt_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
    FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset creation_fee;
