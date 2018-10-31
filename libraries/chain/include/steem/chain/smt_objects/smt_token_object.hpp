@@ -108,7 +108,7 @@ public:
    /// smt_setup_emissions
    time_point_sec       schedule_time = STEEM_GENESIS_TIME;
    steem::protocol::
-   smt_emissions_unit   emissions_unit;
+   smt_inflation_unit   inflation_unit;
    uint32_t             interval_seconds = 0;
    uint32_t             interval_count = 0;
    time_point_sec       lep_time = STEEM_GENESIS_TIME;
@@ -243,7 +243,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (allow_voting)
    (allow_vesting)
    (schedule_time)
-   (emissions_unit)
+   (inflation_unit)
    (interval_seconds)
    (interval_count)
    (lep_time)

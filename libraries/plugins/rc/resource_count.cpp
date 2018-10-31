@@ -320,10 +320,10 @@ struct count_operation_visitor
       execution_time_count += _e.smt_refund_operation_exec_time;
    }
 
-   void operator()( const smt_setup_emissions_operation& op )const
+   void operator()( const smt_setup_inflation_operation& op )const
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
-      execution_time_count += _e.smt_setup_emissions_operation_exec_time;
+      execution_time_count += _e.smt_setup_inflation_operation_exec_time;
    }
 
    void operator()( const smt_set_setup_parameters_operation& op )const

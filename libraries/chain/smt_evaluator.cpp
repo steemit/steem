@@ -224,7 +224,7 @@ void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
    // TODO: Check whether some impostor tries to hijack SMT operation.
 }
 
-void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
+void smt_setup_inflation_evaluator::do_apply( const smt_setup_inflation_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
@@ -236,7 +236,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
    _db.modify( smt, [&]( smt_token_object& token )
    {
       token.schedule_time = o.schedule_time;
-      token.emissions_unit = o.emissions_unit;
+      token.inflation_unit = o.inflation_unit;
       token.interval_seconds = o.interval_seconds;
       token.interval_count = o.interval_count;
       token.lep_time = o.lep_time;

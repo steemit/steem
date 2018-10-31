@@ -192,12 +192,12 @@ struct validate_visitor
    }
 };
 
-void smt_setup_emissions_operation::validate()const
+void smt_setup_inflation_operation::validate()const
 {
    smt_base_operation::validate();
    
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
-   FC_ASSERT( emissions_unit.token_unit.empty() == false );
+   FC_ASSERT( inflation_unit.token_unit.empty() == false );
    
    //interval_seconds <- any value of unsigned int is OK
    //interval_count <- any value of unsigned int is OK
