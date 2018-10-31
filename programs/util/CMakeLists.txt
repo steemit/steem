@@ -124,3 +124,16 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+
+add_executable( dump_block_log dump_block_log.cpp )
+
+target_link_libraries( dump_block_log
+                       PRIVATE steem_chain steem_protocol steem_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+
+install( TARGETS
+   dump_block_log
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)
