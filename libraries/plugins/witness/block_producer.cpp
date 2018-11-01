@@ -207,7 +207,7 @@ void block_producer::apply_pending_transactions(
    auto pending_optional_itr = pending_optional_action_idx.begin();
    chain::optional_automated_actions optional_actions;
 
-   while( pending_optional_itr != pending_optional_action_idx.end() && pending_required_itr->execution_time <= when )
+   while( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when )
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_optional_itr->action );
 
