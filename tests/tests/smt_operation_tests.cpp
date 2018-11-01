@@ -1758,5 +1758,137 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( smt_setup_inflation_validate )
+{
+   try
+   {
+      ACTORS( (alice) );
+      generate_block();
+
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
+
+      smt_setup_inflation_operation op;
+      // Invalid token symbol.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.symbol = alice_symbol;
+      // Invalid account name.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.control_account = "alice";
+      // schedule_time <= STEEM_GENESIS_TIME;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      fc::time_point now = fc::time_point::now();
+      op.schedule_time = now;
+      // Empty inflation_unit.token_unit
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.inflation_unit.token_unit["alice"] = 10;
+      // Both absolute amount fields are zero.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.lep_abs_amount = ASSET( "0.000 TESTS" );
+      // Amount symbol does NOT match control account name.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.lep_abs_amount = asset( 0, alice_symbol );
+      // Mismatch of absolute amount symbols.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.rep_abs_amount = asset( -1, alice_symbol );
+      // Negative absolute amount.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.rep_abs_amount = asset( 0, alice_symbol );
+      // Both amounts are equal zero.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.rep_abs_amount = asset( 1000, alice_symbol );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_setup_inflation_authorities )
+{
+   try
+   {
+      SMT_SYMBOL( alice, 3, db );
+
+      smt_setup_inflation_operation op;
+      op.control_account = "alice";
+      fc::time_point now = fc::time_point::now();
+      op.schedule_time = now;
+      op.inflation_unit.token_unit["alice"] = 10;
+      op.lep_abs_amount = op.rep_abs_amount = asset(1000, alice_symbol);
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_inflation_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+
+      generate_block();
+
+      smt_setup_inflation_operation fail_op;
+      fail_op.control_account = "alice";
+      fc::time_point now = fc::time_point::now();
+      fail_op.schedule_time = now;
+      fail_op.inflation_unit.token_unit["bob"] = 10;
+
+      // Do invalid attempt at SMT creation.
+      create_invalid_smt("alice", alice_private_key);
+
+      // Fail due to non-existing SMT (too early).
+      FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
+
+      // Create SMT(s) and continue.
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
+         const auto& smt1 = smts[0];
+         const auto& smt2 = smts[1];
+
+         // Do successful op with one smt.
+         smt_setup_inflation_operation valid_op = fail_op;
+         valid_op.symbol = smt1;
+         valid_op.lep_abs_amount = valid_op.rep_abs_amount = asset( 1000, valid_op.symbol );
+         PUSH_OP(valid_op,alice_private_key)
+
+         // Fail with another smt.
+         fail_op.symbol = smt2;
+         fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, fail_op.symbol );
+         // TODO: Replace the code below with account setup operation execution once its implemented.
+         const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
+         FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
+         FC_ASSERT( smt->phase < steem::chain::smt_phase::setup_completed, "Who closed setup phase?!" );
+         db->modify( *smt, [&]( steem::chain::smt_token_object& token )
+                    {
+                       token.phase = steem::chain::smt_phase::setup_completed;
+                    });
+         // Fail due to closed setup phase (too late).
+         FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
