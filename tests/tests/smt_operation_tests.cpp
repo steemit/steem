@@ -1758,7 +1758,7 @@ BOOST_AUTO_TEST_CASE( smt_nai_pool_count )
    FC_LOG_AND_RETHROW();
 }
 
-BOOST_AUTO_TEST_CASE( smt_setup_inflation_validate )
+BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
 {
    try
    {
@@ -1767,7 +1767,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_inflation_validate )
 
       asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
 
-      smt_setup_inflation_operation op;
+      smt_setup_emissions_operation op;
       // Invalid token symbol.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -1781,10 +1781,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_inflation_validate )
 
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
-      // Empty inflation_unit.token_unit
+      // Empty emissions_unit.token_unit
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.inflation_unit.token_unit["alice"] = 10;
+      op.emissions_unit.token_unit["alice"] = 10;
       // Both absolute amount fields are zero.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -1810,17 +1810,17 @@ BOOST_AUTO_TEST_CASE( smt_setup_inflation_validate )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( smt_setup_inflation_authorities )
+BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
 {
    try
    {
       SMT_SYMBOL( alice, 3, db );
 
-      smt_setup_inflation_operation op;
+      smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
-      op.inflation_unit.token_unit["alice"] = 10;
+      op.emissions_unit.token_unit["alice"] = 10;
       op.lep_abs_amount = op.rep_abs_amount = asset(1000, alice_symbol);
 
       flat_set< account_name_type > auths;
@@ -1838,7 +1838,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_inflation_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( setup_inflation_apply )
+BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
 {
    try
    {
@@ -1846,11 +1846,11 @@ BOOST_AUTO_TEST_CASE( setup_inflation_apply )
 
       generate_block();
 
-      smt_setup_inflation_operation fail_op;
+      smt_setup_emissions_operation fail_op;
       fail_op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       fail_op.schedule_time = now;
-      fail_op.inflation_unit.token_unit["bob"] = 10;
+      fail_op.emissions_unit.token_unit["bob"] = 10;
 
       // Do invalid attempt at SMT creation.
       create_invalid_smt("alice", alice_private_key);
@@ -1865,7 +1865,7 @@ BOOST_AUTO_TEST_CASE( setup_inflation_apply )
          const auto& smt2 = smts[1];
 
          // Do successful op with one smt.
-         smt_setup_inflation_operation valid_op = fail_op;
+         smt_setup_emissions_operation valid_op = fail_op;
          valid_op.symbol = smt1;
          valid_op.lep_abs_amount = valid_op.rep_abs_amount = asset( 1000, valid_op.symbol );
          PUSH_OP(valid_op,alice_private_key)
