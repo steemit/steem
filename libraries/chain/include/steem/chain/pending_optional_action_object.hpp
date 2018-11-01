@@ -20,16 +20,22 @@ class pending_optional_action_object : public object< pending_optional_action_ob
          c( *this );
       }
 
-      id_type           id;
+      id_type                    id;
 
+      time_point_sec             execution_time;
       optional_automated_action  action;
-      uint32_t                   pushed_block_num = 0;
 };
 
 typedef multi_index_container<
    pending_optional_action_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< pending_optional_action_object, pending_optional_action_id_type, &pending_optional_action_object::id > >
+      ordered_unique< tag< by_id >, member< pending_optional_action_object, pending_optional_action_id_type, &pending_optional_action_object::id > >,
+      ordered_unique< tag< by_execution >,
+         composite_key< pending_optional_action_object,
+            member< pending_optional_action_object, time_point_sec, &pending_optional_action_object::execution_time >,
+            member< pending_optional_action_object, pending_optional_action_id_type, &pending_optional_action_object::id >
+         >
+      >
    >,
    allocator< pending_optional_action_object >
 > pending_optional_action_index;
@@ -37,5 +43,5 @@ typedef multi_index_container<
 } } //steem::chain
 
 FC_REFLECT( steem::chain::pending_optional_action_object,
-            (id)(action)(pushed_block_num) )
+            (id)(execution_time)(action) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::pending_optional_action_object, steem::chain::pending_optional_action_index )

@@ -172,11 +172,11 @@ void block_producer::apply_pending_transactions(
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
    }
 
-   const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_id >();
+   const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_execution >();
    auto pending_required_itr = pending_required_action_idx.begin();
    chain::required_automated_actions required_actions;
 
-   while( pending_required_itr != pending_required_action_idx.end() )
+   while( pending_required_itr != pending_required_action_idx.end() && pending_required_itr->execution_time <= when )
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_required_itr->action );
 
@@ -203,11 +203,11 @@ void block_producer::apply_pending_transactions(
       pending_block.extensions.insert( required_actions );
    }
 
-   const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_id >();
+   const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
    chain::optional_automated_actions optional_actions;
 
-   while( pending_optional_itr != pending_optional_action_idx.end() )
+   while( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when )
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_optional_itr->action );
 

@@ -236,7 +236,14 @@ namespace steem { namespace chain {
          void pre_push_virtual_operation( const operation& op );
          void post_push_virtual_operation( const operation& op );
 
+         /*
+          * Pushing an action without specifying an execution time will execute at head block.
+          * The execution time must be greater than or equal to head block.
+          */
+         void push_required_action( const required_automated_action& a, time_point_sec execution_time );
          void push_required_action( const required_automated_action& a );
+
+         void push_optional_action( const optional_automated_action& a, time_point_sec execution_time );
          void push_optional_action( const optional_automated_action& a );
 
          void notify_pre_apply_required_action( const required_action_notification& note );

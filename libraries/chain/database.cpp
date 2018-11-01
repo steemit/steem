@@ -919,27 +919,44 @@ struct action_validate_visitor
    }
 };
 
-void database::push_required_action( const required_automated_action& a )
+void database::push_required_action( const required_automated_action& a, time_point_sec execution_time )
 {
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push required action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+      ("h", head_block_time())("e", execution_time) );
+
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
    create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
    {
       pending_action.action = a;
+      pending_action.execution_time = execution_time;
    });
 }
 
-void database::push_optional_action( const optional_automated_action& a )
+void database::push_required_action( const required_automated_action& a )
 {
+   push_required_action( a, head_block_time() );
+}
+
+void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
+{
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push optional action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+      ("h", head_block_time())("e", execution_time) );
+
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
    create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
    {
       pending_action.action = a;
-      pending_action.pushed_block_num = head_block_num();
+      pending_action.execution_time = execution_time;
    });
+}
+
+void database::push_optional_action( const optional_automated_action& a )
+{
+   push_optional_action( a, head_block_time() );
 }
 
 void database::notify_pre_apply_required_action( const required_action_notification& note )
@@ -3037,9 +3054,6 @@ void database::_apply_block( const signed_block& next_block )
       );
    }
 
-   process_required_actions( req_actions );
-   process_optional_actions( opt_actions );
-
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -3086,6 +3100,9 @@ void database::_apply_block( const signed_block& next_block )
 
    generate_required_actions();
    generate_optional_actions();
+
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
 
    process_hardforks();
 
@@ -3386,6 +3403,7 @@ void database::process_required_actions( const required_automated_actions& actio
          // We're done processing actions in the block.
          if( pending_itr != pending_action_idx.end() )
          {
+            FC_ASSERT( pending_itr->execution_time > head_block_time(), "Expected action was not included in block. ${a}", ("a", pending_itr->action) );
             FC_TODO("Check that the block producer stopped including required actions for a good reason, such as running out of space #2722");
          }
          break;
@@ -3424,20 +3442,29 @@ void database::process_optional_actions( const optional_automated_actions& actio
    {
       actions_itr->visit( validate_visitor );
 
+      // There is no execution check because we don't have a good way of indexing into local
+      // optional actions from those contained in a block. It is the responsibility of the
+      // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
    }
 
    // Clear out "expired" optional_actions. If the block when an optional action was generated
    // has become irreversible then a super majority of witnesses have chosen to not include it
    // and it is safe to delete.
-   const auto& pending_action_idx = get_index< pending_optional_action_index, by_id >();
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_execution >();
    auto pending_itr = pending_action_idx.begin();
-   auto lib = get_dynamic_global_properties().last_irreversible_block_num;
+   auto lib = fetch_block_by_number( get_dynamic_global_properties().last_irreversible_block_num );
 
-   while( pending_itr != pending_action_idx.end() && pending_itr->pushed_block_num <= lib )
+   // This is always valid when running on mainnet because there are irreversible blocks
+   // Testnet and unit tests, not so much. Could be ifdeffed with IS_TEST_NET, but seems
+   // like a reasonable check and will be optimized via speculative execution.
+   if( lib.valid() )
    {
-      remove( *pending_itr );
-      pending_itr = pending_action_idx.begin();
+      while( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= lib->timestamp )
+      {
+         remove( *pending_itr );
+         pending_itr = pending_action_idx.begin();
+      }
    }
 }
 
