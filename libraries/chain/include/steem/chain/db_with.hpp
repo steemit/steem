@@ -53,6 +53,8 @@ struct pending_transactions_restorer
 
    ~pending_transactions_restorer()
    {
+      bool producing = _db.is_producing();
+      _db.set_producing( true );
       for( const auto& tx : _db._popped_tx )
       {
          try {
@@ -93,6 +95,7 @@ struct pending_transactions_restorer
             */
          }
       }
+      _db.set_producing( producing );
    }
 
    database& _db;
