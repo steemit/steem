@@ -198,23 +198,28 @@ void smt_setup_emissions_operation::validate()const
    
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
    FC_ASSERT( emissions_unit.token_unit.empty() == false );
-   
-   //interval_seconds <- any value of unsigned int is OK
-   //interval_count <- any value of unsigned int is OK
-   
-   FC_ASSERT( lep_time <= rep_time );
-   FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time );
-   // ^ lep_time is either later or non-important
 
-   FC_ASSERT( (lep_abs_amount.symbol.is_vesting() == false),
-              "Use liquid variant of SMT symbol to specify emission amounts" );
-   FC_ASSERT( lep_abs_amount.symbol == rep_abs_amount.symbol );
-   FC_ASSERT( lep_abs_amount.amount >= 0 && rep_abs_amount.amount >= 0 );
-   FC_ASSERT( lep_abs_amount.amount != rep_abs_amount.amount || lep_abs_amount.amount > 0 );
-   // ^ constant amount must be positive value
+   for ( const auto& e : emissions_unit.token_unit )
+      validate_account_name( e.first );
 
-   // lep_rel_amount_numerator <- any value of unsigned int is OK
-   // rep_rel_amount_numerator <- any value of unsigned int is OK
+   FC_ASSERT( interval_seconds >= SMT_EMISSION_MIN_INTERVAL_SECONDS,
+      "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );
+
+   FC_ASSERT( interval_count > 0, "Interval count must be greater than 0" );
+   
+   FC_ASSERT( lep_time <= rep_time, "Left endpoint time must be less than or equal to right endpoint time" );
+
+   // If lep_time == rep_time, this indicates time modulation is disabled
+   FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time, "Left endpoint time cannot be before the schedule time" );
+
+   FC_ASSERT( symbol.is_vesting() == false, "Use liquid variant of SMT symbol to specify emission amounts" );
+   FC_ASSERT( symbol == lep_abs_amount.symbol, "Left endpoint symbol mismatch" );
+   FC_ASSERT( symbol == rep_abs_amount.symbol, "Right endpoint symbol mismatch" );
+   FC_ASSERT( lep_abs_amount.amount >= 0, "Left endpoint cannot have negative emission" );
+   FC_ASSERT( rep_abs_amount.amount >= 0, "Right endpoint cannot have negative emission" );
+
+   FC_ASSERT( lep_abs_amount.amount > 0 || lep_rel_amount_numerator > 0 || rep_abs_amount.amount > 0 || rep_rel_amount_numerator > 0,
+      "An emission operation must emit" );
 
    // rel_amount_denom_bits <- any value of unsigned int is OK
 }

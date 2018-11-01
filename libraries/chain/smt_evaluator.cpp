@@ -228,10 +228,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& smt = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
-
-   FC_ASSERT( o.lep_abs_amount.symbol == smt.liquid_symbol );
-   // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
+   const smt_token_object& smt = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
    _db.modify( smt, [&]( smt_token_object& token )
    {
