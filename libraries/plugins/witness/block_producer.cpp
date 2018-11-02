@@ -184,7 +184,7 @@ void block_producer::apply_pending_transactions(
 
       // required_actions_partizion_size is a lower bound of requirement.
       // If we have extra space to include actions we should use it.
-      if( new_total_size >= maximum_block_size )
+      if( new_total_size > maximum_block_size )
          break;
 
       try
@@ -215,7 +215,7 @@ void block_producer::apply_pending_transactions(
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_optional_itr->action );
 
-      if( new_total_size >= maximum_block_size )
+      if( new_total_size > maximum_block_size )
          break;
 
       try
