@@ -571,7 +571,11 @@ struct pre_apply_operation_visitor
    rc_plugin_skip_flags                     _skip;
 
    pre_apply_operation_visitor( database& db ) : _db(db)
-   {}
+   {
+      const auto& gpo = _db.get_dynamic_global_properties();
+      _current_time = gpo.time.sec_since_epoch();
+      _current_block_number = gpo.head_block_number;
+   }
 
    void regenerate( const account_object& account, const rc_account_object& rc_account )const
    {
