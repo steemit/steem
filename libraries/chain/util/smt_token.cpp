@@ -36,7 +36,7 @@ const smt_token_object* find_token( database& db, asset_symbol_type symbol, bool
 
 fc::optional< time_point_sec > last_emission_time( database& db, const asset_symbol_type& symbol )
 {
-   fc::optional< time_point_sec > end_time;
+   fc::optional< time_point_sec > end_time = fc::optional< time_point_sec >();
 
    const auto& idx = db.get_index< smt_token_emissions_index >().indices().get< by_symbol >();
    auto range = idx.equal_range( symbol );
