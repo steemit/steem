@@ -69,7 +69,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   FC_ASSERT( util::find_smt_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
+   FC_ASSERT( util::smt::find_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
    FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset creation_fee;
@@ -213,7 +213,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
    const smt_token_object& smt = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
-   auto end_time = util::smt_token_emissions_end_time( _db, smt.liquid_symbol );
+   auto end_time = util::smt::last_emission_time( _db, smt.liquid_symbol );
 
    if ( end_time.valid() )
    {

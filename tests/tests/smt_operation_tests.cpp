@@ -1532,13 +1532,13 @@ BOOST_AUTO_TEST_CASE( smt_create_with_steem_funds )
       // Fail insufficient funds
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
 
-      BOOST_REQUIRE( util::find_smt_token( *db, op.symbol, true ) == nullptr );
+      BOOST_REQUIRE( util::smt::find_token( *db, op.symbol, true ) == nullptr );
 
       FUND( "alice", ASSET( "0.001 TESTS" ) );
 
       PUSH_OP( op, alice_private_key );
 
-      BOOST_REQUIRE( util::find_smt_token( *db, op.symbol, true ) != nullptr );
+      BOOST_REQUIRE( util::smt::find_token( *db, op.symbol, true ) != nullptr );
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1573,13 +1573,13 @@ BOOST_AUTO_TEST_CASE( smt_create_with_sbd_funds )
       // Fail insufficient funds
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
 
-      BOOST_REQUIRE( util::find_smt_token( *db, op.symbol, true ) == nullptr );
+      BOOST_REQUIRE( util::smt::find_token( *db, op.symbol, true ) == nullptr );
 
       FUND( "alice", ASSET( "0.001 TBD" ) );
 
       PUSH_OP( op, alice_private_key );
 
-      BOOST_REQUIRE( util::find_smt_token( *db, op.symbol, true ) != nullptr );
+      BOOST_REQUIRE( util::smt::find_token( *db, op.symbol, true ) != nullptr );
    }
    FC_LOG_AND_RETHROW();
 }
@@ -1602,7 +1602,7 @@ BOOST_AUTO_TEST_CASE( smt_create_with_invalid_nai )
 
          ast = util::nai_generator::generate( seed++ );
       }
-      while ( db->get< nai_pool_object >().contains( ast ) || util::find_smt_token( *db, ast, true ) != nullptr );
+      while ( db->get< nai_pool_object >().contains( ast ) || util::smt::find_token( *db, ast, true ) != nullptr );
 
       // Fail on NAI pool not containing this NAI
       STEEM_REQUIRE_THROW( create_smt_with_nai( "alice", alice_private_key, ast.to_nai(), ast.decimals() ), fc::assert_exception)
@@ -1929,7 +1929,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op.control_account = "alice";
 
       BOOST_TEST_MESSAGE( " -- SMT setup phase has already completed" );
-      auto smt_token = util::find_smt_token( *db, alice_symbol );
+      auto smt_token = util::smt::find_token( *db, alice_symbol );
       db->modify( *smt_token, [&] ( smt_token_object& obj )
       {
          obj.phase = smt_phase::setup_completed;
