@@ -3393,6 +3393,7 @@ void database::process_required_actions( const required_automated_actions& actio
 {
    const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
    auto actions_itr = actions.begin();
+   uint64_t total_actions_size = 0;
 
    while( true )
    {
@@ -3401,10 +3402,16 @@ void database::process_required_actions( const required_automated_actions& actio
       if( actions_itr == actions.end() )
       {
          // We're done processing actions in the block.
-         if( pending_itr != pending_action_idx.end() )
+         if( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= head_block_time() )
          {
-            FC_ASSERT( pending_itr->execution_time > head_block_time(), "Expected action was not included in block. ${a}", ("a", pending_itr->action) );
-            FC_TODO("Check that the block producer stopped including required actions for a good reason, such as running out of space #2722");
+            total_actions_size += fc::raw::pack_size( pending_itr->action );
+            const auto& gpo = get_dynamic_global_properties();
+            uint64_t required_actions_partition_size = ( gpo.maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
+            FC_ASSERT( total_actions_size > required_actions_partition_size,
+               "Expected action was not included in block. total_actions_size: ${as}, required_actions_partition_action: ${rs}, pending_action: ${pa}",
+               ("as", total_actions_size)
+               ("rs", required_actions_partition_size)
+               ("pa", *pending_itr) );
          }
          break;
       }
@@ -3418,6 +3425,8 @@ void database::process_required_actions( const required_automated_actions& actio
          ("e", pending_itr->action)("o", *actions_itr) );
 
       apply_required_action( *actions_itr );
+
+      total_actions_size += fc::raw::pack_size( *actions_itr );
 
       remove( *pending_itr );
       ++actions_itr;
@@ -5007,12 +5016,18 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-#ifdef IS_TEST_NET
       case STEEM_SMT_HARDFORK:
-   #ifdef STEEM_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
+      {
          replenish_nai_pool( *this );
-   #endif
+
+          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
+         });
+
          break;
+      }
 #endif
       default:
          break;

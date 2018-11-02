@@ -104,7 +104,9 @@ void block_producer::apply_pending_transactions(
 {
    // The 4 is for the max size of the transaction vector length
    size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
-   auto maximum_block_size = _db.get_dynamic_global_properties().maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
+   const auto& gpo = _db.get_dynamic_global_properties();
+   uint64_t maximum_block_size = gpo.maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
+   uint64_t maximum_transaction_partition_size = maximum_block_size -  ( maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
 
    //
    // The following code throws away existing pending_tx_session and
@@ -145,7 +147,7 @@ void block_producer::apply_pending_transactions(
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
       // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
+      if( new_total_size >= maximum_transaction_partition_size )
       {
          postponed_tx_count++;
          continue;
@@ -157,7 +159,7 @@ void block_producer::apply_pending_transactions(
          _db.apply_transaction( tx, _db.get_node_properties().skip_flags );
          temp_session.squash();
 
-         total_block_size += fc::raw::pack_size( tx );
+         total_block_size = new_total_size;
          pending_block.transactions.push_back( tx );
       }
       catch ( const fc::exception& e )
@@ -180,7 +182,9 @@ void block_producer::apply_pending_transactions(
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_required_itr->action );
 
-      if( new_total_size >= maximum_block_size )
+      // required_actions_partizion_size is a lower bound of requirement.
+      // If we have extra space to include actions we should use it.
+      if( new_total_size > maximum_block_size )
          break;
 
       try
@@ -211,7 +215,7 @@ void block_producer::apply_pending_transactions(
    {
       uint64_t new_total_size = total_block_size + fc::raw::pack_size( pending_optional_itr->action );
 
-      if( new_total_size >= maximum_block_size )
+      if( new_total_size > maximum_block_size )
          break;
 
       try
