@@ -1762,53 +1762,109 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
 {
    try
    {
-      ACTORS( (alice) );
+      ACTORS( (alice)(bob) );
       generate_block();
 
       asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
 
       smt_setup_emissions_operation op;
-
+      op.control_account = "alice";
+      op.symbol = alice_symbol;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
 
-      // Invalid token symbol.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      fc::time_point_sec schedule_time = fc::time_point::now();
+      fc::time_point_sec schedule_end_time = schedule_time + fc::seconds( op.interval_seconds * op.interval_count );
 
-      op.symbol = alice_symbol;
-      // Invalid account name.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.control_account = "alice";
-      // schedule_time <= STEEM_GENESIS_TIME;
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      fc::time_point now = fc::time_point::now();
-      op.schedule_time = now;
-      // Empty emissions_unit.token_unit
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.emissions_unit.token_unit["alice"] = 10;
-      // Both absolute amount fields are zero.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.lep_abs_amount = ASSET( "0.000 TESTS" );
-      // Amount symbol does NOT match control account name.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
+      op.schedule_time = schedule_time;
       op.lep_abs_amount = asset( 0, alice_symbol );
-      // Mismatch of absolute amount symbols.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.rep_abs_amount = asset( -1, alice_symbol );
-      // Negative absolute amount.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
       op.rep_abs_amount = asset( 0, alice_symbol );
-      // Both amounts are equal zero.
-      //STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.lep_rel_amount_numerator = 1;
+      op.rep_rel_amount_numerator = 0;
+      op.lep_time = schedule_time;
+      op.rep_time = schedule_end_time;
+      op.validate();
 
-      op.rep_abs_amount = asset( 1000, alice_symbol );
+      BOOST_TEST_MESSAGE( " -- Invalid token symbol" );
+      op.symbol = STEEM_SYMBOL;
+      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
+      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.symbol = alice_symbol;
+      op.lep_abs_amount = asset( 0, alice_symbol );
+      op.rep_abs_amount = asset( 0, alice_symbol );
+
+      BOOST_TEST_MESSAGE( " -- Mismatching right endpoint token" );
+      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.rep_abs_amount = asset( 0, alice_symbol );
+
+      BOOST_TEST_MESSAGE( " -- Mismatching left endpoint token" );
+      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.lep_abs_amount = asset( 0, alice_symbol );
+
+      BOOST_TEST_MESSAGE( " -- No emissions" );
+      op.lep_rel_amount_numerator = 0;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.lep_rel_amount_numerator = 1;
+
+      BOOST_TEST_MESSAGE( " -- Invalid control account name" );
+      op.control_account = "@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.control_account = "alice";
+
+      BOOST_TEST_MESSAGE(" -- Empty emission unit" );
+      op.emissions_unit.token_unit.clear();
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      BOOST_TEST_MESSAGE( " -- Invalid emission unit token unit account" );
+      op.emissions_unit.token_unit[ "@@@@" ] = 10;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.emissions_unit.token_unit.clear();
+      op.emissions_unit.token_unit[ "alice" ] = 10;
+
+      BOOST_TEST_MESSAGE( " -- Invalid schedule time" );
+      op.schedule_time = STEEM_GENESIS_TIME;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.schedule_time = fc::time_point::now();
+
+      BOOST_TEST_MESSAGE( " -- 0 interval count" );
+      op.interval_count = 0;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.interval_count = 1;
+
+      BOOST_TEST_MESSAGE( " -- Interval seconds too low" );
+      op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS - 1;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+
+      BOOST_TEST_MESSAGE( " -- Negative asset left endpoint" );
+      op.lep_abs_amount = asset( -1, alice_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.lep_abs_amount = asset( 0 , alice_symbol );
+
+      BOOST_TEST_MESSAGE( " -- Negative asset right endpoint" );
+      op.rep_abs_amount = asset( -1 , alice_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.rep_abs_amount = asset( 0 , alice_symbol );
+
+      BOOST_TEST_MESSAGE( " -- Left endpoint time cannot be before schedule time" );
+      op.lep_time -= fc::seconds( 1 );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.lep_time += fc::seconds( 1 );
+
+      BOOST_TEST_MESSAGE( " -- Right endpoint time cannot be after schedule end time" );
+      op.rep_time += fc::seconds( 1 );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.rep_time -= fc::seconds( 1 );
+
+      BOOST_TEST_MESSAGE( " -- Left endpoint time and right endpoint time can be anything if they're equal" );
+      fc::time_point_sec tp = fc::time_point_sec( 0 );
+      op.lep_time = tp;
+      op.rep_time = tp;
+
       op.validate();
    }
    FC_LOG_AND_RETHROW()
@@ -1824,8 +1880,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
-      op.emissions_unit.token_unit["alice"] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = asset(1000, alice_symbol);
+      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, alice_symbol );
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -1850,46 +1906,74 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
 
       generate_block();
 
-      smt_setup_emissions_operation fail_op;
-      fail_op.control_account = "alice";
-      fc::time_point now = fc::time_point::now();
-      fail_op.schedule_time = now;
-      fail_op.emissions_unit.token_unit["bob"] = 10;
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
 
-      // Do invalid attempt at SMT creation.
-      create_invalid_smt("alice", alice_private_key);
+      fc::time_point_sec emissions1_schedule_time = fc::time_point::now();
 
-      // Fail due to non-existing SMT (too early).
-      FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
+      smt_setup_emissions_operation op;
+      op.control_account = "alice";
+      op.symbol = alice_symbol;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.schedule_time = emissions1_schedule_time;
+      op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op.interval_count = 1;
+      op.lep_abs_amount = asset( 0, alice_symbol );
+      op.rep_abs_amount = asset( 0, alice_symbol );
+      op.lep_rel_amount_numerator = 1;
+      op.rep_rel_amount_numerator = 0;;
+      op.validate();
 
-      // Create SMT(s) and continue.
-      auto smts = create_smt_3("alice", alice_private_key);
+      BOOST_TEST_MESSAGE( " -- Control account does not own SMT" );
+      op.control_account = "bob";
+      FAIL_WITH_OP( op, bob_private_key, fc::assert_exception );
+      op.control_account = "alice";
+
+      BOOST_TEST_MESSAGE( " -- SMT setup phase has already completed" );
+      auto smt_token = util::find_smt_token( *db, alice_symbol );
+      db->modify( *smt_token, [&] ( smt_token_object& obj )
       {
-         const auto& smt1 = smts[0];
-         const auto& smt2 = smts[1];
+         obj.phase = smt_phase::setup_completed;
+      } );
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      db->modify( *smt_token, [&] ( smt_token_object& obj )
+      {
+         obj.phase = smt_phase::account_elevated;
+      } );
+      PUSH_OP( op, alice_private_key );
 
-         // Do successful op with one smt.
-         smt_setup_emissions_operation valid_op = fail_op;
-         valid_op.symbol = smt1;
-         valid_op.lep_abs_amount = valid_op.rep_abs_amount = asset( 1000, valid_op.symbol );
-         valid_op.interval_count = 1;
-         valid_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-         PUSH_OP(valid_op,alice_private_key)
+      BOOST_TEST_MESSAGE( " -- Emissions range is overlapping" );
+      smt_setup_emissions_operation op2;
+      op2.control_account = "alice";
+      op2.symbol = alice_symbol;
+      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
+      op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op2.interval_count = 1;
+      op2.lep_abs_amount = asset( 0, alice_symbol );
+      op2.rep_abs_amount = asset( 0, alice_symbol );
+      op2.lep_rel_amount_numerator = 1;
+      op2.rep_rel_amount_numerator = 0;;
+      op2.validate();
 
-         // Fail with another smt.
-         fail_op.symbol = smt2;
-         fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, fail_op.symbol );
-         // TODO: Replace the code below with account setup operation execution once its implemented.
-         const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
-         FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
-         FC_ASSERT( smt->phase < steem::chain::smt_phase::setup_completed, "Who closed setup phase?!" );
-         db->modify( *smt, [&]( steem::chain::smt_token_object& token )
-                    {
-                       token.phase = steem::chain::smt_phase::setup_completed;
-                    });
-         // Fail due to closed setup phase (too late).
-         FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
-      }
+      FAIL_WITH_OP( op2, alice_private_key, fc::assert_exception );
+
+      op2.schedule_time += fc::seconds( 1 );
+      PUSH_OP( op2, alice_private_key );
+
+      BOOST_TEST_MESSAGE( " -- Emissions must be created in chronological order" );
+      smt_setup_emissions_operation op3;
+      op3.control_account = "alice";
+      op3.symbol = alice_symbol;
+      op3.emissions_unit.token_unit[ "alice" ] = 10;
+      op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
+      op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op3.interval_count = 1;
+      op3.lep_abs_amount = asset( 0, alice_symbol );
+      op3.rep_abs_amount = asset( 0, alice_symbol );
+      op3.lep_rel_amount_numerator = 1;
+      op3.rep_rel_amount_numerator = 0;;
+      op3.validate();
+      FAIL_WITH_OP( op3, alice_private_key, fc::assert_exception );
 
       validate_database();
    }

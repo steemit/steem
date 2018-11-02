@@ -209,8 +209,17 @@ void smt_setup_emissions_operation::validate()const
    
    FC_ASSERT( lep_time <= rep_time, "Left endpoint time must be less than or equal to right endpoint time" );
 
-   // If lep_time == rep_time, this indicates time modulation is disabled
-   FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time, "Left endpoint time cannot be before the schedule time" );
+   // If time modulation is enabled
+   if ( lep_time != rep_time )
+   {
+      FC_ASSERT( lep_time >= schedule_time, "Left endpoint time cannot be before the schedule time" );
+
+      // If we don't emit indefinitely
+      if ( interval_count != std::numeric_limits<uint32_t>::max() )
+      {
+         FC_ASSERT( rep_time <= schedule_time + fc::seconds( interval_seconds * interval_count ), "Right endpoint time cannot be after the schedule end time" );
+      }
+   }
 
    FC_ASSERT( symbol.is_vesting() == false, "Use liquid variant of SMT symbol to specify emission amounts" );
    FC_ASSERT( symbol == lep_abs_amount.symbol, "Left endpoint symbol mismatch" );

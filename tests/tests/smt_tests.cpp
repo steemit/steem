@@ -992,8 +992,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.generation_begin_time = start_time;
       op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
 
-      asset_symbol_type bob_symbol = create_smt( "bob", bob_private_key, 4 );
-
       signed_transaction tx;
 
       //SMT doesn't exist
@@ -1018,20 +1016,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
-
-      //Change precision.
-      op.symbol = bob_symbol;
-      op.control_account = "bob";
-      op.decimal_places = 5;
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, bob_private_key );
-      db->push_transaction( tx, 0 );
-
-      const steem::chain::smt_token_object* smt_token = db->find< steem::chain::smt_token_object, by_control_account >( op.control_account );
-      BOOST_REQUIRE( smt_token != nullptr );
-      uint8_t decimals = smt_token->liquid_symbol.decimals();
-      BOOST_REQUIRE( decimals == 5 );
    }
    FC_LOG_AND_RETHROW()
 }
