@@ -49,7 +49,7 @@ fc::optional< time_point_sec > last_emission_time( database& db, const asset_sym
       if ( r.interval_count == std::numeric_limits< uint32_t >::max() )
          return time_point_sec::maximum();
       else
-         schedule_end = r.schedule_time + fc::seconds( r.interval_seconds * r.interval_count );
+         schedule_end = r.schedule_time + fc::seconds( uint64_t( r.interval_seconds ) * uint64_t( r.interval_count ) );
 
       if ( end_time.valid() )
          end_time = schedule_end > *end_time ? schedule_end : end_time;

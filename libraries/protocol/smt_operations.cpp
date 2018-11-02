@@ -217,7 +217,8 @@ void smt_setup_emissions_operation::validate()const
       // If we don't emit indefinitely
       if ( interval_count != std::numeric_limits<uint32_t>::max() )
       {
-         FC_ASSERT( rep_time <= schedule_time + fc::seconds( interval_seconds * interval_count ), "Right endpoint time cannot be after the schedule end time" );
+         FC_ASSERT( rep_time <= schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) ),
+            "Right endpoint time cannot be after the schedule end time" );
       }
    }
 
