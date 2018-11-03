@@ -218,7 +218,8 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
    if ( end_time.valid() )
    {
       FC_ASSERT( o.schedule_time > *end_time,
-         "SMT emissions cannot overlap with existing ranges and must be in chronological order: ${end}", ("end", *end_time) );
+         "SMT emissions cannot overlap with existing ranges and must be in chronological order, last emission time: ${end}",
+         ("end", *end_time) );
    }
 
    _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )

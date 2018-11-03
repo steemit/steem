@@ -36,28 +36,20 @@ const smt_token_object* find_token( database& db, asset_symbol_type symbol, bool
 
 fc::optional< time_point_sec > last_emission_time( database& db, const asset_symbol_type& symbol )
 {
-   fc::optional< time_point_sec > end_time = {};
-
    const auto& idx = db.get_index< smt_token_emissions_index >().indices().get< by_symbol >();
-   auto range = idx.equal_range( symbol );
 
-   for ( const auto& r : boost::make_iterator_range( range ) )
+   const auto itr = idx.lower_bound( symbol );
+   if ( itr != idx.end() )
    {
-      time_point_sec schedule_end;
-
       // A maximum interval count indicates we should emit indefinitely
-      if ( r.interval_count == std::numeric_limits< uint32_t >::max() )
+      if ( itr->interval_count == std::numeric_limits< uint32_t >::max() )
          return time_point_sec::maximum();
       else
-         schedule_end = r.schedule_time + fc::seconds( uint64_t( r.interval_seconds ) * uint64_t( r.interval_count ) );
+         return itr->schedule_time + fc::seconds( uint64_t( itr->interval_seconds ) * uint64_t( itr->interval_count ) );
 
-      if ( end_time.valid() )
-         end_time = schedule_end > *end_time ? schedule_end : end_time;
-      else
-         end_time = schedule_end;
    }
 
-   return end_time;
+   return {};
 }
 
 } } } } // steem::chain::util::smt
