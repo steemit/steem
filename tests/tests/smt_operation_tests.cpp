@@ -1948,11 +1948,11 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op2.emissions_unit.token_unit[ "alice" ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op2.interval_count = 1;
-      op2.lep_abs_amount = asset( 0, alice_symbol );
-      op2.rep_abs_amount = asset( 0, alice_symbol );
+      op2.interval_count = 5;
+      op2.lep_abs_amount = asset( 1200, alice_symbol );
+      op2.rep_abs_amount = asset( 1000, alice_symbol );
       op2.lep_rel_amount_numerator = 1;
-      op2.rep_rel_amount_numerator = 0;;
+      op2.rep_rel_amount_numerator = 2;;
       op2.validate();
 
       FAIL_WITH_OP( op2, alice_private_key, fc::assert_exception );
@@ -1967,13 +1967,38 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op3.emissions_unit.token_unit[ "alice" ] = 10;
       op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op3.interval_count = 1;
+      op3.interval_count = SMT_EMIT_INDEFINITELY;
       op3.lep_abs_amount = asset( 0, alice_symbol );
-      op3.rep_abs_amount = asset( 0, alice_symbol );
-      op3.lep_rel_amount_numerator = 1;
+      op3.rep_abs_amount = asset( 1000, alice_symbol );
+      op3.lep_rel_amount_numerator = 0;
       op3.rep_rel_amount_numerator = 0;;
       op3.validate();
       FAIL_WITH_OP( op3, alice_private_key, fc::assert_exception );
+
+      op3.schedule_time = op2.schedule_time + fc::seconds( uint64_t( op2.interval_seconds ) * uint64_t( op2.interval_count ) );
+      FAIL_WITH_OP( op3, alice_private_key, fc::assert_exception );
+
+      op3.schedule_time += fc::seconds( 1 );
+      PUSH_OP( op3, alice_private_key );
+
+      BOOST_TEST_MESSAGE( " -- No more emissions permitted" );
+      smt_setup_emissions_operation op4;
+      op4.control_account = "alice";
+      op4.symbol = alice_symbol;
+      op4.emissions_unit.token_unit[ "alice" ] = 10;
+      op4.schedule_time = op3.schedule_time + fc::days( 365 );
+      op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op4.interval_count = 10;
+      op4.lep_abs_amount = asset( 0, alice_symbol );
+      op4.rep_abs_amount = asset( 0, alice_symbol );
+      op4.lep_rel_amount_numerator = 1;
+      op4.rep_rel_amount_numerator = 0;;
+      op4.validate();
+
+      FAIL_WITH_OP( op4, alice_private_key, fc::assert_exception );
+
+      op4.schedule_time = fc::time_point_sec::maximum();
+      FAIL_WITH_OP( op4, alice_private_key, fc::assert_exception );
 
       validate_database();
    }

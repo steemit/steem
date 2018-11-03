@@ -9,9 +9,9 @@
 
 namespace steem { namespace chain { namespace util { namespace smt {
 
-const smt_token_object* find_token( database& db, uint32_t nai );
-const smt_token_object* find_token( database& db, asset_symbol_type symbol, bool precision_agnostic = false );
-fc::optional< time_point_sec > last_emission_time( database& db, const asset_symbol_type& symbol );
+const smt_token_object* find_token( const database& db, uint32_t nai );
+const smt_token_object* find_token( const database& db, asset_symbol_type symbol, bool precision_agnostic = false );
+fc::optional< time_point_sec > last_emission_time( const database& db, const asset_symbol_type& symbol );
 
 } } } } // steem::chain::util::smt
 
