@@ -217,6 +217,9 @@ void smt_setup_emissions_operation::validate()const
       // If we don't emit indefinitely
       if ( interval_count != SMT_EMIT_INDEFINITELY )
       {
+         FC_ASSERT(
+            uint64_t( interval_seconds ) * uint64_t( interval_count ) + uint64_t( schedule_time.sec_since_epoch() ) <= std::numeric_limits< int32_t >::max(),
+            "Schedule end time overflow" );
          FC_ASSERT( rep_time <= schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) ),
             "Right endpoint time cannot be after the schedule end time" );
       }
@@ -229,7 +232,7 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( rep_abs_amount.amount >= 0, "Right endpoint cannot have negative emission" );
 
    FC_ASSERT( lep_abs_amount.amount > 0 || lep_rel_amount_numerator > 0 || rep_abs_amount.amount > 0 || rep_rel_amount_numerator > 0,
-      "An emission operation must emit" );
+      "An emission operation must have positive non-zero emission" );
 
    // rel_amount_denom_bits <- any value of unsigned int is OK
 }
