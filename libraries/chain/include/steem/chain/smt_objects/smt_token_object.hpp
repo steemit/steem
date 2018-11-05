@@ -185,12 +185,14 @@ typedef multi_index_container <
    allocator< smt_token_object >
 > smt_token_index;
 
+struct by_symbol_time;
+
 typedef multi_index_container <
    smt_token_emissions_object,
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_token_emissions_object, smt_token_emissions_object_id_type, &smt_token_emissions_object::id > >,
-      ordered_unique< tag< by_symbol >,
+      ordered_unique< tag< by_symbol_time >,
          composite_key< smt_token_emissions_object,
             member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
             member< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_time >
