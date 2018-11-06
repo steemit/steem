@@ -3,6 +3,12 @@
 #include <steem/protocol/validation.hpp>
 #ifdef STEEM_ENABLE_SMT
 
+#define SMT_DESTINATION_FROM          account_name_type( "$from" )
+#define SMT_DESTINATION_FROM_VESTING  account_name_type( "$from.vesting" )
+#define SMT_DESTINATION_MARKET_MAKER  account_name_type( "$market_maker" )
+#define SMT_DESTINATION_REWARDS       account_name_type( "$rewards" )
+#define SMT_DESTINATION_VESTING       account_name_type( "$vesting" )
+
 namespace steem { namespace protocol {
 
 void common_symbol_validation( const asset_symbol_type& symbol )
@@ -41,6 +47,19 @@ bool is_valid_unit_target( const account_name_type& name )
    if( name == account_name_type("$from") )
       return true;
    if( name == account_name_type("$from.vesting") )
+      return true;
+   return false;
+}
+
+bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
+{
+   if ( is_valid_account_name( name ) )
+      return true;
+   if ( name == SMT_DESTINATION_REWARDS )
+      return true;
+   if ( name == SMT_DESTINATION_VESTING )
+      return true;
+   if ( name == SMT_DESTINATION_VESTING )
       return true;
    return false;
 }
@@ -197,10 +216,14 @@ void smt_setup_emissions_operation::validate()const
    smt_base_operation::validate();
    
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
-   FC_ASSERT( emissions_unit.token_unit.empty() == false );
+   FC_ASSERT( emissions_unit.token_unit.empty() == false, "Emissions token unit cannot be empty" );
 
    for ( const auto& e : emissions_unit.token_unit )
-      validate_account_name( e.first );
+   {
+      FC_ASSERT( is_valid_smt_emissions_unit_destination( e.first ),
+         "Emissions token unit destination ${n} is invalid", ("n", e.first) );
+      FC_ASSERT( e.second > 0, "Emissions token unit must be greater than 0" );
+   }
 
    FC_ASSERT( interval_seconds >= SMT_EMISSION_MIN_INTERVAL_SECONDS,
       "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );
