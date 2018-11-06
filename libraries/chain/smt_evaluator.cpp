@@ -213,6 +213,8 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
    const smt_token_object& smt = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
+   FC_ASSERT( o.schedule_time > _db.head_block_time(), "Emissions schedule time must be in the future" );
+
    auto end_time = util::smt::last_emission_time( _db, smt.liquid_symbol );
 
    if ( end_time.valid() )
