@@ -1823,7 +1823,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.emissions_unit.token_unit[ "@@@@" ] = 10;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.emissions_unit.token_unit.clear();
-      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.emissions_unit.token_unit[ "alice" ] = 1;
+      op.emissions_unit.token_unit[ "$rewards" ] = 1;
+      op.emissions_unit.token_unit[ "$market_maker" ] = 1;
+      op.emissions_unit.token_unit[ "$vesting" ] = 1;
 
       BOOST_TEST_MESSAGE( " -- Invalid schedule time" );
       op.schedule_time = STEEM_GENESIS_TIME;

@@ -59,7 +59,7 @@ bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
       return true;
    if ( name == SMT_DESTINATION_VESTING )
       return true;
-   if ( name == SMT_DESTINATION_VESTING )
+   if ( name == SMT_DESTINATION_MARKET_MAKER )
       return true;
    return false;
 }
