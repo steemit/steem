@@ -187,7 +187,6 @@ RUN \
         libboost-all-dev \
         libc6-dev \
         libexpat1-dev \
-        libgcc-5-dev \
         libhwloc-dev \
         libibverbs-dev \
         libicu-dev \
