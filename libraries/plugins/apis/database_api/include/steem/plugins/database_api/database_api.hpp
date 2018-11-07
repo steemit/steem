@@ -142,6 +142,9 @@ class database_api
          * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
          */
          (get_nai_pool)
+
+         (list_smt_token_emissions)
+         (find_smt_token_emissions)
 #endif
       )
 

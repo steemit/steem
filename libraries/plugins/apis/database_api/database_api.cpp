@@ -70,6 +70,8 @@ class database_api_impl
          (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
          (get_nai_pool)
+         (list_smt_token_emissions)
+         (find_smt_token_emissions)
 #endif
       )
 
@@ -1453,6 +1455,57 @@ DEFINE_API_IMPL( database_api_impl, get_nai_pool )
    result.nai_pool = _db.get< nai_pool_object >().pool();
    return result;
 }
+
+DEFINE_API_IMPL( database_api_impl, list_smt_token_emissions )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   list_smt_token_emissions_return result;
+   result.token_emissions.reserve( args.limit );
+
+   switch( args.order )
+   {
+      case( by_symbol_time ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 2, "The parameter 'start' must be an empty array or consist of asset_symbol_type and time_point_sec" );
+
+         boost::tuple< asset_symbol_type, time_point_sec > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( asset_symbol_type(), time_point_sec() );
+         else
+            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< time_point_sec >() );
+
+         iterate_results< chain::smt_token_emissions_index, chain::by_symbol_time >(
+            start,
+            result.token_emissions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_token_emissions_object > );
+         break;
+      }
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
+   }
+
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, find_smt_token_emissions )
+{
+   find_smt_token_emissions_return result;
+
+   const auto& idx = _db.get_index< chain::smt_token_emissions_index, chain::by_symbol_time >();
+   auto itr = idx.lower_bound( args.asset_symbol );
+
+   while( itr != idx.end() && itr->symbol == args.asset_symbol && result.token_emissions.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
+   {
+      result.token_emissions.push_back( *itr );
+      ++itr;
+   }
+
+   return result;
+}
+
 #endif
 
 DEFINE_LOCKLESS_APIS( database_api, (get_config)(get_version) )
@@ -1505,6 +1558,8 @@ DEFINE_READ_APIS( database_api,
    (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
    (get_nai_pool)
+   (list_smt_token_emissions)
+   (find_smt_token_emissions)
 #endif
 )
 
