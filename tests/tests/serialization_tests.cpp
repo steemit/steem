@@ -635,6 +635,8 @@ BOOST_AUTO_TEST_CASE( asset_symbol_type_test )
       BOOST_REQUIRE( asset_symbol_type::from_nai( steem.to_nai(), STEEM_PRECISION_STEEM ) == steem );
       BOOST_REQUIRE( asset_symbol_type::from_nai( sbd.to_nai(), STEEM_PRECISION_SBD ) == sbd );
       BOOST_REQUIRE( asset_symbol_type::from_nai( vests.to_nai(), STEEM_PRECISION_VESTS ) == vests );
+
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@invalid00", 3 ), fc::exception );
    }
    FC_LOG_AND_RETHROW();
 }
