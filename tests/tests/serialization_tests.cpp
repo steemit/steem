@@ -636,7 +636,12 @@ BOOST_AUTO_TEST_CASE( asset_symbol_type_test )
       BOOST_REQUIRE( asset_symbol_type::from_nai( sbd.to_nai(), STEEM_PRECISION_SBD ) == sbd );
       BOOST_REQUIRE( asset_symbol_type::from_nai( vests.to_nai(), STEEM_PRECISION_VESTS ) == vests );
 
-      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@invalid00", 3 ), fc::exception );
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@100000006", STEEM_ASSET_MAX_DECIMALS + 1 ), fc::assert_exception ); // More than max decimals
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@0100000006", 3 ), fc::assert_exception );                            // Invalid NAI prefix
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@00000006", 3 ), fc::assert_exception );                             // Length too short
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@0100000006", 3 ), fc::assert_exception );                           // Length too long
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@invalid00", 3 ), fc::exception );                                   // Boost lexical bad cast
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( nullptr, 3 ), fc::exception );                                         // Null pointer
    }
    FC_LOG_AND_RETHROW();
 }

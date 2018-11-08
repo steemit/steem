@@ -53,6 +53,7 @@ asset_symbol_type asset_symbol_type::from_nai_string( const char* p, uint8_t dec
 {
    try
    {
+      FC_ASSERT( p != nullptr, "NAI string cannot be a null" );
       FC_ASSERT( std::strlen( p ) == STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH - 1, "Incorrect NAI string length" );
       FC_ASSERT( p[0] == '@' && p[1] == '@', "Invalid NAI string prefix" );
       uint32_t nai = boost::lexical_cast< uint32_t >( p + 2 );
