@@ -3179,11 +3179,14 @@ struct process_header_visitor
       std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
+FC_TODO( "Remove when optional automated actions are created" )
+#ifdef IS_TEST_NET
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
       std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
+#endif
 };
 
 void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )

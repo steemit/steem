@@ -17,4 +17,8 @@ namespace steem { namespace protocol {
 } } // steem::protocol
 
 STEEM_DECLARE_OPERATION_TYPE( steem::protocol::required_automated_action );
+
+FC_TODO( "Remove ifdef when first required automated action is added" )
+#ifdef IS_TEST_NET
 FC_REFLECT_TYPENAME( steem::protocol::required_automated_action );
+#endif

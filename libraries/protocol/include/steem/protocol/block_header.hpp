@@ -11,9 +11,13 @@ namespace steem { namespace protocol {
    typedef static_variant<
       void_t,
       version,                // Normal witness version reporting, for diagnostics and voting
-      hardfork_version_vote,  // Voting for the next hardfork to trigger
+      hardfork_version_vote   // Voting for the next hardfork to trigger
+FC_TODO( "Remove when automated actions are created" )
+#ifdef IS_TEST_NET
+,
       required_automated_actions,
       optional_automated_actions
+#endif
       >                                block_header_extensions;
 
    typedef flat_set<block_header_extensions > block_header_extensions_type;
