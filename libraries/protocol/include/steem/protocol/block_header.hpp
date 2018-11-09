@@ -8,11 +8,11 @@ namespace steem { namespace protocol {
    typedef vector< required_automated_action > required_automated_actions;
    typedef vector< optional_automated_action > optional_automated_actions;
 
+   FC_TODO( "Remove when automated actions are created" )
    typedef static_variant<
       void_t,
       version,                // Normal witness version reporting, for diagnostics and voting
       hardfork_version_vote   // Voting for the next hardfork to trigger
-FC_TODO( "Remove when automated actions are created" )
 #ifdef IS_TEST_NET
 ,
       required_automated_actions,
