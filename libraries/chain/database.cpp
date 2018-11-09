@@ -5025,18 +5025,17 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEM_SMT_HARDFORK:
-#ifdef STEEM_ENABLE_SMT
       {
+#ifdef STEEM_ENABLE_SMT
          replenish_nai_pool( *this );
-
-          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+#endif
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
          });
 
          break;
       }
-#endif
       default:
          break;
    }
