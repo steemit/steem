@@ -3,6 +3,7 @@
 
 namespace steem { namespace protocol {
 
+#ifdef IS_TEST_NET
 void example_required_action::validate()const
 {
    validate_account_name( account );
@@ -12,5 +13,6 @@ bool operator==( const example_required_action& lhs, const example_required_acti
 {
    return lhs.account == rhs.account;
 }
+#endif
 
 } } //steem::protocol

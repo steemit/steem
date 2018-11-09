@@ -1,7 +1,7 @@
 #pragma once
-#include <steem/protocol/base.hpp>
 #include <steem/protocol/required_automated_actions.hpp>
 #include <steem/protocol/optional_automated_actions.hpp>
+#include <steem/protocol/base.hpp>
 
 namespace steem { namespace protocol {
 

@@ -494,13 +494,15 @@ namespace steem { namespace chain {
          ///@}
 #endif
 
+         optional< chainbase::database::session > _pending_tx_session;
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          //void pop_undo() { object_database::pop_undo(); }
          void notify_changed_objects();
 
       private:
-         optional< chainbase::database::session > _pending_tx_session;
+
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );

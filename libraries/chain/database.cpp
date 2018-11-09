@@ -10,8 +10,10 @@
 #include <steem/chain/evaluator_registry.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/history_object.hpp>
+#include <steem/chain/optional_action_evaluator.hpp>
 #include <steem/chain/pending_required_action_object.hpp>
 #include <steem/chain/pending_optional_action_object.hpp>
+#include <steem/chain/required_action_evaluator.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
@@ -2578,6 +2580,12 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
+#endif
+
+#ifdef IS_TEST_NET
+   _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
+
+   _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
 #endif
 }
 
