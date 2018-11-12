@@ -202,10 +202,13 @@ void block_producer::apply_pending_transactions(
       }
    }
 
+FC_TODO( "Remove ifdef when required actions are added" )
+#ifdef IS_TEST_NET
    if( required_actions.size() )
    {
       pending_block.extensions.insert( required_actions );
    }
+#endif
 
    const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
@@ -230,10 +233,13 @@ void block_producer::apply_pending_transactions(
       ++pending_optional_itr;
    }
 
+FC_TODO( "Remove ifdef when optional actions are added" )
+#ifdef IS_TEST_NET
    if( optional_actions.size() )
    {
       pending_block.extensions.insert( optional_actions );
    }
+#endif
 
    _db.pending_transaction_session().reset();
 

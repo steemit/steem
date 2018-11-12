@@ -10,8 +10,10 @@
 #include <steem/chain/evaluator_registry.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/history_object.hpp>
+#include <steem/chain/optional_action_evaluator.hpp>
 #include <steem/chain/pending_required_action_object.hpp>
 #include <steem/chain/pending_optional_action_object.hpp>
+#include <steem/chain/required_action_evaluator.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
@@ -2579,6 +2581,12 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
+
+#ifdef IS_TEST_NET
+   _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
+
+   _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
+#endif
 }
 
 
@@ -3171,11 +3179,14 @@ struct process_header_visitor
       std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
+FC_TODO( "Remove when optional automated actions are created" )
+#ifdef IS_TEST_NET
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
       std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
+#endif
 };
 
 void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
@@ -5017,18 +5028,17 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEM_SMT_HARDFORK:
-#ifdef STEEM_ENABLE_SMT
       {
+#ifdef STEEM_ENABLE_SMT
          replenish_nai_pool( *this );
-
-          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+#endif
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
          });
 
          break;
       }
-#endif
       default:
          break;
    }
