@@ -51,78 +51,14 @@ void asset_symbol_type::to_nai_string( char* buf )const
 
 asset_symbol_type asset_symbol_type::from_nai_string( const char* p, uint8_t decimal_places )
 {
-   // \s*
-   while( true )
+   try
    {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         default:
-            break;
-      }
-      break;
-   }
-
-   // [A-Z]{1,6}
-   uint32_t asset_num = 0;
-   switch( *p )
-   {
-      case '@':
-      {
-         ++p;
-         FC_ASSERT( (*p) == '@', "Cannot parse asset symbol" );
-         ++p;
-
-         uint64_t nai = 0;
-         int digit_count = 0;
-         while( true )
-         {
-            switch( *p )
-            {
-               case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-               {
-                  uint64_t new_nai = nai*10 + ((*p) - '0');
-                  FC_ASSERT( new_nai >= nai, "Cannot parse asset amount" ); // This is failing for system assets
-                  FC_ASSERT( new_nai <= SMT_MAX_NAI, "Cannot parse asset amount" );
-                  nai = new_nai;
-                  ++p;
-                  ++digit_count;
-                  continue;
-               }
-               default:
-                  break;
-            }
-            break;
-         }
-         FC_ASSERT( digit_count == 9 );
-         asset_num = asset_num_from_nai( nai, uint8_t( decimal_places ) );
-         break;
-      }
-      default:
-         FC_ASSERT( false, "Cannot parse asset symbol" );
-   }
-
-   // \s*\0
-   while( true )
-   {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         case '\0':
-            break;
-         default:
-            FC_ASSERT( false, "Cannot parse asset symbol" );
-      }
-      break;
-   }
-
-   asset_symbol_type sym;
-   sym.asset_num = asset_num;
-   return sym;
+      FC_ASSERT( p != nullptr, "NAI string cannot be a null" );
+      FC_ASSERT( std::strlen( p ) == STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH - 1, "Incorrect NAI string length" );
+      FC_ASSERT( p[0] == '@' && p[1] == '@', "Invalid NAI string prefix" );
+      uint32_t nai = boost::lexical_cast< uint32_t >( p + 2 );
+      return asset_symbol_type::from_nai( nai, decimal_places );
+   } FC_CAPTURE_AND_RETHROW();
 }
 
 // Highly optimized implementation of Damm algorithm

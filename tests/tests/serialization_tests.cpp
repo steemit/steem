@@ -604,5 +604,47 @@ BOOST_AUTO_TEST_CASE( legacy_operation_test )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( asset_symbol_type_test )
+{
+   try
+   {
+      uint32_t asset_num = 10000000 << STEEM_NAI_SHIFT; // Shift NAI value in to position
+      asset_num |= SMT_ASSET_NUM_CONTROL_MASK;          // Flip the control bit
+      asset_num |= 3;                                   // Add the precision
+
+      auto symbol = asset_symbol_type::from_asset_num( asset_num );
+
+      BOOST_REQUIRE( symbol == asset_symbol_type::from_nai( 100000006, 3 ) );
+      BOOST_REQUIRE( symbol == asset_symbol_type::from_nai_string( "@@100000006", 3 ) );
+      BOOST_REQUIRE( asset_num == asset_symbol_type::asset_num_from_nai( 100000006, 3 ) );
+      BOOST_REQUIRE( symbol.to_nai_string() == "@@100000006" );
+      BOOST_REQUIRE( symbol.to_nai() == 100000006 );
+      BOOST_REQUIRE( symbol.asset_num == asset_num );
+      BOOST_REQUIRE( symbol.space() == asset_symbol_type::asset_symbol_space::smt_nai_space );
+      BOOST_REQUIRE( symbol.get_paired_symbol() == asset_symbol_type::from_asset_num( asset_num ^ SMT_ASSET_NUM_VESTING_MASK ) );
+      BOOST_REQUIRE( asset_symbol_type::from_nai( symbol.to_nai(), 3 ) == symbol );
+
+      asset_symbol_type steem = asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_STEEM );
+      asset_symbol_type sbd = asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_SBD );
+      asset_symbol_type vests = asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_VESTS );
+
+      BOOST_REQUIRE( steem.space() == asset_symbol_type::asset_symbol_space::legacy_space );
+      BOOST_REQUIRE( sbd.space() == asset_symbol_type::asset_symbol_space::legacy_space );
+      BOOST_REQUIRE( vests.space() == asset_symbol_type::asset_symbol_space::legacy_space );
+
+      BOOST_REQUIRE( asset_symbol_type::from_nai( steem.to_nai(), STEEM_PRECISION_STEEM ) == steem );
+      BOOST_REQUIRE( asset_symbol_type::from_nai( sbd.to_nai(), STEEM_PRECISION_SBD ) == sbd );
+      BOOST_REQUIRE( asset_symbol_type::from_nai( vests.to_nai(), STEEM_PRECISION_VESTS ) == vests );
+
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@100000006", STEEM_ASSET_MAX_DECIMALS + 1 ), fc::assert_exception ); // More than max decimals
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@0100000006", 3 ), fc::assert_exception );                            // Invalid NAI prefix
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@00000006", 3 ), fc::assert_exception );                             // Length too short
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@0100000006", 3 ), fc::assert_exception );                           // Length too long
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( "@@invalid00", 3 ), fc::exception );                                   // Boost lexical bad cast
+      STEEM_REQUIRE_THROW( asset_symbol_type::from_nai_string( nullptr, 3 ), fc::exception );                                         // Null pointer
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
