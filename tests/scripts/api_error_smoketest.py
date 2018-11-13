@@ -703,6 +703,13 @@ tests = [
       "method": "database_api.verify_signatures",
       "params": {"required_active":["temp"]}
    },
+   {
+      "method": "database_api.list_smt_token_emissions",
+      "params": {"limit": 100, "order": "by_symbol_time", "start": []}
+   },
+   {  "method": "database_api.find_smt_token_emissions",
+      "params": {"asset_symbol": {"nai":"@@100000006", "decimals": 3}}
+   }
 ]
 
 def test_api( url, headers, payload ):

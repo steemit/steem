@@ -69,7 +69,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   FC_ASSERT( util::find_smt_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
+   FC_ASSERT( util::smt::find_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
    FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
    asset creation_fee;
@@ -148,24 +148,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token.generation_end_time = o.generation_end_time;
       token.announced_launch_time = o.announced_launch_time;
       token.launch_expiration_time = o.launch_expiration_time;
-
-      /*
-         We should override precision in: 'lep_abs_amount', 'rep_abs_amount', 'liquid_symbol'
-         in case when new precision differs from old.
-      */
-      asset_symbol_type old_symbol = _token->liquid_symbol;
-      uint8_t old_decimal_places = old_symbol.decimals();
-
-      if( old_decimal_places != o.decimal_places )
-      {
-         uint32_t nai = old_symbol.to_nai();
-         asset_symbol_type new_symbol = asset_symbol_type::from_nai( nai, o.decimal_places );
-
-         token.liquid_symbol = new_symbol;
-         token.lep_abs_amount = asset( token.lep_abs_amount, new_symbol );
-         token.rep_abs_amount = asset( token.rep_abs_amount, new_symbol );
-      }
-   });
+   } );
 
    smt_setup_evaluator_visitor visitor( *_token, _db );
    o.initial_generation_policy.visit( visitor );
@@ -228,24 +211,33 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& smt = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
+   const smt_token_object& smt = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
-   FC_ASSERT( o.lep_abs_amount.symbol == smt.liquid_symbol );
-   // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
+   FC_ASSERT( o.schedule_time > _db.head_block_time(), "Emissions schedule time must be in the future" );
 
-   _db.modify( smt, [&]( smt_token_object& token )
+   auto end_time = util::smt::last_emission_time( _db, smt.liquid_symbol );
+
+   if ( end_time.valid() )
    {
-      token.schedule_time = o.schedule_time;
-      token.emissions_unit = o.emissions_unit;
-      token.interval_seconds = o.interval_seconds;
-      token.interval_count = o.interval_count;
-      token.lep_time = o.lep_time;
-      token.rep_time = o.rep_time;
-      token.lep_abs_amount = o.lep_abs_amount;
-      token.rep_abs_amount = o.rep_abs_amount;
-      token.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
-      token.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
-      token.rel_amount_denom_bits = o.rel_amount_denom_bits;
+      FC_ASSERT( o.schedule_time > *end_time,
+         "SMT emissions cannot overlap with existing ranges and must be in chronological order, last emission time: ${end}",
+         ("end", *end_time) );
+   }
+
+   _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )
+   {
+      eo.symbol = smt.liquid_symbol;
+      eo.schedule_time = o.schedule_time;
+      eo.emissions_unit = o.emissions_unit;
+      eo.interval_seconds = o.interval_seconds;
+      eo.interval_count = o.interval_count;
+      eo.lep_time = o.lep_time;
+      eo.rep_time = o.rep_time;
+      eo.lep_abs_amount = o.lep_abs_amount;
+      eo.rep_abs_amount = o.rep_abs_amount;
+      eo.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
+      eo.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
+      eo.rel_amount_denom_bits = o.rel_amount_denom_bits;
    });
 }
 

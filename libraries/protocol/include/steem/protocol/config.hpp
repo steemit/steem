@@ -320,7 +320,8 @@
 
 #define SMT_MAX_VOTABLE_ASSETS 2
 #define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
-#define SMT_UPVOTE_LOCKOUT                      (60*60*12)  /// 12 hours
-
+#define SMT_UPVOTE_LOCKOUT                      (60*60*12)   /// 12 hours
+#define SMT_EMISSION_MIN_INTERVAL_SECONDS       (60*60*6)    /// 6 hours
+#define SMT_EMIT_INDEFINITELY                   (std::numeric_limits<uint32_t>::max())
 #endif /// STEEM_ENABLE_SMT
 

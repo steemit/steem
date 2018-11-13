@@ -26,64 +26,6 @@ using boost::container::flat_map;
 
 BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
-BOOST_AUTO_TEST_CASE( setup_emissions_validate )
-{
-   try
-   {
-      ACTORS( (alice) );
-      generate_block();
-
-      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 3);
-
-      uint64_t h0 = fc::sha256::hash( "alice" )._hash[0];
-      uint32_t h0lo = uint32_t( h0 & 0x7FFFFFF );
-      uint32_t an = h0lo % (SMT_MAX_NAI+1);
-
-      FC_UNUSED(an);
-
-      smt_setup_emissions_operation op;
-      // Invalid token symbol.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.symbol = alice_symbol;
-      // Invalid account name.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.control_account = "alice";
-      // schedule_time <= STEEM_GENESIS_TIME;
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      fc::time_point now = fc::time_point::now();
-      op.schedule_time = now;
-      // Empty emissions_unit.token_unit
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.emissions_unit.token_unit["alice"] = 10;
-      // Both absolute amount fields are zero.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.lep_abs_amount = ASSET( "0.000 TESTS" );
-      // Amount symbol does NOT match control account name.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      // Mismatch of absolute amount symbols.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.rep_abs_amount = asset( -1, alice_symbol );
-      // Negative absolute amount.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.rep_abs_amount = asset( 0, alice_symbol );
-      // Both amounts are equal zero.
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.rep_abs_amount = asset( 1000, alice_symbol );
-      op.validate();
-   }
-   FC_LOG_AND_RETHROW()
-}
-
 BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 {
    try
@@ -114,34 +56,6 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
-{
-   try
-   {
-      SMT_SYMBOL( alice, 3, db );
-
-      smt_setup_emissions_operation op;
-      op.control_account = "alice";
-      fc::time_point now = fc::time_point::now();
-      op.schedule_time = now;
-      op.emissions_unit.token_unit["alice"] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = asset(1000, alice_symbol);
-
-      flat_set< account_name_type > auths;
-      flat_set< account_name_type > expected;
-
-      op.get_required_owner_authorities( auths );
-      BOOST_REQUIRE( auths == expected );
-
-      op.get_required_posting_authorities( auths );
-      BOOST_REQUIRE( auths == expected );
-      expected.insert( "alice" );
-      op.get_required_active_authorities( auths );
-      BOOST_REQUIRE( auths == expected );
-   }
-   FC_LOG_AND_RETHROW()
-}
-
 BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
 {
    try
@@ -161,58 +75,6 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
       expected.insert( "dany" );
       op.get_required_active_authorities( auths );
       BOOST_REQUIRE( auths == expected );
-   }
-   FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE( setup_emissions_apply )
-{
-   try
-   {
-      ACTORS( (alice)(bob) )
-
-      generate_block();
-
-      smt_setup_emissions_operation fail_op;
-      fail_op.control_account = "alice";
-      fc::time_point now = fc::time_point::now();
-      fail_op.schedule_time = now;
-      fail_op.emissions_unit.token_unit["bob"] = 10;
-
-      // Do invalid attempt at SMT creation.
-      create_invalid_smt("alice", alice_private_key);
-
-      // Fail due to non-existing SMT (too early).
-      FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
-
-      // Create SMT(s) and continue.
-      auto smts = create_smt_3("alice", alice_private_key);
-      {
-         const auto& smt1 = smts[0];
-         const auto& smt2 = smts[1];
-
-         // Do successful op with one smt.
-         smt_setup_emissions_operation valid_op = fail_op;
-         valid_op.symbol = smt1;
-         valid_op.lep_abs_amount = valid_op.rep_abs_amount = asset( 1000, valid_op.symbol );
-         PUSH_OP(valid_op,alice_private_key)
-
-         // Fail with another smt.
-         fail_op.symbol = smt2;
-         fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, fail_op.symbol );
-         // TODO: Replace the code below with account setup operation execution once its implemented.
-         const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
-         FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
-         FC_ASSERT( smt->phase < steem::chain::smt_phase::setup_completed, "Who closed setup phase?!" );
-         db->modify( *smt, [&]( steem::chain::smt_token_object& token )
-         {
-            token.phase = steem::chain::smt_phase::setup_completed;
-         });
-         // Fail due to closed setup phase (too late).
-         FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
-      }
-
-      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -754,12 +616,12 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
 
       asset_symbol_type liquid_symbol = create_smt("alice", alice_private_key, 6);
       // Use liquid symbol/NAI to confirm smt object was created.
-      auto liquid_object_by_symbol = util::find_smt_token( *db, liquid_symbol );
+      auto liquid_object_by_symbol = util::smt::find_token( *db, liquid_symbol );
       FC_ASSERT( liquid_object_by_symbol != nullptr );
 
       asset_symbol_type vesting_symbol = liquid_symbol.get_paired_symbol();
       // Use vesting symbol/NAI to confirm smt object was created.
-      auto vesting_object_by_symbol = util::find_smt_token( *db, vesting_symbol );
+      auto vesting_object_by_symbol = util::smt::find_token( *db, vesting_symbol );
       FC_ASSERT( vesting_object_by_symbol != nullptr );
 
       // Check that liquid and vesting objects are the same one.
@@ -1130,8 +992,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       op.generation_begin_time = start_time;
       op.generation_end_time = op.announced_launch_time = op.launch_expiration_time = start_time_plus_1;
 
-      asset_symbol_type bob_symbol = create_smt( "bob", bob_private_key, 4 );
-
       signed_transaction tx;
 
       //SMT doesn't exist
@@ -1156,20 +1016,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
-
-      //Change precision.
-      op.symbol = bob_symbol;
-      op.control_account = "bob";
-      op.decimal_places = 5;
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, bob_private_key );
-      db->push_transaction( tx, 0 );
-
-      const steem::chain::smt_token_object* smt_token = db->find< steem::chain::smt_token_object, by_control_account >( op.control_account );
-      BOOST_REQUIRE( smt_token != nullptr );
-      uint8_t decimals = smt_token->liquid_symbol.decimals();
-      BOOST_REQUIRE( decimals == 5 );
    }
    FC_LOG_AND_RETHROW()
 }

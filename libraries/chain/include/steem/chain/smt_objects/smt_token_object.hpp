@@ -105,20 +105,6 @@ public:
    protocol::curve_id author_reward_curve;
    protocol::curve_id curation_reward_curve;
 
-   /// smt_setup_emissions
-   time_point_sec       schedule_time = STEEM_GENESIS_TIME;
-   steem::protocol::
-   smt_emissions_unit   emissions_unit;
-   uint32_t             interval_seconds = 0;
-   uint32_t             interval_count = 0;
-   time_point_sec       lep_time = STEEM_GENESIS_TIME;
-   time_point_sec       rep_time = STEEM_GENESIS_TIME;
-   asset                lep_abs_amount = asset( 0, STEEM_SYMBOL );
-   asset                rep_abs_amount = asset( 0, STEEM_SYMBOL );
-   uint32_t             lep_rel_amount_numerator = 0;
-   uint32_t             rep_rel_amount_numerator = 0;
-   uint8_t              rel_amount_denom_bits = 0;
-
    ///parameters for 'smt_setup_operation'
    int64_t                       max_supply = 0;
    steem::protocol::
@@ -131,6 +117,32 @@ public:
    // smt_cap_reveal
    share_type  steem_units_min_cap = -1;
    share_type  steem_units_hard_cap = -1;
+};
+
+class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
+{
+   smt_token_emissions_object() = delete;
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_token_emissions_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type                               id;
+   asset_symbol_type                     symbol;
+   time_point_sec                        schedule_time = STEEM_GENESIS_TIME;
+   steem::protocol::smt_emissions_unit   emissions_unit;
+   uint32_t                              interval_seconds = 0;
+   uint32_t                              interval_count = 0;
+   time_point_sec                        lep_time = STEEM_GENESIS_TIME;
+   time_point_sec                        rep_time = STEEM_GENESIS_TIME;
+   asset                                 lep_abs_amount = asset();
+   asset                                 rep_abs_amount = asset();
+   uint32_t                              lep_rel_amount_numerator = 0;
+   uint32_t                              rep_rel_amount_numerator = 0;
+   uint8_t                               rel_amount_denom_bits = 0;
 };
 
 class smt_event_token_object : public object< smt_event_token_object_type, smt_event_token_object >
@@ -172,6 +184,23 @@ typedef multi_index_container <
    >,
    allocator< smt_token_object >
 > smt_token_index;
+
+struct by_symbol_time;
+
+typedef multi_index_container <
+   smt_token_emissions_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_token_emissions_object, smt_token_emissions_object_id_type, &smt_token_emissions_object::id > >,
+      ordered_unique< tag< by_symbol_time >,
+         composite_key< smt_token_emissions_object,
+            member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
+            member< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_time >
+         >
+      >
+   >,
+   allocator< smt_token_emissions_object >
+> smt_token_emissions_index;
 
 struct by_interval_gen_begin;
 struct by_interval_gen_end;
@@ -242,6 +271,17 @@ FC_REFLECT( steem::chain::smt_token_object,
    (market_maker)
    (allow_voting)
    (allow_vesting)
+   (max_supply)
+   (capped_generation_policy)
+   (generation_begin_time)
+   (generation_end_time)
+   (announced_launch_time)
+   (launch_expiration_time)
+   (steem_units_min_cap)
+   (steem_units_hard_cap)
+)
+
+FC_REFLECT( steem::chain::smt_token_emissions_object,
    (schedule_time)
    (emissions_unit)
    (interval_seconds)
@@ -253,14 +293,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
-   (max_supply)
-   (capped_generation_policy)
-   (generation_begin_time)
-   (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
-   (steem_units_min_cap)
-   (steem_units_hard_cap)
 )
 
 FC_REFLECT( steem::chain::smt_event_token_object,
@@ -274,6 +306,7 @@ FC_REFLECT( steem::chain::smt_event_token_object,
 )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_event_token_object, steem::chain::smt_event_token_index )
 
 #endif
