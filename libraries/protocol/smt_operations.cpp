@@ -214,7 +214,7 @@ struct validate_visitor
 void smt_setup_emissions_operation::validate()const
 {
    smt_base_operation::validate();
-   
+
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
    FC_ASSERT( emissions_unit.token_unit.empty() == false, "Emissions token unit cannot be empty" );
 
@@ -229,7 +229,7 @@ void smt_setup_emissions_operation::validate()const
       "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );
 
    FC_ASSERT( interval_count > 0, "Interval count must be greater than 0" );
-   
+
    FC_ASSERT( lep_time <= rep_time, "Left endpoint time must be less than or equal to right endpoint time" );
 
    // If time modulation is enabled
@@ -272,7 +272,7 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
    FC_ASSERT( launch_expiration_time >= announced_launch_time );
-}  
+}
 
 struct smt_set_runtime_parameters_operation_visitor
 {
@@ -280,30 +280,88 @@ struct smt_set_runtime_parameters_operation_visitor
 
    typedef void result_type;
 
-   void operator()( const smt_param_windows_v1& param_windows ) const
+   void operator()( const smt_param_windows_v1& param_windows )const
    {
+      // 0 <= reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT < cashout_window_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
       uint64_t sum = ( param_windows.reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT );
 
-      FC_ASSERT( param_windows.cashout_window_seconds > ( sum ),
-               "Cashout window must be greater than 'reverse auction window + upvote lockout' interval. This interval is ${sum} minutes long.",
-               ( "sum", sum/60 ) );
+      FC_ASSERT( sum >= 0,
+         "'reverse_auction_window + SMT_UPVOTE_LOCKOUT' interval cannot be negative. Was ${sum} seconds",
+         ("sum", sum) );
+
+      FC_ASSERT( sum < param_windows.cashout_window_seconds,
+         "'reverse auction window + upvote lockout' interval must be less than cashout window (${c}). Was ${sum} seconds.",
+         ("c", param_windows.cashout_window_seconds)
+         ( "sum", sum ) );
 
       FC_ASSERT( param_windows.cashout_window_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS,
-               "Cashout window second must be less than 'vesting withdraw' interval. This interval is ${val} minutes long.",
-               ("val", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS/60 ) );
+         "Cashout window second must be less than 'vesting withdraw' interval (${v}). Was ${val} seconds.",
+         ("v", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS)
+         ("val", param_windows.cashout_window_seconds) );
    }
 
-   void operator()( const smt_param_vote_regeneration_period_seconds_v1& vote_regeneration ) const
+   void operator()( const smt_param_vote_regeneration_period_seconds_v1& vote_regeneration )const
    {
+      // 0 < vote_regeneration_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
       FC_ASSERT( ( vote_regeneration.vote_regeneration_period_seconds > 0 ) &&
-                 ( vote_regeneration.vote_regeneration_period_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS ),
-               "Vote regeneration period must be greater than 0 and less than 'vesting withdraw' interval. This interval is ${val} minutes long.",
-               ("val", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS/60 ) );
+         ( vote_regeneration.vote_regeneration_period_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS ),
+         "Vote regeneration period must be greater than 0 and less than 'vesting withdraw' (${v}) interval. Was ${val} seconds.",
+         ("v", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS )
+         ("val", vote_regeneration.vote_regeneration_period_seconds) );
+
+      FC_ASSERT( ( vote_regeneration.votes_per_regeneration_period <= SMT_MAX_VOTES_PER_REGENERATION ),
+         "Votes per regeneration period exceeds maximum (${max}). Was ${v}",
+         ("max", SMT_MAX_VOTES_PER_REGENERATION)
+         ("v", vote_regeneration.vote_regeneration_period_seconds) );
+
+      // With previous assertion, this value will not overflow a 32 bit integer
+      uint32_t nominal_votes_per_day = ( vote_regeneration.votes_per_regeneration_period * 86400 )
+         / vote_regeneration.vote_regeneration_period_seconds;
+
+      FC_ASSERT( nominal_votes_per_day <= SMT_MAX_NOMINAL_VOTES_PER_DAY,
+         "Nominal votes per day exceeds maximum (${max}). Was ${v}",
+         ("max", SMT_MAX_NOMINAL_VOTES_PER_DAY)
+         ("v", nominal_votes_per_day) );
    }
 
-   void operator()( const smt_param_rewards_v1& param_rewards ) const
+   void operator()( const smt_param_rewards_v1& param_rewards )const
    {
-      //Nothing to do.
+
+      FC_ASSERT( param_rewards.percent_curation_rewards <= STEEM_100_PERCENT,
+         "Percent Curation Rewards must not exceed 10000. Was ${n}",
+         ("n", param_rewards.percent_curation_rewards) );
+
+      FC_ASSERT( param_rewards.percent_content_rewards <= STEEM_100_PERCENT,
+         "Percent Conntent Rewards must not exceed 10000. Was ${n}",
+         ("n", param_rewards.percent_content_rewards) );
+
+      FC_ASSERT( param_rewards.percent_curation_rewards + param_rewards.percent_content_rewards == STEEM_100_PERCENT,
+         "Curation and Content Rewards must sum to 10000. Was ${n}",
+         ("n", param_rewards.percent_curation_rewards + param_rewards.percent_content_rewards) );
+
+      switch( param_rewards.author_reward_curve )
+      {
+         case linear:
+         case quadratic:
+            break;
+         default:
+            FC_ASSERT( false, "Author Reward Curve must be linear or quadratic" );
+      }
+
+      switch( param_rewards.curation_reward_curve )
+      {
+         case linear:
+         case square_root:
+         case bounded:
+            break;
+         default:
+            FC_ASSERT( false, "Curation Reward Curve must be linear, square-root, or bounded." );
+      }
+   }
+
+   void operator()( const smt_param_allow_downvotes& )const
+   {
+      //Nothing to do
    }
 };
 

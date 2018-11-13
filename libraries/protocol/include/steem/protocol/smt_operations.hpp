@@ -237,14 +237,20 @@ struct smt_param_rewards_v1
    uint128_t               content_constant = 0;
    uint16_t                percent_curation_rewards = 0;
    uint16_t                percent_content_rewards = 0;
-   protocol::curve_id                author_reward_curve;
-   protocol::curve_id                curation_reward_curve;
+   protocol::curve_id      author_reward_curve;
+   protocol::curve_id      curation_reward_curve;
+};
+
+struct smt_param_allow_downvotes
+{
+   bool value = true;
 };
 
 typedef static_variant<
    smt_param_windows_v1,
    smt_param_vote_regeneration_period_seconds_v1,
-   smt_param_rewards_v1
+   smt_param_rewards_v1,
+   smt_param_allow_downvotes
    > smt_runtime_parameter;
 
 struct smt_set_setup_parameters_operation : public smt_base_operation
@@ -394,6 +400,11 @@ FC_REFLECT(
    (curation_reward_curve)
    )
 
+FC_REFLECT(
+   steem::protocol::smt_param_allow_downvotes,
+   (value)
+)
+
 FC_REFLECT_TYPENAME(
    steem::protocol::smt_runtime_parameter
    )
@@ -411,5 +422,4 @@ FC_REFLECT_DERIVED(
    (runtime_parameters)
    (extensions)
    )
-   
 #endif

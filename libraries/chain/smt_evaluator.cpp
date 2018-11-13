@@ -22,10 +22,10 @@ inline const smt_token_object& get_controlled_smt( const database& db, const acc
    // Check against unotherized account trying to access (and alter) SMT. Unotherized means "other than the one that created the SMT".
    FC_ASSERT( smt->control_account == control_account, "The account ${account} does NOT control the SMT ${smt}",
       ("account", control_account)("smt", smt_symbol.to_nai()) );
-   
+
    return *smt;
 }
-   
+
 }
 
 namespace {
@@ -240,7 +240,7 @@ void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameter
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
    const smt_token_object& smt_token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
-   
+
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
       smt_setup_parameters_visitor visitor( token );
@@ -252,41 +252,36 @@ void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameter
 
 struct smt_set_runtime_parameters_evaluator_visitor
 {
-   const smt_token_object& _token;
-   database& _db;
+   smt_token_object& _token;
 
-   smt_set_runtime_parameters_evaluator_visitor( const smt_token_object& token, database& db ): _token( token ), _db( db ){}
+   smt_set_runtime_parameters_evaluator_visitor( smt_token_object& token ) : _token( token ) {}
 
    typedef void result_type;
 
-   void operator()( const smt_param_windows_v1& param_windows ) const
+   void operator()( const smt_param_windows_v1& param_windows )const
    {
-      _db.modify( _token, [&]( smt_token_object& token )
-      {
-         token.cashout_window_seconds = param_windows.cashout_window_seconds;
-         token.reverse_auction_window_seconds = param_windows.reverse_auction_window_seconds;
-      });
+      _token.cashout_window_seconds = param_windows.cashout_window_seconds;
+      _token.reverse_auction_window_seconds = param_windows.reverse_auction_window_seconds;
    }
 
-   void operator()( const smt_param_vote_regeneration_period_seconds_v1& vote_regeneration ) const
+   void operator()( const smt_param_vote_regeneration_period_seconds_v1& vote_regeneration )const
    {
-      _db.modify( _token, [&]( smt_token_object& token )
-      {
-         token.vote_regeneration_period_seconds = vote_regeneration.vote_regeneration_period_seconds;
-         token.votes_per_regeneration_period = vote_regeneration.votes_per_regeneration_period;
-      });
+      _token.vote_regeneration_period_seconds = vote_regeneration.vote_regeneration_period_seconds;
+      _token.votes_per_regeneration_period = vote_regeneration.votes_per_regeneration_period;
    }
 
-   void operator()( const smt_param_rewards_v1& param_rewards ) const
+   void operator()( const smt_param_rewards_v1& param_rewards )const
    {
-      _db.modify( _token, [&]( smt_token_object& token )
-      {
-         token.content_constant = param_rewards.content_constant;
-         token.percent_curation_rewards = param_rewards.percent_curation_rewards;
-         token.percent_content_rewards = param_rewards.percent_content_rewards;
-         token.author_reward_curve = param_rewards.author_reward_curve;
-         token.curation_reward_curve = param_rewards.curation_reward_curve;
-      });
+      _token.content_constant = param_rewards.content_constant;
+      _token.percent_curation_rewards = param_rewards.percent_curation_rewards;
+      _token.percent_content_rewards = param_rewards.percent_content_rewards;
+      _token.author_reward_curve = param_rewards.author_reward_curve;
+      _token.curation_reward_curve = param_rewards.curation_reward_curve;
+   }
+
+   void operator()( const smt_param_allow_downvotes& param_allow_downvotes )const
+   {
+      _token.allow_downvotes = param_allow_downvotes.value;
    }
 };
 
@@ -294,12 +289,15 @@ void smt_set_runtime_parameters_evaluator::do_apply( const smt_set_runtime_param
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& _token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
+   const smt_token_object& token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
 
-   smt_set_runtime_parameters_evaluator_visitor visitor( _token, _db );
+   _db.modify( token, [&]( smt_token_object& t )
+   {
+      smt_set_runtime_parameters_evaluator_visitor visitor( t );
 
-   for( auto& param: o.runtime_parameters )
-      param.visit( visitor );
+      for( auto& param: o.runtime_parameters )
+         param.visit( visitor );
+   });
 }
 
 } }
