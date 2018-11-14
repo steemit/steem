@@ -171,7 +171,6 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       smt_param_rewards_v1 rewards;
       rewards.content_constant = 1;
       rewards.percent_curation_rewards = 2;
-      rewards.percent_content_rewards = 3;
 
       op.runtime_parameters.insert( windows );
       op.runtime_parameters.insert( regeneration );

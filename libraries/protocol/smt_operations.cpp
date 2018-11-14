@@ -294,7 +294,7 @@ struct smt_set_runtime_parameters_operation_visitor
          ("c", param_windows.cashout_window_seconds)
          ( "sum", sum ) );
 
-      FC_ASSERT( param_windows.cashout_window_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS,
+      FC_ASSERT( param_windows.cashout_window_seconds <= SMT_VESTING_WITHDRAW_INTERVAL_SECONDS,
          "Cashout window second must be less than 'vesting withdraw' interval (${v}). Was ${val} seconds.",
          ("v", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS)
          ("val", param_windows.cashout_window_seconds) );
@@ -303,19 +303,21 @@ struct smt_set_runtime_parameters_operation_visitor
    void operator()( const smt_param_vote_regeneration_period_seconds_v1& vote_regeneration )const
    {
       // 0 < vote_regeneration_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
-      FC_ASSERT( ( vote_regeneration.vote_regeneration_period_seconds > 0 ) &&
-         ( vote_regeneration.vote_regeneration_period_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS ),
+      FC_ASSERT( vote_regeneration.vote_regeneration_period_seconds > 0 &&
+         vote_regeneration.vote_regeneration_period_seconds <= SMT_VESTING_WITHDRAW_INTERVAL_SECONDS,
          "Vote regeneration period must be greater than 0 and less than 'vesting withdraw' (${v}) interval. Was ${val} seconds.",
          ("v", SMT_VESTING_WITHDRAW_INTERVAL_SECONDS )
          ("val", vote_regeneration.vote_regeneration_period_seconds) );
 
-      FC_ASSERT( ( vote_regeneration.votes_per_regeneration_period <= SMT_MAX_VOTES_PER_REGENERATION ),
+      FC_ASSERT( vote_regeneration.votes_per_regeneration_period > 0 &&
+         vote_regeneration.votes_per_regeneration_period <= SMT_MAX_VOTES_PER_REGENERATION,
          "Votes per regeneration period exceeds maximum (${max}). Was ${v}",
          ("max", SMT_MAX_VOTES_PER_REGENERATION)
          ("v", vote_regeneration.vote_regeneration_period_seconds) );
 
       // With previous assertion, this value will not overflow a 32 bit integer
-      uint32_t nominal_votes_per_day = ( vote_regeneration.votes_per_regeneration_period * 86400 )
+      // This calculation is designed to round up
+      uint32_t nominal_votes_per_day = ( vote_regeneration.votes_per_regeneration_period * 86400 + vote_regeneration.vote_regeneration_period_seconds - 1 )
          / vote_regeneration.vote_regeneration_period_seconds;
 
       FC_ASSERT( nominal_votes_per_day <= SMT_MAX_NOMINAL_VOTES_PER_DAY,
@@ -326,18 +328,9 @@ struct smt_set_runtime_parameters_operation_visitor
 
    void operator()( const smt_param_rewards_v1& param_rewards )const
    {
-
       FC_ASSERT( param_rewards.percent_curation_rewards <= STEEM_100_PERCENT,
          "Percent Curation Rewards must not exceed 10000. Was ${n}",
          ("n", param_rewards.percent_curation_rewards) );
-
-      FC_ASSERT( param_rewards.percent_content_rewards <= STEEM_100_PERCENT,
-         "Percent Conntent Rewards must not exceed 10000. Was ${n}",
-         ("n", param_rewards.percent_content_rewards) );
-
-      FC_ASSERT( param_rewards.percent_curation_rewards + param_rewards.percent_content_rewards == STEEM_100_PERCENT,
-         "Curation and Content Rewards must sum to 10000. Was ${n}",
-         ("n", param_rewards.percent_curation_rewards + param_rewards.percent_content_rewards) );
 
       switch( param_rewards.author_reward_curve )
       {
@@ -352,10 +345,10 @@ struct smt_set_runtime_parameters_operation_visitor
       {
          case linear:
          case square_root:
-         case bounded:
+         case bounded_curation:
             break;
          default:
-            FC_ASSERT( false, "Curation Reward Curve must be linear, square-root, or bounded." );
+            FC_ASSERT( false, "Curation Reward Curve must be linear, square_root, or bounded_curation." );
       }
    }
 

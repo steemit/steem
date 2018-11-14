@@ -4900,7 +4900,7 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.recent_claims = STEEM_HF_17_RECENT_CLAIMS;
 #endif
                rfo.author_reward_curve = curve_id::quadratic;
-               rfo.curation_reward_curve = curve_id::bounded;
+               rfo.curation_reward_curve = curve_id::bounded_curation;
             });
 
             // As a shortcut in payout processing, we use the id as an array index.

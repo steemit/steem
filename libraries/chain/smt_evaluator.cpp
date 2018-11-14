@@ -274,7 +274,6 @@ struct smt_set_runtime_parameters_evaluator_visitor
    {
       _token.content_constant = param_rewards.content_constant;
       _token.percent_curation_rewards = param_rewards.percent_curation_rewards;
-      _token.percent_content_rewards = param_rewards.percent_content_rewards;
       _token.author_reward_curve = param_rewards.author_reward_curve;
       _token.curation_reward_curve = param_rewards.curation_reward_curve;
    }
