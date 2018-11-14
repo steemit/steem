@@ -8,8 +8,6 @@
 
 namespace steem { namespace chain {
 
-using steem::protocol::curve_id;
-
 enum class smt_phase : uint8_t
 {
    account_elevated,
@@ -94,16 +92,17 @@ public:
    bool                 allow_voting = true;
 
    /// set_runtime_parameters
-   uint32_t             cashout_window_seconds = STEEM_CASHOUT_WINDOW_SECONDS;
-   uint32_t             reverse_auction_window_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20;
+   uint32_t             cashout_window_seconds = 0;
+   uint32_t             reverse_auction_window_seconds = 0;
 
-   uint32_t             vote_regeneration_period_seconds = STEEM_VOTING_MANA_REGENERATION_SECONDS;
-   uint32_t             votes_per_regeneration_period = SMT_DEFAULT_VOTES_PER_REGEN_PERIOD;
+   uint32_t             vote_regeneration_period_seconds = 0;
+   uint32_t             votes_per_regeneration_period = 0;
 
-   uint128_t            content_constant = STEEM_CONTENT_CONSTANT_HF0;
-   uint16_t             percent_curation_rewards = SMT_DEFAULT_PERCENT_CURATION_REWARDS;
-   protocol::curve_id   author_reward_curve = curve_id::linear;
-   protocol::curve_id   curation_reward_curve = curve_id::square_root;
+   uint128_t            content_constant = 0;
+   uint16_t             percent_curation_rewards = 0;
+   uint16_t             percent_content_rewards = 0;
+   protocol::curve_id   author_reward_curve;
+   protocol::curve_id   curation_reward_curve;
 
    bool                 allow_downvotes = true;
 
