@@ -7,6 +7,8 @@
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/transaction_util.hpp>
 
+#include <steem/chain/util/smt_token.hpp>
+
 #include <steem/utilities/git_revision.hpp>
 
 #include <fc/git_revision.hpp>
@@ -70,6 +72,8 @@ class database_api_impl
          (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
          (get_nai_pool)
+         (list_smt_tokens)
+         (find_smt_tokens)
          (list_smt_token_emissions)
          (find_smt_token_emissions)
 #endif
@@ -1456,6 +1460,82 @@ DEFINE_API_IMPL( database_api_impl, get_nai_pool )
    return result;
 }
 
+DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   list_smt_tokens_return result;
+   result.tokens.reserve( args.limit );
+
+   switch( args.order )
+   {
+      case( by_symbol ):
+      {
+         asset_symbol_type start;
+
+         if( args.start.get_object().size() > 0 )
+         {
+            start = args.start.as< asset_symbol_type >();
+         }
+
+         iterate_results< chain::smt_token_index, chain::by_symbol >(
+            start,
+            result.tokens,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_token_object > );
+
+         break;
+      }
+      case( by_control_account ):
+      {
+         boost::tuple< account_name_type, asset_symbol_type > start;
+
+         if( args.start.is_string() )
+         {
+            start = boost::make_tuple( args.start.as< account_name_type >(), asset_symbol_type() );
+         }
+         else
+         {
+            auto key = args.start.get_array();
+            FC_ASSERT( key.size() == 2, "The parameter 'start' must be an account name or an array containing an account name and an asset symbol" );
+
+            start = boost::make_tuple( key[0].as< account_name_type >(), key[1].as< asset_symbol_type >() );
+         }
+
+         iterate_results< chain::smt_token_index, chain::by_control_account >(
+            start,
+            result.tokens,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_token_object > );
+
+         break;
+      }
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
+   }
+
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, find_smt_tokens )
+{
+   FC_ASSERT( args.symbols.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   find_smt_tokens_return result;
+   result.tokens.reserve( args.symbols.size() );
+
+   for( auto& symbol : args.symbols )
+   {
+      const auto token = chain::util::smt::find_token( _db, symbol, args.ignore_precision );
+      if( token != nullptr )
+      {
+         result.tokens.push_back( *token );
+      }
+   }
+
+   return result;
+}
+
 DEFINE_API_IMPL( database_api_impl, list_smt_token_emissions )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -1558,6 +1638,8 @@ DEFINE_READ_APIS( database_api,
    (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
    (get_nai_pool)
+   (list_smt_tokens)
+   (find_smt_tokens)
    (list_smt_token_emissions)
    (find_smt_token_emissions)
 #endif

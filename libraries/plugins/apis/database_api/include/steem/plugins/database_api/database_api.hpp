@@ -143,6 +143,9 @@ class database_api
          */
          (get_nai_pool)
 
+         (list_smt_tokens)
+         (find_smt_tokens)
+
          (list_smt_token_emissions)
          (find_smt_token_emissions)
 #endif
