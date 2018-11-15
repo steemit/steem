@@ -166,19 +166,15 @@ FC_REFLECT( steem::plugins::market_history::bucket_object_details,
             (close)
             (volume) )
 
-#if defined STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::market_history::bucket_object,
                      (id)
                      (open)(seconds)
-                     (steem)(symbol)(non_steem)
-         )
-#else
-FC_REFLECT( steem::plugins::market_history::bucket_object,
-                     (id)
-                     (open)(seconds)
-                     (steem)(non_steem)
-         )
+                     (steem)
+#ifdef STEEM_ENABLE_SMT
+                     (symbol)
 #endif
+                     (non_steem)
+         )
 
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::market_history::bucket_object, steem::plugins::market_history::bucket_index )
 
