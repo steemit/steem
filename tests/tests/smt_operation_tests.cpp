@@ -2510,7 +2510,7 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_apply )
       vote_regen.vote_regeneration_period_seconds = 86400 * 6;
       vote_regen.votes_per_regeneration_period = 600;
       smt_param_rewards_v1 rewards;
-      rewards.content_constant = 1000000000000ull;
+      rewards.content_constant = uint128_t( uint64_t( 1000000000000ull ) );
       rewards.percent_curation_rewards = 15 * STEEM_1_PERCENT;
       rewards.author_reward_curve = curve_id::quadratic;
       rewards.curation_reward_curve = curve_id::linear;
