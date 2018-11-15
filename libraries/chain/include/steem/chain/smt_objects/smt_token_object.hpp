@@ -90,7 +90,6 @@ public:
 
    /// set_setup_parameters
    bool              allow_voting = false;
-   bool              allow_vesting = false;
 
    /// set_runtime_parameters
    uint32_t cashout_window_seconds = 0;
@@ -270,7 +269,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (pending_rewarded_vesting_smt)
    (market_maker)
    (allow_voting)
-   (allow_vesting)
    (max_supply)
    (capped_generation_policy)
    (generation_begin_time)

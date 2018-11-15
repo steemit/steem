@@ -33,17 +33,11 @@ namespace {
 class smt_setup_parameters_visitor : public fc::visitor<bool>
 {
 public:
-   smt_setup_parameters_visitor(smt_token_object& smt_token) : _smt_token(smt_token) {}
+   smt_setup_parameters_visitor( smt_token_object& smt_token ) : _smt_token( smt_token ) {}
 
-   bool operator () (const smt_param_allow_voting& allow_voting)
+   bool operator () ( const smt_param_allow_voting& allow_voting )
    {
       _smt_token.allow_voting = allow_voting.value;
-      return true;
-   }
-
-   bool operator () (const smt_param_allow_vesting& allow_vesting)
-   {
-      _smt_token.allow_vesting = allow_vesting.value;
       return true;
    }
 
@@ -245,14 +239,14 @@ void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameter
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& smt_token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
+   const smt_token_object& smt_token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
    
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
-      smt_setup_parameters_visitor visitor(token);
+      smt_setup_parameters_visitor visitor( token );
 
-      for (auto& param : o.setup_parameters)
-         param.visit(visitor);
+      for ( auto& param : o.setup_parameters )
+         param.visit( visitor );
    });
 }
 

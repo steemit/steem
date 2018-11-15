@@ -2008,5 +2008,123 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
+{
+   try
+   {
+      ACTORS( (alice) )
+      generate_block();
+
+      asset_symbol_type alice_symbol = create_smt( "alice", alice_private_key, 3 );
+
+      smt_set_setup_parameters_operation op;
+      op.control_account = "alice";
+      op.symbol = alice_symbol;
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
+
+      op.validate();
+
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Invalid symbol
+      op.symbol = alice_symbol;
+
+      op.control_account = "####";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Invalid account name
+      op.control_account = "alice";
+
+      op.setup_parameters.clear();
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Empty setup parameters
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
+
+      op.validate();
+
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
+{
+   try
+   {
+      smt_set_setup_parameters_operation op;
+      op.control_account = "alice";
+
+      flat_set<account_name_type> auths;
+      flat_set<account_name_type> expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+
+      generate_block();
+
+      FUND( "alice", 5000000 );
+      FUND( "bob", 5000000 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( "alice", ASSET( "5000.000 TESTS" ) );
+      convert( "bob", ASSET( "5000.000 TESTS" ) );
+
+      auto alice_symbol = create_smt( "alice", alice_private_key, 3 );
+      auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
+
+      auto alice_token = util::smt::find_token( *db, alice_symbol );
+      auto bob_token = util::smt::find_token( *db, bob_symbol );
+
+      BOOST_REQUIRE( alice_token->allow_voting == false );
+
+      BOOST_TEST_MESSAGE( " -- Set voting to true" );
+      smt_set_setup_parameters_operation op;
+      op.control_account = "alice";
+      op.symbol = alice_symbol;
+
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
+      PUSH_OP( op, alice_private_key );
+
+      BOOST_REQUIRE( alice_token->allow_voting == true );
+
+      BOOST_TEST_MESSAGE( " -- Set voting to false" );
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
+      PUSH_OP( op, alice_private_key );
+
+      BOOST_REQUIRE( alice_token->allow_voting == false );
+
+      BOOST_TEST_MESSAGE( " -- Does not control SMT" );
+      op.symbol = bob_symbol;
+
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Set voting to true" );
+      op.control_account = "bob";
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
+
+      PUSH_OP( op, bob_private_key );
+      BOOST_REQUIRE( bob_token->allow_voting == true );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
