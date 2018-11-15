@@ -260,19 +260,6 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
-#ifdef STEEM_ENABLE_SMT
-FC_REFLECT( steem::chain::comment_object,
-             (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
-             (last_update)(created)(active)(last_payout)
-             (depth)(children)
-             (net_rshares)(abs_rshares)(vote_rshares)
-             (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
-             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
-             (beneficiaries)(allowed_vote_assets)
-          )
-#else
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
@@ -283,8 +270,11 @@ FC_REFLECT( steem::chain::comment_object,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-          )
+#ifdef STEEM_ENABLE_SMT
+             (allowed_vote_assets)
 #endif
+          )
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
 
 FC_REFLECT( steem::chain::comment_content_object,
@@ -299,7 +289,7 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comme
 namespace helpers
 {
    using steem::chain::shared_string;
-   
+
    template <>
    class index_statistic_provider<steem::chain::comment_index>
    {
