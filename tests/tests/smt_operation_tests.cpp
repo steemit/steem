@@ -2026,6 +2026,10 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 
       op.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Invalid symbol
+      op.symbol = VESTS_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Invalid symbol
+      op.symbol = SBD_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception ); // Invalid symbol
       op.symbol = alice_symbol;
 
       op.control_account = "####";
@@ -2091,7 +2095,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       BOOST_REQUIRE( alice_token->allow_voting == false );
 
-      BOOST_TEST_MESSAGE( " -- Set voting to true" );
+      BOOST_TEST_MESSAGE( " -- Succeed set voting to true" );
       smt_set_setup_parameters_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
@@ -2101,25 +2105,42 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       BOOST_REQUIRE( alice_token->allow_voting == true );
 
-      BOOST_TEST_MESSAGE( " -- Set voting to false" );
+      BOOST_TEST_MESSAGE( " -- Succeed set voting to false" );
       op.setup_parameters.clear();
       op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
       PUSH_OP( op, alice_private_key );
 
       BOOST_REQUIRE( alice_token->allow_voting == false );
 
-      BOOST_TEST_MESSAGE( " -- Does not control SMT" );
+      BOOST_TEST_MESSAGE( "--- Failure with wrong control account" );
       op.symbol = bob_symbol;
 
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( " -- Set voting to true" );
+      BOOST_TEST_MESSAGE( " -- Succeed set voting to true" );
       op.control_account = "bob";
       op.setup_parameters.clear();
       op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
 
       PUSH_OP( op, bob_private_key );
       BOOST_REQUIRE( bob_token->allow_voting == true );
+
+
+      BOOST_TEST_MESSAGE( " -- Failure with mismatching precision" );
+      op.symbol.asset_num++;
+      FAIL_WITH_OP( op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure with non-existent asset symbol" );
+      op.symbol = this->get_new_smt_symbol( 1, db );
+      FAIL_WITH_OP( op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Succeed set voting to false" );
+      op.symbol = bob_symbol;
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
+      PUSH_OP( op, bob_private_key );
+      BOOST_REQUIRE( bob_token->allow_voting == false );
+
 
       validate_database();
    }
