@@ -63,34 +63,64 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   FC_ASSERT( util::smt::find_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
-   FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
+   auto token_ptr = util::smt::find_token( _db, o.symbol, true );
 
-   asset creation_fee;
-
-   if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
+   if( o.smt_creation_fee.amount > 0 )
    {
-      creation_fee = o.smt_creation_fee;
+      FC_ASSERT( token_ptr == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
+      FC_ASSERT( _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
+
+      // New SMT case
+      asset creation_fee;
+
+      if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
+      {
+         creation_fee = o.smt_creation_fee;
+      }
+      else
+      {
+         const auto& fhistory = _db.get_feed_history();
+         FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
+
+         if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
+            creation_fee = _db.to_steem( o.smt_creation_fee );
+         else
+            creation_fee = _db.to_sbd( o.smt_creation_fee );
+      }
+
+      FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
+         "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
+
+      FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
+         "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
+
+      _db.adjust_balance( o.control_account , -o.smt_creation_fee );
+      _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
    }
    else
    {
-      const auto& fhistory = _db.get_feed_history();
-      FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
+      // Reset SMT case
+      FC_ASSERT( token_ptr != nullptr, "Cannot reset an non-existent SMT. Did you forget to specify the creation fee?" );
+      FC_ASSERT( token_ptr->control_account == o.control_account, "You do not control this SMT. Control Account: ${a}", ("a", token_ptr->control_account) );
+      FC_ASSERT( token_ptr->phase == smt_phase::account_elevated, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
 
-      if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
-         creation_fee = _db.to_steem( o.smt_creation_fee );
-      else
-         creation_fee = _db.to_sbd( o.smt_creation_fee );
+      vector< const smt_token_emissions_object* > token_emissions;
+      const auto& emissions_idx = _db.get_index< smt_token_emissions_index, by_symbol_time >();
+
+      for( auto itr = emissions_idx.lower_bound( token_ptr->liquid_symbol );
+           itr != emissions_idx.end() && itr->symbol == token_ptr->liquid_symbol;
+           ++itr )
+      {
+         token_emissions.push_back( &(*itr) );
+      }
+
+      for( auto emission_ptr : token_emissions )
+      {
+         _db.remove( *emission_ptr );
+      }
+
+      _db.remove( *token_ptr );
    }
-
-   FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
-      "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
-
-   FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
-      "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
-
-   _db.adjust_balance( o.control_account , -o.smt_creation_fee );
-   _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
 
    // Create SMT object common to both liquid and vesting variants of SMT.
    _db.create< smt_token_object >( [&]( smt_token_object& token )

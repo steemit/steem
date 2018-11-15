@@ -1811,7 +1811,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       BOOST_REQUIRE( token.reverse_auction_window_seconds == STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 );
       BOOST_REQUIRE( token.vote_regeneration_period_seconds == STEEM_VOTING_MANA_REGENERATION_SECONDS );
       BOOST_REQUIRE( token.votes_per_regeneration_period == SMT_DEFAULT_VOTES_PER_REGEN_PERIOD );
-      BOOST_REQUIRE( token.content_constant == 0 );
+      BOOST_REQUIRE( token.content_constant == STEEM_CONTENT_CONSTANT_HF0 );
       BOOST_REQUIRE( token.percent_curation_rewards == SMT_DEFAULT_PERCENT_CURATION_REWARDS );
       BOOST_REQUIRE( token.author_reward_curve == curve_id::linear );
       BOOST_REQUIRE( token.curation_reward_curve == curve_id::square_root );
@@ -1819,6 +1819,8 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
 
       const auto& emissions_idx = db->get_index< smt_token_emissions_index, by_id >();
       BOOST_REQUIRE( emissions_idx.begin() == emissions_idx.end() );
+
+      generate_block();
 
       BOOST_TEST_MESSAGE( "--- Failure resetting a token that has completed setup" );
 
