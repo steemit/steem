@@ -72,6 +72,8 @@ FC_REFLECT_DERIVED\s*[(]
 
 re_bubble_item = re.compile(r"\s*[(]\s*([a-zA-Z0-9_]+)\s*")
 
+re_ifdef = re.compile(r"#(ifn?def\s*[a-zA-Z0-9_]+|endif)\s*")
+
 def bubble_list(x):
     return [re_bubble_item.match(e).group(1) for e in x.split(")")[:-1]]
 
@@ -86,6 +88,7 @@ for root, dirs, files in os.walk("."):
         try:
             with open( os.path.join(root, filename), "r", encoding="utf8" ) as f:
                 content = f.read()
+                content = re.sub( re_ifdef, "", content )
                 for m in re_reflect.finditer(content):
                     cname = m.group(1)
                     members = bubble_list(m.group(2))
