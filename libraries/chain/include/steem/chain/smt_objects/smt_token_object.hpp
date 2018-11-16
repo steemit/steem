@@ -8,6 +8,8 @@
 
 namespace steem { namespace chain {
 
+using protocol::curve_id;
+
 enum class smt_phase : uint8_t
 {
    account_elevated,
@@ -71,38 +73,39 @@ public:
    }
 
    // id_type is actually oid<smt_token_object>
-   id_type           id;
+   id_type              id;
 
    /**The object represents both liquid and vesting variant of SMT
     * To get vesting symbol, call liquid_symbol.get_paired_symbol()
     */
-   asset_symbol_type liquid_symbol;
-   account_name_type control_account;
-   smt_phase         phase = smt_phase::account_elevated;
+   asset_symbol_type    liquid_symbol;
+   account_name_type    control_account;
+   smt_phase            phase = smt_phase::account_elevated;
 
-   share_type  current_supply = 0;
-   share_type  total_vesting_fund_smt = 0;
-   share_type  total_vesting_shares = 0;
-   share_type  pending_rewarded_vesting_shares = 0;
-   share_type  pending_rewarded_vesting_smt = 0;
+   share_type           current_supply = 0;
+   share_type           total_vesting_fund_smt = 0;
+   share_type           total_vesting_shares = 0;
+   share_type           pending_rewarded_vesting_shares = 0;
+   share_type           pending_rewarded_vesting_smt = 0;
 
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
-   bool              allow_voting = true;
+   bool                 allow_voting = true;
 
    /// set_runtime_parameters
-   uint32_t cashout_window_seconds = 0;
-   uint32_t reverse_auction_window_seconds = 0;
+   uint32_t             cashout_window_seconds = STEEM_CASHOUT_WINDOW_SECONDS;
+   uint32_t             reverse_auction_window_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20;
 
-   uint32_t vote_regeneration_period_seconds = 0;
-   uint32_t votes_per_regeneration_period = 0;
+   uint32_t             vote_regeneration_period_seconds = STEEM_VOTING_MANA_REGENERATION_SECONDS;
+   uint32_t             votes_per_regeneration_period = SMT_DEFAULT_VOTES_PER_REGEN_PERIOD;
 
-   uint128_t content_constant = 0;
-   uint16_t percent_curation_rewards = 0;
-   uint16_t percent_content_rewards = 0;
-   protocol::curve_id author_reward_curve;
-   protocol::curve_id curation_reward_curve;
+   uint128_t            content_constant = STEEM_CONTENT_CONSTANT_HF0;
+   uint16_t             percent_curation_rewards = SMT_DEFAULT_PERCENT_CURATION_REWARDS;
+   protocol::curve_id   author_reward_curve = curve_id::linear;
+   protocol::curve_id   curation_reward_curve = curve_id::square_root;
+
+   bool                 allow_downvotes = true;
 
    ///parameters for 'smt_setup_operation'
    int64_t                       max_supply = 0;
@@ -267,6 +270,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (total_vesting_shares)
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
+   (allow_downvotes)
    (market_maker)
    (allow_voting)
    (cashout_window_seconds)
@@ -275,7 +279,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (votes_per_regeneration_period)
    (content_constant)
    (percent_curation_rewards)
-   (percent_content_rewards)
    (author_reward_curve)
    (curation_reward_curve)
    (max_supply)

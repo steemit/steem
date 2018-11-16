@@ -17,9 +17,12 @@
 
 #include "../db_fixture/database_fixture.hpp"
 
+#include <fc/uint128.hpp>
+
 using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
+using fc::uint128_t;
 using boost::container::flat_set;
 
 BOOST_FIXTURE_TEST_SUITE( smt_operation_tests, smt_database_fixture )
@@ -1895,6 +1898,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
 
       op.get_required_posting_authorities( auths );
       BOOST_REQUIRE( auths == expected );
+
       expected.insert( "alice" );
       op.get_required_active_authorities( auths );
       BOOST_REQUIRE( auths == expected );
@@ -2144,6 +2148,395 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
 
       validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_set_runtime_parameters_validate" );
+
+      smt_set_runtime_parameters_operation op;
+
+      auto new_symbol = get_new_smt_symbol( 3, db );
+
+      op.symbol = new_symbol;
+      op.control_account = "alice";
+      op.runtime_parameters.insert( smt_param_allow_downvotes() );
+
+      // If this fails, it could indicate a test above has failed for the wrong reasons
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Test invalid control account name" );
+      op.control_account = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.control_account = "alice";
+
+      // Test symbol
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: vesting symbol used instead of liquid one" );
+      op.symbol = op.symbol.get_paired_symbol();
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: STEEM cannot be an SMT" );
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: SBD cannot be an SMT" );
+      op.symbol = SBD_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: VESTS cannot be an SMT" );
+      op.symbol = VESTS_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      BOOST_TEST_MESSAGE( "--- Failure when no parameters are set" );
+      op.runtime_parameters.clear();
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      /*
+       * Inequality to test:
+       *
+       * 0 <= reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT < cashout_window_seconds
+       * <= SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
+       */
+
+      BOOST_TEST_MESSAGE( "--- Failure when cashout_window_second is equal to SMT_UPVOTE_LOCKOUT" );
+      smt_param_windows_v1 windows;
+      windows.reverse_auction_window_seconds = 0;
+      windows.cashout_window_seconds = SMT_UPVOTE_LOCKOUT;
+      op.runtime_parameters.insert( windows );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when cashout_window_seconds is above SMT_UPVOTE_LOCKOUT" );
+      windows.cashout_window_seconds++;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Failure when cashout_window_seconds is equal to reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT" );
+      windows.reverse_auction_window_seconds++;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure when cashout_window_seconds is greater than SMT_VESTING_WITHDRAW_INTERVAL_SECONDS" );
+      windows.cashout_window_seconds = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS + 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when cashout_window_seconds is equal to SMT_VESTING_WITHDRAW_INTERVAL_SECONDS" );
+      windows.cashout_window_seconds--;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Success when reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT is one less than cashout_window_seconds" );
+      windows.reverse_auction_window_seconds = windows.cashout_window_seconds - SMT_UPVOTE_LOCKOUT - 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Failure when reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT is equal to cashout_window_seconds" );
+      windows.cashout_window_seconds--;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( windows );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      /*
+       * Conditions to test:
+       *
+       * 0 < vote_regeneration_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
+       *
+       * votes_per_regeneration_period * 86400 / vote_regeneration_period
+       * <= SMT_MAX_NOMINAL_VOTES_PER_DAY
+       *
+       * 0 < votes_per_regeneration_period <= SMT_MAX_VOTES_PER_REGENERATION
+       */
+      uint32_t practical_regen_seconds_lower_bound = 86400 / SMT_MAX_NOMINAL_VOTES_PER_DAY;
+
+      BOOST_TEST_MESSAGE( "--- Failure when vote_regeneration_period_seconds is 0" );
+      smt_param_vote_regeneration_period_seconds_v1 vote_regen;
+      vote_regen.vote_regeneration_period_seconds = 0;
+      vote_regen.votes_per_regeneration_period = 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when vote_regeneration_period_seconds is greater than 0" );
+      // Any value less than 86 will violate the nominal votes per day check. 86 is a practical minimum as a consequence.
+      vote_regen.vote_regeneration_period_seconds = practical_regen_seconds_lower_bound + 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Failure when vote_regeneration_period_seconds is greater SMT_VESTING_WITHDRAW_INTERVAL_SECONDS" );
+      vote_regen.vote_regeneration_period_seconds = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS + 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when vote_regeneration_period_seconds is equal to SMT_VESTING_WITHDRAW_INTERVAL_SECONDS" );
+      vote_regen.vote_regeneration_period_seconds--;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Test various \"nominal votes per day\" scenarios" );
+      BOOST_TEST_MESSAGE( "--- Mid Point Checks" );
+      vote_regen.vote_regeneration_period_seconds = 86400;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_NOMINAL_VOTES_PER_DAY;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      vote_regen.vote_regeneration_period_seconds = 86399;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = 86400;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_NOMINAL_VOTES_PER_DAY + 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = 86401;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_NOMINAL_VOTES_PER_DAY;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      vote_regen.vote_regeneration_period_seconds = 86400;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_NOMINAL_VOTES_PER_DAY - 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Lower Bound Checks" );
+      vote_regen.vote_regeneration_period_seconds = practical_regen_seconds_lower_bound;
+      vote_regen.votes_per_regeneration_period = 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = practical_regen_seconds_lower_bound + 1;
+      vote_regen.votes_per_regeneration_period = 2;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = practical_regen_seconds_lower_bound + 2;
+      vote_regen.votes_per_regeneration_period = 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Upper Bound Checks" );
+      vote_regen.vote_regeneration_period_seconds = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_VOTES_PER_REGENERATION;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      vote_regen.votes_per_regeneration_period = SMT_MAX_VOTES_PER_REGENERATION + 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS - 1;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_VOTES_PER_REGENERATION;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      vote_regen.vote_regeneration_period_seconds = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
+      vote_regen.votes_per_regeneration_period = SMT_MAX_VOTES_PER_REGENERATION - 1;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( vote_regen );
+      op.validate();
+
+      /*
+       * Conditions to test:
+       *
+       * percent_curation_rewards <= 10000
+       *
+       * percent_content_rewards + percent_curation_rewards == 10000
+       *
+       * author_reward_curve must be quadratic or linear
+       *
+       * curation_reward_curve must be bounded_curation, linear, or square_root
+       */
+      BOOST_TEST_MESSAGE( "--- Failure when percent_curation_rewards greater than 10000" );
+      smt_param_rewards_v1 rewards;
+      rewards.content_constant = STEEM_CONTENT_CONSTANT_HF0;
+      rewards.percent_curation_rewards = STEEM_100_PERCENT + 1;
+      rewards.author_reward_curve = curve_id::linear;
+      rewards.curation_reward_curve = curve_id::square_root;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when percent_curation_rewards is 10000" );
+      rewards.percent_curation_rewards = STEEM_100_PERCENT;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Success when author curve is quadratic" );
+      rewards.author_reward_curve = curve_id::quadratic;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Failure when author curve is bounded_curation" );
+      rewards.author_reward_curve = curve_id::bounded_curation;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure when author curve is square_root" );
+      rewards.author_reward_curve = curve_id::square_root;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success when curation curve is bounded_curation" );
+      rewards.author_reward_curve = curve_id::linear;
+      rewards.curation_reward_curve = curve_id::bounded_curation;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Success when curation curve is linear" );
+      rewards.curation_reward_curve = curve_id::linear;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Failure when curation curve is quadratic" );
+      rewards.curation_reward_curve = curve_id::quadratic;
+      op.runtime_parameters.clear();
+      op.runtime_parameters.insert( rewards );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      // Literally nothing to test for smt_param_allow_downvotes because it can only be true or false.
+      // Inclusion success was tested in initial positive validation at the beginning of the test.
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_set_runtime_parameters_authorities" );
+      smt_set_runtime_parameters_operation op;
+      op.control_account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_set_runtime_parameters_evaluate" );
+
+      ACTORS( (alice)(bob) )
+      SMT_SYMBOL( alice, 3, db );
+      SMT_SYMBOL( bob, 3, db );
+
+      db_plugin->debug_update( [=](database& db)
+      {
+         db.create< smt_token_object >( [&]( smt_token_object& o )
+         {
+            o.control_account = "alice";
+            o.liquid_symbol = alice_symbol;
+         });
+      });
+
+      smt_set_runtime_parameters_operation op;
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- Failure with wrong control account" );
+      op.control_account = "bob";
+      op.symbol = alice_symbol;
+      op.runtime_parameters.insert( smt_param_allow_downvotes() );
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure with a non-existent asset symbol" );
+      op.control_account = "alice";
+      op.symbol = bob_symbol;
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure with wrong precision in asset symbol" );
+      op.symbol = alice_symbol;
+      op.symbol.asset_num++;
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success updating runtime parameters" );
+      op.runtime_parameters.clear();
+      // These are params different than the default
+      smt_param_windows_v1 windows;
+      windows.cashout_window_seconds = 86400 * 4;
+      windows.reverse_auction_window_seconds = 60 * 5;
+      smt_param_vote_regeneration_period_seconds_v1 vote_regen;
+      vote_regen.vote_regeneration_period_seconds = 86400 * 6;
+      vote_regen.votes_per_regeneration_period = 600;
+      smt_param_rewards_v1 rewards;
+      rewards.content_constant = uint128_t( uint64_t( 1000000000000ull ) );
+      rewards.percent_curation_rewards = 15 * STEEM_1_PERCENT;
+      rewards.author_reward_curve = curve_id::quadratic;
+      rewards.curation_reward_curve = curve_id::linear;
+      smt_param_allow_downvotes downvotes;
+      downvotes.value = false;
+      op.runtime_parameters.insert( windows );
+      op.runtime_parameters.insert( vote_regen );
+      op.runtime_parameters.insert( rewards );
+      op.runtime_parameters.insert( downvotes );
+      op.symbol = alice_symbol;
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      const auto& token = db->get< smt_token_object, by_symbol >( alice_symbol );
+
+      BOOST_REQUIRE( token.cashout_window_seconds == windows.cashout_window_seconds );
+      BOOST_REQUIRE( token.reverse_auction_window_seconds == windows.reverse_auction_window_seconds );
+      BOOST_REQUIRE( token.vote_regeneration_period_seconds == vote_regen.vote_regeneration_period_seconds );
+      BOOST_REQUIRE( token.votes_per_regeneration_period == vote_regen.votes_per_regeneration_period );
+      BOOST_REQUIRE( token.content_constant == rewards.content_constant );
+      BOOST_REQUIRE( token.percent_curation_rewards == rewards.percent_curation_rewards );
+      BOOST_REQUIRE( token.author_reward_curve == rewards.author_reward_curve );
+      BOOST_REQUIRE( token.curation_reward_curve == rewards.curation_reward_curve );
+      BOOST_REQUIRE( token.allow_downvotes == downvotes.value );
    }
    FC_LOG_AND_RETHROW()
 }
