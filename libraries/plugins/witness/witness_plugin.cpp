@@ -1,4 +1,5 @@
 #include <steem/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin_objects.hpp>
 
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/account_object.hpp>
@@ -60,7 +61,6 @@ namespace detail {
          _block_producer( std::make_shared< witness::block_producer >( _db ) )
          {}
 
-      void on_pre_apply_block( const chain::block_notification& note );
       void on_post_apply_block( const chain::block_notification& note );
       void on_pre_apply_operation( const chain::operation_notification& note );
       void on_post_apply_operation( const chain::operation_notification& note );
@@ -77,11 +77,8 @@ namespace detail {
       std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                        _timer;
 
-      std::set< steem::protocol::account_name_type >                     _dupe_customs;
-
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
-      boost::signals2::connection   _pre_apply_block_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
@@ -227,11 +224,6 @@ namespace detail {
       }
    };
 
-   void witness_plugin_impl::on_pre_apply_block( const chain::block_notification& b )
-   {
-      _dupe_customs.clear();
-   }
-
    void witness_plugin_impl::on_pre_apply_operation( const chain::operation_notification& note )
    {
       if( _db.is_producing() )
@@ -247,16 +239,31 @@ namespace detail {
          case operation::tag< custom_operation >::value:
          case operation::tag< custom_json_operation >::value:
          case operation::tag< custom_binary_operation >::value:
-         {
-            flat_set< account_name_type > impacted;
-            app::operation_get_impacted_accounts( note.op, impacted );
+            if( _db.is_producing() )
+            {
+               flat_set< account_name_type > impacted;
+               app::operation_get_impacted_accounts( note.op, impacted );
 
-            for( auto& account : impacted )
-               if( _db.is_producing() )
-                  STEEM_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+               for( const account_name_type& account : impacted )
+               {
+                  // Possible alternative implementation:  Don't call find(), simply catch
+                  // the exception thrown by db.create() when violating uniqueness (std::logic_error).
+                  //
+                  // This alternative implementation isn't "idiomatic" (i.e. AFAICT no existing
+                  // code uses this approach).  However, it may improve performance.
+
+                  const witness_custom_op_object* coo = _db.find< witness_custom_op_object, by_account >( account );
+                  STEEM_ASSERT( !coo, plugin_exception,
                      "Account ${a} already submitted a custom json operation this block.",
                      ("a", account) );
-         }
+
+                  _db.create< witness_custom_op_object >( [&]( witness_custom_op_object& o )
+                  {
+                     o.account = account;
+                  } );
+               }
+            }
+
             break;
          default:
             break;
@@ -265,7 +272,14 @@ namespace detail {
 
    void witness_plugin_impl::on_post_apply_block( const block_notification& note )
    {
-      _dupe_customs.clear();
+      const auto& idx = _db.get_index< witness_custom_op_index >().indices().get< by_id >();
+      while( true )
+      {
+         auto it = idx.begin();
+         if( it == idx.end() )
+            break;
+         _db.remove( *it );
+      }
    }
 
    void witness_plugin_impl::schedule_production_loop() {
@@ -482,8 +496,6 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
-   my->_pre_apply_block_conn = my->_db.add_post_apply_block_handler(
-      [&]( const chain::block_notification& note ){ my->on_pre_apply_block( note ); }, *this, 0 );
    my->_post_apply_block_conn = my->_db.add_post_apply_block_handler(
       [&]( const chain::block_notification& note ){ my->on_post_apply_block( note ); }, *this, 0 );
    my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler(
@@ -493,6 +505,9 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    if( my->_witnesses.size() && my->_private_keys.size() )
       my->_chain_plugin.set_write_lock_hold_time( -1 );
+
+   add_plugin_index< witness_custom_op_index >( my->_db );
+
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
@@ -520,7 +535,6 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
-      chain::util::disconnect_signal( my->_pre_apply_block_conn );
       chain::util::disconnect_signal( my->_post_apply_block_conn );
       chain::util::disconnect_signal( my->_pre_apply_operation_conn );
       chain::util::disconnect_signal( my->_post_apply_operation_conn );
