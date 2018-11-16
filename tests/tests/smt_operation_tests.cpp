@@ -2093,24 +2093,24 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       auto alice_token = util::smt::find_token( *db, alice_symbol );
       auto bob_token = util::smt::find_token( *db, bob_symbol );
 
-      BOOST_REQUIRE( alice_token->allow_voting == false );
+      BOOST_REQUIRE( alice_token->allow_voting == true );
 
-      BOOST_TEST_MESSAGE( " -- Succeed set voting to true" );
       smt_set_setup_parameters_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
 
-      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
-      PUSH_OP( op, alice_private_key );
-
-      BOOST_REQUIRE( alice_token->allow_voting == true );
-
       BOOST_TEST_MESSAGE( " -- Succeed set voting to false" );
-      op.setup_parameters.clear();
       op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
       PUSH_OP( op, alice_private_key );
 
       BOOST_REQUIRE( alice_token->allow_voting == false );
+
+      BOOST_TEST_MESSAGE( " -- Succeed set voting to true" );
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_voting { .value = true } );
+      PUSH_OP( op, alice_private_key );
+
+      BOOST_REQUIRE( alice_token->allow_voting == true );
 
       BOOST_TEST_MESSAGE( "--- Failure with wrong control account" );
       op.symbol = bob_symbol;
