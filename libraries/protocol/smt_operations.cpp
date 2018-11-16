@@ -285,10 +285,6 @@ struct smt_set_runtime_parameters_operation_visitor
       // 0 <= reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT < cashout_window_seconds < SMT_VESTING_WITHDRAW_INTERVAL_SECONDS
       uint64_t sum = ( param_windows.reverse_auction_window_seconds + SMT_UPVOTE_LOCKOUT );
 
-      FC_ASSERT( sum >= 0,
-         "'reverse_auction_window + SMT_UPVOTE_LOCKOUT' interval cannot be negative. Was ${sum} seconds",
-         ("sum", sum) );
-
       FC_ASSERT( sum < param_windows.cashout_window_seconds,
          "'reverse auction window + upvote lockout' interval must be less than cashout window (${c}). Was ${sum} seconds.",
          ("c", param_windows.cashout_window_seconds)

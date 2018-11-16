@@ -278,7 +278,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (votes_per_regeneration_period)
    (content_constant)
    (percent_curation_rewards)
-   (percent_content_rewards)
    (author_reward_curve)
    (curation_reward_curve)
    (max_supply)
