@@ -1,4 +1,5 @@
 #include <steem/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin_objects.hpp>
 
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/account_object.hpp>
@@ -76,8 +77,6 @@ namespace detail {
       std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                        _timer;
-
-      std::set< steem::protocol::account_name_type >                     _dupe_customs;
 
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
@@ -229,7 +228,6 @@ namespace detail {
 
    void witness_plugin_impl::on_pre_apply_block( const chain::block_notification& b )
    {
-      _dupe_customs.clear();
    }
 
    void witness_plugin_impl::on_pre_apply_operation( const chain::operation_notification& note )
@@ -247,16 +245,31 @@ namespace detail {
          case operation::tag< custom_operation >::value:
          case operation::tag< custom_json_operation >::value:
          case operation::tag< custom_binary_operation >::value:
-         {
-            flat_set< account_name_type > impacted;
-            app::operation_get_impacted_accounts( note.op, impacted );
+            if( _db.is_producing() )
+            {
+               flat_set< account_name_type > impacted;
+               app::operation_get_impacted_accounts( note.op, impacted );
 
-            for( auto& account : impacted )
-               if( _db.is_producing() )
-                  STEEM_ASSERT( _dupe_customs.insert( account ).second, plugin_exception,
+               for( const account_name_type& account : impacted )
+               {
+                  // Possible alternative implementation:  Don't call find(), simply catch
+                  // the exception thrown by db.create() when violating uniqueness (std::logic_error).
+                  //
+                  // This alternative implementation isn't "idiomatic" (i.e. AFAICT no existing
+                  // code uses this approach).  However, it may improve performance.
+
+                  const witness_custom_op_object* coo = _db.find< witness_custom_op_object, by_account >( account );
+                  STEEM_ASSERT( !coo, plugin_exception,
                      "Account ${a} already submitted a custom json operation this block.",
                      ("a", account) );
-         }
+
+                  _db.create< witness_custom_op_object >( [&]( witness_custom_op_object& o )
+                  {
+                     o.account = account;
+                  } );
+               }
+            }
+
             break;
          default:
             break;
@@ -265,7 +278,14 @@ namespace detail {
 
    void witness_plugin_impl::on_post_apply_block( const block_notification& note )
    {
-      _dupe_customs.clear();
+      const auto& idx = _db.get_index< witness_custom_op_index >().indices().get< by_id >();
+      while( true )
+      {
+         auto it = idx.begin();
+         if( it == idx.end() )
+            break;
+         _db.remove( *it );
+      }
    }
 
    void witness_plugin_impl::schedule_production_loop() {
@@ -493,6 +513,9 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    if( my->_witnesses.size() && my->_private_keys.size() )
       my->_chain_plugin.set_write_lock_hold_time( -1 );
+
+   add_plugin_index< witness_custom_op_index >( my->_db );
+
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
