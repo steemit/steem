@@ -1769,7 +1769,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
 
       smt_set_setup_parameters_operation op4;
       smt_param_allow_voting voting;
-      voting.value = true;
+      voting.value = false;
       op4.setup_parameters.insert( voting );
       op4.control_account = "alice";
       op4.symbol = alice_symbol;
@@ -1805,8 +1805,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
 
       BOOST_REQUIRE( token.liquid_symbol == op.symbol );
       BOOST_REQUIRE( token.control_account == "alice" );
-      BOOST_REQUIRE( token.allow_vesting == false );
-      BOOST_REQUIRE( token.allow_voting == false );
+      BOOST_REQUIRE( token.allow_voting == true );
       BOOST_REQUIRE( token.cashout_window_seconds == STEEM_CASHOUT_WINDOW_SECONDS );
       BOOST_REQUIRE( token.reverse_auction_window_seconds == STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 );
       BOOST_REQUIRE( token.vote_regeneration_period_seconds == STEEM_VOTING_MANA_REGENERATION_SECONDS );
