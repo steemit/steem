@@ -211,19 +211,12 @@ struct smt_setup_emissions_operation : public smt_base_operation
    void validate()const;
 };
 
-
-struct smt_param_allow_vesting
-{
-   bool value = true;
-};
-
 struct smt_param_allow_voting
 {
    bool value = true;
 };
 
 typedef static_variant<
-   smt_param_allow_vesting,
    smt_param_allow_voting
    > smt_setup_parameter;
 
@@ -371,11 +364,6 @@ FC_REFLECT_DERIVED(
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
    (extensions)
-   )
-
-FC_REFLECT(
-   steem::protocol::smt_param_allow_vesting,
-   (value)
    )
 
 FC_REFLECT(

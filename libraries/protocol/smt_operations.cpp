@@ -332,6 +332,7 @@ void smt_cap_reveal_operation::validate()const
 void smt_set_setup_parameters_operation::validate() const
 {
    smt_base_operation::validate();
+   FC_ASSERT( setup_parameters.empty() == false );
 }
 
 } }

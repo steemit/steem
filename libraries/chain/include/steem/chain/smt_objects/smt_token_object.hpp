@@ -89,8 +89,7 @@ public:
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
-   bool              allow_voting = false;
-   bool              allow_vesting = false;
+   bool              allow_voting = true;
 
    /// set_runtime_parameters
    uint32_t cashout_window_seconds = 0;
@@ -270,7 +269,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (pending_rewarded_vesting_smt)
    (market_maker)
    (allow_voting)
-   (allow_vesting)
    (cashout_window_seconds)
    (reverse_auction_window_seconds)
    (vote_regeneration_period_seconds)
