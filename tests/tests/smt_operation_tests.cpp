@@ -1271,7 +1271,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_validate )
 }
 
 // Here would be smt_transfer_to_vesting_authorities if it differed from transfer_to_vesting_authorities
-
+/*
 BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
 {
    try
@@ -1345,6 +1345,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+*/
 
 BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
