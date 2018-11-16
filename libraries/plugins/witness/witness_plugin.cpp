@@ -61,7 +61,6 @@ namespace detail {
          _block_producer( std::make_shared< witness::block_producer >( _db ) )
          {}
 
-      void on_pre_apply_block( const chain::block_notification& note );
       void on_post_apply_block( const chain::block_notification& note );
       void on_pre_apply_operation( const chain::operation_notification& note );
       void on_post_apply_operation( const chain::operation_notification& note );
@@ -80,7 +79,6 @@ namespace detail {
 
       plugins::chain::chain_plugin& _chain_plugin;
       chain::database&              _db;
-      boost::signals2::connection   _pre_apply_block_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
@@ -225,10 +223,6 @@ namespace detail {
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
       }
    };
-
-   void witness_plugin_impl::on_pre_apply_block( const chain::block_notification& b )
-   {
-   }
 
    void witness_plugin_impl::on_pre_apply_operation( const chain::operation_notification& note )
    {
@@ -502,8 +496,6 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
-   my->_pre_apply_block_conn = my->_db.add_post_apply_block_handler(
-      [&]( const chain::block_notification& note ){ my->on_pre_apply_block( note ); }, *this, 0 );
    my->_post_apply_block_conn = my->_db.add_post_apply_block_handler(
       [&]( const chain::block_notification& note ){ my->on_post_apply_block( note ); }, *this, 0 );
    my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler(
@@ -543,7 +535,6 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
-      chain::util::disconnect_signal( my->_pre_apply_block_conn );
       chain::util::disconnect_signal( my->_post_apply_block_conn );
       chain::util::disconnect_signal( my->_pre_apply_operation_conn );
       chain::util::disconnect_signal( my->_post_apply_operation_conn );
