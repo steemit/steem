@@ -2580,6 +2580,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
+   _my->_evaluator_registry.register_evaluator< smt_contribute_evaluator                 >();
 #endif
 
 #ifdef IS_TEST_NET

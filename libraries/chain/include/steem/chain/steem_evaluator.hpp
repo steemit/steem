@@ -62,6 +62,7 @@ STEEM_DEFINE_EVALUATOR( smt_setup_emissions )
 STEEM_DEFINE_EVALUATOR( smt_set_setup_parameters )
 STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_create )
+STEEM_DEFINE_EVALUATOR( smt_contribute )
 #endif
 
 } } // steem::chain

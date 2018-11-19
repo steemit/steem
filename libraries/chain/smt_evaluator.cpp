@@ -299,5 +299,16 @@ void smt_set_runtime_parameters_evaluator::do_apply( const smt_set_runtime_param
    });
 }
 
+void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+
+   const smt_token_object* token = util::smt::find_token( _db, o.symbol );
+
+   FC_ASSERT( token != nullptr, "Cannot contribute to an unknown SMT" );
+   FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
+   FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
+}
+
 } }
 #endif

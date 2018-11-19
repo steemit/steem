@@ -268,6 +268,13 @@ struct smt_set_runtime_parameters_operation : public smt_base_operation
    void validate()const;
 };
 
+struct smt_contribute_operation : public smt_executor_base_operation
+{
+   asset contribution;
+
+   void validate() const;
+};
+
 } }
 
 FC_REFLECT(
@@ -420,4 +427,11 @@ FC_REFLECT_DERIVED(
    (runtime_parameters)
    (extensions)
    )
+
+FC_REFLECT_DERIVED(
+   steem::protocol::smt_contribute_operation,
+   (steem::protocol::smt_executor_base_operation),
+   (contribution)
+   )
+
 #endif

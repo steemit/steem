@@ -77,6 +77,7 @@ namespace steem { namespace protocol {
             smt_set_setup_parameters_operation,
             smt_set_runtime_parameters_operation,
             smt_create_operation,
+            smt_contribute_operation,
 #endif
             /// virtual operations below this point
             fill_convert_request_operation,

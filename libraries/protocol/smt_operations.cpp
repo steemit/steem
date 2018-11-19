@@ -382,5 +382,13 @@ void smt_set_setup_parameters_operation::validate() const
    FC_ASSERT( setup_parameters.empty() == false );
 }
 
+void smt_contribute_operation::validate() const
+{
+   smt_executor_base_operation::validate();
+
+   FC_ASSERT( contribution.symbol == STEEM_SYMBOL );
+   FC_ASSERT( contribution.amount > 0 );
+}
+
 } }
 #endif

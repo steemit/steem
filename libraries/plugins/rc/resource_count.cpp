@@ -347,6 +347,12 @@ struct count_operation_visitor
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
    }
+
+   void operator()( const smt_contribute_operation& op ) const
+   {
+      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
+      execution_time_count += _e.smt_contribute_operation_exec_time;
+   }
 #endif
 
    void operator()( const recover_account_operation& ) const {}
