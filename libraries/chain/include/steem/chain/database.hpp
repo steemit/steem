@@ -425,7 +425,7 @@ namespace steem { namespace chain {
          //////////////////// db_init.cpp ////////////////////
 
          void initialize_evaluators();
-         void set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry );
+         void register_custom_operation_interpreter( std::shared_ptr< custom_operation_interpreter > interpreter );
          std::shared_ptr< custom_operation_interpreter > get_custom_json_evaluator( const custom_id_type& id );
 
          /// Reset the object graph in-memory
