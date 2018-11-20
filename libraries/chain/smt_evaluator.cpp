@@ -22,10 +22,10 @@ inline const smt_token_object& get_controlled_smt( const database& db, const acc
    // Check against unotherized account trying to access (and alter) SMT. Unotherized means "other than the one that created the SMT".
    FC_ASSERT( smt->control_account == control_account, "The account ${account} does NOT control the SMT ${smt}",
       ("account", control_account)("smt", smt_symbol.to_nai()) );
-   
+
    return *smt;
 }
-   
+
 }
 
 namespace {
@@ -128,33 +128,45 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 #pragma message ("TODO: Adjust assertion below and add/modify negative tests appropriately.")
-   const auto* _token = _db.find< smt_token_object, by_symbol >( o.symbol );
-   FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
+   const smt_token_object& token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
-   _db.modify(  *_token, [&]( smt_token_object& token )
+   FC_ASSERT( token.phase == smt_phase::account_elevated, "Cannot setup an SMT that has already been setup." );
+   FC_ASSERT( o.generation_begin_time >= _db.head_block_time(), "Cannot start ICO prior to head block" );
+
+   const auto& emission_idx = _db.get_index< smt_token_emissions_index, by_symbol_time >();
+   auto emission_itr = emission_idx.lower_bound( o.symbol );
+
+   // If there emissions for the SMT
+   if( emission_itr != emission_idx.end() && emission_itr->symbol == o.symbol )
    {
-#pragma message ("TODO: Add/modify test to check the token phase correctly set.")
-      token.phase = smt_phase::setup_completed;
-      token.control_account = o.control_account;
-      token.max_supply = o.max_supply;
+      FC_ASSERT( emission_itr->schedule_time >= o.announced_launch_time,
+         "First token emission cannot take place before announced launch time. First Emission: ${e}, Launch Time: ${l}",
+         ("e", emission_itr->schedule_time)
+         ("l", o.announced_launch_time) );
+   }
 
-      token.generation_begin_time = o.generation_begin_time;
-      token.generation_end_time = o.generation_end_time;
-      token.announced_launch_time = o.announced_launch_time;
-      token.launch_expiration_time = o.launch_expiration_time;
-   } );
+   _db.modify( token, [&]( smt_token_object& t )
+   {
+      t.phase = smt_phase::setup_completed;
+      t.max_supply = o.max_supply;
 
-   smt_setup_evaluator_visitor visitor( *_token, _db );
+      t.generation_begin_time = o.generation_begin_time;
+      t.generation_end_time = o.generation_end_time;
+      t.announced_launch_time = o.announced_launch_time;
+      t.launch_expiration_time = o.launch_expiration_time;
+   });
+
+   smt_setup_evaluator_visitor visitor( token, _db );
    o.initial_generation_policy.visit( visitor );
 
    _db.create< smt_event_token_object >( [&]( smt_event_token_object& event_token )
    {
-      event_token.parent = _token->id;
+      event_token.parent = token.id;
 
-      event_token.generation_begin_time = _token->generation_begin_time;
-      event_token.generation_end_time = _token->generation_end_time;
-      event_token.announced_launch_time = _token->announced_launch_time;
-      event_token.launch_expiration_time = _token->launch_expiration_time;
+      event_token.generation_begin_time = token.generation_begin_time;
+      event_token.generation_end_time = token.generation_end_time;
+      event_token.announced_launch_time = token.announced_launch_time;
+      event_token.launch_expiration_time = token.launch_expiration_time;
    });
 }
 
@@ -240,7 +252,7 @@ void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameter
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
    const smt_token_object& smt_token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
-   
+
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
       smt_setup_parameters_visitor visitor( token );

@@ -816,15 +816,15 @@ smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type a
       reveal.nonce = nonce;
 
       ret.hash = fc::sha256::hash( reveal );
-      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy::validate
-      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
+      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy_v1::validate
+      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy_v1::validate
    }
 
    return ret;
 }
 
 template< typename T >
-smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_policy
+smt_capped_generation_policy_v1 t_smt_database_fixture< T >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
@@ -835,7 +835,7 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
    uint32_t max_unit_ratio
 )
 {
-   smt_capped_generation_policy ret;
+   smt_capped_generation_policy_v1 ret;
 
    ret.pre_soft_cap_unit = pre_soft_cap_unit;
    ret.post_soft_cap_unit = post_soft_cap_unit;
@@ -861,7 +861,7 @@ template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database
 
 template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
 template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount, uint128_t nonce );
-template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
+template smt_capped_generation_policy_v1 t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,

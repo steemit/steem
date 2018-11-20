@@ -102,7 +102,7 @@ struct smt_cap_commitment
    }
 };
 
-struct smt_capped_generation_policy
+struct smt_capped_generation_policy_v1
 {
    smt_generation_unit pre_soft_cap_unit;
    smt_generation_unit post_soft_cap_unit;
@@ -115,18 +115,15 @@ struct smt_capped_generation_policy
    uint32_t            min_unit_ratio = 0;
    uint32_t            max_unit_ratio = 0;
 
-   extensions_type     extensions;
-
    void validate()const;
 };
 
 typedef static_variant<
-   smt_capped_generation_policy
+   smt_capped_generation_policy_v1
    > smt_generation_policy;
 
 struct smt_setup_operation : public smt_base_operation
 {
-   uint8_t                 decimal_places = 0;
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
    smt_generation_policy   initial_generation_policy;
@@ -287,7 +284,6 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
    steem::protocol::smt_setup_operation,
    (steem::protocol::smt_base_operation),
-   (decimal_places)
    (max_supply)
    (initial_generation_policy)
    (generation_begin_time)
@@ -324,7 +320,7 @@ FC_REFLECT_DERIVED(
    )
 
 FC_REFLECT(
-   steem::protocol::smt_capped_generation_policy,
+   steem::protocol::smt_capped_generation_policy_v1,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
    (min_steem_units_commitment)
@@ -332,7 +328,6 @@ FC_REFLECT(
    (soft_cap_percent)
    (min_unit_ratio)
    (max_unit_ratio)
-   (extensions)
    )
 
 FC_REFLECT_DERIVED(
@@ -411,5 +406,5 @@ FC_REFLECT_DERIVED(
    (runtime_parameters)
    (extensions)
    )
-   
+
 #endif

@@ -40,13 +40,30 @@ void smt_create_operation::validate()const
       ("prec1",symbol.decimals())("prec2",precision) );
 }
 
-bool is_valid_unit_target( const account_name_type& name )
+bool is_valid_generation_steem_destination( const account_name_type& name )
 {
-   if( is_valid_account_name(name) )
+   if( is_valid_account_name( name ) )
       return true;
-   if( name == account_name_type("$from") )
+   if( name == SMT_DESTINATION_FROM_VESTING )
       return true;
-   if( name == account_name_type("$from.vesting") )
+   if( name == SMT_DESTINATION_MARKET_MAKER )
+      return true;
+   return false;
+}
+
+bool is_valid_generation_smt_destination( const account_name_type& name )
+{
+   if( is_valid_account_name( name ) )
+      return true;
+   if( name == SMT_DESTINATION_FROM )
+      return true;
+   if( name == SMT_DESTINATION_FROM_VESTING )
+      return true;
+   if( name == SMT_DESTINATION_MARKET_MAKER )
+      return true;
+   if( name == SMT_DESTINATION_REWARDS )
+      return true;
+   if( name == SMT_DESTINATION_VESTING )
       return true;
    return false;
 }
@@ -85,13 +102,13 @@ void smt_generation_unit::validate()const
    FC_ASSERT( steem_unit.size() <= SMT_MAX_UNIT_ROUTES );
    for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
    {
-      FC_ASSERT( is_valid_unit_target( e.first ) );
+      FC_ASSERT( is_valid_generation_steem_destination( e.first ) );
       FC_ASSERT( e.second > 0 );
    }
    FC_ASSERT( token_unit.size() <= SMT_MAX_UNIT_ROUTES );
    for(const std::pair< account_name_type, uint16_t >& e : token_unit )
    {
-      FC_ASSERT( is_valid_unit_target( e.first ) );
+      FC_ASSERT( is_valid_generation_smt_destination( e.first ) );
       FC_ASSERT( e.second > 0 );
    }
 }
@@ -131,7 +148,7 @@ void smt_revealed_cap::validate( const smt_cap_commitment& commitment )const
    FC_ASSERT( reveal_hash == commitment.hash );
 }
 
-void smt_capped_generation_policy::validate()const
+void smt_capped_generation_policy_v1::validate()const
 {
    pre_soft_cap_unit.validate();
    post_soft_cap_unit.validate();
@@ -146,8 +163,6 @@ void smt_capped_generation_policy::validate()const
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-
-   // TODO : Check account name
 
    if( soft_cap_percent == STEEM_100_PERCENT )
    {
@@ -214,7 +229,7 @@ struct validate_visitor
 void smt_setup_emissions_operation::validate()const
 {
    smt_base_operation::validate();
-   
+
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
    FC_ASSERT( emissions_unit.token_unit.empty() == false, "Emissions token unit cannot be empty" );
 
@@ -229,7 +244,7 @@ void smt_setup_emissions_operation::validate()const
       "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );
 
    FC_ASSERT( interval_count > 0, "Interval count must be greater than 0" );
-   
+
    FC_ASSERT( lep_time <= rep_time, "Left endpoint time must be less than or equal to right endpoint time" );
 
    // If time modulation is enabled
@@ -263,16 +278,15 @@ void smt_setup_emissions_operation::validate()const
 void smt_setup_operation::validate()const
 {
    smt_base_operation::validate();
-   FC_ASSERT( decimal_places <= SMT_MAX_DECIMAL_PLACES );
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
    validate_visitor vtor;
    initial_generation_policy.visit( vtor );
    FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
-   FC_ASSERT( generation_end_time > generation_begin_time );
+   FC_ASSERT( generation_end_time >= generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
    FC_ASSERT( launch_expiration_time >= announced_launch_time );
-}  
+}
 
 struct smt_set_runtime_parameters_operation_visitor
 {

@@ -71,7 +71,7 @@ void test_alpha()
 {
    vector<operation>  operations;
 
-   smt_capped_generation_policy gpolicy;
+   smt_capped_generation_policy_v1 gpolicy;
    uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
 
    // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
@@ -101,7 +101,6 @@ void test_alpha()
    setup_op.control_account = "alpha";
 
    asset_symbol_type alpha_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 4 );
-   setup_op.decimal_places = alpha_symbol.decimals();
    setup_op.symbol = alpha_symbol;
 
    setup_op.initial_generation_policy = gpolicy;
@@ -131,7 +130,7 @@ void test_beta()
 {
    vector<operation>  operations;
 
-   smt_capped_generation_policy gpolicy;
+   smt_capped_generation_policy_v1 gpolicy;
 
    // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
    gpolicy.pre_soft_cap_unit.steem_unit.emplace( "fred"  , 3 );
@@ -159,7 +158,6 @@ void test_beta()
    setup_op.control_account = "beta";
 
    asset_symbol_type alpha_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 4 );
-   setup_op.decimal_places = alpha_symbol.decimals();
    setup_op.symbol = alpha_symbol;
 
    setup_op.initial_generation_policy = gpolicy;
@@ -189,7 +187,7 @@ void test_delta()
 {
    vector<operation>  operations;
 
-   smt_capped_generation_policy gpolicy;
+   smt_capped_generation_policy_v1 gpolicy;
 
    // set steem unit, total is 1 STEEM-satoshi = 0.001 STEEM
    gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder", 1 );
@@ -214,7 +212,6 @@ void test_delta()
    setup_op.control_account = "delta";
 
    asset_symbol_type delta_symbol = asset_symbol_type::from_nai( SMT_TEST_PLUGIN_NAI, 5 );
-   setup_op.decimal_places = delta_symbol.decimals();
    setup_op.symbol = delta_symbol;
 
    setup_op.initial_generation_policy = gpolicy;

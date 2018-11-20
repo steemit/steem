@@ -8,6 +8,8 @@
 
 namespace steem { namespace chain {
 
+typedef protocol::smt_capped_generation_policy_v1 smt_capped_generation_policy;
+
 enum class smt_phase : uint8_t
 {
    account_elevated,
@@ -106,7 +108,6 @@ public:
 
    ///parameters for 'smt_setup_operation'
    int64_t                       max_supply = 0;
-   steem::protocol::
    smt_capped_generation_policy  capped_generation_policy;
    time_point_sec                generation_begin_time;
    time_point_sec                generation_end_time;
