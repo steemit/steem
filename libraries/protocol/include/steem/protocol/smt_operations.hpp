@@ -270,7 +270,8 @@ struct smt_set_runtime_parameters_operation : public smt_base_operation
 
 struct smt_contribute_operation : public smt_executor_base_operation
 {
-   asset contribution;
+   asset            contribution;
+   extensions_type  extensions;
 
    void validate() const;
 };
@@ -432,6 +433,7 @@ FC_REFLECT_DERIVED(
    steem::protocol::smt_contribute_operation,
    (steem::protocol::smt_executor_base_operation),
    (contribution)
+   (extensions)
    )
 
 #endif
