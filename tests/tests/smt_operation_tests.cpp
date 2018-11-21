@@ -2541,5 +2541,68 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_contribute_validate )
+{
+   try
+   {
+      auto new_symbol = get_new_smt_symbol( 3, db );
+
+      smt_contribute_operation op;
+      op.contributor = "alice";
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+      op.contribution_id = 1;
+      op.symbol = new_symbol;
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " -- Failure on invalid account name" );
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contributor = "alice";
+
+      BOOST_TEST_MESSAGE( " -- Failure on negative contribution" );
+      op.contribution = asset( -1, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on no contribution" );
+      op.contribution = asset( 0, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on VESTS contribution" );
+      op.contribution = asset( 1000, VESTS_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SBD contribution" );
+      op.contribution = asset( 1000, SBD_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SMT contribution" );
+      op.contribution = asset( 1000, new_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to STEEM" );
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to VESTS" );
+      op.symbol = VESTS_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to SBD" );
+      op.symbol = SBD_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

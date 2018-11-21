@@ -53,6 +53,7 @@ void initialize_core_indexes( database& db )
    add_core_index< account_rewards_balance_index           >( db );
    add_core_index< nai_pool_index                          >( db );
    add_core_index< smt_token_emissions_index               >( db );
+   add_core_index< smt_contribution_index                  >( db );
 #endif
 }
 

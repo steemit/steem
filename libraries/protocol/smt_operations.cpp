@@ -384,8 +384,8 @@ void smt_set_setup_parameters_operation::validate() const
 
 void smt_contribute_operation::validate() const
 {
-   smt_executor_base_operation::validate();
-
+   validate_account_name( contributor );
+   common_symbol_validation( symbol );
    FC_ASSERT( contribution.symbol == STEEM_SYMBOL );
    FC_ASSERT( contribution.amount > 0 );
 }

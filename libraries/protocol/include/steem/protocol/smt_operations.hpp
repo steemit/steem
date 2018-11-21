@@ -268,10 +268,13 @@ struct smt_set_runtime_parameters_operation : public smt_base_operation
    void validate()const;
 };
 
-struct smt_contribute_operation : public smt_executor_base_operation
+struct smt_contribute_operation : public base_operation
 {
-   asset            contribution;
-   extensions_type  extensions;
+   account_name_type  contributor;
+   asset_symbol_type  symbol;
+   uint32_t           contribution_id;
+   asset              contribution;
+   extensions_type    extensions;
 
    void validate() const;
 };
@@ -429,9 +432,11 @@ FC_REFLECT_DERIVED(
    (extensions)
    )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_contribute_operation,
-   (steem::protocol::smt_executor_base_operation),
+   (contributor)
+   (symbol)
+   (contribution_id)
    (contribution)
    (extensions)
    )
