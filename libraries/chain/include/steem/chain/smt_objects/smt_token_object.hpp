@@ -354,6 +354,13 @@ FC_REFLECT( steem::chain::smt_token_object,
    (author_reward_curve)
    (curation_reward_curve)
    (max_supply)
+   (capped_generation_policy)
+   (generation_begin_time)
+   (generation_end_time)
+   (announced_launch_time)
+   (launch_expiration_time)
+   (steem_units_min_cap)
+   (steem_units_hard_cap)
 )
 
 FC_REFLECT( steem::chain::smt_ico_object,
