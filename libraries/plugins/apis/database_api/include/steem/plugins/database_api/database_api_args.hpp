@@ -45,7 +45,8 @@ enum sort_order_type
    by_comment_voter,
    by_voter_comment,
    by_price,
-   by_symbol_time
+   by_symbol_time,
+   by_symbol_contributor
 };
 
 /* get_config */
@@ -580,6 +581,26 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
+struct list_smt_contribution_args
+{
+   fc::variant       start;
+   uint32_t          limit;
+   sort_order_type   order;
+};
+
+struct list_smt_contribution_return
+{
+   vector< smt_contribution_object > contributions;
+};
+
+struct find_smt_contribution_args
+{
+   asset_symbol_type asset_symbol;
+   account_name_type account;
+};
+
+typedef list_smt_contribution_return find_smt_contribution_return;
+
 struct list_smt_token_emissions_args
 {
    fc::variant       start;
@@ -635,7 +656,8 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter)
    (by_voter_comment)
    (by_price)
-   (by_symbol_time) )
+   (by_symbol_time)
+   (by_symbol_contributor) )
 
 FC_REFLECT( steem::plugins::database_api::get_reward_funds_return,
    (funds) )
@@ -829,6 +851,18 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
+
+FC_REFLECT( steem::plugins::database_api::list_smt_contribution_args,
+   (start)
+   (limit)
+   (order) )
+
+FC_REFLECT( steem::plugins::database_api::list_smt_contribution_return,
+   (contributions) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_contribution_args,
+   (asset_symbol)
+   (account) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_args,
    (start)
