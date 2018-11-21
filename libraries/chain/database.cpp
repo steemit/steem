@@ -2590,9 +2590,10 @@ void database::initialize_evaluators()
 }
 
 
-void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
+void database::register_custom_operation_interpreter( std::shared_ptr< custom_operation_interpreter > interpreter )
 {
-   bool inserted = _custom_operation_interpreters.emplace( id, registry ).second;
+   FC_ASSERT( interpreter );
+   bool inserted = _custom_operation_interpreters.emplace( interpreter->get_custom_id(), interpreter ).second;
    // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
    FC_ASSERT( inserted );
 }
