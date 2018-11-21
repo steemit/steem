@@ -3,19 +3,21 @@
 
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 
+#include <steem/plugins/rc/rc_config.hpp>
 #include <steem/plugins/rc/rc_curve.hpp>
 #include <steem/plugins/rc/rc_export_objects.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/rc_operations.hpp>
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/generic_custom_operation_interpreter.hpp>
 #include <steem/chain/index.hpp>
 
 #include <steem/jsonball/jsonball.hpp>
 
-#define STEEM_RC_REGEN_TIME   (60*60*24*5)
 // 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
@@ -57,6 +59,13 @@ class rc_plugin_impl
       void on_post_apply_operation( const operation_notification& note );
       void on_pre_apply_optional_action( const optional_action_notification& note );
       void on_post_apply_optional_action( const optional_action_notification& note );
+      void on_pre_apply_custom_operation( const custom_operation_notification& note );
+      void on_post_apply_custom_operation( const custom_operation_notification& note );
+
+      template< typename OpType >
+      void pre_apply_custom_op_type( const custom_operation_notification& note );
+      template< typename OpType >
+      void post_apply_custom_op_type( const custom_operation_notification& note );
 
       void on_first_block();
       void validate_database();
@@ -73,6 +82,9 @@ class rc_plugin_impl
       std::map< account_name_type, int64_t > _account_to_max_rc;
       uint32_t                      _enable_at_block = 1;
 
+      std::shared_ptr< generic_custom_operation_interpreter< steem::plugins::rc::rc_plugin_operation > >
+                                    _custom_operation_interpreter;
+
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
       boost::signals2::connection   _post_apply_transaction_conn;
@@ -80,6 +92,8 @@ class rc_plugin_impl
       boost::signals2::connection   _post_apply_operation_conn;
       boost::signals2::connection   _pre_apply_optional_action_conn;
       boost::signals2::connection   _post_apply_optional_action_conn;
+      boost::signals2::connection   _pre_apply_custom_operation_conn;
+      boost::signals2::connection   _post_apply_custom_operation_conn;
 };
 
 inline int64_t get_next_vesting_withdrawal( const account_object& account )
@@ -679,6 +693,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
+      FC_TODO( "Reduce delegations to pools as necessary to enforce get_maximum_rc() >= 0" );
       regenerate( op.from_account );
       regenerate( op.to_account );
    }
@@ -737,6 +752,12 @@ struct pre_apply_operation_visitor
    {
       regenerate< true >( get_worker_name( op.work ) );
       regenerate< false >( _current_witness );
+   }
+
+   void operator()( const delegate_to_pool_operation& op )const
+   {
+      ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      regenerate( op.from_account );
    }
 
    template< typename Op >
@@ -903,6 +924,11 @@ struct post_apply_operation_visitor
       _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
    }
 
+   void operator()( const delegate_to_pool_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.from_account );
+   }
+
    template< typename Op >
    void operator()( const Op& op )const
    {
@@ -931,6 +957,32 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
 
    // ilog( "Calling pre-vtor on ${op}", ("op", note.op) );
    note.op.visit( vtor );
+}
+
+template< typename OpType >
+void rc_plugin_impl::pre_apply_custom_op_type( const custom_operation_notification& note )
+{
+   const OpType* op = note.maybe_get_op< OpType >();
+   if( !op )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   pre_apply_operation_visitor vtor( _db );
+
+   // TODO: Add issue number to HF constant
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+      vtor._vesting_share_price = gpo.get_vesting_share_price();
+
+   vtor._current_witness = gpo.current_witness;
+   vtor._skip = _skip;
+
+   op->visit( vtor );
+}
+
+void rc_plugin_impl::on_pre_apply_custom_operation( const custom_operation_notification& note )
+{
+   pre_apply_custom_op_type< rc_plugin_operation >( note );
+   // If we wanted to pre-handle other plugin operations, we could put pre_apply_custom_op_type< other_plugin_operation >( note )
 }
 
 void update_modified_accounts( database& db, const std::vector< account_regen_info >& modified_accounts )
@@ -967,6 +1019,30 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    note.op.visit( vtor );
 
    update_modified_accounts( _db, modified_accounts );
+}
+
+template< typename OpType >
+void rc_plugin_impl::post_apply_custom_op_type( const custom_operation_notification& note )
+{
+   const OpType* op = note.maybe_get_op< OpType >();
+   if( !op )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   const uint32_t now = gpo.time.sec_since_epoch();
+
+   vector< account_regen_info > modified_accounts;
+
+   // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   op->visit( vtor );
+
+   update_modified_accounts( _db, modified_accounts );
+}
+
+void rc_plugin_impl::on_post_apply_custom_operation( const custom_operation_notification& note )
+{
+   post_apply_custom_op_type< rc_plugin_operation >( note );
 }
 
 void rc_plugin_impl::on_pre_apply_optional_action( const optional_action_notification& note )
@@ -1104,10 +1180,18 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
          { try { my->on_pre_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )
          { try { my->on_post_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_pre_apply_custom_operation_conn = db.add_pre_apply_custom_operation_handler( [&]( const custom_operation_notification& note )
+         { try { my->on_pre_apply_custom_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_post_apply_custom_operation_conn = db.add_post_apply_custom_operation_handler( [&]( const custom_operation_notification& note )
+         { try { my->on_post_apply_custom_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
 
       add_plugin_index< rc_resource_param_index >(db);
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
+      add_plugin_index< rc_delegation_pool_index >(db);
+      add_plugin_index< rc_delegation_from_account_index >(db);
+      add_plugin_index< rc_indel_edge_index >(db);
+      add_plugin_index< rc_outdel_drc_edge_index >(db);
 
       fc::mutable_variant_object state_opts;
 
@@ -1121,6 +1205,17 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 #endif
 
       appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
+
+      // Each plugin needs its own evaluator registry.
+      my->_custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::plugins::rc::rc_plugin_operation > >( my->_db, name() );
+
+      // Add each operation evaluator to the registry
+      my->_custom_operation_interpreter->register_evaluator< delegate_to_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< delegate_drc_from_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< set_slot_delegator_evaluator >( this );
+
+      // Add the registry to the database so the database can delegate custom ops to the plugin
+      my->_db.register_custom_operation_interpreter( my->_custom_operation_interpreter );
 
       ilog( "RC's will be computed starting at block ${b}", ("b", my->_enable_at_block) );
    }
@@ -1138,6 +1233,7 @@ void rc_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->_post_apply_operation_conn );
    chain::util::disconnect_signal( my->_pre_apply_optional_action_conn );
    chain::util::disconnect_signal( my->_post_apply_optional_action_conn );
+   chain::util::disconnect_signal( my->_pre_apply_custom_operation_conn );
 }
 
 void rc_plugin::set_rc_plugin_skip_flags( rc_plugin_skip_flags skip )
@@ -1169,6 +1265,7 @@ int64_t get_maximum_rc( const account_object& account, const rc_account_object& 
    result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
    result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
    result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
+   result = fc::signed_sat_sub( result, rc_account.vests_delegated_to_pools.amount.value );
    result = fc::signed_sat_sub( result, detail::get_next_vesting_withdrawal( account ) );
    return result;
 }
