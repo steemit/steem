@@ -3,12 +3,6 @@
 #include <steem/protocol/validation.hpp>
 #ifdef STEEM_ENABLE_SMT
 
-#define SMT_DESTINATION_FROM          account_name_type( "$from" )
-#define SMT_DESTINATION_FROM_VESTING  account_name_type( "$from.vesting" )
-#define SMT_DESTINATION_MARKET_MAKER  account_name_type( "$market_maker" )
-#define SMT_DESTINATION_REWARDS       account_name_type( "$rewards" )
-#define SMT_DESTINATION_VESTING       account_name_type( "$vesting" )
-
 namespace steem { namespace protocol {
 
 void common_symbol_validation( const asset_symbol_type& symbol )
@@ -100,17 +94,24 @@ uint32_t smt_generation_unit::token_unit_sum()const
 void smt_generation_unit::validate()const
 {
    FC_ASSERT( steem_unit.size() <= SMT_MAX_UNIT_ROUTES );
+   uint32_t total_units = 0;
    for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
    {
       FC_ASSERT( is_valid_generation_steem_destination( e.first ) );
       FC_ASSERT( e.second > 0 );
+      total_units += e.second;
    }
+   FC_ASSERT( total_units <= SMT_MAX_UNIT_COUNT );
+
    FC_ASSERT( token_unit.size() <= SMT_MAX_UNIT_ROUTES );
+   total_units = 0;
    for(const std::pair< account_name_type, uint16_t >& e : token_unit )
    {
       FC_ASSERT( is_valid_generation_smt_destination( e.first ) );
       FC_ASSERT( e.second > 0 );
+      total_units += e.second;
    }
+   FC_ASSERT( total_units <= SMT_MAX_UNIT_COUNT );
 }
 
 void smt_cap_commitment::fillin_nonhidden_value_hash( fc::sha256& result, share_type amount )
@@ -158,11 +159,6 @@ void smt_capped_generation_policy_v1::validate()const
 
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() > 0 );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() > 0 );
-
-   FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 
    if( soft_cap_percent == STEEM_100_PERCENT )
    {
