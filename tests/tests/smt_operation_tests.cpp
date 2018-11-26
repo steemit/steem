@@ -2686,6 +2686,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       generate_block();
 
       BOOST_TEST_MESSAGE( " -- Succeed on sufficient funds" );
+      bob_op.contribution_id = bob_contribution_counter++;
       PUSH_OP( bob_op, bob_private_key );
       bob_asset_accumulator += bob_op.contribution;
 
@@ -2745,20 +2746,24 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       } );
 
       BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
-      alice_op.contribution_id = alice_contribution_counter++;
+      alice_op.contribution_id = alice_contribution_counter;
       FAIL_WITH_OP( alice_op, alice_private_key, fc::assert_exception );
 
       BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
-      bob_op.contribution_id = bob_contribution_counter++;
+      bob_op.contribution_id = bob_contribution_counter;
       FAIL_WITH_OP( bob_op, bob_private_key, fc::assert_exception );
 
       BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
-      sam_op.contribution_id = sam_contribution_counter++;
+      sam_op.contribution_id = sam_contribution_counter;
       FAIL_WITH_OP( sam_op, sam_private_key, fc::assert_exception );
 
       auto alices_contributions = asset( 0, STEEM_SYMBOL );
       auto bobs_contributions = asset( 0, STEEM_SYMBOL );
       auto sams_contributions = asset( 0, STEEM_SYMBOL );
+
+      auto alices_num_contributions = 0;
+      auto bobs_num_contributions = 0;
+      auto sams_num_contributions = 0;
 
       const auto& idx = db->get_index< smt_contribution_index, by_symbol_contributor >();
 
@@ -2766,6 +2771,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       while( itr != idx.end() && itr->contributor == account_name_type( "alice" ) )
       {
          alices_contributions += itr->contribution;
+         alices_num_contributions++;
          ++itr;
       }
 
@@ -2773,6 +2779,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       while( itr != idx.end() && itr->contributor == account_name_type( "bob" ) )
       {
          bobs_contributions += itr->contribution;
+         bobs_num_contributions++;
          ++itr;
       }
 
@@ -2780,12 +2787,17 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       while( itr != idx.end() && itr->contributor == account_name_type( "sam" ) )
       {
          sams_contributions += itr->contribution;
+         sams_num_contributions++;
          ++itr;
       }
 
       BOOST_REQUIRE( alices_contributions == alice_asset_accumulator );
       BOOST_REQUIRE( bobs_contributions == bob_asset_accumulator );
       BOOST_REQUIRE( sams_contributions == sam_asset_accumulator );
+
+      BOOST_REQUIRE( alices_num_contributions == alice_contribution_counter - 1 );
+      BOOST_REQUIRE( bobs_num_contributions == bob_contribution_counter - 1 );
+      BOOST_REQUIRE( sams_num_contributions == sam_contribution_counter - 1 );
 
       BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - alice_asset_accumulator );
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - bob_asset_accumulator );
