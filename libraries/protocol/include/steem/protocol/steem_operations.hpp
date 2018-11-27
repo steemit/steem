@@ -571,7 +571,7 @@ namespace steem { namespace protocol {
    {
       flat_set< account_name_type > required_auths;
       flat_set< account_name_type > required_posting_auths;
-      string                        id; ///< must be less than 32 characters long
+      custom_id_type                id; ///< must be less than 32 characters long
       string                        json; ///< must be proper utf8 / JSON string.
 
       void validate()const;
@@ -587,7 +587,7 @@ namespace steem { namespace protocol {
       flat_set< account_name_type > required_posting_auths;
       vector< authority >           required_auths;
 
-      string                        id; ///< must be less than 32 characters long
+      custom_id_type                id; ///< must be less than 32 characters long
       vector< char >                data;
 
       void validate()const;

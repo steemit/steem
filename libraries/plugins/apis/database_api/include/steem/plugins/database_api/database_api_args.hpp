@@ -45,8 +45,17 @@ enum sort_order_type
    by_comment_voter,
    by_voter_comment,
    by_price,
-   by_symbol_time,
-   by_symbol_contributor
+   by_symbol_contributor,
+   by_symbol,
+   by_control_account,
+   by_symbol_time
+};
+
+struct list_object_args_type
+{
+   fc::variant       start;
+   uint32_t          limit;
+   sort_order_type   order;
 };
 
 /* get_config */
@@ -113,12 +122,7 @@ typedef api_feed_history_object  get_feed_history_return;
 
 /* Witnesses */
 
-struct list_witnesses_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_witnesses_args;
 
 struct list_witnesses_return
 {
@@ -134,12 +138,7 @@ struct find_witnesses_args
 typedef list_witnesses_return find_witnesses_return;
 
 
-struct list_witness_votes_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_witness_votes_args;
 
 struct list_witness_votes_return
 {
@@ -157,12 +156,7 @@ struct get_active_witnesses_return
 
 /* Account */
 
-struct list_accounts_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_accounts_args;
 
 struct list_accounts_return
 {
@@ -202,12 +196,7 @@ typedef list_owner_histories_return find_owner_histories_return;
 
 /* Account Recovery Requests */
 
-struct list_account_recovery_requests_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_account_recovery_requests_args;
 
 struct list_account_recovery_requests_return
 {
@@ -225,12 +214,7 @@ typedef list_account_recovery_requests_return find_account_recovery_requests_ret
 
 /* Change Recovery Account Requests */
 
-struct list_change_recovery_account_requests_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_change_recovery_account_requests_args;
 
 struct list_change_recovery_account_requests_return
 {
@@ -248,12 +232,7 @@ typedef list_change_recovery_account_requests_return find_change_recovery_accoun
 
 /* Escrow */
 
-struct list_escrows_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_escrows_args;
 
 struct list_escrows_return
 {
@@ -271,12 +250,7 @@ typedef list_escrows_return find_escrows_return;
 
 /* Vesting Withdraw Routes */
 
-struct list_withdraw_vesting_routes_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_withdraw_vesting_routes_args;
 
 struct list_withdraw_vesting_routes_return
 {
@@ -295,12 +269,7 @@ typedef list_withdraw_vesting_routes_return find_withdraw_vesting_routes_return;
 
 /* Savings Withdraw */
 
-struct list_savings_withdrawals_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_savings_withdrawals_args;
 
 struct list_savings_withdrawals_return
 {
@@ -318,12 +287,7 @@ typedef list_savings_withdrawals_return find_savings_withdrawals_return;
 
 /* Vesting Delegations */
 
-struct list_vesting_delegations_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_vesting_delegations_args;
 
 struct list_vesting_delegations_return
 {
@@ -341,12 +305,7 @@ typedef list_vesting_delegations_return find_vesting_delegations_return;
 
 /* Vesting Delegation Expirations */
 
-struct list_vesting_delegation_expirations_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_vesting_delegation_expirations_args;
 
 struct list_vesting_delegation_expirations_return
 {
@@ -364,12 +323,7 @@ typedef list_vesting_delegation_expirations_return find_vesting_delegation_expir
 
 /* SBD Converstions */
 
-struct list_sbd_conversion_requests_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_sbd_conversion_requests_args;
 
 struct list_sbd_conversion_requests_return
 {
@@ -387,12 +341,7 @@ typedef list_sbd_conversion_requests_return find_sbd_conversion_requests_return;
 
 /* Decline Voting Rights Requests */
 
-struct list_decline_voting_rights_requests_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_decline_voting_rights_requests_args;
 
 struct list_decline_voting_rights_requests_return
 {
@@ -410,12 +359,7 @@ typedef list_decline_voting_rights_requests_return find_decline_voting_rights_re
 
 /* Comments */
 
-struct list_comments_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_comments_args;
 
 struct list_comments_return
 {
@@ -433,12 +377,7 @@ typedef list_comments_return find_comments_return;
 
 /* Votes */
 
-struct list_votes_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_votes_args;
 
 struct list_votes_return
 {
@@ -457,12 +396,7 @@ typedef list_votes_return find_votes_return;
 
 /* Limit Orders */
 
-struct list_limit_orders_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_limit_orders_args;
 
 struct list_limit_orders_return
 {
@@ -581,12 +515,7 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
-struct list_smt_contribution_args
-{
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
-};
+typedef list_object_args_type list_smt_contribution_args;
 
 struct list_smt_contribution_return
 {
@@ -601,12 +530,25 @@ struct find_smt_contribution_args
 
 typedef list_smt_contribution_return find_smt_contribution_return;
 
-struct list_smt_token_emissions_args
+typedef list_object_args_type list_smt_token_emissions_args;
+
+typedef list_object_args_type list_smt_tokens_args;
+
+struct list_smt_tokens_return
 {
-   fc::variant       start;
-   uint32_t          limit;
-   sort_order_type   order;
+   vector< smt_token_object > tokens;
 };
+
+struct find_smt_tokens_args
+{
+   vector< asset_symbol_type > symbols;
+   bool ignore_precision = false;
+};
+
+typedef list_smt_tokens_return find_smt_tokens_return;
+
+
+typedef list_object_args_type list_smt_token_emissions_args;
 
 struct list_smt_token_emissions_return
 {
@@ -656,14 +598,16 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter)
    (by_voter_comment)
    (by_price)
-   (by_symbol_time)
-   (by_symbol_contributor) )
+   (by_symbol_contributor)
+   (by_symbol)
+   (by_control_account)
+   (by_symbol_time) )
+
+FC_REFLECT( steem::plugins::database_api::list_object_args_type,
+   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::get_reward_funds_return,
    (funds) )
-
-FC_REFLECT( steem::plugins::database_api::list_witnesses_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_witnesses_return,
    (witnesses) )
@@ -671,17 +615,11 @@ FC_REFLECT( steem::plugins::database_api::list_witnesses_return,
 FC_REFLECT( steem::plugins::database_api::find_witnesses_args,
    (owners) )
 
-FC_REFLECT( steem::plugins::database_api::list_witness_votes_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_witness_votes_return,
    (votes) )
 
 FC_REFLECT( steem::plugins::database_api::get_active_witnesses_return,
    (witnesses) )
-
-FC_REFLECT( steem::plugins::database_api::list_accounts_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_accounts_return,
    (accounts) )
@@ -698,17 +636,11 @@ FC_REFLECT( steem::plugins::database_api::list_owner_histories_return,
 FC_REFLECT( steem::plugins::database_api::find_owner_histories_args,
    (owner) )
 
-FC_REFLECT( steem::plugins::database_api::list_account_recovery_requests_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_account_recovery_requests_return,
    (requests) )
 
 FC_REFLECT( steem::plugins::database_api::find_account_recovery_requests_args,
    (accounts) )
-
-FC_REFLECT( steem::plugins::database_api::list_change_recovery_account_requests_args,
-   (start)(limit)(order) )
 
 FC_REFLECT(
    steem::plugins::database_api::list_change_recovery_account_requests_return,
@@ -717,17 +649,11 @@ FC_REFLECT(
 FC_REFLECT( steem::plugins::database_api::find_change_recovery_account_requests_args,
    (accounts) )
 
-FC_REFLECT( steem::plugins::database_api::list_escrows_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_escrows_return,
    (escrows) )
 
 FC_REFLECT( steem::plugins::database_api::find_escrows_args,
    (from) )
-
-FC_REFLECT( steem::plugins::database_api::list_withdraw_vesting_routes_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_withdraw_vesting_routes_return,
    (routes) )
@@ -735,17 +661,11 @@ FC_REFLECT( steem::plugins::database_api::list_withdraw_vesting_routes_return,
 FC_REFLECT( steem::plugins::database_api::find_withdraw_vesting_routes_args,
    (account)(order) )
 
-FC_REFLECT( steem::plugins::database_api::list_savings_withdrawals_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_savings_withdrawals_return,
    (withdrawals) )
 
 FC_REFLECT( steem::plugins::database_api::find_savings_withdrawals_args,
    (account) )
-
-FC_REFLECT( steem::plugins::database_api::list_vesting_delegations_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_vesting_delegations_return,
    (delegations) )
@@ -753,17 +673,11 @@ FC_REFLECT( steem::plugins::database_api::list_vesting_delegations_return,
 FC_REFLECT( steem::plugins::database_api::find_vesting_delegations_args,
    (account) )
 
-FC_REFLECT( steem::plugins::database_api::list_vesting_delegation_expirations_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_vesting_delegation_expirations_return,
    (delegations) )
 
 FC_REFLECT( steem::plugins::database_api::find_vesting_delegation_expirations_args,
    (account) )
-
-FC_REFLECT( steem::plugins::database_api::list_sbd_conversion_requests_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_sbd_conversion_requests_return,
    (requests) )
@@ -771,17 +685,11 @@ FC_REFLECT( steem::plugins::database_api::list_sbd_conversion_requests_return,
 FC_REFLECT( steem::plugins::database_api::find_sbd_conversion_requests_args,
    (account) )
 
-FC_REFLECT( steem::plugins::database_api::list_decline_voting_rights_requests_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_decline_voting_rights_requests_return,
    (requests) )
 
 FC_REFLECT( steem::plugins::database_api::find_decline_voting_rights_requests_args,
    (accounts) )
-
-FC_REFLECT( steem::plugins::database_api::list_comments_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_comments_return,
    (comments) )
@@ -789,17 +697,11 @@ FC_REFLECT( steem::plugins::database_api::list_comments_return,
 FC_REFLECT( steem::plugins::database_api::find_comments_args,
    (comments) )
 
-FC_REFLECT( steem::plugins::database_api::list_votes_args,
-   (start)(limit)(order) )
-
 FC_REFLECT( steem::plugins::database_api::list_votes_return,
    (votes) )
 
 FC_REFLECT( steem::plugins::database_api::find_votes_args,
    (author)(permlink) )
-
-FC_REFLECT( steem::plugins::database_api::list_limit_orders_args,
-   (start)(limit)(order) )
 
 FC_REFLECT( steem::plugins::database_api::list_limit_orders_return,
    (orders) )
@@ -852,11 +754,6 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
 
-FC_REFLECT( steem::plugins::database_api::list_smt_contribution_args,
-   (start)
-   (limit)
-   (order) )
-
 FC_REFLECT( steem::plugins::database_api::list_smt_contribution_return,
    (contributions) )
 
@@ -864,10 +761,11 @@ FC_REFLECT( steem::plugins::database_api::find_smt_contribution_args,
    (asset_symbol)
    (account) )
 
-FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_args,
-   (start)
-   (limit)
-   (order) )
+FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
+   (tokens) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_tokens_args,
+   (symbols)(ignore_precision) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_return,
    (token_emissions) )

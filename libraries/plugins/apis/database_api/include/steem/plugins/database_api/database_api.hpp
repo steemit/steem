@@ -145,6 +145,10 @@ class database_api
 
          (list_smt_contribution)
          (find_smt_contribution)
+
+         (list_smt_tokens)
+         (find_smt_tokens)
+
          (list_smt_token_emissions)
          (find_smt_token_emissions)
 #endif

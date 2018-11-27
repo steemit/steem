@@ -242,8 +242,12 @@ typedef multi_index_container <
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
          member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol > >,
-      ordered_non_unique< tag< by_control_account >,
-         member< smt_token_object, account_name_type, &smt_token_object::control_account > >
+      ordered_unique< tag< by_control_account >,
+         composite_key< smt_token_object,
+            member< smt_token_object, account_name_type, &smt_token_object::control_account >,
+            member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol >
+         >
+      >
    >,
    allocator< smt_token_object >
 > smt_token_index;
