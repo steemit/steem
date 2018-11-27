@@ -101,7 +101,6 @@ void smt_generation_unit::validate()const
       FC_ASSERT( e.second > 0 );
       total_units += e.second;
    }
-   FC_ASSERT( total_units <= SMT_MAX_UNIT_COUNT );
 
    FC_ASSERT( token_unit.size() <= SMT_MAX_UNIT_ROUTES );
    total_units = 0;
@@ -111,7 +110,6 @@ void smt_generation_unit::validate()const
       FC_ASSERT( e.second > 0 );
       total_units += e.second;
    }
-   FC_ASSERT( total_units <= SMT_MAX_UNIT_COUNT );
 }
 
 void smt_cap_commitment::fillin_nonhidden_value_hash( fc::sha256& result, share_type amount )

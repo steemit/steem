@@ -2150,7 +2150,45 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
 BOOST_AUTO_TEST_CASE( smt_capped_generation_policy_v1_validate )
 {
+   BOOST_TEST_MESSAGE( "Testing: smt_capped_generation_policy_v1_validate" );
 
+   BOOST_TEST_MESSAGE( "--- Test Success" );
+   smt_capped_generation_policy_v1 policy;
+   policy.pre_soft_cap_unit = get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } );
+   policy.post_soft_cap_unit = get_generation_unit();
+   policy.min_steem_units_commitment = get_cap_commitment( 1 );
+   policy.hard_cap_steem_units_commitment = get_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 );
+   policy.soft_cap_percent = STEEM_100_PERCENT;
+   policy.min_unit_ratio = 1000;
+   policy.max_unit_ratio = 1000;
+
+   policy.validate();
+
+   BOOST_TEST_MESSAGE( "--- Test failure with invalid pre_soft_cap_unit" );
+   policy.pre_soft_cap_unit.steem_unit.emplace( std::make_pair( "$$$$$$", 1 ) );
+   STEEM_REQUIRE_THROW( policy.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- Test failure with invalid post_soft_cap_unit" );
+   policy.pre_soft_cap_unit = get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } );
+   policy.post_soft_cap_unit.steem_unit.emplace( std::make_pair( "$$$$$$", 1 ) );
+   STEEM_REQUIRE_THROW( policy.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- Test failure with invalid min_steem_units_commitement" );
+   policy.post_soft_cap_unit = get_generation_unit();
+   policy.min_steem_units_commitment.upper_bound = STEEM_MAX_SHARE_SUPPLY + 1;
+   STEEM_REQUIRE_THROW( policy.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- Test failure with invalid hard_cap_steem_units_commitment" );
+   policy.min_steem_units_commitment = get_cap_commitment( 1 );
+   policy.hard_cap_steem_units_commitment.upper_bound = STEEM_MAX_SHARE_SUPPLY + 1;
+   STEEM_REQUIRE_THROW( policy.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- Test failure with soft_cap_percent > STEEM_100_PERCENT" );
+   policy.hard_cap_steem_units_commitment = get_cap_commitment( SMT_MIN_HARD_CAP_STEEM_UNITS + 1 );
+   policy.soft_cap_percent++;
+   STEEM_REQUIRE_THROW( policy.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- " );
 }
 
 BOOST_AUTO_TEST_CASE( smt_generation_unit_validate )
@@ -2203,15 +2241,6 @@ BOOST_AUTO_TEST_CASE( smt_generation_unit_validate )
       unit.steem_unit.emplace( std::make_pair( "bob", 1 ) );
       STEEM_REQUIRE_THROW( unit.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- Failhure when exceeding max steem unit count" );
-      unit.steem_unit.clear();
-      unit.steem_unit.emplace( std::make_pair( "alice", SMT_MAX_UNIT_COUNT ) );
-      unit.validate();
-
-      unit.steem_unit.emplace( std::make_pair( "bob", 1 ) );
-      STEEM_REQUIRE_THROW( unit.validate(), fc::assert_exception );
-
-
       BOOST_TEST_MESSAGE( "--- Failure on invalid account in token units" );
       unit.steem_unit.clear();
       unit.token_unit.emplace( std::make_pair( "$$$$$$", 1 ) );
@@ -2237,14 +2266,6 @@ BOOST_AUTO_TEST_CASE( smt_generation_unit_validate )
          unit.token_unit.emplace( std::make_pair( account, 1 ) );
          unit.validate();
       }
-
-      unit.token_unit.emplace( std::make_pair( "bob", 1 ) );
-      STEEM_REQUIRE_THROW( unit.validate(), fc::assert_exception );
-
-      BOOST_TEST_MESSAGE( "--- Failhure when exceeding max token unit count" );
-      unit.token_unit.clear();
-      unit.token_unit.emplace( std::make_pair( "alice", SMT_MAX_UNIT_COUNT ) );
-      unit.validate();
 
       unit.token_unit.emplace( std::make_pair( "bob", 1 ) );
       STEEM_REQUIRE_THROW( unit.validate(), fc::assert_exception );
