@@ -2641,19 +2641,19 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       smt_contribute_operation bob_op;
       bob_op.contributor = "bob";
       bob_op.contribution = asset( 1000, STEEM_SYMBOL );
-      bob_op.contribution_id = bob_contribution_counter++;
+      bob_op.contribution_id = bob_contribution_counter;
       bob_op.symbol = alice_symbol;
 
       smt_contribute_operation alice_op;
       alice_op.contributor = "alice";
       alice_op.contribution = asset( 2000, STEEM_SYMBOL );
-      alice_op.contribution_id = alice_contribution_counter++;
+      alice_op.contribution_id = alice_contribution_counter;
       alice_op.symbol = alice_symbol;
 
       smt_contribute_operation sam_op;
       sam_op.contributor = "sam";
       sam_op.contribution = asset( 3000, STEEM_SYMBOL );
-      sam_op.contribution_id = sam_contribution_counter++;
+      sam_op.contribution_id = sam_contribution_counter;
       sam_op.symbol = alice_symbol;
 
       BOOST_TEST_MESSAGE( " -- Failure on SMT not in contribution phase" );
@@ -2795,9 +2795,9 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       BOOST_REQUIRE( bobs_contributions == bob_asset_accumulator );
       BOOST_REQUIRE( sams_contributions == sam_asset_accumulator );
 
-      BOOST_REQUIRE( alices_num_contributions == alice_contribution_counter - 1 );
-      BOOST_REQUIRE( bobs_num_contributions == bob_contribution_counter - 1 );
-      BOOST_REQUIRE( sams_num_contributions == sam_contribution_counter - 1 );
+      BOOST_REQUIRE( alices_num_contributions == alice_contribution_counter );
+      BOOST_REQUIRE( bobs_num_contributions == bob_contribution_counter );
+      BOOST_REQUIRE( sams_num_contributions == sam_contribution_counter );
 
       BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - alice_asset_accumulator );
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - bob_asset_accumulator );
