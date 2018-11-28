@@ -536,7 +536,7 @@ typedef list_object_args_type list_smt_tokens_args;
 
 struct list_smt_tokens_return
 {
-   vector< smt_token_object > tokens;
+   vector< api_smt_token_object > tokens;
 };
 
 struct find_smt_tokens_args

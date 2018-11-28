@@ -1507,7 +1507,7 @@ DEFINE_API_IMPL( database_api_impl, find_smt_contribution )
    {
       result.contributions.push_back( *itr );
       ++itr;
-      }
+   }
 
    return result;
 }
@@ -1534,7 +1534,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            &database_api_impl::on_push_default< chain::smt_token_object > );
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); } );
 
          break;
       }
@@ -1558,7 +1558,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            &database_api_impl::on_push_default< chain::smt_token_object > );
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); } );
 
          break;
       }
@@ -1581,7 +1581,7 @@ DEFINE_API_IMPL( database_api_impl, find_smt_tokens )
       const auto token = chain::util::smt::find_token( _db, symbol, args.ignore_precision );
       if( token != nullptr )
       {
-         result.tokens.push_back( *token );
+         result.tokens.push_back( api_smt_token_object( *token, _db ) );
       }
    }
 
