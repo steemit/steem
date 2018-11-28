@@ -678,6 +678,7 @@ BOOST_AUTO_TEST_CASE( setup_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( setup_apply )
 {
    try
@@ -739,6 +740,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( smt_cap_reveal_validate )
 {
@@ -824,36 +826,38 @@ void setup_smt_and_reveal_caps( const account_name_type& control_account, const 
       PUSH_OP( setup_op, private_key );
    }
 
-   const auto& smt_object = db->get< smt_token_object, by_symbol >( smt_symbol );
-   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap < 0 );
+   //const auto& smt_object = db->get< smt_token_object, by_symbol >( smt_symbol );
+   const auto& ico_object = db->get< smt_ico_object, by_symbol >( smt_symbol );
+   FC_ASSERT( ico_object.steem_units_min_cap < 0 && ico_object.steem_units_hard_cap < 0 );
    // Try to reveal correct value with invalid nonce.
    op.cap.nonce = invalid_val;
    op.cap.amount = max_cap_val;
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
-   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap < 0 );
+   FC_ASSERT( ico_object.steem_units_min_cap < 0 && ico_object.steem_units_hard_cap < 0 );
    // Try to reveal invalid amount with correct nonce. Note that the value will be tested against both cap's commitments.
    op.cap.nonce = nonce;
    op.cap.amount = invalid_val.to_uint64();
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
-   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap < 0 );
+   FC_ASSERT( ico_object.steem_units_min_cap < 0 && ico_object.steem_units_hard_cap < 0 );
    // Reveal max hard cap.
    op.cap.amount = max_cap_val;
    PUSH_OP( op, private_key );
-   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap == max_cap_val );
+   FC_ASSERT( ico_object.steem_units_min_cap < 0 && ico_object.steem_units_hard_cap == max_cap_val );
    // Try to reveal max hard cap again.
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
    // Try to reveal invalid amount again. Note that this time it will be tested against min cap only (as max hard cap has been already revealed).
    op.cap.amount = invalid_val.to_uint64();
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
-   FC_ASSERT( smt_object.steem_units_min_cap < 0 && smt_object.steem_units_hard_cap == max_cap_val );
+   FC_ASSERT( ico_object.steem_units_min_cap < 0 && ico_object.steem_units_hard_cap == max_cap_val );
    // Reveal min cap.
    op.cap.amount = min_cap_val;
    PUSH_OP( op, private_key );
-   FC_ASSERT( smt_object.steem_units_min_cap == min_cap_val && smt_object.steem_units_hard_cap == max_cap_val );
+   FC_ASSERT( ico_object.steem_units_min_cap == min_cap_val && ico_object.steem_units_hard_cap == max_cap_val );
    // Try to reveal min cap again.
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
 {
    try
@@ -870,6 +874,7 @@ BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 /*
  * SMT legacy tests

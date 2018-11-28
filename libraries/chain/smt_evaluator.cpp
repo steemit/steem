@@ -108,18 +108,18 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
 struct smt_setup_evaluator_visitor
 {
-   const smt_token_object& _token;
+   const smt_ico_object& _ico;
    database& _db;
 
-   smt_setup_evaluator_visitor( const smt_token_object& token, database& db ): _token( token ), _db( db ){}
+   smt_setup_evaluator_visitor( const smt_ico_object& ico, database& db ): _ico( ico ), _db( db ){}
 
    typedef void result_type;
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      _db.modify( _token, [&]( smt_token_object& token )
+      _db.modify( _ico, [&]( smt_ico_object& ico )
       {
-         token.capped_generation_policy = capped_generation_policy;
+         ico.capped_generation_policy = capped_generation_policy;
       });
    }
 };
@@ -137,24 +137,28 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token.phase = smt_phase::setup_completed;
       token.control_account = o.control_account;
       token.max_supply = o.max_supply;
-
-      token.generation_begin_time = o.generation_begin_time;
-      token.generation_end_time = o.generation_end_time;
-      token.announced_launch_time = o.announced_launch_time;
-      token.launch_expiration_time = o.launch_expiration_time;
    } );
 
-   smt_setup_evaluator_visitor visitor( *_token, _db );
+   auto token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
+   {
+      token_ico_obj.symbol = _token->liquid_symbol;
+      token_ico_obj.generation_begin_time = o.generation_begin_time;
+      token_ico_obj.generation_end_time = o.generation_end_time;
+      token_ico_obj.announced_launch_time = o.announced_launch_time;
+      token_ico_obj.launch_expiration_time = o.launch_expiration_time;
+   } );
+
+   smt_setup_evaluator_visitor visitor( token_ico, _db );
    o.initial_generation_policy.visit( visitor );
 
    _db.create< smt_event_token_object >( [&]( smt_event_token_object& event_token )
    {
       event_token.parent = _token->id;
 
-      event_token.generation_begin_time = _token->generation_begin_time;
-      event_token.generation_end_time = _token->generation_end_time;
-      event_token.announced_launch_time = _token->announced_launch_time;
-      event_token.launch_expiration_time = _token->launch_expiration_time;
+      event_token.generation_begin_time = token_ico.generation_begin_time;
+      event_token.generation_end_time = token_ico.generation_end_time;
+      event_token.announced_launch_time = token_ico.announced_launch_time;
+      event_token.launch_expiration_time = token_ico.launch_expiration_time;
    });
 }
 
@@ -168,30 +172,33 @@ void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )
    // Check whether it's not too late to reveal a cap.
    FC_ASSERT( smt.phase < smt_phase::launch_failed, "Cap reveal operaton is allowed only until SMT ICO is concluded" );
 
+   const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol>( o.symbol );
+   FC_ASSERT( token_ico != nullptr, "SMT ICO object not found" );
+
    // As there's no information in cap reveal operation about which cap it reveals,
    // we'll check both, unless they are already revealed.
-   FC_ASSERT( smt.steem_units_min_cap < 0 || smt.steem_units_hard_cap < 0, "Both min cap and max hard cap have already been revealed" );
+   FC_ASSERT( token_ico->steem_units_min_cap < 0 || token_ico->steem_units_hard_cap < 0, "Both min cap and max hard cap have already been revealed" );
 
-   if( smt.steem_units_min_cap < 0 )
+   if( token_ico->steem_units_min_cap < 0 )
       try
       {
-         o.cap.validate( smt.capped_generation_policy.min_steem_units_commitment );
-         _db.modify( smt, [&]( smt_token_object& smt_object )
+         o.cap.validate( token_ico->capped_generation_policy.min_steem_units_commitment );
+         _db.modify( *token_ico, [&]( smt_ico_object& ico_object )
          {
-            smt_object.steem_units_min_cap = o.cap.amount;
+            ico_object.steem_units_min_cap = o.cap.amount;
          });
          return;
       }
       catch( const fc::exception& e )
       {
-         if( smt.steem_units_hard_cap >= 0 )
+         if( token_ico->steem_units_hard_cap >= 0 )
             throw;
       }
 
-   o.cap.validate( smt.capped_generation_policy.hard_cap_steem_units_commitment );
-   _db.modify( smt, [&]( smt_token_object& smt_object )
+   o.cap.validate( token_ico->capped_generation_policy.hard_cap_steem_units_commitment );
+   _db.modify( *token_ico, [&]( smt_ico_object& ico_object )
    {
-      smt_object.steem_units_hard_cap = o.cap.amount;
+      ico_object.steem_units_hard_cap = o.cap.amount;
    });
 }
 
