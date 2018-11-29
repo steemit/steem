@@ -1502,7 +1502,7 @@ DEFINE_API_IMPL( database_api_impl, find_smt_contributions )
 
    const auto& idx = _db.get_index< chain::smt_contribution_index, chain::by_symbol_contributor >();
 
-   for( auto& symbol_contributor : args.symbol_contributor )
+   for( auto& symbol_contributor : args.symbol_contributors )
    {
       auto itr = idx.lower_bound( boost::make_tuple( symbol_contributor.first, symbol_contributor.second, 0 ) );
       while( itr != idx.end() && itr->symbol == symbol_contributor.first && itr->contributor == symbol_contributor.second && result.contributions.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )

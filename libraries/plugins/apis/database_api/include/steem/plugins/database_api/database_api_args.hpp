@@ -524,7 +524,7 @@ struct list_smt_contributions_return
 
 struct find_smt_contributions_args
 {
-   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributor;
+   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributors;
 };
 
 typedef list_smt_contributions_return find_smt_contributions_return;
@@ -757,7 +757,7 @@ FC_REFLECT( steem::plugins::database_api::list_smt_contributions_return,
    (contributions) )
 
 FC_REFLECT( steem::plugins::database_api::find_smt_contributions_args,
-   (symbol_contributor) )
+   (symbol_contributors) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )

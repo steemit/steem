@@ -711,12 +711,12 @@ tests = [
       "params": {"asset_symbol": {"nai":"@@100000006", "decimals": 3}}
    }
    {
-      "method": "database_api.list_smt_contribution",
+      "method": "database_api.list_smt_contributions",
       "params": {"limit": 100, "order": "by_symbol_contributor", "start": []}
    },
    {
-      "method": "database_api.find_smt_contribution",
-      "params": {"asset_symbol": {"nai":"@@100000006", "decimals": 3}, "account": "temp"}
+      "method": "database_api.find_smt_contributions",
+      "params": {"symbol_contributor": [["asset_symbol": {"nai":"@@100000006", "decimals": 3}, "account": "temp"]] }
    }
 ]
 
