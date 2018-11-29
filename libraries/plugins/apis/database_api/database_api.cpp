@@ -72,8 +72,8 @@ class database_api_impl
          (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
          (get_nai_pool)
-         (list_smt_contribution)
-         (find_smt_contribution)
+         (list_smt_contributions)
+         (find_smt_contributions)
          (list_smt_tokens)
          (find_smt_tokens)
          (list_smt_token_emissions)
@@ -1462,11 +1462,11 @@ DEFINE_API_IMPL( database_api_impl, get_nai_pool )
    return result;
 }
 
-DEFINE_API_IMPL( database_api_impl, list_smt_contribution )
+DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
-   list_smt_contribution_return result;
+   list_smt_contributions_return result;
    result.contributions.reserve( args.limit );
 
    switch( args.order )
@@ -1496,17 +1496,20 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contribution )
    return result;
 }
 
-DEFINE_API_IMPL( database_api_impl, find_smt_contribution )
+DEFINE_API_IMPL( database_api_impl, find_smt_contributions )
 {
-   find_smt_contribution_return result;
+   find_smt_contributions_return result;
 
    const auto& idx = _db.get_index< chain::smt_contribution_index, chain::by_symbol_contributor >();
-   auto itr = idx.lower_bound( boost::make_tuple( args.asset_symbol, args.account, 0 ) );
 
-   while( itr != idx.end() && itr->symbol == args.asset_symbol && result.contributions.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
+   for( auto& symbol_contributor : args.symbol_contributor )
    {
-      result.contributions.push_back( *itr );
-      ++itr;
+      auto itr = idx.lower_bound( boost::make_tuple( symbol_contributor.first, symbol_contributor.second, 0 ) );
+      while( itr != idx.end() && itr->symbol == symbol_contributor.first && itr->contributor == symbol_contributor.second && result.contributions.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
+      {
+         result.contributions.push_back( *itr );
+         ++itr;
+      }
    }
 
    return result;
@@ -1690,8 +1693,8 @@ DEFINE_READ_APIS( database_api,
    (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
    (get_nai_pool)
-   (list_smt_contribution)
-   (find_smt_contribution)
+   (list_smt_contributions)
+   (find_smt_contributions)
    (list_smt_tokens)
    (find_smt_tokens)
    (list_smt_token_emissions)

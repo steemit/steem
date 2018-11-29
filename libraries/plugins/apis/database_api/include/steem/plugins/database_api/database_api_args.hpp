@@ -515,20 +515,19 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
-typedef list_object_args_type list_smt_contribution_args;
+typedef list_object_args_type list_smt_contributions_args;
 
-struct list_smt_contribution_return
+struct list_smt_contributions_return
 {
    vector< smt_contribution_object > contributions;
 };
 
-struct find_smt_contribution_args
+struct find_smt_contributions_args
 {
-   asset_symbol_type asset_symbol;
-   account_name_type account;
+   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributor;
 };
 
-typedef list_smt_contribution_return find_smt_contribution_return;
+typedef list_smt_contributions_return find_smt_contributions_return;
 
 typedef list_object_args_type list_smt_token_emissions_args;
 
@@ -754,12 +753,11 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
 
-FC_REFLECT( steem::plugins::database_api::list_smt_contribution_return,
+FC_REFLECT( steem::plugins::database_api::list_smt_contributions_return,
    (contributions) )
 
-FC_REFLECT( steem::plugins::database_api::find_smt_contribution_args,
-   (asset_symbol)
-   (account) )
+FC_REFLECT( steem::plugins::database_api::find_smt_contributions_args,
+   (symbol_contributor) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )
