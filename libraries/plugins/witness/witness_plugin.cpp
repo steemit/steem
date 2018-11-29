@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin_objects.hpp>
 
