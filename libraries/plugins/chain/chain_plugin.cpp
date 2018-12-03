@@ -85,6 +85,7 @@ class chain_plugin_impl
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
       std::string                      from_state = "";
       std::string                      to_state = "";
+      steem::chain::statefile::state_format_info     state_format;
 
       uint32_t allow_future_time = 5;
 
@@ -320,6 +321,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             "flush shared memory changes to disk every N blocks")
          ("from-state", bpo::value<string>()->default_value(""), "Load from state, then replay subsequent blocks (EXPERIMENTAL)")
          ("to-state", bpo::value<string>()->default_value(""), "File to save state after --stop-replay-at-block" )
+         ("state-format", bpo::value<string>()->default_value("binary"), "State file save format (binary|json)" )
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
@@ -372,6 +374,19 @@ void chain_plugin::plugin_initialize(const variables_map& options)
       my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
    else
       my->flush_interval = 10000;
+
+   if( options.at( "state-format" ).as<string>() == "binary" )
+   {
+      my->state_format.is_binary = true;
+   }
+   else if( options.at( "state-format" ).as<string>() == "json" )
+   {
+      my->state_format.is_binary = false;
+   }
+   else
+   {
+      FC_ASSERT( false, "Unknown state format ${f}", ("f", options.at("state-format").as<string>()) );
+   }
 
    if(options.count("checkpoint"))
    {
@@ -527,7 +542,7 @@ void chain_plugin::plugin_startup()
          if( my->to_state != "" )
          {
             ilog( "Saving blockchain state" );
-            auto result = statefile::write_state( my->db, my->to_state );
+            auto result = statefile::write_state( my->db, my->to_state, my->state_format );
             ilog( "Blockchain state successful, size=${n} hash=${h}", ("n", result.size)("h", result.hash) );
          }
          exit(EXIT_SUCCESS);

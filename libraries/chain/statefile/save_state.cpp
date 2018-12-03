@@ -102,7 +102,7 @@ class sink_impl : public abstract_sink
 class object_serializer
 {
    public:
-      object_serializer();
+      object_serializer( const state_format_info& fmt );
       virtual ~object_serializer();
 
       void start_threads();
@@ -132,12 +132,14 @@ class object_serializer
       size_t                                 _thread_stack_size = 4096*1024;
       std::shared_ptr< boost::thread >       _input_thread;
       std::vector< boost::thread >           _serialization_threads;
+      state_format_info                      _format;
 };
 
-object_serializer::object_serializer() :
+object_serializer::object_serializer( const state_format_info& fmt ) :
   _table_queue( _max_queue_size ),
   _work_queue( _max_queue_size ),
-  _output_queue( _max_queue_size ) {}
+  _output_queue( _max_queue_size ),
+  _format(fmt) {}
 object_serializer::~object_serializer() {}
 
 void object_serializer::input_thread_main()
@@ -156,7 +158,6 @@ void object_serializer::input_thread_main()
 
       std::string table_name;
       table_work->info->get_schema()->get_name( table_name );
-      ilog( "Input thread: table ${t}", ("t", table_name) );
 
       table_work->info->for_each_object_id( *(table_work->db), [&]( int64_t id )
       {
@@ -168,6 +169,7 @@ void object_serializer::input_thread_main()
          _output_queue.push_back( work );
       } );
       table_work->done_promise.set_value( std::make_shared< std::string >() );
+
       _output_queue.push_back( table_work );
    }
 }
@@ -188,9 +190,20 @@ void object_serializer::convert_thread_main()
 
       // TODO exception handling
       std::shared_ptr< abstract_object > obj = work->info->get_object_from_db( *(work->db), work->id );
-      std::shared_ptr< std::string > result = std::make_shared< std::string >();
-      obj->to_json( *result );
-      result->push_back( '\n' );
+      std::shared_ptr< std::string > result;
+      if( _format.is_binary )
+      {
+         std::vector<char> temp_data;
+         obj->to_binary( temp_data );
+         std::vector<char> temp_len_plus_data = fc::raw::pack_to_vector( temp_data );
+         result = std::make_shared< std::string >( temp_len_plus_data.begin(), temp_len_plus_data.end() );
+      }
+      else
+      {
+         result = std::make_shared< std::string >();
+         obj->to_json( *result );
+         result->push_back( '\n' );
+      }
       work->done_promise.set_value( result );
    }
 }
@@ -343,7 +356,7 @@ void sink_impl::write( const std::string& s )
    size += int64_t(n);
 }
 
-write_state_result write_state( const database& db, const std::string& state_filename )
+write_state_result write_state( const database& db, const std::string& state_filename, const state_format_info& state_format )
 {
    std::ofstream out( state_filename, std::ios::binary );
    //
@@ -362,7 +375,7 @@ write_state_result write_state( const database& db, const std::string& state_fil
 
    std::vector< object_section_producer > producers;
 
-   object_serializer ser;
+   object_serializer ser( state_format );
    ser.start_threads();
    // Grab the object sections
    db.for_each_index_extension< index_info >(
@@ -392,6 +405,11 @@ write_state_result write_state( const database& db, const std::string& state_fil
       std::string footer_json = fc::json::to_string( footer );
       footer_json.push_back('\n');
       sink.write( footer_json );
+
+      std::string object_type = top_header.sections[i].get< object_section >().object_type;
+      int64_t size = footer.end_offset - footer.begin_offset;
+
+      ilog( "Section for type ${t} uses ${n} bytes", ("t", object_type)("n", size) );
    }
    ser.stop_threads();
 

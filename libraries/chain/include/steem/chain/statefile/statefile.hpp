@@ -66,7 +66,12 @@ struct write_state_result
    std::string     hash;
 };
 
-write_state_result write_state( const database& db, const std::string& state_filename );
+struct state_format_info
+{
+   bool            is_binary = false;
+};
+
+write_state_result write_state( const database& db, const std::string& state_filename, const state_format_info& state_format );
 void init_genesis_from_state( const database& db, const std::string& state_filename );
 
 } } }
