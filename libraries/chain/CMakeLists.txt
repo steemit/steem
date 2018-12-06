@@ -32,7 +32,7 @@ add_library( steem_chain
              ${HEADERS}
            )
 
-target_link_libraries( steem_chain steem_jsonball steem_protocol fc chainbase steem_schema appbase
+target_link_libraries( steem_chain steem_jsonball steem_protocol fc chainbase steem_schema appbase mira
                        ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain
                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
