@@ -8,9 +8,6 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
-
 namespace steem { namespace chain {
 
    class operation_object : public object< operation_object_type, operation_object >
@@ -44,7 +41,12 @@ namespace steem { namespace chain {
       operation_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< operation_object, operation_id_type, &operation_object::id > >,
-         ordered_non_unique< tag< by_location >, member< operation_object, uint32_t, &operation_object::block > >
+         ordered_unique< tag< by_location >,
+            composite_key< operation_object,
+               member< operation_object, uint32_t, &operation_object::block >,
+               member< operation_object, operation_id_type, &operation_object::id >
+            >
+         >
 #ifndef SKIP_BY_TX_ID
          ,
          ordered_unique< tag< by_transaction_id >,

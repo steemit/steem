@@ -5073,7 +5073,7 @@ void database::validate_invariants()const
 {
    try
    {
-      const auto& account_idx = get_index<account_index>().indices().get<by_name>();
+      const auto& account_idx = get_index< account_index, by_name >();
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
@@ -5315,7 +5315,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       } );
 
       // Need to update all VESTS in accounts and the total VESTS in the dgpo
-      for( const auto& account : get_index<account_index>().indices() )
+      for( const auto& account : get_index< account_index, by_id >() )
       {
          modify( account, [&]( account_object& a )
          {

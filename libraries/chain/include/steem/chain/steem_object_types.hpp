@@ -1,8 +1,6 @@
 #pragma once
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
+
+#include <steem/chain/multi_index_types.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -12,10 +10,6 @@
 #include <steem/chain/buffer_type.hpp>
 
 namespace steem { namespace chain {
-
-using namespace boost::multi_index;
-
-using boost::multi_index_container;
 
 using chainbase::object;
 using chainbase::oid;

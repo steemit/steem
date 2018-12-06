@@ -7,8 +7,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace chain {
 
    using steem::protocol::digest_type;
@@ -224,9 +222,19 @@ namespace steem { namespace chain {
       witness_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< witness_object, witness_id_type, &witness_object::id > >,
-         ordered_non_unique< tag< by_work >, member< witness_object, digest_type, &witness_object::last_work > >,
+         ordered_unique< tag< by_work >,
+            composite_key< witness_object,
+               member< witness_object, digest_type, &witness_object::last_work >,
+               member< witness_object, witness_id_type, &witness_object::id >
+            >
+         >,
          ordered_unique< tag< by_name >, member< witness_object, account_name_type, &witness_object::owner > >,
-         ordered_non_unique< tag< by_pow >, member< witness_object, uint64_t, &witness_object::pow_worker > >,
+         ordered_unique< tag< by_pow >,
+            composite_key< witness_object,
+               member< witness_object, uint64_t, &witness_object::pow_worker >,
+               member< witness_object, witness_id_type, &witness_object::id >
+            >
+         >,
          ordered_unique< tag< by_vote_name >,
             composite_key< witness_object,
                member< witness_object, share_type, &witness_object::votes >,

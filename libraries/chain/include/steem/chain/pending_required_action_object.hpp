@@ -3,8 +3,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace chain {
 
 using steem::protocol::required_automated_action;

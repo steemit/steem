@@ -3,8 +3,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the
@@ -152,7 +150,12 @@ typedef multi_index_container<
    order_history_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< order_history_object, order_history_id_type, &order_history_object::id > >,
-      ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
+      ordered_unique< tag< by_time >,
+         composite_key< order_history_object,
+            member< order_history_object, time_point_sec, &order_history_object::time >,
+            member< order_history_object, order_history_id_type, &order_history_object::id >
+         >
+      >
    >,
    allocator< order_history_object >
 > order_history_index;

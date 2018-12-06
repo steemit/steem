@@ -6,7 +6,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 
@@ -284,7 +283,12 @@ namespace steem { namespace chain {
       limit_order_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< limit_order_object, limit_order_id_type, &limit_order_object::id > >,
-         ordered_non_unique< tag< by_expiration >, member< limit_order_object, time_point_sec, &limit_order_object::expiration > >,
+         ordered_unique< tag< by_expiration >,
+            composite_key< limit_order_object,
+               member< limit_order_object, time_point_sec, &limit_order_object::expiration >,
+               member< limit_order_object, limit_order_id_type, &limit_order_object::id >
+            >
+         >,
          ordered_unique< tag< by_price >,
             composite_key< limit_order_object,
                member< limit_order_object, price, &limit_order_object::sell_price >,

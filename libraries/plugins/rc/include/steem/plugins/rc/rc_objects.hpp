@@ -8,8 +8,6 @@
 
 #include <fc/int_array.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace chain {
 struct by_account;
 } }
@@ -152,8 +150,6 @@ class rc_outdel_drc_edge_object : public object< rc_outdel_drc_edge_object_type,
 };
 
 int64_t get_maximum_rc( const steem::chain::account_object& account, const rc_account_object& rc_account );
-
-using namespace boost::multi_index;
 
 struct by_edge;
 

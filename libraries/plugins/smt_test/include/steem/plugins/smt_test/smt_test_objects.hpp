@@ -1,8 +1,6 @@
 #pragma once
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace plugins { namespace smt_test {
 
 using namespace std;
@@ -39,8 +37,6 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
 };
 
 typedef smt_token_object::id_type smt_token_id_type;
-
-using namespace boost::multi_index;
 
 struct by_control_account;
 

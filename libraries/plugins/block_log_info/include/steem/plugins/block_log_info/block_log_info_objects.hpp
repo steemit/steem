@@ -61,8 +61,6 @@ class block_log_pending_message_object : public object< block_log_pending_messag
 typedef block_log_hash_state_object::id_type block_log_hash_state_id_type;
 typedef block_log_pending_message_object::id_type block_log_pending_message_id_type;
 
-using namespace boost::multi_index;
-
 typedef multi_index_container<
    block_log_hash_state_object,
    indexed_by<

@@ -9,8 +9,6 @@
 #include <steem/chain/shared_authority.hpp>
 #include <steem/chain/util/manabar.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 #include <numeric>
 
 namespace steem { namespace chain {
