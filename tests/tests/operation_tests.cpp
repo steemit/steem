@@ -7503,5 +7503,106 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( account_auth_tests )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(charlie) )
+      generate_block();
+
+      fund( "alice", ASSET( "20.000 TESTS" ) );
+      fund( "bob", ASSET( "20.000 TESTS" ) );
+      fund( "charlie", ASSET( "20.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "alice" , ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob" , ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "charlie" , ASSET( "10.000 TESTS" ) );
+      generate_block();
+
+      private_key_type bob_active_private_key = bob_private_key;
+      private_key_type bob_posting_private_key = generate_private_key( "bob_posting" );
+      private_key_type charlie_active_private_key = charlie_private_key;
+      private_key_type charlie_posting_private_key = generate_private_key( "charlie_posting" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< account_authority_object, by_account >( "alice"), [&]( account_authority_object& auth )
+         {
+            auth.active.add_authority( "bob", 1 );
+            auth.posting.add_authority( "charlie", 1 );
+         });
+
+         db.modify( db.get< account_authority_object, by_account >( "bob" ), [&]( account_authority_object& auth )
+         {
+            auth.posting = authority( 1, bob_posting_private_key.get_public_key(), 1 );
+         });
+
+         db.modify( db.get< account_authority_object, by_account >( "charlie" ), [&]( account_authority_object& auth )
+         {
+            auth.posting = authority( 1, charlie_posting_private_key.get_public_key(), 1 );
+         });
+      });
+
+      generate_block();
+
+      signed_transaction tx;
+      transfer_operation transfer;
+
+      transfer.from = "alice";
+      transfer.to = "bob";
+      transfer.amount = ASSET( "1.000 TESTS" );
+      tx.operations.push_back( transfer );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, bob_active_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, bob_posting_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, charlie_active_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, charlie_posting_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
+
+      custom_json_operation json;
+      json.required_posting_auths.insert( "alice" );
+      json.json = "{\"foo\":\"bar\"}";
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( json );
+      sign( tx, bob_active_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_posting_auth );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, bob_posting_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, charlie_active_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_posting_auth );
+
+      generate_block();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.signatures.clear();
+      sign( tx, charlie_posting_private_key );
+      db->push_transaction( tx, 0 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
