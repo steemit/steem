@@ -53,10 +53,12 @@ namespace fc { namespace raw {
        v.visit( variant_packer<Stream>(s) );
     }
     template<typename Stream> 
-    inline void unpack( Stream& s, variant& v )
+    inline void unpack( Stream& s, variant& v, uint32_t depth )
     {
+      depth++;
+      FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
       uint8_t t;
-      unpack( s, t );
+      unpack( s, t, depth );
       switch( t )
       {
          case variant::null_type:
@@ -64,49 +66,49 @@ namespace fc { namespace raw {
          case variant::int64_type:
          {
             int64_t val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = val;
             return;
          }
          case variant::uint64_type:
          {
             uint64_t val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = val;
             return;
          }
          case variant::double_type:
          {
             double val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = val;
             return;
          }
          case variant::bool_type:
          {
             bool val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = val;
             return;
          }
          case variant::string_type:
          {
             fc::string val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = fc::move(val);
             return;
          }
          case variant::array_type:
          {
             variants val;
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = fc::move(val);
             return;
          }
          case variant::object_type:
          {
             variant_object val; 
-            raw::unpack(s,val);
+            raw::unpack(s,val,depth);
             v = fc::move(val);
             return;
          }
@@ -127,10 +129,12 @@ namespace fc { namespace raw {
        }
     }
     template<typename Stream> 
-    inline void unpack( Stream& s, variant_object& v ) 
+    inline void unpack( Stream& s, variant_object& v, uint32_t depth )
     {
+       depth++;
+       FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
        unsigned_int vs;
-       unpack( s, vs );
+       unpack( s, vs, depth );
 
        mutable_variant_object mvo;
        mvo.reserve(vs.value);
@@ -138,8 +142,8 @@ namespace fc { namespace raw {
        {
           fc::string key;
           fc::variant value;
-          fc::raw::unpack(s,key);
-          fc::raw::unpack(s,value);
+          fc::raw::unpack(s,key,depth);
+          fc::raw::unpack(s,value,depth);
           mvo.set( fc::move(key), fc::move(value) );
        }
        v = fc::move(mvo);

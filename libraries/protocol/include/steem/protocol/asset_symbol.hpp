@@ -173,7 +173,7 @@ inline void pack( Stream& s, const steem::protocol::asset_symbol_type& sym )
 }
 
 template< typename Stream >
-inline void unpack( Stream& s, steem::protocol::asset_symbol_type& sym )
+inline void unpack( Stream& s, steem::protocol::asset_symbol_type& sym, uint32_t )
 {
    uint64_t ser = 0;
    s.read( (char*) &ser, 4 );
