@@ -197,10 +197,11 @@ inline void pack( Stream& s, const steem::protocol::fixed_string_impl< Storage >
 }
 
 template< typename Stream, typename Storage >
-inline void unpack( Stream& s, steem::protocol::fixed_string_impl< Storage >& u )
+inline void unpack( Stream& s, steem::protocol::fixed_string_impl< Storage >& u, uint32_t depth )
 {
+   depth++;
    std::string str;
-   unpack( s, str );
+   unpack( s, str, depth );
    u = str;
 }
 
