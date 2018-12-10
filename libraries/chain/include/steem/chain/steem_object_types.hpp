@@ -241,6 +241,7 @@ template< typename Stream, typename E, typename A >
 void unpack( Stream& s, boost::interprocess::deque<E, A>& dq, uint32_t depth )
 {
    depth++;
+   FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
    // This could be optimized
    std::vector<E> temp;
    unpack( s, temp, depth );
@@ -264,11 +265,11 @@ template< typename Stream, typename K, typename V, typename C, typename A >
 void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value, uint32_t depth )
 {
    depth++;
+   FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
    unsigned_int size;
    unpack( s, size, depth );
    value.clear();
    FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
-   value.reserve(size.value);
    for( uint32_t i = 0; i < size.value; ++i )
    {
       std::pair<K,V> tmp;
