@@ -207,7 +207,7 @@ void pack( Stream& s, const chainbase::oid<T>& id )
 }
 
 template<typename Stream, typename T>
-void unpack( Stream& s, chainbase::oid<T>& id )
+void unpack( Stream& s, chainbase::oid<T>& id, uint32_t )
 {
    s.read( (char*)&id._id, sizeof(id._id));
 }
@@ -220,10 +220,11 @@ void pack( Stream& s, const chainbase::shared_string& ss )
 }
 
 template< typename Stream >
-void unpack( Stream& s, chainbase::shared_string& ss )
+void unpack( Stream& s, chainbase::shared_string& ss, uint32_t depth )
 {
+   depth++;
    std::string str;
-   fc::raw::unpack( s, str );
+   fc::raw::unpack( s, str, depth );
    steem::chain::from_string( ss, str );
 }
 
@@ -237,11 +238,12 @@ void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
 }
 
 template< typename Stream, typename E, typename A >
-void unpack( Stream& s, boost::interprocess::deque<E, A>& dq )
+void unpack( Stream& s, boost::interprocess::deque<E, A>& dq, uint32_t depth )
 {
+   depth++;
    // This could be optimized
    std::vector<E> temp;
-   unpack( s, temp );
+   unpack( s, temp, depth );
    std::copy( temp.begin(), temp.end(), std::back_inserter(dq) );
 }
 
@@ -259,17 +261,18 @@ void pack( Stream& s, const boost::interprocess::flat_map< K, V, C, A >& value )
 }
 
 template< typename Stream, typename K, typename V, typename C, typename A >
-void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value )
+void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value, uint32_t depth )
 {
+   depth++;
    unsigned_int size;
-   unpack( s, size );
+   unpack( s, size, depth );
    value.clear();
    FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
    value.reserve(size.value);
    for( uint32_t i = 0; i < size.value; ++i )
    {
       std::pair<K,V> tmp;
-      fc::raw::unpack( s, tmp );
+      fc::raw::unpack( s, tmp, depth );
       value.insert( std::move(tmp) );
    }
 }
