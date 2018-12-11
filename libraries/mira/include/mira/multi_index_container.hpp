@@ -513,6 +513,13 @@ public:
   }
 #endif
 
+size_t get_column_size() const { return super::COLUMN_INDEX; }
+
+void populate_column_families_( column_definitions& defs )const
+{
+   super::populate_column_families_( defs );
+}
+
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   typedef typename super::copy_map_type copy_map_type;
 

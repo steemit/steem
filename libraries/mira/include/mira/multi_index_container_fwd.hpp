@@ -12,6 +12,9 @@
 #include <mira/identity.hpp>
 #include <mira/indexed_by.hpp>
 #include <mira/ordered_index_fwd.hpp>
+
+#include <rocksdb/db.h>
+
 #include <memory>
 
 namespace mira{
@@ -102,6 +105,8 @@ template<typename Value,typename IndexSpecifierList,typename Allocator>
 void swap(
   multi_index_container<Value,IndexSpecifierList,Allocator>& x,
   multi_index_container<Value,IndexSpecifierList,Allocator>& y);
+
+typedef std::vector< ::rocksdb::ColumnFamilyDescriptor > column_definitions;
 
 } /* namespace multi_index */
 

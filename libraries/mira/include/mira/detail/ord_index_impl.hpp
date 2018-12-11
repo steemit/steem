@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <boost/call_traits.hpp>
 #include <boost/core/addressof.hpp>
+#include <boost/core/demangle.hpp>
 #include <boost/detail/no_exceptions_support.hpp>
 #include <boost/detail/workaround.hpp>
 #include <boost/foreach_fwd.hpp>
@@ -57,7 +58,7 @@
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
 #include <mira/detail/unbounded.hpp>
-#include <mira/detail/value_compare.hpp>
+#include <mira/detail/slice_compare.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
 #include <mira/detail/ord_index_impl_fwd.hpp>
 #include <boost/ref.hpp>
@@ -65,6 +66,8 @@
 #include <boost/type_traits/is_same.hpp>
 #include <utility>
 #include <memory>
+
+#include <iostream>
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
 #include <initializer_list>
@@ -124,7 +127,6 @@ class ordered_index_impl:
     ordered_index_impl<
       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy> >
 #endif
-
 {
 
   typedef typename SuperMeta::type                   super;
@@ -144,7 +146,7 @@ public:
   typedef typename node_type::value_type             value_type;
   typedef KeyFromValue                               key_from_value;
   typedef Compare                                    key_compare;
-  typedef value_comparison<
+  typedef slice_comparator<
     value_type,KeyFromValue,Compare>                 value_compare;
   typedef boost::tuple<key_from_value,key_compare>          ctor_args;
   typedef typename super::final_allocator_type       allocator_type;
@@ -222,6 +224,8 @@ protected:
    */
 
   typedef std::pair<iterator,bool>                   emplace_return_type;
+
+  const size_t                                        COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
 public:
 
@@ -981,6 +985,19 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   void check_invariant_()const{this->final_check_invariant_();}
 #endif
 
+   void populate_column_families_( column_definitions& defs )const
+   {
+      super::populate_column_families_( defs );
+      // TODO: Clean this up so it outputs the tag name instead of a tempalte type.
+      // But it is unique, so it works.
+      std::string tags = boost::core::demangle( typeid( tag_list ).name() );
+      std::cout << tags << std::endl;
+      defs.emplace_back(
+         tags,
+         ::rocksdb::ColumnFamilyOptions()
+      );
+   }
+
 protected: /* for the benefit of AugmentPolicy::augmented_interface */
   node_type* header()const{return this->final_header();}
   node_type* root()const{return node_type::from_impl(header()->parent());}
@@ -1107,6 +1124,7 @@ private:
   }
 #endif
 
+  /* emplace entry point */
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
   std::pair<iterator,bool> emplace_impl(BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
   {

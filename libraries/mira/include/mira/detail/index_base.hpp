@@ -27,6 +27,11 @@
 #include <mira/detail/index_loader.hpp>
 #include <mira/detail/index_saver.hpp>
 
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/slice.h>
+#include <rocksdb/utilities/write_batch_with_index.h>
+
 namespace mira{
 
 namespace multi_index{
@@ -80,6 +85,10 @@ private:
 
 protected:
   explicit index_base(const ctor_args_list&,const Allocator&){}
+
+  column_definitions                         _column_defs;
+
+  const size_t                               COLUMN_INDEX = 0;
 
   index_base(
     const index_base<Value,IndexSpecifierList,Allocator>&,
@@ -197,6 +206,14 @@ protected:
   bool invariant_()const{return true;}
 #endif
 
+   void populate_column_families_( column_definitions& defs )const
+   {
+      defs.emplace_back(
+         ::rocksdb::kDefaultColumnFamilyName,
+         ::rocksdb::ColumnFamilyOptions()
+      );
+   }
+
   /* access to backbone memfuns of Final class */
 
   final_type&       final(){return *static_cast<final_type*>(this);}
@@ -271,6 +288,17 @@ protected:
   template<typename Modifier,typename Rollback>
   bool final_modify_(Modifier& mod,Rollback& back,final_node_type* x)
     {return final().modify_(mod,back,x);}
+
+   size_t final_get_column_size()
+   {
+      return final().get_column_size();
+   }
+
+   void final_populate_column_families()
+   {
+      _column_defs.reserve( final_get_column_size() );
+      return final().populate_column_families_( _column_defs );
+   }
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
   void final_check_invariant_()const{final().check_invariant_();}

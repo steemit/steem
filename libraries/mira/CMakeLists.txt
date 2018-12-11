@@ -41,7 +41,7 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 add_library( mira
-             mira.cpp
+             src/mira.cpp
              ${HEADERS}
            )
 
@@ -52,10 +52,15 @@ if( CLANG_TIDY_EXE )
    )
 endif( CLANG_TIDY_EXE )
 
-target_link_libraries( mira ${Boost_LIBRARIES} rocksdb )
+target_link_libraries( mira ${Boost_LIBRARIES} rocksdb fc )
 
 target_include_directories( mira
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" ${Boost_INCLUDE_DIR})
+   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+          "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/rocksdb/include"
+          ${Boost_INCLUDE_DIR}
+   )
+
+add_subdirectory( test )
 
 INSTALL( TARGETS
    mira
