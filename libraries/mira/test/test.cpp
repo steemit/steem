@@ -44,6 +44,77 @@ typedef multi_index_container<
   chainbase::allocator<book>
 > book_index;
 
+namespace fc
+{
+class variant;
+
+template<typename T>
+void to_variant( const chainbase::oid<T>& var,  variant& vo )
+{
+   vo = var._id;
+}
+
+template<typename T>
+void from_variant( const variant& vo, chainbase::oid<T>& var )
+{
+   var._id = vo.as_int64();
+}
+
+namespace raw
+{
+
+template<typename Stream, typename T>
+void pack( Stream& s, const chainbase::oid<T>& id )
+{
+   s.write( (const char*)&id._id, sizeof(id._id) );
+}
+
+template<typename Stream, typename T>
+void unpack( Stream& s, chainbase::oid<T>& id )
+{
+   s.read( (char*)&id._id, sizeof(id._id));
+}
+
+} // raw
+
+} // fc
+
+namespace mira { namespace multi_index { namespace detail {
+
+template< typename T, typename CompareType >
+struct slice_comparator< chainbase::oid< T >, CompareType > final : abstract_slice_comparator< chainbase::oid< T >, CompareType >
+{
+   slice_comparator() : abstract_slice_comparator< chainbase::oid< T >, CompareType >()
+   {}
+
+   virtual int Compare( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
+   {
+      assert( x.size() == y.size() );
+
+      int r = (*this)(
+         std::move( fc::raw::unpack_from_char_array< int64_t >( x.data(), x.size() ) ),
+         std::move( fc::raw::unpack_from_char_array< int64_t >( y.data(), y.size() ) )
+      );
+
+      if( r ) return -1;
+
+      if( memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
+
+      return 1;
+   }
+
+   virtual bool Equal( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
+   {
+      assert( x.size() == y.size() );
+      return memcmp( x.data(), y.data(), x.size() ) == 0;
+   }
+};
+
+} } } // mira::multi_index::detail
+
+FC_REFLECT( book::id_type, (_id) )
+
+FC_REFLECT( book, (a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
 
 /*
@@ -71,11 +142,9 @@ multi_index_container
 
 BOOST_AUTO_TEST_CASE( open_and_create )
 {
-   boost::filesystem::path temp = boost::filesystem::unique_path();
+   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
    try
    {
-      std::cerr << temp.native() << " \n";
-
       chainbase::database db;
       db.open( temp, 0, 1024*1024*8 );
 
@@ -91,16 +160,22 @@ BOOST_AUTO_TEST_CASE( open_and_create )
           b.b = 4;
       });
 
-      std::cout << db.get_index< book_index >().indices().get_column_size() << std::endl;
-      const auto& idx = db.get_index< book_index >().indices();
+      try
+      {
+         db.create<book>( []( book& b )
+         {
+            b.a = 3;
+            b.b = 5;
+         });
 
-      mira::multi_index::column_definitions defs;
-
-      idx.populate_column_families_( defs );
+         BOOST_REQUIRE( false );
+      } catch( ... ) {}
    }
    catch( ... )
    {
       chainbase::bfs::remove_all( temp );
       throw;
    }
+
+   chainbase::bfs::remove_all( temp );
 }

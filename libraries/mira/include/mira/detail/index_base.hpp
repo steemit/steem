@@ -86,9 +86,15 @@ private:
 protected:
   explicit index_base(const ctor_args_list&,const Allocator&){}
 
-  column_definitions                         _column_defs;
+   typedef boost::true_type                  is_terminal_node;
+   typedef boost::false_type                 id_type;
+   typedef boost::false_type                 id_from_value;
 
-  const size_t                               COLUMN_INDEX = 0;
+   std::unique_ptr< ::rocksdb::DB >          _db;
+   ::rocksdb::WriteBatch                     _write_buffer;
+   std::vector< ::rocksdb::ColumnFamilyHandle* >    _handles;
+
+   static const size_t                       COLUMN_INDEX = 0;
 
   index_base(
     const index_base<Value,IndexSpecifierList,Allocator>&,
@@ -158,6 +164,11 @@ protected:
     return x;
   }
 
+  bool insert_rocksdb_( const Value& v )
+  {
+     return true;
+  }
+
   void erase_(node_type* x)
   {
     boost::detail::allocator::destroy(boost::addressof(x->value()));
@@ -206,12 +217,23 @@ protected:
   bool invariant_()const{return true;}
 #endif
 
-   void populate_column_families_( column_definitions& defs )const
+   void populate_column_definitions_( column_definitions& defs )const
    {
+      // Do nothing
+      //*
       defs.emplace_back(
          ::rocksdb::kDefaultColumnFamilyName,
          ::rocksdb::ColumnFamilyOptions()
       );
+      //*/
+   }
+
+   void cleanup_column_handles()
+   {
+      for( auto * h : _handles )
+         delete h;
+
+      _handles.clear();
    }
 
   /* access to backbone memfuns of Final class */
@@ -241,6 +263,13 @@ protected:
     BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
   {
     return final().emplace_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
+  }
+
+  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
+  bool final_emplace_rocksdb_(
+    BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
+  {
+    return final().emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
   }
 
   std::pair<final_node_type*,bool> final_insert_(
@@ -292,12 +321,6 @@ protected:
    size_t final_get_column_size()
    {
       return final().get_column_size();
-   }
-
-   void final_populate_column_families()
-   {
-      _column_defs.reserve( final_get_column_size() );
-      return final().populate_column_families_( _column_defs );
    }
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)

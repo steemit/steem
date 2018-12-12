@@ -201,8 +201,8 @@ namespace chainbase {
          typedef allocator< generic_index >                            allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
 
-         generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         generic_index( allocator<value_type> a, bfs::path p )
+         :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -229,7 +229,7 @@ namespace chainbase {
             }
 
             ++_next_id;
-            on_create( *insert_result.first );
+            //on_create( *insert_result.first );
             return *insert_result.first;
          }
 
@@ -1062,7 +1062,7 @@ namespace chainbase {
 #ifndef ENABLE_STD_ALLOCATOR
              idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
 #else
-             idx_ptr = new index_type( index_alloc() );
+             idx_ptr = new index_type( index_alloc(), _data_dir );
 #endif
              idx_ptr->validate();
 

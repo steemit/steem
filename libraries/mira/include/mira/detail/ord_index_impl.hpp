@@ -59,6 +59,7 @@
 #include <mira/detail/scope_guard.hpp>
 #include <mira/detail/unbounded.hpp>
 #include <mira/detail/slice_compare.hpp>
+#include <mira/detail/value_compare.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
 #include <mira/detail/ord_index_impl_fwd.hpp>
 #include <boost/ref.hpp>
@@ -145,8 +146,10 @@ public:
   typedef typename KeyFromValue::result_type         key_type;
   typedef typename node_type::value_type             value_type;
   typedef KeyFromValue                               key_from_value;
-  typedef Compare                                    key_compare;
   typedef slice_comparator<
+    key_type,
+    Compare >                                        key_compare;
+  typedef value_comparison<
     value_type,KeyFromValue,Compare>                 value_compare;
   typedef boost::tuple<key_from_value,key_compare>          ctor_args;
   typedef typename super::final_allocator_type       allocator_type;
@@ -225,7 +228,21 @@ protected:
 
   typedef std::pair<iterator,bool>                   emplace_return_type;
 
-  const size_t                                        COLUMN_INDEX = super::COLUMN_INDEX + 1;
+   typedef boost::false_type                          is_terminal_node;
+
+   typedef boost::mpl::if_<
+      typename super::is_terminal_node,
+      key_type,
+      typename super::id_type >                       id_type;
+
+   //*
+   typedef typename boost::mpl::if_<
+      typename super::is_terminal_node,
+      KeyFromValue,
+      typename super::id_from_value >::type           id_from_value;
+   //*/
+
+   static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
 public:
 
@@ -740,6 +757,68 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     return res;
   }
 
+/*
+  id_type id( const value_type& v )
+  {
+     return COLUMN_INDEX == 1 ? key( v ) : super::id( v );
+  }
+*/
+   bool insert_rocksdb_( const value_type& v )
+   {
+      if( super::insert_rocksdb_( v ) )
+      {
+         ::rocksdb::Status s;
+         ::rocksdb::PinnableSlice read_buffer;
+         if( COLUMN_INDEX == 1 )
+         {
+            // Insert base case
+            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
+            ::rocksdb::Slice key_slice( serialized_key.data(), serialized_key.size() );
+
+            s = super::_db->Get(
+               ::rocksdb::ReadOptions(),
+               super::_handles[ COLUMN_INDEX],
+               key_slice,
+               &read_buffer );
+
+            // Key already exists, uniqueness constraint violated
+            if( s.ok() ) return false;
+
+            std::vector< char > serialized_value = fc::raw::pack_to_vector( v );
+
+            s = super::_write_buffer.Put(
+               super::_handles[ COLUMN_INDEX ],
+               key_slice,
+               ::rocksdb::Slice( serialized_value.data(), serialized_value.size() ) );
+
+         }
+         else
+         {
+            // Insert referential case
+            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
+            ::rocksdb::Slice key_slice( serialized_key.data(), serialized_key.size() );
+
+            s = super::_db->Get(
+               ::rocksdb::ReadOptions(),
+               super::_handles[ COLUMN_INDEX],
+               key_slice,
+               &read_buffer );
+
+            // Key already exists, uniqueness constraint violated
+            if( s.ok() ) return false;
+
+            std::vector< char > serialized_id = fc::raw::pack_to_vector( id( v ) );
+
+            s = super::_write_buffer.Put(
+               super::_handles[ COLUMN_INDEX ],
+               ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ),
+               ::rocksdb::Slice( serialized_id.data(), serialized_id.size() ) );
+         }
+         return s.ok();
+      }
+      return false;
+  }
+
   void erase_(node_type* x)
   {
     node_impl_type::rebalance_for_erase(
@@ -985,17 +1064,18 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   void check_invariant_()const{this->final_check_invariant_();}
 #endif
 
-   void populate_column_families_( column_definitions& defs )const
+   void populate_column_definitions_( column_definitions& defs )const
    {
-      super::populate_column_families_( defs );
+      super::populate_column_definitions_( defs );
       // TODO: Clean this up so it outputs the tag name instead of a tempalte type.
       // But it is unique, so it works.
       std::string tags = boost::core::demangle( typeid( tag_list ).name() );
-      std::cout << tags << std::endl;
+      //std::cout << tags << std::endl;
       defs.emplace_back(
          tags,
          ::rocksdb::ColumnFamilyOptions()
       );
+      defs.back().options.comparator = &comp_;
    }
 
 protected: /* for the benefit of AugmentPolicy::augmented_interface */
@@ -1125,6 +1205,7 @@ private:
 #endif
 
   /* emplace entry point */
+  /*
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
   std::pair<iterator,bool> emplace_impl(BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
   {
@@ -1132,6 +1213,15 @@ private:
     std::pair<final_node_type*,bool>p=
       this->final_emplace_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
     return std::pair<iterator,bool>(make_iterator(p.first),p.second);
+  }*/
+
+  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
+  std::pair<iterator,bool> emplace_impl(BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
+  {
+    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
+    bool p=
+      this->final_emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
+    return std::pair<iterator,bool>(make_iterator(nullptr),p);
   }
 
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
@@ -1268,6 +1358,7 @@ private:
 protected: /* for the benefit of AugmentPolicy::augmented_interface */
   key_from_value key;
   key_compare    comp_;
+   id_from_value id;
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)

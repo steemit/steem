@@ -32,6 +32,7 @@ namespace chainbase {
 
    void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size )
    {
+      assert( dir.is_absolute() );
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
@@ -106,6 +107,7 @@ namespace chainbase {
 
    void database::resize( size_t new_shared_file_size )
    {
+#ifndef ENABLE_STD_ALLOCATOR
       if( _undo_session_count )
          BOOST_THROW_EXCEPTION( std::runtime_error( "Cannot resize shared memory file while undo session is active" ) );
 
@@ -121,6 +123,7 @@ namespace chainbase {
       {
          index_type->add_index( *this );
       }
+#endif
    }
 
    void database::set_require_locking( bool enable_require_locking )

@@ -18,6 +18,7 @@
 #include <boost/detail/allocator_utilities.hpp>
 #include <boost/detail/no_exceptions_support.hpp>
 #include <boost/detail/workaround.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/move/core.hpp>
 #include <boost/mpl/at.hpp>
 #include <boost/mpl/contains.hpp>
@@ -41,6 +42,8 @@
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/utility/base_from_member.hpp>
+
+#include <iostream>
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
 #include <initializer_list>
@@ -174,14 +177,11 @@ public:
     BOOST_MULTI_INDEX_CHECK_INVARIANT;
   }
 
+/*
   explicit multi_index_container(
     const ctor_args_list& args_list,
 
 #if BOOST_WORKAROUND(__IBMCPP__,<=600)
-    /* VisualAge seems to have an ETI issue with the default value for
-     * argument al.
-     */
-
     const allocator_type& al=
       typename boost::mplidentity<multi_index_container>::type::
         allocator_type()):
@@ -195,23 +195,98 @@ public:
   {
     BOOST_MULTI_INDEX_CHECK_INVARIANT;
   }
-
-  explicit multi_index_container(const allocator_type& al):
+*/
+  explicit multi_index_container( const allocator_type& al, const boost::filesystem::path& p ):
     bfm_allocator(al),
     super(ctor_args_list(),bfm_allocator::member),
     node_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-  }
+   {
+      assert( p.is_absolute() );
 
+      std::string str_path = ( p / boost::core::demangle( typeid( Value ).name() ) ).string();
+
+      create_schema( str_path );
+
+      // TODO: Move out of constructor becasuse throwing exceptions in a constuctor is sad...
+      column_definitions column_defs;
+      populate_column_definitions_( column_defs );
+
+      ::rocksdb::Options opts;
+      opts.IncreaseParallelism();
+      opts.OptimizeLevelStyleCompaction();
+
+      ::rocksdb::DBOptions dbOptions( opts );
+
+      ::rocksdb::DB* db = nullptr;
+      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
+
+      if( s.ok() )
+      {
+         // Verify DB Schema
+
+         super::_db.reset( db );
+      }
+      else
+      {
+         std::cout << std::string( s.getState() ) << std::endl;
+      }
+
+      BOOST_MULTI_INDEX_CHECK_INVARIANT;
+   }
+
+   bool create_schema( const std::string& str_path )
+   {
+      ::rocksdb::DB* db = nullptr;
+
+      column_definitions column_defs;
+      populate_column_definitions_( column_defs );
+
+      ::rocksdb::Options opts;
+      opts.IncreaseParallelism();
+      opts.OptimizeLevelStyleCompaction();
+
+      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
+
+      if( s.ok() )
+      {
+         std::cout << "Found existing RocksDB DB\n";
+         super::cleanup_column_handles();
+         delete db;
+         return true;
+      }
+
+      opts.create_if_missing = true;
+
+      s = ::rocksdb::DB::Open( opts, str_path, &db );
+
+      if( s.ok() )
+      {
+         column_defs.clear();
+         populate_column_definitions_( column_defs );
+         column_defs.erase( column_defs.begin() );
+
+         s = db->CreateColumnFamilies( column_defs, &(super::_handles) );
+
+         if( s.ok() )
+         {
+            // Save schema info
+            super::cleanup_column_handles();
+         }
+
+         delete db;
+
+         return true;
+      }
+
+      return false;
+   }
+
+/*
   template<typename InputIterator>
   multi_index_container(
     InputIterator first,InputIterator last,
 
 #if BOOST_WORKAROUND(__IBMCPP__,<=600)
-    /* VisualAge seems to have an ETI issue with the default values
-     * for arguments args_list and al.
-     */
 
     const ctor_args_list& args_list=
       typename boost::mplidentity<multi_index_container>::type::
@@ -243,7 +318,9 @@ public:
     }
     BOOST_CATCH_END
   }
+*/
 
+/*
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
   multi_index_container(
     std::initializer_list<Value> list,
@@ -271,7 +348,9 @@ public:
     BOOST_CATCH_END
   }
 #endif
+*/
 
+/*
   multi_index_container(
     const multi_index_container<Value,IndexSpecifierList,Allocator>& x):
     bfm_allocator(x.bfm_allocator::member),
@@ -287,13 +366,11 @@ public:
     map.release();
     node_count=x.size();
 
-    /* Not until this point are the indices required to be consistent,
-     * hence the position of the invariant checker.
-     */
-
     BOOST_MULTI_INDEX_CHECK_INVARIANT;
   }
+*/
 
+/*
   multi_index_container(BOOST_RV_REF(multi_index_container) x):
     bfm_allocator(x.bfm_allocator::member),
     bfm_header(),
@@ -304,7 +381,7 @@ public:
     BOOST_MULTI_INDEX_CHECK_INVARIANT_OF(x);
     swap_elements_(x);
   }
-
+*/
   ~multi_index_container()
   {
     delete_all_nodes_();
@@ -340,6 +417,7 @@ public:
   }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+/*
   multi_index_container<Value,IndexSpecifierList,Allocator>& operator=(
     std::initializer_list<Value> list)
   {
@@ -356,6 +434,7 @@ public:
     x.swap_elements_(*this);
     return*this;
   }
+*/
 #endif
 
   allocator_type get_allocator()const BOOST_NOEXCEPT
@@ -515,9 +594,9 @@ public:
 
 size_t get_column_size() const { return super::COLUMN_INDEX; }
 
-void populate_column_families_( column_definitions& defs )const
+void populate_column_definitions_( column_definitions& defs )const
 {
-   super::populate_column_families_( defs );
+   super::populate_column_definitions_( defs );
 }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
@@ -639,10 +718,10 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     return insert_(x);
   }
 
-  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
-  std::pair<node_type*,bool> emplace_(
-    BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
-  {
+   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
+   std::pair<node_type*,bool> emplace_(
+      BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
+   {
     node_type* x=allocate_node();
     BOOST_TRY{
       boost::multi_index::detail::vartempl_placement_new(
@@ -671,6 +750,21 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     }
     BOOST_CATCH_END
   }
+
+   template< typename... Args >
+   bool emplace_rocksdb_( Args&&... args )
+   {
+      Value v( std::forward< Args >(args)... );
+      bool status = false;
+      if( super::insert_rocksdb_( v ) )
+      {
+         ::rocksdb::WriteOptions w_opts;
+         status = super::_db->Write( w_opts, super::_write_buffer.GetWriteBatch()).ok();
+      }
+      super::_write_buffer.Clear();
+
+      return status;
+   }
 
   template<typename Variant>
   std::pair<node_type*,bool> insert_(
