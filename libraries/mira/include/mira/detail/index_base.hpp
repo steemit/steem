@@ -89,10 +89,12 @@ protected:
    typedef boost::true_type                  is_terminal_node;
    typedef boost::false_type                 id_type;
    typedef boost::false_type                 id_from_value;
+   typedef boost::false_type                 canon_index_type;
+   typedef boost::false_type                 iterator;
 
-   std::unique_ptr< ::rocksdb::DB >          _db;
+   db_ptr                                    _db;
    ::rocksdb::WriteBatch                     _write_buffer;
-   std::vector< ::rocksdb::ColumnFamilyHandle* >    _handles;
+   column_handles                            _handles;
 
    static const size_t                       COLUMN_INDEX = 0;
 
@@ -295,8 +297,11 @@ protected:
       position,BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
   }
 
-  void final_erase_(final_node_type* x){final().erase_(x);}
-
+   void final_erase_( value_type& v )
+   {
+      final().erase_( v );
+   }
+/*
   void final_delete_node_(final_node_type* x){final().delete_node_(x);}
   void final_delete_all_nodes_(){final().delete_all_nodes_();}
   void final_clear_(){final().clear_();}
@@ -309,14 +314,18 @@ protected:
   bool final_replace_rv_(
     const value_type& k,final_node_type* x)
     {return final().replace_rv_(k,x);}
+*/
+   template< typename Modifier >
+   bool final_modify_( Modifier& mod, value_type& x )
+   {
+      return final().modify_( mod, x );
+   }
 
-  template<typename Modifier>
-  bool final_modify_(Modifier& mod,final_node_type* x)
-    {return final().modify_(mod,x);}
-
-  template<typename Modifier,typename Rollback>
-  bool final_modify_(Modifier& mod,Rollback& back,final_node_type* x)
-    {return final().modify_(mod,back,x);}
+   template< typename Modifier, typename Rollback >
+   bool final_modify_( Modifier& mod, Rollback& back, value_type& x )
+   {
+      return final().modify_( mod, back, x );
+   }
 
    size_t final_get_column_size()
    {

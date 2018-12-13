@@ -106,7 +106,9 @@ void swap(
   multi_index_container<Value,IndexSpecifierList,Allocator>& x,
   multi_index_container<Value,IndexSpecifierList,Allocator>& y);
 
+typedef std::shared_ptr< ::rocksdb::DB >                 db_ptr;
 typedef std::vector< ::rocksdb::ColumnFamilyDescriptor > column_definitions;
+typedef std::vector< ::rocksdb::ColumnFamilyHandle* >    column_handles;
 
 } /* namespace multi_index */
 

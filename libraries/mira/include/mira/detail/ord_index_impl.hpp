@@ -58,6 +58,7 @@
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
 #include <mira/detail/unbounded.hpp>
+#include <mira/detail/rocksdb_iterator.hpp>
 #include <mira/detail/slice_compare.hpp>
 #include <mira/detail/value_compare.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
@@ -92,6 +93,8 @@
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT_OF(x)
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT
 #endif
+
+#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db
 
 namespace mira{
 
@@ -161,13 +164,9 @@ public:
   typedef const value_type&                          const_reference;
 #endif
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef safe_mode::safe_iterator<
-    bidir_node_iterator<node_type>,
-    ordered_index_impl>                              iterator;
-#else
-  typedef bidir_node_iterator<node_type>             iterator;
-#endif
+   typedef rocksdb_iterator<
+      value_type,
+      key_type >                                      iterator;
 
   typedef iterator                                   const_iterator;
 
@@ -226,21 +225,39 @@ protected:
    * expansion.
    */
 
-  typedef std::pair<iterator,bool>                   emplace_return_type;
-
    typedef boost::false_type                          is_terminal_node;
 
+   typedef typename boost::mpl::if_<
+      typename super::is_terminal_node,
+      ordered_index_impl<
+         KeyFromValue,
+         Compare,
+         SuperMeta,
+         TagList,
+         Category,
+         AugmentPolicy >,
+      typename super::canon_index_type >::type        canon_index_type;
+
+   typedef typename std::pair<
+      typename canon_index_type::iterator,
+      bool >                                          emplace_return_type;
+
+//*
    typedef boost::mpl::if_<
       typename super::is_terminal_node,
       key_type,
       typename super::id_type >                       id_type;
+//*/
+//   typedef typename canon_index_type::id_type         id_type;
 
-   //*
+//*
    typedef typename boost::mpl::if_<
       typename super::is_terminal_node,
       KeyFromValue,
       typename super::id_from_value >::type           id_from_value;
-   //*/
+//*/
+
+//   typedef typename canon_index_type::id_from_value   id_from_value;
 
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
@@ -260,14 +277,14 @@ public:
   /* iterators */
 
   iterator
-    begin()BOOST_NOEXCEPT{return make_iterator(leftmost());}
+    begin()BOOST_NOEXCEPT{return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
-    begin()const BOOST_NOEXCEPT{return make_iterator(leftmost());}
+    begin()const BOOST_NOEXCEPT{return const_iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
   iterator
-    end()BOOST_NOEXCEPT{return make_iterator(header());}
+    end()BOOST_NOEXCEPT{return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
-    end()const BOOST_NOEXCEPT{return make_iterator(header());}
-  reverse_iterator
+    end()const BOOST_NOEXCEPT{return const_iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
+  /*reverse_iterator
     rbegin()BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
   const_reverse_iterator
     rbegin()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
@@ -275,23 +292,26 @@ public:
     rend()BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
   const_reverse_iterator
     rend()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
+   */
   const_iterator
     cbegin()const BOOST_NOEXCEPT{return begin();}
   const_iterator
     cend()const BOOST_NOEXCEPT{return end();}
+   /*
   const_reverse_iterator
     crbegin()const BOOST_NOEXCEPT{return rbegin();}
   const_reverse_iterator
     crend()const BOOST_NOEXCEPT{return rend();}
+    */
 
-  iterator iterator_to(const value_type& x)
+  iterator iterator_to( const value_type& x )
   {
-    return make_iterator(node_from_value<node_type>(boost::addressof(x)));
+    return make_iterator( key( x ) );
   }
 
-  const_iterator iterator_to(const value_type& x)const
+  const_iterator iterator_to( const value_type& x )const
   {
-    return make_iterator(node_from_value<node_type>(boost::addressof(x)));
+    return make_iterator( key( x ) );
   }
 
   /* capacity */
@@ -311,17 +331,19 @@ public:
   std::pair<iterator,bool> insert(const value_type& x)
   {
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    std::pair<final_node_type*,bool> p=this->final_insert_(x);
-    return std::pair<iterator,bool>(make_iterator(p.first),p.second);
+    return this->final_insert_( x );
   }
 
+/*
   std::pair<iterator,bool> insert(BOOST_RV_REF(value_type) x)
   {
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     std::pair<final_node_type*,bool> p=this->final_insert_rv_(x);
     return std::pair<iterator,bool>(make_iterator(p.first),p.second);
   }
+*/
 
+/*
   iterator insert(iterator position,const value_type& x)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
@@ -341,36 +363,42 @@ public:
       x,static_cast<final_node_type*>(position.get_node()));
     return make_iterator(p.first);
   }
+*/
 
+/*
   template<typename InputIterator>
   void insert(InputIterator first,InputIterator last)
   {
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    node_type* hint=header(); /* end() */
+    node_type* hint=header();
     for(;first!=last;++first){
       hint=this->final_insert_ref_(
         *first,static_cast<final_node_type*>(hint)).first;
       node_type::increment(hint);
     }
   }
+*/
 
+/*
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
   void insert(std::initializer_list<value_type> list)
   {
     insert(list.begin(),list.end());
   }
 #endif
+*/
 
-  iterator erase(iterator position)
-  {
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    this->final_erase_(static_cast<final_node_type*>(position++.get_node()));
-    return position;
-  }
+   iterator erase(iterator position)
+   {
+      BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
+      BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
 
+      value_type v = *position;
+      this->final_erase_( v );
+      ++position;
+      return position;
+   }
+/*
   size_type erase(key_param_type x)
   {
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
@@ -382,26 +410,21 @@ public:
     }
     return s;
   }
-
+*/
   iterator erase(iterator first,iterator last)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(first);
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(last);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(first,*this);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(last,*this);
-    BOOST_MULTI_INDEX_CHECK_VALID_RANGE(first,last);
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     while(first!=last){
       first=erase(first);
     }
     return first;
   }
-
+/*
   bool replace(iterator position,const value_type& x)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     return this->final_replace_(
       x,static_cast<final_node_type*>(position.get_node()));
@@ -410,61 +433,36 @@ public:
   bool replace(iterator position,BOOST_RV_REF(value_type) x)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     return this->final_replace_rv_(
       x,static_cast<final_node_type*>(position.get_node()));
   }
+*/
 
-  template<typename Modifier>
-  bool modify(iterator position,Modifier mod)
-  {
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    /* MSVC++ 6.0 optimizer on safe mode code chokes if this
-     * this is not added. Left it for all compilers as it does no
-     * harm.
-     */
+   template< typename Modifier >
+   bool modify( iterator position, Modifier mod )
+   {
+      BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR( position );
+      BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
 
-    position.detach();
-#endif
+      value_type v = *position;
+      return this->final_modify_( mod, v );
+   }
 
-    return this->final_modify_(
-      mod,static_cast<final_node_type*>(position.get_node()));
-  }
+   template< typename Modifier, typename Rollback >
+   bool modify( iterator position, Modifier mod, Rollback back_ )
+   {
+      BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR( position );
+      BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
 
-  template<typename Modifier,typename Rollback>
-  bool modify(iterator position,Modifier mod,Rollback back_)
-  {
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    /* MSVC++ 6.0 optimizer on safe mode code chokes if this
-     * this is not added. Left it for all compilers as it does no
-     * harm.
-     */
-
-    position.detach();
-#endif
-
-    return this->final_modify_(
-      mod,back_,static_cast<final_node_type*>(position.get_node()));
-  }
-
+      return this->final_modify_( mod, back_, *position );
+   }
+/*
   template<typename Modifier>
   bool modify_key(iterator position,Modifier mod)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     return modify(
       position,modify_key_adaptor<Modifier,value_type,KeyFromValue>(mod,key));
@@ -474,15 +472,13 @@ public:
   bool modify_key(iterator position,Modifier mod,Rollback back_)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(position);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(position,*this);
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
     return modify(
       position,
       modify_key_adaptor<Modifier,value_type,KeyFromValue>(mod,key),
       modify_key_adaptor<Rollback,value_type,KeyFromValue>(back_,key));
   }
-
+*/
   void swap(
     ordered_index<
       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x)
@@ -513,78 +509,19 @@ public:
   template<typename CompatibleKey>
   iterator find(const CompatibleKey& x)const
   {
-    return make_iterator(ordered_index_find(root(),header(),key,x,comp_));
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  iterator find(
-    const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    return make_iterator(ordered_index_find(root(),header(),key,x,comp));
-  }
-
-  template<typename CompatibleKey>
-  size_type count(const CompatibleKey& x)const
-  {
-    return count(x,comp_);
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  size_type count(const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    std::pair<iterator,iterator> p=equal_range(x,comp);
-    size_type n=std::distance(p.first,p.second);
-    return n;
+    return iterator::find( ROCKSDB_ITERATOR_PARAM_PACK, x );
   }
 
   template<typename CompatibleKey>
   iterator lower_bound(const CompatibleKey& x)const
   {
-    return make_iterator(
-      ordered_index_lower_bound(root(),header(),key,x,comp_));
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  iterator lower_bound(
-    const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    return make_iterator(
-      ordered_index_lower_bound(root(),header(),key,x,comp));
+    return iterator::lower_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
   }
 
   template<typename CompatibleKey>
   iterator upper_bound(const CompatibleKey& x)const
   {
-    return make_iterator(
-      ordered_index_upper_bound(root(),header(),key,x,comp_));
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  iterator upper_bound(
-    const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    return make_iterator(
-      ordered_index_upper_bound(root(),header(),key,x,comp));
-  }
-
-  template<typename CompatibleKey>
-  std::pair<iterator,iterator> equal_range(
-    const CompatibleKey& x)const
-  {
-    std::pair<node_type*,node_type*> p=
-      ordered_index_equal_range(root(),header(),key,x,comp_);
-    return std::pair<iterator,iterator>(
-      make_iterator(p.first),make_iterator(p.second));
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  std::pair<iterator,iterator> equal_range(
-    const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    std::pair<node_type*,node_type*> p=
-      ordered_index_equal_range(root(),header(),key,x,comp);
-    return std::pair<iterator,iterator>(
-      make_iterator(p.first),make_iterator(p.second));
+    return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
   }
 
   /* range */
@@ -593,21 +530,7 @@ public:
   std::pair<iterator,iterator>
   range(LowerBounder lower,UpperBounder upper)const
   {
-    typedef typename boost::mpl::if_<
-      boost::is_same<LowerBounder,unbounded_type>,
-      BOOST_DEDUCED_TYPENAME boost::mpl::if_<
-        boost::is_same<UpperBounder,unbounded_type>,
-        both_unbounded_tag,
-        lower_unbounded_tag
-      >::type,
-      BOOST_DEDUCED_TYPENAME boost::mpl::if_<
-        boost::is_same<UpperBounder,unbounded_type>,
-        upper_unbounded_tag,
-        none_unbounded_tag
-      >::type
-    >::type dispatch;
-
-    return range(lower,upper,dispatch());
+    return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
   }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
@@ -657,15 +580,45 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     /* the container is guaranteed to be empty by now */
   }
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  iterator       make_iterator(node_type* node){return iterator(node,this);}
-  const_iterator make_iterator(node_type* node)const
-    {return const_iterator(node,const_cast<ordered_index_impl*>(this));}
-#else
-  iterator       make_iterator(node_type* node){return iterator(node);}
-  const_iterator make_iterator(node_type* node)const
-                   {return const_iterator(node);}
-#endif
+   iterator       make_iterator( const key_type& key )
+   {
+      return iterator(
+         super::_handles,
+         COLUMN_INDEX,
+         super::_db,
+         key
+      );
+   }
+
+   iterator       make_iterator( const ::rocksdb::Slice& s )
+   {
+      return iterator(
+         super::_handles,
+         COLUMN_INDEX,
+         super::_db,
+         s
+      );
+   }
+
+   const_iterator make_iterator( const key_type& key )const
+   {
+      return const_iterator(
+         super::_handles,
+         COLUMN_INDEX,
+         super::_db,
+         key
+      );
+   }
+
+   const_iterator make_iterator( const ::rocksdb::Slice& s )const
+   {
+      return const_iterator(
+         super::_handles,
+         COLUMN_INDEX,
+         super::_db,
+         s
+      );
+   }
 
   void copy_(
     const ordered_index_impl<
@@ -829,12 +782,12 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     detach_iterators(x);
 #endif
   }
-
+/*
   void delete_all_nodes_()
   {
     delete_all_nodes(root());
   }
-
+*/
   void clear_()
   {
     super::clear_();
@@ -1173,6 +1126,7 @@ private:
     }
   }
 
+/*
   void delete_all_nodes(node_type* x)
   {
     if(!x)return;
@@ -1181,7 +1135,7 @@ private:
     delete_all_nodes(node_type::from_impl(x->right()));
     this->final_delete_node_(static_cast<final_node_type*>(x));
   }
-
+*/
   bool in_place(value_param_type v,node_type* x,ordered_unique_tag)const
   {
     node_type* y;
@@ -1215,13 +1169,21 @@ private:
     return std::pair<iterator,bool>(make_iterator(p.first),p.second);
   }*/
 
-  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
-  std::pair<iterator,bool> emplace_impl(BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
-  {
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    bool p=
-      this->final_emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
-    return std::pair<iterator,bool>(make_iterator(nullptr),p);
+   template< BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK >
+   std::pair< typename canon_index_type::iterator, bool >
+   emplace_impl( BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK )
+   {
+      BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
+
+      value_type v( std::forward< Args >(args)... );
+
+      bool res = this->final_emplace_rocksdb_( v );
+
+      return std::pair< typename canon_index_type::iterator, bool >(
+         res ? canon_index_type::iterator_to( v ) :
+               canon_index_type::end(),
+         res
+      );
   }
 
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
@@ -1238,86 +1200,6 @@ private:
     return make_iterator(p.first);
   }
 
-  template<typename LowerBounder,typename UpperBounder>
-  std::pair<iterator,iterator>
-  range(LowerBounder lower,UpperBounder upper,none_unbounded_tag)const
-  {
-    node_type* y=header();
-    node_type* z=root();
-
-    while(z){
-      if(!lower(key(z->value()))){
-        z=node_type::from_impl(z->right());
-      }
-      else if(!upper(key(z->value()))){
-        y=z;
-        z=node_type::from_impl(z->left());
-      }
-      else{
-        return std::pair<iterator,iterator>(
-          make_iterator(
-            lower_range(node_type::from_impl(z->left()),z,lower)),
-          make_iterator(
-            upper_range(node_type::from_impl(z->right()),y,upper)));
-      }
-    }
-
-    return std::pair<iterator,iterator>(make_iterator(y),make_iterator(y));
-  }
-
-  template<typename LowerBounder,typename UpperBounder>
-  std::pair<iterator,iterator>
-  range(LowerBounder,UpperBounder upper,lower_unbounded_tag)const
-  {
-    return std::pair<iterator,iterator>(
-      begin(),
-      make_iterator(upper_range(root(),header(),upper)));
-  }
-
-  template<typename LowerBounder,typename UpperBounder>
-  std::pair<iterator,iterator>
-  range(LowerBounder lower,UpperBounder,upper_unbounded_tag)const
-  {
-    return std::pair<iterator,iterator>(
-      make_iterator(lower_range(root(),header(),lower)),
-      end());
-  }
-
-  template<typename LowerBounder,typename UpperBounder>
-  std::pair<iterator,iterator>
-  range(LowerBounder,UpperBounder,both_unbounded_tag)const
-  {
-    return std::pair<iterator,iterator>(begin(),end());
-  }
-
-  template<typename LowerBounder>
-  node_type * lower_range(node_type* top,node_type* y,LowerBounder lower)const
-  {
-    while(top){
-      if(lower(key(top->value()))){
-        y=top;
-        top=node_type::from_impl(top->left());
-      }
-      else top=node_type::from_impl(top->right());
-    }
-
-    return y;
-  }
-
-  template<typename UpperBounder>
-  node_type * upper_range(node_type* top,node_type* y,UpperBounder upper)const
-  {
-    while(top){
-      if(!upper(key(top->value()))){
-        y=top;
-        top=node_type::from_impl(top->left());
-      }
-      else top=node_type::from_impl(top->right());
-    }
-
-    return y;
-  }
-
   template<typename Archive>
   void save_(
     Archive& ar,const unsigned int version,const index_saver_type& sm,
@@ -1332,27 +1214,6 @@ private:
     ordered_unique_tag)
   {
     super::load_(ar,version,lm);
-  }
-
-  void rearranger(node_type* position,node_type *x)
-  {
-    if(!position||comp_(key(position->value()),key(x->value()))){
-      position=lower_bound(key(x->value())).get_node();
-    }
-    else if(comp_(key(x->value()),key(position->value()))){
-      /* inconsistent rearrangement */
-      boost::throw_exception(
-        boost::archive::archive_exception(
-          boost::archive::archive_exception::other_exception));
-    }
-    else node_type::increment(position);
-
-    if(position!=x){
-      node_impl_type::rebalance_for_erase(
-        x->impl(),header()->parent(),header()->left(),header()->right());
-      node_impl_type::restore(
-        x->impl(),position->impl(),header()->impl());
-    }
   }
 
 protected: /* for the benefit of AugmentPolicy::augmented_interface */

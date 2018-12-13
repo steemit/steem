@@ -23,13 +23,16 @@ using mira::multi_index::member;
 struct book : public chainbase::object<0, book> {
 
    template<typename Constructor, typename Allocator>
-    book(  Constructor&& c, Allocator&& a ) {
-       c(*this);
-    }
+   book(  Constructor&& c, Allocator&& a )
+   {
+      c(*this);
+   }
 
-    id_type id;
-    int a = 0;
-    int b = 1;
+   book() = default;
+
+   id_type id;
+   int a = 0;
+   int b = 1;
 };
 
 struct by_id;
@@ -114,7 +117,7 @@ struct slice_comparator< chainbase::oid< T >, CompareType > final : abstract_sli
 
 FC_REFLECT( book::id_type, (_id) )
 
-FC_REFLECT( book, (a)(b) )
+FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
 
 /*
@@ -153,12 +156,16 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       db.add_index< book_index >();
 
       BOOST_TEST_MESSAGE( "Creating book" );
-      //const auto& new_book =
+      const auto& new_book =
       db.create<book>( []( book& b )
       {
           b.a = 3;
           b.b = 4;
       });
+
+      BOOST_REQUIRE( new_book.id._id == 0 );
+      BOOST_REQUIRE( new_book.a == 3 );
+      BOOST_REQUIRE( new_book.b == 4 );
 
       try
       {
@@ -170,6 +177,71 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( false );
       } catch( ... ) {}
+
+      db.create<book>( []( book& b )
+      {
+          b.a = 4;
+          b.b = 2;
+      });
+
+      db.create<book>( []( book& b )
+      {
+          b.a = 2;
+          b.b = 1;
+      });
+
+      const auto& book_idx = db.get_index< book_index, by_id >();
+      auto itr = book_idx.begin();
+
+      BOOST_REQUIRE( itr != book_idx.end() );
+
+      auto tmp_book = *itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 0 );
+      BOOST_REQUIRE( tmp_book.a == 3 );
+      BOOST_REQUIRE( tmp_book.b == 4 );
+
+      ++itr;
+      tmp_book = *itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 1 );
+      BOOST_REQUIRE( tmp_book.a == 4 );
+      BOOST_REQUIRE( tmp_book.b == 2 );
+
+      ++itr;
+      tmp_book = *itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 2 );
+      BOOST_REQUIRE( tmp_book.a == 2 );
+      BOOST_REQUIRE( tmp_book.b == 1 );
+
+      ++itr;
+      BOOST_REQUIRE( itr == book_idx.end() );
+
+
+      const auto& book_by_a_idx = db.get_index< book_index, by_a >();
+      auto a_itr = book_by_a_idx.begin();
+
+      tmp_book = *a_itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 2 );
+      BOOST_REQUIRE( tmp_book.a == 2 );
+      BOOST_REQUIRE( tmp_book.b == 1 );
+
+      ++a_itr;
+      tmp_book = *a_itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 0 );
+      BOOST_REQUIRE( tmp_book.a == 3 );
+      BOOST_REQUIRE( tmp_book.b == 4 );
+
+      ++a_itr;
+      tmp_book = *a_itr;
+
+      BOOST_REQUIRE( tmp_book.id._id == 1 );
+      BOOST_REQUIRE( tmp_book.a == 4 );
+      BOOST_REQUIRE( tmp_book.b == 2 );
+
    }
    catch( ... )
    {

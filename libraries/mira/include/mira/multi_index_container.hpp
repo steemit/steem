@@ -384,7 +384,7 @@ public:
 */
   ~multi_index_container()
   {
-    delete_all_nodes_();
+    //delete_all_nodes_();
   }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
@@ -871,27 +871,34 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     BOOST_CATCH_END
   }
 
+/*
   void erase_(node_type* x)
   {
     --node_count;
     super::erase_(x);
     deallocate_node(x);
   }
+*/
+
+   void erase_( value_type& v )
+   {
+
+   }
 
   void delete_node_(node_type* x)
   {
     super::delete_node_(x);
     deallocate_node(x);
   }
-
+/*
   void delete_all_nodes_()
   {
     super::delete_all_nodes_();
   }
-
+*/
   void clear_()
   {
-    delete_all_nodes_();
+    //delete_all_nodes_();
     super::clear_();
     node_count=0;
   }
@@ -924,6 +931,19 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     return super::replace_(k,x,detail::rvalue_tag());
   }
 
+   template< typename Modifier >
+   bool modify_( Modifier& mod, value_type& v )
+   {
+      return false;
+   }
+
+   template< typename Modifier, typename Rollback >
+   bool modify_( Modifier& mod, Rollback& back_, value_type& v )
+   {
+      return false;
+   }
+
+/*
   template<typename Modifier>
   bool modify_(Modifier& mod,node_type* x)
   {
@@ -996,7 +1016,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     }
     BOOST_CATCH_END
   }
-
+*/
 #if !defined(BOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
   /* serialization */
 
