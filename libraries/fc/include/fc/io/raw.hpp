@@ -524,6 +524,7 @@ namespace fc {
       FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
       unsigned_int size; fc::raw::unpack( s, size, depth );
       FC_ASSERT( size.value*sizeof(T) < MAX_ARRAY_ALLOC_SIZE );
+      value.clear();
       for ( size_t i = 0; i < size.value; i++ )
       {
          T tmp;
@@ -549,6 +550,7 @@ namespace fc {
       FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
       unsigned_int size; fc::raw::unpack( s, size );
       FC_ASSERT( size.value*sizeof(T) < MAX_ARRAY_ALLOC_SIZE );
+      value.clear();
       for ( size_t i = 0; i < size.value; i++ )
       {
          T tmp;
@@ -573,6 +575,7 @@ namespace fc {
       depth++;
       FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
       unsigned_int size; fc::raw::unpack( s, size, depth );
+      value.clear();
       for( uint64_t i = 0; i < size.value; ++i )
       {
         typename std::set<T...>::value_type tmp;
@@ -597,6 +600,7 @@ namespace fc {
       depth++;
       FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
       unsigned_int size; fc::raw::unpack( s, size, depth );
+      value.clear();
       for( uint64_t i = 0; i < size.value; ++i )
       {
         typename std::multiset<T...>::value_type tmp;
