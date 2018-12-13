@@ -666,7 +666,7 @@ BOOST_AUTO_TEST_CASE( unpack_clear_test )
       fc::raw::unpack( ss1, unpacked_block );
 
       BOOST_REQUIRE( b1.transactions.size() == unpacked_block.transactions.size() );
-      for ( int i = 0; i < unpacked_block.transactions.size(); i++ )
+      for ( size_t i = 0; i < unpacked_block.transactions.size(); i++ )
       {
          signed_transaction tx = unpacked_block.transactions[ i ];
          BOOST_REQUIRE( unpacked_block.transactions[ i ].operations.size() == b1.transactions[ i ].operations.size() );
