@@ -245,6 +245,7 @@ void unpack( Stream& s, boost::interprocess::deque<E, A>& dq, uint32_t depth )
    // This could be optimized
    std::vector<E> temp;
    unpack( s, temp, depth );
+   dq.clear();
    std::copy( temp.begin(), temp.end(), std::back_inserter(dq) );
 }
 

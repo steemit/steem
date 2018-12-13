@@ -53,9 +53,6 @@ namespace fc {
     template<typename Stream, typename... T> void pack( Stream& s, const static_variant<T...>& sv );
     template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv, uint32_t depth = 0 );
 
-    template<typename Stream, typename T> inline void pack( Stream& s, const std::deque<T>& value );
-    template<typename Stream, typename T> inline void unpack( Stream& s, std::deque<T>& value, uint32_t depth = 0 );
-
     template<typename Stream, typename K, typename V> inline void pack( Stream& s, const std::unordered_map<K,V>& value );
     template<typename Stream, typename K, typename V> inline void unpack( Stream& s, std::unordered_map<K,V>& value, uint32_t depth = 0 );
 
