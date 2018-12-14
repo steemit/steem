@@ -78,6 +78,7 @@ namespace fc {
           FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
           unsigned_int size;
           unpack( s, size, depth );
+          value.clear();
           if( !std::is_fundamental<T>::value ) {
              for ( size_t i = 0; i < size.value; i++ )
              {
