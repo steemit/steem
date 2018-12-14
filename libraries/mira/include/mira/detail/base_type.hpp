@@ -48,7 +48,7 @@ struct nth_layer
     boost::mpl::identity<index_base<Value,IndexSpecifierList,Allocator> >,
     boost::mpl::apply2<
       index_applier,
-      boost::mpl::at_c<IndexSpecifierList,N>,
+      boost::mpl::at_c<IndexSpecifierList,length-1-N>,
       nth_layer<N+1,Value,IndexSpecifierList,Allocator>
     >
   >::type type;

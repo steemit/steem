@@ -112,9 +112,7 @@ public:
 
       if( _index == ID_INDEX )
       {
-         ptr = std::make_shared< Value >();
          fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
-
          ptr = _cache.get( id );
 
          if( !ptr )
@@ -131,7 +129,8 @@ public:
          auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
          assert( s.ok() );
 
-         fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size() );
+         fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size(), id );
+         ptr = _cache.get( id );
 
          if( !ptr )
          {

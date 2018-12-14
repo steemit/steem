@@ -26,7 +26,7 @@ public:
 
    void cache( ptr_type& v )
    {
-      _cache.insert( std::make_pair( _get_key( v ), v ) );
+      _cache.insert( std::make_pair( _get_key( *v ), v ) );
    }
 
    void invalidate( const Value& v )
