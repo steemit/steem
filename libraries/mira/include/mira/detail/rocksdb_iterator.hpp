@@ -31,6 +31,7 @@ private:
    db_ptr                                          _db;
 
    cache_type&                                     _cache;
+   IDFromValue                                     _get_id;
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
@@ -103,7 +104,7 @@ public:
       other._db.reset();
    }
 
-   Value& operator*()const
+   const Value& operator*()const
    {
       BOOST_ASSERT( valid() );
       ::rocksdb::Slice key_slice = _iter->value();
@@ -120,7 +121,7 @@ public:
             // We are iterating on the primary key, so there is no indirection
             ptr = std::make_shared< Value >();
             fc::raw::unpack_from_char_array< Value >( key_slice.data(), key_slice.size(), *ptr );
-            _cache.cache( ptr );
+            ptr = _cache.cache( std::move( *ptr ) );
          }
       }
       else
@@ -136,7 +137,7 @@ public:
          {
             ptr = std::make_shared< Value >();
             fc::raw::unpack_from_char_array< Value >( value_slice.data(), value_slice.size(), *ptr );
-            _cache.cache( ptr );
+            ptr = _cache.cache( std::move( *ptr ) );
          }
       }
 

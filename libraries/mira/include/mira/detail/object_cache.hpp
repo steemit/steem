@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fc/log/logger.hpp>
+
 #include <map>
 #include <memory>
 
@@ -24,9 +26,14 @@ private:
 
 public:
 
-   void cache( ptr_type& v )
+   ptr_type cache( Value&& v )
    {
-      _cache.insert( std::make_pair( _get_key( *v ), v ) );
+      auto key = _get_key( v );
+      auto value = std::make_shared< Value >( std::move( v ) );
+
+      _cache.insert( std::make_pair( key, value ) );
+
+      return value;
    }
 
    void invalidate( const Value& v )
