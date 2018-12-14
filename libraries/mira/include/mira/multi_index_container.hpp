@@ -36,6 +36,7 @@
 #include <mira/detail/header_holder.hpp>
 #include <mira/detail/has_tag.hpp>
 #include <mira/detail/no_duplicate_tags.hpp>
+#include <mira/detail/object_cache.hpp>
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>

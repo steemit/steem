@@ -38,16 +38,16 @@ struct slice_comparator final : abstract_slice_comparator< Key, CompareType >
 
    virtual int Compare( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
    {
-      assert( x.size() == y.size() );
+      //assert( x.size() == y.size() );
 
       int r = (*this)(
-         std::move( fc::raw::unpack_from_char_array< Key >( x.data(), x.size() ) ),
-         std::move( fc::raw::unpack_from_char_array< Key >( y.data(), y.size() ) )
+         fc::raw::unpack_from_char_array< Key >( x.data(), x.size() ),
+         fc::raw::unpack_from_char_array< Key >( y.data(), y.size() )
       );
 
       if( r ) return -1;
 
-      if( memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
+      if( ( x.size() == y.size() ) && memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
 
       return 1;
    }

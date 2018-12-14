@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mira/multi_index_container_fwd.hpp>
+#include <mira/detail/object_cache.hpp>
 
 #include <rocksdb/db.h>
 
@@ -10,9 +11,16 @@ namespace mira { namespace multi_index { namespace detail {
 
 #define ID_INDEX 1
 
-template< typename Value, typename Key >
+template< typename Value, typename Key, typename KeyFromValue,
+          typename ID, typename IDFromValue >
 struct rocksdb_iterator
 {
+   typedef typename std::shared_ptr< Value >       value_ptr;
+   typedef object_cache<
+      Value,
+      ID,
+      IDFromValue >                                cache_type;
+
 private:
    const column_handles&                           _handles;
    const size_t                                    _index = 0;
@@ -22,14 +30,17 @@ private:
    ::rocksdb::ReadOptions                          _opts;
    db_ptr                                          _db;
 
-   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db ) :
+   cache_type&                                     _cache;
+
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
       _index( index ),
-      _db( db )
+      _db( db ),
+      _cache( cache )
    {
       // Not sure the implicit move constuctor for ManageSnapshot isn't going to release the snapshot...
-      _snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-      _opts.snapshot = _snapshot->snapshot();
+      //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
+      //_opts.snapshot = _snapshot->snapshot();
       _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
    }
 
@@ -47,13 +58,14 @@ private:
 
 public:
 
-   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, const Key& k ) :
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const Key& k ) :
       _handles( handles ),
       _index( index ),
-      _db( db )
+      _db( db ),
+      _cache( cache )
    {
-      _snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-      _opts.snapshot = _snapshot->snapshot();
+      //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
+      //_opts.snapshot = _snapshot->snapshot();
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
 
@@ -63,13 +75,14 @@ public:
       assert( _iter->status().ok() && _iter->Valid() );
    }
 
-   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, const ::rocksdb::Slice& s ) :
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ::rocksdb::Slice& s  ) :
       _handles( handles ),
       _index( index ),
-      _db( db )
+      _db( db ),
+      _cache( cache )
    {
-      _snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-      _opts.snapshot = _snapshot->snapshot();
+      //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
+      //_opts.snapshot = _snapshot->snapshot();
 
       _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
       _iter->Seek( s );
@@ -82,29 +95,53 @@ public:
       _index( other._index ),
       _iter( std::move( other._iter ) ),
       _snapshot( other._snapshot ),
-      _db( other._db )
+      _db( other._db ),
+      _cache( other._cache )
    {
-      _opts.snapshot = _snapshot->snapshot();
+      //_opts.snapshot = _snapshot->snapshot();
       other._snapshot.reset();
       other._db.reset();
    }
 
-   Value operator*()const
+   Value& operator*()const
    {
       BOOST_ASSERT( valid() );
       ::rocksdb::Slice key_slice = _iter->value();
+      std::shared_ptr< Value > ptr;
+      ID id;
 
       if( _index == ID_INDEX )
       {
-         // We are iterating on the primary key, so there is no indirection
-         return fc::raw::unpack_from_char_array< Value >( key_slice.data(), key_slice.size() );
+         ptr = std::make_shared< Value >();
+         fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
+
+         ptr = _cache.get( id );
+
+         if( !ptr )
+         {
+            // We are iterating on the primary key, so there is no indirection
+            ptr = std::make_shared< Value >();
+            fc::raw::unpack_from_char_array< Value >( key_slice.data(), key_slice.size(), *ptr );
+            _cache.cache( ptr );
+         }
+      }
+      else
+      {
+         ::rocksdb::PinnableSlice value_slice;
+         auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
+         assert( s.ok() );
+
+         fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size() );
+
+         if( !ptr )
+         {
+            ptr = std::make_shared< Value >();
+            fc::raw::unpack_from_char_array< Value >( value_slice.data(), value_slice.size(), *ptr );
+            _cache.cache( ptr );
+         }
       }
 
-      ::rocksdb::PinnableSlice value_slice;
-      auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
-      assert( s.ok() );
-
-      return fc::raw::unpack_from_char_array< Value >( value_slice.data(), value_slice.size() );
+      return (*ptr);
    }
 
    rocksdb_iterator& operator++()
@@ -159,9 +196,10 @@ public:
    static rocksdb_iterator begin(
       const column_handles& handles,
       size_t index,
-      db_ptr db )
+      db_ptr db,
+      cache_type& cache )
    {
-      rocksdb_iterator itr( handles, index, db );
+      rocksdb_iterator itr( handles, index, db, cache );
       itr._iter->SeekToFirst();
       return itr;
    }
@@ -169,25 +207,34 @@ public:
    static rocksdb_iterator end(
       const column_handles& handles,
       size_t index,
-      db_ptr db )
+      db_ptr db,
+      cache_type& cache )
    {
-      return rocksdb_iterator( handles, index, db );
+      return rocksdb_iterator( handles, index, db, cache );
    }
 
-   template< typename CompatibleKey >
+   //template< typename Key >
    static rocksdb_iterator find(
       const column_handles& handles,
       size_t index,
       db_ptr db,
-      const CompatibleKey& k )
+      cache_type& cache,
+      const Key& k )
    {
-      rocksdb_iterator itr( handles, index, db );
+      rocksdb_iterator itr( handles, index, db, cache );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
 
-      ::rocksdb::Slice found_key = itr._iter->key();
-      if( memcmp( ser_key.data(), found_key.data(), std::min( ser_key.size(), found_key.size() ) ) != 0 )
+      if( itr.valid() )
+      {
+         ::rocksdb::Slice found_key = itr._iter->key();
+         if( memcmp( ser_key.data(), found_key.data(), std::min( ser_key.size(), found_key.size() ) ) != 0 )
+         {
+            itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
+         }
+      }
+      else
       {
          itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
       }
@@ -195,14 +242,15 @@ public:
       return itr;
    }
 
-   template< typename CompatibleKey >
+   //template< typename Key >
    static rocksdb_iterator lower_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
-      const CompatibleKey& k )
+      cache_type& cache,
+      const Key& k )
    {
-      rocksdb_iterator itr( handles, index, db );
+      rocksdb_iterator itr( handles, index, db, cache );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -210,20 +258,20 @@ public:
       return itr;
    }
 
-   template< typename CompatibleKey >
+   //template< typename Key >
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
-      const CompatibleKey& k )
+      cache_type& cache,
+      const Key& k )
    {
-      rocksdb_iterator itr( handles, index, db );
+      rocksdb_iterator itr( handles, index, db, cache );
 
-      std::vector< char > ser_key = fc::raw::pack_to_char_array( k );
+      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->SeekForPrev( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
 
-      ::rocksdb::Slice found_key = itr._iter->key();
-      if( memcmp( ser_key.data(), found_key.data(), std::min( ser_key.size(), found_key.size() ) ) == 0 )
+      if( itr.valid() )
       {
          itr._iter->Next();
       }
@@ -236,28 +284,31 @@ public:
       const column_handles& handles,
       size_t index,
       db_ptr db,
+      cache_type& cache,
       const LowerBoundType& lower,
       const UpperBoundType& upper )
    {
       return std::make_pair< rocksdb_iterator, rocksdb_iterator >(
-         lower_bound( handles, index, db, lower ),
-         upper_bound( handles, index, db, upper )
+         lower_bound( handles, index, db, cache, lower ),
+         upper_bound( handles, index, db, cache, upper )
       );
    }
 };
 
-template< typename Value, typename Key >
+template< typename Value, typename Key, typename KeyFromValue,
+          typename ID, typename IDFromValue >
 bool operator==(
-   const rocksdb_iterator< Value, Key >& x,
-   const rocksdb_iterator< Value, Key >& y)
+   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& x,
+   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& y)
 {
    return x.equals( y );
 }
 
-template< typename Value, typename Key >
+template< typename Value, typename Key, typename KeyFromValue,
+          typename ID, typename IDFromValue >
 bool operator!=(
-   const rocksdb_iterator< Value, Key >& x,
-   const rocksdb_iterator< Value, Key >& y)
+   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& x,
+   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& y)
 {
    return !( x == y );
 }

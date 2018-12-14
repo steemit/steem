@@ -63,6 +63,17 @@ void from_variant( const variant& vo, chainbase::oid<T>& var )
    var._id = vo.as_int64();
 }
 
+/*
+template< typename T > struct get_typename< chainbase::oid<T> >
+{
+   static const char* name()
+   {
+      static std::string n = std::string("chainbase::oid<") + get_typename<T>::name() + ">";
+      return n.c_str();
+   }
+};
+*/
+
 namespace raw
 {
 
@@ -82,6 +93,7 @@ void unpack( Stream& s, chainbase::oid<T>& id )
 
 } // fc
 
+/*
 namespace mira { namespace multi_index { namespace detail {
 
 template< typename T, typename CompareType >
@@ -92,7 +104,10 @@ struct slice_comparator< chainbase::oid< T >, CompareType > final : abstract_sli
 
    virtual int Compare( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
    {
-      assert( x.size() == y.size() );
+      std::cout << x.size() << ' ' << y.size() << std::endl;
+      //assert( x.size() == y.size() );
+
+      auto x_key = fc::raw::unpack_from_char_array;
 
       int r = (*this)(
          std::move( fc::raw::unpack_from_char_array< int64_t >( x.data(), x.size() ) ),
@@ -114,6 +129,7 @@ struct slice_comparator< chainbase::oid< T >, CompareType > final : abstract_sli
 };
 
 } } } // mira::multi_index::detail
+//*/
 
 FC_REFLECT( book::id_type, (_id) )
 
@@ -195,7 +211,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
       BOOST_REQUIRE( itr != book_idx.end() );
 
-      auto tmp_book = *itr;
+      auto& tmp_book = *itr;
 
       BOOST_REQUIRE( tmp_book.id._id == 0 );
       BOOST_REQUIRE( tmp_book.a == 3 );
@@ -242,9 +258,43 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       BOOST_REQUIRE( tmp_book.a == 4 );
       BOOST_REQUIRE( tmp_book.b == 2 );
 
+      tmp_book = *(book_by_a_idx.lower_bound( 3 ));
+
+      BOOST_REQUIRE( tmp_book.id._id == 0 );
+      BOOST_REQUIRE( tmp_book.a == 3 );
+      BOOST_REQUIRE( tmp_book.b == 4 );
+
+      BOOST_REQUIRE( book_by_a_idx.lower_bound( 5 ) == book_by_a_idx.end() );
+
+      tmp_book = *(book_by_a_idx.upper_bound( 3 ));
+
+      BOOST_REQUIRE( tmp_book.id._id == 1 );
+      BOOST_REQUIRE( tmp_book.a == 4 );
+      BOOST_REQUIRE( tmp_book.b == 2 );
+
+      BOOST_REQUIRE( book_by_a_idx.upper_bound( 5 ) == book_by_a_idx.end() );
+
+      tmp_book = db.get< book, by_id >( 1 );
+
+      BOOST_REQUIRE( tmp_book.id._id == 1 );
+      BOOST_REQUIRE( tmp_book.a == 4 );
+      BOOST_REQUIRE( tmp_book.b == 2 );
+
+      bool is_found = db.find< book, by_a >( 10 ) != nullptr;
+
+      BOOST_REQUIRE( !is_found );
+
+      const auto& book_by_id = db.get< book, by_id >( 0 );
+      const auto& book_by_a = db.get< book, by_a >( 3 );
+
+      std::cout << book_by_id.id._id << ' ' << book_by_id.a << ' ' << book_by_id.b << std::endl;
+      std::cout << book_by_a.id._id << ' ' << book_by_a.a << ' ' << book_by_a.b << std::endl << std::flush;
+
+      BOOST_REQUIRE( &book_by_id == &book_by_a );
    }
    catch( ... )
    {
+      std::cout << "exception" << std::endl;
       chainbase::bfs::remove_all( temp );
       throw;
    }

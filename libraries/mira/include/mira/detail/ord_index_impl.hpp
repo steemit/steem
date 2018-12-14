@@ -94,7 +94,7 @@
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT
 #endif
 
-#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db
+#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db, _cache
 
 namespace mira{
 
@@ -164,11 +164,62 @@ public:
   typedef const value_type&                          const_reference;
 #endif
 
+   typedef boost::false_type                          is_terminal_node;
+
+   typedef typename boost::mpl::if_<
+      typename super::is_terminal_node,
+      ordered_index_impl<
+         KeyFromValue,
+         Compare,
+         SuperMeta,
+         TagList,
+         Category,
+         AugmentPolicy >,
+      typename super::canon_index_type >::type        canon_index_type;
+
+   typedef typename std::pair<
+      typename canon_index_type::iterator,
+      bool >                                          emplace_return_type;
+
+//*
+   typedef typename boost::mpl::if_<
+      typename super::is_terminal_node,
+      key_type,
+      typename super::id_type >::type                 id_type;
+//*/
+//   typedef typename canon_index_type::id_type         id_type;
+
+//*
+   typedef typename boost::mpl::if_<
+      typename super::is_terminal_node,
+      KeyFromValue,
+      typename super::id_from_value >::type           id_from_value;
+//*/
+
+//   typedef typename canon_index_type::id_from_value   id_from_value;
+
+/*
+   typedef object_cache<
+      value_type,
+      id_type,
+      id_from_value >                                 object_cache_type;
+
+   typedef object_cache_factory<
+      value_type,
+      id_type,
+      id_from_value >                                 object_cache_factory_type;
+*/
    typedef rocksdb_iterator<
       value_type,
-      key_type >                                      iterator;
+      key_type,
+      KeyFromValue,
+      id_type,
+      id_from_value >                                iterator;
 
   typedef iterator                                   const_iterator;
+
+  typedef typename iterator::cache_type               object_cache_type;
+  typedef typename object_cache_type::factory_type    object_cache_factory_type;
 
   typedef std::size_t                                size_type;
   typedef std::ptrdiff_t                             difference_type;
@@ -225,41 +276,9 @@ protected:
    * expansion.
    */
 
-   typedef boost::false_type                          is_terminal_node;
-
-   typedef typename boost::mpl::if_<
-      typename super::is_terminal_node,
-      ordered_index_impl<
-         KeyFromValue,
-         Compare,
-         SuperMeta,
-         TagList,
-         Category,
-         AugmentPolicy >,
-      typename super::canon_index_type >::type        canon_index_type;
-
-   typedef typename std::pair<
-      typename canon_index_type::iterator,
-      bool >                                          emplace_return_type;
-
-//*
-   typedef boost::mpl::if_<
-      typename super::is_terminal_node,
-      key_type,
-      typename super::id_type >                       id_type;
-//*/
-//   typedef typename canon_index_type::id_type         id_type;
-
-//*
-   typedef typename boost::mpl::if_<
-      typename super::is_terminal_node,
-      KeyFromValue,
-      typename super::id_from_value >::type           id_from_value;
-//*/
-
-//   typedef typename canon_index_type::id_from_value   id_from_value;
-
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
+
+   object_cache_type&                                 _cache;
 
 public:
 
@@ -536,6 +555,7 @@ public:
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   ordered_index_impl(const ctor_args_list& args_list,const allocator_type& al):
     super(args_list.get_tail(),al),
+    _cache(object_cache_factory_type().static_create()),
     key(boost::tuples::get<0>(args_list.get_head())),
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
@@ -550,7 +570,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
     safe_super(),
 #endif
-
+    _cache(object_cache_factory_type().static_create()),
     key(x.key),
     comp_(x.comp_)
   {
@@ -569,6 +589,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     safe_super(),
 #endif
 
+    _cache(object_cache_factory_type().static_create()),
     key(x.key),
     comp_(x.comp_)
   {
@@ -586,6 +607,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          super::_handles,
          COLUMN_INDEX,
          super::_db,
+         _cache,
          key
       );
    }
@@ -596,6 +618,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          super::_handles,
          COLUMN_INDEX,
          super::_db,
+         _cache,
          s
       );
    }
@@ -606,6 +629,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          super::_handles,
          COLUMN_INDEX,
          super::_db,
+         _cache,
          key
       );
    }
@@ -616,6 +640,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          super::_handles,
          COLUMN_INDEX,
          super::_db,
+         _cache,
          s
       );
    }
