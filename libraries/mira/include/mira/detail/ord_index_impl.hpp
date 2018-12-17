@@ -407,14 +407,14 @@ public:
 #endif
 */
 
-   iterator erase(iterator position)
+   iterator erase( iterator position )
    {
       BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(position);
       BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
 
       value_type v = *position;
-      this->final_erase_( v );
       ++position;
+      this->final_erase_( v );
       return position;
    }
 /*
@@ -430,6 +430,7 @@ public:
     return s;
   }
 */
+/*
   iterator erase(iterator first,iterator last)
   {
     BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(first);
@@ -440,6 +441,7 @@ public:
     }
     return first;
   }
+  */
 /*
   bool replace(iterator position,const value_type& x)
   {
@@ -755,7 +757,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
             s = super::_db->Get(
                ::rocksdb::ReadOptions(),
-               super::_handles[ COLUMN_INDEX],
+               super::_handles[ COLUMN_INDEX ],
                key_slice,
                &read_buffer );
 
@@ -789,7 +791,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
             s = super::_write_buffer.Put(
                super::_handles[ COLUMN_INDEX ],
-               ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ),
+               key_slice,
                ::rocksdb::Slice( serialized_id.data(), serialized_id.size() ) );
          }
          return s.ok();
@@ -797,6 +799,17 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       return false;
   }
 
+   void erase_( value_type& v )
+   {
+      super::erase_( v );
+      std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
+
+      super::_write_buffer.Delete(
+         super::_handles[ COLUMN_INDEX ],
+         ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ) );
+   }
+
+   /*
   void erase_(node_type* x)
   {
     node_impl_type::rebalance_for_erase(
@@ -807,6 +820,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     detach_iterators(x);
 #endif
   }
+  */
 /*
   void delete_all_nodes_()
   {
@@ -877,6 +891,67 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     BOOST_CATCH_END
   }
 
+   template< typename Modifier >
+   bool modify_( Modifier mod, value_type& v )
+   {
+      key_type old_key = key( v );
+      if( super::modify_( mod, v ) )
+      {
+         ::rocksdb::Status s = ::rocksdb::Status::OK();
+         ::rocksdb::PinnableSlice read_buffer;
+
+         key_type new_key = key( v );
+         if( COLUMN_INDEX == 1 )
+         {
+            // Primary key cannot change
+            if( new_key != old_key )
+               return false;
+
+            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
+            std::vector< char > serialized_value = fc::raw::pack_to_vector( v );
+
+            s = super::_write_buffer.Put(
+               super::_handles[ COLUMN_INDEX ],
+               ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ),
+               ::rocksdb::Slice( serialized_value.data(), serialized_value.size() ) );
+         }
+         else if( new_key != old_key )
+         {
+            std::vector< char > new_ser_key = fc::raw::pack_to_vector( new_key );
+            ::rocksdb::Slice new_key_slice( new_ser_key.data(), new_ser_key.size() );
+
+            s = super::_db->Get(
+               ::rocksdb::ReadOptions(),
+               super::_handles[ COLUMN_INDEX ],
+               new_key_slice,
+               &read_buffer );
+
+            // New key already exists, uniqueness constraint violated
+            if( s.ok() ) return false;
+
+            std::vector< char > old_ser_key = fc::raw::pack_to_vector( old_key );
+            ::rocksdb::Slice old_key_slice( old_ser_key.data(), old_ser_key.size() );
+
+            s = super::_write_buffer.Delete(
+               super::_handles[ COLUMN_INDEX ],
+               old_key_slice );
+
+            if( !s.ok() ) return false;
+
+            std::vector< char > serialized_id = fc::raw::pack_to_vector( id( v ) );
+            s = super::_write_buffer.Put(
+               super::_handles[ COLUMN_INDEX ],
+               new_key_slice,
+               ::rocksdb::Slice( serialized_id.data(), serialized_id.size() ) );
+         }
+
+         return s.ok();
+      }
+
+      return false;
+   }
+
+   /*
   bool modify_(node_type* x)
   {
     bool b;
@@ -969,6 +1044,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     }
     BOOST_CATCH_END
   }
+  */
 
   bool check_rollback_(node_type* x)const
   {

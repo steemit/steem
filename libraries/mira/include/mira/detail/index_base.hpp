@@ -171,10 +171,7 @@ protected:
      return true;
   }
 
-  void erase_(node_type* x)
-  {
-    boost::detail::allocator::destroy(boost::addressof(x->value()));
-  }
+  void erase_(value_type& x) {}
 
   void delete_node_(node_type* x)
   {
@@ -199,9 +196,16 @@ protected:
     return true;
   }
 
-  bool modify_(node_type*){return true;}
+   template< typename Modifier >
+   bool modify_( Modifier& mod, value_type& v )
+   {
+      mod( v );
+      return true;
+   }
 
-  bool modify_rollback_(node_type*){return true;}
+  //bool modify_(node_type*){return true;}
+
+  //bool modify_rollback_(node_type*){return true;}
 
   bool check_rollback_(node_type*)const{return true;}
 

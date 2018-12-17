@@ -883,7 +883,10 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
    void erase_( value_type& v )
    {
-
+      super::erase_( v );
+      super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() );
+      super::_cache.invalidate( v );
+      super::_write_buffer.Clear();
    }
 
   void delete_node_(node_type* x)
@@ -935,14 +938,19 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
    template< typename Modifier >
    bool modify_( Modifier& mod, value_type& v )
    {
-      return false;
+      bool status = false;
+      if( super::modify_( mod, v ) )
+      {
+         status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
+
+         if( status )
+            super::_cache.invalidate( v );
+      }
+      super::_write_buffer.Clear();
+
+      return status;
    }
 
-   template< typename Modifier, typename Rollback >
-   bool modify_( Modifier& mod, Rollback& back_, value_type& v )
-   {
-      return false;
-   }
 
 /*
   template<typename Modifier>

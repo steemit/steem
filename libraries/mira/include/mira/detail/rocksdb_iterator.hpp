@@ -192,6 +192,14 @@ public:
       return _iter->Valid() == other._iter->Valid();
    }
 
+   rocksdb_iterator& operator=( rocksdb_iterator&& other )
+   {
+      _iter = std::move( other._iter );
+      _snapshot = other._snapshot;
+      _db = other._db;
+      return *this;
+   }
+
 
    static rocksdb_iterator begin(
       const column_handles& handles,

@@ -318,6 +318,133 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       const auto& book_by_a = db.get< book, by_a >( 3 );
 
       BOOST_REQUIRE( &book_by_id == &book_by_a );
+
+      db.modify( db.get< book, by_id >( 0 ), []( book& b )
+      {
+         b.a = 10;
+         b.b = 10;
+      });
+
+      {
+         const auto& tmp_book = db.get< book, by_id >( 0 );
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 10 );
+         BOOST_REQUIRE( tmp_book.b == 10 );
+      }
+
+      try
+      {
+         db.modify( db.get< book, by_id >( 0 ), []( book& b )
+         {
+            b.a = 4;
+            b.b = 10;
+         });
+         BOOST_REQUIRE( false );
+      }
+      catch( ... )
+      {
+         const auto& tmp_book = db.get< book, by_id >( 0 );
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 10 );
+         BOOST_REQUIRE( tmp_book.b == 10 );
+      }
+
+      a_itr = book_by_a_idx.begin();
+
+      BOOST_REQUIRE( a_itr != book_by_a_idx.end() );
+
+      {
+         const auto& tmp_book = *a_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      ++a_itr;
+
+      {
+         const auto& tmp_book = *a_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 2 );
+      }
+
+      ++a_itr;
+
+      {
+         const auto& tmp_book = *a_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 10 );
+         BOOST_REQUIRE( tmp_book.b == 10 );
+      }
+
+      ++a_itr;
+
+      BOOST_REQUIRE( a_itr == book_by_a_idx.end() );
+
+      db.remove( db.get< book, by_id >( 0 ) );
+
+      is_found = db.find< book, by_id >( 0 ) != nullptr;
+
+      BOOST_REQUIRE( !is_found );
+
+      itr = book_idx.begin();
+
+      BOOST_REQUIRE( itr != book_idx.end() );
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 2 );
+      }
+
+      ++itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      ++itr;
+
+      BOOST_REQUIRE( itr == book_idx.end() );
+
+      a_itr = book_by_a_idx.begin();
+
+      BOOST_REQUIRE( a_itr != book_by_a_idx.end() );
+
+      {
+         const auto& tmp_book = *a_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      ++a_itr;
+
+      {
+         const auto& tmp_book = *a_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 2 );
+      }
+
+      ++a_itr;
+
+      BOOST_REQUIRE( a_itr == book_by_a_idx.end() );
+
    }
    catch( ... )
    {
