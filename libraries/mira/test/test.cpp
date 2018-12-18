@@ -20,7 +20,22 @@ using mira::multi_index::ordered_unique;
 using mira::multi_index::tag;
 using mira::multi_index::member;
 
-struct book : public chainbase::object<0, book> {
+struct rocksdb_fixture {
+   boost::filesystem::path tmp;
+   chainbase::database db;
+   rocksdb_fixture()
+   {
+      tmp = boost::filesystem::current_path() / boost::filesystem::unique_path();
+      db.open( tmp, 0, 1024*1024*8 );
+   }
+
+   ~rocksdb_fixture()
+   {
+      chainbase::bfs::remove_all( tmp );
+   }
+};
+
+struct book : public chainbase::object< 0, book > {
 
    template<typename Constructor, typename Allocator>
    book(  Constructor&& c, Allocator&& a )
@@ -44,131 +59,15 @@ typedef multi_index_container<
      ordered_unique< tag< by_id >, member< book, book::id_type, &book::id > >,
      ordered_unique< tag< by_a >,  member< book, int,           &book::a  > >
   >,
-  chainbase::allocator<book>
+  chainbase::allocator< book >
 > book_index;
 
-namespace fc
-{
-class variant;
-
-template<typename T>
-void to_variant( const chainbase::oid<T>& var,  variant& vo )
-{
-   vo = var._id;
-}
-
-template<typename T>
-void from_variant( const variant& vo, chainbase::oid<T>& var )
-{
-   var._id = vo.as_int64();
-}
-
-/*
-template< typename T > struct get_typename< chainbase::oid<T> >
-{
-   static const char* name()
-   {
-      static std::string n = std::string("chainbase::oid<") + get_typename<T>::name() + ">";
-      return n.c_str();
-   }
-};
-*/
-
-namespace raw
-{
-
-template<typename Stream, typename T>
-void pack( Stream& s, const chainbase::oid<T>& id )
-{
-   s.write( (const char*)&id._id, sizeof(id._id) );
-}
-
-template<typename Stream, typename T>
-void unpack( Stream& s, chainbase::oid<T>& id )
-{
-   s.read( (char*)&id._id, sizeof(id._id));
-}
-
-} // raw
-
-} // fc
-
-/*
-namespace mira { namespace multi_index { namespace detail {
-
-template< typename T, typename CompareType >
-struct slice_comparator< chainbase::oid< T >, CompareType > final : abstract_slice_comparator< chainbase::oid< T >, CompareType >
-{
-   slice_comparator() : abstract_slice_comparator< chainbase::oid< T >, CompareType >()
-   {}
-
-   virtual int Compare( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
-   {
-      std::cout << x.size() << ' ' << y.size() << std::endl;
-      //assert( x.size() == y.size() );
-
-      auto x_key = fc::raw::unpack_from_char_array;
-
-      int r = (*this)(
-         std::move( fc::raw::unpack_from_char_array< int64_t >( x.data(), x.size() ) ),
-         std::move( fc::raw::unpack_from_char_array< int64_t >( y.data(), y.size() ) )
-      );
-
-      if( r ) return -1;
-
-      if( memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
-
-      return 1;
-   }
-
-   virtual bool Equal( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
-   {
-      assert( x.size() == y.size() );
-      return memcmp( x.data(), y.data(), x.size() ) == 0;
-   }
-};
-
-} } } // mira::multi_index::detail
-//*/
-
-FC_REFLECT( book::id_type, (_id) )
-
-FC_REFLECT( book, (id)(a)(b) )
-CHAINBASE_SET_INDEX_TYPE( book, book_index )
-
-/*
-
-Create call stack
-
-ord_index_impl::emplace_impl
-index_base::final_emplace_
-multi_index_container::emplace_
-ord_index_impl::insert_
-...
-index_base::insert_
-
-*/
-
-/*
-
-Inheritance:
-
-index_base
-ord_index_impl
-... (For each index)
-multi_index_container
-*/
+BOOST_FIXTURE_TEST_SUITE( mira_tests, rocksdb_fixture )
 
 BOOST_AUTO_TEST_CASE( open_and_create )
 {
-   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
    try
    {
-      chainbase::database db;
-      db.open( temp, 0, 1024*1024*8 );
-
-      chainbase::database db2; /// open an already created db
-
       db.add_index< book_index >();
 
       BOOST_TEST_MESSAGE( "Creating book" );
@@ -446,12 +345,12 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       BOOST_REQUIRE( a_itr == book_by_a_idx.end() );
 
    }
-   catch( ... )
-   {
-      std::cout << "exception" << std::endl;
-      chainbase::bfs::remove_all( temp );
-      throw;
-   }
-
-   chainbase::bfs::remove_all( temp );
+   FC_LOG_AND_RETHROW();
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+FC_REFLECT( book::id_type, (_id) )
+
+FC_REFLECT( book, (id)(a)(b) )
+CHAINBASE_SET_INDEX_TYPE( book, book_index )
