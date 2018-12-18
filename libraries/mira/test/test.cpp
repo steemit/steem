@@ -218,7 +218,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       db.create<book>( []( book& b )
       {
           b.a = 4;
-          b.b = 2;
+          b.b = 5;
       });
 
       db.create<book>( []( book& b )
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       ++itr;
@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       {
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       BOOST_REQUIRE( book_by_a_idx.upper_bound( 5 ) == book_by_a_idx.end() );
@@ -320,7 +320,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       {
@@ -328,12 +328,67 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( book_ptr->id._id == 1 );
          BOOST_REQUIRE( book_ptr->a == 4 );
-         BOOST_REQUIRE( book_ptr->b == 2 );
+         BOOST_REQUIRE( book_ptr->b == 5 );
       }
 
       bool is_found = db.find< book, by_a >( 10 ) != nullptr;
 
       BOOST_REQUIRE( !is_found );
+
+      const auto& book_by_b_idx = db.get_index< book_index, by_b >();
+      auto b_itr = book_by_b_idx.begin();
+
+      BOOST_REQUIRE( b_itr != book_by_b_idx.end() );
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         idump( (tmp_book.id._id)(tmp_book.a)(tmp_book.b) );
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
+
+      ++b_itr;
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 3 );
+         BOOST_REQUIRE( tmp_book.b == 4 );
+      }
+
+      ++b_itr;
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      ++b_itr;
+
+      BOOST_REQUIRE( b_itr == book_by_b_idx.end() );
+
+      const auto book_by_b = db.get< book, by_b >( boost::make_tuple( 5, 4 ) );
+
+      BOOST_REQUIRE( book_by_b.id._id == 1 );
+      BOOST_REQUIRE( book_by_b.a == 4 );
+      BOOST_REQUIRE( book_by_b.b == 5 );
+
+      b_itr = book_by_b_idx.lower_bound( 10 );
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
 
       const auto& book_by_id = db.get< book, by_id >( 0 );
       const auto& book_by_a = db.get< book, by_a >( 3 );
@@ -343,7 +398,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
       db.modify( db.get< book, by_id >( 0 ), []( book& b )
       {
          b.a = 10;
-         b.b = 10;
+         b.b = 5;
       });
 
       {
@@ -351,7 +406,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 0 );
          BOOST_REQUIRE( tmp_book.a == 10 );
-         BOOST_REQUIRE( tmp_book.b == 10 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       try
@@ -369,7 +424,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 0 );
          BOOST_REQUIRE( tmp_book.a == 10 );
-         BOOST_REQUIRE( tmp_book.b == 10 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       a_itr = book_by_a_idx.begin();
@@ -391,7 +446,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       ++a_itr;
@@ -401,12 +456,59 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 0 );
          BOOST_REQUIRE( tmp_book.a == 10 );
-         BOOST_REQUIRE( tmp_book.b == 10 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       ++a_itr;
 
       BOOST_REQUIRE( a_itr == book_by_a_idx.end() );
+
+      b_itr = book_by_b_idx.begin();
+
+      BOOST_REQUIRE( b_itr != book_by_b_idx.end() );
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+
+      }
+
+      ++b_itr;
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 10 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
+
+      ++b_itr;
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      ++b_itr;
+
+      BOOST_REQUIRE( b_itr == book_by_b_idx.end() );
+
+      b_itr = book_by_b_idx.lower_bound( boost::make_tuple( 5, 5 ) );
+
+      {
+         const auto& tmp_book = *b_itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 10 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
 
       db.remove( db.get< book, by_id >( 0 ) );
 
@@ -423,7 +525,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       ++itr;
@@ -459,7 +561,7 @@ BOOST_AUTO_TEST_CASE( open_and_create )
 
          BOOST_REQUIRE( tmp_book.id._id == 1 );
          BOOST_REQUIRE( tmp_book.a == 4 );
-         BOOST_REQUIRE( tmp_book.b == 2 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
       }
 
       ++a_itr;

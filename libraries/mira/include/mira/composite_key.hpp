@@ -552,6 +552,32 @@ struct key_from_value :
       >::type
 {};
 
+template< typename Key, typename CompatibleKey >
+struct convert_compatible_key
+{
+   static Key convert( const CompatibleKey& k )
+   {
+      return Key( k, typename Key::tail_type() );
+   }
+};
+
+template< typename Key, typename... Args >
+struct convert_compatible_key< Key, boost::tuples::tuple< Args... > >
+{
+   static Key convert( const boost::tuples::tuple< Args... >& k )
+   {
+      return Key( k );
+   }
+};
+
+template< typename Key, typename CompKeyHT, typename CompKeyTT >
+struct convert_compatible_key< Key, boost::tuples::cons< CompKeyHT, CompKeyTT > >
+{
+   static Key convert( const boost::tuples::cons< CompKeyHT, CompKeyTT >& k )
+   {
+      return Key( k.get_head(), k.get_tail() );
+   }
+};
 
 template< typename KeyCons >
 struct composite_key_conversion; // Forward Declaration
@@ -599,6 +625,11 @@ struct composite_key_result
             key_type,
             value_type
          >::extract( composite_key.key_extractors(), value ) )
+   {}
+
+   template< typename CompatibleKey >
+   composite_key_result( const CompatibleKey& k ) :
+      key( convert_compatible_key< key_type, CompatibleKey >::convert( k ) )
    {}
 
    composite_key_result() {}
