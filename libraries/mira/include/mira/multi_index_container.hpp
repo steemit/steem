@@ -161,6 +161,10 @@ public:
   typedef typename super::iterator                 iterator;
   typedef typename super::const_iterator           const_iterator;
 
+  typedef typename super::primary_index_type       primary_index_type;
+
+  typedef typename primary_index_type::iterator    primary_iterator;
+
   BOOST_STATIC_ASSERT(
     detail::no_duplicate_tags_in_index_list<index_type_list>::value);
 
@@ -598,6 +602,47 @@ size_t get_column_size() const { return super::COLUMN_INDEX; }
 void populate_column_definitions_( column_definitions& defs )const
 {
    super::populate_column_definitions_( defs );
+}
+
+primary_iterator iterator_to( const value_type& x )
+{
+   return primary_index_type::iterator_to( x );
+}
+
+template< typename CompatibleKey >
+primary_iterator find( const CompatibleKey& x )const
+{
+   return primary_index_type::find( x );
+}
+
+template< typename CompatibleKey >
+primary_iterator lower_bound( const CompatibleKey& x )const
+{
+   return primary_index_type::lower_bound( x );
+}
+
+template< typename CompatibleKey >
+primary_iterator upper_bound( const CompatibleKey& x )const
+{
+   return primary_index_type::upper_bound( x );
+}
+
+template< typename LowerBounder, typename UpperBounder >
+std::pair< primary_iterator, primary_iterator >
+range( LowerBounder lower, UpperBounder upper )const
+{
+   return primary_index_type::range( lower, upper );
+}
+
+template< typename Modifier >
+bool modify( primary_iterator position, Modifier mod )
+{
+   return primary_index_type::modify( position, mod );
+}
+
+primary_iterator erase( primary_iterator position )
+{
+   return primary_index_type::erase( position );
 }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:

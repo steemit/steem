@@ -12,6 +12,7 @@
 #include <mira/identity.hpp>
 #include <mira/indexed_by.hpp>
 #include <mira/ordered_index_fwd.hpp>
+#include <mira/composite_key_fwd.hpp>
 
 #include <rocksdb/db.h>
 
