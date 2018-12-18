@@ -9,7 +9,7 @@ using steem::protocol::required_automated_action;
 
 class pending_required_action_object : public object< pending_required_action_object_type, pending_required_action_object >
 {
-   pending_required_action_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( pending_required_action_object )
 
    public:
       template< typename Constructor, typename Allocator >

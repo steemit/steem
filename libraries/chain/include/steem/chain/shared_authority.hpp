@@ -19,8 +19,7 @@ namespace steem { namespace chain {
     */
    struct shared_authority
    {
-      private:
-         shared_authority() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( shared_authority )
 
       public:
 

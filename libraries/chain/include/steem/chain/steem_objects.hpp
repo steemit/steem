@@ -23,6 +23,8 @@ namespace steem { namespace chain {
     */
    class convert_request_object : public object< convert_request_object_type, convert_request_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( convert_request_object )
+
       public:
          template< typename Constructor, typename Allocator >
          convert_request_object( Constructor&& c, allocator< Allocator > a )
@@ -43,6 +45,8 @@ namespace steem { namespace chain {
 
    class escrow_object : public object< escrow_object_type, escrow_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( escrow_object )
+
       public:
          template< typename Constructor, typename Allocator >
          escrow_object( Constructor&& c, allocator< Allocator > a )
@@ -73,7 +77,7 @@ namespace steem { namespace chain {
 
    class savings_withdraw_object : public object< savings_withdraw_object_type, savings_withdraw_object >
    {
-      savings_withdraw_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( savings_withdraw_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -107,6 +111,8 @@ namespace steem { namespace chain {
     */
    class liquidity_reward_balance_object : public object< liquidity_reward_balance_object_type, liquidity_reward_balance_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( liquidity_reward_balance_object )
+
       public:
          template< typename Constructor, typename Allocator >
          liquidity_reward_balance_object( Constructor&& c, allocator< Allocator > a )
@@ -153,7 +159,7 @@ namespace steem { namespace chain {
     */
    class feed_history_object  : public object< feed_history_object_type, feed_history_object >
    {
-      feed_history_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( feed_history_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -183,6 +189,8 @@ namespace steem { namespace chain {
     */
    class limit_order_object : public object< limit_order_object_type, limit_order_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( limit_order_object )
+
       public:
          template< typename Constructor, typename Allocator >
          limit_order_object( Constructor&& c, allocator< Allocator > a )
@@ -218,6 +226,8 @@ namespace steem { namespace chain {
     */
    class withdraw_vesting_route_object : public object< withdraw_vesting_route_object_type, withdraw_vesting_route_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( withdraw_vesting_route_object )
+
       public:
          template< typename Constructor, typename Allocator >
          withdraw_vesting_route_object( Constructor&& c, allocator< Allocator > a )
@@ -238,6 +248,8 @@ namespace steem { namespace chain {
 
    class decline_voting_rights_request_object : public object< decline_voting_rights_request_object_type, decline_voting_rights_request_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( decline_voting_rights_request_object )
+
       public:
          template< typename Constructor, typename Allocator >
          decline_voting_rights_request_object( Constructor&& c, allocator< Allocator > a )
@@ -255,6 +267,8 @@ namespace steem { namespace chain {
 
    class reward_fund_object : public object< reward_fund_object_type, reward_fund_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( reward_fund_object )
+
       public:
          template< typename Constructor, typename Allocator >
          reward_fund_object( Constructor&& c, allocator< Allocator > a )

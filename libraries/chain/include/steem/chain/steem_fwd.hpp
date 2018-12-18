@@ -4,13 +4,15 @@
 // These declarations need to be as early as possible to prevent compiler errors.
 
 #include <chainbase/allocators.hpp>
+#include <chainbase/util/object_id.hpp>
 
-namespace chainbase {
-template< typename T >
-class oid;
-}
+#ifdef ENABLE_STD_ALLOCATOR
+#include <mira/multi_index_container_fwd.hpp>
+#endif
 
-namespace fc { namespace raw {
+namespace fc {
+
+namespace raw {
 
 template<typename Stream, typename T>
 inline void pack( Stream& s, const chainbase::oid<T>& id );

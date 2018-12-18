@@ -11,6 +11,8 @@
 #include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
+
+#include <boost/thread.hpp>
 #include <boost/thread/locks.hpp>
 
 #include <type_traits>

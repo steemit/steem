@@ -145,6 +145,11 @@ public:
       return (*ptr);
    }
 
+   const Value* operator->()const
+   {
+      return &(**this);
+   }
+
    rocksdb_iterator& operator++()
    {
       //BOOST_ASSERT( valid() );

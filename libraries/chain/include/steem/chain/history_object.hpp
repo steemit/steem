@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/operations.hpp>
 #include <steem/protocol/steem_operations.hpp>
@@ -12,7 +14,7 @@ namespace steem { namespace chain {
 
    class operation_object : public object< operation_object_type, operation_object >
    {
-      operation_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( operation_object )
 
       public:
          template< typename Constructor, typename Allocator >

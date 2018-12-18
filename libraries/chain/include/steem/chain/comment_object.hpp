@@ -44,7 +44,7 @@ namespace steem { namespace chain {
 
    class comment_object : public object < comment_object_type, comment_object >
    {
-      comment_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -113,7 +113,7 @@ namespace steem { namespace chain {
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
    {
-      comment_content_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_content_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -138,6 +138,8 @@ namespace steem { namespace chain {
     */
    class comment_vote_object : public object< comment_vote_object_type, comment_vote_object>
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_vote_object )
+
       public:
          template< typename Constructor, typename Allocator >
          comment_vote_object( Constructor&& c, allocator< Allocator > a )

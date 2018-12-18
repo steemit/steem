@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/multi_index_types.hpp>
 
 #include <chainbase/chainbase.hpp>
@@ -8,6 +10,16 @@
 #include <steem/protocol/authority.hpp>
 
 #include <steem/chain/buffer_type.hpp>
+
+#ifndef ENABLE_STD_ALLOCATOR
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+      object_type () = delete;                           \
+   public:
+#else
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+   public:                                               \
+      object_type () {}
+#endif
 
 namespace steem { namespace chain {
 
@@ -168,6 +180,7 @@ namespace fc
 {
 class variant;
 
+#ifndef ENABLE_STD_ALLOCATOR
 inline void to_variant( const steem::chain::shared_string& s, variant& var )
 {
    var = fc::string( steem::chain::to_string( s ) );
@@ -178,6 +191,7 @@ inline void from_variant( const variant& var, steem::chain::shared_string& s )
    auto str = var.as_string();
    s.assign( str.begin(), str.end() );
 }
+#endif
 
 template<typename T>
 void to_variant( const chainbase::oid<T>& var,  variant& vo )
@@ -190,6 +204,16 @@ void from_variant( const variant& vo, chainbase::oid<T>& var )
 {
    var._id = vo.as_int64();
 }
+
+template< typename T >
+struct get_typename< chainbase::oid< T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "chainbase::oid<" ) + get_typename< T >::name() + ">";
+      return n.c_str();
+   }
+};
 
 namespace raw
 {
@@ -206,6 +230,7 @@ void unpack( Stream& s, chainbase::oid<T>& id )
    s.read( (char*)&id._id, sizeof(id._id));
 }
 
+#ifndef ENABLE_STD_ALLOCATOR
 template< typename Stream >
 void pack( Stream& s, const chainbase::shared_string& ss )
 {
@@ -220,6 +245,7 @@ void unpack( Stream& s, chainbase::shared_string& ss )
    fc::raw::unpack( s, str );
    steem::chain::from_string( ss, str );
 }
+#endif
 
 template< typename Stream, typename E, typename A >
 void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )

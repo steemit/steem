@@ -18,7 +18,7 @@ namespace steem { namespace chain {
     */
    class transaction_object : public object< transaction_object_type, transaction_object >
    {
-      transaction_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( transaction_object )
 
       public:
          template< typename Constructor, typename Allocator >

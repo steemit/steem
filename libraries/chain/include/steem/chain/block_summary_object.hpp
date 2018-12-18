@@ -16,6 +16,8 @@ namespace steem { namespace chain {
     */
    class block_summary_object : public object< block_summary_object_type, block_summary_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( block_summary_object )
+
       public:
          template< typename Constructor, typename Allocator >
          block_summary_object( Constructor&& c, allocator< Allocator > a )
