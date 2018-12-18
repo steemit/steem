@@ -177,10 +177,6 @@ public:
          AugmentPolicy >,
       typename super::primary_index_type >::type      primary_index_type;
 
-   typedef typename std::pair<
-      typename primary_index_type::iterator,
-      bool >                                          emplace_return_type;
-
 //*
    typedef typename boost::mpl::if_<
       typename super::is_terminal_node,
@@ -276,6 +272,10 @@ protected:
    * expansion.
    */
 
+   typedef std::pair<
+      typename primary_index_type::iterator,
+      bool >                                          emplace_return_type;
+
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
    object_cache_type&                                 _cache;
@@ -300,7 +300,7 @@ public:
   const_iterator
     begin()const BOOST_NOEXCEPT{return const_iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
   iterator
-    end()BOOST_NOEXCEPT{return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
+    end()BOOST_NOEXCEPT{return iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
     end()const BOOST_NOEXCEPT{return const_iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
   /*reverse_iterator

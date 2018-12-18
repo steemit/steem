@@ -159,8 +159,6 @@ namespace steem { namespace chain {
 
    class witness_vote_object : public object< witness_vote_object_type, witness_vote_object >
    {
-      STEEM_STD_ALLOCATOR_CONSTRUCTOR( witness_vote_object )
-
       public:
          template< typename Constructor, typename Allocator >
          witness_vote_object( Constructor&& c, allocator< Allocator > a )
@@ -178,8 +176,6 @@ namespace steem { namespace chain {
 
    class witness_schedule_object : public object< witness_schedule_object_type, witness_schedule_object >
    {
-      STEEM_STD_ALLOCATOR_CONSTRUCTOR( witness_schedule_object )
-
       public:
          template< typename Constructor, typename Allocator >
          witness_schedule_object( Constructor&& c, allocator< Allocator > a )

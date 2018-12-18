@@ -65,6 +65,27 @@ typedef multi_index_container<
   chainbase::allocator<book>
 > book_index;
 
+struct single_index_object : public chainbase::object< 1, single_index_object >
+{
+   template< typename Constructor, typename Allocator >
+   single_index_object( Constructor&& c, Allocator&& a )
+   {
+      c( *this );
+   }
+
+   single_index_object() = default;
+
+   id_type id;
+};
+
+typedef multi_index_container<
+   single_index_object,
+   indexed_by<
+      ordered_unique< tag< by_id >, member< single_index_object, single_index_object::id_type, &single_index_object::id > >
+   >,
+   chainbase::allocator< single_index_object >
+> single_index_index;
+
 namespace fc
 {
 class variant;
@@ -154,6 +175,11 @@ FC_REFLECT( book::id_type, (_id) )
 FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
 
+FC_REFLECT( single_index_object::id_type, (_id) )
+
+FC_REFLECT( single_index_object, (id) )
+CHAINBASE_SET_INDEX_TYPE( single_index_object, single_index_index )
+
 /*
 
 Create call stack
@@ -184,8 +210,6 @@ BOOST_AUTO_TEST_CASE( basic_tests )
    {
       chainbase::database db;
       db.open( temp, 0, 1024*1024*8 );
-
-      chainbase::database db2; /// open an already created db
 
       db.add_index< book_index >();
 
@@ -652,6 +676,28 @@ BOOST_AUTO_TEST_CASE( basic_tests )
 
       BOOST_REQUIRE( a_itr == book_by_a_idx.end() );
 
+   }
+   catch( ... )
+   {
+      std::cout << "exception" << std::endl;
+      chainbase::bfs::remove_all( temp );
+      throw;
+   }
+
+   chainbase::bfs::remove_all( temp );
+}
+
+BOOST_AUTO_TEST_CASE( single_index_test )
+{
+   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
+   try
+   {
+      chainbase::database db;
+      db.open( temp, 0, 1024*1024*8 );
+
+      db.add_index< single_index_index >();
+
+      db.create< single_index_object >( [&]( single_index_object& ){} );
    }
    catch( ... )
    {

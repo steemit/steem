@@ -145,8 +145,6 @@ namespace steem { namespace chain {
 
    class vesting_delegation_object : public object< vesting_delegation_object_type, vesting_delegation_object >
    {
-      STEEM_STD_ALLOCATOR_CONSTRUCTOR( vesting_delegation_object )
-
       public:
          template< typename Constructor, typename Allocator >
          vesting_delegation_object( Constructor&& c, allocator< Allocator > a )
@@ -165,8 +163,6 @@ namespace steem { namespace chain {
 
    class vesting_delegation_expiration_object : public object< vesting_delegation_expiration_object_type, vesting_delegation_expiration_object >
    {
-      STEEM_STD_ALLOCATOR_CONSTRUCTOR( vesting_delegation_expiration_object )
-
       public:
          template< typename Constructor, typename Allocator >
          vesting_delegation_expiration_object( Constructor&& c, allocator< Allocator > a )
