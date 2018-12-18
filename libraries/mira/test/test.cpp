@@ -5,6 +5,7 @@
 #include <mira/tag.hpp>
 #include <mira/member.hpp>
 #include <mira/indexed_by.hpp>
+#include <mira/composite_key.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -19,6 +20,8 @@ using mira::multi_index::indexed_by;
 using mira::multi_index::ordered_unique;
 using mira::multi_index::tag;
 using mira::multi_index::member;
+using mira::multi_index::composite_key;
+using mira::multi_index::composite_key_compare;
 
 struct book : public chainbase::object<0, book> {
 
@@ -33,16 +36,34 @@ struct book : public chainbase::object<0, book> {
    id_type id;
    int a = 0;
    int b = 1;
+
+   int sum() { return a + b; }
 };
 
 struct by_id;
 struct by_a;
+struct by_b;
+struct by_sum;
 
 typedef multi_index_container<
-  book,
-  indexed_by<
-     ordered_unique< tag< by_id >, member< book, book::id_type, &book::id > >,
-     ordered_unique< tag< by_a >,  member< book, int,           &book::a  > >
+   book,
+   indexed_by<
+      ordered_unique< tag< by_id >, member< book, book::id_type, &book::id > >,
+      ordered_unique< tag< by_a >,  member< book, int,           &book::a  > >
+//*
+      ,
+      ordered_unique< tag< by_b >,
+         composite_key< book,
+            member< book, int, &book::b >,
+            member< book, int, &book::a >
+         >,
+         composite_key_compare< std::greater< int >, std::less< int > >
+      >
+//*/
+/*
+      ,
+      ordered_unique< tag< by_sum >, const_mem_fun< book, int, &book::sum > >
+//*/
   >,
   chainbase::allocator<book>
 > book_index;

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <mira/composite_key_fwd.hpp>
+
 #include <boost/config.hpp> /* keep it first to prevent nasty warns in MSVC */
 #include <boost/functional/hash_fwd.hpp>
 #include <mira/detail/access_specifier.hpp>
@@ -190,70 +192,49 @@ typedef boost::tuple<
  * hash_* computes a combination of elementwise hash values.
  */
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename EqualCons
->
-struct equal_ckey_ckey; /* fwd decl. */
+template< typename KeyCons1, typename KeyCons2, typename EqualCons >
+struct equal_key_key; /* fwd decl. */
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename EqualCons
->
-struct equal_ckey_ckey_terminal
+template< typename KeyCons1, typename KeyCons2, typename EqualCons >
+struct equal_key_key_terminal
 {
-  static bool compare(
-    const KeyCons1&,const Value1&,
-    const KeyCons2&,const Value2&,
-    const EqualCons&)
-  {
-    return true;
-  }
+   static bool compare(
+      const KeyCons1&,
+      const KeyCons2&,
+      const EqualCons& )
+   {
+      return true;
+   }
 };
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename EqualCons
->
-struct equal_ckey_ckey_normal
+template< typename KeyCons1, typename KeyCons2, typename EqualCons >
+struct equal_key_key_normal
 {
-  static bool compare(
-    const KeyCons1& c0,const Value1& v0,
-    const KeyCons2& c1,const Value2& v1,
-    const EqualCons& eq)
-  {
-    if(!eq.get_head()(c0.get_head()(v0),c1.get_head()(v1)))return false;
-    return equal_ckey_ckey<
-      BOOST_DEDUCED_TYPENAME KeyCons1::tail_type,Value1,
-      BOOST_DEDUCED_TYPENAME KeyCons2::tail_type,Value2,
-      BOOST_DEDUCED_TYPENAME EqualCons::tail_type
-    >::compare(c0.get_tail(),v0,c1.get_tail(),v1,eq.get_tail());
-  }
+   static bool compare(
+      const KeyCons1& k1,
+      const KeyCons2& k2,
+      const EqualCons& eq )
+   {
+      if( !eq.get_head()( k1.get_head(), k2.get_head() ) ) return false;
+      return equal_key_key<
+         typename KeyCons1::tail_type,
+         typename KeyCons2::tail_type,
+         typename EqualCons::tail_type
+      >::compare( k1.get_tail(), k2.get_tail(), eq.get_tail() );
+   }
 };
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename EqualCons
->
-struct equal_ckey_ckey:
-  boost::mpl::if_<
-    boost::mpl::or_<
-      boost::is_same<KeyCons1,boost::tuples::null_type>,
-      boost::is_same<KeyCons2,boost::tuples::null_type>
-    >,
-    equal_ckey_ckey_terminal<KeyCons1,Value1,KeyCons2,Value2,EqualCons>,
-    equal_ckey_ckey_normal<KeyCons1,Value1,KeyCons2,Value2,EqualCons>
-  >::type
-{
-};
+template< typename KeyCons1, typename KeyCons2, typename EqualCons >
+struct equal_key_key:
+   boost::mpl::if_<
+      boost::mpl::or_<
+         boost::is_same< KeyCons1, boost::tuples::null_type >,
+         boost::is_same< KeyCons2, boost::tuples::null_type >
+      >,
+      equal_key_key_terminal< KeyCons1, KeyCons2, EqualCons >,
+      equal_key_key_normal< KeyCons1, KeyCons2 ,EqualCons >
+   >::type
+{};
 
 template
 <
@@ -331,71 +312,47 @@ struct equal_ckey_cval:
 {
 };
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename CompareCons
->
-struct compare_ckey_ckey; /* fwd decl. */
+template< typename KeyCons1, typename KeyCons2, typename CompareCons >
+struct compare_key_key; /* fwd decl. */
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename CompareCons
->
-struct compare_ckey_ckey_terminal
+template< typename KeyCons1, typename KeyCons2, typename CompareCons >
+struct compare_key_key_terminal
 {
-  static bool compare(
-    const KeyCons1&,const Value1&,
-    const KeyCons2&,const Value2&,
-    const CompareCons&)
-  {
-    return false;
-  }
+   static bool compare( const KeyCons1&, const KeyCons2&, const CompareCons& )
+   {
+      return false;
+   }
 };
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename CompareCons
->
-struct compare_ckey_ckey_normal
+template< typename KeyCons1, typename KeyCons2, typename CompareCons >
+struct compare_key_key_normal
 {
-  static bool compare(
-    const KeyCons1& c0,const Value1& v0,
-    const KeyCons2& c1,const Value2& v1,
-    const CompareCons& comp)
-  {
-    if(comp.get_head()(c0.get_head()(v0),c1.get_head()(v1)))return true;
-    if(comp.get_head()(c1.get_head()(v1),c0.get_head()(v0)))return false;
-    return compare_ckey_ckey<
-      BOOST_DEDUCED_TYPENAME KeyCons1::tail_type,Value1,
-      BOOST_DEDUCED_TYPENAME KeyCons2::tail_type,Value2,
-      BOOST_DEDUCED_TYPENAME CompareCons::tail_type
-    >::compare(c0.get_tail(),v0,c1.get_tail(),v1,comp.get_tail());
-  }
+   static bool compare(
+      const KeyCons1& k1,
+      const KeyCons2& k2,
+      const CompareCons& comp)
+   {
+      if(comp.get_head()(k1.get_head(),k2.get_head()))return true;
+      if(comp.get_head()(k2.get_head(),k1.get_head()))return false;
+      return compare_key_key<
+         typename KeyCons1::tail_type,
+         typename KeyCons2::tail_type,
+         typename CompareCons::tail_type
+      >::compare(k1.get_tail(),k2.get_tail(),comp.get_tail());
+   }
 };
 
-template
-<
-  typename KeyCons1,typename Value1,
-  typename KeyCons2, typename Value2,
-  typename CompareCons
->
-struct compare_ckey_ckey:
-  boost::mpl::if_<
-    boost::mpl::or_<
-      boost::is_same<KeyCons1,boost::tuples::null_type>,
-      boost::is_same<KeyCons2,boost::tuples::null_type>
-    >,
-    compare_ckey_ckey_terminal<KeyCons1,Value1,KeyCons2,Value2,CompareCons>,
-    compare_ckey_ckey_normal<KeyCons1,Value1,KeyCons2,Value2,CompareCons>
-  >::type
-{
-};
+template< typename KeyCons1, typename KeyCons2, typename CompareCons >
+struct compare_key_key:
+   boost::mpl::if_<
+      boost::mpl::or_<
+         boost::is_same<KeyCons1,boost::tuples::null_type>,
+         boost::is_same<KeyCons2,boost::tuples::null_type>
+      >,
+      compare_key_key_terminal< KeyCons1, KeyCons2, CompareCons >,
+      compare_key_key_normal< KeyCons1, KeyCons2, CompareCons >
+   >::type
+{};
 
 template
 <
@@ -559,19 +516,94 @@ struct hash_cval:
 #pragma warning(disable:4512)
 #endif
 
+template< typename KeyExtractor, typename Key, typename Value >
+struct key_from_value; // Forward Declaration
+
+template< typename KeyExtractor, typename Key, typename Value >
+struct key_from_value_terminal
+{
+   static Key extract( const KeyExtractor& e, const Value& v )
+   {
+      return boost::tuples::null_type();
+   }
+};
+
+template< typename KeyExtractor, typename Key, typename Value >
+struct key_from_value_normal
+{
+   static Key extract( const KeyExtractor& e, const Value& v )
+   {
+      return Key(
+         e.get_head()( v ),
+         key_from_value<
+            typename KeyExtractor::tail_type,
+            typename Key::tail_type,
+            Value
+         >::extract( e.get_tail(), v ) );
+   }
+};
+
+template< typename KeyExtractor, typename Key, typename Value >
+struct key_from_value :
+   boost::mpl::if_<
+      boost::is_same< KeyExtractor, boost::tuples::null_type >,
+      key_from_value_terminal< KeyExtractor, Key, Value >,
+      key_from_value_normal< KeyExtractor, Key, Value >
+      >::type
+{};
+
+
+template< typename KeyCons >
+struct composite_key_conversion; // Forward Declaration
+
+template< typename HT, typename TT >
+struct result_type_extractor
+{
+   typedef typename boost::tuples::cons<
+      typename HT::result_type,
+      typename composite_key_conversion< TT >::type
+   > type;
+};
+
+template< typename HT >
+struct result_type_extractor< HT, boost::tuples::null_type >
+{
+   typedef typename boost::tuples::cons<
+      typename HT::result_type,
+      boost::tuples::null_type
+   > type;
+};
+
+template< typename KeyCons >
+struct composite_key_conversion
+{
+   typedef typename result_type_extractor<
+      typename KeyCons::head_type,
+      typename KeyCons::tail_type
+   >::type type;
+};
+
 template<typename CompositeKey>
 struct composite_key_result
 {
-  typedef CompositeKey                            composite_key_type;
-  typedef typename composite_key_type::value_type value_type;
+   typedef CompositeKey                                     composite_key_type;
+   typedef typename composite_key_conversion<
+         typename composite_key_type::key_extractor_tuple
+      >::type                                               key_type;
+   typedef typename composite_key_type::value_type          value_type;
 
-  composite_key_result(
-    const composite_key_type& composite_key_,const value_type& value_):
-    composite_key(composite_key_),value(value_)
-  {}
+   composite_key_result( const composite_key_type& composite_key, const value_type& value ) :
+      key(
+         key_from_value<
+            typename composite_key_type::key_extractor_tuple,
+            key_type,
+            value_type
+         >::extract( composite_key.key_extractors(), value ) )
+   {}
 
-  const composite_key_type& composite_key;
-  const value_type&         value;
+   composite_key_result() {}
+
+   key_type key;
 };
 
 #if defined(BOOST_MSVC)
@@ -623,17 +655,17 @@ public:
 
   result_type operator()(const value_type& x)const
   {
-    return result_type(*this,x);
+    return result_type( *this, x );
   }
 
   result_type operator()(const reference_wrapper<const value_type>& x)const
   {
-    return result_type(*this,x.get());
+    return result_type( *this, x.get() );
   }
 
   result_type operator()(const reference_wrapper<value_type>& x)const
   {
-    return result_type(*this,x.get());
+    return result_type( *this, x.get() );
   }
 };
 
@@ -647,21 +679,19 @@ inline bool operator==(
   const composite_key_result<CompositeKey2>& y)
 {
   typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
-  typedef typename CompositeKey1::value_type          value_type1;
   typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
-  typedef typename CompositeKey2::value_type          value_type2;
 
   BOOST_STATIC_ASSERT(
     boost::tuples::length<key_extractor_tuple1>::value==
     boost::tuples::length<key_extractor_tuple2>::value);
 
-  return detail::equal_ckey_ckey<
-    key_extractor_tuple1,value_type1,
-    key_extractor_tuple2,value_type2,
+  return detail::equal_key_key<
+    typename CompositeKey1::result_type::key_type,
+    typename CompositeKey2::result_type::key_type,
     detail::generic_operator_equal_tuple
   >::compare(
-    x.composite_key.key_extractors(),x.value,
-    y.composite_key.key_extractors(),y.value,
+    x.key,
+    y.key,
     detail::generic_operator_equal_tuple());
 }
 
@@ -770,19 +800,15 @@ inline bool operator<(
   const composite_key_result<CompositeKey1>& x,
   const composite_key_result<CompositeKey2>& y)
 {
-  typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
-  typedef typename CompositeKey1::value_type          value_type1;
-  typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
-  typedef typename CompositeKey2::value_type          value_type2;
 
-  return detail::compare_ckey_ckey<
-   key_extractor_tuple1,value_type1,
-   key_extractor_tuple2,value_type2,
-   detail::generic_operator_less_tuple
-  >::compare(
-    x.composite_key.key_extractors(),x.value,
-    y.composite_key.key_extractors(),y.value,
-    detail::generic_operator_less_tuple());
+   return detail::compare_key_key<
+      typename CompositeKey1::result_type::key_type,
+      typename CompositeKey2::result_type::key_type,
+      detail::generic_operator_less_tuple
+   >::compare(
+      x.key,
+      y.key,
+      detail::generic_operator_less_tuple());
 }
 
 template
@@ -959,25 +985,23 @@ public:
     const composite_key_result<CompositeKey1> & x,
     const composite_key_result<CompositeKey2> & y)const
   {
-    typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
-    typedef typename CompositeKey1::value_type          value_type1;
-    typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
-    typedef typename CompositeKey2::value_type          value_type2;
+      typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
+      typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_extractor_tuple1>::value<=
-      boost::tuples::length<key_eq_tuple>::value&&
-      boost::tuples::length<key_extractor_tuple1>::value==
-      boost::tuples::length<key_extractor_tuple2>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_extractor_tuple1>::value<=
+         boost::tuples::length<key_eq_tuple>::value&&
+         boost::tuples::length<key_extractor_tuple1>::value==
+         boost::tuples::length<key_extractor_tuple2>::value);
 
-    return detail::equal_ckey_ckey<
-      key_extractor_tuple1,value_type1,
-      key_extractor_tuple2,value_type2,
-      key_eq_tuple
-    >::compare(
-      x.composite_key.key_extractors(),x.value,
-      y.composite_key.key_extractors(),y.value,
-      key_eqs());
+      return detail::compare_key_key<
+         typename CompositeKey1::result_type::key_type,
+         typename CompositeKey2::result_type::key_type,
+         detail::generic_operator_less_tuple
+      >::compare(
+         x.key,
+         y.key,
+         key_eqs());
   }
 
   template
@@ -1115,9 +1139,7 @@ public:
     const composite_key_result<CompositeKey2> & y)const
   {
     typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
-    typedef typename CompositeKey1::value_type          value_type1;
     typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
-    typedef typename CompositeKey2::value_type          value_type2;
 
     BOOST_STATIC_ASSERT(
       boost::tuples::length<key_extractor_tuple1>::value<=
@@ -1125,13 +1147,13 @@ public:
       boost::tuples::length<key_extractor_tuple2>::value<=
       boost::tuples::length<key_comp_tuple>::value);
 
-    return detail::compare_ckey_ckey<
-      key_extractor_tuple1,value_type1,
-      key_extractor_tuple2,value_type2,
+    return detail::compare_key_key<
+      typename CompositeKey1::result_type::key_type,
+      typename CompositeKey2::result_type::key_type,
       key_comp_tuple
     >::compare(
-      x.composite_key.key_extractors(),x.value,
-      y.composite_key.key_extractors(),y.value,
+      x.key,
+      y.key,
       key_comps());
   }
 
@@ -1506,3 +1528,107 @@ struct hash<mira::multi_index::composite_key_result<CompositeKey> >:
 #undef BOOST_MULTI_INDEX_CK_ENUM_PARAMS
 #undef BOOST_MULTI_INDEX_CK_ENUM
 #undef BOOST_MULTI_INDEX_COMPOSITE_KEY_SIZE
+
+namespace fc
+{
+
+class variant;
+
+template< typename T >
+void to_variant( const mira::multi_index::composite_key_result< T >& var,  variant& vo )
+{
+   to_variant( var.key, vo );
+}
+
+template< typename T >
+void from_variant( const variant& vo, mira::multi_index::composite_key_result< T >& var )
+{
+   from_variant( vo, var.key );
+}
+
+template< typename T >
+struct get_typename< mira::multi_index::composite_key_result< T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "mira::multi_index::composite_key_result<>" );
+//         + get_typename< typename mira::multi_index::composite_key_result< T >::key_type >::name()
+//         + ">";
+      return n.c_str();
+   }
+};
+
+template< typename... Args >
+struct get_typename< boost::tuples::tuple< Args... > >
+{
+   static const char* name()
+   {
+      static std::string n;
+      if( n.length() == 0 )
+      {
+         std::stringstream ss;
+         var_template_args_typename_helper< Args... >::name( ss );
+         n = ss.str();
+      }
+      return n.c_str();
+   }
+};
+
+template <>
+struct get_typename< boost::tuples::null_type >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "boost::tuples::null_type" );
+      return n.c_str();
+   }
+};
+
+template< typename H, typename T >
+struct get_typename< boost::tuples::cons< H, T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "boost::tuples::cons<" )
+         + get_typename< H >::name()
+         + ","
+         + get_typename< T >::name()
+         + ">";
+      return n.c_str();
+   }
+};
+
+namespace raw
+{
+
+template< typename Stream, typename T >
+void inline pack( Stream& s, const mira::multi_index::composite_key_result< T >& var )
+{
+   pack( s, var.key );
+}
+
+template<typename Stream, typename T>
+void inline unpack( Stream& s, mira::multi_index::composite_key_result< T >& var )
+{
+   unpack( s, var.key );
+}
+
+
+template< typename Stream > void pack( Stream&, const boost::tuples::null_type ) {}
+template< typename Stream > void unpack( Stream& s, boost::tuples::null_type ) {}
+
+template< typename Stream, typename H, typename T > void pack( Stream& s, const boost::tuples::cons< H, T >& var )
+{
+   pack( s, var.get_head() );
+   pack( s, var.get_tail() );
+}
+
+template< typename Stream, typename H, typename T > void unpack( Stream& s, boost::tuples::cons< H, T >& var )
+{
+   unpack( s, var.get_head() );
+   unpack( s, var.get_tail() );
+}
+
+} // raw
+
+} // fc

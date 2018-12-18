@@ -89,7 +89,7 @@ protected:
    typedef boost::true_type                  is_terminal_node;
    typedef boost::false_type                 id_type;
    typedef boost::false_type                 id_from_value;
-   typedef boost::false_type                 canon_index_type;
+   typedef boost::false_type                 primary_index_type;
    typedef boost::false_type                 iterator;
 
    db_ptr                                    _db;

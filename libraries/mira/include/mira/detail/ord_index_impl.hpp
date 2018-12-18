@@ -175,10 +175,10 @@ public:
          TagList,
          Category,
          AugmentPolicy >,
-      typename super::canon_index_type >::type        canon_index_type;
+      typename super::primary_index_type >::type      primary_index_type;
 
    typedef typename std::pair<
-      typename canon_index_type::iterator,
+      typename primary_index_type::iterator,
       bool >                                          emplace_return_type;
 
 //*
@@ -187,7 +187,7 @@ public:
       key_type,
       typename super::id_type >::type                 id_type;
 //*/
-//   typedef typename canon_index_type::id_type         id_type;
+//   typedef typename primary_index_type::id_type         id_type;
 
 //*
    typedef typename boost::mpl::if_<
@@ -196,7 +196,7 @@ public:
       typename super::id_from_value >::type           id_from_value;
 //*/
 
-//   typedef typename canon_index_type::id_from_value   id_from_value;
+//   typedef typename primary_index_type::id_from_value   id_from_value;
 
 /*
    typedef object_cache<
@@ -1271,7 +1271,7 @@ private:
   }*/
 
    template< BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK >
-   std::pair< typename canon_index_type::iterator, bool >
+   std::pair< typename primary_index_type::iterator, bool >
    emplace_impl( BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK )
    {
       BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
@@ -1280,9 +1280,9 @@ private:
 
       bool res = this->final_emplace_rocksdb_( v );
 
-      return std::pair< typename canon_index_type::iterator, bool >(
-         res ? canon_index_type::iterator_to( v ) :
-               canon_index_type::end(),
+      return std::pair< typename primary_index_type::iterator, bool >(
+         res ? primary_index_type::iterator_to( v ) :
+               primary_index_type::end(),
          res
       );
   }

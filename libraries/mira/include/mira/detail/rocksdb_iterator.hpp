@@ -33,6 +33,8 @@ private:
    cache_type&                                     _cache;
    IDFromValue                                     _get_id;
 
+public:
+
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
       _index( index ),
@@ -49,15 +51,14 @@ private:
       _handles( other._handles ),
       _index( other._index ),
       _snapshot( other._snapshot ),
-      _db( other._db )
+      _db( other._db ),
+      _cache( other._cache )
    {
       _iter.reset( _db->NewIterator( _opts, _handles[ _index] ) );
 
       if( other._iter->Valid() )
          _iter->Seek( other._iter->key() );
    }
-
-public:
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const Key& k ) :
       _handles( handles ),
