@@ -49,7 +49,28 @@ typedef mira::multi_index_container<
   chainbase::allocator< book >
 > book_index;
 
-struct test_object
+struct single_index_object : public chainbase::object< 1, single_index_object >
+{
+   template< typename Constructor, typename Allocator >
+   single_index_object( Constructor&& c, Allocator&& a )
+   {
+      c( *this );
+   }
+
+   single_index_object() = default;
+
+   id_type id;
+};
+
+typedef mira::multi_index_container<
+   single_index_object,
+   mira::multi_index::indexed_by<
+      mira::multi_index::ordered_unique< mira::multi_index::tag< by_id >, mira::multi_index::member< single_index_object, single_index_object::id_type, &single_index_object::id > >
+   >,
+   chainbase::allocator< single_index_object >
+> single_index_index;
+
+struct test_object : public chainbase::object< 2, test_object >
 {
    template <class Constructor, class Allocator>
    test_object(Constructor&& c, Allocator a ) : id( 0 ), val( 0 ), name( a )
@@ -63,7 +84,7 @@ struct test_object
       c(*this);
    }
 
-   chainbase::oid< test_object > id;
+   id_type id;
    uint32_t val;
    std::string name;
 };
@@ -85,7 +106,7 @@ typedef mira::multi_index_container<
    chainbase::allocator< test_object >
 > test_object_index;
 
-struct test_object2
+struct test_object2 : public chainbase::object< 3, test_object2 >
 {
    template <class Constructor, class Allocator>
    test_object2(Constructor&& c, Allocator a ) : id( 0 ), val( 0 )
@@ -93,7 +114,7 @@ struct test_object2
       c(*this);
    }
 
-   chainbase::oid< test_object2 > id;
+   id_type id;
    uint32_t val;
 };
 
@@ -114,7 +135,7 @@ typedef mira::multi_index_container<
    chainbase::allocator< test_object2 >
 > test_object2_index;
 
-struct test_object3
+struct test_object3 : public chainbase::object< 3, test_object3 >
 {
    template <class Constructor, class Allocator>
    test_object3(Constructor&& c, Allocator a ) : id( 0 ), val( 0 ), val2( 0 ), val3( 0 )
@@ -122,7 +143,7 @@ struct test_object3
       c(*this);
    }
 
-   chainbase::oid< test_object3 > id;
+   id_type id;
    uint32_t val;
    uint32_t val2;
    uint32_t val3;
@@ -156,11 +177,18 @@ FC_REFLECT( book::id_type, (_id) )
 FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
 
+FC_REFLECT( single_index_object::id_type, (_id) )
+FC_REFLECT( single_index_object, (id) )
+CHAINBASE_SET_INDEX_TYPE( single_index_object, single_index_index )
+
+FC_REFLECT( test_object::id_type, (_id) )
 FC_REFLECT( test_object, (id)(val)(name) )
 CHAINBASE_SET_INDEX_TYPE( test_object, test_object_index )
 
+FC_REFLECT( test_object2::id_type, (_id) )
 FC_REFLECT( test_object2, (id)(val) )
 CHAINBASE_SET_INDEX_TYPE( test_object2, test_object2_index )
 
+FC_REFLECT( test_object3::id_type, (_id) )
 FC_REFLECT( test_object3, (id)(val)(val2)(val3) )
 CHAINBASE_SET_INDEX_TYPE( test_object3, test_object3_index )
