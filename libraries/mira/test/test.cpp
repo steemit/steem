@@ -622,7 +622,6 @@ BOOST_AUTO_TEST_CASE( variable_length_key_test )
    FC_LOG_AND_RETHROW();
 }
 
-#if 0
 BOOST_AUTO_TEST_CASE( sanity_modify_test )
 {
    try
@@ -674,27 +673,23 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
       auto bb = idx_by_a.end();
       --bb;
 
-      /*
       BOOST_REQUIRE( bb->a == 10 );
       BOOST_REQUIRE( bb->b == 20 );
       BOOST_REQUIRE( bb->sum() == 30 );
-      */
       BOOST_REQUIRE( &*bb == &b2 );
 
       auto& idx_by_sum = db.get_index< book_index, by_sum >();
       auto bb2 = idx_by_sum.end();
       --bb2;
 
-      /*
       BOOST_REQUIRE( bb2->a == 10 );
       BOOST_REQUIRE( bb2->b == 20 );
       BOOST_REQUIRE( bb2->sum() == 30 );
-      */
       BOOST_REQUIRE( &*bb2 == &b2 );
    }
    FC_LOG_AND_RETHROW();
 }
-#endif
+
 BOOST_AUTO_TEST_CASE( basic_tests )
 {
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
