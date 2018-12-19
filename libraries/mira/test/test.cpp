@@ -36,6 +36,7 @@ struct rocksdb_fixture {
 
    ~rocksdb_fixture()
    {
+      db.wipe( tmp );
       chainbase::bfs::remove_all( tmp );
    }
 };
@@ -555,9 +556,80 @@ BOOST_AUTO_TEST_CASE( basic_tests )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( modify_test )
+{
+   try
+   {
+      db.add_index< book_index >();
+
+      const auto& b1 = db.create<book>( []( book& b )
+      {
+          b.a = 1;
+          b.b = 2;
+      });
+
+      const auto& b2 = db.create<book>( []( book& b )
+      {
+          b.a = 2;
+          b.b = 3;
+      });
+
+      const auto& b3 = db.create<book>( []( book& b )
+      {
+          b.a = 4;
+          b.b = 5;
+      });
+
+      BOOST_REQUIRE( b1.a == 1 );
+      BOOST_REQUIRE( b1.b == 2 );
+      BOOST_REQUIRE( b1.sum() == 3 );
+
+      BOOST_REQUIRE( b2.a == 2 );
+      BOOST_REQUIRE( b2.b == 3 );
+      BOOST_REQUIRE( b2.sum() == 5 );
+
+      BOOST_REQUIRE( b3.a == 4 );
+      BOOST_REQUIRE( b3.b == 5 );
+      BOOST_REQUIRE( b3.sum() == 9 );
+
+      db.modify( b2, [] ( book& b )
+      {
+         b.a = 10;
+         b.b = 20;
+      });
+
+      BOOST_REQUIRE( b2.a == 10 );
+      BOOST_REQUIRE( b2.b == 20 );
+      BOOST_REQUIRE( b2.sum() == 30 );
+
+      auto& idx_by_a = db.get_index< book_index, by_a >();
+
+      auto bb = idx_by_a.end();
+      --bb;
+
+      /*
+      BOOST_REQUIRE( bb->a == 10 );
+      BOOST_REQUIRE( bb->b == 20 );
+      BOOST_REQUIRE( bb->sum() == 30 );
+      */
+      BOOST_REQUIRE( &*bb == &b2 );
+
+      auto& idx_by_sum = db.get_index< book_index, by_sum >();
+      auto bb2 = idx_by_sum.end();
+      --bb2;
+
+      /*
+      BOOST_REQUIRE( bb2->a == 10 );
+      BOOST_REQUIRE( bb2->b == 20 );
+      BOOST_REQUIRE( bb2->sum() == 30 );
+      */
+      BOOST_REQUIRE( &*bb2 == &b2 );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 FC_REFLECT( book::id_type, (_id) )
-
 FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
