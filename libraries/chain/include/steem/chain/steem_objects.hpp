@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
@@ -73,7 +74,7 @@ namespace steem { namespace chain {
 
    class savings_withdraw_object : public object< savings_withdraw_object_type, savings_withdraw_object >
    {
-      savings_withdraw_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( savings_withdraw_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -153,7 +154,7 @@ namespace steem { namespace chain {
     */
    class feed_history_object  : public object< feed_history_object_type, feed_history_object >
    {
-      feed_history_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( feed_history_object )
 
       public:
          template< typename Constructor, typename Allocator >

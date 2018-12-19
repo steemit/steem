@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/required_automated_actions.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
@@ -9,7 +11,7 @@ using steem::protocol::optional_automated_action;
 
 class pending_optional_action_object : public object< pending_optional_action_object_type, pending_optional_action_object >
 {
-   pending_optional_action_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( pending_optional_action_object )
 
    public:
       template< typename Constructor, typename Allocator >

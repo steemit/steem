@@ -3,6 +3,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
 
@@ -143,8 +145,8 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
       BOOST_REQUIRE( fill_order_op.current_orderid == 2 );
       BOOST_REQUIRE( fill_order_op.current_pays.amount.value == ( asset( alice_smt.amount.value / 20, any_smt_symbol ) * exchange_rate ).amount.value );
 
-      BOOST_CHECK( limit_order_idx.find( std::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
-      BOOST_CHECK( limit_order_idx.find( std::make_tuple( "bob", 2 ) ) == limit_order_idx.end() );
+      BOOST_CHECK( limit_order_idx.find( boost::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
+      BOOST_CHECK( limit_order_idx.find( boost::make_tuple( "bob", 2 ) ) == limit_order_idx.end() );
 
       BOOST_TEST_MESSAGE( "Creating Limit Order for SMT that will stay on the books for 60 minutes." );
 

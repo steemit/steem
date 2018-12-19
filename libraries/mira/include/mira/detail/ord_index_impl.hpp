@@ -70,6 +70,7 @@
 #include <memory>
 
 #include <iostream>
+#include <iterator>
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
 #include <initializer_list>
@@ -177,10 +178,6 @@ public:
          AugmentPolicy >,
       typename super::primary_index_type >::type      primary_index_type;
 
-   typedef typename std::pair<
-      typename primary_index_type::iterator,
-      bool >                                          emplace_return_type;
-
 //*
    typedef typename boost::mpl::if_<
       typename super::is_terminal_node,
@@ -276,6 +273,10 @@ protected:
    * expansion.
    */
 
+   typedef std::pair<
+      typename primary_index_type::iterator,
+      bool >                                          emplace_return_type;
+
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
    object_cache_type&                                 _cache;
@@ -300,10 +301,10 @@ public:
   const_iterator
     begin()const BOOST_NOEXCEPT{return const_iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
   iterator
-    end()BOOST_NOEXCEPT{return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
+    end()BOOST_NOEXCEPT{return iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
     end()const BOOST_NOEXCEPT{return const_iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
-  /*reverse_iterator
+  reverse_iterator
     rbegin()BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
   const_reverse_iterator
     rbegin()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
@@ -311,17 +312,14 @@ public:
     rend()BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
   const_reverse_iterator
     rend()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
-   */
   const_iterator
     cbegin()const BOOST_NOEXCEPT{return begin();}
   const_iterator
     cend()const BOOST_NOEXCEPT{return end();}
-   /*
   const_reverse_iterator
     crbegin()const BOOST_NOEXCEPT{return rbegin();}
   const_reverse_iterator
     crend()const BOOST_NOEXCEPT{return rend();}
-    */
 
   iterator iterator_to( const value_type& x )
   {

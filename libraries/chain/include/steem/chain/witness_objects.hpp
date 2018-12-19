@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
@@ -61,7 +62,7 @@ namespace steem { namespace chain {
     */
    class witness_object : public object< witness_object_type, witness_object >
    {
-      witness_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( witness_object )
 
       public:
          enum witness_schedule_type

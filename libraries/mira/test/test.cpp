@@ -518,6 +518,26 @@ BOOST_AUTO_TEST_CASE( sanity_tests )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( single_index_test )
+{
+   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
+   try
+   {
+      chainbase::database db;
+      db.open( temp, 0, 1024*1024*8 );
+
+      db.add_index< single_index_index >();
+
+      db.create< single_index_object >( [&]( single_index_object& ){} );
+
+      const auto& sio = db.get( single_index_object::id_type() );
+
+      BOOST_REQUIRE( sio.id._id == 0 );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+#if 0
 BOOST_AUTO_TEST_CASE( sanity_modify_test )
 {
    try
@@ -589,77 +609,78 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
    }
    FC_LOG_AND_RETHROW();
 }
-#if 0
+#endif
 BOOST_AUTO_TEST_CASE( basic_tests )
 {
-   auto c1 = []( mira_test::test_object& obj ) { obj.name = "_name"; };
-   auto c1b = []( mira_test::test_object2& obj ) {};
-   auto c1c = []( mira_test::test_object3& obj ) { obj.val2 = 5; obj.val3 = 5; };
+   auto c1 = []( test_object& obj ) { obj.name = "_name"; };
+   auto c1b = []( test_object2& obj ) {};
+   auto c1c = []( test_object3& obj ) { obj.val2 = 5; obj.val3 = 5; };
 
-   basic_test< mira_test::test_object_index, mira_test::test_object >( { 0, 1, 2, 3, 4, 5 }, c1 );
-   basic_test< mira_test::test_object_index2, mira_test::test_object2 >( { 0, 1, 2 }, c1b );
-   basic_test< mira_test::test_object_index3, mira_test::test_object3 >( { 0, 1, 2, 3, 4 }, c1c );
+   basic_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5 }, c1 );
+   basic_test< test_object2_index, test_object2 >( { 0, 1, 2 }, c1b );
+   basic_test< test_object3_index, test_object3 >( { 0, 1, 2, 3, 4 }, c1c );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_tests )
 {
-   auto c1 = []( mira_test::test_object& obj ) { obj.name = "_name"; };
-   auto c1b = []( mira_test::test_object2& obj ) {};
-   auto c1c = []( mira_test::test_object3& obj ) { obj.val2 = 7; obj.val3 = obj.val2 + 1; };
+   auto c1 = []( test_object& obj ) { obj.name = "_name"; };
+   auto c1b = []( test_object2& obj ) {};
+   auto c1c = []( test_object3& obj ) { obj.val2 = 7; obj.val3 = obj.val2 + 1; };
 
-   insert_remove_test< mira_test::test_object_index, mira_test::test_object >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1 );
-   insert_remove_test< mira_test::test_object_index2, mira_test::test_object2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b );
-   insert_remove_test< mira_test::test_object_index3, mira_test::test_object3 >( { 0, 1, 2, 3 }, c1c );
+   insert_remove_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1 );
+   insert_remove_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b );
+   insert_remove_test< test_object3_index, test_object3 >( { 0, 1, 2, 3 }, c1c );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
 {
-   auto c1 = []( mira_test::test_object& obj ) { obj.id = 0; obj.name = "_name7"; obj.val = 7; };
-   auto c2 = []( mira_test::test_object& obj ) { obj.id = 0; obj.name = "_name8"; obj.val = 8; };
-   auto c3 = []( mira_test::test_object& obj ) { obj.id = 0; obj.name = "the_same_name"; obj.val = 7; };
-   auto c4 = []( mira_test::test_object& obj ) { obj.id = 1; obj.name = "the_same_name"; obj.val = 7; };
+   auto c1 = []( test_object& obj ) { obj.id = 0; obj.name = "_name7"; obj.val = 7; };
+   auto c2 = []( test_object& obj ) { obj.id = 0; obj.name = "_name8"; obj.val = 8; };
+   auto c3 = []( test_object& obj ) { obj.id = 0; obj.name = "the_same_name"; obj.val = 7; };
+   auto c4 = []( test_object& obj ) { obj.id = 1; obj.name = "the_same_name"; obj.val = 7; };
 
-   auto c1b = []( mira_test::test_object2& obj ) { obj.id = 0; obj.val = 7; };
-   auto c2b = []( mira_test::test_object2& obj ) { obj.id = 0; obj.val = 8; };
-   auto c3b = []( mira_test::test_object2& obj ) { obj.id = 6; obj.val = 7; };
-   auto c4b = []( mira_test::test_object2& obj ) { obj.id = 6; obj.val = 7; };
+   auto c1b = []( test_object2& obj ) { obj.id = 0; obj.val = 7; };
+   auto c2b = []( test_object2& obj ) { obj.id = 0; obj.val = 8; };
+   auto c3b = []( test_object2& obj ) { obj.id = 6; obj.val = 7; };
+   auto c4b = []( test_object2& obj ) { obj.id = 6; obj.val = 7; };
 
-   auto c1c = []( mira_test::test_object3& obj ) { obj.id = 0; obj.val = 20; obj.val2 = 20; };
-   auto c2c = []( mira_test::test_object3& obj ) { obj.id = 1; obj.val = 20; obj.val2 = 20; };
-   auto c3c = []( mira_test::test_object3& obj ) { obj.id = 2; obj.val = 30; obj.val3 = 30; };
-   auto c4c = []( mira_test::test_object3& obj ) { obj.id = 3; obj.val = 30; obj.val3 = 30; };
+   auto c1c = []( test_object3& obj ) { obj.id = 0; obj.val = 20; obj.val2 = 20; };
+   auto c2c = []( test_object3& obj ) { obj.id = 1; obj.val = 20; obj.val2 = 20; };
+   auto c3c = []( test_object3& obj ) { obj.id = 2; obj.val = 30; obj.val3 = 30; };
+   auto c4c = []( test_object3& obj ) { obj.id = 3; obj.val = 30; obj.val3 = 30; };
 
-   insert_remove_collision_test< mira_test::test_object_index, mira_test::test_object >( {}, c1, c2, c3, c4 );
-   insert_remove_collision_test< mira_test::test_object_index2, mira_test::test_object2 >( {}, c1b, c2b, c3b, c4b );
-   insert_remove_collision_test< mira_test::test_object_index3, mira_test::test_object3 >( {}, c1c, c2c, c3c, c4c );
+   insert_remove_collision_test< test_object_index, test_object >( {}, c1, c2, c3, c4 );
+   insert_remove_collision_test< test_object2_index, test_object2 >( {}, c1b, c2b, c3b, c4b );
+   insert_remove_collision_test< test_object3_index, test_object3 >( {}, c1c, c2c, c3c, c4c );
 }
 
 BOOST_AUTO_TEST_CASE( modify_tests )
 {
-   auto c1 = []( mira_test::test_object& obj ) { obj.name = "_name"; };
-   auto c2 = []( mira_test::test_object& obj ){ obj.name = "new_name"; };
-   auto c3 = []( const mira_test::test_object& obj ){ BOOST_REQUIRE( obj.name == "new_name" ); };
-   auto c4 = []( const mira_test::test_object& obj ){ BOOST_REQUIRE( obj.val == size_t( obj.id ) + 100 ); };
+   auto c1 = []( test_object& obj ) { obj.name = "_name"; };
+   auto c2 = []( test_object& obj ){ obj.name = "new_name"; };
+   auto c3 = []( const test_object& obj ){ BOOST_REQUIRE( obj.name == "new_name" ); };
+   auto c4 = []( const test_object& obj ){ BOOST_REQUIRE( obj.val == size_t( obj.id ) + 100 ); };
    auto c5 = []( bool result ){ BOOST_REQUIRE( result == false ); };
 
-   auto c1b = []( mira_test::test_object2& obj ) { obj.val = 889; };
-   auto c2b = []( mira_test::test_object2& obj ){ obj.val = 2889; };
-   auto c3b = []( const mira_test::test_object2& obj ){ BOOST_REQUIRE( obj.val == 2889 ); };
-   auto c4b = []( const mira_test::test_object2& obj ){ /*empty*/ };
+   auto c1b = []( test_object2& obj ) { obj.val = 889; };
+   auto c2b = []( test_object2& obj ){ obj.val = 2889; };
+   auto c3b = []( const test_object2& obj ){ BOOST_REQUIRE( obj.val == 2889 ); };
+   auto c4b = []( const test_object2& obj ){ /*empty*/ };
    auto c5b = []( bool result ){ BOOST_REQUIRE( result == true ); };
 
-   modify_test< mira_test::test_object_index, mira_test::test_object >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5 );
-   modify_test< mira_test::test_object_index2, mira_test::test_object2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b );
+   modify_test< test_object_index, test_object >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5 );
+   modify_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests )
 {
-   misc_test< mira_test::test_object_index, mira_test::test_object, mira_test::OrderedIndex, mira_test::CompositeOrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } );
+   misc_test< test_object_index, test_object, OrderedIndex, CompositeOrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests3 )
 {
-   misc_test3< mira_test::test_object_index3, mira_test::test_object3, mira_test::OrderedIndex3, mira_test::CompositeOrderedIndex3a, mira_test::CompositeOrderedIndex3b >( { 0, 1, 2 } );
+   misc_test3< test_object3_index, test_object3, OrderedIndex3, CompositeOrderedIndex3a, CompositeOrderedIndex3b >( { 0, 1, 2 } );
 }
-#endif
+
+//#endif
 BOOST_AUTO_TEST_SUITE_END()

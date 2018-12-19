@@ -44,7 +44,7 @@ DEFINE_API_IMPL( follow_api_impl, get_followers )
    result.followers.reserve( args.limit );
 
    const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_following_follower >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
    while( itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account )
    {
       if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
@@ -70,7 +70,7 @@ DEFINE_API_IMPL( follow_api_impl, get_following )
    result.following.reserve( args.limit );
 
    const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_follower_following >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
    while( itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account )
    {
       if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )

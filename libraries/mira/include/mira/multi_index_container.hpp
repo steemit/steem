@@ -634,6 +634,42 @@ range( LowerBounder lower, UpperBounder upper )const
    return primary_index_type::range( lower, upper );
 }
 
+typename primary_index_type::iterator begin() BOOST_NOEXCEPT
+   { return primary_index_type::begin(); }
+
+typename primary_index_type::const_iterator begin()const BOOST_NOEXCEPT
+   { return primary_index_type::begin(); }
+
+typename primary_index_type::iterator end() BOOST_NOEXCEPT
+   { return primary_index_type::end(); }
+
+typename primary_index_type::const_iterator end()const BOOST_NOEXCEPT
+   { return primary_index_type::end(); }
+
+typename primary_index_type::reverse_iterator rbegin() BOOST_NOEXCEPT
+   { return primary_index_type::rbegin(); }
+
+typename primary_index_type::const_reverse_iterator rbegin() const BOOST_NOEXCEPT
+   { return primary_index_type::rbegin(); }
+
+typename primary_index_type::reverse_iterator rend() BOOST_NOEXCEPT
+   { return primary_index_type::rend(); }
+
+typename primary_index_type::const_reverse_iterator rend() const BOOST_NOEXCEPT
+   { return primary_index_type::rend(); }
+
+typename primary_index_type::const_iterator cbegin()const BOOST_NOEXCEPT
+   { return primary_index_type::cbegin(); }
+
+typename primary_index_type::const_iterator cend()const BOOST_NOEXCEPT
+   { return primary_index_type::cend(); }
+
+typename primary_index_type::const_reverse_iterator crbegin()const BOOST_NOEXCEPT
+   { return primary_index_type::crbegin(); }
+
+typename primary_index_type::const_reverse_iterator crend()const BOOST_NOEXCEPT
+   { return primary_index_type::crend(); }
+
 template< typename Modifier >
 bool modify( primary_iterator position, Modifier mod )
 {

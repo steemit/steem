@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/fixed_string.hpp>
 
 #include <steem/protocol/authority.hpp>
@@ -17,9 +19,8 @@ namespace steem { namespace chain {
 
    class account_object : public object< account_object_type, account_object >
    {
-      account_object() = delete;
+         STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_object )
 
-      public:
          template<typename Constructor, typename Allocator>
          account_object( Constructor&& c, allocator< Allocator > a )
             :json_metadata( a )
@@ -123,7 +124,7 @@ namespace steem { namespace chain {
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
    {
-      account_authority_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_authority_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -181,7 +182,7 @@ namespace steem { namespace chain {
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
-      owner_authority_history_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( owner_authority_history_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -200,7 +201,7 @@ namespace steem { namespace chain {
 
    class account_recovery_request_object : public object< account_recovery_request_object_type, account_recovery_request_object >
    {
-      account_recovery_request_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_recovery_request_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -219,6 +220,8 @@ namespace steem { namespace chain {
 
    class change_recovery_account_request_object : public object< change_recovery_account_request_object_type, change_recovery_account_request_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( change_recovery_account_request_object )
+
       public:
          template< typename Constructor, typename Allocator >
          change_recovery_account_request_object( Constructor&& c, allocator< Allocator > a )

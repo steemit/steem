@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
@@ -1358,7 +1360,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    {
 #ifndef CLEAR_VOTES
       const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1379,7 +1381,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-   auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
    int64_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
 
@@ -1746,7 +1748,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    {
 #ifndef CLEAR_VOTES
       const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1771,7 +1773,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter >();
-   auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
