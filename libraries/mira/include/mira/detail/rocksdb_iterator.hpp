@@ -251,7 +251,37 @@ public:
       return rocksdb_iterator( handles, index, db, cache );
    }
 
-   //template< typename Key >
+   template< typename CompatibleKey >
+   static rocksdb_iterator find(
+      const column_handles& handles,
+      size_t index,
+      db_ptr db,
+      cache_type& cache,
+      const CompatibleKey& k )
+   {
+      rocksdb_iterator itr( handles, index, db, cache );
+
+      std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
+      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+
+      if( itr.valid() )
+      {
+         std::vector< char > ser_compat_key = fc::raw::pack_to_vector( k );
+         ::rocksdb::Slice found_key = itr._iter->key();
+
+         if( memcmp( ser_compat_key.data(), found_key.data(), std::min( ser_compat_key.size(), ser_compat_key.size() ) ) != 0 )
+         {
+            itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
+         }
+      }
+      else
+      {
+         itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
+      }
+
+      return itr;
+   }
+
    static rocksdb_iterator find(
       const column_handles& handles,
       size_t index,
@@ -280,13 +310,13 @@ public:
       return itr;
    }
 
-   //template< typename Key >
+   template< typename CompatibleKey >
    static rocksdb_iterator lower_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const Key& k )
+      const CompatibleKey& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
 
@@ -296,13 +326,13 @@ public:
       return itr;
    }
 
-   //template< typename Key >
+   template< typename CompatibleKey >
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const Key& k )
+      const CompatibleKey& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
 

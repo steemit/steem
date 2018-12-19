@@ -678,5 +678,57 @@ namespace fc {
        sv.visit( unpack_static_variant<Stream>(s) );
     }
 
+
+   template< typename Stream, int Index, typename Tuple >
+   struct tuple_packer; // Forward Declaration
+
+   template< typename Stream, typename Tuple >
+   struct tuple_packer< Stream, 0, Tuple >
+   {
+      static void tuple_pack( Stream& s, const Tuple& t )
+      {
+         pack( s, boost::tuples::get< 0 >( t ) );
+      }
+
+      static void tuple_unpack( Stream& s, Tuple& t )
+      {
+         unpack( s, boost::tuples::get< 0 >( t ) );
+      }
+   };
+
+   template< typename Stream, int Index, typename Tuple >
+   struct tuple_packer
+   {
+      static void tuple_pack( Stream& s, const Tuple& t )
+      {
+         tuple_packer< Stream, Index - 1, Tuple >::tuple_pack( s, t );
+         pack( s, boost::tuples::get< Index >( t ) );
+      }
+
+      static void tuple_unpack( Stream& s, Tuple& t )
+      {
+         tuple_packer< Stream, Index - 1, Tuple >::tuple_unpack( s, t );
+         unpack( s, boost::tuples::get< Index >( t ) );
+      }
+   };
+
+   template< typename Stream, typename... Args > void pack( Stream& s, const boost::tuples::tuple< Args... >& var )
+   {
+      tuple_packer<
+         Stream,
+         boost::tuples::length< boost::tuples::tuple< Args... > >::value - 1,
+         boost::tuples::tuple< Args... >
+      >::tuple_pack( s, var );
+   }
+
+   template< typename Stream, typename... Args > void unpack( Stream& s, boost::tuples::tuple< Args... >& var )
+   {
+      tuple_packer<
+         Stream,
+         boost::tuples::length< boost::tuples::tuple< Args... > >::value - 1,
+         boost::tuples::tuple< Args... >
+      >::tuple_unpack( s, var );
+   }
+
 } } // namespace fc::raw
 

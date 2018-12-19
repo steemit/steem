@@ -6,6 +6,8 @@
 #include <vector>
 #include <sstream>
 
+#include <boost/tuple/tuple.hpp>
+
 #include <fc/string.hpp>
 #include <fc/optional.hpp>
 
@@ -110,6 +112,22 @@ namespace fc {
    };
 
    template< typename... Args > struct get_typename< std::tuple< Args... > >
+   {
+      static const char* name()
+      {
+         static std::string n;
+         if( n.length() == 0 )
+         {
+            std::stringstream ss;
+            var_template_args_typename_helper< Args... >::name( ss );
+            n = ss.str();
+         }
+         return n.c_str();
+      }
+   };
+
+   template< typename... Args >
+   struct get_typename< boost::tuples::tuple< Args... > >
    {
       static const char* name()
       {

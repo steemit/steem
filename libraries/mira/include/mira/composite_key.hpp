@@ -1650,22 +1650,6 @@ struct get_typename< mira::multi_index::composite_key_result< T > >
    }
 };
 
-template< typename... Args >
-struct get_typename< boost::tuples::tuple< Args... > >
-{
-   static const char* name()
-   {
-      static std::string n;
-      if( n.length() == 0 )
-      {
-         std::stringstream ss;
-         var_template_args_typename_helper< Args... >::name( ss );
-         n = ss.str();
-      }
-      return n.c_str();
-   }
-};
-
 template <>
 struct get_typename< boost::tuples::null_type >
 {

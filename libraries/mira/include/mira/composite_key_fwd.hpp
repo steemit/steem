@@ -20,8 +20,6 @@ template< typename... Args > void from_variant( const variant& vo, boost::tuples
 
 template< typename T > struct get_typename< mira::multi_index::composite_key_result< T > >;
 
-template< typename... Args > struct get_typename< boost::tuples::tuple< Args... > >;
-
 template< typename H, typename T > struct get_typename< boost::tuples::cons< H, T > >;
 
 template<> struct get_typename< boost::tuples::null_type >;
