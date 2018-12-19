@@ -16,7 +16,8 @@ enum test_object_type
    single_index_object_type,
    test_object_type,
    test_object2_type,
-   test_object3_type
+   test_object3_type,
+   account_object_type
 };
 
 struct book : public chainbase::object< book_object_type, book > {
@@ -188,6 +189,34 @@ typedef mira::multi_index_container<
    chainbase::allocator< test_object3 >
 > test_object3_index;
 
+
+typedef steem::protocol::fixed_string<16> account_name_type;
+
+struct account_object : public chainbase::object< account_object_type, account_object >
+{
+   template< typename Constructor, typename Allocator >
+   account_object( Constructor&& c, Allocator&& a )
+   {
+      c( *this );
+   }
+
+   account_object() = default;
+
+   id_type id;
+   account_name_type name;
+};
+
+struct by_name;
+
+typedef mira::multi_index_container<
+   account_object,
+   mira::multi_index::indexed_by<
+      mira::multi_index::ordered_unique< mira::multi_index::tag< by_id >, mira::multi_index::member< account_object, account_object::id_type, &account_object::id > >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< by_name >, mira::multi_index::member< account_object, account_name_type, &account_object::name > >
+   >,
+   chainbase::allocator< account_object >
+> account_index;
+
 FC_REFLECT( book::id_type, (_id) )
 FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
@@ -207,3 +236,7 @@ CHAINBASE_SET_INDEX_TYPE( test_object2, test_object2_index )
 FC_REFLECT( test_object3::id_type, (_id) )
 FC_REFLECT( test_object3, (id)(val)(val2)(val3) )
 CHAINBASE_SET_INDEX_TYPE( test_object3, test_object3_index )
+
+FC_REFLECT( account_object::id_type, (_id) )
+FC_REFLECT( account_object, (id)(name) )
+CHAINBASE_SET_INDEX_TYPE( account_object, account_index )

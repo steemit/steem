@@ -46,6 +46,18 @@ public:
       _cache.erase( k );
    }
 
+   template< typename Modifier >
+   void replace( const Value& v, Modifier mod )
+   {
+      replace( _get_key( v ), mod );
+   }
+
+   template< typename Modifier >
+   void replace( const Key& k, Modifier mod )
+   {
+      mod( *(_cache[ k ]) );
+   }
+
    ptr_type get( const Key& k )
    {
       auto itr = _cache.find( k );

@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE mira test
 
+#include <steem/protocol/fixed_string.hpp>
+
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
@@ -122,6 +124,40 @@ BOOST_AUTO_TEST_CASE( sanity_tests )
       ++itr;
 
       BOOST_REQUIRE( itr == book_idx.end() );
+
+      itr = book_idx.end();
+
+      BOOST_REQUIRE( itr == book_idx.end() );
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 3 );
+         BOOST_REQUIRE( tmp_book.b == 4 );
+      }
 
       const auto& book_by_a_idx = db.get_index< book_index, by_a >();
       auto a_itr = book_by_a_idx.begin();
@@ -537,6 +573,55 @@ BOOST_AUTO_TEST_CASE( single_index_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( variable_length_key_test )
+{
+   try
+   {
+      db.add_index< account_index >();
+
+      const auto& acc_by_name_idx = db.get_index< account_index, by_name >();
+      auto itr = acc_by_name_idx.begin();
+
+      BOOST_REQUIRE( itr == acc_by_name_idx.end() );
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "alice";
+      });
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "bob";
+      });
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "charlie";
+      });
+
+      itr = acc_by_name_idx.begin();
+
+      BOOST_REQUIRE( itr->name == "alice" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr->name == "bob" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr->name == "charlie" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr == acc_by_name_idx.end() );
+
+      itr = acc_by_name_idx.lower_bound( "archibald" );
+
+      BOOST_REQUIRE( itr->name == "bob" );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 #if 0
 BOOST_AUTO_TEST_CASE( sanity_modify_test )
 {
@@ -682,5 +767,4 @@ BOOST_AUTO_TEST_CASE( misc_tests3 )
    misc_test3< test_object3_index, test_object3, OrderedIndex3, CompositeOrderedIndex3a, CompositeOrderedIndex3b >( { 0, 1, 2 } );
 }
 
-//#endif
 BOOST_AUTO_TEST_SUITE_END()
