@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE mira test
 
+#include <steem/protocol/fixed_string.hpp>
+
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
@@ -85,6 +87,33 @@ typedef multi_index_container<
    >,
    chainbase::allocator< single_index_object >
 > single_index_index;
+
+typedef steem::protocol::fixed_string<16> account_name_type;
+
+struct account_object : public chainbase::object< 2, account_object >
+{
+   template< typename Constructor, typename Allocator >
+   account_object( Constructor&& c, Allocator&& a )
+   {
+      c( *this );
+   }
+
+   account_object() = default;
+
+   id_type id;
+   account_name_type name;
+};
+
+struct by_name;
+
+typedef multi_index_container<
+   account_object,
+   indexed_by<
+      ordered_unique< tag< by_id >, member< account_object, account_object::id_type, &account_object::id > >,
+      ordered_unique< tag< by_name >, member< account_object, account_name_type, &account_object::name > >
+   >,
+   chainbase::allocator< account_object >
+> account_index;
 
 namespace fc
 {
@@ -179,6 +208,11 @@ FC_REFLECT( single_index_object::id_type, (_id) )
 
 FC_REFLECT( single_index_object, (id) )
 CHAINBASE_SET_INDEX_TYPE( single_index_object, single_index_index )
+
+FC_REFLECT( account_object::id_type, (_id) )
+
+FC_REFLECT( account_object, (id)(name) )
+CHAINBASE_SET_INDEX_TYPE( account_object, account_index )
 
 /*
 
@@ -284,6 +318,40 @@ BOOST_AUTO_TEST_CASE( basic_tests )
       ++itr;
 
       BOOST_REQUIRE( itr == book_idx.end() );
+
+      itr = book_idx.end();
+
+      BOOST_REQUIRE( itr == book_idx.end() );
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 2 );
+         BOOST_REQUIRE( tmp_book.a == 2 );
+         BOOST_REQUIRE( tmp_book.b == 1 );
+      }
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 1 );
+         BOOST_REQUIRE( tmp_book.a == 4 );
+         BOOST_REQUIRE( tmp_book.b == 5 );
+      }
+
+      --itr;
+
+      {
+         const auto& tmp_book = *itr;
+
+         BOOST_REQUIRE( tmp_book.id._id == 0 );
+         BOOST_REQUIRE( tmp_book.a == 3 );
+         BOOST_REQUIRE( tmp_book.b == 4 );
+      }
 
       const auto& book_by_a_idx = db.get_index< book_index, by_a >();
       auto a_itr = book_by_a_idx.begin();
@@ -702,6 +770,66 @@ BOOST_AUTO_TEST_CASE( single_index_test )
       const auto& sio = db.get( single_index_object::id_type() );
 
       BOOST_REQUIRE( sio.id._id == 0 );
+   }
+   catch( ... )
+   {
+      std::cout << "exception" << std::endl;
+      chainbase::bfs::remove_all( temp );
+      throw;
+   }
+
+   chainbase::bfs::remove_all( temp );
+}
+
+BOOST_AUTO_TEST_CASE( variable_length_key_test )
+{
+   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
+   try
+   {
+      chainbase::database db;
+      db.open( temp, 0, 1024*1024*8 );
+
+      db.add_index< account_index >();
+
+      const auto& acc_by_name_idx = db.get_index< account_index, by_name >();
+      auto itr = acc_by_name_idx.begin();
+
+      BOOST_REQUIRE( itr == acc_by_name_idx.end() );
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "alice";
+      });
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "bob";
+      });
+
+      db.create< account_object >( [&]( account_object& a )
+      {
+         a.name = "charlie";
+      });
+
+      itr = acc_by_name_idx.begin();
+
+      BOOST_REQUIRE( itr->name == "alice" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr->name == "bob" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr->name == "charlie" );
+
+      ++itr;
+
+      BOOST_REQUIRE( itr == acc_by_name_idx.end() );
+
+      itr = acc_by_name_idx.lower_bound( "archibald" );
+
+      BOOST_REQUIRE( itr->name == "bob" );
    }
    catch( ... )
    {

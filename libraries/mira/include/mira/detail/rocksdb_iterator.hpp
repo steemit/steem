@@ -9,6 +9,8 @@
 
 #include <fc/io/raw.hpp>
 
+#include <iostream>
+
 namespace mira { namespace multi_index { namespace detail {
 
 #define ID_INDEX 1
@@ -82,6 +84,11 @@ public:
 
       _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
       _iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+
+      if( !_iter->status().ok() )
+      {
+         std::cout << std::string( _iter->status().getState() ) << std::endl;
+      }
 
       assert( _iter->status().ok() && _iter->Valid() );
    }
@@ -176,7 +183,15 @@ public:
 
    rocksdb_iterator& operator--()
    {
-      _iter->Prev();
+      if( !valid() )
+      {
+         _iter->SeekToLast();
+      }
+      else
+      {
+         _iter->Prev();
+      }
+
       assert( _iter->status().ok() );
       return *this;
    }

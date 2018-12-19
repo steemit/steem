@@ -54,7 +54,7 @@ struct slice_comparator final : abstract_slice_comparator< Key, CompareType >
 
    virtual bool Equal( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
    {
-      assert( x.size() == y.size() );
+      if( x.size() != y.size() ) return false;
       return memcmp( x.data(), y.data(), x.size() ) == 0;
    }
 };

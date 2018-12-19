@@ -69,6 +69,8 @@
 #include <utility>
 #include <memory>
 
+#include <fc/log/logger.hpp>
+
 #include <iostream>
 #include <iterator>
 
@@ -321,10 +323,10 @@ public:
   const_reverse_iterator
     crend()const BOOST_NOEXCEPT{return rend();}
 
-  iterator iterator_to( const value_type& x )
-  {
-    return make_iterator( key( x ) );
-  }
+   iterator iterator_to( const value_type& x )
+   {
+      return make_iterator( key( x ) );
+   }
 
   const_iterator iterator_to( const value_type& x )const
   {

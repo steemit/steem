@@ -221,9 +221,10 @@ public:
       opts.OptimizeLevelStyleCompaction();
 
       ::rocksdb::DBOptions dbOptions( opts );
+      dbOptions.max_open_files = 8;
 
       ::rocksdb::DB* db = nullptr;
-      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
+      ::rocksdb::Status s = ::rocksdb::DB::Open( dbOptions, str_path, column_defs, &(super::_handles), &db );
 
       if( s.ok() )
       {
@@ -234,6 +235,7 @@ public:
       else
       {
          std::cout << std::string( s.getState() ) << std::endl;
+         assert( false );
       }
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
@@ -276,6 +278,10 @@ public:
          {
             // Save schema info
             super::cleanup_column_handles();
+         }
+         else
+         {
+            std::cout << std::string( s.getState() ) << std::endl;
          }
 
          delete db;
@@ -387,10 +393,7 @@ public:
     swap_elements_(x);
   }
 */
-  ~multi_index_container()
-  {
-    //delete_all_nodes_();
-  }
+   ~multi_index_container() {}
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
   /* As per http://www.boost.org/doc/html/move/emulation_limitations.html
@@ -1025,7 +1028,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
 
          if( status )
-            super::_cache.invalidate( v );
+            super::_cache.replace( v, mod );
       }
       super::_write_buffer.Clear();
 
