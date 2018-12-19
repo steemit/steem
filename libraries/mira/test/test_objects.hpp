@@ -10,10 +10,19 @@
 
 #include <fc/reflect/reflect.hpp>
 
-struct book : public chainbase::object< 0, book > {
+enum test_object_type
+{
+   book_object_type,
+   single_index_object_type,
+   test_object_type,
+   test_object2_type,
+   test_object3_type
+};
+
+struct book : public chainbase::object< book_object_type, book > {
 
    template<typename Constructor, typename Allocator>
-   book(  Constructor&& c, Allocator&& a )
+   book( Constructor&& c, Allocator&& a )
    {
       c(*this);
    }
@@ -49,7 +58,7 @@ typedef mira::multi_index_container<
   chainbase::allocator< book >
 > book_index;
 
-struct single_index_object : public chainbase::object< 1, single_index_object >
+struct single_index_object : public chainbase::object< single_index_object_type, single_index_object >
 {
    template< typename Constructor, typename Allocator >
    single_index_object( Constructor&& c, Allocator&& a )
@@ -70,7 +79,7 @@ typedef mira::multi_index_container<
    chainbase::allocator< single_index_object >
 > single_index_index;
 
-struct test_object : public chainbase::object< 2, test_object >
+struct test_object : public chainbase::object< test_object_type, test_object >
 {
    template <class Constructor, class Allocator>
    test_object(Constructor&& c, Allocator a ) : id( 0 ), val( 0 ), name( a )
@@ -83,6 +92,8 @@ struct test_object : public chainbase::object< 2, test_object >
    {
       c(*this);
    }
+
+   test_object() = default;
 
    id_type id;
    uint32_t val;
@@ -106,13 +117,15 @@ typedef mira::multi_index_container<
    chainbase::allocator< test_object >
 > test_object_index;
 
-struct test_object2 : public chainbase::object< 3, test_object2 >
+struct test_object2 : public chainbase::object< test_object2_type, test_object2 >
 {
    template <class Constructor, class Allocator>
    test_object2(Constructor&& c, Allocator a ) : id( 0 ), val( 0 )
    {
       c(*this);
    }
+
+   test_object2() = default;
 
    id_type id;
    uint32_t val;
@@ -135,13 +148,15 @@ typedef mira::multi_index_container<
    chainbase::allocator< test_object2 >
 > test_object2_index;
 
-struct test_object3 : public chainbase::object< 3, test_object3 >
+struct test_object3 : public chainbase::object< test_object3_type, test_object3 >
 {
    template <class Constructor, class Allocator>
    test_object3(Constructor&& c, Allocator a ) : id( 0 ), val( 0 ), val2( 0 ), val3( 0 )
    {
       c(*this);
    }
+
+   test_object3() = default;
 
    id_type id;
    uint32_t val;

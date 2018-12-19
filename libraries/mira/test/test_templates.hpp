@@ -22,7 +22,15 @@ void basic_test( const std::vector< uint64_t >& v, Call&& call )
    BOOST_REQUIRE( v.size() == c.size() );
 
    BOOST_TEST_MESSAGE( "Removing all objects" );
-   c.clear();
+   //c.clear();
+   auto i = c.begin();
+
+   while (i != c.end())
+   {
+      c.erase(i);
+      ++i;
+   }
+
    BOOST_REQUIRE( c.size() == 0 );
 
    BOOST_TEST_MESSAGE( "Creating 1 object" );
@@ -309,12 +317,12 @@ void misc_test( const std::vector< uint64_t >& v )
    found = ordered_idx.find( v[0] );
    BOOST_REQUIRE( found != ordered_idx.end() );
 
-   auto cfound = composite_ordered_idx.find( std::make_tuple( "stupid_name", 5000 ) );
+   auto cfound = composite_ordered_idx.find( boost::make_tuple( "stupid_name", 5000 ) );
    BOOST_REQUIRE( cfound == composite_ordered_idx.end() );
 
-   cfound = composite_ordered_idx.find( std::make_tuple( "object nr:" + std::to_string( 0 ), 5000 ) );
+   cfound = composite_ordered_idx.find( boost::make_tuple( "object nr:" + std::to_string( 0 ), 5000 ) );
    auto copy_cfound = cfound;
-   auto cfound2 = composite_ordered_idx.find( std::make_tuple( "object nr:" + std::to_string( 9 ), 5000 ) );
+   auto cfound2 = composite_ordered_idx.find( boost::make_tuple( "object nr:" + std::to_string( 9 ), 5000 ) );
    BOOST_REQUIRE( cfound == composite_ordered_idx.begin() );
    BOOST_REQUIRE( cfound2 == std::prev( composite_ordered_idx.end(), 1 ) );
    cnt = 0;
@@ -368,19 +376,19 @@ void misc_test3( const std::vector< uint64_t >& v )
    auto found2 = ordered_idx.upper_bound( ordered_idx.begin()->id );
    BOOST_REQUIRE( found == std::prev( found2, 1 ) );
 
-   auto cfound = composite_ordered_idx.find( std::make_tuple( 667, 5000 ) );
+   auto cfound = composite_ordered_idx.find( boost::make_tuple( 667, 5000 ) );
    BOOST_REQUIRE( cfound == composite_ordered_idx.end() );
 
-   cfound = composite_ordered_idx.find( std::make_tuple( 0 + 1, 0 + 2 ) );
+   cfound = composite_ordered_idx.find( boost::make_tuple( 0 + 1, 0 + 2 ) );
    BOOST_REQUIRE( cfound != composite_ordered_idx.end() );
 
-   auto another_cfound = another_composite_ordered_idx.find( std::make_tuple( 0 + 1, 0 + 3 ) );
+   auto another_cfound = another_composite_ordered_idx.find( boost::make_tuple( 0 + 1, 0 + 3 ) );
    BOOST_REQUIRE( another_cfound != another_composite_ordered_idx.end() );
 
    BOOST_TEST_MESSAGE( "Removing 1 object using iterator from 'AnotherComplexIndex' index");
    c.erase( c.iterator_to( *another_cfound ) );
    BOOST_REQUIRE( c.size() == v.size() - 1 );
 
-   another_cfound = another_composite_ordered_idx.find( std::make_tuple( 0 + 1, 0 + 3 ) );
+   another_cfound = another_composite_ordered_idx.find( boost::make_tuple( 0 + 1, 0 + 3 ) );
    BOOST_REQUIRE( another_cfound == another_composite_ordered_idx.end() );
 }
