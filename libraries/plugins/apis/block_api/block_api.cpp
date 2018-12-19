@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 #include <appbase/application.hpp>
 
 #include <steem/plugins/block_api/block_api.hpp>

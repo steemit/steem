@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/chain/steem_fwd.hpp>
 
@@ -70,6 +71,8 @@ namespace steem { namespace chain {
          {
             c( *this );
          }
+
+         account_history_object() {}
 
          id_type           id;
 

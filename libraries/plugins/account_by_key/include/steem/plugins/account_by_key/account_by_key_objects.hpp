@@ -24,6 +24,8 @@ class key_lookup_object : public object< key_lookup_object_type, key_lookup_obje
          c( *this );
       }
 
+      key_lookup_object() {}
+
       id_type           id;
 
       public_key_type   key;

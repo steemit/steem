@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/required_automated_actions.hpp>
 
 #include <steem/chain/steem_object_types.hpp>

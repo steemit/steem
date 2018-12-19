@@ -24,6 +24,8 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/database.hpp>
 

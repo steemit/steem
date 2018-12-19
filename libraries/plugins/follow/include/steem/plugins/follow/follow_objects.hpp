@@ -54,10 +54,10 @@ typedef oid< follow_object > follow_id_type;
 
 class feed_object : public object< feed_object_type, feed_object >
 {
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( feed_object );
+
    public:
       typedef t_vector<account_name_type> t_reblogged_by_container;
-
-      feed_object() = delete;
 
       template< typename Constructor, typename Allocator >
       feed_object( Constructor&& c, allocator< Allocator > a )
@@ -115,6 +115,8 @@ class blog_author_stats_object : public object< blog_author_stats_object_type, b
       {
          c( *this );
       }
+
+      blog_author_stats_object() {}
 
       id_type           id;
       account_name_type blogger;

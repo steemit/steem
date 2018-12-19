@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/operators.hpp>
+
 #include <mira/multi_index_container_fwd.hpp>
 #include <mira/detail/object_cache.hpp>
 
@@ -13,11 +15,18 @@ namespace mira { namespace multi_index { namespace detail {
 
 template< typename Value, typename Key, typename KeyFromValue,
           typename ID, typename IDFromValue >
-struct rocksdb_iterator
-{
-   typedef typename std::shared_ptr< Value >       value_ptr;
-   typedef object_cache<
+struct rocksdb_iterator :
+   public boost::bidirectional_iterator_helper<
+      rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >,
       Value,
+      std::size_t,
+      const Value*,
+      const Value& >
+{
+   typedef Value                                   value_type;
+   typedef typename std::shared_ptr< value_type >  value_ptr;
+   typedef object_cache<
+      value_type,
       ID,
       IDFromValue >                                cache_type;
 
@@ -105,11 +114,11 @@ public:
       other._db.reset();
    }
 
-   const Value& operator*()const
+   const value_type& operator*()const
    {
       BOOST_ASSERT( valid() );
       ::rocksdb::Slice key_slice = _iter->value();
-      std::shared_ptr< Value > ptr;
+      value_ptr ptr;
       ID id;
 
       if( _index == ID_INDEX )
@@ -120,8 +129,8 @@ public:
          if( !ptr )
          {
             // We are iterating on the primary key, so there is no indirection
-            ptr = std::make_shared< Value >();
-            fc::raw::unpack_from_char_array< Value >( key_slice.data(), key_slice.size(), *ptr );
+            ptr = std::make_shared< value_type >();
+            fc::raw::unpack_from_char_array< value_type >( key_slice.data(), key_slice.size(), *ptr );
             ptr = _cache.cache( std::move( *ptr ) );
          }
       }
@@ -136,8 +145,8 @@ public:
 
          if( !ptr )
          {
-            ptr = std::make_shared< Value >();
-            fc::raw::unpack_from_char_array< Value >( value_slice.data(), value_slice.size(), *ptr );
+            ptr = std::make_shared< value_type >();
+            fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), *ptr );
             ptr = _cache.cache( std::move( *ptr ) );
          }
       }
@@ -145,7 +154,7 @@ public:
       return (*ptr);
    }
 
-   const Value* operator->()const
+   const value_type* operator->()const
    {
       return &(**this);
    }

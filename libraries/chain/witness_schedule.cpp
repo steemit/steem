@@ -1,4 +1,5 @@
 
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/witness_schedule.hpp>

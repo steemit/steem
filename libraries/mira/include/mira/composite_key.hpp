@@ -552,21 +552,56 @@ struct key_from_value :
       >::type
 {};
 
-template< typename Key, typename CompatibleKey >
-struct convert_compatible_key
+template< typename Key, typename Tuple >
+struct convert_compatible_key;
+
+template< typename Key, typename Tuple >
+struct convert_compatible_key_terminal
 {
-   static Key convert( const CompatibleKey& k )
+   static Key convert( const Tuple& t )
    {
-      return Key( k, typename Key::tail_type() );
+      return Key(
+         t.get_head(),
+         typename Key::tail_type() );
    }
 };
 
-template< typename Key, typename... Args >
-struct convert_compatible_key< Key, boost::tuples::tuple< Args... > >
+template< typename Key, typename Tuple >
+struct convert_compatible_key_normal
 {
-   static Key convert( const boost::tuples::tuple< Args... >& k )
+   static Key convert( const Tuple& t )
    {
-      return Key( k );
+      return Key(
+         t.get_head(),
+         convert_compatible_key<
+            typename Key::tail_type,
+            typename Tuple::tail_type
+         >::convert( t.get_tail() ) );
+   }
+};
+
+template< typename Key, typename Tuple >
+struct convert_compatible_key :
+   boost::mpl::if_<
+      boost::mpl::or_<
+         boost::is_same< typename Key::tail_type, boost::tuples::null_type >,
+         boost::is_same< typename Tuple::tail_type, boost::tuples::null_type >
+      >,
+      convert_compatible_key_terminal< Key, Tuple >,
+      convert_compatible_key_normal< Key, Tuple >
+   >::type
+{};
+
+/*
+template< typename Key, typename CompatibleKey >
+struct convert_compatible_key;
+
+template< typename Key, typename CompKeyHT >
+struct convert_compatible_key< Key, boost::tuples::cons< CompKeyHT, boost::tuples::null_type > >
+{
+   static Key convert( const boost::tuples::cons< CompKeyHT, boost::tuples::null_type >& k )
+   {
+      return Key( k.get_head(), typename Key::tail_type() );
    }
 };
 
@@ -578,6 +613,25 @@ struct convert_compatible_key< Key, boost::tuples::cons< CompKeyHT, CompKeyTT > 
       return Key( k.get_head(), k.get_tail() );
    }
 };
+
+template< typename Key, typename... Args >
+struct convert_compatible_key< Key, boost::tuples::tuple< Args... > >
+{
+   static Key convert( const boost::tuples::tuple< Args... >& k )
+   {
+      return convert_to_cons< Key, boost::tuples::tuple< Args ... > >::convert( k );
+   }
+};
+
+template< typename Key, typename CompatibleKey >
+struct convert_compatible_key
+{
+   static Key convert( const CompatibleKey& k )
+   {
+      return Key( k, typename Key::tail_type() );
+   }
+};
+*/
 
 template< typename KeyCons >
 struct composite_key_conversion; // Forward Declaration
@@ -627,9 +681,16 @@ struct composite_key_result
          >::extract( composite_key.key_extractors(), value ) )
    {}
 
+   template< typename... Args >
+   composite_key_result( const boost::tuples::tuple< Args... > compat_key ) :
+      key( convert_compatible_key<
+         key_type,
+         boost::tuples::tuple< Args... >
+         >::convert( compat_key ) )
+   {}
+
    template< typename CompatibleKey >
-   composite_key_result( const CompatibleKey& k ) :
-      key( convert_compatible_key< key_type, CompatibleKey >::convert( k ) )
+   composite_key_result( const CompatibleKey& k ) : composite_key_result( boost::make_tuple( k ) )
    {}
 
    composite_key_result() {}

@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/transaction.hpp>
 
 #include <steem/chain/buffer_type.hpp>

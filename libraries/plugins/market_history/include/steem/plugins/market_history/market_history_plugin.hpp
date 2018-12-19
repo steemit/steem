@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
@@ -119,6 +120,8 @@ struct order_history_object : public object< order_history_object_type, order_hi
    {
       c( *this );
    }
+
+   order_history_object() {}
 
    id_type                          id;
 

@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_object_types.hpp>
+
 #include <steem/protocol/authority.hpp>
 #include <chainbase/chainbase.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
@@ -42,7 +44,7 @@ namespace steem { namespace chain {
          account_auths( cpy.account_auths ), key_auths( cpy.key_auths ) {}
 
       template< typename Allocator >
-      shared_authority( const Allocator& alloc ) :
+      explicit shared_authority( const Allocator& alloc ) :
          account_auths( account_pair_allocator_type( alloc ) ),
          key_auths( key_pair_allocator_type( alloc ) ) {}
 

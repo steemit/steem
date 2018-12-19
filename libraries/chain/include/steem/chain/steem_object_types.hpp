@@ -2,14 +2,14 @@
 
 #include <steem/chain/steem_fwd.hpp>
 
-#include <steem/chain/multi_index_types.hpp>
-
 #include <chainbase/chainbase.hpp>
 
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/authority.hpp>
 
 #include <steem/chain/buffer_type.hpp>
+
+#include <steem/chain/multi_index_types.hpp>
 
 #ifndef ENABLE_STD_ALLOCATOR
 #define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \

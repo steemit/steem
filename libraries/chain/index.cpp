@@ -1,5 +1,5 @@
 
-#include <steem/chain/steem_fwd.hpp>
+#include <steem/chain/steem_object_types.hpp>
 
 #include <steem/chain/index.hpp>
 

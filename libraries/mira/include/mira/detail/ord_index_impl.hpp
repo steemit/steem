@@ -70,6 +70,7 @@
 #include <memory>
 
 #include <iostream>
+#include <iterator>
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
 #include <initializer_list>
@@ -303,7 +304,7 @@ public:
     end()BOOST_NOEXCEPT{return iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
     end()const BOOST_NOEXCEPT{return const_iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
-  /*reverse_iterator
+  reverse_iterator
     rbegin()BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
   const_reverse_iterator
     rbegin()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(end());}
@@ -311,17 +312,14 @@ public:
     rend()BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
   const_reverse_iterator
     rend()const BOOST_NOEXCEPT{return boost::make_reverse_iterator(begin());}
-   */
   const_iterator
     cbegin()const BOOST_NOEXCEPT{return begin();}
   const_iterator
     cend()const BOOST_NOEXCEPT{return end();}
-   /*
   const_reverse_iterator
     crbegin()const BOOST_NOEXCEPT{return rbegin();}
   const_reverse_iterator
     crend()const BOOST_NOEXCEPT{return rend();}
-    */
 
   iterator iterator_to( const value_type& x )
   {

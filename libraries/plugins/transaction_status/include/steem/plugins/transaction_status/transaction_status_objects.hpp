@@ -31,14 +31,14 @@ enum transaction_status
 
 class transaction_status_object : public object< transaction_status_object_type, transaction_status_object >
 {
-   transaction_status_object() = delete;
-
 public:
    template< typename Constructor, typename Allocator >
    transaction_status_object( Constructor&& c, allocator< Allocator > a )
    {
       c( *this );
    }
+
+   transaction_status_object() {}
 
    id_type                     id;
    transaction_id_type         transaction_id;

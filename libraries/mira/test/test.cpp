@@ -698,6 +698,10 @@ BOOST_AUTO_TEST_CASE( single_index_test )
       db.add_index< single_index_index >();
 
       db.create< single_index_object >( [&]( single_index_object& ){} );
+
+      const auto& sio = db.get( single_index_object::id_type() );
+
+      BOOST_REQUIRE( sio.id._id == 0 );
    }
    catch( ... )
    {

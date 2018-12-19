@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/fixed_string.hpp>
 
 #include <steem/protocol/authority.hpp>

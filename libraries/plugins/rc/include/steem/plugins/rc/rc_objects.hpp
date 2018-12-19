@@ -43,6 +43,8 @@ class rc_resource_param_object : public object< rc_resource_param_object_type, r
          c( *this );
       }
 
+      rc_resource_param_object() {}
+
       id_type               id;
       fc::int_array< rc_resource_params, STEEM_NUM_RESOURCE_TYPES >
                             resource_param_array;
@@ -57,6 +59,8 @@ class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
          c( *this );
       }
 
+      rc_pool_object() {}
+
       id_type               id;
       fc::int_array< int64_t, STEEM_NUM_RESOURCE_TYPES >
                             pool_array;
@@ -70,6 +74,8 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       {
          c( *this );
       }
+
+      rc_account_object() {}
 
       id_type               id;
 
@@ -94,6 +100,8 @@ class rc_delegation_pool_object : public object< rc_delegation_pool_object_type,
          c( *this );
       }
 
+      rc_delegation_pool_object() {}
+
       id_type                       id;
 
       account_name_type             account;
@@ -111,6 +119,8 @@ class rc_indel_edge_object : public object< rc_indel_edge_object_type, rc_indel_
       {
          c( *this );
       }
+
+      rc_indel_edge_object() {}
 
       id_type                       id;
       account_name_type             from_account;
@@ -141,6 +151,8 @@ class rc_outdel_drc_edge_object : public object< rc_outdel_drc_edge_object_type,
       {
          c( *this );
       }
+
+      rc_outdel_drc_edge_object() {}
 
       id_type                       id;
       account_name_type             from_pool;

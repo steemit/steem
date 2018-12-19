@@ -214,7 +214,7 @@ namespace chainbase {
           * Set the ID to the next available ID, then increment _next_id and fire off on_create().
           */
          template<typename Constructor>
-         const value_type emplace( Constructor&& c ) {
+         const value_type& emplace( Constructor&& c ) {
             auto new_id = _next_id;
 
             auto constructor = [&]( value_type& v ) {
@@ -229,7 +229,7 @@ namespace chainbase {
             }
 
             ++_next_id;
-            //on_create( *insert_result.first );
+            on_create( *insert_result.first );
             return *insert_result.first;
          }
 
@@ -958,7 +958,7 @@ namespace chainbase {
          }
 
          template<typename ObjectType, typename Constructor>
-         const ObjectType create( Constructor&& con )
+         const ObjectType& create( Constructor&& con )
          {
              CHAINBASE_REQUIRE_WRITE_LOCK("create", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;

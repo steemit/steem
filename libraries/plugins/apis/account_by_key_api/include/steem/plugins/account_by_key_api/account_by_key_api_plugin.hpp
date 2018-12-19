@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/account_by_key/account_by_key_plugin.hpp>
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 

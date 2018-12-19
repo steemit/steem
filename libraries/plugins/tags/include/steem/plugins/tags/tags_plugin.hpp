@@ -1,5 +1,5 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/comment_object.hpp>
@@ -288,6 +288,8 @@ class author_tag_stats_object : public object< author_tag_stats_object_type, aut
       {
          c( *this );
       }
+
+      author_tag_stats_object() {}
 
       id_type         id;
       account_id_type author;

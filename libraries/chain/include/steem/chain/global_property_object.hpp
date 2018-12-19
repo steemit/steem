@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/uint128.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
