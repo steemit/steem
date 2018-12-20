@@ -215,8 +215,9 @@ public:
       {
          ::rocksdb::Slice this_key = _iter->key();
          ::rocksdb::Slice other_key = other._iter->key();
-         assert( this_key.size() == other_key.size() );
-         return memcmp( this_key.data(), other_key.data(), this_key.size() ) == 0;
+         return (
+            ( this_key.size() == other_key.size() )
+            && memcmp( this_key.data(), other_key.data(), this_key.size() ) == 0 );
       }
 
       return _iter->Valid() == other._iter->Valid();
@@ -310,13 +311,12 @@ public:
       return itr;
    }
 
-   template< typename CompatibleKey >
    static rocksdb_iterator lower_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const CompatibleKey& k )
+      const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
 
@@ -327,12 +327,22 @@ public:
    }
 
    template< typename CompatibleKey >
-   static rocksdb_iterator upper_bound(
+   static rocksdb_iterator lower_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
       const CompatibleKey& k )
+   {
+      return lower_bound( handles, index, db, cache, Key( k ) );
+   }
+
+   static rocksdb_iterator upper_bound(
+      const column_handles& handles,
+      size_t index,
+      db_ptr db,
+      cache_type& cache,
+      const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
 
@@ -345,6 +355,17 @@ public:
       }
 
       return itr;
+   }
+
+   template< typename CompatibleKey >
+   static rocksdb_iterator upper_bound(
+      const column_handles& handles,
+      size_t index,
+      db_ptr db,
+      cache_type& cache,
+      const CompatibleKey& k )
+   {
+      return upper_bound( handles, index, db, cache, Key( k ) );
    }
 
    template< typename LowerBoundType, typename UpperBoundType >

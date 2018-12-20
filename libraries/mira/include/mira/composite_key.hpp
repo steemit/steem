@@ -1643,9 +1643,9 @@ struct get_typename< mira::multi_index::composite_key_result< T > >
 {
    static const char* name()
    {
-      static std::string n = std::string( "mira::multi_index::composite_key_result<>" );
-//         + get_typename< typename mira::multi_index::composite_key_result< T >::key_type >::name()
-//         + ">";
+      static std::string n = std::string( "mira::multi_index::composite_key_result<" )
+         + get_typename< typename T::value_type >::name()
+         + ">";
       return n.c_str();
    }
 };

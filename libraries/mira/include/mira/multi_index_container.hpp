@@ -73,6 +73,10 @@
 #define BOOST_MULTI_INDEX_CHECK_INVARIANT
 #endif
 
+#define DEFAULT_COLUMN 0
+
+#define ENTRY_COUNT_KEY "ENTRY_COUNT"
+
 namespace mira{
 
 namespace multi_index{
@@ -177,34 +181,15 @@ public:
   multi_index_container():
     bfm_allocator(allocator_type()),
     super(ctor_args_list(),bfm_allocator::member),
-    node_count(0)
+    entry_count(0)
   {
     BOOST_MULTI_INDEX_CHECK_INVARIANT;
   }
 
-/*
-  explicit multi_index_container(
-    const ctor_args_list& args_list,
-
-#if BOOST_WORKAROUND(__IBMCPP__,<=600)
-    const allocator_type& al=
-      typename boost::mplidentity<multi_index_container>::type::
-        allocator_type()):
-#else
-    const allocator_type& al=allocator_type()):
-#endif
-
-    bfm_allocator(al),
-    super(args_list,bfm_allocator::member),
-    node_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-  }
-*/
   explicit multi_index_container( const allocator_type& al, const boost::filesystem::path& p ):
     bfm_allocator(al),
     super(ctor_args_list(),bfm_allocator::member),
-    node_count(0)
+    entry_count(0)
    {
       assert( p.is_absolute() );
 
@@ -292,108 +277,17 @@ public:
       return false;
    }
 
-/*
-  template<typename InputIterator>
-  multi_index_container(
-    InputIterator first,InputIterator last,
+   ~multi_index_container()
+   {
+      auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
+      auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
-#if BOOST_WORKAROUND(__IBMCPP__,<=600)
-
-    const ctor_args_list& args_list=
-      typename boost::mplidentity<multi_index_container>::type::
-        ctor_args_list(),
-    const allocator_type& al=
-      typename boost::mplidentity<multi_index_container>::type::
-        allocator_type()):
-#else
-    const ctor_args_list& args_list=ctor_args_list(),
-    const allocator_type& al=allocator_type()):
-#endif
-
-    bfm_allocator(al),
-    super(args_list,bfm_allocator::member),
-    node_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-    BOOST_TRY{
-      iterator hint=super::end();
-      for(;first!=last;++first){
-        hint=super::make_iterator(
-          insert_ref_(*first,hint.get_node()).first);
-        ++hint;
-      }
-    }
-    BOOST_CATCH(...){
-      clear_();
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-*/
-
-/*
-#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
-  multi_index_container(
-    std::initializer_list<Value> list,
-    const ctor_args_list& args_list=ctor_args_list(),
-    const allocator_type& al=allocator_type()):
-    bfm_allocator(al),
-    super(args_list,bfm_allocator::member),
-    node_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-    BOOST_TRY{
-      typedef const Value* init_iterator;
-
-      iterator hint=super::end();
-      for(init_iterator first=list.begin(),last=list.end();
-          first!=last;++first){
-        hint=super::make_iterator(insert_(*first,hint.get_node()).first);
-        ++hint;
-      }
-    }
-    BOOST_CATCH(...){
-      clear_();
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-#endif
-*/
-
-/*
-  multi_index_container(
-    const multi_index_container<Value,IndexSpecifierList,Allocator>& x):
-    bfm_allocator(x.bfm_allocator::member),
-    bfm_header(),
-    super(x),
-    node_count(0)
-  {
-    copy_map_type map(bfm_allocator::member,x.size(),x.header(),header());
-    for(const_iterator it=x.begin(),it_end=x.end();it!=it_end;++it){
-      map.clone(it.get_node());
-    }
-    super::copy_(x,map);
-    map.release();
-    node_count=x.size();
-
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-  }
-*/
-
-/*
-  multi_index_container(BOOST_RV_REF(multi_index_container) x):
-    bfm_allocator(x.bfm_allocator::member),
-    bfm_header(),
-    super(x,detail::do_not_copy_elements_tag()),
-    node_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-    BOOST_MULTI_INDEX_CHECK_INVARIANT_OF(x);
-    swap_elements_(x);
-  }
-*/
-   ~multi_index_container() {}
+      super::_db->Put(
+         ::rocksdb::WriteOptions(),
+         super::_handles[ DEFAULT_COLUMN ],
+         ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
+         ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+   }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
   /* As per http://www.boost.org/doc/html/move/emulation_limitations.html
@@ -694,7 +588,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     bfm_allocator(x.bfm_allocator::member),
     bfm_header(),
     super(x,detail::do_not_copy_elements_tag()),
-    node_count(0)
+    entry_count(0)
   {
     BOOST_MULTI_INDEX_CHECK_INVARIANT;
   }
@@ -725,12 +619,12 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
   bool empty_()const
   {
-    return node_count==0;
+    return entry_count==0;
   }
 
   std::size_t size_()const
   {
-    return node_count;
+    return entry_count;
   }
 
   std::size_t max_size_()const
@@ -744,7 +638,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     node_type* x=0;
     node_type* res=super::insert_(v,x,variant);
     if(res==x){
-      ++node_count;
+      ++entry_count;
       return std::pair<node_type*,bool>(res,true);
     }
     else{
@@ -771,7 +665,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       BOOST_TRY{
         node_type* res=super::insert_(x->value(),x,detail::emplaced_tag());
         if(res==x){
-          ++node_count;
+          ++entry_count;
           return std::pair<node_type*,bool>(res,true);
         }
         else{
@@ -814,7 +708,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       BOOST_TRY{
         node_type* res=super::insert_(x->value(),x,detail::emplaced_tag());
         if(res==x){
-          ++node_count;
+          ++entry_count;
           return std::pair<node_type*,bool>(res,true);
         }
         else{
@@ -845,6 +739,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       {
          ::rocksdb::WriteOptions w_opts;
          status = super::_db->Write( w_opts, super::_write_buffer.GetWriteBatch()).ok();
+         ++entry_count;
       }
       super::_write_buffer.Clear();
 
@@ -858,7 +753,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     node_type* x=0;
     node_type* res=super::insert_(v,position,x,variant);
     if(res==x){
-      ++node_count;
+      ++entry_count;
       return std::pair<node_type*,bool>(res,true);
     }
     else{
@@ -887,7 +782,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
         node_type* res=super::insert_(
           x->value(),position,x,detail::emplaced_tag());
         if(res==x){
-          ++node_count;
+          ++entry_count;
           return std::pair<node_type*,bool>(res,true);
         }
         else{
@@ -934,7 +829,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
         node_type* res=super::insert_(
           x->value(),position,x,detail::emplaced_tag());
         if(res==x){
-          ++node_count;
+          ++entry_count;
           return std::pair<node_type*,bool>(res,true);
         }
         else{
@@ -959,7 +854,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 /*
   void erase_(node_type* x)
   {
-    --node_count;
+    --entry_count;
     super::erase_(x);
     deallocate_node(x);
   }
@@ -969,6 +864,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
    {
       super::erase_( v );
       super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() );
+      --entry_count;
       super::_cache.invalidate( v );
       super::_write_buffer.Clear();
    }
@@ -988,7 +884,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   {
     //delete_all_nodes_();
     super::clear_();
-    node_count=0;
+    entry_count=0;
   }
 
   void swap_(multi_index_container<Value,IndexSpecifierList,Allocator>& x)
@@ -998,7 +894,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     }
     std::swap(bfm_header::member,x.bfm_header::member);
     super::swap_(x);
-    std::swap(node_count,x.node_count);
+    std::swap(entry_count,x.entry_count);
   }
 
   void swap_elements_(
@@ -1006,7 +902,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   {
     std::swap(bfm_header::member,x.bfm_header::member);
     super::swap_elements_(x);
-    std::swap(node_count,x.node_count);
+    std::swap(entry_count,x.entry_count);
   }
 
   bool replace_(const Value& k,node_type* x)
@@ -1052,14 +948,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     BOOST_TRY{
       if(!super::modify_(x)){
         deallocate_node(x);
-        --node_count;
+        --entry_count;
         return false;
       }
       else return true;
     }
     BOOST_CATCH(...){
       deallocate_node(x);
-      --node_count;
+      --entry_count;
       BOOST_RETHROW;
     }
     BOOST_CATCH_END
@@ -1198,7 +1094,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 #endif
 
 private:
-  std::size_t node_count;
+  std::size_t entry_count;
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)
