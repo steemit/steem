@@ -707,13 +707,17 @@ BOOST_AUTO_TEST_CASE( basic_tests )
 
 BOOST_AUTO_TEST_CASE( insert_remove_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c1b = []( test_object2& obj ) {};
    auto c1c = []( test_object3& obj ) { obj.val2 = 7; obj.val3 = obj.val2 + 1; };
 
-   insert_remove_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1 );
-   insert_remove_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b );
-   insert_remove_test< test_object3_index, test_object3 >( { 0, 1, 2, 3 }, c1c );
+   insert_remove_test< test_object_index, test_object, OrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1, db );
+   insert_remove_test< test_object2_index, test_object2, OrderedIndex2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b, db );
+   insert_remove_test< test_object3_index, test_object3, OrderedIndex3 >( { 0, 1, 2, 3 }, c1c, db );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )

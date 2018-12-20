@@ -84,24 +84,25 @@ void basic_test( const std::vector< uint64_t >& v,
    BOOST_REQUIRE( c.size() == 0 );
 }
 
-template < typename Container, typename Object >
+template < typename IndexType, typename Object, typename Order >
 void insert_remove_test( const std::vector< uint64_t >& v,
-                         std::function< void( Object& ) > call )
+                         std::function< void( Object& ) > call,
+                         chainbase::database& db )
 {
-   Container c;
+   const auto& c = db.get_index< IndexType, Order >();
 
    int64_t cnt = 0;
 
    BOOST_TEST_MESSAGE( "Creating `v.size()` objects" );
-   for( const auto& item: v )
+   for( const auto& item : v )
    {
-      auto constructor = [ &item, &call ]( Object &obj )
+      db.create< Object >( [&] ( Object& o )
       {
-         obj.id = item;
-         call( obj );
-         obj.val = item;
-      };
-      c.emplace( std::move( Object( constructor, std::allocator< Object >() ) ) );
+         o.id = item;
+         call( o );
+         o.val = item;
+      } );
+
       ++cnt;
    }
    BOOST_REQUIRE( v.size() == c.size() );
@@ -111,46 +112,56 @@ void insert_remove_test( const std::vector< uint64_t >& v,
    {
       auto found = c.find( i );
       BOOST_REQUIRE( found != c.end() );
-      c.erase( found );
+
+      db.remove( *found );
       BOOST_REQUIRE( v.size() - i - 1 == c.size() );
    }
    BOOST_REQUIRE( c.size() == 0 );
 
    BOOST_TEST_MESSAGE( "Creating 2 objects" );
    cnt = 0;
-   for( const auto& item: v )
+   for( const auto& item : v )
    {
-      auto constructor = [ &item, &cnt, &call ]( Object &obj )
+      db.create< Object >( [&] ( Object& o )
       {
-         obj.id = item;
-         call( obj );
-         obj.val = cnt;
-      };
-      c.emplace( std::move( Object( constructor, std::allocator< Object >() ) ) );
+         o.id = item;
+         call( o );
+         o.val = cnt;
+      } );
+
       if( ++cnt == 2 )
          break;
    }
    BOOST_REQUIRE( c.size() == 2 );
 
    BOOST_TEST_MESSAGE( "Removing first object" );
-   const Object& object = *( c.begin() );
-   auto found = c.iterator_to( object );
-   BOOST_REQUIRE( found != c.end() );
-   c.erase( found );
+   db.remove( *( c.begin() ) );
+
    BOOST_REQUIRE( c.size() == 1 );
 
    BOOST_TEST_MESSAGE( "Adding object with id_key = 0" );
-   auto constructor1 = [ &v, &call ]( Object &obj ) { obj.id = v[0]; call( obj ); obj.val = 100; };
-   c.emplace( std::move( Object( constructor1, std::allocator< Object >() ) ) );
+   db.create< Object >( [&] ( Object& o )
+   {
+      o.id = v[0];
+      call( o );
+      o.val = 100;
+   } );
+
    BOOST_REQUIRE( c.size() == 2 );
 
    BOOST_TEST_MESSAGE( "Remove second object" );
-   found = c.end();
+   auto found = c.end();
    --found;
-   auto first = std::prev( found, 1 );
-   c.erase( found );
+   auto first = std::prev( found, 1 ); // This crashes
+   /* This alternative works
+   auto first = found;
+   --first;
+   */
+
+   db.remove( *found );
    BOOST_REQUIRE( c.size() == 1 );
-   c.erase( first );
+
+   db.remove( *first );
    BOOST_REQUIRE( c.size() == 0 );
 }
 
