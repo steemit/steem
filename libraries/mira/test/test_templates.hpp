@@ -404,10 +404,10 @@ void misc_test( const std::vector< uint64_t >& v, chainbase::database& db )
 template < typename IndexType, typename Object, typename SimpleIndex, typename ComplexIndex, typename AnotherComplexIndex >
 void misc_test3( const std::vector< uint64_t >& v, chainbase::database& db )
 {
-   Container c;
+   const auto& c = db.get_index< IndexType, SimpleIndex >();
 
    BOOST_TEST_MESSAGE( "Creating `v.size()` objects" );
-   for( const auto& item: v )
+   for ( const auto& item : v )
    {
       auto constructor = [ &item ]( Object &obj )
       {
@@ -416,14 +416,14 @@ void misc_test3( const std::vector< uint64_t >& v, chainbase::database& db )
          obj.val2 = item + 2;
          obj.val3 = item + 3;
       };
-      c.emplace( std::move( Object( constructor, std::allocator< Object >() ) ) );
+      db.create< Object >( constructor );
    }
    BOOST_REQUIRE( v.size() == c.size() );
 
    BOOST_TEST_MESSAGE( "Finding some objects according to given index." );
-   const auto& ordered_idx = c.template get< SimpleIndex >();
-   const auto& composite_ordered_idx = c.template get< ComplexIndex >();
-   const auto& another_composite_ordered_idx = c.template get< AnotherComplexIndex >();
+   const auto& ordered_idx = db.get_index< IndexType, SimpleIndex >();
+   const auto& composite_ordered_idx = db.get_index< IndexType, ComplexIndex >();
+   const auto& another_composite_ordered_idx = db.get_index< IndexType, AnotherComplexIndex >();
 
    auto found = ordered_idx.lower_bound( 5739854 );
    BOOST_REQUIRE( found == ordered_idx.end() );
@@ -435,7 +435,7 @@ void misc_test3( const std::vector< uint64_t >& v, chainbase::database& db )
    BOOST_REQUIRE( found == ordered_idx.begin() );
 
    auto found2 = ordered_idx.upper_bound( ordered_idx.begin()->id );
-   BOOST_REQUIRE( found == std::prev( found2, 1 ) );
+   BOOST_REQUIRE( found == --found2 );
 
    auto cfound = composite_ordered_idx.find( boost::make_tuple( 667, 5000 ) );
    BOOST_REQUIRE( cfound == composite_ordered_idx.end() );
@@ -447,7 +447,7 @@ void misc_test3( const std::vector< uint64_t >& v, chainbase::database& db )
    BOOST_REQUIRE( another_cfound != another_composite_ordered_idx.end() );
 
    BOOST_TEST_MESSAGE( "Removing 1 object using iterator from 'AnotherComplexIndex' index");
-   c.erase( c.iterator_to( *another_cfound ) );
+   db.remove( *another_cfound );
    BOOST_REQUIRE( c.size() == v.size() - 1 );
 
    another_cfound = another_composite_ordered_idx.find( boost::make_tuple( 0 + 1, 0 + 3 ) );
