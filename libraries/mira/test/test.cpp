@@ -722,6 +722,10 @@ BOOST_AUTO_TEST_CASE( insert_remove_tests )
 
 BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.id = 0; obj.name = "_name7"; obj.val = 7; };
    auto c2 = []( test_object& obj ) { obj.id = 0; obj.name = "_name8"; obj.val = 8; };
    auto c3 = []( test_object& obj ) { obj.id = 0; obj.name = "the_same_name"; obj.val = 7; };
@@ -737,9 +741,9 @@ BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
    auto c3c = []( test_object3& obj ) { obj.id = 2; obj.val = 30; obj.val3 = 30; };
    auto c4c = []( test_object3& obj ) { obj.id = 3; obj.val = 30; obj.val3 = 30; };
 
-   insert_remove_collision_test< test_object_index, test_object >( {}, c1, c2, c3, c4 );
-   insert_remove_collision_test< test_object2_index, test_object2 >( {}, c1b, c2b, c3b, c4b );
-   insert_remove_collision_test< test_object3_index, test_object3 >( {}, c1c, c2c, c3c, c4c );
+   insert_remove_collision_test< test_object_index, test_object, OrderedIndex >( {}, c1, c2, c3, c4, db );
+   insert_remove_collision_test< test_object2_index, test_object2, OrderedIndex2 >( {}, c1b, c2b, c3b, c4b, db );
+   insert_remove_collision_test< test_object3_index, test_object3, OrderedIndex3 >( {}, c1c, c2c, c3c, c4c, db );
 }
 
 BOOST_AUTO_TEST_CASE( modify_tests )

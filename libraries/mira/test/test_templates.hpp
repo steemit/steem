@@ -165,22 +165,28 @@ void insert_remove_test( const std::vector< uint64_t >& v,
    BOOST_REQUIRE( c.size() == 0 );
 }
 
-template < typename Container, typename Object >
-void insert_remove_collision_test( const std::vector< uint64_t >& v, std::function< void( Object& ) > call1, std::function< void( Object& ) > call2, std::function< void( Object& ) > call3, std::function< void( Object& ) > call4 )
+template < typename IndexType, typename Object, typename Order >
+void insert_remove_collision_test( const std::vector< uint64_t >& v,
+                                   std::function< void( Object& ) > call1,
+                                   std::function< void( Object& ) > call2,
+                                   std::function< void( Object& ) > call3,
+                                   std::function< void( Object& ) > call4,
+                                   chainbase::database& db )
 {
-   Container c;
+   const auto& c = db.get_index< IndexType, Order >();
 
    BOOST_TEST_MESSAGE( "Adding 2 objects with collision - the same id" );
-   c.emplace( std::move( Object( call1, std::allocator< Object >() ) ) );
-   auto failed_emplace = c.emplace( Object( call2, std::allocator< Object >() ) );
-   BOOST_REQUIRE( failed_emplace.second == false );
+
+   db.create< Object >( call1 );
+   BOOST_CHECK_THROW( db.create< Object >( call2 ), std::logic_error );
+
    BOOST_REQUIRE( c.size() == 1 );
 
    BOOST_TEST_MESSAGE( "Removing object and adding 2 objects with collision - the same name+val" );
-   c.erase( c.begin() );
-   c.emplace( std::move( Object( call3, std::allocator< Object >() ) ) );
-   failed_emplace = c.emplace( Object( call4, std::allocator< Object >() ) );
-   BOOST_REQUIRE( failed_emplace.second == false );
+   db.remove( *( c.begin() ) );
+
+   db.create< Object >( call3 );
+   BOOST_CHECK_THROW( db.create< Object >( call4 ), std::logic_error );
    BOOST_REQUIRE( c.size() == 1 );
 }
 
