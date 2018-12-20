@@ -152,11 +152,10 @@ void insert_remove_test( const std::vector< uint64_t >& v,
    BOOST_TEST_MESSAGE( "Remove second object" );
    auto found = c.end();
    --found;
-   auto first = std::prev( found, 1 ); // This crashes
-   /* This alternative works
+   //auto first = std::prev( found, 1 ); // This crashes
+   /* This alternative works */
    auto first = found;
    --first;
-   */
 
    db.remove( *found );
    BOOST_REQUIRE( c.size() == 1 );
