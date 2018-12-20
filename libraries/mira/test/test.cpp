@@ -748,6 +748,10 @@ BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
 
 BOOST_AUTO_TEST_CASE( modify_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c2 = []( test_object& obj ){ obj.name = "new_name"; };
    auto c3 = []( const test_object& obj ){ BOOST_REQUIRE( obj.name == "new_name" ); };
@@ -760,18 +764,22 @@ BOOST_AUTO_TEST_CASE( modify_tests )
    auto c4b = []( const test_object2& obj ){ /*empty*/ };
    auto c5b = []( bool result ){ BOOST_REQUIRE( result == true ); };
 
-   modify_test< test_object_index, test_object >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5 );
-   modify_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b );
+   modify_test< test_object_index, test_object, OrderedIndex >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5, db );
+   modify_test< test_object2_index, test_object2, OrderedIndex2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b, db );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests )
 {
-   misc_test< test_object_index, test_object, OrderedIndex, CompositeOrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } );
+   db.add_index< test_object_index >();
+
+   misc_test< test_object_index, test_object, OrderedIndex, CompositeOrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, db );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests3 )
 {
-   misc_test3< test_object3_index, test_object3, OrderedIndex3, CompositeOrderedIndex3a, CompositeOrderedIndex3b >( { 0, 1, 2 } );
+   db.add_index< test_object3_index >();
+
+   misc_test3< test_object3_index, test_object3, OrderedIndex3, CompositeOrderedIndex3a, CompositeOrderedIndex3b >( { 0, 1, 2 }, db );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
