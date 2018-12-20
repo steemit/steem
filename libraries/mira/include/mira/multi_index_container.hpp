@@ -287,6 +287,8 @@ public:
          super::_handles[ DEFAULT_COLUMN ],
          ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
          ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+
+      super::_cache.clear();
    }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
@@ -518,15 +520,14 @@ primary_iterator lower_bound( const CompatibleKey& x )const
    return primary_index_type::lower_bound( x );
 }
 
-template< typename CompatibleKey >
-primary_iterator upper_bound( const CompatibleKey& x )const
+primary_iterator upper_bound( const typename primary_index_type::key_type& x )const
 {
    return primary_index_type::upper_bound( x );
 }
 
-template< typename LowerBounder, typename UpperBounder >
+template< typename LowerBounder >
 std::pair< primary_iterator, primary_iterator >
-range( LowerBounder lower, UpperBounder upper )const
+range( LowerBounder& lower, const typename primary_index_type::key_type upper )const
 {
    return primary_index_type::range( lower, upper );
 }
@@ -882,8 +883,8 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 */
   void clear_()
   {
-    //delete_all_nodes_();
     super::clear_();
+    super::_cache.clear();
     entry_count=0;
   }
 
