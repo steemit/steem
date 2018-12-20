@@ -692,13 +692,17 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
 
 BOOST_AUTO_TEST_CASE( basic_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c1b = []( test_object2& obj ) {};
    auto c1c = []( test_object3& obj ) { obj.val2 = 5; obj.val3 = 5; };
 
-   basic_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5 }, c1 );
-   basic_test< test_object2_index, test_object2 >( { 0, 1, 2 }, c1b );
-   basic_test< test_object3_index, test_object3 >( { 0, 1, 2, 3, 4 }, c1c );
+   basic_test< test_object_index, test_object, OrderedIndex >( { 0, 1, 2, 3, 4, 5 }, c1, db );
+   basic_test< test_object2_index, test_object2, OrderedIndex2 >( { 0, 1, 2 }, c1b, db );
+   basic_test< test_object3_index, test_object3, OrderedIndex3 >( { 0, 1, 2, 3, 4 }, c1c, db );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_tests )

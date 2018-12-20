@@ -1,81 +1,92 @@
 #pragma once
 
+#include <chainbase/chainbase.hpp>
 #include <vector>
+#include <functional>
 #include <boost/test/unit_test.hpp>
 
-template < typename Container, typename Object, typename Call >
-void basic_test( const std::vector< uint64_t >& v, Call&& call )
+template < typename IndexType, typename Object, typename Order >
+void basic_test( const std::vector< uint64_t >& v,
+                 std::function< void( Object& ) > call,
+                 chainbase::database& db )
 {
-   Container c;
+   const auto& c = db.get_index< IndexType, Order >();
 
    BOOST_TEST_MESSAGE( "Creating `v.size()` objects" );
-   for( const auto& item: v )
+   for( const auto& item : v )
    {
-      auto constructor = [ &item, &call ]( Object &obj )
+      db.create< Object >( [&] ( Object& o )
       {
-         obj.id = item;
-         call( obj );
-         obj.val = 100 - item;
-      };
-      c.emplace( std::move( Object( constructor, std::allocator< Object >() ) ) );
+         o.id = item;
+         call( o );
+         o.val = 100 - item;
+      } );
    }
+
    BOOST_REQUIRE( v.size() == c.size() );
 
    BOOST_TEST_MESSAGE( "Removing all objects" );
-   //c.clear();
-   auto i = c.begin();
-
-   while (i != c.end())
    {
-      c.erase(i);
-      ++i;
+      auto it = c.begin();
+      while ( it != c.end() )
+      {
+         db.remove( *it );
+         ++it;
+      }
    }
 
    BOOST_REQUIRE( c.size() == 0 );
 
    BOOST_TEST_MESSAGE( "Creating 1 object" );
-   auto constructor2 = [ &call ]( Object &obj )
+   db.create< Object >( [&] ( Object& o )
    {
-      obj.id = 0;
-      call( obj );
-      obj.val = 888;
-   };
-   c.emplace( std::move( Object( constructor2, std::allocator< Object >() ) ) );
+      o.id = 0;
+      call( o );
+      o.val = 888;
+   } );
 
    BOOST_TEST_MESSAGE( "Modyfing 1 object" );
-   BOOST_REQUIRE( c.modify( c.begin(), []( Object& obj ){ obj.val = obj.val + 1; } ) == true );
+   db.modify( *( c.begin() ), [] ( Object& o )
+   {
+      o.val = o.val + 1;
+   } );
+
    BOOST_REQUIRE( c.size() == 1 );
 
    BOOST_TEST_MESSAGE( "Removing 1 object" );
-   c.erase( c.begin() );
+   db.remove( *( c.begin() ) );
+
    BOOST_REQUIRE( c.size() == 0 );
 
    BOOST_TEST_MESSAGE( "Creating `v.size()` objects" );
-   for( const auto& item: v )
+   for( const auto& item : v )
    {
-      auto constructor = [ &item, &call ]( Object &obj )
+      db.create< Object >( [&] ( Object& o )
       {
-         obj.id = item;
-         call( obj );
-         obj.val = 100 - item;
-      };
-      c.emplace( std::move( Object( constructor, std::allocator< Object >() ) ) );
+         o.id = item;
+         call( o );
+         o.val = 100 - item;
+      } );
    }
+
    BOOST_REQUIRE( v.size() == c.size() );
 
    BOOST_TEST_MESSAGE( "Removing all objects one by one" );
-   auto it = c.begin();
-   while( it != c.end() )
    {
-      auto tmp = it;
-      ++it;
-      c.erase( tmp );
+      auto it = c.begin();
+      while (it != c.end())
+      {
+         db.remove( *it );
+         ++it;
+      }
    }
+
    BOOST_REQUIRE( c.size() == 0 );
 }
 
-template < typename Container, typename Object, typename Call >
-void insert_remove_test( const std::vector< uint64_t >& v, Call&& call )
+template < typename Container, typename Object >
+void insert_remove_test( const std::vector< uint64_t >& v,
+                         std::function< void( Object& ) > call )
 {
    Container c;
 
@@ -143,8 +154,8 @@ void insert_remove_test( const std::vector< uint64_t >& v, Call&& call )
    BOOST_REQUIRE( c.size() == 0 );
 }
 
-template < typename Container, typename Object, typename Call1, typename Call2, typename Call3, typename Call4 >
-void insert_remove_collision_test( const std::vector< uint64_t >& v, Call1&& call1, Call2&& call2, Call3&& call3, Call4&& call4 )
+template < typename Container, typename Object >
+void insert_remove_collision_test( const std::vector< uint64_t >& v, std::function< void( Object& ) > call1, std::function< void( Object& ) > call2, std::function< void( Object& ) > call3, std::function< void( Object& ) > call4 )
 {
    Container c;
 
@@ -162,8 +173,8 @@ void insert_remove_collision_test( const std::vector< uint64_t >& v, Call1&& cal
    BOOST_REQUIRE( c.size() == 1 );
 }
 
-template < typename Container, typename Object, typename Call1, typename Call2, typename Call3, typename Call4, typename Call5 >
-void modify_test( const std::vector< uint64_t >& v, Call1&& call1, Call2&& call2, Call3&& call3, Call4&& call4, Call5&& call5 )
+template < typename Container, typename Object >
+void modify_test( const std::vector< uint64_t >& v, std::function< void( Object& ) > call1, std::function< void( Object& ) > call2, std::function< void( const Object& ) > call3, std::function< void( const Object& ) > call4, std::function< void( bool ) > call5 )
 {
    Container c;
 
