@@ -539,20 +539,19 @@ public:
     return iterator::lower_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
   }
 
-  template<typename CompatibleKey>
-  iterator upper_bound(const CompatibleKey& x)const
+  iterator upper_bound(const key_type& x)const
   {
     return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
   }
 
   /* range */
 
-  template<typename LowerBounder,typename UpperBounder>
-  std::pair<iterator,iterator>
-  range(LowerBounder lower,UpperBounder upper)const
-  {
-    return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
-  }
+   template< typename LowerBounder >
+   std::pair< iterator, iterator >
+   range( LowerBounder lower, key_type& upper )const
+   {
+      return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
+   }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   ordered_index_impl(const ctor_args_list& args_list,const allocator_type& al):
@@ -829,13 +828,10 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 */
   void clear_()
   {
-    super::clear_();
-    empty_initialize();
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe_super::detach_dereferenceable_iterators();
-#endif
-  }
+      super::_db->DropColumnFamily( super::_handles( COLUMN_INDEX ) );
+      super::clear_();
+      empty_initialize();
+   }
 
   void swap_(
     ordered_index_impl<
@@ -1139,15 +1135,7 @@ protected: /* for the benefit of AugmentPolicy::augmented_interface */
   node_type* rightmost()const{return node_type::from_impl(header()->right());}
 
 private:
-  void empty_initialize()
-  {
-    header()->color()=red;
-    /* used to distinguish header() from root, in iterator.operator++ */
-
-    header()->parent()=node_impl_pointer(0);
-    header()->left()=header()->impl();
-    header()->right()=header()->impl();
-  }
+  void empty_initialize() {}
 
   struct link_info
   {

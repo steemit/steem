@@ -103,6 +103,11 @@ protected:
     do_not_copy_elements_tag)
   {}
 
+   ~index_base()
+   {
+      cleanup_column_handles();
+   }
+
   void copy_(
     const index_base<Value,IndexSpecifierList,Allocator>&,const copy_map_type&)
   {}

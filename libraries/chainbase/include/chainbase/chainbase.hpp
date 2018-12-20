@@ -596,8 +596,9 @@ namespace chainbase {
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
-      private:
+      protected:
          void*              _idx_ptr;
+      private:
          index_extensions   _extensions;
    };
 
@@ -607,6 +608,11 @@ namespace chainbase {
          using abstract_index::statistic_info;
 
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
+
+         ~index_impl()
+         {
+            delete (BaseIndex*) abstract_index::_idx_ptr;
+         }
 
          virtual unique_ptr<abstract_session> start_undo_session() override {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
@@ -930,7 +936,6 @@ namespace chainbase {
              auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
              if( !obj )
              {
-                assert(false);
                 BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
              }
              return *obj;

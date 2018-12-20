@@ -63,6 +63,11 @@ public:
       auto itr = _cache.find( k );
       return itr != _cache.end() ? itr->second : ptr_type();
    }
+
+   void clear()
+   {
+      _cache.clear();
+   }
 };
 
 template< typename Value, typename Key, typename KeyFromValue >
