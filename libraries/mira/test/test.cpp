@@ -686,6 +686,38 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( range_test )
+{
+   try
+   {
+      db.add_index< test_object3_index >();
+
+      for ( uint32_t i = 0; i < 10; i++ )
+      {
+         for ( uint32_t j = 0; j < 10; j++ )
+         {
+            db.create< test_object3 >( [=] ( test_object3& o )
+            {
+               o.val = i;
+               o.val2 = j;
+               o.val3 = i + j;
+            } );
+         }
+      }
+
+      const auto& idx = db.get_index< test_object3_index, composite_ordered_idx3a >();
+
+      auto er = idx.equal_range( 5 );
+
+      BOOST_REQUIRE( er.first->val == 5 );
+      BOOST_REQUIRE( er.first->val2 == 0 );
+
+      BOOST_REQUIRE( er.second->val == 6 );
+      BOOST_REQUIRE( er.second->val2 == 0 );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_CASE( bounds_test )
 {
    try

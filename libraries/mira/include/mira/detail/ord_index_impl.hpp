@@ -553,6 +553,12 @@ public:
       return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
    }
 
+   std::pair< iterator, iterator >
+   equal_range( const key_type& key )const
+   {
+      return iterator::equal_range( ROCKSDB_ITERATOR_PARAM_PACK, key );
+   }
+
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   ordered_index_impl(const ctor_args_list& args_list,const allocator_type& al):
     super(args_list.get_tail(),al),
