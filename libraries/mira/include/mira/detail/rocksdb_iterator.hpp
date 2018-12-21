@@ -357,15 +357,34 @@ public:
       return itr;
    }
 
-   template< typename CompatibleKey >
+   template< typename CompatibleKey, typename Compare >
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const CompatibleKey& k )
+      const CompatibleKey& k,
+      const Compare& c )
    {
-      return upper_bound( handles, index, db, cache, Key( k ) );
+      rocksdb_iterator itr = upper_bound( handles, index, db, cache, Key( k ) );
+
+      if( itr.valid() )
+      {
+         Key itr_key;
+         fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
+
+         while( c( k, itr_key ) )
+         {
+            ++itr;
+            if( !itr.valid() ) break;
+
+            fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
+         }
+
+         --itr;
+      }
+
+      return itr;
    }
 
    template< typename LowerBoundType, typename UpperBoundType >

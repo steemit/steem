@@ -525,6 +525,12 @@ primary_iterator upper_bound( const typename primary_index_type::key_type& x )co
    return primary_index_type::upper_bound( x );
 }
 
+template< typename CompatibleKey >
+primary_iterator upper_bound( const CompatibleKey& x )const
+{
+   return primary_index_type::upper_bound( x );
+}
+
 template< typename LowerBounder >
 std::pair< primary_iterator, primary_iterator >
 range( LowerBounder& lower, const typename primary_index_type::key_type upper )const
