@@ -101,14 +101,14 @@ struct test_object : public chainbase::object< test_object_type, test_object >
    std::string name;
 };
 
-struct OrderedIndex;
-struct CompositeOrderedIndex;
+struct ordered_idx;
+struct composited_ordered_idx;
 
 typedef mira::multi_index_container<
    test_object,
    mira::multi_index::indexed_by<
-      mira::multi_index::ordered_unique< mira::multi_index::tag< OrderedIndex >, mira::multi_index::member< test_object, chainbase::oid< test_object >, &test_object::id > >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< CompositeOrderedIndex >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx >, mira::multi_index::member< test_object, chainbase::oid< test_object >, &test_object::id > >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composited_ordered_idx >,
          mira::multi_index::composite_key< test_object,
             mira::multi_index::member< test_object, std::string, &test_object::name >,
             mira::multi_index::member< test_object, uint32_t, &test_object::val >
@@ -132,14 +132,14 @@ struct test_object2 : public chainbase::object< test_object2_type, test_object2 
    uint32_t val;
 };
 
-struct OrderedIndex2;
-struct CompositeOrderedIndex2;
+struct ordered_idx2;
+struct composite_ordered_idx2;
 
 typedef mira::multi_index_container<
    test_object2,
    mira::multi_index::indexed_by<
-      mira::multi_index::ordered_unique< mira::multi_index::tag< OrderedIndex2 >, mira::multi_index::member< test_object2, chainbase::oid< test_object2 >, &test_object2::id > >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< CompositeOrderedIndex2 >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx2 >, mira::multi_index::member< test_object2, chainbase::oid< test_object2 >, &test_object2::id > >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx2 >,
          mira::multi_index::composite_key< test_object2,
             mira::multi_index::member< test_object2, uint32_t, &test_object2::val >,
             mira::multi_index::member< test_object2, chainbase::oid<test_object2>, &test_object2::id >
@@ -165,21 +165,21 @@ struct test_object3 : public chainbase::object< test_object3_type, test_object3 
    uint32_t val3;
 };
 
-struct OrderedIndex3;
-struct CompositeOrderedIndex3a;
-struct CompositeOrderedIndex3b;
+struct ordered_idx3;
+struct composite_ordered_idx3a;
+struct composite_ordered_idx3b;
 
 typedef mira::multi_index_container<
    test_object3,
    mira::multi_index::indexed_by<
-      mira::multi_index::ordered_unique< mira::multi_index::tag< OrderedIndex3 >, mira::multi_index::member< test_object3, chainbase::oid< test_object3 >, &test_object3::id > >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< CompositeOrderedIndex3a>,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx3 >, mira::multi_index::member< test_object3, chainbase::oid< test_object3 >, &test_object3::id > >,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3a>,
          mira::multi_index::composite_key< test_object3,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val >,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val2 >
          >
       >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< CompositeOrderedIndex3b>,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3b>,
          mira::multi_index::composite_key< test_object3,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val >,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val3 >
