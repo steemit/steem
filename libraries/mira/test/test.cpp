@@ -556,12 +556,8 @@ BOOST_AUTO_TEST_CASE( sanity_tests )
 
 BOOST_AUTO_TEST_CASE( single_index_test )
 {
-   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
    try
    {
-      chainbase::database db;
-      db.open( temp, 0, 1024*1024*8 );
-
       db.add_index< single_index_index >();
 
       db.create< single_index_object >( [&]( single_index_object& ){} );
