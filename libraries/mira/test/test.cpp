@@ -686,6 +686,56 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( bounds_test )
+{
+   try
+   {
+      db.add_index< test_object3_index >();
+
+      for ( uint32_t i = 0; i < 10; i++ )
+      {
+         for ( uint32_t j = 0; j < 10; j++ )
+         {
+            db.create< test_object3 >( [=] ( test_object3& o )
+            {
+               o.val = i;
+               o.val2 = j;
+               o.val3 = i + j;
+            } );
+         }
+      }
+
+      const auto& idx = db.get_index< test_object3_index, composite_ordered_idx3a >();
+
+      auto upper_bound_not_found = idx.upper_bound( 10 );
+      BOOST_REQUIRE( upper_bound_not_found == idx.end() );
+
+      auto lower_bound_not_found = idx.lower_bound( 10 );
+      BOOST_REQUIRE( lower_bound_not_found == idx.end() );
+
+      auto composite_lower_bound = idx.lower_bound( boost::make_tuple( 3, 1 ) );
+
+      BOOST_REQUIRE( composite_lower_bound->val == 3 );
+      BOOST_REQUIRE( composite_lower_bound->val2 == 1 );
+
+      auto composite_upper_bound = idx.upper_bound( boost::make_tuple( 3, 5 ) );
+
+      BOOST_REQUIRE( composite_upper_bound->val == 3 );
+      BOOST_REQUIRE( composite_upper_bound->val2 == 6 );
+
+      auto lower_iter = idx.lower_bound( 5 );
+
+      BOOST_REQUIRE( lower_iter->val == 5 );
+      BOOST_REQUIRE( lower_iter->val2 == 0 );
+
+      auto upper_iter = idx.upper_bound( 5 );
+
+      BOOST_REQUIRE( upper_iter->val == 6 );
+      BOOST_REQUIRE( upper_iter->val2 == 0 );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_CASE( basic_tests )
 {
    db.add_index< test_object_index >();

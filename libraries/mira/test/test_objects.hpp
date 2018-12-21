@@ -173,13 +173,13 @@ typedef mira::multi_index_container<
    test_object3,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx3 >, mira::multi_index::member< test_object3, chainbase::oid< test_object3 >, &test_object3::id > >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3a>,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3a >,
          mira::multi_index::composite_key< test_object3,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val >,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val2 >
          >
       >,
-      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3b>,
+      mira::multi_index::ordered_unique< mira::multi_index::tag< composite_ordered_idx3b >,
          mira::multi_index::composite_key< test_object3,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val >,
             mira::multi_index::member< test_object3, uint32_t, &test_object3::val3 >
