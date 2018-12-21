@@ -828,7 +828,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 */
   void clear_()
   {
-      super::_db->DropColumnFamily( super::_handles( COLUMN_INDEX ) );
+      super::_db->DropColumnFamily( super::_handles[ COLUMN_INDEX ] );
       super::clear_();
       empty_initialize();
    }

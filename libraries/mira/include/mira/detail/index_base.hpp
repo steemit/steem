@@ -313,8 +313,9 @@ protected:
 /*
   void final_delete_node_(final_node_type* x){final().delete_node_(x);}
   void final_delete_all_nodes_(){final().delete_all_nodes_();}
-  void final_clear_(){final().clear_();}
-
+*/
+   void final_clear_() { final().clear_(); }
+/*
   void final_swap_(final_type& x){final().swap_(x);}
 
   bool final_replace_(
