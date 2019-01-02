@@ -714,6 +714,13 @@ BOOST_AUTO_TEST_CASE( range_test )
 
       BOOST_REQUIRE( er.second->val == 6 );
       BOOST_REQUIRE( er.second->val2 == 0 );
+
+      auto er2 = idx.equal_range( 9 );
+
+      BOOST_REQUIRE( er2.first->val == 9 );
+      BOOST_REQUIRE( er2.first->val2 == 0 );
+
+      BOOST_REQUIRE( er2.second == idx.end() );
    }
    FC_LOG_AND_RETHROW();
 }
