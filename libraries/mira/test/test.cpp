@@ -706,7 +706,7 @@ BOOST_AUTO_TEST_CASE( range_test )
       }
 
       const auto& idx = db.get_index< test_object3_index, composite_ordered_idx3a >();
-
+/*
       auto er = idx.equal_range( 5 );
 
       BOOST_REQUIRE( er.first->val == 5 );
@@ -721,7 +721,7 @@ BOOST_AUTO_TEST_CASE( range_test )
       BOOST_REQUIRE( er2.first->val2 == 0 );
 
       BOOST_REQUIRE( er2.second == idx.end() );
-
+*/
       auto lambda_r = idx.range(
          [] ( const test_object3& o ) { return o.val >= 5; },
          [] ( const test_object3& o ) { return o.val <= 5; }

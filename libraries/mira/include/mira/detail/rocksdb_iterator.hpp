@@ -349,15 +349,10 @@ public:
 
       if( itr.valid() )
       {
-         Key itr_key;
-         fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
-
          while( c( *itr ) )
          {
             --itr;
             if( !itr.valid() ) break;
-
-            fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
          }
 
          ++itr;
@@ -427,18 +422,11 @@ public:
 
       if( itr.valid() )
       {
-         Key itr_key;
-         fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
-
          while( c( *itr ) )
          {
             ++itr;
             if( !itr.valid() ) break;
-
-            fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
          }
-
-         //--itr;
       }
 
       return itr;
