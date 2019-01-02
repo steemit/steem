@@ -68,6 +68,7 @@
 #include <boost/type_traits/is_same.hpp>
 #include <utility>
 #include <memory>
+#include <functional>
 
 #include <fc/log/logger.hpp>
 
@@ -557,6 +558,18 @@ public:
    range( LowerBounder lower, key_type& upper )const
    {
       return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
+   }
+
+   std::pair< iterator, iterator >
+   range( std::function< bool( value_type ) > lower, std::function< bool( value_type ) > upper )const
+   {
+      return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
+   }
+
+   std::pair< iterator, iterator >
+   equal_range( const key_type& key )const
+   {
+      return iterator::equal_range( ROCKSDB_ITERATOR_PARAM_PACK, key );
    }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:

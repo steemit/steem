@@ -2,7 +2,7 @@
 project( MIRA )
 cmake_minimum_required( VERSION 2.8.12 )
 
-file(GLOB HEADERS "include/mira/*.hpp")
+file(GLOB HEADERS "include/mira/*.hpp" "include/mira/detail/*.hpp")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 SET(BOOST_COMPONENTS)

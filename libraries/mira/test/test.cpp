@@ -556,12 +556,8 @@ BOOST_AUTO_TEST_CASE( sanity_tests )
 
 BOOST_AUTO_TEST_CASE( single_index_test )
 {
-   boost::filesystem::path temp = boost::filesystem::current_path() / boost::filesystem::unique_path();
    try
    {
-      chainbase::database db;
-      db.open( temp, 0, 1024*1024*8 );
-
       db.add_index< single_index_index >();
 
       db.create< single_index_object >( [&]( single_index_object& ){} );
@@ -690,30 +686,160 @@ BOOST_AUTO_TEST_CASE( sanity_modify_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( range_test )
+{
+   try
+   {
+      db.add_index< test_object3_index >();
+
+      for ( uint32_t i = 0; i < 10; i++ )
+      {
+         for ( uint32_t j = 0; j < 10; j++ )
+         {
+            db.create< test_object3 >( [=] ( test_object3& o )
+            {
+               o.val = i;
+               o.val2 = j;
+               o.val3 = i + j;
+            } );
+         }
+      }
+
+      const auto& idx = db.get_index< test_object3_index, composite_ordered_idx3a >();
+
+      auto er = idx.equal_range( 5 );
+
+      BOOST_REQUIRE( er.first->val == 5 );
+      BOOST_REQUIRE( er.first->val2 == 0 );
+
+      BOOST_REQUIRE( er.second->val == 6 );
+      BOOST_REQUIRE( er.second->val2 == 0 );
+
+      auto er2 = idx.equal_range( 9 );
+
+      BOOST_REQUIRE( er2.first->val == 9 );
+      BOOST_REQUIRE( er2.first->val2 == 0 );
+
+      BOOST_REQUIRE( er2.second == idx.end() );
+
+      auto lambda_r = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 5; },
+         [] ( const test_object3& o ) { return o.val <= 5; }
+      );
+
+      BOOST_REQUIRE( lambda_r.first->val == 5 );
+      BOOST_REQUIRE( lambda_r.first->val2 == 0 );
+
+      BOOST_REQUIRE( lambda_r.second->val == 6 );
+      BOOST_REQUIRE( lambda_r.second->val2 == 0 );
+
+      auto lambda_r2 = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 9; },
+         [] ( const test_object3& o ) { return o.val <= 9; }
+      );
+
+      BOOST_REQUIRE( lambda_r2.first->val == 9 );
+      BOOST_REQUIRE( lambda_r2.first->val2 == 0 );
+
+      BOOST_REQUIRE( lambda_r2.second == idx.end() );
+
+      auto lambda_r3 = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 10; },
+         [] ( const test_object3& o ) { return o.val <= 10; }
+      );
+
+      BOOST_REQUIRE( lambda_r3.first == idx.end() );
+      BOOST_REQUIRE( lambda_r3.second == idx.end() );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( bounds_test )
+{
+   try
+   {
+      db.add_index< test_object3_index >();
+
+      for ( uint32_t i = 0; i < 10; i++ )
+      {
+         for ( uint32_t j = 0; j < 10; j++ )
+         {
+            db.create< test_object3 >( [=] ( test_object3& o )
+            {
+               o.val = i;
+               o.val2 = j;
+               o.val3 = i + j;
+            } );
+         }
+      }
+
+      const auto& idx = db.get_index< test_object3_index, composite_ordered_idx3a >();
+
+      auto upper_bound_not_found = idx.upper_bound( 10 );
+      BOOST_REQUIRE( upper_bound_not_found == idx.end() );
+
+      auto lower_bound_not_found = idx.lower_bound( 10 );
+      BOOST_REQUIRE( lower_bound_not_found == idx.end() );
+
+      auto composite_lower_bound = idx.lower_bound( boost::make_tuple( 3, 1 ) );
+
+      BOOST_REQUIRE( composite_lower_bound->val == 3 );
+      BOOST_REQUIRE( composite_lower_bound->val2 == 1 );
+
+      auto composite_upper_bound = idx.upper_bound( boost::make_tuple( 3, 5 ) );
+
+      BOOST_REQUIRE( composite_upper_bound->val == 3 );
+      BOOST_REQUIRE( composite_upper_bound->val2 == 6 );
+
+      auto lower_iter = idx.lower_bound( 5 );
+
+      BOOST_REQUIRE( lower_iter->val == 5 );
+      BOOST_REQUIRE( lower_iter->val2 == 0 );
+
+      auto upper_iter = idx.upper_bound( 5 );
+
+      BOOST_REQUIRE( upper_iter->val == 6 );
+      BOOST_REQUIRE( upper_iter->val2 == 0 );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_CASE( basic_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c1b = []( test_object2& obj ) {};
    auto c1c = []( test_object3& obj ) { obj.val2 = 5; obj.val3 = 5; };
 
-   basic_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5 }, c1 );
-   basic_test< test_object2_index, test_object2 >( { 0, 1, 2 }, c1b );
-   basic_test< test_object3_index, test_object3 >( { 0, 1, 2, 3, 4 }, c1c );
+   basic_test< test_object_index, test_object, ordered_idx >( { 0, 1, 2, 3, 4, 5 }, c1, db );
+   basic_test< test_object2_index, test_object2, ordered_idx2 >( { 0, 1, 2 }, c1b, db );
+   basic_test< test_object3_index, test_object3, ordered_idx3 >( { 0, 1, 2, 3, 4 }, c1c, db );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c1b = []( test_object2& obj ) {};
    auto c1c = []( test_object3& obj ) { obj.val2 = 7; obj.val3 = obj.val2 + 1; };
 
-   insert_remove_test< test_object_index, test_object >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1 );
-   insert_remove_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b );
-   insert_remove_test< test_object3_index, test_object3 >( { 0, 1, 2, 3 }, c1c );
+   insert_remove_test< test_object_index, test_object, ordered_idx >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1, db );
+   insert_remove_test< test_object2_index, test_object2, ordered_idx2 >( { 0, 1, 2, 3, 4, 5, 6, 7 }, c1b, db );
+   insert_remove_test< test_object3_index, test_object3, ordered_idx3 >( { 0, 1, 2, 3 }, c1c, db );
 }
 
 BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.id = 0; obj.name = "_name7"; obj.val = 7; };
    auto c2 = []( test_object& obj ) { obj.id = 0; obj.name = "_name8"; obj.val = 8; };
    auto c3 = []( test_object& obj ) { obj.id = 0; obj.name = "the_same_name"; obj.val = 7; };
@@ -729,13 +855,17 @@ BOOST_AUTO_TEST_CASE( insert_remove_collision_tests )
    auto c3c = []( test_object3& obj ) { obj.id = 2; obj.val = 30; obj.val3 = 30; };
    auto c4c = []( test_object3& obj ) { obj.id = 3; obj.val = 30; obj.val3 = 30; };
 
-   insert_remove_collision_test< test_object_index, test_object >( {}, c1, c2, c3, c4 );
-   insert_remove_collision_test< test_object2_index, test_object2 >( {}, c1b, c2b, c3b, c4b );
-   insert_remove_collision_test< test_object3_index, test_object3 >( {}, c1c, c2c, c3c, c4c );
+   insert_remove_collision_test< test_object_index, test_object, ordered_idx >( {}, c1, c2, c3, c4, db );
+   insert_remove_collision_test< test_object2_index, test_object2, ordered_idx2 >( {}, c1b, c2b, c3b, c4b, db );
+   insert_remove_collision_test< test_object3_index, test_object3, ordered_idx3 >( {}, c1c, c2c, c3c, c4c, db );
 }
 
 BOOST_AUTO_TEST_CASE( modify_tests )
 {
+   db.add_index< test_object_index >();
+   db.add_index< test_object2_index >();
+   db.add_index< test_object3_index >();
+
    auto c1 = []( test_object& obj ) { obj.name = "_name"; };
    auto c2 = []( test_object& obj ){ obj.name = "new_name"; };
    auto c3 = []( const test_object& obj ){ BOOST_REQUIRE( obj.name == "new_name" ); };
@@ -748,18 +878,22 @@ BOOST_AUTO_TEST_CASE( modify_tests )
    auto c4b = []( const test_object2& obj ){ /*empty*/ };
    auto c5b = []( bool result ){ BOOST_REQUIRE( result == true ); };
 
-   modify_test< test_object_index, test_object >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5 );
-   modify_test< test_object2_index, test_object2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b );
+   modify_test< test_object_index, test_object, ordered_idx >( { 0, 1, 2, 3 }, c1, c2, c3, c4, c5, db );
+   modify_test< test_object2_index, test_object2, ordered_idx2 >( { 0, 1, 2, 3, 4, 5 }, c1b, c2b, c3b, c4b, c5b, db );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests )
 {
-   misc_test< test_object_index, test_object, OrderedIndex, CompositeOrderedIndex >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } );
+   db.add_index< test_object_index >();
+
+   misc_test< test_object_index, test_object, ordered_idx, composited_ordered_idx >( { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, db );
 }
 
 BOOST_AUTO_TEST_CASE( misc_tests3 )
 {
-   misc_test3< test_object3_index, test_object3, OrderedIndex3, CompositeOrderedIndex3a, CompositeOrderedIndex3b >( { 0, 1, 2 } );
+   db.add_index< test_object3_index >();
+
+   misc_test3< test_object3_index, test_object3, ordered_idx3, composite_ordered_idx3a, composite_ordered_idx3b >( { 0, 1, 2 }, db );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
