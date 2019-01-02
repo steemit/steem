@@ -30,6 +30,7 @@
 #include "db/write_controller.h"
 #include "db/write_thread.h"
 #include "options/db_options.h"
+#include "options/cf_options.h"
 #include "port/port.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/compaction_job_stats.h"
@@ -46,6 +47,7 @@
 namespace rocksdb {
 
 class Arena;
+class ErrorHandler;
 class MemTable;
 class SnapshotChecker;
 class TableCache;
@@ -63,7 +65,7 @@ class CompactionJob {
                 LogBuffer* log_buffer,
                 Directory* db_directory, Directory* output_directory,
                 Statistics* stats, InstrumentedMutex* db_mutex,
-                Status* db_bg_error,
+                ErrorHandler* db_error_handler,
                 std::vector<SequenceNumber> existing_snapshots,
                 SequenceNumber earliest_write_conflict_snapshot,
                 const SnapshotChecker* snapshot_checker,
@@ -134,6 +136,8 @@ class CompactionJob {
   const EnvOptions env_options_;
 
   Env* env_;
+  // env_option optimized for compaction table reads
+  EnvOptions env_optiosn_for_read_;
   VersionSet* versions_;
   const std::atomic<bool>* shutting_down_;
   const SequenceNumber preserve_deletes_seqnum_;
@@ -142,7 +146,7 @@ class CompactionJob {
   Directory* output_directory_;
   Statistics* stats_;
   InstrumentedMutex* db_mutex_;
-  Status* db_bg_error_;
+  ErrorHandler* db_error_handler_;
   // If there were two snapshots with seq numbers s1 and
   // s2 and s1 < s2, and if we find two instances of a key k1 then lies
   // entirely within s1 and s2, then the earlier version of k1 can be safely
@@ -167,6 +171,7 @@ class CompactionJob {
   std::vector<Slice> boundaries_;
   // Stores the approx size of keys covered in the range of each subcompaction
   std::vector<uint64_t> sizes_;
+  Env::WriteLifeTimeHint write_hint_;
 };
 
 }  // namespace rocksdb

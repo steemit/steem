@@ -204,12 +204,10 @@ public:
       ::rocksdb::Options opts;
       opts.IncreaseParallelism();
       opts.OptimizeLevelStyleCompaction();
-
-      ::rocksdb::DBOptions dbOptions( opts );
-      dbOptions.max_open_files = 8;
+      opts.max_open_files = 8;
 
       ::rocksdb::DB* db = nullptr;
-      ::rocksdb::Status s = ::rocksdb::DB::Open( dbOptions, str_path, column_defs, &(super::_handles), &db );
+      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
 
       if( s.ok() )
       {
@@ -236,6 +234,7 @@ public:
       ::rocksdb::Options opts;
       opts.IncreaseParallelism();
       opts.OptimizeLevelStyleCompaction();
+      opts.max_open_files = 8;
 
       ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
 
@@ -272,6 +271,10 @@ public:
          delete db;
 
          return true;
+      }
+      else
+      {
+         std::cout << std::string( s.getState() ) << std::endl;
       }
 
       return false;

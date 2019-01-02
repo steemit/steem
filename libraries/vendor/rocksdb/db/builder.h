@@ -35,7 +35,6 @@ class VersionEdit;
 class TableBuilder;
 class WritableFileWriter;
 class InternalStats;
-class InternalIterator;
 
 // @param column_family_name Name of the column family that is also identified
 //    by column_family_id, or empty string if unknown. It must outlive the
@@ -43,7 +42,7 @@ class InternalIterator;
 // @param compression_dict Data for presetting the compression library's
 //    dictionary, or nullptr.
 TableBuilder* NewTableBuilder(
-    const ImmutableCFOptions& options,
+    const ImmutableCFOptions& options, const MutableCFOptions& moptions,
     const InternalKeyComparator& internal_comparator,
     const std::vector<std::unique_ptr<IntTblPropCollectorFactory>>*
         int_tbl_prop_collector_factories,
@@ -79,6 +78,7 @@ extern Status BuildTable(
     EventLogger* event_logger = nullptr, int job_id = 0,
     const Env::IOPriority io_priority = Env::IO_HIGH,
     TableProperties* table_properties = nullptr, int level = -1,
-    const uint64_t creation_time = 0, const uint64_t oldest_key_time = 0);
+    const uint64_t creation_time = 0, const uint64_t oldest_key_time = 0,
+    Env::WriteLifeTimeHint write_hint = Env::WLTH_NOT_SET);
 
 }  // namespace rocksdb

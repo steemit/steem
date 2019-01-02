@@ -52,7 +52,6 @@ class Writer;
 }
 
 class Compaction;
-class InternalIterator;
 class LogBuffer;
 class LookupKey;
 class MemTable;
@@ -115,7 +114,7 @@ class VersionStorageInfo {
   // Update the accumulated stats from a file-meta.
   void UpdateAccumulatedStats(FileMetaData* file_meta);
 
-  // Decrease the current stat form a to-be-delected file-meta
+  // Decrease the current stat from a to-be-deleted file-meta
   void RemoveCurrentStats(FileMetaData* file_meta);
 
   void ComputeCompensatedSizes();
@@ -134,6 +133,11 @@ class VersionStorageInfo {
   // This computes files_marked_for_compaction_ and is called by
   // ComputeCompactionScore()
   void ComputeFilesMarkedForCompaction();
+
+  // This computes ttl_expired_files_ and is called by
+  // ComputeCompactionScore()
+  void ComputeExpiredTtlFiles(const ImmutableCFOptions& ioptions,
+                              const uint64_t ttl);
 
   // This computes bottommost_files_marked_for_compaction_ and is called by
   // ComputeCompactionScore() or UpdateOldestSnapshot().
@@ -184,9 +188,11 @@ class VersionStorageInfo {
       std::vector<FileMetaData*>* inputs,
       int hint_index = -1,        // index of overlap file
       int* file_index = nullptr,  // return index of overlap file
-      bool expand_range = true)   // if set, returns files which overlap the
-      const;                      // range and overlap each other. If false,
+      bool expand_range = true,   // if set, returns files which overlap the
+                                  // range and overlap each other. If false,
                                   // then just files intersecting the range
+      InternalKey** next_smallest = nullptr)  // if non-null, returns the
+      const;  // smallest key of next file not included
   void GetCleanInputsWithinInterval(
       int level, const InternalKey* begin,  // nullptr means before all keys
       const InternalKey* end,               // nullptr means after all keys
@@ -196,31 +202,32 @@ class VersionStorageInfo {
       const;
 
   void GetOverlappingInputsRangeBinarySearch(
-      int level,           // level > 0
-      const Slice& begin,  // nullptr means before all keys
-      const Slice& end,    // nullptr means after all keys
+      int level,                 // level > 0
+      const InternalKey* begin,  // nullptr means before all keys
+      const InternalKey* end,    // nullptr means after all keys
       std::vector<FileMetaData*>* inputs,
       int hint_index,                // index of overlap file
       int* file_index,               // return index of overlap file
-      bool within_interval = false)  // if set, force the inputs within interval
-      const;
+      bool within_interval = false,  // if set, force the inputs within interval
+      InternalKey** next_smallest = nullptr)  // if non-null, returns the
+      const;  // smallest key of next file not included
 
   void ExtendFileRangeOverlappingInterval(
       int level,
-      const Slice& begin,  // nullptr means before all keys
-      const Slice& end,    // nullptr means after all keys
-      unsigned int index,  // start extending from this index
-      int* startIndex,     // return the startIndex of input range
-      int* endIndex)       // return the endIndex of input range
+      const InternalKey* begin,  // nullptr means before all keys
+      const InternalKey* end,    // nullptr means after all keys
+      unsigned int index,        // start extending from this index
+      int* startIndex,           // return the startIndex of input range
+      int* endIndex)             // return the endIndex of input range
       const;
 
   void ExtendFileRangeWithinInterval(
       int level,
-      const Slice& begin,  // nullptr means before all keys
-      const Slice& end,    // nullptr means after all keys
-      unsigned int index,  // start extending from this index
-      int* startIndex,     // return the startIndex of input range
-      int* endIndex)       // return the endIndex of input range
+      const InternalKey* begin,  // nullptr means before all keys
+      const InternalKey* end,    // nullptr means after all keys
+      unsigned int index,        // start extending from this index
+      int* startIndex,           // return the startIndex of input range
+      int* endIndex)             // return the endIndex of input range
       const;
 
   // Returns true iff some file in the specified level overlaps
@@ -284,6 +291,13 @@ class VersionStorageInfo {
       const {
     assert(finalized_);
     return files_marked_for_compaction_;
+  }
+
+  // REQUIRES: This version has been saved (see VersionSet::SaveTo)
+  // REQUIRES: DB mutex held during access
+  const autovector<std::pair<int, FileMetaData*>>& ExpiredTtlFiles() const {
+    assert(finalized_);
+    return expired_ttl_files_;
   }
 
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
@@ -446,6 +460,8 @@ class VersionStorageInfo {
   // ComputeCompactionScore()
   autovector<std::pair<int, FileMetaData*>> files_marked_for_compaction_;
 
+  autovector<std::pair<int, FileMetaData*>> expired_ttl_files_;
+
   // These files are considered bottommost because none of their keys can exist
   // at lower levels. They are not necessarily all in the same level. The marked
   // ones are eligible for compaction because they contain duplicate key
@@ -491,7 +507,7 @@ class VersionStorageInfo {
   uint64_t accumulated_num_deletions_;
   // current number of non_deletion entries
   uint64_t current_num_non_deletions_;
-  // current number of delection entries
+  // current number of deletion entries
   uint64_t current_num_deletions_;
   // current number of file samples
   uint64_t current_num_samples_;
@@ -525,9 +541,10 @@ class Version {
                             MergeIteratorBuilder* merger_iter_builder,
                             int level, RangeDelAggregator* range_del_agg);
 
-  void AddRangeDelIteratorsForLevel(
-      const ReadOptions& read_options, const EnvOptions& soptions, int level,
-      std::vector<InternalIterator*>* range_del_iters);
+  Status OverlapWithLevelIterator(const ReadOptions&, const EnvOptions&,
+                                  const Slice& smallest_user_key,
+                                  const Slice& largest_user_key,
+                                  int level, bool* overlap);
 
   // Lookup the value for key.  If found, store it in *val and
   // return OK.  Else return a non-OK status.
@@ -569,13 +586,13 @@ class Version {
   // Return a human readable string that describes this version's contents.
   std::string DebugString(bool hex = false, bool print_stats = false) const;
 
-  // Returns the version nuber of this version
+  // Returns the version number of this version
   uint64_t GetVersionNumber() const { return version_number_; }
 
   // REQUIRES: lock is held
   // On success, "tp" will contains the table properties of the file
   // specified in "file_meta".  If the file name of "file_meta" is
-  // known ahread, passing it by a non-null "fname" can save a
+  // known ahead, passing it by a non-null "fname" can save a
   // file-name conversion.
   Status GetTableProperties(std::shared_ptr<const TableProperties>* tp,
                             const FileMetaData* file_meta,
@@ -584,14 +601,14 @@ class Version {
   // REQUIRES: lock is held
   // On success, *props will be populated with all SSTables' table properties.
   // The keys of `props` are the sst file name, the values of `props` are the
-  // tables' propertis, represented as shared_ptr.
+  // tables' properties, represented as shared_ptr.
   Status GetPropertiesOfAllTables(TablePropertiesCollection* props);
   Status GetPropertiesOfAllTables(TablePropertiesCollection* props, int level);
   Status GetPropertiesOfTablesInRange(const Range* range, std::size_t n,
                                       TablePropertiesCollection* props) const;
 
   // REQUIRES: lock is held
-  // On success, "tp" will contains the aggregated table property amoug
+  // On success, "tp" will contains the aggregated table property among
   // the table properties of all sst files in this version.
   Status GetAggregatedTableProperties(
       std::shared_ptr<const TableProperties>* tp, int level = -1);
@@ -617,6 +634,10 @@ class Version {
 
   void GetColumnFamilyMetaData(ColumnFamilyMetaData* cf_meta);
 
+  uint64_t GetSstFilesSize();
+
+  MutableCFOptions GetMutableCFOptions() { return mutable_cf_options_; }
+
  private:
   Env* env_;
   friend class VersionSet;
@@ -639,7 +660,7 @@ class Version {
   bool IsFilterSkipped(int level, bool is_file_last_in_level = false);
 
   // The helper function of UpdateAccumulatedStats, which may fill the missing
-  // fields of file_mata from its associated TableProperties.
+  // fields of file_meta from its associated TableProperties.
   // Returns true if it does initialize FileMetaData.
   bool MaybeInitializeFileMetaData(FileMetaData* file_meta);
 
@@ -664,13 +685,14 @@ class Version {
   Version* prev_;               // Previous version in linked list
   int refs_;                    // Number of live refs to this version
   const EnvOptions env_options_;
+  const MutableCFOptions mutable_cf_options_;
 
   // A version number that uniquely represents this version. This is
   // used for debugging and logging purposes only.
   uint64_t version_number_;
 
   Version(ColumnFamilyData* cfd, VersionSet* vset, const EnvOptions& env_opt,
-          uint64_t version_number = 0);
+          MutableCFOptions mutable_cf_options, uint64_t version_number = 0);
 
   ~Version();
 
@@ -678,6 +700,40 @@ class Version {
   Version(const Version&);
   void operator=(const Version&);
 };
+
+struct ObsoleteFileInfo {
+  FileMetaData* metadata;
+  std::string   path;
+
+  ObsoleteFileInfo() noexcept : metadata(nullptr) {}
+  ObsoleteFileInfo(FileMetaData* f, const std::string& file_path)
+      : metadata(f), path(file_path) {}
+
+  ObsoleteFileInfo(const ObsoleteFileInfo&) = delete;
+  ObsoleteFileInfo& operator=(const ObsoleteFileInfo&) = delete;
+
+  ObsoleteFileInfo(ObsoleteFileInfo&& rhs) noexcept :
+    ObsoleteFileInfo() {
+      *this = std::move(rhs);
+  }
+
+  ObsoleteFileInfo& operator=(ObsoleteFileInfo&& rhs) noexcept {
+    path = std::move(rhs.path);
+    metadata = rhs.metadata;
+    rhs.metadata = nullptr;
+
+    return *this;
+  }
+
+  void DeleteMetadata() {
+    delete metadata;
+    metadata = nullptr;
+  }
+};
+
+namespace {
+class BaseReferencedVersionBuilder;
+}
 
 class VersionSet {
  public:
@@ -699,9 +755,11 @@ class VersionSet {
       InstrumentedMutex* mu, Directory* db_directory = nullptr,
       bool new_descriptor_log = false,
       const ColumnFamilyOptions* column_family_options = nullptr) {
-    autovector<VersionEdit*> edit_list;
-    edit_list.push_back(edit);
-    return LogAndApply(column_family_data, mutable_cf_options, edit_list, mu,
+    std::vector<ColumnFamilyData*> cfds(1, column_family_data);
+    std::vector<MutableCFOptions> mutable_cf_options_list(1,
+                                                          mutable_cf_options);
+    std::vector<autovector<VersionEdit*>> edit_lists(1, {edit});
+    return LogAndApply(cfds, mutable_cf_options_list, edit_lists, mu,
                        db_directory, new_descriptor_log, column_family_options);
   }
   // The batch version. If edit_list.size() > 1, caller must ensure that
@@ -711,7 +769,24 @@ class VersionSet {
       const MutableCFOptions& mutable_cf_options,
       const autovector<VersionEdit*>& edit_list, InstrumentedMutex* mu,
       Directory* db_directory = nullptr, bool new_descriptor_log = false,
-      const ColumnFamilyOptions* column_family_options = nullptr);
+      const ColumnFamilyOptions* column_family_options = nullptr) {
+    std::vector<ColumnFamilyData*> cfds(1, column_family_data);
+    std::vector<MutableCFOptions> mutable_cf_options_list(1,
+                                                          mutable_cf_options);
+    std::vector<autovector<VersionEdit*>> edit_lists(1, edit_list);
+    return LogAndApply(cfds, mutable_cf_options_list, edit_lists, mu,
+                       db_directory, new_descriptor_log, column_family_options);
+  }
+
+  // The across-multi-cf batch version. If edit_lists contain more than
+  // 1 version edits, caller must ensure that no edit in the []list is column
+  // family manipulation.
+  Status LogAndApply(const std::vector<ColumnFamilyData*>& cfds,
+                     const std::vector<MutableCFOptions>& mutable_cf_options,
+                     const std::vector<autovector<VersionEdit*>>& edit_lists,
+                     InstrumentedMutex* mu, Directory* db_directory = nullptr,
+                     bool new_descriptor_log = false,
+                     const ColumnFamilyOptions* new_cf_options = nullptr);
 
   // Recover the last saved descriptor from persistent storage.
   // If read_only == true, Recover() will not complain if some column families
@@ -756,8 +831,17 @@ class VersionSet {
 
   uint64_t current_next_file_number() const { return next_file_number_.load(); }
 
+  uint64_t min_log_number_to_keep_2pc() const {
+    return min_log_number_to_keep_2pc_.load();
+  }
+
   // Allocate and return a new file number
   uint64_t NewFileNumber() { return next_file_number_.fetch_add(1); }
+
+  // Fetch And Add n new file number
+  uint64_t FetchAddFileNumber(uint64_t n) {
+    return next_file_number_.fetch_add(n);
+  }
 
   // Return the last sequence number.
   uint64_t LastSequence() const {
@@ -765,43 +849,69 @@ class VersionSet {
   }
 
   // Note: memory_order_acquire must be sufficient.
-  uint64_t LastToBeWrittenSequence() const {
-    return last_to_be_written_sequence_.load(std::memory_order_seq_cst);
+  uint64_t LastAllocatedSequence() const {
+    return last_allocated_sequence_.load(std::memory_order_seq_cst);
+  }
+
+  // Note: memory_order_acquire must be sufficient.
+  uint64_t LastPublishedSequence() const {
+    return last_published_sequence_.load(std::memory_order_seq_cst);
   }
 
   // Set the last sequence number to s.
   void SetLastSequence(uint64_t s) {
     assert(s >= last_sequence_);
-    // Last visible seqeunce must always be less than last written seq
-    assert(!db_options_->concurrent_prepare ||
-           s <= last_to_be_written_sequence_);
+    // Last visible sequence must always be less than last written seq
+    assert(!db_options_->two_write_queues || s <= last_allocated_sequence_);
     last_sequence_.store(s, std::memory_order_release);
   }
 
   // Note: memory_order_release must be sufficient
-  void SetLastToBeWrittenSequence(uint64_t s) {
-    assert(s >= last_to_be_written_sequence_);
-    last_to_be_written_sequence_.store(s, std::memory_order_seq_cst);
+  void SetLastPublishedSequence(uint64_t s) {
+    assert(s >= last_published_sequence_);
+    last_published_sequence_.store(s, std::memory_order_seq_cst);
   }
 
   // Note: memory_order_release must be sufficient
-  uint64_t FetchAddLastToBeWrittenSequence(uint64_t s) {
-    return last_to_be_written_sequence_.fetch_add(s, std::memory_order_seq_cst);
+  void SetLastAllocatedSequence(uint64_t s) {
+    assert(s >= last_allocated_sequence_);
+    last_allocated_sequence_.store(s, std::memory_order_seq_cst);
+  }
+
+  // Note: memory_order_release must be sufficient
+  uint64_t FetchAddLastAllocatedSequence(uint64_t s) {
+    return last_allocated_sequence_.fetch_add(s, std::memory_order_seq_cst);
   }
 
   // Mark the specified file number as used.
   // REQUIRED: this is only called during single-threaded recovery or repair.
   void MarkFileNumberUsed(uint64_t number);
 
+  // Mark the specified log number as deleted
+  // REQUIRED: this is only called during single-threaded recovery or repair, or
+  // from ::LogAndApply where the global mutex is held.
+  void MarkMinLogNumberToKeep2PC(uint64_t number);
+
   // Return the log file number for the log file that is currently
   // being compacted, or zero if there is no such log file.
   uint64_t prev_log_number() const { return prev_log_number_; }
 
-  // Returns the minimum log number such that all
-  // log numbers less than or equal to it can be deleted
-  uint64_t MinLogNumber() const {
+  // Returns the minimum log number which still has data not flushed to any SST
+  // file.
+  // In non-2PC mode, all the log numbers smaller than this number can be safely
+  // deleted.
+  uint64_t MinLogNumberWithUnflushedData() const {
+    return PreComputeMinLogNumberWithUnflushedData(nullptr);
+  }
+  // Returns the minimum log number which still has data not flushed to any SST
+  // file, except data from `cfd_to_skip`.
+  uint64_t PreComputeMinLogNumberWithUnflushedData(
+      const ColumnFamilyData* cfd_to_skip) const {
     uint64_t min_log_num = std::numeric_limits<uint64_t>::max();
     for (auto cfd : *column_family_set_) {
+      if (cfd == cfd_to_skip) {
+        continue;
+      }
       // It's safe to ignore dropped column families here:
       // cfd->IsDropped() becomes true after the drop is persisted in MANIFEST.
       if (min_log_num > cfd->GetLogNumber() && !cfd->IsDropped()) {
@@ -813,8 +923,9 @@ class VersionSet {
 
   // Create an iterator that reads over the compaction inputs for "*c".
   // The caller should delete the iterator when no longer needed.
-  InternalIterator* MakeInputIterator(const Compaction* c,
-                                      RangeDelAggregator* range_del_agg);
+  InternalIterator* MakeInputIterator(
+      const Compaction* c, RangeDelAggregator* range_del_agg,
+      const EnvOptions& env_options_compactions);
 
   // Add all files listed in any live version to *live.
   void AddLiveFiles(std::vector<FileDescriptor>* live_list);
@@ -840,7 +951,7 @@ class VersionSet {
   // This function doesn't support leveldb SST filenames
   void GetLiveFilesMetaData(std::vector<LiveFileMetaData> *metadata);
 
-  void GetObsoleteFiles(std::vector<FileMetaData*>* files,
+  void GetObsoleteFiles(std::vector<ObsoleteFileInfo>* files,
                         std::vector<std::string>* manifest_filenames,
                         uint64_t min_pending_output);
 
@@ -850,6 +961,8 @@ class VersionSet {
     env_options_.writable_file_max_buffer_size =
         new_options.writable_file_max_buffer_size;
   }
+
+  const ImmutableDBOptions* db_options() const { return db_options_; }
 
   static uint64_t GetNumLiveVersions(Version* dummy_versions);
 
@@ -863,7 +976,7 @@ class VersionSet {
 
   struct LogReporter : public log::Reader::Reporter {
     Status* status;
-    virtual void Corruption(size_t bytes, const Status& s) override {
+    virtual void Corruption(size_t /*bytes*/, const Status& s) override {
       if (this->status->ok()) *this->status = s;
     }
   };
@@ -883,19 +996,49 @@ class VersionSet {
   ColumnFamilyData* CreateColumnFamily(const ColumnFamilyOptions& cf_options,
                                        VersionEdit* edit);
 
+  Status ApplyOneVersionEdit(
+      VersionEdit& edit,
+      const std::unordered_map<std::string, ColumnFamilyOptions>& name_to_opts,
+      std::unordered_map<int, std::string>& column_families_not_found,
+      std::unordered_map<uint32_t, BaseReferencedVersionBuilder*>& builders,
+      bool* have_log_number, uint64_t* log_number, bool* have_prev_log_number,
+      uint64_t* previous_log_number, bool* have_next_file, uint64_t* next_file,
+      bool* have_last_sequence, SequenceNumber* last_sequence,
+      uint64_t* min_log_number_to_keep, uint32_t* max_column_family);
+
+  Status ProcessManifestWrites(std::deque<ManifestWriter>& writers,
+                               InstrumentedMutex* mu, Directory* db_directory,
+                               bool new_descriptor_log,
+                               const ColumnFamilyOptions* new_cf_options);
+
   std::unique_ptr<ColumnFamilySet> column_family_set_;
 
   Env* const env_;
   const std::string dbname_;
   const ImmutableDBOptions* const db_options_;
   std::atomic<uint64_t> next_file_number_;
+  // Any log number equal or lower than this should be ignored during recovery,
+  // and is qualified for being deleted in 2PC mode. In non-2PC mode, this
+  // number is ignored.
+  std::atomic<uint64_t> min_log_number_to_keep_2pc_ = {0};
   uint64_t manifest_file_number_;
   uint64_t options_file_number_;
   uint64_t pending_manifest_file_number_;
-  // The last seq visible to reads
+  // The last seq visible to reads. It normally indicates the last sequence in
+  // the memtable but when using two write queues it could also indicate the
+  // last sequence in the WAL visible to reads.
   std::atomic<uint64_t> last_sequence_;
-  // The last seq with which a writer has written/will write.
-  std::atomic<uint64_t> last_to_be_written_sequence_;
+  // The last seq that is already allocated. It is applicable only when we have
+  // two write queues. In that case seq might or might not have appreated in
+  // memtable but it is expected to appear in the WAL.
+  // We have last_sequence <= last_allocated_sequence_
+  std::atomic<uint64_t> last_allocated_sequence_;
+  // The last allocated sequence that is also published to the readers. This is
+  // applicable only when last_seq_same_as_publish_seq_ is not set. Otherwise
+  // last_sequence_ also indicates the last published seq.
+  // We have last_sequence <= last_published_sequence_ <=
+  // last_allocated_sequence_
+  std::atomic<uint64_t> last_published_sequence_;
   uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
 
   // Opened lazily
@@ -910,15 +1053,11 @@ class VersionSet {
   // Current size of manifest file
   uint64_t manifest_file_size_;
 
-  std::vector<FileMetaData*> obsolete_files_;
+  std::vector<ObsoleteFileInfo> obsolete_files_;
   std::vector<std::string> obsolete_manifests_;
 
   // env options for all reads and writes except compactions
   EnvOptions env_options_;
-
-  // env options used for compactions. This is a copy of
-  // env_options_ but with readaheads set to readahead_compactions_.
-  const EnvOptions env_options_compactions_;
 
   // No copying allowed
   VersionSet(const VersionSet&);

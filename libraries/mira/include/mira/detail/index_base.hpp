@@ -241,7 +241,7 @@ protected:
 
    void cleanup_column_handles()
    {
-      for( auto * h : _handles )
+      for( auto* h : _handles )
          delete h;
 
       _handles.clear();
