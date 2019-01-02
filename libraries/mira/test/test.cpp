@@ -721,6 +721,35 @@ BOOST_AUTO_TEST_CASE( range_test )
       BOOST_REQUIRE( er2.first->val2 == 0 );
 
       BOOST_REQUIRE( er2.second == idx.end() );
+
+      auto lambda_r = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 5; },
+         [] ( const test_object3& o ) { return o.val <= 5; }
+      );
+
+      BOOST_REQUIRE( lambda_r.first->val == 5 );
+      BOOST_REQUIRE( lambda_r.first->val2 == 0 );
+
+      BOOST_REQUIRE( lambda_r.second->val == 6 );
+      BOOST_REQUIRE( lambda_r.second->val2 == 0 );
+
+      auto lambda_r2 = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 9; },
+         [] ( const test_object3& o ) { return o.val <= 9; }
+      );
+
+      BOOST_REQUIRE( lambda_r2.first->val == 9 );
+      BOOST_REQUIRE( lambda_r2.first->val2 == 0 );
+
+      BOOST_REQUIRE( lambda_r2.second == idx.end() );
+
+      auto lambda_r3 = idx.range(
+         [] ( const test_object3& o ) { return o.val >= 10; },
+         [] ( const test_object3& o ) { return o.val <= 10; }
+      );
+
+      BOOST_REQUIRE( lambda_r3.first == idx.end() );
+      BOOST_REQUIRE( lambda_r3.second == idx.end() );
    }
    FC_LOG_AND_RETHROW();
 }
