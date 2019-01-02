@@ -236,82 +236,6 @@ struct equal_key_key:
    >::type
 {};
 
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename EqualCons
->
-struct equal_ckey_cval; /* fwd decl. */
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename EqualCons
->
-struct equal_ckey_cval_terminal
-{
-  static bool compare(
-    const KeyCons&,const Value&,const ValCons&,const EqualCons&)
-  {
-    return true;
-  }
-
-  static bool compare(
-    const ValCons&,const KeyCons&,const Value&,const EqualCons&)
-  {
-    return true;
-  }
-};
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename EqualCons
->
-struct equal_ckey_cval_normal
-{
-  static bool compare(
-    const KeyCons& c,const Value& v,const ValCons& vc,
-    const EqualCons& eq)
-  {
-    if(!eq.get_head()(c.get_head()(v),vc.get_head()))return false;
-    return equal_ckey_cval<
-      BOOST_DEDUCED_TYPENAME KeyCons::tail_type,Value,
-      BOOST_DEDUCED_TYPENAME ValCons::tail_type,
-      BOOST_DEDUCED_TYPENAME EqualCons::tail_type
-    >::compare(c.get_tail(),v,vc.get_tail(),eq.get_tail());
-  }
-
-  static bool compare(
-    const ValCons& vc,const KeyCons& c,const Value& v,
-    const EqualCons& eq)
-  {
-    if(!eq.get_head()(vc.get_head(),c.get_head()(v)))return false;
-    return equal_ckey_cval<
-      BOOST_DEDUCED_TYPENAME KeyCons::tail_type,Value,
-      BOOST_DEDUCED_TYPENAME ValCons::tail_type,
-      BOOST_DEDUCED_TYPENAME EqualCons::tail_type
-    >::compare(vc.get_tail(),c.get_tail(),v,eq.get_tail());
-  }
-};
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename EqualCons
->
-struct equal_ckey_cval:
-  boost::mpl::if_<
-    boost::mpl::or_<
-      boost::is_same<KeyCons,boost::tuples::null_type>,
-      boost::is_same<ValCons,boost::tuples::null_type>
-    >,
-    equal_ckey_cval_terminal<KeyCons,Value,ValCons,EqualCons>,
-    equal_ckey_cval_normal<KeyCons,Value,ValCons,EqualCons>
-  >::type
-{
-};
-
 template< typename KeyCons1, typename KeyCons2, typename CompareCons >
 struct compare_key_key; /* fwd decl. */
 
@@ -353,84 +277,6 @@ struct compare_key_key:
       compare_key_key_normal< KeyCons1, KeyCons2, CompareCons >
    >::type
 {};
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename CompareCons
->
-struct compare_ckey_cval; /* fwd decl. */
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename CompareCons
->
-struct compare_ckey_cval_terminal
-{
-  static bool compare(
-    const KeyCons&,const Value&,const ValCons&,const CompareCons&)
-  {
-    return false;
-  }
-
-  static bool compare(
-    const ValCons&,const KeyCons&,const Value&,const CompareCons&)
-  {
-    return false;
-  }
-};
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename CompareCons
->
-struct compare_ckey_cval_normal
-{
-  static bool compare(
-    const KeyCons& c,const Value& v,const ValCons& vc,
-    const CompareCons& comp)
-  {
-    if(comp.get_head()(c.get_head()(v),vc.get_head()))return true;
-    if(comp.get_head()(vc.get_head(),c.get_head()(v)))return false;
-    return compare_ckey_cval<
-      BOOST_DEDUCED_TYPENAME KeyCons::tail_type,Value,
-      BOOST_DEDUCED_TYPENAME ValCons::tail_type,
-      BOOST_DEDUCED_TYPENAME CompareCons::tail_type
-    >::compare(c.get_tail(),v,vc.get_tail(),comp.get_tail());
-  }
-
-  static bool compare(
-    const ValCons& vc,const KeyCons& c,const Value& v,
-    const CompareCons& comp)
-  {
-    if(comp.get_head()(vc.get_head(),c.get_head()(v)))return true;
-    if(comp.get_head()(c.get_head()(v),vc.get_head()))return false;
-    return compare_ckey_cval<
-      BOOST_DEDUCED_TYPENAME KeyCons::tail_type,Value,
-      BOOST_DEDUCED_TYPENAME ValCons::tail_type,
-      BOOST_DEDUCED_TYPENAME CompareCons::tail_type
-    >::compare(vc.get_tail(),c.get_tail(),v,comp.get_tail());
-  }
-};
-
-template
-<
-  typename KeyCons,typename Value,
-  typename ValCons,typename CompareCons
->
-struct compare_ckey_cval:
-  boost::mpl::if_<
-    boost::mpl::or_<
-      boost::is_same<KeyCons,boost::tuples::null_type>,
-      boost::is_same<ValCons,boost::tuples::null_type>
-    >,
-    compare_ckey_cval_terminal<KeyCons,Value,ValCons,CompareCons>,
-    compare_ckey_cval_normal<KeyCons,Value,ValCons,CompareCons>
-  >::type
-{
-};
 
 template<typename KeyCons,typename Value,typename HashCons>
 struct hash_ckey; /* fwd decl. */
@@ -765,10 +611,10 @@ public:
 
 /* == */
 
-template<typename CompositeKey1,typename CompositeKey2>
+template< typename CompositeKey1, typename CompositeKey2 >
 inline bool operator==(
-  const composite_key_result<CompositeKey1>& x,
-  const composite_key_result<CompositeKey2>& y)
+   const composite_key_result< CompositeKey1 >& x,
+   const composite_key_result< CompositeKey2 >& y)
 {
   typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
   typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
@@ -789,99 +635,98 @@ inline bool operator==(
 
 template<
   typename CompositeKey,
-  BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value)
+  BOOST_MULTI_INDEX_CK_ENUM_PARAMS( typename Value )
 >
 inline bool operator==(
-  const composite_key_result<CompositeKey>& x,
-  const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& y)
+   const composite_key_result< CompositeKey >& x,
+   const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-  typedef typename CompositeKey::value_type              value_type;
-  typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   typedef typename CompositeKey::key_extractor_tuple    key_extractor_tuple;
+   typedef boost::tuple<
+      BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >        key_tuple;
 
-  BOOST_STATIC_ASSERT(
-    boost::tuples::length<key_extractor_tuple>::value==
-    boost::tuples::length<key_tuple>::value);
+   BOOST_STATIC_ASSERT(
+      boost::tuples::length<key_extractor_tuple>::value==
+      boost::tuples::length<key_tuple>::value);
 
-  return detail::equal_ckey_cval<
-    key_extractor_tuple,value_type,
-    key_tuple,detail::generic_operator_equal_tuple
-  >::compare(
-    x.composite_key.key_extractors(),x.value,
-    y,detail::generic_operator_equal_tuple());
+   return detail::equal_key_key<
+      typename CompositeKey::result_type::key_type,
+      key_tuple,
+      detail::generic_operator_equal_tuple
+   >::compare(
+      x.key, y, detail::generic_operator_equal_tuple() );
 }
 
 template
 <
-  BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
+  BOOST_MULTI_INDEX_CK_ENUM_PARAMS( typename Value ),
   typename CompositeKey
 >
 inline bool operator==(
-  const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& x,
-  const composite_key_result<CompositeKey>& y)
+   const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& x,
+   const composite_key_result< CompositeKey >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-  typedef typename CompositeKey::value_type              value_type;
-  typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
+   typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-  BOOST_STATIC_ASSERT(
-    boost::tuples::length<key_extractor_tuple>::value==
-    boost::tuples::length<key_tuple>::value);
+   BOOST_STATIC_ASSERT(
+      boost::tuples::length<key_extractor_tuple>::value==
+      boost::tuples::length<key_tuple>::value);
 
-  return detail::equal_ckey_cval<
-    key_extractor_tuple,value_type,
-    key_tuple,detail::generic_operator_equal_tuple
-  >::compare(
-    x,y.composite_key.key_extractors(),
-    y.value,detail::generic_operator_equal_tuple());
+   return detail::equal_key_key<
+      key_tuple,
+      typename CompositeKey::result_type::key_type,
+      detail::generic_operator_equal_tuple
+   >::compare(
+      x, y.key, detail::generic_operator_equal_tuple() );
 }
 
 #if !defined(BOOST_NO_CXX11_HDR_TUPLE)&&\
     !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
-template<typename CompositeKey,typename... Values>
+template< typename CompositeKey, typename... Values >
 inline bool operator==(
-  const composite_key_result<CompositeKey>& x,
-  const std::tuple<Values...>& y)
+   const composite_key_result< CompositeKey >& x,
+   const std::tuple< Values... >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-  typedef typename CompositeKey::value_type          value_type;
-  typedef std::tuple<Values...>                      key_tuple;
-  typedef typename detail::cons_stdtuple_ctor<
-    key_tuple>::result_type                          cons_key_tuple;
+   typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+   typedef std::tuple<Values...>                      key_tuple;
+   typedef typename detail::cons_stdtuple_ctor<
+      key_tuple>::result_type                          cons_key_tuple;
 
-  BOOST_STATIC_ASSERT(
-    static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
-    std::tuple_size<key_tuple>::value);
+   BOOST_STATIC_ASSERT(
+      static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
+      std::tuple_size<key_tuple>::value);
 
-  return detail::equal_ckey_cval<
-    key_extractor_tuple,value_type,
-    cons_key_tuple,detail::generic_operator_equal_tuple
-  >::compare(
-    x.composite_key.key_extractors(),x.value,
-    detail::make_cons_stdtuple(y),detail::generic_operator_equal_tuple());
+   return detail::equal_key_key<
+      typename CompositeKey::result_type::key_type,
+      cons_key_tuple,
+      detail::generic_operator_equal_tuple
+   >::compare(
+      x.key, detail::make_cons_stdtuple(y), detail::generic_operator_equal_tuple() );
 }
 
-template<typename CompositeKey,typename... Values>
+template< typename CompositeKey, typename... Values >
 inline bool operator==(
-  const std::tuple<Values...>& x,
-  const composite_key_result<CompositeKey>& y)
+   const std::tuple< Values... >& x,
+   const composite_key_result< CompositeKey >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-  typedef typename CompositeKey::value_type          value_type;
-  typedef std::tuple<Values...>                      key_tuple;
-  typedef typename detail::cons_stdtuple_ctor<
-    key_tuple>::result_type                          cons_key_tuple;
+   typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+   typedef std::tuple<Values...>                      key_tuple;
+   typedef typename detail::cons_stdtuple_ctor<
+      key_tuple>::result_type                         cons_key_tuple;
 
-  BOOST_STATIC_ASSERT(
-    static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
-    std::tuple_size<key_tuple>::value);
+   BOOST_STATIC_ASSERT(
+      static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
+      std::tuple_size<key_tuple>::value);
 
-  return detail::equal_ckey_cval<
-    key_extractor_tuple,value_type,
-    cons_key_tuple,detail::generic_operator_equal_tuple
-  >::compare(
-    detail::make_cons_stdtuple(x),y.composite_key.key_extractors(),
-    y.value,detail::generic_operator_equal_tuple());
+   return detail::equal_key_key<
+      cons_key_tuple,
+      typename CompositeKey::result_type::key_type,
+      detail::generic_operator_equal_tuple
+   >::compare(
+      detail::make_cons_stdtuple( x ),
+      y.key,
+      detail::generic_operator_equal_tuple() );
 }
 #endif
 
@@ -892,7 +737,6 @@ inline bool operator<(
   const composite_key_result<CompositeKey1>& x,
   const composite_key_result<CompositeKey2>& y)
 {
-
    return detail::compare_key_key<
       typename CompositeKey1::result_type::key_type,
       typename CompositeKey2::result_type::key_type,
@@ -905,84 +749,80 @@ inline bool operator<(
 
 template
 <
-  typename CompositeKey,
-  BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value)
+   typename CompositeKey,
+   BOOST_MULTI_INDEX_CK_ENUM_PARAMS( typename Value )
 >
 inline bool operator<(
-  const composite_key_result<CompositeKey>& x,
-  const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& y)
+   const composite_key_result< CompositeKey >& x,
+   const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& y )
 {
-  typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-  typedef typename CompositeKey::value_type              value_type;
-  typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   typedef boost::tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) > key_tuple;
 
-  return detail::compare_ckey_cval<
-    key_extractor_tuple,value_type,
-    key_tuple,detail::generic_operator_less_tuple
-  >::compare(
-    x.composite_key.key_extractors(),x.value,
-    y,detail::generic_operator_less_tuple());
+   return detail::compare_key_key<
+      typename CompositeKey::result_type::key_type,
+      key_tuple,
+      detail::generic_operator_less_tuple
+   >::compare(
+      x.key, y, detail::generic_operator_less_tuple() );
 }
 
 template
 <
-  BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
-  typename CompositeKey
+   BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
+   typename CompositeKey
 >
 inline bool operator<(
-  const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& x,
-  const composite_key_result<CompositeKey>& y)
+   const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& x,
+   const composite_key_result< CompositeKey >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-  typedef typename CompositeKey::value_type              value_type;
-  typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-  return detail::compare_ckey_cval<
-    key_extractor_tuple,value_type,
-    key_tuple,detail::generic_operator_less_tuple
-  >::compare(
-    x,y.composite_key.key_extractors(),
-    y.value,detail::generic_operator_less_tuple());
+   return detail::compare_key_key<
+      key_tuple,
+      typename CompositeKey::result_type::key_type,
+      detail::generic_operator_less_tuple
+   >::compare(
+      x, y.key, detail::generic_operator_less_tuple() );
 }
 
 #if !defined(BOOST_NO_CXX11_HDR_TUPLE)&&\
     !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
 template<typename CompositeKey,typename... Values>
 inline bool operator<(
-  const composite_key_result<CompositeKey>& x,
-  const std::tuple<Values...>& y)
+   const composite_key_result<CompositeKey>& x,
+   const std::tuple<Values...>& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-  typedef typename CompositeKey::value_type          value_type;
-  typedef std::tuple<Values...>                      key_tuple;
-  typedef typename detail::cons_stdtuple_ctor<
-    key_tuple>::result_type                          cons_key_tuple;
+   typedef std::tuple<Values...>                      key_tuple;
+   typedef typename detail::cons_stdtuple_ctor<
+      key_tuple>::result_type                          cons_key_tuple;
 
-  return detail::compare_ckey_cval<
-    key_extractor_tuple,value_type,
-    cons_key_tuple,detail::generic_operator_less_tuple
-  >::compare(
-    x.composite_key.key_extractors(),x.value,
-    detail::make_cons_stdtuple(y),detail::generic_operator_less_tuple());
+   return detail::compare_key_key<
+      typename CompositeKey::result_type::key_type,
+      cons_key_tuple,
+      detail::generic_operator_less_tuple
+   >::compare(
+      x.key,
+      detail::make_cons_stdtuple( y ),
+      detail::generic_operator_less_tuple() );
 }
 
-template<typename CompositeKey,typename... Values>
+template< typename CompositeKey, typename... Values >
 inline bool operator<(
-  const std::tuple<Values...>& x,
-  const composite_key_result<CompositeKey>& y)
+   const std::tuple< Values... >& x,
+   const composite_key_result< CompositeKey >& y)
 {
-  typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-  typedef typename CompositeKey::value_type          value_type;
-  typedef std::tuple<Values...>                      key_tuple;
-  typedef typename detail::cons_stdtuple_ctor<
-    key_tuple>::result_type                          cons_key_tuple;
+   typedef std::tuple<Values...>                      key_tuple;
+   typedef typename detail::cons_stdtuple_ctor<
+      key_tuple>::result_type                          cons_key_tuple;
 
-  return detail::compare_ckey_cval<
-    key_extractor_tuple,value_type,
-    cons_key_tuple,detail::generic_operator_less_tuple
-  >::compare(
-    detail::make_cons_stdtuple(x),y.composite_key.key_extractors(),
-    y.value,detail::generic_operator_less_tuple());
+   return detail::compare_key_key<
+      cons_key_tuple,
+      typename CompositeKey::result_type::key_type,
+      detail::generic_operator_less_tuple
+   >::compare(
+      detail::make_cons_stdtuple( x ),
+      y.key,
+      detail::generic_operator_less_tuple() );
 }
 #endif
 
@@ -1072,11 +912,11 @@ public:
   const key_eq_tuple& key_eqs()const{return *this;}
   key_eq_tuple&       key_eqs(){return *this;}
 
-  template<typename CompositeKey1,typename CompositeKey2>
-  bool operator()(
-    const composite_key_result<CompositeKey1> & x,
-    const composite_key_result<CompositeKey2> & y)const
-  {
+   template<typename CompositeKey1,typename CompositeKey2>
+   bool operator()(
+      const composite_key_result<CompositeKey1> & x,
+      const composite_key_result<CompositeKey2> & y)const
+   {
       typedef typename CompositeKey1::key_extractor_tuple key_extractor_tuple1;
       typedef typename CompositeKey2::key_extractor_tuple key_extractor_tuple2;
 
@@ -1094,109 +934,107 @@ public:
          x.key,
          y.key,
          key_eqs());
-  }
+   }
 
-  template
-  <
-    typename CompositeKey,
-    BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value)
-  >
-  bool operator()(
-    const composite_key_result<CompositeKey>& x,
-    const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-    typedef typename CompositeKey::value_type              value_type;
-    typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   template
+   <
+      typename CompositeKey,
+      BOOST_MULTI_INDEX_CK_ENUM_PARAMS( typename Value )
+   >
+   bool operator()(
+      const composite_key_result< CompositeKey >& x,
+      const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& y)const
+   {
+      typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
+      typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_eq_tuple>::value&&
-      boost::tuples::length<key_extractor_tuple>::value==
-      boost::tuples::length<key_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_eq_tuple>::value&&
+         boost::tuples::length<key_extractor_tuple>::value==
+         boost::tuples::length<key_tuple>::value);
 
-    return detail::equal_ckey_cval<
-      key_extractor_tuple,value_type,
-      key_tuple,key_eq_tuple
-    >::compare(x.composite_key.key_extractors(),x.value,y,key_eqs());
-  }
+      return detail::equal_key_key<
+         typename CompositeKey::result_type::key_type,
+         key_tuple,
+         key_eq_tuple
+      >::compare( x.key, y, key_eqs() );
+   }
 
-  template
-  <
-    BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
-    typename CompositeKey
-  >
-  bool operator()(
-    const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& x,
-    const composite_key_result<CompositeKey>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-    typedef typename CompositeKey::value_type              value_type;
-    typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   template
+   <
+      BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
+      typename CompositeKey
+   >
+   bool operator()(
+      const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& x,
+      const composite_key_result< CompositeKey >& y)const
+   {
+      typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
+      typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_tuple>::value<=
-      boost::tuples::length<key_eq_tuple>::value&&
-      boost::tuples::length<key_tuple>::value==
-      boost::tuples::length<key_extractor_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_tuple>::value<=
+         boost::tuples::length<key_eq_tuple>::value&&
+         boost::tuples::length<key_tuple>::value==
+         boost::tuples::length<key_extractor_tuple>::value);
 
-    return detail::equal_ckey_cval<
-      key_extractor_tuple,value_type,
-      key_tuple,key_eq_tuple
-    >::compare(x,y.composite_key.key_extractors(),y.value,key_eqs());
-  }
+      return detail::equal_key_key<
+         key_tuple,
+         typename CompositeKey::result_type::key_type,
+         key_eq_tuple
+      >::compare( x, y.key, key_eqs() );
+   }
 
 #if !defined(BOOST_NO_CXX11_HDR_TUPLE)&&\
     !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
-  template<typename CompositeKey,typename... Values>
-  bool operator()(
-    const composite_key_result<CompositeKey>& x,
-    const std::tuple<Values...>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-    typedef typename CompositeKey::value_type          value_type;
-    typedef std::tuple<Values...>                      key_tuple;
-    typedef typename detail::cons_stdtuple_ctor<
-      key_tuple>::result_type                          cons_key_tuple;
+   template< typename CompositeKey, typename... Values >
+   bool operator()(
+      const composite_key_result< CompositeKey >& x,
+      const std::tuple< Values... >& y )const
+   {
+      typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+      typedef std::tuple<Values...>                      key_tuple;
+      typedef typename detail::cons_stdtuple_ctor<
+         key_tuple>::result_type                          cons_key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_eq_tuple>::value&&
-      static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
-      std::tuple_size<key_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_eq_tuple>::value&&
+         static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value)==
+         std::tuple_size<key_tuple>::value);
 
-    return detail::equal_ckey_cval<
-      key_extractor_tuple,value_type,
-      cons_key_tuple,key_eq_tuple
-    >::compare(
-      x.composite_key.key_extractors(),x.value,
-      detail::make_cons_stdtuple(y),key_eqs());
-  }
+      return detail::equal_key_key<
+         typename CompositeKey::result_type::key_type,
+         cons_key_tuple,
+         key_eq_tuple
+      >::compare(
+         x.key, detail::make_cons_stdtuple( y ), key_eqs() );
+   }
 
-  template<typename CompositeKey,typename... Values>
-  bool operator()(
-    const std::tuple<Values...>& x,
-    const composite_key_result<CompositeKey>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-    typedef typename CompositeKey::value_type          value_type;
-    typedef std::tuple<Values...>                      key_tuple;
-    typedef typename detail::cons_stdtuple_ctor<
-      key_tuple>::result_type                          cons_key_tuple;
+   template< typename CompositeKey, typename... Values >
+   bool operator()(
+      const std::tuple< Values... >& x,
+      const composite_key_result< CompositeKey >& y)const
+   {
+      typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+      typedef std::tuple<Values...>                      key_tuple;
+      typedef typename detail::cons_stdtuple_ctor<
+         key_tuple>::result_type                          cons_key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      std::tuple_size<key_tuple>::value<=
-      static_cast<std::size_t>(boost::tuples::length<key_eq_tuple>::value)&&
-      std::tuple_size<key_tuple>::value==
-      static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value));
+      BOOST_STATIC_ASSERT(
+         std::tuple_size<key_tuple>::value<=
+         static_cast<std::size_t>(boost::tuples::length<key_eq_tuple>::value)&&
+         std::tuple_size<key_tuple>::value==
+         static_cast<std::size_t>(boost::tuples::length<key_extractor_tuple>::value));
 
-    return detail::equal_ckey_cval<
-      key_extractor_tuple,value_type,
-      cons_key_tuple,key_eq_tuple
-    >::compare(
-      detail::make_cons_stdtuple(x),y.composite_key.key_extractors(),
-      y.value,key_eqs());
-  }
+      return detail::equal_key_key<
+         cons_key_tuple,
+         typename CompositeKey::result_type::key_type,
+         key_eq_tuple
+      >::compare(
+         detail::make_cons_stdtuple( x ), y.key, key_eqs() );
+   }
 #endif
 };
 
@@ -1259,30 +1097,30 @@ public:
   }
 #endif
 
-  template
-  <
-    typename CompositeKey,
-    BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value)
-  >
-  bool operator()(
-    const composite_key_result<CompositeKey>& x,
-    const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-    typedef typename CompositeKey::value_type              value_type;
-    typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   template
+   <
+      typename CompositeKey,
+      BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value)
+   >
+   bool operator()(
+      const composite_key_result< CompositeKey >& x,
+      const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& y )const
+   {
+      typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
+      typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value||
-      boost::tuples::length<key_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value||
+         boost::tuples::length<key_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value);
 
-    return detail::compare_ckey_cval<
-      key_extractor_tuple,value_type,
-      key_tuple,key_comp_tuple
-    >::compare(x.composite_key.key_extractors(),x.value,y,key_comps());
-  }
+      return detail::compare_key_key<
+         typename CompositeKey::result_type::key_type,
+         key_tuple,
+         key_comp_tuple
+      >::compare( x.key, y, key_comps() );
+   }
 
 #if !defined(BOOST_NO_FUNCTION_TEMPLATE_ORDERING)
   template<typename Value,typename CompositeKey>
@@ -1294,82 +1132,84 @@ public:
   }
 #endif
 
-  template
-  <
-    BOOST_MULTI_INDEX_CK_ENUM_PARAMS(typename Value),
-    typename CompositeKey
-  >
-  bool operator()(
-    const tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)>& x,
-    const composite_key_result<CompositeKey>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
-    typedef typename CompositeKey::value_type              value_type;
-    typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
+   template
+   <
+      BOOST_MULTI_INDEX_CK_ENUM_PARAMS( typename Value ),
+      typename CompositeKey
+   >
+   bool operator()(
+      const tuple< BOOST_MULTI_INDEX_CK_ENUM_PARAMS( Value ) >& x,
+      const composite_key_result< CompositeKey >& y )const
+   {
+      typedef typename CompositeKey::key_extractor_tuple     key_extractor_tuple;
+      typedef boost::tuple<BOOST_MULTI_INDEX_CK_ENUM_PARAMS(Value)> key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value||
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value||
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value);
 
-    return detail::compare_ckey_cval<
-      key_extractor_tuple,value_type,
-      key_tuple,key_comp_tuple
-    >::compare(x,y.composite_key.key_extractors(),y.value,key_comps());
-  }
+      return detail::compare_key_key<
+         key_tuple,
+         typename CompositeKey::result_type::key_type,
+         key_comp_tuple
+      >::compare( x, y.key, key_comps() );
+   }
 
 #if !defined(BOOST_NO_CXX11_HDR_TUPLE)&&\
     !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
-  template<typename CompositeKey,typename... Values>
-  bool operator()(
-    const composite_key_result<CompositeKey>& x,
-    const std::tuple<Values...>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-    typedef typename CompositeKey::value_type          value_type;
-    typedef std::tuple<Values...>                      key_tuple;
-    typedef typename detail::cons_stdtuple_ctor<
-      key_tuple>::result_type                          cons_key_tuple;
+   template< typename CompositeKey, typename... Values >
+   bool operator()(
+      const composite_key_result< CompositeKey >& x,
+      const std::tuple< Values... >& y )const
+   {
+      typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+      typedef std::tuple<Values...>                      key_tuple;
+      typedef typename detail::cons_stdtuple_ctor<
+         key_tuple>::result_type                          cons_key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value||
-      std::tuple_size<key_tuple>::value<=
-      static_cast<std::size_t>(boost::tuples::length<key_comp_tuple>::value));
+      BOOST_STATIC_ASSERT(
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value||
+         std::tuple_size<key_tuple>::value<=
+         static_cast<std::size_t>(boost::tuples::length<key_comp_tuple>::value));
 
-    return detail::compare_ckey_cval<
-      key_extractor_tuple,value_type,
-      cons_key_tuple,key_comp_tuple
-    >::compare(
-      x.composite_key.key_extractors(),x.value,
-      detail::make_cons_stdtuple(y),key_comps());
-  }
+      return detail::compare_key_key<
+         typename CompositeKey::result_type::key_type,
+         cons_key_tuple,
+         key_comp_tuple
+      >::compare(
+         x.key,
+         detail::make_cons_stdtuple(y),
+         key_comps() );
+   }
 
-  template<typename CompositeKey,typename... Values>
-  bool operator()(
-    const std::tuple<Values...>& x,
-    const composite_key_result<CompositeKey>& y)const
-  {
-    typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
-    typedef typename CompositeKey::value_type          value_type;
-    typedef std::tuple<Values...>                      key_tuple;
-    typedef typename detail::cons_stdtuple_ctor<
-      key_tuple>::result_type                          cons_key_tuple;
+   template< typename CompositeKey, typename... Values >
+   bool operator()(
+      const std::tuple< Values... >& x,
+      const composite_key_result< CompositeKey >& y )const
+   {
+      typedef typename CompositeKey::key_extractor_tuple key_extractor_tuple;
+      typedef std::tuple<Values...>                      key_tuple;
+      typedef typename detail::cons_stdtuple_ctor<
+         key_tuple>::result_type                          cons_key_tuple;
 
-    BOOST_STATIC_ASSERT(
-      std::tuple_size<key_tuple>::value<=
-      static_cast<std::size_t>(boost::tuples::length<key_comp_tuple>::value)||
-      boost::tuples::length<key_extractor_tuple>::value<=
-      boost::tuples::length<key_comp_tuple>::value);
+      BOOST_STATIC_ASSERT(
+         std::tuple_size<key_tuple>::value<=
+         static_cast<std::size_t>(boost::tuples::length<key_comp_tuple>::value)||
+         boost::tuples::length<key_extractor_tuple>::value<=
+         boost::tuples::length<key_comp_tuple>::value);
 
-    return detail::compare_ckey_cval<
-      key_extractor_tuple,value_type,
-      cons_key_tuple,key_comp_tuple
-    >::compare(
-      detail::make_cons_stdtuple(x),y.composite_key.key_extractors(),
-      y.value,key_comps());
-  }
+      return detail::compare_key_key<
+         cons_key_tuple,
+         typename CompositeKey::result_type::key_type,
+         key_comp_tuple
+      >::compare(
+         detail::make_cons_stdtuple(x),
+         y.key,
+         y.value,key_comps() );
+   }
 #endif
 };
 

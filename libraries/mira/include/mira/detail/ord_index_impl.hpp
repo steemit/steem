@@ -527,22 +527,28 @@ public:
    * type as iterator.
    */
 
-  template<typename CompatibleKey>
-  iterator find(const CompatibleKey& x)const
-  {
-    return iterator::find( ROCKSDB_ITERATOR_PARAM_PACK, x );
-  }
+   template<typename CompatibleKey>
+   iterator find(const CompatibleKey& x)const
+   {
+      return iterator::find( ROCKSDB_ITERATOR_PARAM_PACK, x );
+   }
 
-  template<typename CompatibleKey>
-  iterator lower_bound(const CompatibleKey& x)const
-  {
-    return iterator::lower_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
-  }
+   template<typename CompatibleKey>
+   iterator lower_bound(const CompatibleKey& x)const
+   {
+      return iterator::lower_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
+   }
 
-  iterator upper_bound(const key_type& x)const
-  {
-    return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
-  }
+   iterator upper_bound(const key_type& x)const
+   {
+      return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
+   }
+
+   template< typename CompatibleKey >
+   iterator upper_bound( const CompatibleKey& x )const
+   {
+      return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x, comp_ );
+   }
 
   /* range */
 
@@ -834,7 +840,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 */
   void clear_()
   {
-      super::_db->DropColumnFamily( super::_handles( COLUMN_INDEX ) );
+      super::_db->DropColumnFamily( super::_handles[ COLUMN_INDEX ] );
       super::clear_();
       empty_initialize();
    }

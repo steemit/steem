@@ -101,6 +101,10 @@ namespace chainbase {
       bfs::remove_all( dir / "shared_memory.meta" );
       _data_dir = bfs::path();
 #endif
+      for( auto& item : _index_list )
+      {
+         item->clear();
+      }
       _index_list.clear();
       _index_map.clear();
    }

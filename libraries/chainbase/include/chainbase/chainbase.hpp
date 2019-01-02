@@ -261,6 +261,8 @@ namespace chainbase {
 
          const index_type& indices()const { return _indices; }
 
+         void clear() { _indices.clear(); }
+
          class session {
             public:
                session( session&& mv )
@@ -592,6 +594,7 @@ namespace chainbase {
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual size_t size() const = 0;
+         virtual void clear() = 0;
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -632,8 +635,16 @@ namespace chainbase {
             helpers::index_statistic_provider<index_type> provider;
             return provider.gather_statistics(_base.indices(), onlyStaticInfo);
          }
+
          virtual size_t size() const override final
-            { return _base.indicies().size(); }
+         {
+            return _base.indicies().size();
+         }
+
+         virtual void clear() override final
+         {
+            _base.clear();
+         }
 
       private:
          BaseIndex& _base;
