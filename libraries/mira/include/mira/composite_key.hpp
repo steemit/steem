@@ -926,7 +926,7 @@ public:
          boost::tuples::length<key_extractor_tuple1>::value==
          boost::tuples::length<key_extractor_tuple2>::value);
 
-      return detail::compare_key_key<
+      return detail::equal_key_key<
          typename CompositeKey1::result_type::key_type,
          typename CompositeKey2::result_type::key_type,
          detail::generic_operator_less_tuple

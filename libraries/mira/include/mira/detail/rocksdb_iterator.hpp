@@ -397,15 +397,13 @@ public:
          Key itr_key;
          fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
 
-         while( c( k, itr_key ) )
+         while( !c( k, itr_key ) )
          {
             ++itr;
-            if( !itr.valid() ) break;
+            if( !itr.valid() ) return itr;
 
             fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
          }
-
-         --itr;
       }
 
       return itr;
