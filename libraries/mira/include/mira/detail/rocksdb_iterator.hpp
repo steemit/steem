@@ -391,6 +391,7 @@ public:
       const Compare& c )
    {
       rocksdb_iterator itr = upper_bound( handles, index, db, cache, Key( k ) );
+      --itr;
 
       if( itr.valid() )
       {

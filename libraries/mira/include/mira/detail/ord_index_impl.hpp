@@ -528,19 +528,19 @@ public:
    * type as iterator.
    */
 
-   template<typename CompatibleKey>
-   iterator find(const CompatibleKey& x)const
+   template< typename CompatibleKey >
+   iterator find( const CompatibleKey& x )const
    {
       return iterator::find( ROCKSDB_ITERATOR_PARAM_PACK, x );
    }
 
    template<typename CompatibleKey>
-   iterator lower_bound(const CompatibleKey& x)const
+   iterator lower_bound( const CompatibleKey& x )const
    {
       return iterator::lower_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
    }
 
-   iterator upper_bound(const key_type& x)const
+   iterator upper_bound( const key_type& x )const
    {
       return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
    }
