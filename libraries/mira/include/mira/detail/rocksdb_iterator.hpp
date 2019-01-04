@@ -390,8 +390,10 @@ public:
       const CompatibleKey& k,
       const Compare& c )
    {
-      rocksdb_iterator itr = upper_bound( handles, index, db, cache, Key( k ) );
-      --itr;
+      rocksdb_iterator itr( handles, index, db, cache );
+
+      std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
+      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
 
       if( itr.valid() )
       {
