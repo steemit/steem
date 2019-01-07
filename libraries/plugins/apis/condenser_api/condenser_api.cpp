@@ -2082,6 +2082,9 @@ uint16_t api_account_object::_compute_voting_power( const database_api::api_acco
    vp_t2 /= vests;
 
    uint64_t vp_t2u = vp_t2.to_uint64();
+   if( vt_t2u == 0 )
+      return 0;
+
    if( vp_t2u >= STEEM_100_PERCENT )
    {
       wlog( "Truncated vp_t2u to STEEM_100_PERCENT for account ${a}", ("a", a.name) );
@@ -2089,7 +2092,7 @@ uint16_t api_account_object::_compute_voting_power( const database_api::api_acco
    }
    uint16_t vp_t1 = uint16_t( vp_t2u ) - uint16_t( std::min( vp_t2u, vp_dt ) );
 
-   return vp_t1;
+   return vp_t1 ? vp_t1 : a.voting_power;
 }
 
 condenser_api::condenser_api()
