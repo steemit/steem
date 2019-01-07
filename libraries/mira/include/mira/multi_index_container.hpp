@@ -76,6 +76,7 @@
 #define DEFAULT_COLUMN 0
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
+#define REVISION_KEY "REV"
 
 namespace mira{
 
@@ -148,6 +149,8 @@ private:
     node_pointer,
     multi_index_container>                        bfm_header;
 
+   int64_t                                         _revision = -1;
+
 public:
   /* All types are inherited from super, a few are explicitly
    * brought forward here to save us some typename's.
@@ -214,6 +217,36 @@ public:
          // Verify DB Schema
 
          super::_db.reset( db );
+
+         ::rocksdb::ReadOptions read_opts;
+         ::rocksdb::PinnableSlice value_slice;
+
+         auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
+
+         s = super::_db->Get(
+            read_opts,
+            super::_handles[0],
+            ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
+            &value_slice );
+
+         if( s.ok() )
+         {
+            entry_count = fc::raw::unpack_from_char_array< uint64_t >( value_slice.data(), value_slice.size() );
+         }
+
+         auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
+         value_slice.Reset();
+
+         s = super::_db->Get(
+            read_opts,
+            super::_handles[0],
+            ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
+            &value_slice );
+
+         if( s.ok() )
+         {
+            _revision = fc::raw::unpack_from_char_array< int64_t >( value_slice.data(), value_slice.size() );
+         }
       }
       else
       {
@@ -240,7 +273,6 @@ public:
 
       if( s.ok() )
       {
-         std::cout << "Found existing RocksDB DB\n";
          super::cleanup_column_handles();
          delete db;
          return true;
@@ -260,7 +292,33 @@ public:
 
          if( s.ok() )
          {
+            // Create default column keys
+            ::rocksdb::WriteOptions opts;
+
+            auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
+            auto ser_count_val = fc::raw::pack_to_vector( uint64_t(0) );
+
+            s = db->Put(
+               ::rocksdb::WriteOptions(),
+               db->DefaultColumnFamily(),
+               ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
+               ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+
+            if( !s.ok() ) return false;
+
+            auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
+            auto ser_rev_val = fc::raw::pack_to_vector( int64_t(0) );
+
+            db->Put(
+               ::rocksdb::WriteOptions(),
+               db->DefaultColumnFamily(),
+               ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
+               ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
+
+            if( !s.ok() ) return false;
+
             // Save schema info
+
             super::cleanup_column_handles();
          }
          else
@@ -506,6 +564,23 @@ void populate_column_definitions_( column_definitions& defs )const
    super::populate_column_definitions_( defs );
 }
 
+int64_t revision() { return _revision; }
+
+int64_t set_revision( int64_t rev )
+{
+   const static auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
+   const static ::rocksdb::Slice rev_slice( ser_rev_key.data(), ser_rev_key.size() );
+   auto ser_rev_val = fc::raw::pack_to_vector( rev );
+
+   auto s = super::_db->Put(
+      ::rocksdb::WriteOptions(), rev_slice,
+      ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
+
+   if( s.ok() ) _revision = rev;
+
+   return _revision;
+}
+
 primary_iterator iterator_to( const value_type& x )
 {
    return primary_index_type::iterator_to( x );
@@ -632,14 +707,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     return entry_count==0;
   }
 
-  std::size_t size_()const
+  uint64_t size_()const
   {
     return entry_count;
   }
 
-  std::size_t max_size_()const
+  uint64_t max_size_()const
   {
-    return static_cast<std::size_t >(-1);
+    return static_cast<uint64_t >(-1);
   }
 
   template<typename Variant>
@@ -1056,7 +1131,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     boost::serialization::collection_size_type       s;
     detail::serialization_version<value_type> value_version;
     if(version<1){
-      std::size_t sz;
+      uint64_t sz;
       ar>>boost::serialization::make_nvp("count",sz);
       s=static_cast<boost::serialization::collection_size_type>(sz);
     }
@@ -1072,7 +1147,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
     index_loader_type lm(bfm_allocator::member,s);
 
-    for(std::size_t n=0;n<s;++n){
+    for(uint64_t n=0;n<s;++n){
       detail::archive_constructed<Value> value("item",ar,value_version);
       std::pair<node_type*,bool> p=insert_rv_(
         value.get(),super::end().get_node());
@@ -1104,7 +1179,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 #endif
 
 private:
-  std::size_t entry_count;
+  uint64_t entry_count;
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)

@@ -202,7 +202,10 @@ namespace chainbase {
          typedef undo_state< value_type >                              undo_state_type;
 
          generic_index( allocator<value_type> a, bfs::path p )
-         :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this))
+         {
+            _revision = _indices.revision();
+         }
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -304,11 +307,14 @@ namespace chainbase {
                int64_t        _revision = 0;
          };
 
+         // TODO: This function needs some work to make it consistent on failure.
          session start_undo_session()
          {
+            _indices.set_revision( ++_revision );
+            assert( _indices.revision() == _revision );
             _stack.emplace_back( _indices.get_allocator() );
             _stack.back().old_next_id = _next_id;
-            _stack.back().revision = ++_revision;
+            _stack.back().revision = _revision;
             return session( *this, _revision );
          }
 
@@ -344,7 +350,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
+            _indices.set_revision( --_revision );
+            assert( _indices.revision() == _revision );
          }
 
          /**
@@ -452,7 +459,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
+            _indices.set_revision( --_revision );
+            assert( _indices.revision() == _revision );
          }
 
          /**
@@ -479,6 +487,8 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
+            _indices.set_revision( _revision );
+            assert( _indices.revision() == _revision );
          }
 
       private:

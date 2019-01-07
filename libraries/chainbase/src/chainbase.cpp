@@ -89,6 +89,8 @@ namespace chainbase {
       _segment.reset();
       _meta.reset();
       _data_dir = bfs::path();
+#else
+      undo_all();
 #endif
    }
 
