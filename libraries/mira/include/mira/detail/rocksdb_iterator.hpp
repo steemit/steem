@@ -462,17 +462,18 @@ public:
       );
    }
 
-   template< typename CompatibleKey >
+   template< typename CompatibleKey, typename Compare >
    static std::pair< rocksdb_iterator, rocksdb_iterator > equal_range(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const CompatibleKey& k )
+      const CompatibleKey& k,
+      const Compare& c )
    {
       return std::make_pair< rocksdb_iterator, rocksdb_iterator >(
          lower_bound( handles, index, db, cache, k ),
-         upper_bound( handles, index, db, cache, k )
+         upper_bound( handles, index, db, cache, k, c )
       );
    }
 };
