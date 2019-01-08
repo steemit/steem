@@ -818,9 +818,19 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( get_last_operations( 1 )[0] == hardfork_vop );
       BOOST_REQUIRE( db->get(itr->op).timestamp == db->head_block_time() - STEEM_BLOCK_INTERVAL );
 
-      db->wipe( data_dir->path(), data_dir->path(), true );
    }
-   FC_LOG_AND_RETHROW()
+   catch( fc::exception& e )
+   {
+      db->wipe( data_dir->path(), data_dir->path(), true );
+      throw e;
+   }
+   catch( std::exception& e )
+   {
+      db->wipe( data_dir->path(), data_dir->path(), true );
+      throw e;
+   }
+
+   db->wipe( data_dir->path(), data_dir->path(), true );
 }
 
 BOOST_FIXTURE_TEST_CASE( generate_block_size, clean_database_fixture )
