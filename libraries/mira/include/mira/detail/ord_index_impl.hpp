@@ -98,7 +98,7 @@
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT
 #endif
 
-#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db, _cache
+#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db, *_cache
 
 namespace mira{
 
@@ -282,7 +282,7 @@ protected:
 
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
-   object_cache_type&                                 _cache;
+   std::shared_ptr< object_cache_type >               _cache;
 
 public:
 
@@ -576,7 +576,7 @@ public:
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   ordered_index_impl(const ctor_args_list& args_list,const allocator_type& al):
     super(args_list.get_tail(),al),
-    _cache(object_cache_factory_type().static_create()),
+    _cache( object_cache_factory_type::get_shared_cache() ),
     key(boost::tuples::get<0>(args_list.get_head())),
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
@@ -591,13 +591,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
     safe_super(),
 #endif
-    _cache(object_cache_factory_type().static_create()),
     key(x.key),
+    _cache( object_cache_factory_type::get_shared_cache() ),
     comp_(x.comp_)
   {
     /* Copy ctor just takes the key and compare objects from x. The rest is
      * done in a subsequent call to copy_().
      */
+    _cache = new object_cache_type;
   }
 
   ordered_index_impl(
@@ -609,8 +610,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
     safe_super(),
 #endif
-
-    _cache(object_cache_factory_type().static_create()),
+    _cache( object_cache_factory_type::get_shared_cache() ),
     key(x.key),
     comp_(x.comp_)
   {
@@ -624,46 +624,22 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
    iterator       make_iterator( const key_type& key )
    {
-      return iterator(
-         super::_handles,
-         COLUMN_INDEX,
-         super::_db,
-         _cache,
-         key
-      );
+      return iterator( ROCKSDB_ITERATOR_PARAM_PACK, key );
    }
 
    iterator       make_iterator( const ::rocksdb::Slice& s )
    {
-      return iterator(
-         super::_handles,
-         COLUMN_INDEX,
-         super::_db,
-         _cache,
-         s
-      );
+      return iterator( ROCKSDB_ITERATOR_PARAM_PACK, s );
    }
 
    const_iterator make_iterator( const key_type& key )const
    {
-      return const_iterator(
-         super::_handles,
-         COLUMN_INDEX,
-         super::_db,
-         _cache,
-         key
-      );
+      return const_iterator( ROCKSDB_ITERATOR_PARAM_PACK, key );
    }
 
    const_iterator make_iterator( const ::rocksdb::Slice& s )const
    {
-      return const_iterator(
-         super::_handles,
-         COLUMN_INDEX,
-         super::_db,
-         _cache,
-         s
-      );
+      return const_iterator( ROCKSDB_ITERATOR_PARAM_PACK, s );
    }
 
   void copy_(

@@ -254,6 +254,8 @@ public:
          assert( false );
       }
 
+      super::object_cache_factory_type::reset();
+
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
 
@@ -349,7 +351,7 @@ public:
          ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
          ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
 
-      super::_cache.clear();
+      super::_cache->clear();
    }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
@@ -950,7 +952,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       super::erase_( v );
       super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() );
       --entry_count;
-      super::_cache.invalidate( v );
+      super::_cache->invalidate( v );
       super::_write_buffer.Clear();
    }
 
@@ -968,7 +970,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   void clear_()
   {
     super::clear_();
-    super::_cache.clear();
+    super::_cache->clear();
     entry_count=0;
   }
 
@@ -1009,7 +1011,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
 
          if( status )
-            super::_cache.replace( v, mod );
+            super::_cache->replace( v, mod );
       }
       super::_write_buffer.Clear();
 

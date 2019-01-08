@@ -73,13 +73,19 @@ public:
 template< typename Value, typename Key, typename KeyFromValue >
 struct object_cache_factory
 {
-   object_cache< Value, Key, KeyFromValue >& static_create()
+   static std::shared_ptr< object_cache< Value, Key, KeyFromValue > > get_shared_cache( bool reset = false )
    {
-      static object_cache< Value, Key, KeyFromValue >* cache_ptr = nullptr;
-      if( cache_ptr == nullptr )
-         cache_ptr = new object_cache< Value, Key, KeyFromValue >;
+      static std::shared_ptr< object_cache< Value, Key, KeyFromValue > > cache_ptr;
 
-      return *cache_ptr;
+      if( !cache_ptr || reset )
+         cache_ptr = std::make_shared< object_cache< Value, Key, KeyFromValue > >();
+
+      return cache_ptr;
+   }
+
+   static void reset()
+   {
+      get_shared_cache( true );
    }
 };
 

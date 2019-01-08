@@ -1222,7 +1222,7 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    itr = wd_idx.upper_bound( boost::make_tuple( from_account.name, account_name_type() ) );
    uint16_t total_percent = 0;
 
-   while( itr->from_account == from_account.name && itr != wd_idx.end() )
+   while( itr != wd_idx.end() && itr->from_account == from_account.name )
    {
       total_percent += itr->percent;
       ++itr;
