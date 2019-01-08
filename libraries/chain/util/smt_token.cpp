@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/util/smt_token.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #ifdef STEEM_ENABLE_SMT

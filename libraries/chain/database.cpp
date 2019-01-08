@@ -2191,7 +2191,7 @@ void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
 {
    FC_ASSERT( db != nullptr );
    const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
-   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+   auto itr = idx.lower_bound( boost::make_tuple( phase, db->head_block_time() ) );
 
    while( itr != idx.end() && itr->phase == phase )
    {
