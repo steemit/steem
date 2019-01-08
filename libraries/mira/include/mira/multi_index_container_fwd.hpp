@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#define ID_INDEX 1
+
 namespace mira{
 
 namespace multi_index{

@@ -1011,7 +1011,22 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
 
          if( status )
-            super::_cache->replace( v, mod );
+         {
+            auto key = super::id( v );
+            auto ser_key = fc::raw::pack_to_vector( key );
+            ::rocksdb::PinnableSlice value_slice;
+
+            auto s = super::_db->Get(
+               ::rocksdb::ReadOptions(),
+               super::_handles[ ID_INDEX ],
+               ::rocksdb::Slice( ser_key.data(), ser_key.size() ),
+               &value_slice );
+            assert( s.ok() );
+
+            value_type value;
+            fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), value );
+            super::_cache->update( key, std::move( value ) );
+         }
       }
       super::_write_buffer.Clear();
 

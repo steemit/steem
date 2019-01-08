@@ -13,8 +13,6 @@
 
 namespace mira { namespace multi_index { namespace detail {
 
-#define ID_INDEX 1
-
 template< typename Value, typename Key, typename KeyFromValue,
           typename ID, typename IDFromValue >
 struct rocksdb_iterator :

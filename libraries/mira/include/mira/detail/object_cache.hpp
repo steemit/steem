@@ -46,16 +46,9 @@ public:
       _cache.erase( k );
    }
 
-   template< typename Modifier >
-   void replace( const Value& v, Modifier mod )
+   void update( const Key& k, Value&& v )
    {
-      replace( _get_key( v ), mod );
-   }
-
-   template< typename Modifier >
-   void replace( const Key& k, Modifier mod )
-   {
-      mod( *(_cache[ k ]) );
+      *(_cache[ k ]) = std::move( v );
    }
 
    ptr_type get( const Key& k )
