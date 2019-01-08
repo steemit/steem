@@ -177,6 +177,7 @@ struct api_account_object
       post_count( a.post_count ),
       can_vote( a.can_vote ),
       voting_manabar( a.voting_manabar ),
+      voting_power( a.voting_power ),
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -253,6 +254,7 @@ struct api_account_object
 
    bool              can_vote = false;
    util::manabar     voting_manabar;
+   uint16_t          voting_power = 0;
 
    asset             balance;
    asset             savings_balance;
@@ -566,7 +568,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(voting_power)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)

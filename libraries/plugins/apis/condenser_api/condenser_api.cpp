@@ -2082,7 +2082,7 @@ uint16_t api_account_object::_compute_voting_power( const database_api::api_acco
    vp_t2 /= vests;
 
    uint64_t vp_t2u = vp_t2.to_uint64();
-   if( vt_t2u == 0 )
+   if( vp_t2u == 0 )
       return 0;
 
    if( vp_t2u >= STEEM_100_PERCENT )

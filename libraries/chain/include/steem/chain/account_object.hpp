@@ -49,6 +49,7 @@ namespace steem { namespace chain {
 
          bool              can_vote = true;
          util::manabar     voting_manabar;
+         uint16_t          voting_power = 0;
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
@@ -406,7 +407,7 @@ FC_REFLECT( steem::chain::account_object,
              (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(voting_power)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
