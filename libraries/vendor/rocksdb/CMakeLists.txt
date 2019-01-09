@@ -73,17 +73,7 @@ else()
     endif()
   endif()
 
-  # No config file for this
-  option(WITH_GFLAGS "build with GFlags" ON)
-  if(WITH_GFLAGS)
-    find_package(gflags)
-    if(gflags_FOUND)
-      add_definitions(-DGFLAGS=1)
-      include_directories(${gflags_INCLUDE_DIR})
-      list(APPEND THIRDPARTY_LIBS ${gflags_LIBRARIES})
-    endif()
-  endif()
-
+  option(WITH_SNAPPY "build with SNAPPY" OFF)
   if(WITH_SNAPPY)
     find_package(snappy REQUIRED)
     add_definitions(-DSNAPPY)
@@ -143,17 +133,20 @@ endif()
 
 string(REGEX REPLACE "[^0-9a-f]+" "" GIT_SHA "${GIT_SHA}")
 
-
-# Read rocksdb version from version.h header file.
-file(READ include/rocksdb/version.h version_header_file)
-string(REGEX MATCH "#define ROCKSDB_MAJOR ([0-9]+)" _ ${version_header_file})
-set(ROCKSDB_VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "#define ROCKSDB_MINOR ([0-9]+)" _ ${version_header_file})
-set(ROCKSDB_VERSION_MINOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "#define ROCKSDB_PATCH ([0-9]+)" _ ${version_header_file})
-set(ROCKSDB_VERSION_PATCH ${CMAKE_MATCH_1})
-set(ROCKSDB_VERSION ${ROCKSDB_VERSION_MAJOR}.${ROCKSDB_VERSION_MINOR}.${ROCKSDB_VERSION_PATCH})
-
+if(NOT WIN32)
+  execute_process(COMMAND
+      "./build_tools/version.sh" "full"
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE ROCKSDB_VERSION
+  )
+  string(STRIP "${ROCKSDB_VERSION}" ROCKSDB_VERSION)
+  execute_process(COMMAND
+      "./build_tools/version.sh" "major"
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE ROCKSDB_VERSION_MAJOR
+  )
+  string(STRIP "${ROCKSDB_VERSION_MAJOR}" ROCKSDB_VERSION_MAJOR)
+endif()
 
 option(WITH_MD_LIBRARY "build with MD" ON)
 if(WIN32 AND MSVC)
@@ -180,7 +173,7 @@ else()
   endif()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -fno-omit-frame-pointer")
     include(CheckCXXCompilerFlag)
     CHECK_CXX_COMPILER_FLAG("-momit-leaf-frame-pointer" HAVE_OMIT_LEAF_FRAME_POINTER)
     if(HAVE_OMIT_LEAF_FRAME_POINTER)
@@ -189,56 +182,36 @@ else()
   endif()
 endif()
 
-include(CheckCCompilerFlag)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
-  CHECK_C_COMPILER_FLAG("-maltivec" HAS_ALTIVEC)
-  if(HAS_ALTIVEC)
-    message(STATUS " HAS_ALTIVEC yes")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maltivec")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -maltivec")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=power8")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=power8")
-  endif(HAS_ALTIVEC)
-endif(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
-
 option(PORTABLE "build a portable binary" OFF)
 option(FORCE_SSE42 "force building with SSE4.2, even when PORTABLE=ON" OFF)
 if(PORTABLE)
   # MSVC does not need a separate compiler flag to enable SSE4.2; if nmmintrin.h
   # is available, it is available by default.
   if(FORCE_SSE42 AND NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mpclmul")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
   endif()
 else()
   if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
   else()
-    if(NOT HAVE_POWER8)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
   endif()
 endif()
 
 include(CheckCXXSourceCompiles)
 if(NOT MSVC)
-  set(CMAKE_REQUIRED_FLAGS "-msse4.2 -mpclmul")
+  set(CMAKE_REQUIRED_FLAGS "-msse4.2")
 endif()
 CHECK_CXX_SOURCE_COMPILES("
 #include <cstdint>
 #include <nmmintrin.h>
-#include <wmmintrin.h>
 int main() {
   volatile uint32_t x = _mm_crc32_u32(0, 0);
-  const auto a = _mm_set_epi64x(0, 0);
-  const auto b = _mm_set_epi64x(0, 0);
-  const auto c = _mm_clmulepi64_si128(a, b, 0x00);
-  auto d = _mm_cvtsi128_si64(c);
 }
 " HAVE_SSE42)
 unset(CMAKE_REQUIRED_FLAGS)
 if(HAVE_SSE42)
   add_definitions(-DHAVE_SSE42)
-  add_definitions(-DHAVE_PCLMUL)
 elseif(FORCE_SSE42)
   message(FATAL_ERROR "FORCE_SSE42=ON but unable to compile with SSE4.2 enabled")
 endif()
@@ -303,61 +276,18 @@ if(WITH_NUMA)
   list(APPEND THIRDPARTY_LIBS ${NUMA_LIBRARIES})
 endif()
 
-option(WITH_TBB "build with Threading Building Blocks (TBB)" OFF)
-if(WITH_TBB)
-  find_package(TBB REQUIRED)
-  add_definitions(-DTBB)
-  include_directories(${TBB_INCLUDE_DIR})
-  list(APPEND THIRDPARTY_LIBS ${TBB_LIBRARIES})
-endif()
-
-# Stall notifications eat some performance from inserts
-option(DISABLE_STALL_NOTIF "Build with stall notifications" OFF)
-if(DISABLE_STALL_NOTIF)
-  add_definitions(-DROCKSDB_DISABLE_STALL_NOTIFICATION)
-endif()
-
-
-if(DEFINED USE_RTTI)
-  if(USE_RTTI)
-    message(STATUS "Enabling RTTI")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DROCKSDB_USE_RTTI")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DROCKSDB_USE_RTTI")
-  else()
-    if(MSVC)
-      message(STATUS "Disabling RTTI in Release builds. Always on in Debug.")
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DROCKSDB_USE_RTTI")
-      set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GR-")
-    else()
-      message(STATUS "Disabling RTTI in Release builds")
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-rtti")
-      set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-rtti")
-    endif()
-  endif()
+if(DEFINED OPTDBG)
+   set(OPTIMIZE_DEBUG ${OPTDBG})
 else()
-  message(STATUS "Enabling RTTI in Debug builds only (default)")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DROCKSDB_USE_RTTI")
-  if(MSVC)
-     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GR-")
-  else()
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-rtti")
-  endif()
+   set(OPTIMIZE_DEBUG ${OPTIMIZE_DEBUG_DEFAULT})
 endif()
 
-# Used to run CI build and tests so we can run faster
-option(OPTDBG "Build optimized debug build with MSVC" OFF)
-option(WITH_RUNTIME_DEBUG "build with debug version of runtime library" ON)
 if(MSVC)
-  if(OPTDBG)
+  if((${OPTIMIZE_DEBUG} EQUAL 1))
     message(STATUS "Debug optimization is enabled")
-    set(CMAKE_CXX_FLAGS_DEBUG "/Oxt")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Oxt /${RUNTIME_LIBRARY}d")
   else()
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /RTC1 /Gm")
-  endif()
-  if(WITH_RUNTIME_DEBUG)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /${RUNTIME_LIBRARY}d")
-  else()
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /${RUNTIME_LIBRARY}")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /RTC1 /Gm /${RUNTIME_LIBRARY}d")
   endif()
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oxt /Zp8 /Gm- /Gy /${RUNTIME_LIBRARY}")
 
@@ -410,8 +340,11 @@ if(NOT WIN32)
 endif()
 
 option(WITH_FALLOCATE "build with fallocate" ON)
+
 if(WITH_FALLOCATE)
-  CHECK_CXX_SOURCE_COMPILES("
+  set(CMAKE_REQUIRED_FLAGS ${CMAKE_C_FLAGS})
+  include(CheckCSourceCompiles)
+  CHECK_C_SOURCE_COMPILES("
 #include <fcntl.h>
 #include <linux/falloc.h>
 int main() {
@@ -424,36 +357,10 @@ int main() {
   endif()
 endif()
 
-CHECK_CXX_SOURCE_COMPILES("
-#include <fcntl.h>
-int main() {
-  int fd = open(\"/dev/null\", 0);
-  sync_file_range(fd, 0, 1024, SYNC_FILE_RANGE_WRITE);
-}
-" HAVE_SYNC_FILE_RANGE_WRITE)
-if(HAVE_SYNC_FILE_RANGE_WRITE)
-  add_definitions(-DROCKSDB_RANGESYNC_PRESENT)
-endif()
-
-CHECK_CXX_SOURCE_COMPILES("
-#include <pthread.h>
-int main() {
-  (void) PTHREAD_MUTEX_ADAPTIVE_NP;
-}
-" HAVE_PTHREAD_MUTEX_ADAPTIVE_NP)
-if(HAVE_PTHREAD_MUTEX_ADAPTIVE_NP)
-  add_definitions(-DROCKSDB_PTHREAD_ADAPTIVE_MUTEX)
-endif()
-
-include(CheckCXXSymbolExists)
-check_cxx_symbol_exists(malloc_usable_size malloc.h HAVE_MALLOC_USABLE_SIZE)
+include(CheckFunctionExists)
+CHECK_FUNCTION_EXISTS(malloc_usable_size HAVE_MALLOC_USABLE_SIZE)
 if(HAVE_MALLOC_USABLE_SIZE)
   add_definitions(-DROCKSDB_MALLOC_USABLE_SIZE)
-endif()
-
-check_cxx_symbol_exists(sched_getcpu sched.h HAVE_SCHED_GETCPU)
-if(HAVE_SCHED_GETCPU)
-  add_definitions(-DROCKSDB_SCHED_GETCPU_PRESENT)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR})
@@ -683,17 +590,13 @@ set(SOURCES
         utilities/write_batch_with_index/write_batch_with_index_internal.cc
         $<TARGET_OBJECTS:build_version>)
 
-if(HAVE_SSE42 AND NOT MSVC)
-  set_source_files_properties(
-    util/crc32c.cc
-    PROPERTIES COMPILE_FLAGS "-msse4.2 -mpclmul")
+if(HAVE_SSE42 AND NOT FORCE_SSE42)
+  if(NOT MSVC)
+set_source_files_properties(
+  util/crc32c.cc
+      PROPERTIES COMPILE_FLAGS "-msse4.2")
+  endif()
 endif()
-
-if(HAVE_POWER8)
-  list(APPEND SOURCES
-    util/crc32c_ppc.c
-    util/crc32c_ppc_asm.S)
-endif(HAVE_POWER8)
 
 if(WIN32)
   list(APPEND SOURCES
@@ -724,6 +627,28 @@ endif()
 set(ROCKSDB_STATIC_LIB rocksdb${ARTIFACT_SUFFIX})
 set(ROCKSDB_SHARED_LIB rocksdb-shared${ARTIFACT_SUFFIX})
 set(ROCKSDB_IMPORT_LIB ${ROCKSDB_SHARED_LIB})
+if(WIN32)
+  set(SYSTEM_LIBS ${SYSTEM_LIBS} Shlwapi.lib Rpcrt4.lib)
+  set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+else()
+  set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
+
+  if(BUILD_SHARED_LIBS)
+      set(LIBS ${ROCKSDB_SHARED_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+
+      add_library(${ROCKSDB_SHARED_LIB} SHARED ${SOURCES})
+      target_link_libraries(${ROCKSDB_SHARED_LIB}
+         ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+      set_target_properties(${ROCKSDB_SHARED_LIB} PROPERTIES
+                              LINKER_LANGUAGE CXX
+                              VERSION ${ROCKSDB_VERSION}
+                              SOVERSION ${ROCKSDB_VERSION_MAJOR}
+                              CXX_STANDARD 11
+                              OUTPUT_NAME "rocksdb")
+   else()
+      set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+   endif(BUILD_SHARED_LIBS)
+endif()
 
 option(WITH_LIBRADOS "Build with librados" OFF)
 if(WITH_LIBRADOS)
@@ -732,27 +657,13 @@ if(WITH_LIBRADOS)
   list(APPEND THIRDPARTY_LIBS rados)
 endif()
 
-if(WIN32)
-  set(SYSTEM_LIBS ${SYSTEM_LIBS} Shlwapi.lib Rpcrt4.lib)
-  set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
-else()
-  set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
-  set(LIBS ${ROCKSDB_SHARED_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
-
-  add_library(${ROCKSDB_SHARED_LIB} SHARED ${SOURCES})
-  target_link_libraries(${ROCKSDB_SHARED_LIB}
-    ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
-  set_target_properties(${ROCKSDB_SHARED_LIB} PROPERTIES
-                        LINKER_LANGUAGE CXX
-                        VERSION ${ROCKSDB_VERSION}
-                        SOVERSION ${ROCKSDB_VERSION_MAJOR}
-                        CXX_STANDARD 11
-                        OUTPUT_NAME "rocksdb")
-endif()
-
 add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
+
 target_link_libraries(${ROCKSDB_STATIC_LIB}
-  ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+   ${THIRDPARTY_LIBS}
+   ${SYSTEM_LIBS}
+)
+
 
 if(WIN32)
   add_library(${ROCKSDB_IMPORT_LIB} SHARED ${SOURCES})
@@ -813,7 +724,7 @@ if(NOT WIN32 OR ROCKSDB_INSTALL_ON_WINDOWS)
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
-
+if (BUILD_SHARED_LIBS)
   install(
     TARGETS ${ROCKSDB_SHARED_LIB}
     EXPORT RocksDBTargets
@@ -823,7 +734,7 @@ if(NOT WIN32 OR ROCKSDB_INSTALL_ON_WINDOWS)
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
-
+endif()
   install(
     EXPORT RocksDBTargets
     COMPONENT devel
