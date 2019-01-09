@@ -1,6 +1,5 @@
 #include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/util/smt_token.hpp>
-#include <boost/range/adaptor/reversed.hpp>
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain { namespace util { namespace smt {
@@ -9,17 +8,13 @@ const smt_token_object* find_token( const database& db, uint32_t nai )
 {
    const auto& idx = db.get_index< smt_token_index >().indices().get< by_symbol >();
 
-   auto range = idx.range(
-      [nai] ( const asset_symbol_type& a ) { return a >= asset_symbol_type::from_nai( nai, 0 ); },
-      [nai] ( const asset_symbol_type& a ) { return a <= asset_symbol_type::from_nai( nai, STEEM_ASSET_MAX_DECIMALS ); }
-   );
-
-   /*
-    * There *should* be only 1 record within the provided range, this is why we simply return
-    * the address of the first element within it.
-    */
-   for ( const auto& record : boost::make_iterator_range( range ) )
-      return &record;
+   auto itr = idx.lower_bound( asset_symbol_type::from_nai( nai, 0 ) );
+   for (; itr != idx.end(); ++itr )
+   {
+      if (itr->liquid_symbol.to_nai() != nai )
+         break;
+      return &*itr;
+   }
 
    return nullptr;
 }
@@ -45,14 +40,16 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
     * The last element in this range is our highest value 'schedule_time', so
     * we reverse the iterator range and take the first one.
     */
-   for ( const auto& e : boost::adaptors::reverse( boost::make_iterator_range( range ) ) )
+   auto itr = range.second;
+   while ( itr != range.first )
    {
+      --itr;
       // A maximum interval count indicates we should emit indefinitely
-      if ( e.interval_count == SMT_EMIT_INDEFINITELY )
+      if ( itr->interval_count == SMT_EMIT_INDEFINITELY )
          return time_point_sec::maximum();
       else
          // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
-         return e.schedule_time + fc::seconds( uint64_t( e.interval_seconds ) * uint64_t( e.interval_count ) );
+         return itr->schedule_time + fc::seconds( uint64_t( itr->interval_seconds ) * uint64_t( itr->interval_count ) );
    }
 
    return {};

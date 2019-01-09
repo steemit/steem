@@ -335,30 +335,6 @@ public:
       return lower_bound( handles, index, db, cache, Key( k ) );
    }
 
-   static rocksdb_iterator lower_bound(
-      const column_handles& handles,
-      size_t index,
-      db_ptr db,
-      cache_type& cache,
-      const std::function< bool( value_type ) >& c )
-   {
-      auto itr = rocksdb_iterator::end( handles, index, db, cache );
-      --itr;
-
-      if( itr.valid() )
-      {
-         while( c( *itr ) )
-         {
-            --itr;
-            if( !itr.valid() ) break;
-         }
-
-         ++itr;
-      }
-
-      return itr;
-   }
-
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
@@ -408,41 +384,6 @@ public:
       }
 
       return itr;
-   }
-
-   static rocksdb_iterator upper_bound(
-      const column_handles& handles,
-      size_t index,
-      db_ptr db,
-      cache_type& cache,
-      const std::function< bool( value_type ) >& c )
-   {
-      auto itr = rocksdb_iterator::begin( handles, index, db, cache );
-
-      if( itr.valid() )
-      {
-         while( c( *itr ) )
-         {
-            ++itr;
-            if( !itr.valid() ) break;
-         }
-      }
-
-      return itr;
-   }
-
-   static std::pair< rocksdb_iterator, rocksdb_iterator > range(
-      const column_handles& handles,
-      size_t index,
-      db_ptr db,
-      cache_type& cache,
-      const std::function< bool( value_type ) >& lower,
-      const std::function< bool( value_type ) >& upper )
-   {
-      return std::make_pair< rocksdb_iterator, rocksdb_iterator >(
-         lower_bound( handles, index, db, cache, lower ),
-         upper_bound( handles, index, db, cache, upper )
-      );
    }
 
    template< typename LowerBoundType, typename UpperBoundType >
