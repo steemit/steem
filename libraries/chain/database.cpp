@@ -2854,6 +2854,7 @@ void database::init_genesis( uint64_t init_supply )
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.sbd_stop_adjust = 0;
       } );
 
       // Nothing to do
@@ -3674,7 +3675,7 @@ void database::update_virtual_supply()
 
          if( percent_sbd <= dgp.sbd_start_percent )
             dgp.sbd_print_rate = STEEM_100_PERCENT;
-         else if( percent_sbd >= dgp.sbd_stop_percent )
+         else if( percent_sbd >= dgp.sbd_stop_percent - dgp.sbd_stop_adjust )
             dgp.sbd_print_rate = 0;
          else
             dgp.sbd_print_rate = ( ( dgp.sbd_stop_percent - percent_sbd ) * STEEM_100_PERCENT ) / ( dgp.sbd_stop_percent - dgp.sbd_start_percent );
@@ -4888,10 +4889,12 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-   #ifdef IS_TEST_NET
       case STEEM_HARDFORK_0_21:
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+            });
          break;
-#endif
       default:
          break;
    }
