@@ -39,10 +39,15 @@
 #include <mira/detail/object_cache.hpp>
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/utility/base_from_member.hpp>
+
+#include <rocksdb/filter_policy.h>
+#include <rocksdb/table.h>
+#include <rocksdb/statistics.h>
 
 #include <iostream>
 
@@ -74,6 +79,8 @@
 #endif
 
 #define DEFAULT_COLUMN 0
+#define MIRA_MAX_OPEN_FILES_PER_DB 8
+#define MIRA_SHARED_CACHE_SIZE (4ull * 1024 * 1024 * 1024 ) /* 4G */
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -87,6 +94,21 @@ namespace multi_index{
 #pragma warning(disable:4522) /* spurious warning on multiple operator=()'s */
 #endif
 
+struct rocksdb_options_factory
+{
+   static std::shared_ptr< rocksdb::Cache > get_shared_cache()
+   {
+      static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE );
+      return cache;
+   }
+
+   static std::shared_ptr< rocksdb::Statistics > get_shared_stats()
+   {
+      static std::shared_ptr< rocksdb::Statistics > cache = ::rocksdb::CreateDBStatistics();;
+      return cache;
+   }
+};
+
 template<typename Value,typename IndexSpecifierList,typename Allocator>
 class multi_index_container:
   private boost::base_from_member<
@@ -96,32 +118,17 @@ class multi_index_container:
         Value,IndexSpecifierList,Allocator>::type
     >::type>,
   BOOST_MULTI_INDEX_PRIVATE_IF_MEMBER_TEMPLATE_FRIENDS detail::header_holder<
-#ifndef BOOST_NO_CXX11_ALLOCATOR
     typename std::allocator_traits<
-#endif
       typename boost::detail::allocator::rebind_to<
         Allocator,
         typename detail::multi_index_node_type<
           Value,IndexSpecifierList,Allocator>::type
       >::type
-#ifdef BOOST_NO_CXX11_ALLOCATOR
-    ::pointer,
-#else
     >::pointer,
-#endif
     multi_index_container<Value,IndexSpecifierList,Allocator> >,
   public detail::multi_index_base_type<
     Value,IndexSpecifierList,Allocator>::type
 {
-#if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
-    BOOST_WORKAROUND(__MWERKS__,<=0x3003)
-/* The "ISO C++ Template Parser" option in CW8.3 has a problem with the
- * lifetime of const references bound to temporaries --precisely what
- * scopeguards are.
- */
-
-#pragma parse_mfunc_templ off
-#endif
 
 private:
   BOOST_COPYABLE_AND_MOVABLE(multi_index_container)
@@ -150,6 +157,9 @@ private:
     multi_index_container>                        bfm_header;
 
    int64_t                                         _revision = -1;
+
+   std::string                                     _name;
+   std::shared_ptr< ::rocksdb::Statistics >        _stats;
 
 public:
   /* All types are inherited from super, a few are explicitly
@@ -196,7 +206,13 @@ public:
    {
       assert( p.is_absolute() );
 
-      std::string str_path = ( p / boost::core::demangle( typeid( Value ).name() ) ).string();
+      std::vector< std::string > split_v;
+      auto type = boost::core::demangle( typeid( Value ).name() );
+      boost::split( split_v, type, boost::is_any_of( ":" ) );
+
+      _name = "rocksdb_" + *(split_v.rbegin());
+
+      std::string str_path = ( p / _name ).string();
 
       create_schema( str_path );
 
@@ -204,10 +220,48 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
+      _stats = rocksdb_options_factory::get_shared_stats();
+
       ::rocksdb::Options opts;
-      opts.IncreaseParallelism();
-      opts.OptimizeLevelStyleCompaction();
-      opts.max_open_files = 8;
+      //opts.IncreaseParallelism();
+      //opts.OptimizeLevelStyleCompaction();
+      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+      //opts.compression = rocksdb::CompressionType::kNoCompression;
+
+      //opts.statistics = _stats;
+/*
+      //opts.block_size = 8 << 10; //8K
+      //opts.cache_size = 4 << 30; // 4G
+      opts.write_buffer_size = 512 << 20; // 512M
+      opts.max_write_buffer_number = 8;
+      //opts.min_write_buffer_number_to_merge = 4;
+      opts.max_bytes_for_level_base = 2 << 30; // 3G
+      opts.max_bytes_for_level_multiplier = 5;
+      opts.target_file_size_base = 128 << 20; // 20M
+      opts.target_file_size_multiplier = 1;
+      opts.max_background_flushes = 2;
+      opts.max_background_compactions = 32;
+      opts.level0_file_num_compaction_trigger = 2;
+      opts.level0_slowdown_writes_trigger = 24;
+      opts.level0_stop_writes_trigger = 56;
+      //opts.cache_numshardbits = 6;
+      opts.table_cache_numshardbits = 4;
+      opts.allow_mmap_reads = 1;
+      opts.allow_mmap_writes = 0;
+      opts.use_fsync = false;
+      opts.use_adaptive_mutex = false;
+      opts.bytes_per_sync = 2 << 20; // 2M
+      //opts.source_compaction_factor = 1;
+      //opts.max_grandparent_overlap_factor = 5;
+//*/
+      //opts.allow_mmap_reads = 1;
+      /*
+      ::rocksdb::BlockBasedTableOptions table_options;
+      table_options.block_size = 8 << 10; // 8K
+      table_options.block_cache = rocksdb_options_factory::get_shared_cache();
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+      opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
+      //*/
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
@@ -267,9 +321,9 @@ public:
       populate_column_definitions_( column_defs );
 
       ::rocksdb::Options opts;
-      opts.IncreaseParallelism();
-      opts.OptimizeLevelStyleCompaction();
-      opts.max_open_files = 8;
+      //opts.IncreaseParallelism();
+      //opts.OptimizeLevelStyleCompaction();
+      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
 
       ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
 
@@ -581,6 +635,12 @@ int64_t set_revision( int64_t rev )
    if( s.ok() ) _revision = rev;
 
    return _revision;
+}
+
+void print_stats() const
+{
+   std::cout << _name << " stats:\n";
+   std::cout << _stats->ToString() << "\n";
 }
 
 primary_iterator iterator_to( const value_type& x )

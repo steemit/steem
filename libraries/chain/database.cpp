@@ -226,8 +226,12 @@ uint32_t database::reindex( const open_args& args )
          {
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
+            {
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
+
+               //get_index< account_index >().indices().print_stats();
+            }
             apply_block( itr.first, skip_flags );
 
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )

@@ -518,7 +518,7 @@ struct composite_key_result
       >::type                                               key_type;
    typedef typename composite_key_type::value_type          value_type;
 
-   composite_key_result( const composite_key_type& composite_key, const value_type& value ) :
+   explicit composite_key_result( const composite_key_type& composite_key, const value_type& value ) :
       key(
          key_from_value<
             typename composite_key_type::key_extractor_tuple,
@@ -528,7 +528,7 @@ struct composite_key_result
    {}
 
    template< typename... Args >
-   composite_key_result( const boost::tuples::tuple< Args... > compat_key ) :
+   explicit composite_key_result( const boost::tuples::tuple< Args... > compat_key ) :
       key( convert_compatible_key<
          key_type,
          boost::tuples::tuple< Args... >
@@ -536,7 +536,7 @@ struct composite_key_result
    {}
 
    template< typename CompatibleKey >
-   composite_key_result( const CompatibleKey& k ) : composite_key_result( boost::make_tuple( k ) )
+   explicit composite_key_result( const CompatibleKey& k ) : composite_key_result( boost::make_tuple( k ) )
    {}
 
    composite_key_result() {}

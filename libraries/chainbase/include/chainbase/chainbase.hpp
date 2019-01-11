@@ -603,6 +603,7 @@ namespace chainbase {
          virtual uint32_t type_id()const  = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
+         virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
          virtual void clear() = 0;
 
@@ -644,6 +645,11 @@ namespace chainbase {
             typedef typename BaseIndex::index_type index_type;
             helpers::index_statistic_provider<index_type> provider;
             return provider.gather_statistics(_base.indices(), onlyStaticInfo);
+         }
+
+         virtual void print_stats() const override final
+         {
+            _base.indicies().print_stats();
          }
 
          virtual size_t size() const override final
@@ -820,6 +826,10 @@ namespace chainbase {
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
+         void print_stats()
+         {
+            for( const auto& i : _index_list )  i->print_stats();
+         }
 
          template<typename MultiIndexType>
          void add_index()

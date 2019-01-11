@@ -53,7 +53,7 @@ public:
       // Not sure the implicit move constuctor for ManageSnapshot isn't going to release the snapshot...
       //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
       //_opts.snapshot = _snapshot->snapshot();
-      _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+      //_iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
    }
 
    rocksdb_iterator( const rocksdb_iterator& other ) :
@@ -63,10 +63,13 @@ public:
       _db( other._db ),
       _cache( other._cache )
    {
-      _iter.reset( _db->NewIterator( _opts, _handles[ _index] ) );
+      if( other._iter )
+      {
+         _iter.reset( _db->NewIterator( _opts, _handles[ _index] ) );
 
-      if( other._iter->Valid() )
-         _iter->Seek( other._iter->key() );
+         if( other._iter->Valid() )
+            _iter->Seek( other._iter->key() );
+      }
    }
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const Key& k ) :
@@ -167,6 +170,8 @@ public:
    rocksdb_iterator& operator++()
    {
       //BOOST_ASSERT( valid() );
+      if( !valid() ) _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+
       _iter->Next();
       assert( _iter->status().ok() );
       return *this;
@@ -183,6 +188,7 @@ public:
    {
       if( !valid() )
       {
+         _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
          _iter->SeekToLast();
       }
       else
@@ -202,14 +208,14 @@ public:
 
    bool valid()const
    {
-      return _iter->Valid();
+      return _iter && _iter->Valid();
    }
 
    bool unchecked()const { return false; }
 
    bool equals( const rocksdb_iterator& other )const
    {
-      if( _iter->Valid() && other._iter->Valid() )
+      if( valid() && other.valid() )
       {
          ::rocksdb::Slice this_key = _iter->key();
          ::rocksdb::Slice other_key = other._iter->key();
@@ -218,7 +224,7 @@ public:
             && memcmp( this_key.data(), other_key.data(), this_key.size() ) == 0 );
       }
 
-      return _iter->Valid() == other._iter->Valid();
+      return valid() == other.valid();
    }
 
    rocksdb_iterator& operator=( rocksdb_iterator&& other )
@@ -237,6 +243,7 @@ public:
       cache_type& cache )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
       itr._iter->SeekToFirst();
       return itr;
    }
@@ -259,6 +266,7 @@ public:
       const CompatibleKey& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -289,6 +297,7 @@ public:
       const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -317,6 +326,7 @@ public:
       const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -343,6 +353,7 @@ public:
       const std::function< bool( value_type ) >& c )
    {
       auto itr = rocksdb_iterator::end( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
       --itr;
 
       if( itr.valid() )
@@ -367,6 +378,7 @@ public:
       const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( k );
       itr._iter->SeekForPrev( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -389,6 +401,7 @@ public:
       const Compare& c )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
       itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
@@ -418,6 +431,7 @@ public:
       const std::function< bool( value_type ) >& c )
    {
       auto itr = rocksdb_iterator::begin( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       if( itr.valid() )
       {

@@ -5,6 +5,8 @@
 #include <map>
 #include <memory>
 
+#include <iostream>
+
 namespace mira { namespace multi_index { namespace detail {
 
 template< typename Value, typename Key, typename KeyFromValue >
