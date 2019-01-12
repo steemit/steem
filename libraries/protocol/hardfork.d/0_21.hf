@@ -1,9 +1,28 @@
 #ifndef STEEM_HARDFORK_0_21
 #define STEEM_HARDFORK_0_21 21
-#define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_21
 
-#define STEEM_HARDFORK_0_21_TIME 1597970800 // Future 2020...
+// TODO: decide date
+#define STEEM_HARDFORK_0_21_TIME 1550707200 // 2019-02-21
 
 #define STEEM_HARDFORK_0_21_VERSION hardfork_version( 0, 21 )
 
+namespace hardfork21
+{
+
+inline static const std::set< std::string >& get_steemit_accounts()
+{
+   static const std::set< std::string > steemit_accounts
+   {
+    "steem",
+    "steemit",
+    "steemit2",
+    "steemit3",
+    "misterdelegation",
+    // TODO: add all known accounts
+    };
+
+   return steemit_accounts;
+}
+
+}
 #endif
