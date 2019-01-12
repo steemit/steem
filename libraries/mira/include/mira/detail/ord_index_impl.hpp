@@ -560,12 +560,6 @@ public:
       return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
    }
 
-   std::pair< iterator, iterator >
-   range( std::function< bool( value_type ) > lower, std::function< bool( value_type ) > upper )const
-   {
-      return iterator::range( ROCKSDB_ITERATOR_PARAM_PACK, lower, upper );
-   }
-
    template< typename CompatibleKey >
    std::pair< iterator, iterator >
    equal_range( const CompatibleKey& key )const
