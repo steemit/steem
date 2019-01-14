@@ -2,7 +2,7 @@
 
 #include <rocksdb/slice.h>
 
-#include <fc/io/raw.hpp>
+#include <mira/detail/rocksdb_pack.hpp>
 
 #include <assert.h>
 
@@ -42,10 +42,7 @@ struct slice_comparator final : abstract_slice_comparator< Key, CompareType >
 
       if( ( x.size() == y.size() ) && memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
 
-      int r = (*this)(
-         fc::raw::unpack_from_char_array< Key >( x.data(), x.size() ),
-         fc::raw::unpack_from_char_array< Key >( y.data(), y.size() )
-      );
+      int r = (*this)( unpack_from_slice< Key >( x ), unpack_from_slice< Key >( y ) );
 
       if( r ) return -1;
 
