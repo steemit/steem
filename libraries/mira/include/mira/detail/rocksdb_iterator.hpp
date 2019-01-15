@@ -42,6 +42,11 @@ private:
    cache_type&                                     _cache;
    IDFromValue                                     _get_id;
 
+   // Cached iterators
+   ID                                              _cache_key;
+   ::rocksdb::Slice                                _cached_key_slice;
+   bool                                            _cached_itr = false;
+
 public:
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
@@ -55,6 +60,16 @@ public:
       //_opts.snapshot = _snapshot->snapshot();
       //_iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
    }
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ID cache_key, const ::rocksdb::Slice key_slice ) :
+      _handles( handles ),
+      _index( index ),
+      _db( db ),
+      _cache( cache ),
+      _cache_key( cache_key ),
+      _cached_key_slice( key_slice ),
+      _cached_itr( true )
+   {
+   }
 
    rocksdb_iterator( const rocksdb_iterator& other ) :
       _handles( other._handles ),
@@ -63,7 +78,13 @@ public:
       _db( other._db ),
       _cache( other._cache )
    {
-      if( other._iter )
+      if ( other._cached_itr )
+      {
+         _cache_key = other._cache_key;
+         _cached_key_slice = other._cached_key_slice;
+         _cached_itr = other._cached_itr;
+      }
+      else if( other._iter )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index] ) );
 
@@ -125,37 +146,44 @@ public:
    const value_type& operator*()const
    {
       BOOST_ASSERT( valid() );
-      ::rocksdb::Slice key_slice = _iter->value();
       value_ptr ptr;
-      ID id;
 
-      if( _index == ID_INDEX )
+      if ( _cached_itr )
       {
-         fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
-         ptr = _cache.get( id );
-
-         if( !ptr )
-         {
-            // We are iterating on the primary key, so there is no indirection
-            ptr = std::make_shared< value_type >();
-            fc::raw::unpack_from_char_array< value_type >( key_slice.data(), key_slice.size(), *ptr );
-            ptr = _cache.cache( std::move( *ptr ) );
-         }
+         ptr = _cache.get( _cache_key );
       }
       else
       {
-         ::rocksdb::PinnableSlice value_slice;
-         auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
-         assert( s.ok() );
-
-         fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size(), id );
-         ptr = _cache.get( id );
-
-         if( !ptr )
+         ID id;
+         ::rocksdb::Slice key_slice = _iter->value();
+         if ( _index == ID_INDEX )
          {
-            ptr = std::make_shared< value_type >();
-            fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), *ptr );
-            ptr = _cache.cache( std::move( *ptr ) );
+            fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
+            ptr = _cache.get( id );
+
+            if( !ptr )
+            {
+               // We are iterating on the primary key, so there is no indirection
+               ptr = std::make_shared< value_type >();
+               fc::raw::unpack_from_char_array< value_type >( key_slice.data(), key_slice.size(), *ptr );
+               ptr = _cache.cache( std::move( *ptr ) );
+            }
+         }
+         else
+         {
+            ::rocksdb::PinnableSlice value_slice;
+            auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
+            assert( s.ok() );
+
+            fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size(), id );
+            ptr = _cache.get( id );
+
+            if( !ptr )
+            {
+               ptr = std::make_shared< value_type >();
+               fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), *ptr );
+               ptr = _cache.cache( std::move( *ptr ) );
+            }
          }
       }
 
@@ -171,6 +199,28 @@ public:
    {
       //BOOST_ASSERT( valid() );
       if( !valid() ) _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+
+      if ( _cached_itr )
+      {
+         _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+         _iter->Seek( _cached_key_slice );
+         _cached_itr = false;
+
+         if( _iter->Valid() )
+         {
+            ::rocksdb::Slice found_key = _iter->key();
+            if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+            {
+               _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+               return *this;
+            }
+         }
+         else
+         {
+            _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+            return *this;
+         }
+      }
 
       _iter->Next();
       assert( _iter->status().ok() );
@@ -193,6 +243,25 @@ public:
       }
       else
       {
+         if ( _cached_itr )
+         {
+            _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+            _iter->Seek( _cached_key_slice );
+            _cached_itr = false;
+
+            if( _iter->Valid() )
+            {
+               ::rocksdb::Slice found_key = _iter->key();
+               if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+               {
+                  _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+               }
+            }
+            else
+            {
+               _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+            }
+         }
          _iter->Prev();
       }
 
@@ -208,7 +277,7 @@ public:
 
    bool valid()const
    {
-      return _iter && _iter->Valid();
+      return _cached_itr || ( _iter && _iter->Valid() );
    }
 
    bool unchecked()const { return false; }
@@ -217,8 +286,19 @@ public:
    {
       if( valid() && other.valid() )
       {
-         ::rocksdb::Slice this_key = _iter->key();
-         ::rocksdb::Slice other_key = other._iter->key();
+         ::rocksdb::Slice this_key;
+         ::rocksdb::Slice other_key;
+
+         if ( _cached_itr )
+            this_key = _cached_key_slice;
+         else
+            this_key = _iter->key();
+
+         if ( other._cached_itr )
+            other_key = other._cached_key_slice;
+         else
+            other_key = other._iter->key();
+
          return (
             ( this_key.size() == other_key.size() )
             && memcmp( this_key.data(), other_key.data(), this_key.size() ) == 0 );
@@ -296,6 +376,40 @@ public:
       cache_type& cache,
       const Key& k )
    {
+      std::vector< char > key_slice = fc::raw::pack_to_vector( k );
+
+      if ( index == ID_INDEX )
+      {
+         ID id;
+         ::rocksdb::Slice key_slice2( key_slice.data(), key_slice.size() );
+         fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
+
+         if ( cache.get( id ) )
+         {
+            return rocksdb_iterator( handles, index, db, cache, id, key_slice2 );
+         }
+      }
+      else
+      {/*
+         ID id;
+         ::rocksdb::Slice key_slice2( key_slice.data(), key_slice.size() );
+         rocksdb_iterator itr( handles, index, db, cache );
+         itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
+
+         ::rocksdb::PinnableSlice value_slice;
+         itr._iter->Seek( ::rocksdb::Slice( key_slice.data(), key_slice.size() ) );
+
+         if ( itr.valid() )
+         {
+            fc::raw::unpack_from_char_array< ID >( itr._iter->value().data(), itr._iter->value().size(), id );
+
+            if ( cache.get( id ) )
+            {
+               return rocksdb_iterator( handles, index, db, cache, id, key_slice2 );
+            }
+         }*/
+      }
+
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
