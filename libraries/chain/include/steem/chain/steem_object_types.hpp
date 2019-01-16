@@ -21,7 +21,16 @@
       object_type () {}
 #endif
 
-namespace steem { namespace chain {
+namespace steem {
+
+namespace protocol {
+
+struct asset;
+struct price;
+
+}
+
+namespace chain {
 
 using chainbase::object;
 using chainbase::oid;
@@ -175,6 +184,19 @@ enum bandwidth_type
 };
 
 } } //steem::chain
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template< typename T > struct is_static_length< chainbase::oid< T > > : public boost::true_type {};
+template< typename T > struct is_static_length< fc::fixed_string< T > > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::account_name_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset_symbol_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::price > : public boost::true_type {};
+
+} // mira
+#endif
 
 namespace fc
 {

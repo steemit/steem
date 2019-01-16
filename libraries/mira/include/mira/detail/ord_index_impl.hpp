@@ -739,7 +739,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       {
          ::rocksdb::Status s;
          ::rocksdb::PinnableSlice read_buffer;
-         auto new_key = key( v );
+         key_type new_key = key( v );
          ::rocksdb::PinnableSlice key_slice;
          pack_to_slice< key_type >( key_slice, new_key );
 

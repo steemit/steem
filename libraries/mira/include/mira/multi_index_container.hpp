@@ -37,14 +37,16 @@
 #include <mira/detail/has_tag.hpp>
 #include <mira/detail/no_duplicate_tags.hpp>
 #include <mira/detail/object_cache.hpp>
-#include <mira/detail/rocksdb_pack.hpp>
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
+#include <mira/slice_pack.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/utility/base_from_member.hpp>
+
+#include <fc/io/raw.hpp>
 
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>

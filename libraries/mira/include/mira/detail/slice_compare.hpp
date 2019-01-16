@@ -1,8 +1,6 @@
 #pragma once
 
-#include <rocksdb/slice.h>
-
-#include <mira/detail/rocksdb_pack.hpp>
+#include <mira/slice_pack.hpp>
 
 #include <assert.h>
 

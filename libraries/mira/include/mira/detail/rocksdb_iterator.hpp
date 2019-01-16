@@ -3,7 +3,6 @@
 #include <boost/operators.hpp>
 
 #include <mira/multi_index_container_fwd.hpp>
-#include <mira/detail/rocksdb_pack.hpp>
 #include <mira/detail/object_cache.hpp>
 
 #include <rocksdb/db.h>

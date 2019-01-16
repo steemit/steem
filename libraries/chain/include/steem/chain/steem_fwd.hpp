@@ -40,28 +40,9 @@ inlince void unpack_from_slice
 */
 
 /*
-object_id_type // handled through reflection?
 account_name_type (fixed_string)
 transaction_id_type
-asset_symbol_type
-asset
-price
+
 */
 
 } }
-
-namespace mira {
-
-template< typename T >
-inline void pack_to_slice( PinnableSlice& s, chainbase::oid< T >& t )
-{
-   s.PinSelf( Slice( (char*)&t, sizeof(t._id) ) );
-}
-
-template< typename T >
-inline void unpack_from_slice( const Slice& s, chainbase::oid< T >& t )
-{
-   t._id = *(chainbase::oid< T >*)s.data();
-}
-
-} // mira

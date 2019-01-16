@@ -9,6 +9,7 @@
 #pragma once
 
 #include <mira/composite_key_fwd.hpp>
+#include <mira/slice_pack.hpp>
 
 #include <boost/config.hpp> /* keep it first to prevent nasty warns in MSVC */
 #include <boost/functional/hash_fwd.hpp>
@@ -1408,8 +1409,60 @@ public:
 };
 
 } /* namespace multi_index */
+//*
 
-} /* namespace boost */
+template< typename T > struct is_static_length< multi_index::composite_key_result< T > >
+   : public is_static_length< typename multi_index::composite_key_result< T >::key_type > {};
+/*
+template< typename T >
+struct slice_packer< multi_index::composite_key_result< T > >
+{
+   static void pack( PinnableSlice& s , const T& t )
+   {
+      if( is_static_length< typename multi_index::composite_key_result< T >::key_type >::value )
+      {
+         static_packer< multi_index::composite_key_result< T >::key_type >::pack( s, t.key );
+      }
+      else
+      {
+         dynamic_packer< multi_index::composite_key_result< T >::key_type >::pack( s, t.key );
+      }
+   }
+
+   static void unpack( PinnableSlice& s , const T& t )
+   {
+      if( is_static_length< typename multi_index::composite_key_result< T >::key_type >::value )
+      {
+         static_packer< multi_index::composite_key_result< T > >::unpack( s, t );
+      }
+      else
+      {
+         dynamic_packer< multi_index::composite_key_result< T > >::unpack( s, t );
+      }
+   }
+};
+*/
+/*
+template< typename T >
+inline void pack_to_slice< multi_index::composite_key_result< T > >( PinnableSlice& s, const multi_index::composite_key_result< T >& t )
+{
+
+}
+
+template< typename T >
+inline void unpack_from_slice< multi_index::composite_key_result< T > >( const Slice& s, multi_index::composite_key_result< T >& t )
+{
+   if( is_static_length< typename multi_index::composite_key_result< T >::key_type >::value )
+   {
+      t = *(multi_index::composite_key_result< T >*)s.data();
+   }
+   else
+   {
+      fc::raw::unpack_from_char_array< multi_index::composite_key_result< T > >( s.data(), s.size(), t );
+   }
+}
+//*/
+} /* namespace mira */
 
 /* Specializations of std::equal_to, std::less, std::greater and boost::hash
  * for composite_key_results enabling interoperation with tuples of values.
@@ -1453,7 +1506,7 @@ struct hash<mira::multi_index::composite_key_result<CompositeKey> >:
 {
 };
 
-} /* namespace mira */
+} /* namespace boost */
 
 #undef BOOST_MULTI_INDEX_CK_RESULT_HASH_SUPER
 #undef BOOST_MULTI_INDEX_CK_RESULT_GREATER_SUPER
