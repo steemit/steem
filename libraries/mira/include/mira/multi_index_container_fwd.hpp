@@ -15,12 +15,16 @@
 #include <mira/composite_key_fwd.hpp>
 
 #include <rocksdb/db.h>
+#include <rocksdb/slice.h>
 
 #include <memory>
 
 #define ID_INDEX 1
 
 namespace mira{
+
+using ::rocksdb::Slice;
+using ::rocksdb::PinnableSlice;
 
 namespace multi_index{
 

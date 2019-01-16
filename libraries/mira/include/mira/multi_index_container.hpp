@@ -37,6 +37,7 @@
 #include <mira/detail/has_tag.hpp>
 #include <mira/detail/no_duplicate_tags.hpp>
 #include <mira/detail/object_cache.hpp>
+#include <mira/detail/rocksdb_pack.hpp>
 #include <mira/detail/safe_mode.hpp>
 #include <mira/detail/scope_guard.hpp>
 #include <boost/algorithm/string.hpp>
@@ -1073,18 +1074,19 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          if( status )
          {
             auto key = super::id( v );
-            auto ser_key = fc::raw::pack_to_vector( key );
-            ::rocksdb::PinnableSlice value_slice;
+            PinnableSlice key_slice;
+            pack_to_slice( key_slice, key );
+            PinnableSlice value_slice;
 
             auto s = super::_db->Get(
                ::rocksdb::ReadOptions(),
                super::_handles[ ID_INDEX ],
-               ::rocksdb::Slice( ser_key.data(), ser_key.size() ),
+               key_slice,
                &value_slice );
             assert( s.ok() );
 
             value_type value;
-            fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), value );
+            unpack_from_slice< value_type >( value_slice, value );
             super::_cache->update( key, std::move( value ) );
          }
       }

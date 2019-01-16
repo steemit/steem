@@ -38,21 +38,26 @@ struct slice_comparator final : abstract_slice_comparator< Key, CompareType >
 
    virtual int Compare( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
    {
-      //assert( x.size() == y.size() );
+      Key x_key; unpack_from_slice( x, x_key );
+      Key y_key; unpack_from_slice( y, y_key );
 
-      if( ( x.size() == y.size() ) && memcmp( x.data(), y.data(), x.size() ) == 0 ) return 0;
-
-      int r = (*this)( unpack_from_slice< Key >( x ), unpack_from_slice< Key >( y ) );
+      int r = (*this)( x_key, y_key );
 
       if( r ) return -1;
 
-      return 1;
+      r = (*this)( y_key, x_key );
+
+      if( r ) return 1;
+
+      return 0;
    }
 
    virtual bool Equal( const ::rocksdb::Slice& x, const ::rocksdb::Slice& y ) const override
    {
       if( x.size() != y.size() ) return false;
-      return memcmp( x.data(), y.data(), x.size() ) == 0;
+      Key x_key; unpack_from_slice( x, x_key );
+      Key y_key; unpack_from_slice( y, y_key );
+      return (*this)( x_key, y_key ) == (*this)( y_key, x_key );
    }
 };
 

@@ -747,6 +747,14 @@ inline bool operator<(
       detail::generic_operator_less_tuple());
 }
 
+template<typename CompositeKey,typename Value>
+inline bool operator<(
+   const composite_key_result<CompositeKey>& x,
+   const Value& y)
+{
+   return x < boost::make_tuple( boost::cref( y ) );
+}
+
 template
 <
    typename CompositeKey,

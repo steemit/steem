@@ -213,6 +213,7 @@ public:
       value_type,
       key_type,
       KeyFromValue,
+      key_compare,
       id_type,
       id_from_value >                                iterator;
 
@@ -548,7 +549,7 @@ public:
    template< typename CompatibleKey >
    iterator upper_bound( const CompatibleKey& x )const
    {
-      return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x, comp_ );
+      return iterator::upper_bound( ROCKSDB_ITERATOR_PARAM_PACK, x );
    }
 
   /* range */
@@ -564,7 +565,7 @@ public:
    std::pair< iterator, iterator >
    equal_range( const CompatibleKey& key )const
    {
-      return iterator::equal_range( ROCKSDB_ITERATOR_PARAM_PACK, key, comp_ );
+      return iterator::equal_range( ROCKSDB_ITERATOR_PARAM_PACK, key );
    }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
@@ -738,51 +739,37 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       {
          ::rocksdb::Status s;
          ::rocksdb::PinnableSlice read_buffer;
+         auto new_key = key( v );
+         ::rocksdb::PinnableSlice key_slice;
+         pack_to_slice< key_type >( key_slice, new_key );
+
+         s = super::_db->Get(
+            ::rocksdb::ReadOptions(),
+            super::_handles[ COLUMN_INDEX],
+            key_slice,
+            &read_buffer );
+
+         // Key already exists, uniqueness constraint violated
+         if( s.ok() ) return false;
+
+         ::rocksdb::PinnableSlice value_slice;
+
          if( COLUMN_INDEX == 1 )
          {
             // Insert base case
-            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
-            ::rocksdb::Slice key_slice( serialized_key.data(), serialized_key.size() );
-
-            s = super::_db->Get(
-               ::rocksdb::ReadOptions(),
-               super::_handles[ COLUMN_INDEX ],
-               key_slice,
-               &read_buffer );
-
-            // Key already exists, uniqueness constraint violated
-            if( s.ok() ) return false;
-
-            std::vector< char > serialized_value = fc::raw::pack_to_vector( v );
-
-            s = super::_write_buffer.Put(
-               super::_handles[ COLUMN_INDEX ],
-               key_slice,
-               ::rocksdb::Slice( serialized_value.data(), serialized_value.size() ) );
-
+            pack_to_slice( value_slice, v );
          }
          else
          {
             // Insert referential case
-            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
-            ::rocksdb::Slice key_slice( serialized_key.data(), serialized_key.size() );
-
-            s = super::_db->Get(
-               ::rocksdb::ReadOptions(),
-               super::_handles[ COLUMN_INDEX],
-               key_slice,
-               &read_buffer );
-
-            // Key already exists, uniqueness constraint violated
-            if( s.ok() ) return false;
-
-            std::vector< char > serialized_id = fc::raw::pack_to_vector( id( v ) );
-
-            s = super::_write_buffer.Put(
-               super::_handles[ COLUMN_INDEX ],
-               key_slice,
-               ::rocksdb::Slice( serialized_id.data(), serialized_id.size() ) );
+            pack_to_slice( value_slice, id( v ) );
          }
+
+         s = super::_write_buffer.Put(
+            super::_handles[ COLUMN_INDEX ],
+            key_slice,
+            value_slice );
+
          return s.ok();
       }
       return false;
@@ -791,11 +778,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
    void erase_( value_type& v )
    {
       super::erase_( v );
-      std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
+
+      auto old_key = key( v );
+      PinnableSlice old_key_slice;
+      pack_to_slice( old_key_slice, old_key );
 
       super::_write_buffer.Delete(
          super::_handles[ COLUMN_INDEX ],
-         ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ) );
+         old_key_slice );
    }
 
    /*
@@ -884,27 +874,26 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       if( super::modify_( mod, v ) )
       {
          ::rocksdb::Status s = ::rocksdb::Status::OK();
-         ::rocksdb::PinnableSlice read_buffer;
 
          key_type new_key = key( v );
+         PinnableSlice new_key_slice;
+
+         PinnableSlice value_slice;
+
          if( COLUMN_INDEX == 1 )
          {
             // Primary key cannot change
             if( new_key != old_key )
                return false;
 
-            std::vector< char > serialized_key = fc::raw::pack_to_vector( key( v ) );
-            std::vector< char > serialized_value = fc::raw::pack_to_vector( v );
-
-            s = super::_write_buffer.Put(
-               super::_handles[ COLUMN_INDEX ],
-               ::rocksdb::Slice( serialized_key.data(), serialized_key.size() ),
-               ::rocksdb::Slice( serialized_value.data(), serialized_value.size() ) );
+            pack_to_slice( new_key_slice, new_key );
+            pack_to_slice( value_slice, v );
          }
          else if( new_key != old_key )
          {
-            std::vector< char > new_ser_key = fc::raw::pack_to_vector( new_key );
-            ::rocksdb::Slice new_key_slice( new_ser_key.data(), new_ser_key.size() );
+            ::rocksdb::PinnableSlice read_buffer;
+
+            pack_to_slice( new_key_slice, new_key );
 
             s = super::_db->Get(
                ::rocksdb::ReadOptions(),
@@ -915,8 +904,8 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             // New key already exists, uniqueness constraint violated
             if( s.ok() ) return false;
 
-            std::vector< char > old_ser_key = fc::raw::pack_to_vector( old_key );
-            ::rocksdb::Slice old_key_slice( old_ser_key.data(), old_ser_key.size() );
+            PinnableSlice old_key_slice;
+            pack_to_slice( old_key_slice, old_key );
 
             s = super::_write_buffer.Delete(
                super::_handles[ COLUMN_INDEX ],
@@ -924,12 +913,17 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
             if( !s.ok() ) return false;
 
-            std::vector< char > serialized_id = fc::raw::pack_to_vector( id( v ) );
-            s = super::_write_buffer.Put(
-               super::_handles[ COLUMN_INDEX ],
-               new_key_slice,
-               ::rocksdb::Slice( serialized_id.data(), serialized_id.size() ) );
+            pack_to_slice( value_slice, id( v ) );
          }
+         else
+         {
+            return true;
+         }
+
+         s = super::_write_buffer.Put(
+            super::_handles[ COLUMN_INDEX ],
+            new_key_slice,
+            value_slice );
 
          return s.ok();
       }

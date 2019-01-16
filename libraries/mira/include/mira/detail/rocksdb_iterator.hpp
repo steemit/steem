@@ -3,21 +3,20 @@
 #include <boost/operators.hpp>
 
 #include <mira/multi_index_container_fwd.hpp>
+#include <mira/detail/rocksdb_pack.hpp>
 #include <mira/detail/object_cache.hpp>
 
 #include <rocksdb/db.h>
-
-#include <fc/io/raw.hpp>
 
 #include <iostream>
 
 namespace mira { namespace multi_index { namespace detail {
 
 template< typename Value, typename Key, typename KeyFromValue,
-          typename ID, typename IDFromValue >
+          typename KeyCompare, typename ID, typename IDFromValue >
 struct rocksdb_iterator :
    public boost::bidirectional_iterator_helper<
-      rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >,
+      rocksdb_iterator< Value, Key, KeyFromValue, KeyCompare, ID, IDFromValue >,
       Value,
       std::size_t,
       const Value*,
@@ -41,6 +40,8 @@ private:
 
    cache_type&                                     _cache;
    IDFromValue                                     _get_id;
+
+   KeyCompare                                      _compare;
 
 public:
 
@@ -81,10 +82,12 @@ public:
       //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
       //_opts.snapshot = _snapshot->snapshot();
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
-
       _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-      _iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, k );
+
+      _iter->Seek( key_slice );
 
       if( !_iter->status().ok() )
       {
@@ -131,14 +134,14 @@ public:
 
       if( _index == ID_INDEX )
       {
-         fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
+         unpack_from_slice( key_slice, id );
          ptr = _cache.get( id );
 
          if( !ptr )
          {
             // We are iterating on the primary key, so there is no indirection
             ptr = std::make_shared< value_type >();
-            fc::raw::unpack_from_char_array< value_type >( key_slice.data(), key_slice.size(), *ptr );
+            unpack_from_slice( key_slice, *ptr );
             ptr = _cache.cache( std::move( *ptr ) );
          }
       }
@@ -148,13 +151,13 @@ public:
          auto s = _db->Get( _opts, _handles[ ID_INDEX ], key_slice, &value_slice );
          assert( s.ok() );
 
-         fc::raw::unpack_from_char_array< ID >( value_slice.data(), value_slice.size(), id );
+         unpack_from_slice( value_slice, id );
          ptr = _cache.get( id );
 
          if( !ptr )
          {
             ptr = std::make_shared< value_type >();
-            fc::raw::unpack_from_char_array< value_type >( value_slice.data(), value_slice.size(), *ptr );
+            unpack_from_slice( value_slice, *ptr );
             ptr = _cache.cache( std::move( *ptr ) );
          }
       }
@@ -217,11 +220,11 @@ public:
    {
       if( valid() && other.valid() )
       {
-         ::rocksdb::Slice this_key = _iter->key();
-         ::rocksdb::Slice other_key = other._iter->key();
-         return (
-            ( this_key.size() == other_key.size() )
-            && memcmp( this_key.data(), other_key.data(), this_key.size() ) == 0 );
+         Key this_key, other_key;
+         unpack_from_slice( _iter->key(), this_key );
+         unpack_from_slice( other._iter->key(), other_key );
+
+         return _compare( this_key, other_key ) == _compare( other_key, this_key );
       }
 
       return valid() == other.valid();
@@ -265,18 +268,22 @@ public:
       cache_type& cache,
       const CompatibleKey& k )
    {
+      static KeyCompare compare = KeyCompare();
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
+      auto key = Key( k );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
-      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, key );
+
+      itr._iter->Seek( key_slice );
 
       if( itr.valid() )
       {
-         std::vector< char > ser_compat_key = fc::raw::pack_to_vector( k );
-         ::rocksdb::Slice found_key = itr._iter->key();
+         Key found_key;
+         unpack_from_slice( itr._iter->key(), found_key );
 
-         if( memcmp( ser_compat_key.data(), found_key.data(), std::min( ser_compat_key.size(), ser_compat_key.size() ) ) != 0 )
+         if( compare( k, found_key ) != compare( found_key, k ) )
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
          }
@@ -296,16 +303,20 @@ public:
       cache_type& cache,
       const Key& k )
    {
+      static KeyCompare compare = KeyCompare();
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
-      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, k );
+      itr._iter->Seek( key_slice );
 
       if( itr.valid() )
       {
-         ::rocksdb::Slice found_key = itr._iter->key();
-         if( memcmp( ser_key.data(), found_key.data(), std::min( ser_key.size(), found_key.size() ) ) != 0 )
+         Key found_key;
+         unpack_from_slice( itr._iter->key(), found_key );
+
+         if( compare( k, found_key ) != compare( found_key, k ) )
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
          }
@@ -328,8 +339,9 @@ public:
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
-      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, k );
+      itr._iter->Seek( key_slice );
 
       return itr;
    }
@@ -344,7 +356,7 @@ public:
    {
       return lower_bound( handles, index, db, cache, Key( k ) );
    }
-
+/*
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
@@ -355,8 +367,10 @@ public:
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
-      itr._iter->SeekForPrev( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, k );
+
+      itr._iter->SeekForPrev( key_slice );
 
       if( itr.valid() )
       {
@@ -365,33 +379,36 @@ public:
 
       return itr;
    }
-
-   template< typename CompatibleKey, typename Compare >
+*/
+   template< typename CompatibleKey >
    static rocksdb_iterator upper_bound(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const CompatibleKey& k,
-      const Compare& c )
+      const CompatibleKey& k )
    {
+      static KeyCompare compare = KeyCompare();
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( Key( k ) );
-      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      auto key = Key( k );
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, key );
+
+      itr._iter->Seek( key_slice );
 
       if( itr.valid() )
       {
          Key itr_key;
-         fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
+         unpack_from_slice( itr._iter->key(), itr_key );
 
-         while( !c( k, itr_key ) )
+         while( !compare( k, itr_key ) )
          {
             ++itr;
             if( !itr.valid() ) return itr;
 
-            fc::raw::unpack_from_char_array< Key >( itr._iter->key().data(), itr._iter->key().size(), itr_key );
+            unpack_from_slice( itr._iter->key(), itr_key );
          }
       }
 
@@ -413,36 +430,35 @@ public:
       );
    }
 
-   template< typename CompatibleKey, typename Compare >
+   template< typename CompatibleKey >
    static std::pair< rocksdb_iterator, rocksdb_iterator > equal_range(
       const column_handles& handles,
       size_t index,
       db_ptr db,
       cache_type& cache,
-      const CompatibleKey& k,
-      const Compare& c )
+      const CompatibleKey& k )
    {
       return std::make_pair< rocksdb_iterator, rocksdb_iterator >(
          lower_bound( handles, index, db, cache, k ),
-         upper_bound( handles, index, db, cache, k, c )
+         upper_bound( handles, index, db, cache, k )
       );
    }
 };
 
 template< typename Value, typename Key, typename KeyFromValue,
-          typename ID, typename IDFromValue >
+          typename KeyCompare, typename ID, typename IDFromValue >
 bool operator==(
-   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& x,
-   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& y)
+   const rocksdb_iterator< Value, Key, KeyFromValue, KeyCompare, ID, IDFromValue >& x,
+   const rocksdb_iterator< Value, Key, KeyFromValue, KeyCompare, ID, IDFromValue >& y)
 {
    return x.equals( y );
 }
 
 template< typename Value, typename Key, typename KeyFromValue,
-          typename ID, typename IDFromValue >
+          typename KeyCompare, typename ID, typename IDFromValue >
 bool operator!=(
-   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& x,
-   const rocksdb_iterator< Value, Key, KeyFromValue, ID, IDFromValue >& y)
+   const rocksdb_iterator< Value, Key, KeyFromValue, KeyCompare, ID, IDFromValue >& x,
+   const rocksdb_iterator< Value, Key, KeyFromValue, KeyCompare, ID, IDFromValue >& y)
 {
    return !( x == y );
 }
