@@ -258,11 +258,13 @@ public:
                if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
                {
                   _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+                  return *this;
                }
             }
             else
             {
                _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+               return *this;
             }
          }
          _iter->Prev();
