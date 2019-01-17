@@ -255,11 +255,13 @@ public:
                if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
                {
                   _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+                  return *this;
                }
             }
             else
             {
                _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+               return *this;
             }
          }
          _iter->Prev();
@@ -380,46 +382,23 @@ public:
 
       if ( index == ID_INDEX )
       {
-         ID id;
-         ::rocksdb::Slice key_slice2( key_slice.data(), key_slice.size() );
-         fc::raw::unpack_from_char_array< ID >( key_slice.data(), key_slice.size(), id );
+         ID id = *(ID*)(&k);
 
          if ( cache.get( id ) )
          {
-            return rocksdb_iterator( handles, index, db, cache, id, key_slice2 );
+            return rocksdb_iterator( handles, index, db, cache, id, ::rocksdb::Slice( key_slice.data(), key_slice.size() ) );
          }
-      }
-      else
-      {/*
-         ID id;
-         ::rocksdb::Slice key_slice2( key_slice.data(), key_slice.size() );
-         rocksdb_iterator itr( handles, index, db, cache );
-         itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
-
-         ::rocksdb::PinnableSlice value_slice;
-         itr._iter->Seek( ::rocksdb::Slice( key_slice.data(), key_slice.size() ) );
-
-         if ( itr.valid() )
-         {
-            fc::raw::unpack_from_char_array< ID >( itr._iter->value().data(), itr._iter->value().size(), id );
-
-            if ( cache.get( id ) )
-            {
-               return rocksdb_iterator( handles, index, db, cache, id, key_slice2 );
-            }
-         }*/
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
-      std::vector< char > ser_key = fc::raw::pack_to_vector( k );
-      itr._iter->Seek( ::rocksdb::Slice( ser_key.data(), ser_key.size() ) );
+      itr._iter->Seek( ::rocksdb::Slice( key_slice.data(), key_slice.size() ) );
 
       if( itr.valid() )
       {
          ::rocksdb::Slice found_key = itr._iter->key();
-         if( memcmp( ser_key.data(), found_key.data(), std::min( ser_key.size(), found_key.size() ) ) != 0 )
+         if( memcmp( key_slice.data(), found_key.data(), std::min( key_slice.size(), found_key.size() ) ) != 0 )
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
          }
