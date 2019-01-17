@@ -6,6 +6,8 @@
 
 #define STEEM_HARDFORK_0_21_VERSION hardfork_version( 0, 21 )
 
+#define STEEM_HARDFORK_0_21__1  (STEEM_HARDFORK_0_21)
+
 namespace hardfork21
 {
 
@@ -18,6 +20,7 @@ inline static const std::set< std::string >& get_steemit_accounts()
     "steemit2",
     "steemit3",
     "misterdelegation",
+    "steemitadmin",
     // TODO: add all known accounts
     };
 
