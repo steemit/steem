@@ -1075,21 +1075,11 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
          if( status )
          {
-            auto key = super::id( v );
-            PinnableSlice key_slice;
-            pack_to_slice( key_slice, key );
-            PinnableSlice value_slice;
-
-            auto s = super::_db->Get(
-               ::rocksdb::ReadOptions(),
-               super::_handles[ ID_INDEX ],
-               key_slice,
-               &value_slice );
-            assert( s.ok() );
-
-            value_type value;
-            unpack_from_slice< value_type >( value_slice, value );
-            super::_cache->update( key, std::move( value ) );
+            /* This gets a little weird because the reference passed in
+            most likely belongs to the shared ptr in the cache, so updating
+            the value has already updated the cache, but in case something
+            doesn't line up here, we update by moving the value to itself... */
+            super::_cache->update( super::id( v ), std::move( v ) );
          }
       }
       super::_write_buffer.Clear();
