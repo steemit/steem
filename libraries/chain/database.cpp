@@ -5037,6 +5037,19 @@ void database::apply_hardfork( uint32_t hardfork )
                   auth.active  = authority( 1, public_key_type( "STM1111111111111111111111111111111114T1Anm" ), 1 );
                   auth.posting = authority( 1, public_key_type( "STM1111111111111111111111111111111114T1Anm" ), 1 );
                });
+
+               const auto& wd_idx = get_index< withdraw_vesting_route_index >().indices();
+               for( auto itr = wd_idx.begin(); itr != wd_idx.end(); ++itr )
+               {
+                  if ( itr->from_account == acc ) {
+                     remove( *itr );
+                  }
+               }
+
+               modify( *account, [&]( account_object& a )
+               {
+                  a.withdraw_routes = 0;
+               });
             }
          }
          break;
