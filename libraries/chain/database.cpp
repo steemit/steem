@@ -189,6 +189,10 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
+#ifdef ENABLE_STD_ALLOCATOR
+      initialize_indexes();
+#endif
+
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()

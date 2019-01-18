@@ -71,7 +71,13 @@ namespace chainbase {
       _flock = bip::file_lock( abs_path.generic_string().c_str() );
       if( !_flock.try_lock() )
          BOOST_THROW_EXCEPTION( std::runtime_error( "could not gain write access to the shared memory file" ) );
+#else
+      for( auto& item : _index_list )
+      {
+         item->open( _data_dir );
+      }
 #endif
+      _is_open = true;
    }
 
    void database::flush() {
@@ -85,30 +91,45 @@ namespace chainbase {
 
    void database::close()
    {
+      if( _is_open )
+      {
 #ifndef ENABLE_STD_ALLOCATOR
-      _segment.reset();
-      _meta.reset();
-      _data_dir = bfs::path();
+         _segment.reset();
+         _meta.reset();
+         _data_dir = bfs::path();
 #else
-      undo_all();
+         undo_all();
+
+         for( auto& item : _index_list )
+         {
+            item->close();
+         }
 #endif
+         _is_open = false;
+      }
    }
 
    void database::wipe( const bfs::path& dir )
    {
+      assert( !_is_open );
 #ifndef ENABLE_STD_ALLOCATOR
       _segment.reset();
       _meta.reset();
       bfs::remove_all( dir / "shared_memory.bin" );
       bfs::remove_all( dir / "shared_memory.meta" );
       _data_dir = bfs::path();
-#endif
-      for( auto& item : _index_list )
-      {
-         item->clear();
-      }
       _index_list.clear();
       _index_map.clear();
+#else
+      for( auto& item : _index_list )
+      {
+         item->wipe( dir );
+      }
+
+      _index_list.clear();
+      _index_map.clear();
+      _index_types.clear();
+#endif
    }
 
    void database::resize( size_t new_shared_file_size )
