@@ -207,6 +207,12 @@ namespace chainbase {
             _revision = _indices.revision();
          }
 
+         generic_index( allocator<value_type> a )
+         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this))
+         {
+            _revision = _indices.revision();
+         }
+
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
                BOOST_THROW_EXCEPTION( std::runtime_error("content of memory does not match data expected by executable") );
@@ -263,6 +269,16 @@ namespace chainbase {
          }
 
          const index_type& indices()const { return _indices; }
+
+         void open( const bfs::path& p )
+         {
+            _indices.open( p );
+            _revision = _indices.revision();
+         }
+
+         void close() { _indices.close(); }
+
+         void wipe( const bfs::path& dir ) { _indices.wipe( dir ); }
 
          void clear() { _indices.clear(); }
 
@@ -605,7 +621,11 @@ namespace chainbase {
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
+         virtual void open( const bfs::path& ) = 0;
+         virtual void close() = 0;
+         virtual void wipe( const bfs::path& dir ) = 0;
          virtual void clear() = 0;
+
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -655,6 +675,21 @@ namespace chainbase {
          virtual size_t size() const override final
          {
             return _base.indicies().size();
+         }
+
+         virtual void open( const bfs::path& p ) override final
+         {
+            _base.open( p );
+         }
+
+         virtual void close() override final
+         {
+            _base.close();
+         }
+
+         virtual void wipe( const bfs::path& dir ) override final
+         {
+            _base.wipe( dir );
          }
 
          virtual void clear() override final
@@ -1102,16 +1137,22 @@ namespace chainbase {
 #ifndef ENABLE_STD_ALLOCATOR
              idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
 #else
-             idx_ptr = new index_type( index_alloc(), _data_dir );
+             idx_ptr = new index_type( index_alloc() );
 #endif
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
                 _index_map.resize( type_id + 1 );
 
+#ifdef ENABLE_STD_ALLOCATOR
              auto new_index = new index<index_type>( *idx_ptr );
+#else
+             auto new_index = new index<index_type>( *idx_ptr, _data_dir );
+#endif
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
+
+             if( _is_open ) new_index->open( _data_dir );
          }
 
          read_write_mutex_manager                                    _rw_manager;
@@ -1138,6 +1179,8 @@ namespace chainbase {
          int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
+
+         bool                                                        _is_open = false;
 
          int32_t                                                     _undo_session_count = 0;
          size_t                                                      _file_size = 0;

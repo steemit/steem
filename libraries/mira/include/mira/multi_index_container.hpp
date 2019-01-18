@@ -194,30 +194,41 @@ public:
 
   /* construct/copy/destroy */
 
-  multi_index_container():
-    bfm_allocator(allocator_type()),
+  multi_index_container( const allocator_type& al ):
+    bfm_allocator(al),
     super(ctor_args_list(),bfm_allocator::member),
     entry_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-  }
+   {
+      std::vector< std::string > split_v;
+      auto type = boost::core::demangle( typeid( Value ).name() );
+      boost::split( split_v, type, boost::is_any_of( ":" ) );
+
+      _name = "rocksdb_" + *(split_v.rbegin());
+   }
 
   explicit multi_index_container( const allocator_type& al, const boost::filesystem::path& p ):
     bfm_allocator(al),
     super(ctor_args_list(),bfm_allocator::member),
     entry_count(0)
    {
-      assert( p.is_absolute() );
-
       std::vector< std::string > split_v;
       auto type = boost::core::demangle( typeid( Value ).name() );
       boost::split( split_v, type, boost::is_any_of( ":" ) );
 
       _name = "rocksdb_" + *(split_v.rbegin());
 
+      open( p );
+
+      BOOST_MULTI_INDEX_CHECK_INVARIANT;
+   }
+
+   bool open( const boost::filesystem::path& p )
+   {
+      assert( p.is_absolute() );
+
       std::string str_path = ( p / _name ).string();
 
-      create_schema( str_path );
+      maybe_create_schema( str_path );
 
       // TODO: Move out of constructor becasuse throwing exceptions in a constuctor is sad...
       column_definitions column_defs;
@@ -308,15 +319,14 @@ public:
       else
       {
          std::cout << std::string( s.getState() ) << std::endl;
-         assert( false );
+         return false;
       }
 
       super::object_cache_factory_type::reset();
-
-      BOOST_MULTI_INDEX_CHECK_INVARIANT;
+      return true;
    }
 
-   bool create_schema( const std::string& str_path )
+   bool maybe_create_schema( const std::string& str_path )
    {
       ::rocksdb::DB* db = nullptr;
 
@@ -397,18 +407,43 @@ public:
       return false;
    }
 
-   ~multi_index_container()
+   void close()
    {
-      auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
-      auto ser_count_val = fc::raw::pack_to_vector( entry_count );
+      if( super::_db )
+      {
+         auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
+         auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
-      super::_db->Put(
-         ::rocksdb::WriteOptions(),
-         super::_handles[ DEFAULT_COLUMN ],
-         ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
-         ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+         super::_db->Put(
+            ::rocksdb::WriteOptions(),
+            super::_handles[ DEFAULT_COLUMN ],
+            ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
+            ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+
+         super::_cache->clear();
+         assert( super::_db.unique() );
+         super::cleanup_column_handles();
+         super::_db.reset();
+      }
+   }
+
+   void wipe( const boost::filesystem::path& p )
+   {
+      assert( !(super::_db) );
+
+      column_definitions column_defs;
+      populate_column_definitions_( column_defs );
+
+      auto s = rocksdb::DestroyDB( ( p / _name ).string(), rocksdb::Options(), column_defs );
+
+      if( !s.ok() ) std::cout << std::string( s.getState() ) << std::endl;
 
       super::_cache->clear();
+   }
+
+   ~multi_index_container()
+   {
+      close();
    }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
