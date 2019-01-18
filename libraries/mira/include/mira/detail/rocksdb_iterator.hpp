@@ -60,9 +60,21 @@ public:
       //_opts.snapshot = _snapshot->snapshot();
       //_iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
    }
-   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ID cache_key, const ::rocksdb::Slice key_slice ) :
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ID& cache_key, const ::rocksdb::Slice& key_slice ) :
       _handles( handles ),
       _index( index ),
+      _db( db ),
+      _cache( cache ),
+      _cache_key( cache_key ),
+      _cached_key_slice( key_slice ),
+      _cached_itr( true )
+   {
+   }
+
+   rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ID& cache_key, const ::rocksdb::Slice& key_slice, std::unique_ptr< ::rocksdb::Iterator > iter ) :
+      _handles( handles ),
+      _index( index ),
+      _iter( std::move( iter ) ),
       _db( db ),
       _cache( cache ),
       _cache_key( cache_key ),
@@ -76,15 +88,12 @@ public:
       _index( other._index ),
       _snapshot( other._snapshot ),
       _db( other._db ),
-      _cache( other._cache )
+      _cache( other._cache ),
+      _cache_key( other._cache_key ),
+      _cached_key_slice( other._cached_key_slice ),
+      _cached_itr( other._cached_itr )
    {
-      if ( other._cached_itr )
-      {
-         _cache_key = other._cache_key;
-         _cached_key_slice = other._cached_key_slice;
-         _cached_itr = other._cached_itr;
-      }
-      else if( other._iter )
+      if ( other._iter )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index] ) );
 
@@ -138,14 +147,17 @@ public:
       _iter( std::move( other._iter ) ),
       _snapshot( other._snapshot ),
       _db( other._db ),
-      _cache( other._cache )
+      _cache( other._cache ),
+      _cache_key( other._cache_key ),
+      _cached_key_slice( other._cached_key_slice ),
+      _cached_itr( other._cached_itr )
    {
       //_opts.snapshot = _snapshot->snapshot();
       other._snapshot.reset();
       other._db.reset();
    }
 
-   const value_type& operator*()const
+   const value_type& operator*()
    {
       BOOST_ASSERT( valid() );
       value_ptr ptr;
@@ -188,12 +200,16 @@ public:
                ptr = _cache.cache( std::move( *ptr ) );
             }
          }
+
+         _cached_itr = true;
+         _cache_key = id;
+         _cached_key_slice = key_slice;
       }
 
       return (*ptr);
    }
 
-   const value_type* operator->()const
+   const value_type* operator->()
    {
       return &(**this);
    }
@@ -205,23 +221,27 @@ public:
 
       if ( _cached_itr )
       {
-         _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-         _iter->Seek( _cached_key_slice );
          _cached_itr = false;
 
-         if( _iter->Valid() )
+         if ( _iter == nullptr )
          {
-            ::rocksdb::Slice found_key = _iter->key();
-            if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+            _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+            _iter->Seek( _cached_key_slice );
+
+            if( _iter->Valid() )
+            {
+               ::rocksdb::Slice found_key = _iter->key();
+               if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+               {
+                  _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+                  return *this;
+               }
+            }
+            else
             {
                _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
                return *this;
             }
-         }
-         else
-         {
-            _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-            return *this;
          }
       }
 
@@ -248,23 +268,27 @@ public:
       {
          if ( _cached_itr )
          {
-            _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-            _iter->Seek( _cached_key_slice );
             _cached_itr = false;
 
-            if( _iter->Valid() )
+            if ( _iter == nullptr )
             {
-               ::rocksdb::Slice found_key = _iter->key();
-               if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+               _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+               _iter->Seek( _cached_key_slice );
+
+               if( _iter->Valid() )
+               {
+                  ::rocksdb::Slice found_key = _iter->key();
+                  if( memcmp( _cached_key_slice.data(), found_key.data(), std::min( _cached_key_slice.size(), found_key.size() ) ) != 0 )
+                  {
+                     _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+                     return *this;
+                  }
+               }
+               else
                {
                   _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
                   return *this;
                }
-            }
-            else
-            {
-               _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-               return *this;
             }
          }
          _iter->Prev();
@@ -314,6 +338,10 @@ public:
       _iter = std::move( other._iter );
       _snapshot = other._snapshot;
       _db = other._db;
+      _cached_itr = other._cached_itr;
+      _cache_key = other._cache_key;
+      _cached_key_slice = other._cached_key_slice;
+
       return *this;
    }
 
@@ -366,6 +394,20 @@ public:
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
          }
+         else
+         {
+            ID* id;
+
+            if ( index == ID_INDEX )
+               id = (ID*)&found_key;
+            else
+               id = (ID*)itr._iter->value().data();
+
+            if ( cache.get( *id ) )
+            {
+               return rocksdb_iterator( handles, index, db, cache, *id, itr._iter->key(), std::move( itr._iter ) );
+            }
+         }
       }
       else
       {
@@ -410,6 +452,14 @@ public:
          if( compare( k, found_key ) != compare( found_key, k ) )
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
+         }
+         else if ( index != ID_INDEX )
+         {
+            ID* id = (ID*)itr._iter->value().data();
+            if ( cache.get( *id ) )
+            {
+               return rocksdb_iterator( handles, index, db, cache, *id, key_slice, std::move( itr._iter ) );
+            }
          }
       }
       else
