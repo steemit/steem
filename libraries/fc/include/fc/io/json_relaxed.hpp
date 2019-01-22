@@ -665,6 +665,7 @@ namespace fc { namespace json_relaxed
    template<typename T, bool strict>
    variant wordFromStream( T& in, uint32_t depth = 0 )
    {
+       depth++;
        fc::string token = tokenFromStream( in, depth );
        
        FC_ASSERT( token.length() > 0 );
