@@ -2,7 +2,7 @@
 #include <fc/variant.hpp>
 #include <fc/filesystem.hpp>
 
-#define JSON_MAX_RECURSION_DEPTH (50)
+#define JSON_MAX_RECURSION_DEPTH (200)
 
 namespace fc
 {
