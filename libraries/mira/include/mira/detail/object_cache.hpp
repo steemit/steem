@@ -2,15 +2,21 @@
 
 #include <fc/log/logger.hpp>
 
-#include <deque>
 #include <map>
 #include <memory>
 
 #include <iostream>
 
+#define _unused(x) ((void)(x))
+#define CACHE_KEY(key) ((void*)&key)
+
 namespace mira { namespace multi_index { namespace detail {
 
-// Forward declaration
+typedef const void* cache_key_type;
+
+template< typename Value >
+struct cache_factory;
+
 template < typename Value >
 class multi_index_cache_manager;
 
@@ -27,11 +33,9 @@ struct abstract_index_cache
       cache_manager = m;
    }
 
-   virtual ptr_type get( const void* key ) = 0;
-   virtual ptr_type cache( Value&& v ) = 0;
-   virtual void update( const void* key, Value&& v ) = 0;
-   virtual void update( Value&& v ) = 0;
-   virtual void invalidate( const void* key ) = 0;
+   virtual ptr_type get( cache_key_type key ) = 0;
+   virtual void cache( ptr_type v ) = 0;
+   virtual void update( cache_key_type key, Value&& v ) = 0;
    virtual void invalidate( const Value& v ) = 0;
    virtual void clear() = 0;
 
@@ -46,34 +50,52 @@ public:
    multi_index_cache_manager() = default;
    ~multi_index_cache_manager() = default;
    typedef typename std::unique_ptr< abstract_index_cache< Value > > index_cache_type;
-   typedef typename std::shared_ptr< Value > ptr_type;
+   typedef typename std::shared_ptr< Value >                         ptr_type;
+   typedef cache_factory< Value >                                    factory_type;
 
 private:
-   std::deque< index_cache_type > _index_caches;
+   std::vector< index_cache_type > _index_caches;
 
 public:
    void add_index_cache( index_cache_type&& index_cache )
    {
       index_cache->set_cache_manager( this->shared_from_this() );
-      _index_caches.push_front( std::move( index_cache ) );
+      _index_caches.push_back( std::move( index_cache ) );
    }
 
    index_cache_type& get_index_cache( size_t index )
    {
+      assert( index >= 1 );
       assert( index <= _index_caches.size() );
-      return _index_caches[ index ];
+      return _index_caches[ index - 1 ];
    }
 
-   ptr_type cache( Value&& v )
+   ptr_type cache( Value&& value )
    {
-      for ( auto& c : _index_caches )
-         c->cache( v );
+      ptr_type p = std::make_shared< Value >( std::move( value ) );
+      return cache( p );
    }
 
-   void update( Value&& v )
+   ptr_type cache( ptr_type value )
    {
       for ( auto& c : _index_caches )
-         c->update( v );
+         c->cache( value );
+
+      return value;
+   }
+
+   void update( ptr_type old_value, Value&& new_value )
+   {
+      // Invalidate the keys based on our old value
+      for ( auto& c : _index_caches )
+         c->invalidate( *old_value );
+
+      // Replace the value without changing our pointers
+      *old_value = std::move( new_value );
+
+      // Generate new keys for each index based on the new value
+      for ( auto& c : _index_caches )
+         c->cache( old_value );
    }
 
    void invalidate( const Value& v )
@@ -90,63 +112,46 @@ public:
 };
 
 template< typename Value, typename Key, typename KeyFromValue >
-struct object_cache_factory; // forward declaration
-
-template< typename Value, typename Key, typename KeyFromValue >
-struct object_cache : abstract_index_cache< Value >
+struct index_cache : abstract_index_cache< Value >
 {
 public:
    typedef typename std::shared_ptr< Value > ptr_type;
-   typedef object_cache_factory<
-      Value,
-      Key,
-      KeyFromValue >                         factory_type;
 
 private:
-   KeyFromValue                              _get_key;
-   std::map< Key, ptr_type >                 _cache;
+   KeyFromValue               _get_key;
+   std::map< Key, ptr_type >  _cache;
 
-   const Key key( const void* k )
+   const Key key( cache_key_type k )
    {
       return *( ( Key* )k );
    }
 
 public:
-   object_cache() = default;
-   virtual ~object_cache() = default;
+   index_cache() = default;
+   virtual ~index_cache() = default;
 
-   ptr_type cache( Value&& v )
+   void cache( ptr_type value )
    {
-      auto key = _get_key( v );
-      auto value = std::make_shared< Value >( std::move( v ) );
-
-      _cache.insert( std::make_pair( key, value ) );
-
-      return value;
+      auto key = _get_key( *value );
+      auto r = _cache.insert( std::make_pair( key, value ) );
+      assert( r.second == true );
+      _unused( r );
    }
 
    void invalidate( const Value& v )
    {
-      invalidate( (void*)&_get_key( v ) );
+      auto k = _get_key( v );
+      auto n = _cache.erase( k );
+      assert( n == 1 );
+      _unused( n );
    }
 
-   void invalidate( const void* k )
+   void update( cache_key_type k, Value&&v )
    {
-      _cache.erase( key( k ) );
+      abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ) );
    }
 
-   void update( const void* k, Value&&v )
-   {
-      *( _cache[ key( k ) ] ) = std::move( v );
-   }
-
-   void update( Value&& v )
-   {
-      auto k = (void*)&_get_key( v );
-      update( k, std::move( v ) );
-   }
-
-   ptr_type get( const void* k )
+   ptr_type get( cache_key_type k )
    {
       auto itr = _cache.find( key( k ) );
       return itr != _cache.end() ? itr->second : ptr_type();
@@ -158,15 +163,15 @@ public:
    }
 };
 
-template< typename Value, typename Key, typename KeyFromValue >
-struct object_cache_factory
+template< typename Value >
+struct cache_factory
 {
-   static std::shared_ptr< object_cache< Value, Key, KeyFromValue > > get_shared_cache( bool reset = false )
+   static std::shared_ptr< multi_index_cache_manager< Value > > get_shared_cache( bool reset = false )
    {
-      static std::shared_ptr< object_cache< Value, Key, KeyFromValue > > cache_ptr;
+      static std::shared_ptr< multi_index_cache_manager< Value > > cache_ptr;
 
       if( !cache_ptr || reset )
-         cache_ptr = std::make_shared< object_cache< Value, Key, KeyFromValue > >();
+         cache_ptr = std::make_shared< multi_index_cache_manager< Value > >();
 
       return cache_ptr;
    }

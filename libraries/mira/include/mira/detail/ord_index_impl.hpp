@@ -576,6 +576,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
     empty_initialize();
+    _cache->add_index_cache( std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
   }
 
   ordered_index_impl(

@@ -23,10 +23,7 @@ struct rocksdb_iterator :
 {
    typedef Value                                   value_type;
    typedef typename std::shared_ptr< value_type >  value_ptr;
-   typedef object_cache<
-      value_type,
-      ID,
-      IDFromValue >                                cache_type;
+   typedef multi_index_cache_manager< value_type > cache_type;
 
 private:
    const column_handles&                           _handles;
@@ -164,7 +161,8 @@ public:
 
       if ( _cached_itr )
       {
-         ptr = _cache.get( (void*)&_cache_key );
+         //ptr = _cache.get_index_cache( _index ).get( (void*)&_cache_key );
+         ptr = _cache.get_index_cache( ID_INDEX )->get( (void*)&_cache_key );
       }
       else
       {
@@ -174,7 +172,7 @@ public:
          if ( _index == ID_INDEX )
          {
             unpack_from_slice( key_slice, id );
-            ptr = _cache.get( (void*)&id );
+            ptr = _cache.get_index_cache( _index )->get( (void*)&id );
 
             if( !ptr )
             {
@@ -191,7 +189,7 @@ public:
             assert( s.ok() );
 
             unpack_from_slice( value_slice, id );
-            ptr = _cache.get( (void*)&id );
+            ptr = _cache.get_index_cache( ID_INDEX )->get( (void*)&id );
 
             if( !ptr )
             {
@@ -403,7 +401,7 @@ public:
             else
                id = (ID*)itr._iter->value().data();
 
-            if ( cache.get( (void*)id ) )
+            if ( cache.get_index_cache( ID_INDEX )->get( (void*)id ) )
             {
                return rocksdb_iterator( handles, index, db, cache, *id, itr._iter->key(), std::move( itr._iter ) );
             }
@@ -429,7 +427,7 @@ public:
       if ( index == ID_INDEX )
       {
          ID* id = (ID*)&k;
-         if ( cache.get( (void*)id ) )
+         if ( cache.get_index_cache( index )->get( (void*)id ) )
          {
             PinnableSlice key_slice;
             pack_to_slice( key_slice, k );
@@ -456,7 +454,7 @@ public:
          else if ( index != ID_INDEX )
          {
             ID* id = (ID*)itr._iter->value().data();
-            if ( cache.get( (void*)id ) )
+            if ( cache.get_index_cache( index )->get( (void*)id ) )
             {
                return rocksdb_iterator( handles, index, db, cache, *id, key_slice, std::move( itr._iter ) );
             }
