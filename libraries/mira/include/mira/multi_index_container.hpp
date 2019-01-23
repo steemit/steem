@@ -1114,7 +1114,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             most likely belongs to the shared ptr in the cache, so updating
             the value has already updated the cache, but in case something
             doesn't line up here, we update by moving the value to itself... */
-            super::_cache->update( super::id( v ), std::move( v ) );
+            super::_cache->update( (void*)&super::id( v ), std::move( v ) );
          }
       }
       super::_write_buffer.Clear();

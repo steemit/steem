@@ -164,7 +164,7 @@ public:
 
       if ( _cached_itr )
       {
-         ptr = _cache.get( _cache_key );
+         ptr = _cache.get( (void*)&_cache_key );
       }
       else
       {
@@ -174,7 +174,7 @@ public:
          if ( _index == ID_INDEX )
          {
             unpack_from_slice( key_slice, id );
-            ptr = _cache.get( id );
+            ptr = _cache.get( (void*)&id );
 
             if( !ptr )
             {
@@ -191,7 +191,7 @@ public:
             assert( s.ok() );
 
             unpack_from_slice( value_slice, id );
-            ptr = _cache.get( id );
+            ptr = _cache.get( (void*)&id );
 
             if( !ptr )
             {
@@ -403,7 +403,7 @@ public:
             else
                id = (ID*)itr._iter->value().data();
 
-            if ( cache.get( *id ) )
+            if ( cache.get( (void*)id ) )
             {
                return rocksdb_iterator( handles, index, db, cache, *id, itr._iter->key(), std::move( itr._iter ) );
             }
@@ -429,7 +429,7 @@ public:
       if ( index == ID_INDEX )
       {
          ID* id = (ID*)&k;
-         if ( cache.get( *id ) )
+         if ( cache.get( (void*)id ) )
          {
             PinnableSlice key_slice;
             pack_to_slice( key_slice, k );
@@ -456,7 +456,7 @@ public:
          else if ( index != ID_INDEX )
          {
             ID* id = (ID*)itr._iter->value().data();
-            if ( cache.get( *id ) )
+            if ( cache.get( (void*)id ) )
             {
                return rocksdb_iterator( handles, index, db, cache, *id, key_slice, std::move( itr._iter ) );
             }
