@@ -21,26 +21,30 @@ template < typename Value >
 class multi_index_cache_manager;
 
 template < typename Value >
-struct abstract_index_cache
+class abstract_index_cache
 {
+public:
    abstract_index_cache() = default;
    virtual ~abstract_index_cache() = default;
 
+   friend class multi_index_cache_manager< Value >;
    typedef typename std::shared_ptr< Value > ptr_type;
 
+   virtual ptr_type get( cache_key_type key ) = 0;
+   virtual void update( cache_key_type key, Value&& v ) = 0;
+
+protected:
+   std::shared_ptr< multi_index_cache_manager< Value > > cache_manager;
+
+private:
    virtual void set_cache_manager( std::shared_ptr< multi_index_cache_manager< Value > > m )
    {
       cache_manager = m;
    }
 
-   virtual ptr_type get( cache_key_type key ) = 0;
    virtual void cache( ptr_type v ) = 0;
-   virtual void update( cache_key_type key, Value&& v ) = 0;
    virtual void invalidate( const Value& v ) = 0;
    virtual void clear() = 0;
-
-protected:
-   std::shared_ptr< multi_index_cache_manager< Value > > cache_manager;
 };
 
 template < typename Value >
@@ -63,7 +67,7 @@ public:
       _index_caches.push_back( std::move( index_cache ) );
    }
 
-   index_cache_type& get_index_cache( size_t index )
+   const index_cache_type& get_index_cache( size_t index )
    {
       assert( index >= 1 );
       assert( index <= _index_caches.size() );
@@ -112,7 +116,7 @@ public:
 };
 
 template< typename Value, typename Key, typename KeyFromValue >
-struct index_cache : abstract_index_cache< Value >
+class index_cache : public abstract_index_cache< Value >
 {
 public:
    typedef typename std::shared_ptr< Value > ptr_type;
@@ -126,11 +130,7 @@ private:
       return *( ( Key* )k );
    }
 
-public:
-   index_cache() = default;
-   virtual ~index_cache() = default;
-
-   void cache( ptr_type value )
+   virtual void cache( ptr_type value )
    {
       auto key = _get_key( *value );
       auto r = _cache.insert( std::make_pair( key, value ) );
@@ -138,7 +138,7 @@ public:
       _unused( r );
    }
 
-   void invalidate( const Value& v )
+   virtual void invalidate( const Value& v )
    {
       auto k = _get_key( v );
       auto n = _cache.erase( k );
@@ -146,20 +146,24 @@ public:
       _unused( n );
    }
 
-   void update( cache_key_type k, Value&&v )
+   virtual void clear()
+   {
+      _cache.clear();
+   }
+
+public:
+   index_cache() = default;
+   virtual ~index_cache() = default;
+
+   virtual void update( cache_key_type k, Value&&v )
    {
       abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ) );
    }
 
-   ptr_type get( cache_key_type k )
+   virtual ptr_type get( cache_key_type k )
    {
       auto itr = _cache.find( key( k ) );
       return itr != _cache.end() ? itr->second : ptr_type();
-   }
-
-   void clear()
-   {
-      _cache.clear();
    }
 };
 
