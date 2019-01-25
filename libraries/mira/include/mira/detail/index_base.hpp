@@ -202,7 +202,7 @@ protected:
   }
 
    template< typename Modifier >
-   bool modify_( Modifier& mod, value_type& v )
+   bool modify_( Modifier& mod, value_type& v, std::vector< size_t >& )
    {
       mod( v );
       return true;

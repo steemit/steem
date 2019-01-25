@@ -32,6 +32,8 @@ public:
 
    virtual ptr_type get( cache_key_type key ) = 0;
    virtual void update( cache_key_type key, Value&& v ) = 0;
+   virtual void update( cache_key_type key, Value&& v, std::vector< size_t >& modified_indices ) = 0;
+   virtual bool contains( cache_key_type key ) = 0;
 
 protected:
    std::shared_ptr< multi_index_cache_manager< Value > > cache_manager;
@@ -74,6 +76,12 @@ public:
       return _index_caches[ index - 1 ];
    }
 
+   ptr_type cache( const Value& value )
+   {
+      Value v = value;
+      return cache( std::move( v ) );
+   }
+
    ptr_type cache( Value&& value )
    {
       ptr_type p = std::make_shared< Value >( std::move( value ) );
@@ -100,6 +108,20 @@ public:
       // Generate new keys for each index based on the new value
       for ( auto& c : _index_caches )
          c->cache( old_value );
+   }
+
+   void update( ptr_type old_value, Value&& new_value, const std::vector< size_t >& modified_indices )
+   {
+      // Invalidate the keys based on our old value
+      for ( auto i : modified_indices )
+         _index_caches[ i - 1 ]->invalidate( *old_value );
+
+      // Replace the value without changing our pointers
+      *old_value = std::move( new_value );
+
+      // Generate new keys for each index based on the new value
+      for ( auto i : modified_indices )
+         _index_caches[ i - 1 ]->cache( old_value );
    }
 
    void invalidate( const Value& v )
@@ -160,10 +182,20 @@ public:
       abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ) );
    }
 
+   virtual void update( cache_key_type k, Value&& v, std::vector< size_t >& modified_indices )
+   {
+      abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ), modified_indices );
+   }
+
    virtual ptr_type get( cache_key_type k )
    {
       auto itr = _cache.find( key( k ) );
       return itr != _cache.end() ? itr->second : ptr_type();
+   }
+
+   virtual bool contains( cache_key_type k )
+   {
+      return _cache.find( key( k ) ) != _cache.end();
    }
 };
 
