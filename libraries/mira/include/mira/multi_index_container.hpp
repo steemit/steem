@@ -1119,7 +1119,8 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
    bool modify_( Modifier& mod, value_type& v )
    {
       bool status = false;
-      if( super::modify_( mod, v ) )
+      std::vector< size_t > modified_indices;
+      if( super::modify_( mod, v, modified_indices ) )
       {
          status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
 
@@ -1129,7 +1130,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             most likely belongs to the shared ptr in the cache, so updating
             the value has already updated the cache, but in case something
             doesn't line up here, we update by moving the value to itself... */
-            super::_cache->update( super::id( v ), std::move( v ) );
+            super::_cache->get_index_cache( ID_INDEX )->update( (void*)&super::id( v ), std::move( v ), modified_indices );
          }
       }
       super::_write_buffer.Clear();

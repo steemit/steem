@@ -585,6 +585,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
     empty_initialize();
+    _cache->add_index_cache( std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
   }
 
   ordered_index_impl(
@@ -877,10 +878,10 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   }
 
    template< typename Modifier >
-   bool modify_( Modifier mod, value_type& v )
+   bool modify_( Modifier mod, value_type& v, std::vector< size_t >& modified_indices )
    {
       key_type old_key = key( v );
-      if( super::modify_( mod, v ) )
+      if( super::modify_( mod, v, modified_indices ) )
       {
          ::rocksdb::Status s = ::rocksdb::Status::OK();
 
@@ -900,6 +901,9 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          }
          else if( new_key != old_key )
          {
+            size_t col_index = COLUMN_INDEX;
+            modified_indices.push_back( col_index );
+
             ::rocksdb::PinnableSlice read_buffer;
 
             pack_to_slice( new_key_slice, new_key );
@@ -1268,6 +1272,9 @@ private:
       value_type v( std::forward< Args >(args)... );
 
       bool res = this->final_emplace_rocksdb_( v );
+
+      if ( res )
+         _cache->cache( v );
 
       return std::pair< typename primary_index_type::iterator, bool >(
          res ? primary_index_type::iterator_to( v ) :
