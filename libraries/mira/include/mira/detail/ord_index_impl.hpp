@@ -285,6 +285,9 @@ protected:
 
    std::shared_ptr< object_cache_type >               _cache;
 
+   uint32_t                                           _key_modification_count = 0;
+   rocksdb::FlushOptions                              _flush_opts;
+
 public:
 
   /* construct/copy/destroy
@@ -334,6 +337,12 @@ public:
   {
     return make_iterator( key( x ) );
   }
+
+   void flush()
+   {
+      super::flush();
+      super::_db->Flush( rocksdb::FlushOptions(), super::_handles[ COLUMN_INDEX ] );
+   }
 
   /* capacity */
 
@@ -914,6 +923,8 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             if( !s.ok() ) return false;
 
             pack_to_slice( value_slice, id( v ) );
+
+            ++_key_modification_count;
          }
          else
          {
@@ -924,6 +935,12 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             super::_handles[ COLUMN_INDEX ],
             new_key_slice,
             value_slice );
+
+         if( _key_modification_count > 100 )
+         {
+            super::_db->Flush( _flush_opts, super::_handles[ COLUMN_INDEX ] );
+            _key_modification_count = 0;
+         }
 
          return s.ok();
       }

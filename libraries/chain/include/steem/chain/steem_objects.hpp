@@ -465,6 +465,20 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::convert_request_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::escrow_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::liquidity_reward_balance_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::limit_order_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::withdraw_vesting_route_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::decline_voting_rights_request_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::reward_fund_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/account_object.hpp>
 

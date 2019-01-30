@@ -39,6 +39,10 @@
 
 #include <boost/scope_exit.hpp>
 
+#include <rocksdb/perf_context.h>
+
+#include <iostream>
+
 #include <cstdint>
 #include <deque>
 #include <fstream>
@@ -234,9 +238,15 @@ uint32_t database::reindex( const open_args& args )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
 
-               //get_index< account_index >().indices().print_stats();
+               //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
+               //rocksdb::get_perf_context()->Reset();
             }
             apply_block( itr.first, skip_flags );
+
+            if( cur_block_num % 100000 == 0 )
+            {
+               //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+            }
 
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
                args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
@@ -250,6 +260,8 @@ uint32_t database::reindex( const open_args& args )
             args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
+
+         get_index< account_index >().indices().print_stats();
       });
 
       if( _block_log.head()->block_num() )
@@ -3097,6 +3109,12 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_transactions();
    clear_expired_orders();
    clear_expired_delegations();
+
+   if( next_block.block_num() % 100000 == 0 )
+   {
+
+   }
+
    update_witness_schedule(*this);
 
    update_median_feed();

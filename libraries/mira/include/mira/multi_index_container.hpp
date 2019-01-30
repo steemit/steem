@@ -82,8 +82,8 @@
 #endif
 
 #define DEFAULT_COLUMN 0
-#define MIRA_MAX_OPEN_FILES_PER_DB 8
-#define MIRA_SHARED_CACHE_SIZE (4ull * 1024 * 1024 * 1024 ) /* 4G */
+#define MIRA_MAX_OPEN_FILES_PER_DB 64
+#define MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 ) /* 4G */
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -101,7 +101,7 @@ struct rocksdb_options_factory
 {
    static std::shared_ptr< rocksdb::Cache > get_shared_cache()
    {
-      static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE );
+      static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE, 4 );
       return cache;
    }
 
@@ -234,48 +234,52 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-      _stats = rocksdb_options_factory::get_shared_stats();
+//      _stats = rocksdb_options_factory::get_shared_stats();
 
       ::rocksdb::Options opts;
-      //opts.IncreaseParallelism();
-      //opts.OptimizeLevelStyleCompaction();
-      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+//
+//      opts.OptimizeLevelStyleCompaction();
+      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
+      opts.IncreaseParallelism();
+//      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
       //opts.compression = rocksdb::CompressionType::kNoCompression;
 
-      //opts.statistics = _stats;
-/*
-      //opts.block_size = 8 << 10; //8K
-      //opts.cache_size = 4 << 30; // 4G
-      opts.write_buffer_size = 512 << 20; // 512M
-      opts.max_write_buffer_number = 8;
-      //opts.min_write_buffer_number_to_merge = 4;
-      opts.max_bytes_for_level_base = 2 << 30; // 3G
-      opts.max_bytes_for_level_multiplier = 5;
-      opts.target_file_size_base = 128 << 20; // 20M
-      opts.target_file_size_multiplier = 1;
-      opts.max_background_flushes = 2;
-      opts.max_background_compactions = 32;
-      opts.level0_file_num_compaction_trigger = 2;
-      opts.level0_slowdown_writes_trigger = 24;
-      opts.level0_stop_writes_trigger = 56;
-      //opts.cache_numshardbits = 6;
-      opts.table_cache_numshardbits = 4;
+//      opts.statistics = _stats;
+      opts.stats_dump_period_sec = 20;
+//*
+//      //opts.block_size = 8 << 10; //8K
+//      //opts.cache_size = 4 << 30; // 4G
+//      opts.write_buffer_size = 4 << 10; // 64K
+//      opts.max_write_buffer_number = 1;
+//      //opts.min_write_buffer_number_to_merge = 4;
+//      opts.max_bytes_for_level_base = 2 << 30; // 3G
+//      opts.max_bytes_for_level_multiplier = 5;
+//      opts.target_file_size_base = 128 << 20; // 20M
+//      opts.target_file_size_multiplier = 1;
+//      opts.max_background_jobs = 32;
+      opts.max_background_flushes = 1;
+      opts.max_background_compactions = 8;
+//      opts.level0_file_num_compaction_trigger = 2;
+//      opts.level0_slowdown_writes_trigger = 24;
+//      opts.level0_stop_writes_trigger = 56;
+//      //opts.cache_numshardbits = 6;
+//      opts.table_cache_numshardbits = 0;
       opts.allow_mmap_reads = 1;
-      opts.allow_mmap_writes = 0;
-      opts.use_fsync = false;
-      opts.use_adaptive_mutex = false;
-      opts.bytes_per_sync = 2 << 20; // 2M
-      //opts.source_compaction_factor = 1;
-      //opts.max_grandparent_overlap_factor = 5;
+//      opts.allow_mmap_writes = 0;
+//      opts.use_fsync = false;
+//      opts.use_adaptive_mutex = false;
+//      opts.bytes_per_sync = 2 << 20; // 2M
+//      //opts.source_compaction_factor = 1;
+//      //opts.max_grandparent_overlap_factor = 5;
 //*/
-      //opts.allow_mmap_reads = 1;
-      /*
+
+//*
       ::rocksdb::BlockBasedTableOptions table_options;
-      table_options.block_size = 8 << 10; // 8K
+//      table_options.block_size = 4 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+//      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
-      //*/
+//*/
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
@@ -444,6 +448,14 @@ public:
    ~multi_index_container()
    {
       close();
+   }
+
+   void flush()
+   {
+      if( super::_db )
+      {
+         super::flush();
+      }
    }
 
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
@@ -677,8 +689,11 @@ int64_t set_revision( int64_t rev )
 
 void print_stats() const
 {
-   std::cout << _name << " stats:\n";
-   std::cout << _stats->ToString() << "\n";
+   if( _stats )
+   {
+      std::cout << _name << " stats:\n";
+      std::cout << _stats->ToString() << "\n";
+   }
 }
 
 primary_iterator iterator_to( const value_type& x )

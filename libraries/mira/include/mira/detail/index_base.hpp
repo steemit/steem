@@ -108,6 +108,8 @@ protected:
       cleanup_column_handles();
    }
 
+   void flush() {}
+
   void copy_(
     const index_base<Value,IndexSpecifierList,Allocator>&,const copy_map_type&)
   {}

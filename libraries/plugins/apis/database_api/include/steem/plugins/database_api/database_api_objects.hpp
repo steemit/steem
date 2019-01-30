@@ -164,7 +164,6 @@ struct api_account_object
       id( a.id ),
       name( a.name ),
       memo_key( a.memo_key ),
-      json_metadata( to_string( a.json_metadata ) ),
       proxy( a.proxy ),
       last_account_update( a.last_account_update ),
       created( a.created ),
@@ -219,6 +218,12 @@ struct api_account_object
       active = authority( auth.active );
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
+#ifndef IS_LOW_MEM
+      const auto* maybe_meta = db.find< account_metadata_object, by_account >( id );
+      if( maybe_meta )
+         json_metadata = to_string( maybe_meta->json_metadata );
+#endif
+
 #ifdef STEEM_ENABLE_SMT
       const auto& by_control_account_index = db.get_index<smt_token_index>().indices().get<by_control_account>();
       auto smt_obj_itr = by_control_account_index.find( name );

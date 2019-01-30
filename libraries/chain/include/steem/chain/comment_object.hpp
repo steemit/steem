@@ -261,6 +261,14 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::comment_vote_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)

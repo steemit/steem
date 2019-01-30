@@ -287,6 +287,15 @@ namespace steem { namespace chain {
 
 } }
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::witness_vote_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::witness_schedule_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT_ENUM( steem::chain::witness_object::witness_schedule_type, (elected)(timeshare)(miner)(none) )
 
 FC_REFLECT( steem::chain::chain_properties,

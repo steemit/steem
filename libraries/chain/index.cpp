@@ -18,6 +18,7 @@ void initialize_core_indexes( database& db )
 {
    add_core_index< dynamic_global_property_index           >( db );
    add_core_index< account_index                           >( db );
+   add_core_index< account_metadata_index                  >( db );
    add_core_index< account_authority_index                 >( db );
    add_core_index< witness_index                           >( db );
    add_core_index< transaction_index                       >( db );

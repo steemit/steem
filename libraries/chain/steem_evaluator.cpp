@@ -373,10 +373,15 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {
@@ -468,11 +473,15 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
       acc.received_vesting_shares = o.delegation;
-
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {
@@ -544,12 +553,17 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
             acc.memo_key = o.memo_key;
 
       acc.last_account_update = _db.head_block_time();
-
-      #ifndef IS_LOW_MEM
-        if ( o.json_metadata.size() > 0 )
-            from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+   #ifndef IS_LOW_MEM
+   if( o.json_metadata.size() > 0 )
+   {
+      _db.modify( _db.get< account_metadata_object, by_account >( account.id ), [&]( account_metadata_object& meta )
+      {
+         from_string( meta.json_metadata, o.json_metadata );
+      });
+   }
+   #endif
 
    if( o.active || o.posting )
    {
@@ -2111,11 +2125,18 @@ void pow_apply( database& db, Operation o )
    auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end())
    {
-      db.create< account_object >( [&]( account_object& acc )
+      const auto& new_account = db.create< account_object >( [&]( account_object& acc )
       {
          initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/, account_name_type(), db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
+
+#ifndef IS_LOW_MEM
+      db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+      {
+         meta.account = new_account.id;
+      });
+#endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
       {
@@ -2224,11 +2245,18 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
    if(itr == accounts_by_name.end())
    {
       FC_ASSERT( o.new_owner_key.valid(), "New owner key is not valid." );
-      db.create< account_object >( [&]( account_object& acc )
+      const auto& new_account = db.create< account_object >( [&]( account_object& acc )
       {
          initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, account_name_type(), _db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
+
+#ifndef IS_LOW_MEM
+      db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+      {
+         meta.account = new_account.id;
+      });
+#endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
       {
@@ -2466,13 +2494,18 @@ void create_claimed_account_evaluator::do_apply( const create_claimed_account_op
       a.pending_claimed_accounts--;
    });
 
-   _db.create< account_object >( [&]( account_object& acc )
+   const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {

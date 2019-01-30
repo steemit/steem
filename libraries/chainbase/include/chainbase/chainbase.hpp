@@ -282,6 +282,8 @@ namespace chainbase {
 
          void clear() { _indices.clear(); }
 
+         void flush() { _indices.flush(); }
+
          class session {
             public:
                session( session&& mv )
@@ -625,7 +627,7 @@ namespace chainbase {
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
          virtual void clear() = 0;
-
+         virtual void flush() = 0;
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -695,6 +697,11 @@ namespace chainbase {
          virtual void clear() override final
          {
             _base.clear();
+         }
+
+         virtual void flush() override final
+         {
+            _base.flush();
          }
 
       private:

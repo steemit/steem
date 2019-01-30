@@ -86,6 +86,11 @@ namespace chainbase {
          _segment->flush();
       if( _meta )
          _meta->flush();
+#else
+      for( auto& item : _index_list )
+      {
+         item->flush();
+      }
 #endif
    }
 
