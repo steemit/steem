@@ -7461,7 +7461,8 @@ BOOST_AUTO_TEST_CASE( create_claimed_account_apply )
       BOOST_REQUIRE( bob_auth.posting == authority( 3, priv_key.get_public_key(), 3 ) );
       BOOST_REQUIRE( bob.memo_key == priv_key.get_public_key() );
 #ifndef IS_LOW_MEM // json_metadata is not stored on low memory nodes
-      BOOST_REQUIRE( bob.json_metadata == "{\"foo\":\"bar\"}" );
+      const auto& bob_meta = db->get< account_metadata_object, by_account >( bob.id );
+      BOOST_REQUIRE( bob_meta.json_metadata == "{\"foo\":\"bar\"}" );
 #endif
       BOOST_REQUIRE( bob.proxy == "" );
       BOOST_REQUIRE( bob.recovery_account == "alice" );
