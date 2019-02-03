@@ -60,20 +60,20 @@ public:
    typedef cache_factory< Value >                                    factory_type;
 
 private:
-   std::vector< index_cache_type > _index_caches;
+   std::map< size_t, index_cache_type > _index_caches;
 
 public:
-   void add_index_cache( index_cache_type&& index_cache )
+   void set_index_cache( size_t index, index_cache_type&& index_cache )
    {
       index_cache->set_cache_manager( this->shared_from_this() );
-      _index_caches.push_back( std::move( index_cache ) );
+      _index_caches[ index ] = std::move( index_cache );
    }
 
    const index_cache_type& get_index_cache( size_t index )
    {
       assert( index >= 1 );
       assert( index <= _index_caches.size() );
-      return _index_caches[ index - 1 ];
+      return _index_caches[ index ];
    }
 
    ptr_type cache( const Value& value )
@@ -91,7 +91,7 @@ public:
    ptr_type cache( ptr_type value )
    {
       for ( auto& c : _index_caches )
-         c->cache( value );
+         c.second->cache( value );
 
       return value;
    }
@@ -100,40 +100,40 @@ public:
    {
       // Invalidate the keys based on our old value
       for ( auto& c : _index_caches )
-         c->invalidate( *old_value );
+         c.second->invalidate( *old_value );
 
       // Replace the value without changing our pointers
       *old_value = std::move( new_value );
 
       // Generate new keys for each index based on the new value
       for ( auto& c : _index_caches )
-         c->cache( old_value );
+         c.second->cache( old_value );
    }
 
    void update( ptr_type old_value, Value&& new_value, const std::vector< size_t >& modified_indices )
    {
       // Invalidate the keys based on our old value
       for ( auto i : modified_indices )
-         _index_caches[ i - 1 ]->invalidate( *old_value );
+         _index_caches[ i ]->invalidate( *old_value );
 
       // Replace the value without changing our pointers
       *old_value = std::move( new_value );
 
       // Generate new keys for each index based on the new value
       for ( auto i : modified_indices )
-         _index_caches[ i - 1 ]->cache( old_value );
+         _index_caches[ i ]->cache( old_value );
    }
 
    void invalidate( const Value& v )
    {
       for ( auto& c : _index_caches )
-         c->invalidate( v );
+         c.second->invalidate( v );
    }
 
    void clear()
    {
       for ( auto& c : _index_caches )
-         c->clear();
+         c.second->clear();
    }
 };
 

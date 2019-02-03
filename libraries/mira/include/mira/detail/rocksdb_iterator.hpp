@@ -102,22 +102,28 @@ public:
       _db( db ),
       _cache( cache )
    {
-      //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-      //_opts.snapshot = _snapshot->snapshot();
-
-      _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-
-      PinnableSlice key_slice;
-      pack_to_slice( key_slice, k );
-
-      _iter->Seek( key_slice );
-
-      if( !_iter->status().ok() )
+      key_type* id = (key_type*)&k;
+      if ( cache.get_index_cache( index )->contains( (void*)id ) )
       {
-         std::cout << std::string( _iter->status().getState() ) << std::endl;
+         _cache_key = k;
+         _cached_itr = true;
       }
+      else
+      {
+         _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
-      assert( _iter->status().ok() && _iter->Valid() );
+         PinnableSlice key_slice;
+         pack_to_slice( key_slice, k );
+
+         _iter->Seek( key_slice );
+
+         if( !_iter->status().ok() )
+         {
+            std::cout << std::string( _iter->status().getState() ) << std::endl;
+         }
+
+         assert( _iter->status().ok() && _iter->Valid() );
+      }
    }
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache, const ::rocksdb::Slice& s  ) :
@@ -126,13 +132,24 @@ public:
       _db( db ),
       _cache( cache )
    {
-      //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-      //_opts.snapshot = _snapshot->snapshot();
+      Key k;
+      unpack_from_slice( s, k );
+      key_type* id = (key_type*)&k;
+      if ( cache.get_index_cache( index )->contains( (void*)id ) )
+      {
+         _cache_key = k;
+         _cached_itr = true;
+      }
+      else
+      {
+         //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
+         //_opts.snapshot = _snapshot->snapshot();
 
-      _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
-      _iter->Seek( s );
+         _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
+         _iter->Seek( s );
 
-      assert( _iter->status().ok() && _iter->Valid() );
+         assert( _iter->status().ok() && _iter->Valid() );
+      }
    }
 
    rocksdb_iterator( rocksdb_iterator&& other ) :
