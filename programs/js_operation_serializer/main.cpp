@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/protocol/protocol.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <fc/smart_ref_impl.hpp>

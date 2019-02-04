@@ -65,10 +65,12 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
+        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
+    ./libraries/mira/test/mira_test
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
@@ -91,6 +93,7 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
+        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
@@ -120,6 +123,7 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
+        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
     make -j$(nproc) chain_test plugin_test && \
@@ -144,6 +148,7 @@ RUN \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=OFF \
         -DBUILD_STEEM_TESTNET=OFF \
+        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
@@ -167,6 +172,7 @@ RUN \
         -DCLEAR_VOTES=OFF \
         -DSKIP_BY_TX_ID=ON \
         -DBUILD_STEEM_TESTNET=OFF \
+        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \

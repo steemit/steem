@@ -241,9 +241,8 @@ public:
 
       ::rocksdb::Options opts;
 //
-      opts.OptimizeLevelStyleCompaction();
 //      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
-      opts.IncreaseParallelism();
+
 //      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
       //opts.compression = rocksdb::CompressionType::kNoCompression;
 
@@ -267,8 +266,8 @@ public:
 //      opts.level0_stop_writes_trigger = 56;
 //      //opts.cache_numshardbits = 6;
 //      opts.table_cache_numshardbits = 0;
-//      opts.allow_mmap_reads = 1;
-//      opts.allow_mmap_writes = 0;
+      opts.allow_mmap_reads = 1;
+      opts.allow_mmap_writes = 1;
 //      opts.use_fsync = false;
 //      opts.use_adaptive_mutex = false;
 //      opts.bytes_per_sync = 2 << 20; // 2M
@@ -291,6 +290,9 @@ public:
       opts.max_background_compactions = 16;
       opts.max_background_flushes = 16;
       opts.min_write_buffer_number_to_merge = 8;
+
+      opts.OptimizeLevelStyleCompaction();
+      opts.IncreaseParallelism();
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );

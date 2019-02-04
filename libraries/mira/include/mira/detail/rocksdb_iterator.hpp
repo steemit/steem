@@ -244,7 +244,8 @@ public:
    {
       //BOOST_ASSERT( valid() );
       rocksdb_iterator new_itr( *this );
-      return ++new_itr;
+      ++(*this);
+      return new_itr;
    }
 
    rocksdb_iterator& operator--()
@@ -347,6 +348,7 @@ public:
       cache_type& cache )
    {
       rocksdb_iterator itr( handles, index, db, cache );
+      //itr._opts.readahead_size = 4 << 10; // 4K
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
       itr._iter->SeekToFirst();
       return itr;
@@ -513,6 +515,7 @@ public:
    {
       static KeyCompare compare = KeyCompare();
       rocksdb_iterator itr( handles, index, db, cache );
+      //itr._opts.readahead_size = 4 << 10; // 4K
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
       auto key = Key( k );

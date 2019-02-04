@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/utilities/git_revision.hpp>
 #include <steem/utilities/key_conversion.hpp>
 #include <steem/utilities/words.hpp>

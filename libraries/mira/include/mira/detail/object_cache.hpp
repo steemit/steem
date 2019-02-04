@@ -137,7 +137,8 @@ public:
    }
 };
 
-template< typename Value, typename Key, typename KeyFromValue >
+template< typename Value, typename Key, typename KeyFromValue, typename CompareType >
+//template< typename Value, typename Key, typename KeyFromValue >
 class index_cache : public abstract_index_cache< Value >
 {
 public:
@@ -145,7 +146,8 @@ public:
 
 private:
    KeyFromValue               _get_key;
-   std::map< Key, ptr_type >  _cache;
+   std::map< Key, ptr_type, CompareType >  _cache;
+   //std::map< Key, ptr_type >  _cache;
 
    const Key key( cache_key_type k )
    {
