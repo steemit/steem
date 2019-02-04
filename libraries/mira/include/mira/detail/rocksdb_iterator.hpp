@@ -40,9 +40,7 @@ private:
 
    KeyCompare                                      _compare;
 
-   // Cached iterators
-   key_type                                        _cache_key;
-   bool                                            _cached_itr = false;
+   std::weak_ptr< Value >                          _cache_value;
 
 public:
 
@@ -57,24 +55,22 @@ public:
       //_opts.snapshot = _snapshot->snapshot();
       //_iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
    }
-   rocksdb_iterator( const key_type& cache_key, const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
+   rocksdb_iterator( std::shared_ptr< Value >& cache_value, const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
       _index( index ),
       _db( db ),
       _cache( cache ),
-      _cache_key( cache_key ),
-      _cached_itr( true )
+      _cache_value( cache_value )
    {
    }
 
-   rocksdb_iterator( const key_type& cache_key, const column_handles& handles, size_t index, db_ptr db, cache_type& cache, std::unique_ptr< ::rocksdb::Iterator > iter ) :
+   rocksdb_iterator( std::shared_ptr< Value >& cache_value, const column_handles& handles, size_t index, db_ptr db, cache_type& cache, std::unique_ptr< ::rocksdb::Iterator > iter ) :
       _handles( handles ),
       _index( index ),
       _iter( std::move( iter ) ),
       _db( db ),
       _cache( cache ),
-      _cache_key( cache_key ),
-      _cached_itr( true )
+      _cache_value( cache_value )
    {
    }
 
@@ -84,8 +80,7 @@ public:
       _snapshot( other._snapshot ),
       _db( other._db ),
       _cache( other._cache ),
-      _cache_key( other._cache_key ),
-      _cached_itr( other._cached_itr )
+      _cache_value( other._cache_value )
    {
       if ( other._iter )
       {
@@ -103,12 +98,8 @@ public:
       _cache( cache )
    {
       key_type* id = (key_type*)&k;
-      if ( cache.get_index_cache( index )->contains( (void*)id ) )
-      {
-         _cache_key = k;
-         _cached_itr = true;
-      }
-      else
+      _cache_value = cache.get_index_cache( index )->get( (void*)id );
+      if ( _cache_value.expired() )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
@@ -135,16 +126,9 @@ public:
       Key k;
       unpack_from_slice( s, k );
       key_type* id = (key_type*)&k;
-      if ( cache.get_index_cache( index )->contains( (void*)id ) )
+      _cache_value = cache.get_index_cache( index )->get( (void*)id );
+      if ( _cache_value.expired() )
       {
-         _cache_key = k;
-         _cached_itr = true;
-      }
-      else
-      {
-         //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
-         //_opts.snapshot = _snapshot->snapshot();
-
          _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
          _iter->Seek( s );
 
@@ -159,8 +143,7 @@ public:
       _snapshot( other._snapshot ),
       _db( other._db ),
       _cache( other._cache ),
-      _cache_key( other._cache_key ),
-      _cached_itr( other._cached_itr )
+      _cache_value( other._cache_value )
    {
       //_opts.snapshot = _snapshot->snapshot();
       other._snapshot.reset();
@@ -172,9 +155,9 @@ public:
       BOOST_ASSERT( valid() );
       value_ptr ptr;
 
-      if ( _cached_itr )
+      if ( !_cache_value.expired() )
       {
-         ptr = _cache.get_index_cache( _index )->get( (void*)&_cache_key );
+         ptr = _cache_value.lock();
       }
       else
       {
@@ -205,8 +188,7 @@ public:
             }
          }
 
-         _cached_itr = true;
-         _cache_key = key;
+         _cache_value = ptr;
       }
 
       return (*ptr);
@@ -219,17 +201,19 @@ public:
 
    rocksdb_iterator& operator++()
    {
+      static KeyFromValue key_from_value = KeyFromValue();
       //BOOST_ASSERT( valid() );
       if( !valid() ) _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
-      if ( _cached_itr )
+      if ( !_cache_value.expired() )
       {
-         _cached_itr = false;
+         Key key = key_from_value( *_cache_value.lock() );
+         _cache_value.reset();
 
          if ( _iter == nullptr )
          {
             ::rocksdb::PinnableSlice slice;
-            pack_to_slice( slice, _cache_key );
+            pack_to_slice( slice, key );
 
             _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
             _iter->Seek( slice );
@@ -265,6 +249,7 @@ public:
 
    rocksdb_iterator& operator--()
    {
+      static KeyFromValue key_from_value = KeyFromValue();
       if( !valid() )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
@@ -272,14 +257,15 @@ public:
       }
       else
       {
-         if ( _cached_itr )
+         if ( !_cache_value.expired() )
          {
-            _cached_itr = false;
+            Key key = key_from_value( *_cache_value.lock() );
+            _cache_value.reset();
 
             if ( _iter == nullptr )
             {
                ::rocksdb::PinnableSlice slice;
-               pack_to_slice( slice, _cache_key );
+               pack_to_slice( slice, key );
 
                _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
                _iter->Seek( slice );
@@ -315,24 +301,25 @@ public:
 
    bool valid()const
    {
-      return _cached_itr || ( _iter && _iter->Valid() );
+      return ( !_cache_value.expired() ) || ( _iter && _iter->Valid() );
    }
 
    bool unchecked()const { return false; }
 
    bool equals( const rocksdb_iterator& other )const
    {
+      static KeyFromValue key_from_value = KeyFromValue();
       if( valid() && other.valid() )
       {
          Key this_key, other_key;
 
-         if ( _cached_itr )
-            this_key = _cache_key;
+         if ( !_cache_value.expired() )
+            this_key = key_from_value( *_cache_value.lock() );
          else
             unpack_from_slice( _iter->key(), this_key );
 
-         if ( other._cached_itr )
-            other_key = other._cache_key;
+         if ( !other._cache_value.expired() )
+            other_key = key_from_value( *other._cache_value.lock() );
          else
             unpack_from_slice( other._iter->key(), other_key );
 
@@ -347,8 +334,7 @@ public:
       _iter = std::move( other._iter );
       _snapshot = other._snapshot;
       _db = other._db;
-      _cached_itr = other._cached_itr;
-      _cache_key = other._cache_key;
+      _cache_value = other._cache_value;
 
       return *this;
    }
@@ -405,10 +391,10 @@ public:
          else
          {
             key_type* key = (key_type*)&found_key;
-
-            if ( cache.get_index_cache( index )->contains( (void*)key ) )
+            auto cache_value = cache.get_index_cache( index )->get( (void*)key );
+            if ( cache_value != nullptr )
             {
-               return rocksdb_iterator( *key, handles, index, db, cache, std::move( itr._iter ) );
+               return rocksdb_iterator( cache_value, handles, index, db, cache, std::move( itr._iter ) );
             }
          }
       }
@@ -430,9 +416,10 @@ public:
       static KeyCompare compare = KeyCompare();
 
       key_type* id = (key_type*)&k;
-      if ( cache.get_index_cache( index )->contains( (void*)id ) )
+      auto cache_value = cache.get_index_cache( index )->get( (void*)id );
+      if ( cache_value != nullptr )
       {
-         return rocksdb_iterator( *id, handles, index, db, cache );
+         return rocksdb_iterator( cache_value, handles, index, db, cache );
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
@@ -468,9 +455,10 @@ public:
       const Key& k )
    {
       key_type* id = (key_type*)&k;
-      if ( cache.get_index_cache( index )->contains( (void*)id ) )
+      auto cache_value = cache.get_index_cache( index )->get( (void*)id );
+      if ( cache_value != nullptr )
       {
-         return rocksdb_iterator( *id, handles, index, db, cache );
+         return rocksdb_iterator( cache_value, handles, index, db, cache );
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
