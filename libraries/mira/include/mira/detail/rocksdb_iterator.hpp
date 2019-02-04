@@ -370,9 +370,16 @@ public:
       const CompatibleKey& k )
    {
       static KeyCompare compare = KeyCompare();
+
+      auto key = Key( k );
+      auto cache_value = cache.get_index_cache( index )->get( (void*)&key );
+      if ( cache_value != nullptr )
+      {
+         return rocksdb_iterator( cache_value, handles, index, db, cache );
+      }
+
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
-      auto key = Key( k );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, key );
@@ -387,15 +394,6 @@ public:
          if( compare( k, found_key ) != compare( found_key, k ) )
          {
             itr._iter.reset( itr._db->NewIterator( itr._opts, itr._handles[ itr._index ] ) );
-         }
-         else
-         {
-            key_type* key = (key_type*)&found_key;
-            auto cache_value = cache.get_index_cache( index )->get( (void*)key );
-            if ( cache_value != nullptr )
-            {
-               return rocksdb_iterator( cache_value, handles, index, db, cache, std::move( itr._iter ) );
-            }
          }
       }
       else

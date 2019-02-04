@@ -163,6 +163,7 @@ private:
 
    std::string                                     _name;
    std::shared_ptr< ::rocksdb::Statistics >        _stats;
+   ::rocksdb::WriteOptions                         _wopts;
 
 public:
   /* All types are inherited from super, a few are explicitly
@@ -202,6 +203,7 @@ public:
       std::vector< std::string > split_v;
       auto type = boost::core::demangle( typeid( Value ).name() );
       boost::split( split_v, type, boost::is_any_of( ":" ) );
+      _wopts.disableWAL = true;
 
       _name = "rocksdb_" + *(split_v.rbegin());
    }
@@ -216,6 +218,7 @@ public:
       boost::split( split_v, type, boost::is_any_of( ":" ) );
 
       _name = "rocksdb_" + *(split_v.rbegin());
+      _wopts.disableWAL = true;
 
       open( p );
 
@@ -238,14 +241,14 @@ public:
 
       ::rocksdb::Options opts;
 //
-//      opts.OptimizeLevelStyleCompaction();
-      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
+      opts.OptimizeLevelStyleCompaction();
+//      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
       opts.IncreaseParallelism();
 //      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
       //opts.compression = rocksdb::CompressionType::kNoCompression;
 
 //      opts.statistics = _stats;
-      opts.stats_dump_period_sec = 20;
+//      opts.stats_dump_period_sec = 20;
 //*
 //      //opts.block_size = 8 << 10; //8K
 //      //opts.cache_size = 4 << 30; // 4G
@@ -257,14 +260,14 @@ public:
 //      opts.target_file_size_base = 128 << 20; // 20M
 //      opts.target_file_size_multiplier = 1;
 //      opts.max_background_jobs = 32;
-      opts.max_background_flushes = 1;
-      opts.max_background_compactions = 8;
+//      opts.max_background_flushes = 1;
+//      opts.max_background_compactions = 8;
 //      opts.level0_file_num_compaction_trigger = 2;
 //      opts.level0_slowdown_writes_trigger = 24;
 //      opts.level0_stop_writes_trigger = 56;
 //      //opts.cache_numshardbits = 6;
 //      opts.table_cache_numshardbits = 0;
-      opts.allow_mmap_reads = 1;
+//      opts.allow_mmap_reads = 1;
 //      opts.allow_mmap_writes = 0;
 //      opts.use_fsync = false;
 //      opts.use_adaptive_mutex = false;
@@ -273,13 +276,21 @@ public:
 //      //opts.max_grandparent_overlap_factor = 5;
 //*/
 
-//*
       ::rocksdb::BlockBasedTableOptions table_options;
-//      table_options.block_size = 4 << 10; // 8K
+      table_options.block_size = 8 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-//      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
-//*/
+
+      opts.allow_mmap_reads = true;
+
+      opts.write_buffer_size = 2048 * 1024;              // 128k
+      opts.max_bytes_for_level_base = 5 * 1024 * 1024;  // 1MB
+      opts.target_file_size_base = 100 * 1024;          // 100k
+      opts.max_write_buffer_number = 16;
+      opts.max_background_compactions = 16;
+      opts.max_background_flushes = 16;
+      opts.min_write_buffer_number_to_merge = 8;
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
@@ -366,13 +377,12 @@ public:
          if( s.ok() )
          {
             // Create default column keys
-            ::rocksdb::WriteOptions opts;
 
             auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
             auto ser_count_val = fc::raw::pack_to_vector( uint64_t(0) );
 
             s = db->Put(
-               ::rocksdb::WriteOptions(),
+               _wopts,
                db->DefaultColumnFamily(),
                ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
                ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
@@ -383,7 +393,7 @@ public:
             auto ser_rev_val = fc::raw::pack_to_vector( int64_t(0) );
 
             db->Put(
-               ::rocksdb::WriteOptions(),
+               _wopts,
                db->DefaultColumnFamily(),
                ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
                ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
@@ -419,7 +429,7 @@ public:
          auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
          super::_db->Put(
-            ::rocksdb::WriteOptions(),
+            _wopts,
             super::_handles[ DEFAULT_COLUMN ],
             ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
             ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
@@ -679,7 +689,7 @@ int64_t set_revision( int64_t rev )
    auto ser_rev_val = fc::raw::pack_to_vector( rev );
 
    auto s = super::_db->Put(
-      ::rocksdb::WriteOptions(), rev_slice,
+      _wopts, rev_slice,
       ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
 
    if( s.ok() ) _revision = rev;
@@ -937,8 +947,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       bool status = false;
       if( super::insert_rocksdb_( v ) )
       {
-         ::rocksdb::WriteOptions w_opts;
-         status = super::_db->Write( w_opts, super::_write_buffer.GetWriteBatch()).ok();
+         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch()).ok();
          ++entry_count;
       }
       super::_write_buffer.Clear();
@@ -1063,7 +1072,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
    void erase_( value_type& v )
    {
       super::erase_( v );
-      super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() );
+      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
       --entry_count;
       super::_cache->invalidate( v );
       super::_write_buffer.Clear();
@@ -1122,7 +1131,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       std::vector< size_t > modified_indices;
       if( super::modify_( mod, v, modified_indices ) )
       {
-         status = super::_db->Write( ::rocksdb::WriteOptions(), super::_write_buffer.GetWriteBatch() ).ok();
+         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
 
          if( status )
          {

@@ -341,7 +341,7 @@ public:
    void flush()
    {
       super::flush();
-      super::_db->Flush( rocksdb::FlushOptions(), super::_handles[ COLUMN_INDEX ] );
+      //super::_db->Flush( rocksdb::FlushOptions(), super::_handles[ COLUMN_INDEX ] );
    }
 
   /* capacity */
