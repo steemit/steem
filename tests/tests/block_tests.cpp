@@ -547,7 +547,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
       // Sam is the creator of accounts
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       private_key_type sam_key = generate_private_key( "sam" );
-      account_object sam_account_object = account_create( "sam", sam_key.get_public_key() );
+      account_create( "sam", sam_key.get_public_key() );
 
       //Get a sane head block time
       generate_block( skip_flags );

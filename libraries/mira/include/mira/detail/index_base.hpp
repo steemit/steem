@@ -41,31 +41,23 @@ namespace detail{
  *     cannot be called directly from the index classes.)
  */
 
-struct lvalue_tag{};
-struct rvalue_tag{};
-struct emplaced_tag{};
+//struct lvalue_tag{};
+//struct rvalue_tag{};
+//struct emplaced_tag{};
 
 template<typename Value,typename IndexSpecifierList,typename Allocator>
 class index_base
 {
 protected:
-/*
-  typedef index_node_base<Value,Allocator>    node_type;
-  typedef typename multi_index_node_type<
-    Value,IndexSpecifierList,Allocator>::type final_node_type;
-*/
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>       final_type;
-  typedef boost::tuples::null_type            ctor_args_list;
-  typedef typename std::allocator< Value >    final_allocator_type;
-  typedef boost::mpl::vector0<>               index_type_list;
-  typedef boost::mpl::vector0<>               iterator_type_list;
-  typedef boost::mpl::vector0<>               const_iterator_type_list;
+   typedef multi_index_container<
+      Value,IndexSpecifierList,Allocator>       final_type;
+   typedef boost::tuples::null_type            ctor_args_list;
+   typedef typename std::allocator< Value >    final_allocator_type;
+   typedef boost::mpl::vector0<>               index_type_list;
+   typedef boost::mpl::vector0<>               iterator_type_list;
+   typedef boost::mpl::vector0<>               const_iterator_type_list;
 
-private:
-
-protected:
-  explicit index_base(const ctor_args_list&){}
+   explicit index_base(const ctor_args_list&){}
 
    typedef Value                             value_type;
 
@@ -81,10 +73,10 @@ protected:
 
    static const size_t                       COLUMN_INDEX = 0;
 
-  index_base(
-    const index_base<Value,IndexSpecifierList,Allocator>&,
-    do_not_copy_elements_tag)
-  {}
+   index_base(
+      const index_base<Value,IndexSpecifierList,Allocator>&,
+      do_not_copy_elements_tag )
+   {}
 
    ~index_base()
    {
@@ -93,14 +85,14 @@ protected:
 
    void flush() {}
 
-  bool insert_rocksdb_( const Value& v )
-  {
-     return true;
-  }
+   bool insert_rocksdb_( const Value& v )
+   {
+      return true;
+   }
 
-  void erase_(value_type& x) {}
+   void erase_(value_type& x) {}
 
-  void clear_(){}
+   void clear_(){}
 
    template< typename Modifier >
    bool modify_( Modifier& mod, value_type& v, std::vector< size_t >& )
@@ -109,21 +101,12 @@ protected:
       return true;
    }
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
-  /* invariant stuff */
-
-  bool invariant_()const{return true;}
-#endif
-
    void populate_column_definitions_( column_definitions& defs )const
    {
-      // Do nothing
-      //*
       defs.emplace_back(
          ::rocksdb::kDefaultColumnFamilyName,
          ::rocksdb::ColumnFamilyOptions()
       );
-      //*/
    }
 
    void cleanup_column_handles()
@@ -134,22 +117,22 @@ protected:
       _handles.clear();
    }
 
-  /* access to backbone memfuns of Final class */
+   /* access to backbone memfuns of Final class */
 
-  final_type&       final(){return *static_cast<final_type*>(this);}
-  const final_type& final()const{return *static_cast<const final_type*>(this);}
+   final_type&       final(){return *static_cast<final_type*>(this);}
+   const final_type& final()const{return *static_cast<const final_type*>(this);}
 
-  bool        final_empty_()const{return final().empty_();}
-  std::size_t final_size_()const{return final().size_();}
-  std::size_t final_max_size_()const{return final().max_size_();}
+   bool        final_empty_()const{return final().empty_();}
+   std::size_t final_size_()const{return final().size_();}
+   std::size_t final_max_size_()const{return final().max_size_();}
 
 
-  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
-  bool final_emplace_rocksdb_(
-    BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
-  {
-    return final().emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
-  }
+   template< BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK >
+   bool final_emplace_rocksdb_(
+      BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
+   {
+      return final().emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
+   }
 
    void final_erase_( value_type& v )
    {
@@ -168,10 +151,6 @@ protected:
    {
       return final().get_column_size();
    }
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
-  void final_check_invariant_()const{final().check_invariant_();}
-#endif
 };
 
 } /* namespace multi_index::detail */
