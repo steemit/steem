@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <memory>
 #include <boost/core/addressof.hpp>
-#include <boost/detail/allocator_utilities.hpp>
 #include <boost/detail/no_exceptions_support.hpp>
 #include <boost/detail/workaround.hpp>
 #include <boost/filesystem.hpp>
@@ -34,7 +33,6 @@
 #include <mira/detail/object_cache.hpp>
 #include <mira/slice_pack.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/multi_index/detail/vartempl_support.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/utility/base_from_member.hpp>
@@ -407,35 +405,6 @@ public:
          super::flush();
       }
    }
-
-#if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
-  /* As per http://www.boost.org/doc/html/move/emulation_limitations.html
-   * #move.emulation_limitations.assignment_operator
-   */
-
-  multi_index_container<Value,IndexSpecifierList,Allocator>& operator=(
-    const multi_index_container<Value,IndexSpecifierList,Allocator>& x)
-  {
-    multi_index_container y(x);
-    this->swap(y);
-    return *this;
-  }
-#endif
-
-  multi_index_container<Value,IndexSpecifierList,Allocator>& operator=(
-    BOOST_COPY_ASSIGN_REF(multi_index_container) x)
-  {
-    multi_index_container y(x);
-    this->swap(y);
-    return *this;
-  }
-
-  multi_index_container<Value,IndexSpecifierList,Allocator>& operator=(
-    BOOST_RV_REF(multi_index_container) x)
-  {
-    this->swap(x);
-    return *this;
-  }
 
   allocator_type get_allocator()const BOOST_NOEXCEPT
   {

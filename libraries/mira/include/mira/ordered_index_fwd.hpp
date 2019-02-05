@@ -12,7 +12,6 @@
 //#include <boost/multi_index/detail/ord_index_impl_fwd.hpp>
 
 #include <mira/detail/ord_index_args.hpp>
-#include <mira/detail/ord_index_impl_fwd.hpp>
 
 namespace mira{
 

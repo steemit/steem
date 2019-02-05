@@ -50,9 +50,7 @@
 #include <boost/mpl/push_front.hpp>
 #include <mira/detail/rocksdb_iterator.hpp>
 #include <mira/detail/slice_compare.hpp>
-#include <mira/detail/value_compare.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
-#include <mira/detail/ord_index_impl_fwd.hpp>
 #include <boost/ref.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/type_traits/is_same.hpp>
@@ -138,8 +136,6 @@ public:
   typedef slice_comparator<
     key_type,
     Compare >                                        key_compare;
-  typedef value_comparison<
-    value_type,KeyFromValue,Compare>                 value_compare;
   typedef boost::tuple<key_from_value,key_compare>          ctor_args;
   typedef typename super::final_allocator_type       allocator_type;
 #ifdef BOOST_NO_CXX11_ALLOCATOR
@@ -379,7 +375,6 @@ public:
 
   key_from_value key_extractor()const{return key;}
   key_compare    key_comp()const{return comp_;}
-  value_compare  value_comp()const{return value_compare(key,comp_);}
 
   /* set operations */
 
