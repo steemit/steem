@@ -70,7 +70,7 @@ RUN \
     make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
-    ./libraries/mira/test/mira_test
+    ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
