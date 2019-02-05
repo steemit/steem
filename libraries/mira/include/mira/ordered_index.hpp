@@ -35,12 +35,6 @@ struct ordered_unique
   typedef typename index_args::key_from_value_type key_from_value_type;
   typedef typename index_args::compare_type        compare_type;
 
-  template<typename Super>
-  struct node_class
-  {
-    typedef detail::ordered_index_node<detail::null_augment_policy,Super> type;
-  };
-
   template<typename SuperMeta>
   struct index_class
   {

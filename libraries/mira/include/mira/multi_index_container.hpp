@@ -28,17 +28,10 @@
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/deref.hpp>
 #include <mira/multi_index_container_fwd.hpp>
-#include <mira/detail/access_specifier.hpp>
-#include <mira/detail/adl_swap.hpp>
 #include <mira/detail/base_type.hpp>
-#include <mira/detail/do_not_copy_elements_tag.hpp>
-#include <mira/detail/converter.hpp>
-#include <mira/detail/header_holder.hpp>
 #include <mira/detail/has_tag.hpp>
 #include <mira/detail/no_duplicate_tags.hpp>
 #include <mira/detail/object_cache.hpp>
-#include <mira/detail/safe_mode.hpp>
-#include <mira/detail/scope_guard.hpp>
 #include <mira/slice_pack.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
@@ -58,28 +51,8 @@
 #include <initializer_list>
 #endif
 
-#if !defined(BOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
-#include <mira/detail/archive_constructed.hpp>
-#include <mira/detail/serialization_version.hpp>
-#include <boost/serialization/collection_size_type.hpp>
-#include <boost/serialization/nvp.hpp>
-#include <boost/serialization/split_member.hpp>
-#include <boost/serialization/version.hpp>
-#include <boost/throw_exception.hpp>
-#endif
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
-#include <boost/multi_index/detail/invariant_assert.hpp>
-#define BOOST_MULTI_INDEX_CHECK_INVARIANT_OF(x)                              \
-  detail::scope_guard BOOST_JOIN(check_invariant_,__LINE__)=                 \
-    detail::make_obj_guard(x,&multi_index_container::check_invariant_);      \
-  BOOST_JOIN(check_invariant_,__LINE__).touch();
-#define BOOST_MULTI_INDEX_CHECK_INVARIANT                                    \
-  BOOST_MULTI_INDEX_CHECK_INVARIANT_OF(*this)
-#else
 #define BOOST_MULTI_INDEX_CHECK_INVARIANT_OF(x)
 #define BOOST_MULTI_INDEX_CHECK_INVARIANT
-#endif
 
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
@@ -114,21 +87,6 @@ struct rocksdb_options_factory
 
 template<typename Value,typename IndexSpecifierList,typename Allocator>
 class multi_index_container:
-  private boost::base_from_member<
-    typename boost::detail::allocator::rebind_to<
-      Allocator,
-      typename detail::multi_index_node_type<
-        Value,IndexSpecifierList,Allocator>::type
-    >::type>,
-  BOOST_MULTI_INDEX_PRIVATE_IF_MEMBER_TEMPLATE_FRIENDS detail::header_holder<
-    typename std::allocator_traits<
-      typename boost::detail::allocator::rebind_to<
-        Allocator,
-        typename detail::multi_index_node_type<
-          Value,IndexSpecifierList,Allocator>::type
-      >::type
-    >::pointer,
-    multi_index_container<Value,IndexSpecifierList,Allocator> >,
   public detail::multi_index_base_type<
     Value,IndexSpecifierList,Allocator>::type
 {
@@ -137,27 +95,9 @@ private:
   BOOST_COPYABLE_AND_MOVABLE(multi_index_container)
 
   template <typename,typename,typename> friend class  detail::index_base;
-  template <typename,typename>          friend struct detail::header_holder;
-  template <typename,typename>          friend struct detail::converter;
 
   typedef typename detail::multi_index_base_type<
       Value,IndexSpecifierList,Allocator>::type   super;
-  typedef typename
-  boost::detail::allocator::rebind_to<
-    Allocator,
-    typename super::node_type
-  >::type                                         node_allocator;
-#ifdef BOOST_NO_CXX11_ALLOCATOR
-  typedef typename node_allocator::pointer        node_pointer;
-#else
-  typedef std::allocator_traits<node_allocator>   node_allocator_traits;
-  typedef typename node_allocator_traits::pointer node_pointer;
-#endif
-  typedef boost::base_from_member<
-    node_allocator>                               bfm_allocator;
-  typedef detail::header_holder<
-    node_pointer,
-    multi_index_container>                        bfm_header;
 
    int64_t                                         _revision = -1;
 
@@ -186,18 +126,17 @@ public:
 
   typedef typename primary_index_type::iterator    primary_iterator;
 
+  static const size_t                              node_size = sizeof(value_type);
+
   BOOST_STATIC_ASSERT(
     detail::no_duplicate_tags_in_index_list<index_type_list>::value);
 
   /* global project() needs to see this publicly */
 
-  typedef typename super::node_type node_type;
-
   /* construct/copy/destroy */
 
   multi_index_container( const allocator_type& al ):
-    bfm_allocator(al),
-    super(ctor_args_list(),bfm_allocator::member),
+    super(ctor_args_list()),
     entry_count(0)
    {
       std::vector< std::string > split_v;
@@ -209,8 +148,7 @@ public:
    }
 
   explicit multi_index_container( const allocator_type& al, const boost::filesystem::path& p ):
-    bfm_allocator(al),
-    super(ctor_args_list(),bfm_allocator::member),
+    super(ctor_args_list()),
     entry_count(0)
    {
       std::vector< std::string > split_v;
@@ -244,7 +182,7 @@ public:
 //      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
 
 //      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-      //opts.compression = rocksdb::CompressionType::kNoCompression;
+//      opts.compression = rocksdb::CompressionType::kNoCompression;
 
 //      opts.statistics = _stats;
 //      opts.stats_dump_period_sec = 20;
@@ -266,8 +204,8 @@ public:
 //      opts.level0_stop_writes_trigger = 56;
 //      //opts.cache_numshardbits = 6;
 //      opts.table_cache_numshardbits = 0;
-      opts.allow_mmap_reads = 1;
-      opts.allow_mmap_writes = 1;
+//      opts.allow_mmap_reads = 1;
+//      opts.allow_mmap_writes = 1;
 //      opts.use_fsync = false;
 //      opts.use_adaptive_mutex = false;
 //      opts.bytes_per_sync = 2 << 20; // 2M
@@ -499,30 +437,9 @@ public:
     return *this;
   }
 
-#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
-/*
-  multi_index_container<Value,IndexSpecifierList,Allocator>& operator=(
-    std::initializer_list<Value> list)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-    typedef const Value* init_iterator;
-
-    multi_index_container x(*this,detail::do_not_copy_elements_tag());
-    iterator hint=x.end();
-    for(init_iterator first=list.begin(),last=list.end();
-        first!=last;++first){
-      hint=x.make_iterator(x.insert_(*first,hint.get_node()).first);
-      ++hint;
-    }
-    x.swap_elements_(*this);
-    return*this;
-  }
-*/
-#endif
-
   allocator_type get_allocator()const BOOST_NOEXCEPT
   {
-    return allocator_type(bfm_allocator::member);
+    return allocator_type();
   }
 
   /* retrieval of indices by number */
@@ -590,40 +507,6 @@ public:
   {
     typedef typename nth_index<N>::type::const_iterator type;
   };
-
-  template<int N,typename IteratorType>
-  typename nth_index_iterator<N>::type project(IteratorType it)
-  {
-    typedef typename nth_index<N>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* fails in Sun C++ 5.7 */
-    BOOST_STATIC_ASSERT(
-      (boost::mpl::contains<iterator_type_list,IteratorType>::value));
-#endif
-
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(
-      it,static_cast<typename IteratorType::container_type&>(*this));
-
-    return index_type::make_iterator(static_cast<node_type*>(it.get_node()));
-  }
-
-  template<int N,typename IteratorType>
-  typename nth_index_const_iterator<N>::type project(IteratorType it)const
-  {
-    typedef typename nth_index<N>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* fails in Sun C++ 5.7 */
-    BOOST_STATIC_ASSERT((
-      boost::mpl::contains<iterator_type_list,IteratorType>::value||
-      boost::mpl::contains<const_iterator_type_list,IteratorType>::value));
-#endif
-
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(
-      it,static_cast<const typename IteratorType::container_type&>(*this));
-    return index_type::make_iterator(static_cast<node_type*>(it.get_node()));
-  }
 #endif
 
   /* projection of iterators by tag */
@@ -640,39 +523,6 @@ public:
   {
     typedef typename index<Tag>::type::const_iterator type;
   };
-
-  template<typename Tag,typename IteratorType>
-  typename index_iterator<Tag>::type project(IteratorType it)
-  {
-    typedef typename index<Tag>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* fails in Sun C++ 5.7 */
-    BOOST_STATIC_ASSERT(
-      (boost::mpl::contains<iterator_type_list,IteratorType>::value));
-#endif
-
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(
-      it,static_cast<typename IteratorType::container_type&>(*this));
-    return index_type::make_iterator(static_cast<node_type*>(it.get_node()));
-  }
-
-  template<typename Tag,typename IteratorType>
-  typename index_const_iterator<Tag>::type project(IteratorType it)const
-  {
-    typedef typename index<Tag>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* fails in Sun C++ 5.7 */
-    BOOST_STATIC_ASSERT((
-      boost::mpl::contains<iterator_type_list,IteratorType>::value||
-      boost::mpl::contains<const_iterator_type_list,IteratorType>::value));
-#endif
-
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(
-      it,static_cast<const typename IteratorType::container_type&>(*this));
-    return index_type::make_iterator(static_cast<node_type*>(it.get_node()));
-  }
 #endif
 
 size_t get_column_size() const { return super::COLUMN_INDEX; }
@@ -790,45 +640,6 @@ primary_iterator erase( primary_iterator position )
    return primary_index_type::erase( position );
 }
 
-BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
-  typedef typename super::copy_map_type copy_map_type;
-
-#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
-  multi_index_container(
-    const multi_index_container<Value,IndexSpecifierList,Allocator>& x,
-    detail::do_not_copy_elements_tag):
-    bfm_allocator(x.bfm_allocator::member),
-    bfm_header(),
-    super(x,detail::do_not_copy_elements_tag()),
-    entry_count(0)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-  }
-#endif
-
-  node_type* header()const
-  {
-    return &*bfm_header::member;
-  }
-
-  node_type* allocate_node()
-  {
-#ifdef BOOST_NO_CXX11_ALLOCATOR
-    return &*bfm_allocator::member.allocate(1);
-#else
-    return &*node_allocator_traits::allocate(bfm_allocator::member,1);
-#endif
-  }
-
-  void deallocate_node(node_type* x)
-  {
-#ifdef BOOST_NO_CXX11_ALLOCATOR
-    bfm_allocator::member.deallocate(static_cast<node_pointer>(x),1);
-#else
-    node_allocator_traits::deallocate(bfm_allocator::member,static_cast<node_pointer>(x),1);
-#endif
-  }
-
   bool empty_()const
   {
     return entry_count==0;
@@ -842,104 +653,6 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   uint64_t max_size_()const
   {
     return static_cast<uint64_t >(-1);
-  }
-
-  template<typename Variant>
-  std::pair<node_type*,bool> insert_(const Value& v,Variant variant)
-  {
-    node_type* x=0;
-    node_type* res=super::insert_(v,x,variant);
-    if(res==x){
-      ++entry_count;
-      return std::pair<node_type*,bool>(res,true);
-    }
-    else{
-      return std::pair<node_type*,bool>(res,false);
-    }
-  }
-
-  std::pair<node_type*,bool> insert_(const Value& v)
-  {
-    return insert_(v,detail::lvalue_tag());
-  }
-
-  std::pair<node_type*,bool> insert_rv_(const Value& v)
-  {
-    return insert_(v,detail::rvalue_tag());
-  }
-
-  template<typename T>
-  std::pair<node_type*,bool> insert_ref_(T& t)
-  {
-    node_type* x=allocate_node();
-    BOOST_TRY{
-      new(boost::addressof(x->value())) value_type(t);
-      BOOST_TRY{
-        node_type* res=super::insert_(x->value(),x,detail::emplaced_tag());
-        if(res==x){
-          ++entry_count;
-          return std::pair<node_type*,bool>(res,true);
-        }
-        else{
-          boost::detail::allocator::destroy(boost::addressof(x->value()));
-          deallocate_node(x);
-          return std::pair<node_type*,bool>(res,false);
-        }
-      }
-      BOOST_CATCH(...){
-        boost::detail::allocator::destroy(boost::addressof(x->value()));
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH_END
-    }
-    BOOST_CATCH(...){
-      deallocate_node(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-
-  std::pair<node_type*,bool> insert_ref_(const value_type& x)
-  {
-    return insert_(x);
-  }
-
-  std::pair<node_type*,bool> insert_ref_(value_type& x)
-  {
-    return insert_(x);
-  }
-
-   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
-   std::pair<node_type*,bool> emplace_(
-      BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
-   {
-    node_type* x=allocate_node();
-    BOOST_TRY{
-      boost::multi_index::detail::vartempl_placement_new(
-        boost::addressof(x->value()),BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
-      BOOST_TRY{
-        node_type* res=super::insert_(x->value(),x,detail::emplaced_tag());
-        if(res==x){
-          ++entry_count;
-          return std::pair<node_type*,bool>(res,true);
-        }
-        else{
-          boost::detail::allocator::destroy(boost::addressof(x->value()));
-          deallocate_node(x);
-          return std::pair<node_type*,bool>(res,false);
-        }
-      }
-      BOOST_CATCH(...){
-        boost::detail::allocator::destroy(boost::addressof(x->value()));
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH_END
-    }
-    BOOST_CATCH(...){
-      deallocate_node(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
   }
 
    template< typename... Args >
@@ -957,120 +670,6 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       return status;
    }
 
-  template<typename Variant>
-  std::pair<node_type*,bool> insert_(
-    const Value& v,node_type* position,Variant variant)
-  {
-    node_type* x=0;
-    node_type* res=super::insert_(v,position,x,variant);
-    if(res==x){
-      ++entry_count;
-      return std::pair<node_type*,bool>(res,true);
-    }
-    else{
-      return std::pair<node_type*,bool>(res,false);
-    }
-  }
-
-  std::pair<node_type*,bool> insert_(const Value& v,node_type* position)
-  {
-    return insert_(v,position,detail::lvalue_tag());
-  }
-
-  std::pair<node_type*,bool> insert_rv_(const Value& v,node_type* position)
-  {
-    return insert_(v,position,detail::rvalue_tag());
-  }
-
-  template<typename T>
-  std::pair<node_type*,bool> insert_ref_(
-    T& t,node_type* position)
-  {
-    node_type* x=allocate_node();
-    BOOST_TRY{
-      new(boost::addressof(x->value())) value_type(t);
-      BOOST_TRY{
-        node_type* res=super::insert_(
-          x->value(),position,x,detail::emplaced_tag());
-        if(res==x){
-          ++entry_count;
-          return std::pair<node_type*,bool>(res,true);
-        }
-        else{
-          boost::detail::allocator::destroy(boost::addressof(x->value()));
-          deallocate_node(x);
-          return std::pair<node_type*,bool>(res,false);
-        }
-      }
-      BOOST_CATCH(...){
-        boost::detail::allocator::destroy(boost::addressof(x->value()));
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH_END
-    }
-    BOOST_CATCH(...){
-      deallocate_node(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-
-  std::pair<node_type*,bool> insert_ref_(
-    const value_type& x,node_type* position)
-  {
-    return insert_(x,position);
-  }
-
-  std::pair<node_type*,bool> insert_ref_(
-    value_type& x,node_type* position)
-  {
-    return insert_(x,position);
-  }
-
-  template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
-  std::pair<node_type*,bool> emplace_hint_(
-    node_type* position,
-    BOOST_MULTI_INDEX_FUNCTION_PARAM_PACK)
-  {
-    node_type* x=allocate_node();
-    BOOST_TRY{
-      boost::multi_index::detail::vartempl_placement_new(
-        boost::addressof(x->value()),BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
-      BOOST_TRY{
-        node_type* res=super::insert_(
-          x->value(),position,x,detail::emplaced_tag());
-        if(res==x){
-          ++entry_count;
-          return std::pair<node_type*,bool>(res,true);
-        }
-        else{
-          boost::detail::allocator::destroy(boost::addressof(x->value()));
-          deallocate_node(x);
-          return std::pair<node_type*,bool>(res,false);
-        }
-      }
-      BOOST_CATCH(...){
-        boost::detail::allocator::destroy(boost::addressof(x->value()));
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH_END
-    }
-    BOOST_CATCH(...){
-      deallocate_node(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-
-/*
-  void erase_(node_type* x)
-  {
-    --entry_count;
-    super::erase_(x);
-    deallocate_node(x);
-  }
-*/
-
    void erase_( value_type& v )
    {
       super::erase_( v );
@@ -1080,50 +679,11 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       super::_write_buffer.Clear();
    }
 
-  void delete_node_(node_type* x)
-  {
-    super::delete_node_(x);
-    deallocate_node(x);
-  }
-/*
-  void delete_all_nodes_()
-  {
-    super::delete_all_nodes_();
-  }
-*/
   void clear_()
   {
     super::clear_();
     super::_cache->clear();
     entry_count=0;
-  }
-
-  void swap_(multi_index_container<Value,IndexSpecifierList,Allocator>& x)
-  {
-    if(bfm_allocator::member!=x.bfm_allocator::member){
-      detail::adl_swap(bfm_allocator::member,x.bfm_allocator::member);
-    }
-    std::swap(bfm_header::member,x.bfm_header::member);
-    super::swap_(x);
-    std::swap(entry_count,x.entry_count);
-  }
-
-  void swap_elements_(
-    multi_index_container<Value,IndexSpecifierList,Allocator>& x)
-  {
-    std::swap(bfm_header::member,x.bfm_header::member);
-    super::swap_elements_(x);
-    std::swap(entry_count,x.entry_count);
-  }
-
-  bool replace_(const Value& k,node_type* x)
-  {
-    return super::replace_(k,x,detail::lvalue_tag());
-  }
-
-  bool replace_rv_(const Value& k,node_type* x)
-  {
-    return super::replace_(k,x,detail::rvalue_tag());
   }
 
    template< typename Modifier >
@@ -1148,154 +708,6 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
       return status;
    }
-
-
-/*
-  template<typename Modifier>
-  bool modify_(Modifier& mod,node_type* x)
-  {
-    BOOST_TRY{
-      mod(const_cast<value_type&>(x->value()));
-    }
-    BOOST_CATCH(...){
-      this->erase_(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-
-    BOOST_TRY{
-      if(!super::modify_(x)){
-        deallocate_node(x);
-        --entry_count;
-        return false;
-      }
-      else return true;
-    }
-    BOOST_CATCH(...){
-      deallocate_node(x);
-      --entry_count;
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-
-  template<typename Modifier,typename Rollback>
-  bool modify_(Modifier& mod,Rollback& back_,node_type* x)
-  {
-    BOOST_TRY{
-      mod(const_cast<value_type&>(x->value()));
-    }
-    BOOST_CATCH(...){
-      this->erase_(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-
-    bool b;
-    BOOST_TRY{
-      b=super::modify_rollback_(x);
-    }
-    BOOST_CATCH(...){
-      BOOST_TRY{
-        back_(const_cast<value_type&>(x->value()));
-        if(!super::check_rollback_(x))this->erase_(x);
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH(...){
-        this->erase_(x);
-        BOOST_RETHROW;
-      }
-      BOOST_CATCH_END
-    }
-    BOOST_CATCH_END
-
-    BOOST_TRY{
-      if(!b){
-        back_(const_cast<value_type&>(x->value()));
-        if(!super::check_rollback_(x))this->erase_(x);
-        return false;
-      }
-      else return true;
-    }
-    BOOST_CATCH(...){
-      this->erase_(x);
-      BOOST_RETHROW;
-    }
-    BOOST_CATCH_END
-  }
-*/
-#if !defined(BOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
-  /* serialization */
-
-  friend class boost::serialization::access;
-
-  BOOST_SERIALIZATION_SPLIT_MEMBER()
-
-  typedef typename super::index_saver_type        index_saver_type;
-  typedef typename super::index_loader_type       index_loader_type;
-
-  template<class Archive>
-  void save(Archive& ar,const unsigned int version)const
-  {
-    const boost::serialization::collection_size_type       s(size_());
-    const detail::serialization_version<value_type> value_version;
-    ar<<boost::serialization::make_nvp("count",s);
-    ar<<boost::serialization::make_nvp("value_version",value_version);
-
-    index_saver_type sm(bfm_allocator::member,s);
-
-    for(iterator it=super::begin(),it_end=super::end();it!=it_end;++it){
-      boost::serialization::save_construct_data_adl(
-        ar,boost::addressof(*it),value_version);
-      ar<<boost::serialization::make_nvp("item",*it);
-      sm.add(it.get_node(),ar,version);
-    }
-    sm.add_track(header(),ar,version);
-
-    super::save_(ar,version,sm);
-  }
-
-  template<class Archive>
-  void load(Archive& ar,const unsigned int version)
-  {
-    BOOST_MULTI_INDEX_CHECK_INVARIANT;
-
-    clear_();
-    boost::serialization::collection_size_type       s;
-    detail::serialization_version<value_type> value_version;
-    if(version<1){
-      uint64_t sz;
-      ar>>boost::serialization::make_nvp("count",sz);
-      s=static_cast<boost::serialization::collection_size_type>(sz);
-    }
-    else{
-      ar>>boost::serialization::make_nvp("count",s);
-    }
-    if(version<2){
-      value_version=0;
-    }
-    else{
-      ar>>boost::serialization::make_nvp("value_version",value_version);
-    }
-
-    index_loader_type lm(bfm_allocator::member,s);
-
-    for(uint64_t n=0;n<s;++n){
-      detail::archive_constructed<Value> value("item",ar,value_version);
-      std::pair<node_type*,bool> p=insert_rv_(
-        value.get(),super::end().get_node());
-      if(!p.second)boost::throw_exception(
-        boost::archive::archive_exception(
-          boost::archive::archive_exception::other_exception));
-      ar.reset_object_address(
-        boost::addressof(p.first->value()),boost::addressof(value.get()));
-      lm.add(p.first,ar,version);
-    }
-    lm.add_track(header(),ar,version);
-
-    super::load_(ar,version,lm);
-  }
-#endif
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
   /* invariant stuff */
@@ -1337,53 +749,6 @@ struct nth_index
     typename MultiIndexContainer::index_type_list,N>::type type;
 };
 
-template<int N,typename Value,typename IndexSpecifierList,typename Allocator>
-typename nth_index<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,N>::type&
-get(
-  multi_index_container<Value,IndexSpecifierList,Allocator>& m)BOOST_NOEXCEPT
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>    multi_index_type;
-  typedef typename nth_index<
-    multi_index_container<
-      Value,IndexSpecifierList,Allocator>,
-    N
-  >::type                                  index_type;
-
-  BOOST_STATIC_ASSERT(N>=0&&
-    N<
-    boost::mpl::size<
-      BOOST_DEDUCED_TYPENAME multi_index_type::index_type_list
-    >::type::value);
-
-  return detail::converter<multi_index_type,index_type>::index(m);
-}
-
-template<int N,typename Value,typename IndexSpecifierList,typename Allocator>
-const typename nth_index<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,N>::type&
-get(
-  const multi_index_container<Value,IndexSpecifierList,Allocator>& m
-)BOOST_NOEXCEPT
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>    multi_index_type;
-  typedef typename nth_index<
-    multi_index_container<
-      Value,IndexSpecifierList,Allocator>,
-    N
-  >::type                                  index_type;
-
-  BOOST_STATIC_ASSERT(N>=0&&
-    N<
-    boost::mpl::size<
-      BOOST_DEDUCED_TYPENAME multi_index_type::index_type_list
-    >::type::value);
-
-  return detail::converter<multi_index_type,index_type>::index(m);
-}
-
 /* retrieval of indices by tag */
 
 template<typename MultiIndexContainer,typename Tag>
@@ -1403,45 +768,6 @@ struct index
   typedef typename boost::mpl::deref<iter>::type       type;
 };
 
-template<
-  typename Tag,typename Value,typename IndexSpecifierList,typename Allocator
->
-typename ::mira::multi_index::index<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,Tag>::type&
-get(
-  multi_index_container<Value,IndexSpecifierList,Allocator>& m)BOOST_NOEXCEPT
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>         multi_index_type;
-  typedef typename ::mira::multi_index::index<
-    multi_index_container<
-      Value,IndexSpecifierList,Allocator>,
-    Tag
-  >::type                                       index_type;
-
-  return detail::converter<multi_index_type,index_type>::index(m);
-}
-
-template<
-  typename Tag,typename Value,typename IndexSpecifierList,typename Allocator
->
-const typename ::mira::multi_index::index<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,Tag>::type&
-get(
-  const multi_index_container<Value,IndexSpecifierList,Allocator>& m
-)BOOST_NOEXCEPT
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>         multi_index_type;
-  typedef typename ::mira::multi_index::index<
-    multi_index_container<
-      Value,IndexSpecifierList,Allocator>,
-    Tag
-  >::type                                       index_type;
-
-  return detail::converter<multi_index_type,index_type>::index(m);
-}
-
 /* projection of iterators by number */
 
 template<typename MultiIndexContainer,int N>
@@ -1455,75 +781,6 @@ struct nth_index_const_iterator
 {
   typedef typename nth_index<MultiIndexContainer,N>::type::const_iterator type;
 };
-
-template<
-  int N,typename IteratorType,
-  typename Value,typename IndexSpecifierList,typename Allocator>
-typename nth_index_iterator<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,N>::type
-project(
-  multi_index_container<Value,IndexSpecifierList,Allocator>& m,
-  IteratorType it)
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>                multi_index_type;
-  typedef typename nth_index<multi_index_type,N>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* Sun C++ 5.7 fails */
-  BOOST_STATIC_ASSERT((
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::iterator_type_list,
-      IteratorType>::value));
-#endif
-
-  BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef detail::converter<
-    multi_index_type,
-    BOOST_DEDUCED_TYPENAME IteratorType::container_type> converter;
-  BOOST_MULTI_INDEX_CHECK_IS_OWNER(it,converter::index(m));
-#endif
-
-  return detail::converter<multi_index_type,index_type>::iterator(
-    m,static_cast<typename multi_index_type::node_type*>(it.get_node()));
-}
-
-template<
-  int N,typename IteratorType,
-  typename Value,typename IndexSpecifierList,typename Allocator>
-typename nth_index_const_iterator<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,N>::type
-project(
-  const multi_index_container<Value,IndexSpecifierList,Allocator>& m,
-  IteratorType it)
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>                multi_index_type;
-  typedef typename nth_index<multi_index_type,N>::type index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* Sun C++ 5.7 fails */
-  BOOST_STATIC_ASSERT((
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::iterator_type_list,
-      IteratorType>::value||
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::const_iterator_type_list,
-      IteratorType>::value));
-#endif
-
-  BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef detail::converter<
-    multi_index_type,
-    BOOST_DEDUCED_TYPENAME IteratorType::container_type> converter;
-  BOOST_MULTI_INDEX_CHECK_IS_OWNER(it,converter::index(m));
-#endif
-
-  return detail::converter<multi_index_type,index_type>::const_iterator(
-    m,static_cast<typename multi_index_type::node_type*>(it.get_node()));
-}
 
 /* projection of iterators by tag */
 
@@ -1541,181 +798,11 @@ struct index_const_iterator
     MultiIndexContainer,Tag>::type::const_iterator type;
 };
 
-template<
-  typename Tag,typename IteratorType,
-  typename Value,typename IndexSpecifierList,typename Allocator>
-typename index_iterator<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,Tag>::type
-project(
-  multi_index_container<Value,IndexSpecifierList,Allocator>& m,
-  IteratorType it)
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>         multi_index_type;
-  typedef typename ::mira::multi_index::index<
-    multi_index_type,Tag>::type                 index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* Sun C++ 5.7 fails */
-  BOOST_STATIC_ASSERT((
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::iterator_type_list,
-      IteratorType>::value));
-#endif
-
-  BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef detail::converter<
-    multi_index_type,
-    BOOST_DEDUCED_TYPENAME IteratorType::container_type> converter;
-  BOOST_MULTI_INDEX_CHECK_IS_OWNER(it,converter::index(m));
-#endif
-
-  return detail::converter<multi_index_type,index_type>::iterator(
-    m,static_cast<typename multi_index_type::node_type*>(it.get_node()));
-}
-
-template<
-  typename Tag,typename IteratorType,
-  typename Value,typename IndexSpecifierList,typename Allocator>
-typename index_const_iterator<
-  multi_index_container<Value,IndexSpecifierList,Allocator>,Tag>::type
-project(
-  const multi_index_container<Value,IndexSpecifierList,Allocator>& m,
-  IteratorType it)
-{
-  typedef multi_index_container<
-    Value,IndexSpecifierList,Allocator>         multi_index_type;
-  typedef typename ::mira::multi_index::index<
-    multi_index_type,Tag>::type                 index_type;
-
-#if !defined(__SUNPRO_CC)||!(__SUNPRO_CC<0x580) /* Sun C++ 5.7 fails */
-  BOOST_STATIC_ASSERT((
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::iterator_type_list,
-      IteratorType>::value||
-    boost::mpl::contains<
-      BOOST_DEDUCED_TYPENAME multi_index_type::const_iterator_type_list,
-      IteratorType>::value));
-#endif
-
-  BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(it);
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef detail::converter<
-    multi_index_type,
-    BOOST_DEDUCED_TYPENAME IteratorType::container_type> converter;
-  BOOST_MULTI_INDEX_CHECK_IS_OWNER(it,converter::index(m));
-#endif
-
-  return detail::converter<multi_index_type,index_type>::const_iterator(
-    m,static_cast<typename multi_index_type::node_type*>(it.get_node()));
-}
-
-/* Comparison. Simple forward to first index. */
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator==(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)==get<0>(y);
-}
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator<(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)<get<0>(y);
-}
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator!=(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)!=get<0>(y);
-}
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator>(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)>get<0>(y);
-}
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator>=(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)>=get<0>(y);
-}
-
-template<
-  typename Value1,typename IndexSpecifierList1,typename Allocator1,
-  typename Value2,typename IndexSpecifierList2,typename Allocator2
->
-bool operator<=(
-  const multi_index_container<Value1,IndexSpecifierList1,Allocator1>& x,
-  const multi_index_container<Value2,IndexSpecifierList2,Allocator2>& y)
-{
-  return get<0>(x)<=get<0>(y);
-}
-
-/*  specialized algorithms */
-
-template<typename Value,typename IndexSpecifierList,typename Allocator>
-void swap(
-  multi_index_container<Value,IndexSpecifierList,Allocator>& x,
-  multi_index_container<Value,IndexSpecifierList,Allocator>& y)
-{
-  x.swap(y);
-}
-
 } /* namespace multi_index */
-
-#if !defined(BOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
-/* class version = 1 : we now serialize the size through
- * boost::serialization::collection_size_type.
- * class version = 2 : proper use of {save|load}_construct_data.
- */
-/*
-namespace serialization {
-template<typename Value,typename IndexSpecifierList,typename Allocator>
-struct version<
-  mira::multi_index_container<Value,IndexSpecifierList,Allocator>
->
-{
-  BOOST_STATIC_CONSTANT(int,value=2);
-};
-}
-*/ /* namespace serialization */
-#endif
 
 /* Associated global functions are promoted to namespace boost, except
  * comparison operators and swap, which are meant to be Koenig looked-up.
  */
-
-using multi_index::get;
-using multi_index::project;
 
 } /* namespace mira */
 

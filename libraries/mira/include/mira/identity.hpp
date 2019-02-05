@@ -8,8 +8,6 @@
 
 #pragma once
 
-//#include <mira/identity_fwd.hpp>
-
 #include <boost/multi_index/identity.hpp>
 
 namespace mira{
