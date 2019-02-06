@@ -381,6 +381,8 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       meta.account = new_account.id;
       from_string( meta.json_metadata, o.json_metadata );
    });
+#else
+   FC_UNUSED( new_account );
 #endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
@@ -481,6 +483,8 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       meta.account = new_account.id;
       from_string( meta.json_metadata, o.json_metadata );
    });
+#else
+   FC_UNUSED( new_account );
 #endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
@@ -2258,6 +2262,8 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       {
          meta.account = new_account.id;
       });
+#else
+      FC_UNUSED( new_account );
 #endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
@@ -2507,6 +2513,8 @@ void create_claimed_account_evaluator::do_apply( const create_claimed_account_op
       meta.account = new_account.id;
       from_string( meta.json_metadata, o.json_metadata );
    });
+#else
+   FC_UNUSED( new_account );
 #endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
