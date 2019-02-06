@@ -40,7 +40,7 @@ private:
 
    KeyCompare                                      _compare;
 
-   std::weak_ptr< Value >                          _cache_value;
+   std::shared_ptr< Value >                        _cache_value;
 
 public:
 
@@ -99,7 +99,7 @@ public:
    {
       key_type* id = (key_type*)&k;
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
-      if ( _cache_value.expired() )
+      if ( _cache_value == nullptr )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
@@ -127,7 +127,7 @@ public:
       unpack_from_slice( s, k );
       key_type* id = (key_type*)&k;
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
-      if ( _cache_value.expired() )
+      if ( _cache_value == nullptr )
       {
          _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
          _iter->Seek( s );
@@ -155,9 +155,9 @@ public:
       BOOST_ASSERT( valid() );
       value_ptr ptr;
 
-      if ( !_cache_value.expired() )
+      if ( _cache_value != nullptr )
       {
-         ptr = _cache_value.lock();
+         ptr = _cache_value;
       }
       else
       {
@@ -205,9 +205,9 @@ public:
       //BOOST_ASSERT( valid() );
       if( !valid() ) _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
-      if ( !_cache_value.expired() )
+      if ( _cache_value != nullptr )
       {
-         Key key = key_from_value( *_cache_value.lock() );
+         Key key = key_from_value( *_cache_value );
          _cache_value.reset();
 
          if ( _iter == nullptr )
@@ -257,9 +257,9 @@ public:
       }
       else
       {
-         if ( !_cache_value.expired() )
+         if ( _cache_value != nullptr )
          {
-            Key key = key_from_value( *_cache_value.lock() );
+            Key key = key_from_value( *_cache_value );
             _cache_value.reset();
 
             if ( _iter == nullptr )
@@ -301,7 +301,7 @@ public:
 
    bool valid()const
    {
-      return ( !_cache_value.expired() ) || ( _iter && _iter->Valid() );
+      return ( _cache_value != nullptr ) || ( _iter && _iter->Valid() );
    }
 
    bool unchecked()const { return false; }
@@ -313,13 +313,13 @@ public:
       {
          Key this_key, other_key;
 
-         if ( !_cache_value.expired() )
-            this_key = key_from_value( *_cache_value.lock() );
+         if ( _cache_value != nullptr )
+            this_key = key_from_value( *_cache_value );
          else
             unpack_from_slice( _iter->key(), this_key );
 
-         if ( !other._cache_value.expired() )
-            other_key = key_from_value( *other._cache_value.lock() );
+         if ( other._cache_value != nullptr )
+            other_key = key_from_value( *other._cache_value );
          else
             unpack_from_slice( other._iter->key(), other_key );
 
