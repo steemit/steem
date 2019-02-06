@@ -206,7 +206,7 @@ RUN \
         libreadline-dev \
         libreadline6-dev \
         libssl-dev \
-        libstdc++-5-dev \
+        libstdc++-7-dev \
         libtinfo-dev \
         libtool \
         linux-libc-dev \
