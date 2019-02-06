@@ -2136,6 +2136,8 @@ void pow_apply( database& db, Operation o )
       {
          meta.account = new_account.id;
       });
+#else
+      FC_UNUSED( new_account );
 #endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
