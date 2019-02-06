@@ -1794,7 +1794,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    if( !_db.has_hardfork( STEEM_HARDFORK_0_21__3034 ) )
    {
-      FC_ASSERT( voter.voting_manabar.current_mana > 0, "Account does not have enough mana to vote." );
+      FC_ASSERT( voter.voting_manabar.current_mana >= 0, "Account does not have enough mana to vote." );
    }
 
    int16_t abs_weight = abs( o.weight );
