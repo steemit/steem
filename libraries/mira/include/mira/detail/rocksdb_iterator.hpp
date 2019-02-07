@@ -297,7 +297,8 @@ public:
    rocksdb_iterator operator--(int)const
    {
       rocksdb_iterator new_itr( *this );
-      return --new_itr;
+      --(*this);
+      return new_itr;
    }
 
    bool valid()const
@@ -479,7 +480,36 @@ public:
       cache_type& cache,
       const CompatibleKey& k )
    {
-      return lower_bound( handles, index, db, cache, Key( k ) );
+      static KeyCompare compare = KeyCompare();
+      rocksdb_iterator itr( handles, index, db, cache );
+      itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
+
+      PinnableSlice key_slice;
+      pack_to_slice( key_slice, Key( k ) );
+
+      itr._iter->Seek( key_slice );
+
+      if( itr.valid() )
+      {
+         Key itr_key;
+         unpack_from_slice( itr._iter->key(), itr_key );
+
+         if( !compare( itr_key, k ) )
+         {
+            rocksdb_iterator prev( handles, index, db, cache );
+            do
+            {
+               prev = itr--;
+               if( !itr.valid() ) return prev;
+
+               unpack_from_slice( itr._iter->key(), itr_key );
+            }while( !compare( itr_key, k ) );
+
+            return prev;
+         }
+      }
+
+      return itr;
    }
 /*
    static rocksdb_iterator upper_bound(
