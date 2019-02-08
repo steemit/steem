@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <iostream>
 
 namespace mira { namespace multi_index { namespace detail {
 
@@ -33,17 +34,25 @@ public:
    typedef list_type::const_iterator  const_iterator_type;
 
 private:
-   list_type  _lru;
-   size_t     _obj_threshold = 10;
+   list_type    _lru;
+   size_t       _obj_threshold = 100;
+   const size_t _max_attempts  = 5;
 
-public:
-   iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
+   void adjust_capacity()
    {
+      static size_t attempts = 0;
       if ( _lru.size() > _obj_threshold )
       {
+         attempts = 0;
          auto it = _lru.end();
          do
          {
+            // Prevents an infinite loop in the case
+            // where everything in the cache is considered
+            // non-purgeable
+            if ( attempts++ == _max_attempts )
+               break;
+
             --it;
 
             // If we can purge this item, we do,
@@ -58,6 +67,12 @@ public:
             it = _lru.end();
          } while ( _lru.size() > _obj_threshold );
       }
+   }
+
+public:
+   iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
+   {
+      adjust_capacity();
       return _lru.insert( _lru.begin(), std::make_pair( v, m ) );
    }
 
@@ -124,6 +139,7 @@ private:
    }
 
    virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) = 0;
+   virtual void clear_cache_iterators() = 0;
    virtual void cache( cache_bundle_type bundle ) = 0;
    virtual void invalidate( const Value& v ) = 0;
    virtual void clear() = 0;
@@ -139,6 +155,7 @@ public:
    ~multi_index_cache_manager() = default;
    typedef std::unique_ptr< abstract_index_cache< Value > >              index_cache_type;
    typedef std::shared_ptr< Value >                                      ptr_type;
+   typedef std::weak_ptr< Value >                                        manager_ptr_type;
    typedef cache_factory< Value >                                        factory_type;
    typedef std::pair< ptr_type, lru_cache_manager::iterator_type >       cache_bundle_type;
 
@@ -154,7 +171,8 @@ public:
 
    virtual bool purgeable( boost::any v )
    {
-      std::weak_ptr< Value > value = boost::any_cast< ptr_type >( v );
+      manager_ptr_type value = boost::any_cast< manager_ptr_type >( v );
+      assert( !value.expired() );
 
       if ( value.use_count() > _index_caches.size() )
          return false;
@@ -164,7 +182,8 @@ public:
 
    virtual void purge( boost::any v )
    {
-      std::weak_ptr< Value > value = boost::any_cast< ptr_type >( v );
+      manager_ptr_type value = boost::any_cast< manager_ptr_type >( v );
+      assert( !value.expired() );
       invalidate( *value.lock() );
    }
 
@@ -189,7 +208,8 @@ public:
 
    ptr_type cache( ptr_type value )
    {
-      auto it = cache_manager::get()->insert( value, this->shared_from_this() );
+      manager_ptr_type lru_value = value;
+      auto it = cache_manager::get()->insert( lru_value, this->shared_from_this() );
 
       cache_bundle_type bundle = std::make_pair( value, it );
 
@@ -226,6 +246,7 @@ public:
 
    void invalidate( const Value& v )
    {
+      assert( _index_caches.begin() != _index_caches.end() );
       auto it = _index_caches.begin()->second->cache_iterator_from_value( v );
 
       for ( auto& c : _index_caches )
@@ -236,6 +257,9 @@ public:
 
    void clear()
    {
+      assert( _index_caches.begin() != _index_caches.end() );
+      _index_caches.begin()->second->clear_cache_iterators();
+
       for ( auto& c : _index_caches )
          c.second->clear();
    }
@@ -284,6 +308,14 @@ private:
       auto itr = _cache.find( k );
       assert( itr != _cache.end() );
       return itr->second.second;
+   }
+
+   virtual void clear_cache_iterators()
+   {
+      for ( auto& item : _cache )
+      {
+         cache_manager::get()->remove( item.second.second );
+      }
    }
 
 public:
