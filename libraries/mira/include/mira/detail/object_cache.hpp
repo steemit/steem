@@ -35,13 +35,35 @@ public:
 
 private:
    list_type    _lru;
-   size_t       _obj_threshold = 100;
+   size_t       _obj_threshold = 5;
    const size_t _max_attempts  = 5;
 
-   void adjust_capacity()
+   void adjust_capactiy()
+   {
+      adjust_capacity( _obj_threshold );
+   }
+
+public:
+   iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
+   {
+      //adjust_capacity();
+      return _lru.insert( _lru.begin(), std::make_pair( v, m ) );
+   }
+
+   void update( const_iterator_type iter )
+   {
+      _lru.splice( _lru.begin(), _lru, iter );
+   }
+
+   void remove( iterator_type iter )
+   {
+      _lru.erase( iter );
+   }
+
+   void adjust_capacity( size_t cap )
    {
       static size_t attempts = 0;
-      if ( _lru.size() > _obj_threshold )
+      if ( _lru.size() > cap )
       {
          attempts = 0;
          auto it = _lru.end();
@@ -65,25 +87,8 @@ private:
                update( it );
 
             it = _lru.end();
-         } while ( _lru.size() > _obj_threshold );
+         } while ( _lru.size() > cap );
       }
-   }
-
-public:
-   iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
-   {
-      adjust_capacity();
-      return _lru.insert( _lru.begin(), std::make_pair( v, m ) );
-   }
-
-   void update( const_iterator_type iter )
-   {
-      _lru.splice( _lru.begin(), _lru, iter );
-   }
-
-   void remove( iterator_type iter )
-   {
-      _lru.erase( iter );
    }
 };
 

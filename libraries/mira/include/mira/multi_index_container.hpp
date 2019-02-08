@@ -468,6 +468,11 @@ public:
       }
    }
 
+   void trim_cache( size_t cap )
+   {
+      detail::cache_manager::get()->adjust_capacity( cap );
+   }
+
 #if defined(BOOST_NO_CXX11_RVALUE_REFERENCES)
   /* As per http://www.boost.org/doc/html/move/emulation_limitations.html
    * #move.emulation_limitations.assignment_operator
