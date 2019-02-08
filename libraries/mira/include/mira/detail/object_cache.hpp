@@ -179,7 +179,7 @@ public:
       manager_ptr_type value = boost::any_cast< manager_ptr_type >( v );
       assert( !value.expired() );
 
-      if ( value.use_count() > _index_caches.size() )
+      if ( (size_t)value.use_count() > _index_caches.size() )
          return false;
 
       return true;
