@@ -406,6 +406,11 @@ public:
       }
    }
 
+   void trim_cache( size_t cap )
+   {
+      detail::cache_manager::get()->adjust_capacity( cap );
+   }
+
   allocator_type get_allocator()const BOOST_NOEXCEPT
   {
     return allocator_type();

@@ -1,16 +1,114 @@
 #pragma once
 
+#include <boost/core/ignore_unused.hpp>
+#include <boost/any.hpp>
 #include <fc/log/logger.hpp>
-
+#include <list>
 #include <map>
 #include <memory>
-
 #include <iostream>
 
-#define _unused(x) ((void)(x))
-#define CACHE_KEY(key) ((void*)&key)
-
 namespace mira { namespace multi_index { namespace detail {
+
+class abstract_multi_index_cache_manager
+{
+public:
+   abstract_multi_index_cache_manager() = default;
+   virtual ~abstract_multi_index_cache_manager() = default;
+
+   virtual bool purgeable( boost::any v ) = 0;
+   virtual void purge( boost::any v ) = 0;
+};
+
+class lru_cache_manager
+{
+public:
+   typedef std::list<
+      std::pair<
+         boost::any,
+         std::shared_ptr< abstract_multi_index_cache_manager >
+      >
+   > list_type;
+
+   typedef list_type::iterator        iterator_type;
+   typedef list_type::const_iterator  const_iterator_type;
+
+private:
+   list_type    _lru;
+   size_t       _obj_threshold = 5;
+   const size_t _max_attempts  = 5;
+
+   void adjust_capactiy()
+   {
+      adjust_capacity( _obj_threshold );
+   }
+
+public:
+   iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
+   {
+      //adjust_capacity();
+      return _lru.insert( _lru.begin(), std::make_pair( v, m ) );
+   }
+
+   void update( const_iterator_type iter )
+   {
+      _lru.splice( _lru.begin(), _lru, iter );
+   }
+
+   void remove( iterator_type iter )
+   {
+      _lru.erase( iter );
+   }
+
+   void adjust_capacity( size_t cap )
+   {
+      static size_t attempts = 0;
+      if ( _lru.size() > cap )
+      {
+         attempts = 0;
+         auto it = _lru.end();
+         do
+         {
+            // Prevents an infinite loop in the case
+            // where everything in the cache is considered
+            // non-purgeable
+            if ( attempts++ == _max_attempts )
+               break;
+
+            --it;
+
+            // If we can purge this item, we do,
+            // otherwise we move it to the front
+            // so we don't repeatedly ask if it's
+            // purgeable
+            if ( it->second->purgeable( it->first ) )
+               it->second->purge( it->first );
+            else
+               update( it );
+
+            it = _lru.end();
+         } while ( _lru.size() > cap );
+      }
+   }
+};
+
+struct cache_manager
+{
+   static std::shared_ptr< lru_cache_manager >& get( bool reset = false )
+   {
+      static std::shared_ptr< lru_cache_manager > cache_ptr;
+
+      if( !cache_ptr || reset )
+         cache_ptr = std::make_shared< lru_cache_manager >();
+
+      return cache_ptr;
+   }
+
+   static void reset()
+   {
+      get( true );
+   }
+};
 
 typedef const void* cache_key_type;
 
@@ -29,35 +127,42 @@ public:
 
    friend class multi_index_cache_manager< Value >;
    typedef typename std::shared_ptr< Value > ptr_type;
+   typedef std::pair< ptr_type, lru_cache_manager::iterator_type > cache_bundle_type;
 
    virtual ptr_type get( cache_key_type key ) = 0;
    virtual void update( cache_key_type key, Value&& v ) = 0;
-   virtual void update( cache_key_type key, Value&& v, std::vector< size_t >& modified_indices ) = 0;
+   virtual void update( cache_key_type key, Value&& v, const std::vector< size_t >& modified_indices ) = 0;
    virtual bool contains( cache_key_type key ) = 0;
 
 protected:
-   std::shared_ptr< multi_index_cache_manager< Value > > cache_manager;
+   std::shared_ptr< multi_index_cache_manager< Value > > _multi_index_cache_manager;
 
 private:
-   virtual void set_cache_manager( std::shared_ptr< multi_index_cache_manager< Value > > m )
+   virtual void set_multi_index_cache_manager( std::shared_ptr< multi_index_cache_manager< Value > >&& m )
    {
-      cache_manager = m;
+      _multi_index_cache_manager = m;
    }
 
-   virtual void cache( ptr_type v ) = 0;
+   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) = 0;
+   virtual void clear_cache_iterators() = 0;
+   virtual void cache( cache_bundle_type bundle ) = 0;
    virtual void invalidate( const Value& v ) = 0;
    virtual void clear() = 0;
 };
 
 template < typename Value >
-class multi_index_cache_manager : public std::enable_shared_from_this< multi_index_cache_manager< Value > >
+class multi_index_cache_manager :
+   public abstract_multi_index_cache_manager,
+   public std::enable_shared_from_this< multi_index_cache_manager< Value > >
 {
 public:
    multi_index_cache_manager() = default;
    ~multi_index_cache_manager() = default;
-   typedef typename std::unique_ptr< abstract_index_cache< Value > > index_cache_type;
-   typedef typename std::shared_ptr< Value >                         ptr_type;
-   typedef cache_factory< Value >                                    factory_type;
+   typedef std::unique_ptr< abstract_index_cache< Value > >              index_cache_type;
+   typedef std::shared_ptr< Value >                                      ptr_type;
+   typedef std::weak_ptr< Value >                                        manager_ptr_type;
+   typedef cache_factory< Value >                                        factory_type;
+   typedef std::pair< ptr_type, lru_cache_manager::iterator_type >       cache_bundle_type;
 
 private:
    std::map< size_t, index_cache_type > _index_caches;
@@ -65,8 +170,26 @@ private:
 public:
    void set_index_cache( size_t index, index_cache_type&& index_cache )
    {
-      index_cache->set_cache_manager( this->shared_from_this() );
+      index_cache->set_multi_index_cache_manager( this->shared_from_this() );
       _index_caches[ index ] = std::move( index_cache );
+   }
+
+   virtual bool purgeable( boost::any v )
+   {
+      manager_ptr_type value = boost::any_cast< manager_ptr_type >( v );
+      assert( !value.expired() );
+
+      if ( value.use_count() > _index_caches.size() )
+         return false;
+
+      return true;
+   }
+
+   virtual void purge( boost::any v )
+   {
+      manager_ptr_type value = boost::any_cast< manager_ptr_type >( v );
+      assert( !value.expired() );
+      invalidate( *value.lock() );
    }
 
    const index_cache_type& get_index_cache( size_t index )
@@ -90,48 +213,58 @@ public:
 
    ptr_type cache( ptr_type value )
    {
+      manager_ptr_type lru_value = value;
+      auto it = cache_manager::get()->insert( lru_value, this->shared_from_this() );
+
+      cache_bundle_type bundle = std::make_pair( value, it );
+
       for ( auto& c : _index_caches )
-         c.second->cache( value );
+         c.second->cache( bundle );
 
       return value;
    }
 
-   void update( ptr_type old_value, Value&& new_value )
+   void update( cache_bundle_type bundle, Value&& new_value )
    {
-      // Invalidate the keys based on our old value
+      std::vector< size_t > modified_indices;
       for ( auto& c : _index_caches )
-         c.second->invalidate( *old_value );
+         modified_indices.push_back( c.first );
 
-      // Replace the value without changing our pointers
-      *old_value = std::move( new_value );
-
-      // Generate new keys for each index based on the new value
-      for ( auto& c : _index_caches )
-         c.second->cache( old_value );
+      update( bundle, std::move( new_value ), modified_indices );
    }
 
-   void update( ptr_type old_value, Value&& new_value, const std::vector< size_t >& modified_indices )
+   void update( cache_bundle_type bundle, Value&& new_value, const std::vector< size_t >& modified_indices )
    {
       // Invalidate the keys based on our old value
       for ( auto i : modified_indices )
-         _index_caches[ i ]->invalidate( *old_value );
+         _index_caches[ i ]->invalidate( *( bundle.first ) );
 
       // Replace the value without changing our pointers
-      *old_value = std::move( new_value );
+      *( bundle.first ) = std::move( new_value );
 
       // Generate new keys for each index based on the new value
       for ( auto i : modified_indices )
-         _index_caches[ i ]->cache( old_value );
+         _index_caches[ i ]->cache( bundle );
+
+      cache_manager::get()->update( bundle.second );
    }
 
    void invalidate( const Value& v )
    {
+      assert( _index_caches.begin() != _index_caches.end() );
+      auto it = _index_caches.begin()->second->cache_iterator_from_value( v );
+
       for ( auto& c : _index_caches )
          c.second->invalidate( v );
+
+      cache_manager::get()->remove( it );
    }
 
    void clear()
    {
+      assert( _index_caches.begin() != _index_caches.end() );
+      _index_caches.begin()->second->clear_cache_iterators();
+
       for ( auto& c : _index_caches )
          c.second->clear();
    }
@@ -142,24 +275,24 @@ template< typename Value, typename Key, typename KeyFromValue, typename CompareT
 class index_cache : public abstract_index_cache< Value >
 {
 public:
-   typedef typename std::shared_ptr< Value > ptr_type;
+   typedef typename std::shared_ptr< Value >                                ptr_type;
+   typedef typename std::pair< ptr_type, lru_cache_manager::iterator_type > cache_bundle_type;
 
 private:
-   KeyFromValue               _get_key;
-   std::map< Key, ptr_type, CompareType >  _cache;
-   //std::map< Key, ptr_type >  _cache;
+   KeyFromValue                        _get_key;
+   std::map< Key, cache_bundle_type >  _cache;
 
    const Key key( cache_key_type k )
    {
       return *( ( Key* )k );
    }
 
-   virtual void cache( ptr_type value )
+   virtual void cache( cache_bundle_type bundle )
    {
-      auto key = _get_key( *value );
-      auto r = _cache.insert( std::make_pair( key, value ) );
+      auto key = _get_key( *( bundle.first ) );
+      auto r = _cache.insert( std::make_pair( key, bundle ) );
       assert( r.second == true );
-      _unused( r );
+      boost::ignore_unused( r );
    }
 
    virtual void invalidate( const Value& v )
@@ -167,12 +300,28 @@ private:
       auto k = _get_key( v );
       auto n = _cache.erase( k );
       assert( n == 1 );
-      _unused( n );
+      boost::ignore_unused( n );
    }
 
    virtual void clear()
    {
       _cache.clear();
+   }
+
+   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v )
+   {
+      auto k = _get_key( v );
+      auto itr = _cache.find( k );
+      assert( itr != _cache.end() );
+      return itr->second.second;
+   }
+
+   virtual void clear_cache_iterators()
+   {
+      for ( auto& item : _cache )
+      {
+         cache_manager::get()->remove( item.second.second );
+      }
    }
 
 public:
@@ -181,18 +330,25 @@ public:
 
    virtual void update( cache_key_type k, Value&&v )
    {
-      abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ) );
+      assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
+      abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ) );
    }
 
-   virtual void update( cache_key_type k, Value&& v, std::vector< size_t >& modified_indices )
+   virtual void update( cache_key_type k, Value&& v, const std::vector< size_t >& modified_indices )
    {
-      abstract_index_cache< Value >::cache_manager->update( _cache[ key( k ) ], std::move( v ), modified_indices );
+      assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
+      abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ), modified_indices );
    }
 
    virtual ptr_type get( cache_key_type k )
    {
       auto itr = _cache.find( key( k ) );
-      return itr != _cache.end() ? itr->second : ptr_type();
+      if ( itr != _cache.end() )
+      {
+         cache_manager::get()->update( itr->second.second );
+         return itr->second.first;
+      }
+      return ptr_type();
    }
 
    virtual bool contains( cache_key_type k )

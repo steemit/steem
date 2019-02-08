@@ -283,6 +283,8 @@ namespace chainbase {
 
          void flush() { _indices.flush(); }
 
+         void trim_cache( size_t cap ) { _indices.trim_cache( cap ); }
+
          class session {
             public:
                session( session&& mv )
@@ -627,6 +629,7 @@ namespace chainbase {
          virtual void wipe( const bfs::path& dir ) = 0;
          virtual void clear() = 0;
          virtual void flush() = 0;
+         virtual void trim_cache( size_t cap ) = 0;
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -701,6 +704,11 @@ namespace chainbase {
          virtual void flush() override final
          {
             _base.flush();
+         }
+
+         virtual void trim_cache( size_t cap ) override final
+         {
+            _base.trim_cache( cap );
          }
 
       private:
@@ -781,6 +789,7 @@ namespace chainbase {
          void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0 );
          void close();
          void flush();
+         void trim_cache( size_t cap );
          void wipe( const bfs::path& dir );
          void resize( size_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
