@@ -143,11 +143,11 @@ private:
       _multi_index_cache_manager = m;
    }
 
-   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) = 0;
-   virtual void clear_cache_iterators() = 0;
    virtual void cache( cache_bundle_type bundle ) = 0;
    virtual void invalidate( const Value& v ) = 0;
+   virtual void invalidate( const Value& v, bool update_cache_manager ) = 0;
    virtual void clear() = 0;
+   virtual void clear( bool update_cache_manager ) = 0;
 };
 
 template < typename Value >
@@ -252,21 +252,31 @@ public:
    void invalidate( const Value& v )
    {
       assert( _index_caches.begin() != _index_caches.end() );
-      auto it = _index_caches.begin()->second->cache_iterator_from_value( v );
+
+      const auto& last_key = _index_caches.rbegin()->first;
 
       for ( auto& c : _index_caches )
-         c.second->invalidate( v );
-
-      cache_manager::get()->remove( it );
+      {
+         if ( c.first == last_key )
+            c.second->invalidate( v, true );
+         else
+            c.second->invalidate( v );
+      }
    }
 
    void clear()
    {
       assert( _index_caches.begin() != _index_caches.end() );
-      _index_caches.begin()->second->clear_cache_iterators();
+
+      const auto& last_key = _index_caches.rbegin()->first;
 
       for ( auto& c : _index_caches )
-         c.second->clear();
+      {
+         if ( c.first == last_key )
+            c.second->clear( true );
+         else
+            c.second->clear();
+      }
    }
 };
 
@@ -303,26 +313,34 @@ private:
       boost::ignore_unused( n );
    }
 
+   virtual void invalidate( const Value& v, bool update_cache_manager )
+   {
+      auto k = _get_key( v );
+      auto it = _cache.find( k );
+      assert( it != _cache.end() );
+
+      if ( update_cache_manager )
+         cache_manager::get()->remove( it->second.second );
+
+      _cache.erase( it );
+   }
+
    virtual void clear()
    {
       _cache.clear();
    }
 
-   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v )
+   virtual void clear( bool update_cache_manager )
    {
-      auto k = _get_key( v );
-      auto itr = _cache.find( k );
-      assert( itr != _cache.end() );
-      return itr->second.second;
+      if ( update_cache_manager )
+      {
+         for ( auto& item : _cache )
+            cache_manager::get()->remove( item.second.second );
+      }
+
+      clear();
    }
 
-   virtual void clear_cache_iterators()
-   {
-      for ( auto& item : _cache )
-      {
-         cache_manager::get()->remove( item.second.second );
-      }
-   }
 
 public:
    index_cache() = default;
