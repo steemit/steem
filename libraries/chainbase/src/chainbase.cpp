@@ -94,6 +94,34 @@ namespace chainbase {
 #endif
    }
 
+   size_t database::get_cache_usage() const
+   {
+#ifdef ENABLE_STD_ALLOCATOR
+      size_t cache_size = 0;
+      for( const auto& i : _index_list )
+      {
+         cache_size += i->get_cache_usage();
+      }
+      return cache_size;
+#else
+      return 0;
+#endif
+   }
+
+   size_t database::get_cache_size() const
+   {
+#ifdef ENABLE_STD_ALLOCATOR
+      size_t cache_size = 0;
+      for( const auto& i : _index_list )
+      {
+         cache_size += i->get_cache_size();
+      }
+      return cache_size;
+#else
+      return 0;
+#endif
+   }
+
    void database::trim_cache( size_t cap )
    {
 #ifdef ENABLE_STD_ALLOCATOR

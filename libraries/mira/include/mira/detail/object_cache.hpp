@@ -148,6 +148,8 @@ private:
    virtual void cache( cache_bundle_type bundle ) = 0;
    virtual void invalidate( const Value& v ) = 0;
    virtual void clear() = 0;
+   virtual size_t usage() const = 0;
+   virtual size_t size() const = 0;
 };
 
 template < typename Value >
@@ -268,6 +270,17 @@ public:
       for ( auto& c : _index_caches )
          c.second->clear();
    }
+
+   size_t usage() const
+   {
+      // This assumes index 1 is the root index
+      return _index_caches.find( 1 )->second->usage();
+   }
+
+   size_t size() const
+   {
+      return _index_caches.find( 1 )->second->size();
+   }
 };
 
 template< typename Value, typename Key, typename KeyFromValue, typename CompareType >
@@ -287,7 +300,7 @@ private:
       return *( ( Key* )k );
    }
 
-   virtual void cache( cache_bundle_type bundle )
+   virtual void cache( cache_bundle_type bundle ) override final
    {
       auto key = _get_key( *( bundle.first ) );
       auto r = _cache.insert( std::make_pair( key, bundle ) );
@@ -295,7 +308,7 @@ private:
       boost::ignore_unused( r );
    }
 
-   virtual void invalidate( const Value& v )
+   virtual void invalidate( const Value& v ) override final
    {
       auto k = _get_key( v );
       auto n = _cache.erase( k );
@@ -303,12 +316,28 @@ private:
       boost::ignore_unused( n );
    }
 
-   virtual void clear()
+   virtual void clear() override final
    {
       _cache.clear();
    }
 
-   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v )
+   virtual size_t usage() const override final
+   {
+      size_t cache_size = 0;
+      for( const auto& entry : _cache )
+      {
+         cache_size += fc::raw::pack_size( *(entry.second.first) );
+      }
+
+      return cache_size;
+   }
+
+   virtual size_t size() const override final
+   {
+      return _cache.size();
+   }
+
+   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) override final
    {
       auto k = _get_key( v );
       auto itr = _cache.find( k );
@@ -316,7 +345,7 @@ private:
       return itr->second.second;
    }
 
-   virtual void clear_cache_iterators()
+   virtual void clear_cache_iterators() override final
    {
       for ( auto& item : _cache )
       {
@@ -328,19 +357,19 @@ public:
    index_cache() = default;
    virtual ~index_cache() = default;
 
-   virtual void update( cache_key_type k, Value&&v )
+   virtual void update( cache_key_type k, Value&&v ) override final
    {
       assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
       abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ) );
    }
 
-   virtual void update( cache_key_type k, Value&& v, const std::vector< size_t >& modified_indices )
+   virtual void update( cache_key_type k, Value&& v, const std::vector< size_t >& modified_indices ) override final
    {
       assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
       abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ), modified_indices );
    }
 
-   virtual ptr_type get( cache_key_type k )
+   virtual ptr_type get( cache_key_type k ) override final
    {
       auto itr = _cache.find( key( k ) );
       if ( itr != _cache.end() )
@@ -351,7 +380,7 @@ public:
       return ptr_type();
    }
 
-   virtual bool contains( cache_key_type k )
+   virtual bool contains( cache_key_type k ) override final
    {
       return _cache.find( key( k ) ) != _cache.end();
    }

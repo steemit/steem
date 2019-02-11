@@ -532,6 +532,16 @@ void print_stats() const
    }
 }
 
+size_t get_cache_usage() const
+{
+   return super::_cache->usage();
+}
+
+size_t get_cache_size() const
+{
+   return super::_cache->size();
+}
+
 primary_iterator iterator_to( const value_type& x )
 {
    return primary_index_type::iterator_to( x );
@@ -682,20 +692,6 @@ primary_iterator erase( primary_iterator position )
 
       return status;
    }
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)
-  /* invariant stuff */
-
-  bool invariant_()const
-  {
-    return super::invariant_();
-  }
-
-  void check_invariant_()const
-  {
-    BOOST_MULTI_INDEX_INVARIANT_ASSERT(invariant_());
-  }
-#endif
 
 private:
   uint64_t entry_count;

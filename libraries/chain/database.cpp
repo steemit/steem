@@ -236,7 +236,8 @@ uint32_t database::reindex( const open_args& args )
             if( cur_block_num % 100000 == 0 )
             {
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
+               "   (" << (get_free_memory() >> 20) << "M free, " <<
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
 
                //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
                //rocksdb::get_perf_context()->Reset();
@@ -3152,7 +3153,7 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
-   trim_cache( 100000 );
+   trim_cache( 2000000 );
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
