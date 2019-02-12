@@ -1,6 +1,8 @@
 file(GLOB HEADERS "include/steem/plugins/sps/*.hpp")
 
 add_library( sps_plugin
+             sps_evaluators.cpp
+             sps_operations.cpp
              sps_plugin.cpp
              ${HEADERS}
            )
