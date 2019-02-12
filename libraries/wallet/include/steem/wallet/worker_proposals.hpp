@@ -1,75 +1,89 @@
-#pragma once
-
 #include <vector>
 #include <string>
 
-#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
+namespace proposal {
 
-namespace steem { namespace proposal {
+    struct CreateProposal {
 
-        struct CreateProposal {
+        static const int create_proposal_args_cnt = 7;
 
-            static const int create_proposal_args_cnt = 7;
+        /* Proposal creator */
+        std::string creator;
 
-            /* Proposal creator */
-            steem::protocol::account_name_type creator;
+        /* Funds receiver */
+        std::string receiver;
 
-            /* Funds receiver */
-            steem::protocol::account_name_type receiver;
+        /* Start date */
+        std::string start_date;     //or maybe boost_datetime ??
 
-            /* Start date */
-            time_point_sec start_date;
+        /* End date */
+        std::string end_date;     //or maybe boost_datetime ??
 
-            /* End date */
-            time_point_sec end_date;
+        /* Proposal daily payment */
+        std::string daily_pay;
 
-            /* Proposal daily payment */
-            steem::plugins::condenser_api::legacy_asset daily_pay;
+        /* Subject of proposal */
+        std::string subject;
 
-            /* Subject of proposal */
-            std::string subject;
+        /* Url with proposal description */
+        std::string url;
 
-            /* Url with proposal description */
-            std::string url;
+        CreateProposal(const std::string& _creator
+                     , const std::string& _receiver
+                     , const std::string& _start_date
+                     , const std::string& _end_date
+                     , const std::string& _daily_pay
+                     , const std::string& _subject
+                     , const std::string& _url) : creator{_creator}
+                                         , receiver{_receiver}
+                                         , start_date{_start_date}
+                                         , end_date{_end_date}
+                                         , daily_pay{_daily_pay}
+                                         , subject{_subject}
+                                         , url{_url}
+        {}
+    };
 
-            CreateProposal(steem::protocol::account_name_type _creator
-                        , steem::protocol::account_name_type _receiver
-                        , time_point_sec _start_date
-                        , time_point_sec _end_date
-                        , steem::plugins::condenser_api::legacy_asset _daily_pay
-                        , const std::string& _subject
-                        , const std::string& _url) : creator{_creator}
-                                            , receiver{_receiver}
-                                            , start_date{_start_date}
-                                            , end_date{_end_date}
-                                            , daily_pay{_daily_pay}
-                                            , subject{_subject}
-                                            , url{_url}
-            {}
-        };
+    struct UpdateProposalVotes {
+        
+        static const int update_proposal_votes_args_cnt = 3;
 
-        struct UpdateProposalVotes {
-            
-            static const int update_proposal_votes_args_cnt = 3;
+        /* Proposal voter */
+        std::string voter;
 
-            using Proposals = std::vector<int>;
+        /* Voters proposals */
+        std::vector<std::string> proposals;
 
-            /* Proposal voter */
-            steem::protocol::account_name_type voter;
+        /*Proposal(s) approval */
+        bool approve;
 
-            /* Voters proposals */
-            Proposals proposals;
 
-            /*Proposal(s) approval */
-            bool approve;
+        UpdateProposalVotes(const std::string& _voter
+                          , const std::string& _proposals
+                          , const std::string& _approve) : voter(_voter)
+                                           , approve(_approve == "true")
+        {
+            const std::string digits    = "0123456789";
+            const std::string delimeter = ",";
 
-            UpdateProposalVotes(steem::protocol::account_name_type& _voter
-                            , Proposals _proposals
-                            , bool _approve) : voter(_voter)
-                                            , approve(_approve)
-            {
-                proposals = _proposals;
+            size_t pos  = 0; 
+            size_t pose = 0; 
+            size_t first_digit = _proposals.find_first_of(digits);
+            size_t last_digit  = _proposals.find_last_of(digits);
+            if( first_digit != std::string::npos and last_digit != std::string::npos) {
+                std::string pr =   _proposals.substr(first_digit, last_digit); 
+                std::string temp = "";
+                if(!pr.empty()) {
+                    while(( pose = pr.find(delimeter, pos) ) != std::string::npos) {
+                        temp = pr.substr(pos, pose-pos);
+                        if(!temp.empty()){
+                            proposals.push_back(temp);
+                        }
+                        pos = pose + delimeter.length();
+                    }
+                    proposals.push_back(pr.substr(pos));
+                }
             }
-        };
-    }
-}   //steem::proposals
+        }
+    };
+}
