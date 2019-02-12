@@ -1,8 +1,13 @@
 #include <steem/plugins/sps/sps_plugin.hpp>
+#include <steem/plugins/sps/sps_objects.hpp>
+
 #include <steem/chain/notifications.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
 
 namespace steem { namespace plugins { namespace sps {
 
+using namespace steem::chain;
 using namespace steem::protocol;
 using steem::chain::block_notification;
 
@@ -51,6 +56,9 @@ void sps_plugin::plugin_initialize( const boost::program_options::variables_map&
 
       my->_on_proposal_processing = my->_db.add_on_proposal_processing_handler(
          [&]( const block_notification& note ){ my->on_proposal_processing( note ); }, *this, 0 );
+
+      add_plugin_index< proposal_index      >( my->_db );
+      add_plugin_index< proposal_vote_index >( my->_db );
    }
    FC_CAPTURE_AND_RETHROW()
 }
