@@ -36,7 +36,6 @@ public:
 private:
    list_type    _lru;
    size_t       _obj_threshold = 5;
-   const size_t _max_attempts  = 5;
 
    void adjust_capactiy()
    {
@@ -66,13 +65,14 @@ public:
       if ( _lru.size() > cap )
       {
          attempts = 0;
+         size_t max_attempts = _lru.size() - cap;
          auto it = _lru.end();
          do
          {
             // Prevents an infinite loop in the case
             // where everything in the cache is considered
             // non-purgeable
-            if ( attempts++ == _max_attempts )
+            if ( attempts++ == max_attempts )
                break;
 
             --it;
@@ -143,11 +143,11 @@ private:
       _multi_index_cache_manager = m;
    }
 
-   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) = 0;
-   virtual void clear_cache_iterators() = 0;
    virtual void cache( cache_bundle_type bundle ) = 0;
    virtual void invalidate( const Value& v ) = 0;
+   virtual void invalidate( const Value& v, bool update_cache_manager ) = 0;
    virtual void clear() = 0;
+   virtual void clear( bool update_cache_manager ) = 0;
    virtual size_t usage() const = 0;
    virtual size_t size() const = 0;
 };
@@ -254,21 +254,31 @@ public:
    void invalidate( const Value& v )
    {
       assert( _index_caches.begin() != _index_caches.end() );
-      auto it = _index_caches.begin()->second->cache_iterator_from_value( v );
+
+      const auto& last_key = _index_caches.rbegin()->first;
 
       for ( auto& c : _index_caches )
-         c.second->invalidate( v );
-
-      cache_manager::get()->remove( it );
+      {
+         if ( c.first == last_key )
+            c.second->invalidate( v, true );
+         else
+            c.second->invalidate( v );
+      }
    }
 
    void clear()
    {
       assert( _index_caches.begin() != _index_caches.end() );
-      _index_caches.begin()->second->clear_cache_iterators();
+
+      const auto& last_key = _index_caches.rbegin()->first;
 
       for ( auto& c : _index_caches )
-         c.second->clear();
+      {
+         if ( c.first == last_key )
+            c.second->clear( true );
+         else
+            c.second->clear();
+      }
    }
 
    size_t usage() const
@@ -316,9 +326,32 @@ private:
       boost::ignore_unused( n );
    }
 
+   virtual void invalidate( const Value& v, bool update_cache_manager ) override final
+   {
+      auto k = _get_key( v );
+      auto it = _cache.find( k );
+      assert( it != _cache.end() );
+
+      if ( update_cache_manager )
+         cache_manager::get()->remove( it->second.second );
+
+      _cache.erase( it );
+   }
+
    virtual void clear() override final
    {
       _cache.clear();
+   }
+
+   virtual void clear( bool update_cache_manager ) override final
+   {
+      if ( update_cache_manager )
+      {
+         for ( auto& item : _cache )
+            cache_manager::get()->remove( item.second.second );
+      }
+
+      clear();
    }
 
    virtual size_t usage() const override final
@@ -337,21 +370,6 @@ private:
       return _cache.size();
    }
 
-   virtual lru_cache_manager::iterator_type cache_iterator_from_value( const Value& v ) override final
-   {
-      auto k = _get_key( v );
-      auto itr = _cache.find( k );
-      assert( itr != _cache.end() );
-      return itr->second.second;
-   }
-
-   virtual void clear_cache_iterators() override final
-   {
-      for ( auto& item : _cache )
-      {
-         cache_manager::get()->remove( item.second.second );
-      }
-   }
 
 public:
    index_cache() = default;

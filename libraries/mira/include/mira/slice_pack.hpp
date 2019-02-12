@@ -66,13 +66,13 @@ template< typename T > struct slice_packer
 };
 
 template< typename T >
-inline void pack_to_slice( PinnableSlice& s, const T& t )
+void pack_to_slice( PinnableSlice& s, const T& t )
 {
    slice_packer< T >::pack( s, t );
 }
 
 template< typename T >
-inline Slice pack_to_slice( const T& t )
+Slice pack_to_slice( const T& t )
 {
    PinnableSlice s;
    pack_to_slice( s, t );
@@ -80,13 +80,13 @@ inline Slice pack_to_slice( const T& t )
 }
 
 template< typename T >
-inline void unpack_from_slice( const Slice& s, T& t )
+void unpack_from_slice( const Slice& s, T& t )
 {
    slice_packer< T >::unpack( s, t );
 }
 
 template< typename T >
-inline T unpack_from_slice( const Slice& s )
+T unpack_from_slice( const Slice& s )
 {
    T t;
    unpack_from_slice( s, t );
