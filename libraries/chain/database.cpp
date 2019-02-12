@@ -991,6 +991,11 @@ void database::notify_pre_apply_block( const block_notification& note )
    STEEM_TRY_NOTIFY( _pre_apply_block_signal, note )
 }
 
+void database::notify_on_proposal_processing( const block_notification& note )
+{
+   STEEM_TRY_NOTIFY( _on_proposal_processing, note )
+}
+
 void database::notify_irreversible_block( uint32_t block_num )
 {
    STEEM_TRY_NOTIFY( _on_irreversible_block, block_num )
@@ -3660,6 +3665,12 @@ boost::signals2::connection database::add_generate_optional_actions_handler(cons
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
+}
+
+boost::signals2::connection database::add_on_proposal_processing_handler( const apply_block_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_on_proposal_processing, func, plugin, group, "->proposal");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
