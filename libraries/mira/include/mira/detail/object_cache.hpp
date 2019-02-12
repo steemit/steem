@@ -36,7 +36,6 @@ public:
 private:
    list_type    _lru;
    size_t       _obj_threshold = 5;
-   const size_t _max_attempts  = 5;
 
    void adjust_capactiy()
    {
@@ -66,13 +65,14 @@ public:
       if ( _lru.size() > cap )
       {
          attempts = 0;
+         size_t max_attempts = _lru.size() - cap;
          auto it = _lru.end();
          do
          {
             // Prevents an infinite loop in the case
             // where everything in the cache is considered
             // non-purgeable
-            if ( attempts++ == _max_attempts )
+            if ( attempts++ == max_attempts )
                break;
 
             --it;
