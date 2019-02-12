@@ -37,7 +37,7 @@ namespace steem { namespace sps_api_plugin {
 
   // return type for get_proposals
   struct get_proposals_return {
-    
+    t_vector<create_proposal_args> result;
   };
 
   struct get_voter_proposals_args {
@@ -46,7 +46,7 @@ namespace steem { namespace sps_api_plugin {
   };
 
   struct get_voter_proposals_return {
-
+    t_vector<create_proposal_args> result;
   };
 
   class sps_api_plugin : public appbase::plugin<sps_api_plugin>
@@ -87,7 +87,7 @@ namespace steem { namespace sps_api_plugin {
   void sps_api_plugin::plugin_initialize( const variables_map& options )
   {
     // This registers the API with the json rpc plugin
-    JSON_RPC_REGISTER_API( name(), (create_proposal)(update_proposal_votes)(get_proposals)(get_voter_proposals) );
+    JSON_RPC_REGISTER_API( name(), (create_proposal)(update_proposal_votes)(get_proposals)(get_voter_proposals));
   }
 
   void sps_api_plugin::plugin_startup() {
@@ -123,3 +123,11 @@ namespace steem { namespace sps_api_plugin {
   }
 
 } } // namespace steem::sps_api_plugin
+
+
+// Args and return types need to be reflected. We do not reflect typedefs of already reflected types
+FC_REFLECT(steem::sps_api_plugin::create_proposal_args, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url));
+FC_REFLECT(steem::sps_api_plugin::update_proposal_votes_args, (voter)(proposal_ids)(approve));
+FC_REFLECT(steem::sps_api_plugin::get_proposals_return, (result));
+FC_REFLECT(steem::sps_api_plugin::get_voter_proposals_args, (voter));
+FC_REFLECT(steem::sps_api_plugin::get_voter_proposals_return, (result));
