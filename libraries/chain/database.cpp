@@ -1627,6 +1627,11 @@ void database::clear_null_account_balance()
    post_push_virtual_operation( vop_op );
 }
 
+void database::process_proposals( const block_notification& note )
+{
+   notify_on_proposal_processing( note );
+}
+
 /**
  * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
  * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
