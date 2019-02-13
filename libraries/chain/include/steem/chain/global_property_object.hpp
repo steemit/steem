@@ -136,6 +136,10 @@ namespace steem { namespace chain {
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
 #endif
+
+         //settings used to compute payments for every proposal
+         time_point_sec next_maintenance_time;
+         time_point_sec last_budget_time;
    };
 
    typedef multi_index_container<
