@@ -4,8 +4,13 @@
 
 namespace steem { namespace plugins { namespace sps {
 
-using namespace std;
-using namespace steem::chain;
+using steem::chain::object;
+using steem::chain::allocator;
+using steem::chain::account_name_type;
+using steem::chain::asset;
+using steem::chain::shared_string;
+using steem::chain::oid;
+using steem::chain::by_id;
 
 #ifndef STEEM_SPS_SPACE_ID
 #define STEEM_SPS_SPACE_ID 20
