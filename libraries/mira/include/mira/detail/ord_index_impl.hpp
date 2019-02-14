@@ -617,7 +617,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             new_key_slice,
             value_slice );
 
-         if( _key_modification_count > 100 )
+         if( _key_modification_count > 1500 )
          {
             super::_db->Flush( _flush_opts, super::_handles[ COLUMN_INDEX ] );
             _key_modification_count = 0;
