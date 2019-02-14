@@ -12,16 +12,16 @@ namespace steem { namespace proposal {
             static const int create_proposal_args_cnt = 7;
 
             /* Proposal creator */
-            std::string creator;
+            steem::protocol::account_name_type creator;
 
             /* Funds receiver */
-            std::string receiver;
+            steem::protocol::account_name_type receiver;
 
             /* Start date */
-            std::string start_date;     //or maybe boost_datetime ??
+            time_point_sec start_date;
 
             /* End date */
-            std::string end_date;     //or maybe boost_datetime ??
+            time_point_sec end_date;
 
             /* Proposal daily payment */
             steem::plugins::condenser_api::legacy_asset daily_pay;
@@ -32,10 +32,10 @@ namespace steem { namespace proposal {
             /* Url with proposal description */
             std::string url;
 
-            CreateProposal(const std::string& _creator
-                        , const std::string& _receiver
-                        , const std::string& _start_date
-                        , const std::string& _end_date
+            CreateProposal(steem::protocol::account_name_type _creator
+                        , steem::protocol::account_name_type _receiver
+                        , time_point_sec _start_date
+                        , time_point_sec _end_date
                         , steem::plugins::condenser_api::legacy_asset _daily_pay
                         , const std::string& _subject
                         , const std::string& _url) : creator{_creator}
@@ -55,7 +55,7 @@ namespace steem { namespace proposal {
             using Proposals = std::vector<int>;
 
             /* Proposal voter */
-            std::string voter;
+            steem::protocol::account_name_type voter;
 
             /* Voters proposals */
             Proposals proposals;
@@ -63,36 +63,7 @@ namespace steem { namespace proposal {
             /*Proposal(s) approval */
             bool approve;
 
-
-            UpdateProposalVotes(const std::string& _voter
-                            , const std::string& _proposals
-                            , bool _approve) : voter(_voter)
-                                            , approve(_approve)
-            {
-                const std::string digits    = "0123456789";
-                const std::string delimeter = ",";
-
-                size_t pos  = 0; 
-                size_t pose = 0; 
-                size_t first_digit = _proposals.find_first_of(digits);
-                size_t last_digit  = _proposals.find_last_of(digits);
-                if( first_digit != std::string::npos and last_digit != std::string::npos) {
-                    std::string pr =   _proposals.substr(first_digit, last_digit); 
-                    std::string temp = "";
-                    if(!pr.empty()) {
-                        while(( pose = pr.find(delimeter, pos) ) != std::string::npos) {
-                            temp = pr.substr(pos, pose-pos);
-                            if(!temp.empty()){
-                                proposals.push_back(std::stoi(temp));
-                            }
-                            pos = pose + delimeter.length();
-                        }
-                        proposals.push_back(std::stoi(pr.substr(pos)));
-                    }
-                }
-            }
-
-            UpdateProposalVotes(const std::string& _voter
+            UpdateProposalVotes(steem::protocol::account_name_type& _voter
                             , Proposals _proposals
                             , bool _approve) : voter(_voter)
                                             , approve(_approve)
