@@ -1081,10 +1081,10 @@ class wallet_api
        * @param _subject    - briefly description of proposal of its title,
        * @param _url        - link to page with description of proposal.
        */
-      void create_proposal(const std::string& _creator,
-                           const std::string& _receiver,
-                           const std::string& _start_date,
-                           const std::string& _end_date, 
+      void create_proposal(account_name_type _creator,
+                           account_name_type _receiver,
+                           time_point_sec _start_date,
+                           time_point_sec _end_date, 
                            condenser_api::legacy_asset _daily_pay,
                            const std::string& _subject, 
                            const std::string& _url);
@@ -1095,7 +1095,7 @@ class wallet_api
        * @param _proposals - array with proposal ids,
        * @param _approve   - set if proposal(s) should be approved or not.
        */
-      void update_proposal_votes(const std::string& _voter, 
+      void update_proposal_votes(account_name_type _voter, 
                                  UpdateProposalVotes::Proposals _proposals, 
                                  bool _approve);
       
