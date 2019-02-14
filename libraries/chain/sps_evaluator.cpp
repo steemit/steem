@@ -14,12 +14,15 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 {
    try
    {
-      elog("create_proposal_evaluator: ${op}", ("op", o));
+      ilog("creating proposal: ${op}", ("op", o));
 
       asset fee_sbd( STEEM_TREASURY_FEE, SBD_SYMBOL );
 
       FC_ASSERT( _db.get_balance( o.creator, SBD_SYMBOL ) >= fee_sbd,
          "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_sbd) );
+
+      //only for check if given account exists
+      _db.get_account( o.receiver );
 
       const auto& owner_account = _db.get_account( o.creator );
       const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
