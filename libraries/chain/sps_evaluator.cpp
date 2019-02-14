@@ -70,7 +70,7 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
                _db.create< proposal_vote_object >( [&]( proposal_vote_object& proposal_vote )
                {
                   proposal_vote.voter = o.voter;
-                  proposal_vote.voter = o.voter;
+                  proposal_vote.proposal_id = id;
                } );
          }
          else
