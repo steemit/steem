@@ -29,6 +29,51 @@ using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
 
+template< typename SIGN >
+int64_t create_proposal(   std::string creator, std::string receiver,
+                           time_point_sec start_date, time_point_sec end_date,
+                           asset daily_pay, database* db, SIGN sign )
+{
+   signed_transaction tx;
+
+   create_proposal_operation op;
+
+   op.creator = creator;
+   op.receiver = receiver;
+
+   op.start_date = start_date;
+   op.end_date = end_date;
+
+   op.daily_pay = daily_pay;
+
+   static uint32_t cnt = 0;
+   op.subject = std::to_string( cnt );
+   op.url = "http://" + std::to_string( cnt );
+
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx );
+   db->push_transaction( tx, 0 );
+
+   const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_creator >();
+   auto found = proposal_idx.find( creator );
+   BOOST_REQUIRE( found != proposal_idx.end() );
+
+   ++cnt;
+
+   while( found != proposal_idx.end() && found->creator == creator )
+   {
+      uint32_t val = stoi( found->subject.c_str() );
+
+      if( val == cnt - 1 )
+         return found->id;
+
+      ++found;
+   }
+
+   return -1;
+}
+
 BOOST_FIXTURE_TEST_SUITE( proposal_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( proposal_object_apply )
@@ -45,8 +90,6 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
 
       auto fee = asset( STEEM_TREASURY_FEE, SBD_SYMBOL );
 
-      FUND( "alice", ASSET( "80.000 TBD" ) );
-
       auto creator = "alice";
       auto receiver = "bob";
 
@@ -57,6 +100,8 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
 
       auto subject = "hello";
       auto url = "http:://something.html";
+
+      FUND( creator, ASSET( "80.000 TBD" ) );
 
       signed_transaction tx;
 
@@ -112,121 +157,341 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( proposal_object_validate )
+BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
 {
-   // try
-   // {
-   //    BOOST_TEST_MESSAGE( "Testing: account_update_validate" );
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: proposal_vote_object_operation" );
 
-   //    ACTORS( (alice) )
+      ACTORS( (alice)(bob)(carol)(dan) )
+      generate_block();
 
-   //    account_update_operation op;
-   //    op.account = "alice";
-   //    op.posting = authority();
-   //    op.posting->weight_threshold = 1;
-   //    op.posting->add_authorities( "abcdefghijklmnopq", 1 );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
 
-   //    try
-   //    {
-   //       op.validate();
+      auto creator = "alice";
+      auto receiver = "bob";
 
-   //       signed_transaction tx;
-   //       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-   //       tx.operations.push_back( op );
-   //       sign( tx, alice_private_key );
-   //       db->push_transaction( tx, 0 );
+      auto start_date = db->head_block_time() + fc::days( 1 );
+      auto end_date = start_date + fc::days( 2 );
 
-   //       BOOST_FAIL( "An exception was not thrown for an invalid account name" );
-   //    }
-   //    catch( fc::exception& ) {}
+      auto daily_pay = asset( 100, SBD_SYMBOL );
 
-   //    validate_database();
-   // }
-   // FC_LOG_AND_RETHROW()
+      FUND( creator, ASSET( "80.000 TBD" ) );
+
+      auto alice_sign = [&]( signed_transaction& tx ){ sign( tx, alice_private_key ); };
+
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay, db, alice_sign );
+
+      signed_transaction tx;
+      update_proposal_votes_operation op;
+      const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
+
+      auto voter_01 = "carol";
+      auto voter_01_key = carol_private_key;
+
+      {
+         BOOST_TEST_MESSAGE( "---Voting for proposal( `id_proposal_00` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.approve = true;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         auto found = proposal_vote_idx.find( std::make_tuple( voter_01, id_proposal_00 ) );
+         BOOST_REQUIRE( found->voter == voter_01 );
+         BOOST_REQUIRE( static_cast< int64_t >( found->proposal_id ) == id_proposal_00 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting proposal( `id_proposal_00` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         auto found = proposal_vote_idx.find( std::make_tuple( voter_01, id_proposal_00 ) );
+         BOOST_REQUIRE( found == proposal_vote_idx.end() );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( proposal_object_authorities )
+BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
 {
-   // try
-   // {
-   //    BOOST_TEST_MESSAGE( "Testing: account_update_authorities" );
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: proposal_vote_object_operation" );
 
-   //    ACTORS( (alice)(bob) )
-   //    private_key_type active_key = generate_private_key( "new_key" );
+      ACTORS( (alice)(bob)(carol)(dan) )
+      generate_block();
 
-   //    db->modify( db->get< account_authority_object, by_account >( "alice" ), [&]( account_authority_object& a )
-   //    {
-   //       a.active = authority( 1, active_key.get_public_key(), 1 );
-   //    });
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
 
-   //    account_update_operation op;
-   //    op.account = "alice";
-   //    op.json_metadata = "{\"success\":true}";
+      auto creator = "alice";
+      auto receiver = "bob";
 
-   //    signed_transaction tx;
-   //    tx.operations.push_back( op );
-   //    tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      auto start_date = db->head_block_time() + fc::days( 1 );
+      auto end_date = start_date + fc::days( 2 );
 
-   //    BOOST_TEST_MESSAGE( "  Tests when owner authority is not updated ---" );
-   //    BOOST_TEST_MESSAGE( "--- Test failure when no signature" );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
+      auto daily_pay_00 = asset( 100, SBD_SYMBOL );
+      auto daily_pay_01 = asset( 101, SBD_SYMBOL );
+      auto daily_pay_02 = asset( 102, SBD_SYMBOL );
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when wrong signature" );
-   //    sign( tx, bob_private_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_active_auth );
+      FUND( creator, ASSET( "80.000 TBD" ) );
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when containing additional incorrect signature" );
-   //    sign( tx, alice_private_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
+      auto alice_sign = [&]( signed_transaction& tx ){ sign( tx, alice_private_key ); };
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when containing duplicate signatures" );
-   //    tx.signatures.clear();
-   //    sign( tx, active_key );
-   //    sign( tx, active_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_duplicate_sig );
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay_00, db, alice_sign );
+      int64_t id_proposal_01 = create_proposal( creator, receiver, start_date, end_date, daily_pay_01, db, alice_sign );
 
-   //    BOOST_TEST_MESSAGE( "--- Test success on active key" );
-   //    tx.signatures.clear();
-   //    sign( tx, active_key );
-   //    db->push_transaction( tx, 0 );
+      signed_transaction tx;
+      update_proposal_votes_operation op;
+      const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
 
-   //    BOOST_TEST_MESSAGE( "--- Test success on owner key alone" );
-   //    tx.signatures.clear();
-   //    sign( tx, alice_private_key );
-   //    db->push_transaction( tx, database::skip_transaction_dupe_check );
+      std::string voter_01 = "carol";
+      auto voter_01_key = carol_private_key;
 
-   //    BOOST_TEST_MESSAGE( "  Tests when owner authority is updated ---" );
-   //    BOOST_TEST_MESSAGE( "--- Test failure when updating the owner authority with an active key" );
-   //    tx.signatures.clear();
-   //    tx.operations.clear();
-   //    op.owner = authority( 1, active_key.get_public_key(), 1 );
-   //    tx.operations.push_back( op );
-   //    sign( tx, active_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_missing_owner_auth );
+      {
+         BOOST_TEST_MESSAGE( "---Voting by `voter_01` for proposals( `id_proposal_00`, `id_proposal_01` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.push_back( id_proposal_01 );
+         op.approve = true;
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when owner key and active key are present" );
-   //    sign( tx, alice_private_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), tx_irrelevant_sig );
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when incorrect signature" );
-   //    tx.signatures.clear();
-   //    sign( tx, alice_post_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0), tx_missing_owner_auth );
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 2 );
+      }
 
-   //    BOOST_TEST_MESSAGE( "--- Test failure when duplicate owner keys are present" );
-   //    tx.signatures.clear();
-   //    sign( tx, alice_private_key );
-   //    sign( tx, alice_private_key );
-   //    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0), tx_duplicate_sig );
+      int64_t id_proposal_02 = create_proposal( creator, receiver, start_date, end_date, daily_pay_02, db, alice_sign );
+      std::string voter_02 = "dan";
+      auto voter_02_key = dan_private_key;
 
-   //    BOOST_TEST_MESSAGE( "--- Test success when updating the owner authority with an owner key" );
-   //    tx.signatures.clear();
-   //    sign( tx, alice_private_key );
-   //    db->push_transaction( tx, 0 );
+      {
+         BOOST_TEST_MESSAGE( "---Voting by `voter_02` for proposals( `id_proposal_00`, `id_proposal_01`, `id_proposal_02` )---" );
+         op.voter = voter_02;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_02 );
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.push_back( id_proposal_01 );
+         op.approve = true;
 
-   //    validate_database();
-   // }
-   // FC_LOG_AND_RETHROW()
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_02_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_02 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_02 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 3 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Voting by `voter_02` for proposals( `id_proposal_00` )---" );
+         op.voter = voter_02;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.approve = true;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_02_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_02 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_02 )
+         {
+            ++cnt;
+            ++found;
+         }
+        BOOST_REQUIRE( cnt == 3 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_02` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_02 );
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 2 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_00` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 1 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting by `voter_02` proposals( `id_proposal_00`, `id_proposal_01`, `id_proposal_02` )---" );
+         op.voter = voter_02;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_02 );
+         op.proposal_ids.push_back( id_proposal_01 );
+         op.proposal_ids.push_back( id_proposal_00 );
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_02_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_02 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_02 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 0 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_01` )---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.proposal_ids.push_back( id_proposal_01 );
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 0 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Voting by `voter_01` for nothing---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.approve = true;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 0 );
+      }
+
+      {
+         BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` nothing---" );
+         op.voter = voter_01;
+         op.proposal_ids.clear();
+         op.approve = false;
+
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, voter_01_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         int32_t cnt = 0;
+         auto found = proposal_vote_idx.find( voter_01 );
+         while( found != proposal_vote_idx.end() && found->voter == voter_01 )
+         {
+            ++cnt;
+            ++found;
+         }
+         BOOST_REQUIRE( cnt == 0 );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
