@@ -6,6 +6,7 @@
 #include <steem/protocol/steem_operations.hpp>
 #include <steem/protocol/steem_virtual_operations.hpp>
 #include <steem/protocol/smt_operations.hpp>
+#include <steem/protocol/sps_operations.hpp>
 
 namespace steem { namespace protocol {
 
@@ -94,7 +95,9 @@ namespace steem { namespace protocol {
             return_vesting_delegation_operation,
             comment_benefactor_reward_operation,
             producer_reward_operation,
-            clear_null_account_balance_operation
+            clear_null_account_balance_operation,
+            create_proposal_operation,
+            update_proposal_votes_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,

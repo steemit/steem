@@ -318,7 +318,7 @@
 #define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
 
-#define STEEM_TREASURY_FEE                      (10 * STEEM_1_PERCENT)
+#define STEEM_TREASURY_FEE                      (10 * STEEM_BLOCKCHAIN_PRECISION)
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD       3600
 
 #ifdef STEEM_ENABLE_SMT

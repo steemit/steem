@@ -2,7 +2,7 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steem { namespace plugins { namespace sps {
+namespace steem { namespace chain {
 
 using steem::chain::object;
 using steem::chain::allocator;
@@ -11,6 +11,8 @@ using steem::chain::asset;
 using steem::chain::shared_string;
 using steem::chain::oid;
 using steem::chain::by_id;
+
+using namespace std;
 
 #ifndef STEEM_SPS_SPACE_ID
 #define STEEM_SPS_SPACE_ID 20
@@ -127,10 +129,10 @@ typedef multi_index_container<
    allocator< proposal_vote_object >
 > proposal_vote_index;
 
-} } } // steem::plugins::sps
+} } // steem::chain
 
-FC_REFLECT( steem::plugins::sps::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url)(total_votes) )
-CHAINBASE_SET_INDEX_TYPE( steem::plugins::sps::proposal_object, steem::plugins::sps::proposal_index )
+FC_REFLECT( steem::chain::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url)(total_votes) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_object, steem::chain::proposal_index )
 
-FC_REFLECT( steem::plugins::sps::proposal_vote_object, (id)(voter)(proposal_id) )
-CHAINBASE_SET_INDEX_TYPE( steem::plugins::sps::proposal_vote_object, steem::plugins::sps::proposal_vote_index )
+FC_REFLECT( steem::chain::proposal_vote_object, (id)(voter)(proposal_id) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_vote_object, steem::chain::proposal_vote_index )
