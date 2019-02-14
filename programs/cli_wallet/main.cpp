@@ -57,7 +57,6 @@
 # include <csignal>
 #endif
 
-#include <steem/wallet/worker_proposals.hpp>
 
 using namespace steem::utilities;
 using namespace steem::chain;
@@ -81,8 +80,6 @@ int main( int argc, char** argv )
          ("daemon,d", "Run the wallet in daemon mode" )
          ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
-         ("create-proposal", bpo::value<vector<string>>()->multitoken(), "Create worker proposal")
-         ("update-proposal-votes", bpo::value<vector<string>>()->multitoken(), "Update worker proposal")
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -104,37 +101,6 @@ int main( int argc, char** argv )
       }
 
       steem::protocol::chain_id_type _steem_chain_id;
-
-      if( options.count("create-proposal")) {
-         auto args = options["create-proposal"].as<vector<string>>();
-         if( args.size() == proposal::CreateProposal::create_proposal_args_cnt ) {
-            proposal::CreateProposal cp = { args[0], args[1], args[2], args[3], args[4], args[5], args[6] };
-            wdump((cp.creator));
-            wdump((cp.receiver));
-            wdump((cp.start_date));
-            wdump((cp.end_date));
-            wdump((cp.daily_pay));
-            wdump((cp.subject));
-            wdump((cp.url));
-         } else {
-            elog("Invalid number of args `${args}` for `create-proposal` command.",("args",args.size()));
-         }
-      }
-
-      if( options.count("update-proposal-votes")) {
-         auto args = options["update-proposal-votes"].as<vector<string>>();
-         if(args.size() == proposal::UpdateProposalVotes::update_proposal_votes_args_cnt) {
-            proposal::UpdateProposalVotes upv = { args[0], args[1], args[2] };
-            wdump((upv.voter));
-            wdump((upv.proposals));
-            wdump((upv.approve));
-            if(upv.proposals.empty()){
-               elog("No proposals for update given.");   
-            }
-         } else {
-            elog("Invalid number of args `${args}` for `update-proposal-votes` command.",("args",args.size()));
-         }
-      }
 
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
