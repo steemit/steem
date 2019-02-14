@@ -44,19 +44,19 @@ namespace steem { namespace plugins { namespace sps {
   typedef void_type update_proposal_votes_return;
 
   // args type for get_proposals
-  typedef void_type get_proposals_args;
+  typedef void_type list_proposals_args;
 
   // return type for get_proposals
-  struct get_proposals_return {
+  struct list_proposals_return {
     std::vector<create_proposal_args> result;
   };
 
-  struct get_voter_proposals_args {
+  struct list_voter_proposals_args {
     // voter
     account_name_type voter;
   };
 
-  struct get_voter_proposals_return {
+  struct list_voter_proposals_return {
     std::vector<create_proposal_args> result;
   };
 
@@ -69,8 +69,8 @@ namespace steem { namespace plugins { namespace sps {
       DECLARE_API(
         (create_proposal)
         (update_proposal_votes)
-        (get_proposals)
-        (get_voter_proposals)
+        (list_proposals)
+        (list_voter_proposals)
         )
     private:
         std::unique_ptr< detail::sps_api_impl > my;
@@ -81,6 +81,6 @@ namespace steem { namespace plugins { namespace sps {
   // Args and return types need to be reflected. We do not reflect typedefs of already reflected types
 FC_REFLECT(steem::plugins::sps::create_proposal_args, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url));
 FC_REFLECT(steem::plugins::sps::update_proposal_votes_args, (voter)(proposal_ids)(approve));
-FC_REFLECT(steem::plugins::sps::get_proposals_return, (result));
-FC_REFLECT(steem::plugins::sps::get_voter_proposals_args, (voter));
-FC_REFLECT(steem::plugins::sps::get_voter_proposals_return, (result));
+FC_REFLECT(steem::plugins::sps::list_proposals_return, (result));
+FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, (voter));
+FC_REFLECT(steem::plugins::sps::list_voter_proposals_return, (result));

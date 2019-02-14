@@ -11,8 +11,8 @@ class sps_api_impl
     DECLARE_API_IMPL(
         (create_proposal)
         (update_proposal_votes)
-        (get_proposals)
-        (get_voter_proposals)
+        (list_proposals)
+        (list_voter_proposals)
         )
 };
 
@@ -30,16 +30,16 @@ DEFINE_API_IMPL(sps_api_impl, update_proposal_votes) {
   return result;
 }
 
-DEFINE_API_IMPL(sps_api_impl, get_proposals) {
+DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   ilog("get_proposals called");
-  get_proposals_return result;
+  list_proposals_return result;
 
   return result;
 }
 
-DEFINE_API_IMPL(sps_api_impl, get_voter_proposals) {
+DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   ilog("get_voter_proposals called");
-  get_voter_proposals_return result;
+  list_voter_proposals_return result;
 
   return result;
 }
@@ -54,8 +54,8 @@ sps_api::sps_api(): my( new detail::sps_api_impl() )
 sps_api::~sps_api() {}
 
 DEFINE_LOCKLESS_APIS(sps_api,
-  (get_proposals)
-  (get_voter_proposals)
+  (list_proposals)
+  (list_voter_proposals)
   (create_proposal)
   (update_proposal_votes)
 )
