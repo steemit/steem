@@ -7,6 +7,7 @@
 #include <steem/wallet/api_documentation.hpp>
 #include <steem/wallet/reflect_util.hpp>
 #include <steem/wallet/remote_node_api.hpp>
+#include <steem/wallet/worker_proposals.hpp>
 
 #include <steem/plugins/follow/follow_operations.hpp>
 
@@ -2401,5 +2402,25 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    return my->sign_transaction( trx, broadcast );
 }
+
+   void wallet_api::create_proposal(const std::string& _creator, const std::string& _receiver, const std::string& _start_date,
+                                    const std::string& _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url) {
+      proposal::CreateProposal cp = {  _creator, _receiver, _start_date, _end_date, _daily_pay, _subject, _url};
+      wdump((cp.creator));
+      wdump((cp.receiver));
+      wdump((cp.start_date));
+      wdump((cp.end_date));
+      wdump((cp.daily_pay));
+      wdump((cp.subject));
+      wdump((cp.url));
+   }
+
+   void wallet_api::update_proposal_votes(const std::string& _voter, UpdateProposalVotes::Proposals _proposals, bool _approve) {
+      proposal::UpdateProposalVotes upv = { _voter, _proposals, _approve };
+      wdump((upv.voter));
+      wdump((upv.proposals));
+      wdump((upv.approve));
+      FC_ASSERT(  !upv.proposals.empty() );
+   }
 
 } } // steem::wallet

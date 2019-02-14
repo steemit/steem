@@ -3,7 +3,7 @@
 #include <steem/plugins/condenser_api/condenser_api.hpp>
 
 #include <steem/wallet/remote_node_api.hpp>
-
+#include <steem/wallet/worker_proposals.hpp>
 #include <steem/utilities/key_conversion.hpp>
 
 #include <fc/macros.hpp>
@@ -18,7 +18,11 @@ using namespace std;
 using namespace steem::utilities;
 using namespace steem::protocol;
 
+using namespace steem::proposal;
+
 typedef uint16_t transaction_handle_type;
+
+
 
 struct memo_data {
 
@@ -1066,6 +1070,35 @@ class wallet_api
          condenser_api::legacy_asset reward_sbd,
          condenser_api::legacy_asset reward_vests,
          bool broadcast );
+
+      /**
+       * Create worker proposal
+       * @param _creator    - account that create the proposal,
+       * @param _receiver   - account that will be funded,
+       * @param _start_date - start date of proposal,
+       * @param _end_date   - end date of proposal,
+       * @param _daily_pay  - the amount of SBD that is being requested to be paid out daily,
+       * @param _subject    - briefly description of proposal of its title,
+       * @param _url        - link to page with description of proposal.
+       */
+      void create_proposal(const std::string& _creator,
+                           const std::string& _receiver,
+                           const std::string& _start_date,
+                           const std::string& _end_date, 
+                           condenser_api::legacy_asset _daily_pay,
+                           const std::string& _subject, 
+                           const std::string& _url);
+
+      /**
+       * Update existing worker proposal(s)
+       * @param _voter     - voiting account,
+       * @param _proposals - array with proposal ids,
+       * @param _approve   - set if proposal(s) should be approved or not.
+       */
+      void update_proposal_votes(const std::string& _voter, 
+                                 UpdateProposalVotes::Proposals _proposals, 
+                                 bool _approve);
+      
 };
 
 struct plain_keys {
@@ -1169,6 +1202,8 @@ FC_API( steem::wallet::wallet_api,
 
         (get_active_witnesses)
         (get_transaction)
+        (create_proposal)
+        (update_proposal_votes)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
