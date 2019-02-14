@@ -349,6 +349,9 @@ struct count_operation_visitor
    }
 #endif
 
+   void operator()( const create_proposal_operation& ) const {}
+   void operator()( const update_proposal_votes_operation& ) const {}
+
    void operator()( const recover_account_operation& ) const {}
    void operator()( const pow_operation& ) const {}
    void operator()( const pow2_operation& ) const {}

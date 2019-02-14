@@ -63,5 +63,6 @@ STEEM_DEFINE_EVALUATOR( smt_set_setup_parameters )
 STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_create )
 #endif
-
+STEEM_DEFINE_EVALUATOR( create_proposal )
+STEEM_DEFINE_EVALUATOR( update_proposal_votes )
 } } // steem::chain

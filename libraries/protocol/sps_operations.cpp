@@ -1,8 +1,8 @@
-#include <steem/plugins/sps/sps_operations.hpp>
+#include <steem/protocol/sps_operations.hpp>
 
-#include <steem/protocol/operation_util_impl.hpp>
+#include <steem/protocol/validation.hpp>
 
-namespace steem { namespace plugins{ namespace sps {
+namespace steem { namespace protocol {
 
 void create_proposal_operation::validate()const
 {
@@ -20,6 +20,4 @@ void update_proposal_votes_operation::validate()const
    validate_account_name( voter );
 }
 
-} } } //steem::plugins::sps
-
-STEEM_DEFINE_OPERATION_TYPE( steem::plugins::sps::sps_plugin_operation )
+} } //steem::protocol
