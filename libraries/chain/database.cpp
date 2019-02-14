@@ -2624,6 +2624,9 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
 
+   _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
+
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
 
@@ -2758,6 +2761,17 @@ void database::init_genesis( uint64_t init_supply )
       create< account_authority_object >( [&]( account_authority_object& auth )
       {
          auth.account = STEEM_NULL_ACCOUNT;
+         auth.owner.weight_threshold = 1;
+         auth.active.weight_threshold = 1;
+      });
+
+      create< account_object >( [&]( account_object& a )
+      {
+         a.name = STEEM_TREASURY_ACCOUNT;
+      } );
+      create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = STEEM_TREASURY_ACCOUNT;
          auth.owner.weight_threshold = 1;
          auth.active.weight_threshold = 1;
       });

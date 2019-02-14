@@ -1,9 +1,14 @@
-#include <steem/plugins/sps/sps_plugin.hpp>
-#include <steem/plugins/sps/sps_operations.hpp>
-#include <steem/plugins/sps/sps_objects.hpp>
+#include <steem/protocol/sps_operations.hpp>
+
+#include <steem/chain/database.hpp>
+
+#include <steem/chain/steem_evaluator.hpp>
+#include <steem/chain/sps_objects.hpp>
 
 
-namespace steem { namespace plugins { namespace sps {
+namespace steem { namespace chain {
+
+using steem::chain::create_proposal_evaluator;
 
 void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 {
@@ -79,4 +84,4 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
 }
 
 
-} } } // steem::plugins::sps
+} } // steem::chain

@@ -8,6 +8,7 @@ add_library( steem_chain
              index.cpp
 
              smt_evaluator.cpp
+             sps_evaluator.cpp
              smt_objects/smt_market_maker.cpp
              smt_objects/nai_pool.cpp
              steem_evaluator.cpp

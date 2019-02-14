@@ -1,6 +1,6 @@
 #include <steem/plugins/sps/sps_plugin.hpp>
-#include <steem/plugins/sps/sps_objects.hpp>
-#include <steem/plugins/sps/sps_operations.hpp>
+#include <steem/chain/sps_objects.hpp>
+#include <steem/protocol/sps_operations.hpp>
 
 #include <steem/chain/notifications.hpp>
 #include <steem/chain/database.hpp>
@@ -31,7 +31,6 @@ class sps_plugin_impl
       sps_plugin& _self;
 
       boost::signals2::connection _on_proposal_processing;
-      std::shared_ptr< generic_custom_operation_interpreter< sps_plugin_operation > > _custom_operation_interpreter;
 
       bool is_maintenance_period( const time_point_sec& head_time ) const;
 
@@ -75,19 +74,6 @@ void sps_plugin_impl::initialize()
 {
    _on_proposal_processing = _db.add_on_proposal_processing_handler(
          [&]( const block_notification& note ){ on_proposal_processing( note ); }, _self, 0 );
-
-   // Each plugin needs its own evaluator registry.
-   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< sps_plugin_operation > >( _db, _self.name() );
-
-   // Add each operation evaluator to the registry
-   _custom_operation_interpreter->register_evaluator< create_proposal_evaluator >( &_self );
-   _custom_operation_interpreter->register_evaluator< update_proposal_votes_evaluator >( &_self );
-
-   // Add the registry to the database so the database can delegate custom ops to the plugin
-   _db.register_custom_operation_interpreter( _custom_operation_interpreter );
-
-   add_plugin_index< proposal_index      >( _db );
-   add_plugin_index< proposal_vote_index >( _db );
 }
 
 bool sps_plugin_impl::is_maintenance_period( const time_point_sec& head_time ) const
