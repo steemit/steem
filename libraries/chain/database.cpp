@@ -3190,6 +3190,9 @@ void database::_apply_block( const signed_block& next_block )
    // reversible.
    migrate_irreversible_state();
    trim_cache();
+
+   process_proposals( note );
+
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
