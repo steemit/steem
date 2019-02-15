@@ -78,7 +78,6 @@ for OBJ in "${OBJECTS[@]}"; do
    echo "Advisor for $OBJ..."
    python3 -m advisor.rule_parser_example --rules_spec=advisor/rules.ini --rocksdb_options="$DB_PATH/OPTIONS-000014" --log_files_path_prefix="$DB_PATH/LOG" --stats_dump_period_sec=$STATS_DUMP_PERIOD
    echo ''
-   echo $STATS_DUMP_PERIOD
 done
 
 exit 0
