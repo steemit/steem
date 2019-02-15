@@ -86,7 +86,7 @@ void sps_plugin_impl::find_active_proposals( const time_point_sec& head_time, t_
    const auto& pidx = _db.get_index< proposal_index >().indices().get< by_date >();
    auto it = pidx.begin();
 
-   std::for_each( pidx.begin(), pidx.lower_bound( head_time ), [&]( auto& proposal )
+   std::for_each( pidx.begin(), pidx.upper_bound( head_time ), [&]( auto& proposal )
                                              {
                                                 if( head_time >= proposal.start_date && head_time <= proposal.end_date )
                                                    proposals.emplace_back( *it );                                                
@@ -183,6 +183,11 @@ void sps_plugin_impl::transfer_payments( asset& maintenance_budget_limit, const 
    for( auto& item : proposals )
    {
       const proposal_object& _item = item;
+
+      //Proposals without any votes shouldn't be treated as active
+      if( _item.total_votes == 0 )
+         break;
+
       const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
       const auto& receiver_account = _db.get_account( _item.receiver );
 

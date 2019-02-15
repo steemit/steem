@@ -3149,6 +3149,9 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
+
+   process_proposals( note );
+
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
