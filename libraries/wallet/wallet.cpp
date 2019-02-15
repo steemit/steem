@@ -2406,7 +2406,20 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 }
 
    void wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
-                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url) {
+                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url)
+   {
+      auto now = time_point::now();
+
+      FC_ASSERT(_creator.size());
+      FC_ASSERT(_receiver.size());
+      FC_ASSERT(_start_date > now);
+      FC_ASSERT(_end_date > now);
+      FC_ASSERT(_start_date < _end_date );
+      FC_ASSERT(!_subject.empty());
+
+      auto creator  = get_account(_creator);
+      auto receiver = get_account(_receiver);
+
       proposal::CreateProposal cp = {  _creator, _receiver, _start_date, _end_date, _daily_pay, _subject, _url};
       wdump((cp.creator));
       wdump((cp.receiver));
@@ -2417,12 +2430,43 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       wdump((cp.url));
    }
 
-   void wallet_api::update_proposal_votes(account_name_type _voter, UpdateProposalVotes::Proposals _proposals, bool _approve) {
+   void wallet_api::update_proposal_votes(account_name_type _voter, UpdateProposalVotes::Proposals _proposals, bool _approve)
+   {
+      FC_ASSERT(_voter.size());
+      FC_ASSERT(!_proposals.empty() );
+
+      auto voter = get_account(_voter);
+
       proposal::UpdateProposalVotes upv = { _voter, _proposals, _approve };
       wdump((upv.voter));
       wdump((upv.proposals));
       wdump((upv.approve));
-      FC_ASSERT(  !upv.proposals.empty() );
+   }
+
+   void wallet_api::list_proposals(std::string _order_by,
+                                   std::string _order_type,
+                                   int _active)
+   {
+      FC_ASSERT(_active >= -1 and _active <= 1);
+
+   }
+
+   void wallet_api::list_voter_proposals(account_name_type _voter,
+                                         std::string _order_by,
+                                         std::string _order_type,
+                                         int _active)
+   {
+      FC_ASSERT(_active >= -1 and _active <= 1);
+      
+   }
+
+   void wallet_api::update_proposal(int _id, 
+                                    time_point_sec _end_date,
+                                    const std::string& _url)
+   {
+      FC_ASSERT(_id > 0);
+      auto now = time_point::now();
+      FC_ASSERT(_end_date > now);
    }
 
 } } // steem::wallet
