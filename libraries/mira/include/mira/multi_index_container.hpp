@@ -176,6 +176,9 @@ public:
 //      _stats = rocksdb_options_factory::get_shared_stats();
 
       ::rocksdb::Options opts;
+      _stats = ::rocksdb::CreateDBStatistics();
+      opts.statistics = _stats;
+      opts.stats_dump_period_sec = 60;
 //
 //      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
 
