@@ -1098,7 +1098,39 @@ class wallet_api
       void update_proposal_votes(account_name_type _voter, 
                                  UpdateProposalVotes::Proposals _proposals, 
                                  bool _approve);
-      
+
+      /**
+       * List proposals
+       * @param _order_by   - name a field for sorting operation
+       * @param _order_type - set print order a - ascdending, d - descending,,
+       * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
+       */
+      void list_proposals(std::string _order_by = "",
+                          std::string _order_type = "d",
+                          int _active = 1);
+
+      /**
+       * List proposals of given voter
+       * @param _voter      - given voter
+       * @param _order_by   - name a field for sorting operation
+       * @param _order_type - set print order a - ascdending, d - descending,,
+       * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
+       */
+      void list_voter_proposals(account_name_type _voter,
+                                std::string _order_by = "",
+                                std::string _order_type = "d",
+                                int _active = 1);
+
+      /**
+       * Update given proposal data
+       * @param _id       - proposal id to be updated
+       * @param _end_date - new end_date of proposal
+       * @param _url      - new url of proposal
+       */
+      void update_proposal(int _id, 
+                           time_point_sec _end_date,
+                           const std::string& _url);
+
 };
 
 struct plain_keys {
@@ -1202,8 +1234,13 @@ FC_API( steem::wallet::wallet_api,
 
         (get_active_witnesses)
         (get_transaction)
+
+        ///worker proposal api
         (create_proposal)
         (update_proposal_votes)
+        (list_proposals)
+        (list_voter_proposals)
+        (update_proposal)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
