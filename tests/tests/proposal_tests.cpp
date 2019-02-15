@@ -61,6 +61,7 @@ int64_t create_proposal(   std::string creator, std::string receiver,
 
    ++cnt;
 
+   //It is necessary to find newly created object
    while( found != proposal_idx.end() && found->creator == creator )
    {
       uint32_t val = stoi( found->subject.c_str() );
@@ -72,6 +73,37 @@ int64_t create_proposal(   std::string creator, std::string receiver,
    }
 
    return -1;
+}
+
+template< typename SIGN >
+void vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, database* db, SIGN sign )
+{
+   update_proposal_votes_operation op;
+
+   op.voter = voter;
+   op.proposal_ids = id_proposals;
+   op.approve = approve;
+
+   signed_transaction tx;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx );
+   db->push_transaction( tx, 0 );
+}
+
+template< typename SIGN >
+void transfer_vests( std::string from, std::string to, asset amount, database* db, SIGN sign )
+{
+   transfer_to_vesting_operation op;
+   op.from = from;
+   op.to = to;
+   op.amount = amount;
+
+   signed_transaction tx;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx );
+   db->push_transaction( tx, 0 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( proposal_tests, clean_database_fixture )
@@ -138,7 +170,7 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       auto after_bob_sbd_balance = after_bob_account.sbd_balance;
 
       BOOST_REQUIRE( before_alice_sbd_balance == after_alice_sbd_balance + fee );
-      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance );
+      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance - fee );
 
       const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_creator >();
       auto found = proposal_idx.find( creator );
@@ -487,6 +519,75 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
             ++found;
          }
          BOOST_REQUIRE( cnt == 0 );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( generating_payments )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: generating payments" );
+
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      auto creator = "alice";
+      auto receiver = "bob";
+
+      auto start_date = db->head_block_time() + fc::days( 1 );
+      auto end_date = start_date + fc::days( 2 );
+
+      auto daily_pay = asset( 48, SBD_SYMBOL );
+      auto hourly_pay = asset( daily_pay.amount.value / 24, SBD_SYMBOL );
+
+      FUND( creator, ASSET( "160.000 TESTS" ) );
+      FUND( creator, ASSET( "80.000 TBD" ) );
+
+      auto voter_01 = "carol";
+      auto voter_vests_amount_01 = ASSET( "1.000 TESTS" );
+
+      auto creator_sign = [&]( signed_transaction& tx ){ sign( tx, alice_private_key ); };
+      auto voter_01_sign = [&]( signed_transaction& tx ){ sign( tx, carol_private_key ); };
+      //=====================preparing=====================
+
+      //Needed basic operations
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay, db, creator_sign );
+      vote_proposal( voter_01, { id_proposal_00 }, true/*approve*/, db, voter_01_sign );
+      transfer_vests( creator, voter_01, voter_vests_amount_01, db, creator_sign );
+
+      const account_object& _creator = db->get_account( creator );
+      const account_object& _receiver = db->get_account( receiver );
+      const account_object& _voter_01 = db->get_account( voter_01 );
+      const account_object& _treasury = db->get_account( STEEM_TREASURY_ACCOUNT );
+
+      {
+         BOOST_TEST_MESSAGE( "---Payment---" );
+
+         auto before_creator_sbd_balance = _creator.sbd_balance;
+         auto before_receiver_sbd_balance = _receiver.sbd_balance;
+         auto before_voter_01_sbd_balance = _voter_01.sbd_balance;
+         auto before_treasury_sbd_balance = _treasury.sbd_balance;
+      
+         generate_blocks( db->head_block_time() + fc::seconds( STEEM_PROPOSAL_MAINTENANCE_PERIOD - 6 ) );
+         generate_blocks( db->head_block_time() + fc::seconds( 6 ), false );
+
+         auto after_creator_sbd_balance = _creator.sbd_balance;
+         auto after_receiver_sbd_balance = _receiver.sbd_balance;
+         auto after_voter_01_sbd_balance = _voter_01.sbd_balance;
+         auto after_treasury_sbd_balance = _treasury.sbd_balance;
+   
+         BOOST_REQUIRE( before_creator_sbd_balance == after_creator_sbd_balance );
+         BOOST_REQUIRE( before_receiver_sbd_balance == after_receiver_sbd_balance - hourly_pay );
+         BOOST_REQUIRE( before_voter_01_sbd_balance == after_voter_01_sbd_balance );
+         BOOST_REQUIRE( before_treasury_sbd_balance == after_treasury_sbd_balance + hourly_pay );
       }
 
       validate_database();
