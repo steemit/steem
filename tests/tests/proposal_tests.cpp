@@ -29,52 +29,7 @@ using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
 
-template< typename SIGN >
-int64_t create_proposal(   std::string creator, std::string receiver,
-                           time_point_sec start_date, time_point_sec end_date,
-                           asset daily_pay, database* db, SIGN sign )
-{
-   signed_transaction tx;
-
-   create_proposal_operation op;
-
-   op.creator = creator;
-   op.receiver = receiver;
-
-   op.start_date = start_date;
-   op.end_date = end_date;
-
-   op.daily_pay = daily_pay;
-
-   static uint32_t cnt = 0;
-   op.subject = std::to_string( cnt );
-   op.url = "http://" + std::to_string( cnt );
-
-   tx.operations.push_back( op );
-   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-   sign( tx );
-   db->push_transaction( tx, 0 );
-
-   const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_creator >();
-   auto found = proposal_idx.find( creator );
-   BOOST_REQUIRE( found != proposal_idx.end() );
-
-   ++cnt;
-
-   while( found != proposal_idx.end() && found->creator == creator )
-   {
-      uint32_t val = stoi( found->subject.c_str() );
-
-      if( val == cnt - 1 )
-         return found->id;
-
-      ++found;
-   }
-
-   return -1;
-}
-
-BOOST_FIXTURE_TEST_SUITE( proposal_tests, clean_database_fixture )
+BOOST_FIXTURE_TEST_SUITE( proposal_tests, proposal_database_fixture )
 
 BOOST_AUTO_TEST_CASE( proposal_object_apply )
 {
@@ -138,7 +93,7 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       auto after_bob_sbd_balance = after_bob_account.sbd_balance;
 
       BOOST_REQUIRE( before_alice_sbd_balance == after_alice_sbd_balance + fee );
-      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance );
+      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance - fee );
 
       const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_creator >();
       auto found = proposal_idx.find( creator );
@@ -179,9 +134,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
 
       FUND( creator, ASSET( "80.000 TBD" ) );
 
-      auto alice_sign = [&]( signed_transaction& tx ){ sign( tx, alice_private_key ); };
-
-      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay, db, alice_sign );
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay, alice_private_key );
 
       signed_transaction tx;
       update_proposal_votes_operation op;
@@ -255,10 +208,8 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
 
       FUND( creator, ASSET( "80.000 TBD" ) );
 
-      auto alice_sign = [&]( signed_transaction& tx ){ sign( tx, alice_private_key ); };
-
-      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay_00, db, alice_sign );
-      int64_t id_proposal_01 = create_proposal( creator, receiver, start_date, end_date, daily_pay_01, db, alice_sign );
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay_00, alice_private_key );
+      int64_t id_proposal_01 = create_proposal( creator, receiver, start_date, end_date, daily_pay_01, alice_private_key );
 
       signed_transaction tx;
       update_proposal_votes_operation op;
@@ -291,7 +242,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_REQUIRE( cnt == 2 );
       }
 
-      int64_t id_proposal_02 = create_proposal( creator, receiver, start_date, end_date, daily_pay_02, db, alice_sign );
+      int64_t id_proposal_02 = create_proposal( creator, receiver, start_date, end_date, daily_pay_02, alice_private_key );
       std::string voter_02 = "dan";
       auto voter_02_key = dan_private_key;
 

@@ -27,6 +27,9 @@ class sps_plugin_impl
 
    private:
 
+      //Get number of microseconds for 1 day( daily_ms )
+      const int64_t daily_seconds = fc::days(1).to_seconds();
+
       chain::database& _db;
       sps_plugin& _self;
 
@@ -49,7 +52,7 @@ class sps_plugin_impl
 
       void transfer_daily_inflation_to_treasury( const asset& daily_inflation );
 
-      void transfer_payments( asset& maintenance_budget_limit, const t_proposals& proposals );
+      void transfer_payments( const time_point_sec& head_time, asset& maintenance_budget_limit, const t_proposals& proposals );
 
       void update_settings( const time_point_sec& head_time );
 
@@ -78,7 +81,7 @@ void sps_plugin_impl::initialize()
 
 bool sps_plugin_impl::is_maintenance_period( const time_point_sec& head_time ) const
 {
-   return _db.get_dynamic_global_properties().next_maintenance_time >= head_time;
+   return _db.get_dynamic_global_properties().next_maintenance_time <= head_time;
 }
 
 void sps_plugin_impl::find_active_proposals( const time_point_sec& head_time, t_proposals& proposals )
@@ -86,7 +89,7 @@ void sps_plugin_impl::find_active_proposals( const time_point_sec& head_time, t_
    const auto& pidx = _db.get_index< proposal_index >().indices().get< by_date >();
    auto it = pidx.begin();
 
-   std::for_each( pidx.begin(), pidx.lower_bound( head_time ), [&]( auto& proposal )
+   std::for_each( pidx.begin(), pidx.upper_bound( head_time ), [&]( auto& proposal )
                                              {
                                                 if( head_time >= proposal.start_date && head_time <= proposal.end_date )
                                                    proposals.emplace_back( *it );                                                
@@ -148,9 +151,6 @@ asset sps_plugin_impl::get_daily_inflation()
 
 asset sps_plugin_impl::calculate_maintenance_budget( const time_point_sec& head_time )
 {
-   //Get number of microseconds for 1 day( daily_ms )
-   static auto daily_us = fc::days(1).count();
-
    //Get funds from 'treasury' account ( treasury_fund ) 
    asset treasury_fund = get_treasury_fund();
 
@@ -160,11 +160,11 @@ asset sps_plugin_impl::calculate_maintenance_budget( const time_point_sec& head_
    FC_ASSERT( treasury_fund.symbol == daily_inflation.symbol, "symbols must be the same" );
 
    //Calculate budget for given maintenance period
-   auto passed_time_us = ( head_time - _db.get_dynamic_global_properties().last_budget_time ).count();
+   auto passed_time_seconds = ( head_time - _db.get_dynamic_global_properties().last_budget_time ).to_seconds();
 
    //Calculate daily_budget_limit
    auto daily_budget_limit = treasury_fund.amount.value / 100 + daily_inflation.amount.value;
-   daily_budget_limit = daily_budget_limit * ( passed_time_us / daily_us );
+   daily_budget_limit = daily_budget_limit * ( static_cast< double >( passed_time_seconds ) / daily_seconds );
 
    //Transfer daily_proposal_inflation to `treasury account`
    transfer_daily_inflation_to_treasury( daily_inflation );
@@ -174,19 +174,35 @@ asset sps_plugin_impl::calculate_maintenance_budget( const time_point_sec& head_
 
 void sps_plugin_impl::transfer_daily_inflation_to_treasury( const asset& daily_inflation )
 {
-   const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
-   _db.adjust_balance( treasury_account, daily_inflation );
+   if( daily_inflation.amount.value > 0 )
+   {
+      const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
+      _db.adjust_balance( treasury_account, daily_inflation );
+   }
 }
 
-void sps_plugin_impl::transfer_payments( asset& maintenance_budget_limit, const t_proposals& proposals )
+void sps_plugin_impl::transfer_payments( const time_point_sec& head_time, asset& maintenance_budget_limit, const t_proposals& proposals )
 {
+   if( maintenance_budget_limit.amount.value == 0 )
+      return;
+
+   auto passed_time_seconds = ( head_time - _db.get_dynamic_global_properties().last_budget_time ).to_seconds();
+   double ratio = static_cast< double >( passed_time_seconds ) / daily_seconds;
+
    for( auto& item : proposals )
    {
       const proposal_object& _item = item;
+
+      //Proposals without any votes shouldn't be treated as active
+      if( _item.total_votes == 0 )
+         break;
+
       const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
       const auto& receiver_account = _db.get_account( _item.receiver );
 
-      if( _item.daily_pay >= maintenance_budget_limit )
+      auto period_pay = asset( ratio * _item.daily_pay.amount.value, _item.daily_pay.symbol );
+
+      if( period_pay >= maintenance_budget_limit )
       {
          _db.adjust_balance( treasury_account, -maintenance_budget_limit );
          _db.adjust_balance( receiver_account, maintenance_budget_limit );
@@ -194,9 +210,9 @@ void sps_plugin_impl::transfer_payments( asset& maintenance_budget_limit, const 
       }
       else
       {
-         _db.adjust_balance( treasury_account, -_item.daily_pay );
-         _db.adjust_balance( receiver_account, _item.daily_pay );
-         maintenance_budget_limit -= _item.daily_pay;
+         _db.adjust_balance( treasury_account, -period_pay );
+         _db.adjust_balance( receiver_account, period_pay );
+         maintenance_budget_limit -= period_pay;
       }
    }
 }
@@ -222,6 +238,12 @@ void sps_plugin_impl::make_payments( const block_notification& note )
 
    //Find all active proposals, where actual_time >= start_date and actual_time <= end_date
    find_active_proposals( head_time, proposals );
+   if( proposals.empty() )
+   {
+      //Set `new maintenance time` and `last budget time`
+      update_settings( head_time );
+      return;
+   }
 
    //Calculate total_votes for every active proposal
    calculate_votes( proposals );
@@ -233,7 +255,7 @@ void sps_plugin_impl::make_payments( const block_notification& note )
    asset maintenance_budget_limit = calculate_maintenance_budget( head_time );
 
    //Execute transfer for every active proposal
-   transfer_payments( maintenance_budget_limit, proposals );
+   transfer_payments( head_time, maintenance_budget_limit, proposals );
 
    //Set `new maintenance time` and `last budget time`
    update_settings( head_time );

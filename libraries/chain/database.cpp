@@ -2793,6 +2793,8 @@ void database::init_genesis( uint64_t init_supply )
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.next_maintenance_time = STEEM_GENESIS_TIME;
+         p.last_budget_time = STEEM_GENESIS_TIME;
       } );
 
       // Nothing to do
@@ -3149,6 +3151,9 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
+
+   process_proposals( note );
+
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor

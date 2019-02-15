@@ -333,6 +333,28 @@ using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture
 
 #endif
 
+template< typename T >
+struct t_proposal_database_fixture : public T
+{
+   t_proposal_database_fixture(){}
+   virtual ~t_proposal_database_fixture(){}
+
+   void plugin_prepare();
+
+   int64_t create_proposal(   std::string creator, std::string receiver,
+                              time_point_sec start_date, time_point_sec end_date,
+                              asset daily_pay, const fc::ecc::private_key& key );
+
+   void vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
+
+   void transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
+
+   void transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
+};
+
+using proposal_database_fixture = t_proposal_database_fixture< clean_database_fixture >;
+using proposal_database_fixture_for_plugin = t_proposal_database_fixture< database_fixture >;
+
 struct json_rpc_database_fixture : public database_fixture
 {
    private:

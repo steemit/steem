@@ -93,6 +93,7 @@ typedef oid< proposal_vote_object > proposal_vote_id_type;
 
 struct by_date;
 struct by_creator;
+struct by_total_votes;
 
 using namespace boost::multi_index;
 
@@ -101,7 +102,8 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< proposal_object, proposal_id_type, &proposal_object::id > >,
       ordered_non_unique< tag< by_date >, member< proposal_object, time_point_sec, &proposal_object::start_date > >,
-      ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >
+      ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >,
+      ordered_non_unique< tag< by_total_votes >, member< proposal_object, uint64_t, &proposal_object::total_votes > >
    >,
    allocator< proposal_object >
 > proposal_index;
