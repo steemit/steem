@@ -2944,6 +2944,8 @@ void database::init_genesis( uint64_t init_supply )
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.next_maintenance_time = STEEM_GENESIS_TIME;
+         p.last_budget_time = STEEM_GENESIS_TIME;
       } );
 
       // Nothing to do
