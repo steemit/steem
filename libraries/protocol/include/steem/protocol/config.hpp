@@ -313,8 +313,13 @@
 /// Represents the canonical account for specifying you will vote for directly (as opposed to a proxy)
 #define STEEM_PROXY_TO_SELF_ACCOUNT           ""
 /// Represents the canonical root post parent account
-#define STEEM_ROOT_POST_PARENT                (account_name_type())
+#define STEEM_ROOT_POST_PARENT                (account_name_type())/// Represents the canonical account with NO authority (nobody can access funds in null account)
+/// Represents the account which holds resources needed when proposal is paid
+#define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
+
+#define STEEM_TREASURY_FEE                      (10 * STEEM_BLOCKCHAIN_PRECISION)
+#define STEEM_PROPOSAL_MAINTENANCE_PERIOD       3600
 
 #ifdef STEEM_ENABLE_SMT
 

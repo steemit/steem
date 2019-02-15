@@ -9,6 +9,7 @@
 #include <steem/chain/pending_optional_action_object.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
@@ -54,6 +55,8 @@ void initialize_core_indexes( database& db )
    add_core_index< nai_pool_index                          >( db );
    add_core_index< smt_token_emissions_index               >( db );
 #endif
+   add_core_index< proposal_index                          >( db );
+   add_core_index< proposal_vote_index                     >( db );
 }
 
 index_info::index_info() {}

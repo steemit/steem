@@ -1509,6 +1509,11 @@ void database::clear_null_account_balance()
    post_push_virtual_operation( vop_op );
 }
 
+void database::process_proposals( const block_notification& note )
+{
+   notify_on_proposal_processing( note );
+}
+
 /**
  * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
  * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
@@ -2587,6 +2592,9 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
 
+   _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
+
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
 
@@ -2721,6 +2729,17 @@ void database::init_genesis( uint64_t init_supply )
       create< account_authority_object >( [&]( account_authority_object& auth )
       {
          auth.account = STEEM_NULL_ACCOUNT;
+         auth.owner.weight_threshold = 1;
+         auth.active.weight_threshold = 1;
+      });
+
+      create< account_object >( [&]( account_object& a )
+      {
+         a.name = STEEM_TREASURY_ACCOUNT;
+      } );
+      create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = STEEM_TREASURY_ACCOUNT;
          auth.owner.weight_threshold = 1;
          auth.active.weight_threshold = 1;
       });

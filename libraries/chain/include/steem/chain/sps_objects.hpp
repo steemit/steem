@@ -2,7 +2,7 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steem { namespace plugins { namespace sps {
+namespace steem { namespace chain {
 
 using steem::chain::object;
 using steem::chain::allocator;
@@ -11,6 +11,8 @@ using steem::chain::asset;
 using steem::chain::shared_string;
 using steem::chain::oid;
 using steem::chain::by_id;
+
+using namespace std;
 
 #ifndef STEEM_SPS_SPACE_ID
 #define STEEM_SPS_SPACE_ID 20
@@ -91,7 +93,6 @@ typedef oid< proposal_vote_object > proposal_vote_id_type;
 
 struct by_date;
 struct by_creator;
-struct by_total_votes;
 
 using namespace boost::multi_index;
 
@@ -99,19 +100,14 @@ typedef multi_index_container<
    proposal_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< proposal_object, proposal_id_type, &proposal_object::id > >,
-      ordered_non_unique< tag< by_date >,
-         composite_key< proposal_object,
-            member< proposal_object, time_point_sec, &proposal_object::start_date >,
-            member< proposal_object, time_point_sec, &proposal_object::end_date >
-            >
-       >,
-      ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >,
-      ordered_non_unique< tag< by_total_votes >, member< proposal_object, uint64_t, &proposal_object::total_votes > >
+      ordered_non_unique< tag< by_date >, member< proposal_object, time_point_sec, &proposal_object::start_date > >,
+      ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >
    >,
    allocator< proposal_object >
 > proposal_index;
 
 struct by_voter_proposal;
+struct by_proposal_voter;
 
 typedef multi_index_container<
    proposal_vote_object,
@@ -122,15 +118,21 @@ typedef multi_index_container<
             member< proposal_vote_object, account_name_type, &proposal_vote_object::voter >,
             member< proposal_vote_object, proposal_id_type, &proposal_vote_object::proposal_id >
             >
+       >,
+      ordered_unique< tag< by_proposal_voter >,
+         composite_key< proposal_vote_object,
+            member< proposal_vote_object, proposal_id_type, &proposal_vote_object::proposal_id >,
+            member< proposal_vote_object, account_name_type, &proposal_vote_object::voter >
+            >
        >
    >,
    allocator< proposal_vote_object >
 > proposal_vote_index;
 
-} } } // steem::plugins::sps
+} } // steem::chain
 
-FC_REFLECT( steem::plugins::sps::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url)(total_votes) )
-CHAINBASE_SET_INDEX_TYPE( steem::plugins::sps::proposal_object, steem::plugins::sps::proposal_index )
+FC_REFLECT( steem::chain::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url)(total_votes) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_object, steem::chain::proposal_index )
 
-FC_REFLECT( steem::plugins::sps::proposal_vote_object, (id)(voter)(proposal_id) )
-CHAINBASE_SET_INDEX_TYPE( steem::plugins::sps::proposal_vote_object, steem::plugins::sps::proposal_vote_index )
+FC_REFLECT( steem::chain::proposal_vote_object, (id)(voter)(proposal_id) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_vote_object, steem::chain::proposal_vote_index )
