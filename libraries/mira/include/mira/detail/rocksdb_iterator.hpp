@@ -202,6 +202,7 @@ public:
    rocksdb_iterator& operator++()
    {
       static KeyFromValue key_from_value = KeyFromValue();
+      static KeyCompare compare = KeyCompare();
       //BOOST_ASSERT( valid() );
       if( !valid() ) _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
 
@@ -220,8 +221,10 @@ public:
 
             if( _iter->Valid() )
             {
-               ::rocksdb::Slice found_key = _iter->key();
-               if( memcmp( slice.data(), found_key.data(), std::min( slice.size(), found_key.size() ) ) != 0 )
+               Key found_key;
+               unpack_from_slice( _iter->key(), found_key );
+
+               if( compare( found_key, key ) != compare( key, found_key ) )
                {
                   _iter.reset( _db->NewIterator( _opts, _handles[ _index ] ) );
                   return *this;

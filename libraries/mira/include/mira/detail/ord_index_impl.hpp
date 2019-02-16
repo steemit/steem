@@ -259,6 +259,10 @@ protected:
    uint32_t                                           _key_modification_count = 0;
    rocksdb::FlushOptions                              _flush_opts;
 
+   fc::optional< key_type >                           _first_key;
+   fc::optional< key_type >                           _first_key_update;
+   bool                                               _delete_first_key = false;
+
 public:
 
   /* construct/copy/destroy
@@ -274,10 +278,21 @@ public:
 
   /* iterators */
 
-  iterator
-    begin()BOOST_NOEXCEPT{return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
-  const_iterator
-    begin()const BOOST_NOEXCEPT{return const_iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK ); }
+   iterator begin() BOOST_NOEXCEPT
+   {
+      if( _first_key.valid() )
+         return make_iterator( *_first_key );
+      return iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK );
+   }
+
+   const_iterator
+      begin()const BOOST_NOEXCEPT
+   {
+      if( _first_key.valid() )
+         return make_iterator( *_first_key );
+      return const_iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK );
+   }
+
   iterator
     end()BOOST_NOEXCEPT{return iterator::end( ROCKSDB_ITERATOR_PARAM_PACK ); }
   const_iterator
@@ -529,6 +544,12 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             key_slice,
             value_slice );
 
+         if( ( _first_key.valid() && key_comp()( new_key, *_first_key ) )
+            || !_first_key.valid() )
+         {
+            _first_key_update = new_key;
+         }
+
          return s.ok();
       }
       return false;
@@ -545,6 +566,19 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       super::_write_buffer.Delete(
          super::_handles[ COLUMN_INDEX ],
          old_key_slice );
+
+      if( _first_key.valid() && ( key_comp()( old_key, *_first_key ) == key_comp()( *_first_key, old_key ) ) )
+      {
+         auto new_key_itr = ++find( *_first_key );
+         if( new_key_itr != end() )
+         {
+            _first_key_update = key( *new_key_itr );
+         }
+         else
+         {
+            _delete_first_key = true;
+         }
+      }
    }
 
   void clear_()
@@ -617,6 +651,38 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             new_key_slice,
             value_slice );
 
+         // If the new key is less than the current first, it will be the new first key
+         if( _first_key.valid() && key_comp()( new_key, *_first_key ) )
+         {
+            _first_key_update = new_key;
+         }
+         // Else if we are updating the current first key AND the new key is different...
+         else if( _first_key.valid() &&  key_comp()( *_first_key, new_key )
+            && ( key_comp()( old_key, *_first_key ) == key_comp()( *_first_key, old_key ) ) )
+         {
+            // Find the second key (first_key_update)
+            auto first_key_update_itr = ++find( *_first_key );
+            if( first_key_update_itr != end() )
+            {
+               auto first_key_update = key( *first_key_update_itr );
+               // If the second key is less than the new key, then the second key is the next first key
+               if( key_comp()( first_key_update, new_key ) )
+               {
+                  _first_key_update = first_key_update;
+               }
+               // Otherise the new key is between the first key and the second key and will be the next fist key
+               else
+               {
+                  _first_key_update = new_key;
+               }
+            }
+            // If there is no second key, then the new key is the next first key
+            else
+            {
+               _first_key_update = new_key;
+            }
+         }
+
          if( _key_modification_count > 1500 )
          {
             super::_db->Flush( _flush_opts, super::_handles[ COLUMN_INDEX ] );
@@ -641,6 +707,42 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          ::rocksdb::ColumnFamilyOptions()
       );
       defs.back().options.comparator = &comp_;
+   }
+
+   void cache_first_key()
+   {
+      super::cache_first_key();
+      if( !_first_key.valid() )
+      {
+         auto b = iterator::begin( ROCKSDB_ITERATOR_PARAM_PACK );
+         if( b != end() )
+         {
+            _first_key = key( *b );
+         }
+      }
+   }
+
+   void commit_first_key_update()
+   {
+      super::commit_first_key_update();
+
+      if( _first_key_update.valid() )
+      {
+         _first_key = _first_key_update;
+         _first_key_update.reset();
+      }
+      else if( _delete_first_key )
+      {
+         _first_key.reset();
+         _delete_first_key = false;
+      }
+   }
+
+   void reset_first_key_update()
+   {
+      super::reset_first_key_update();
+      _first_key_update.reset();
+      _delete_first_key = false;
    }
 
 private:

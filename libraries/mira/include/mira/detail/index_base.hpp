@@ -109,6 +109,12 @@ protected:
       );
    }
 
+   void cache_first_key() {}
+
+   void commit_first_key_update() {}
+
+   void reset_first_key_update() {}
+
    void cleanup_column_handles()
    {
       for( auto* h : _handles )
