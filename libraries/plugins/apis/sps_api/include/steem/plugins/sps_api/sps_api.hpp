@@ -5,13 +5,8 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/asset.hpp>
 
-#include <fc/optional.hpp>
-#include <fc/variant.hpp>
-#include <fc/vector.hpp>
-
 namespace steem { namespace plugins { namespace sps {
   using plugins::json_rpc::void_type;
-  using namespace std;
   using namespace steem::chain;
   using steem::protocol::asset;
 
@@ -19,45 +14,81 @@ namespace steem { namespace plugins { namespace sps {
   {
     class sps_api_impl;
   }
- 
-  struct create_proposal_args {
-    // creator;receiver;start_date;end_date;daily_pay;subject;url
+
+  enum order_direction_type 
+  {
+    direction_ascending,
+    direction_descending
+  };
+
+  typedef uint64_t id_type;
+
+  struct proposal_object 
+  {
+    //internal key
+    id_type id;
+
+    // account that created the proposal
     account_name_type creator;
+
+    // account_being_funded
     account_name_type receiver;
+
+    // start_date (when the proposal will begin paying out if it gets enough vote weight)
     time_point_sec start_date;
+
+    // end_date (when the proposal expires and can no longer pay out)
     time_point_sec end_date;
+
+    //daily_pay (the amount of SBD that is being requested to be paid out daily)
     asset daily_pay;
+
+    //subject (a very brief description or title for the proposal)
     string subject;
+
+    //url (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
     string url;
+
+    //This will be calculate every maintenance period
+    uint64_t total_votes = 0;
   };
 
-  // return type for create_proposal
-  typedef void_type create_proposal_return;
-
-  struct update_proposal_votes_args {
-    // voter;[set of worker_proposal_id];approve
-    account_name_type voter;
-    std::vector<uint64_t> proposal_ids;
-    bool approve;
+  struct find_proposal_args 
+  {
+    id_type id;
   };
 
-  typedef void_type update_proposal_votes_return;
+  struct find_proposal_return 
+  {
+    proposal_object result;
+  };
 
   // args type for get_proposals
-  typedef void_type list_proposals_args;
+  struct list_proposals_args 
+  {
+    string order_by;
+    order_direction_type order_direction;
+    int8_t active;
+  };
 
   // return type for get_proposals
-  struct list_proposals_return {
-    std::vector<create_proposal_args> result;
+  struct list_proposals_return 
+  {
+    std::vector<proposal_object> result;
   };
 
-  struct list_voter_proposals_args {
+  struct list_voter_proposals_args 
+  {
     // voter
     account_name_type voter;
+    string order_by;
+    order_direction_type order_direction;
+    int8_t active;
   };
 
-  struct list_voter_proposals_return {
-    std::vector<create_proposal_args> result;
+  struct list_voter_proposals_return 
+  {
+    std::vector<proposal_object> result;
   };
 
   class sps_api
@@ -67,20 +98,59 @@ namespace steem { namespace plugins { namespace sps {
       ~sps_api();
 
       DECLARE_API(
-        (create_proposal)
-        (update_proposal_votes)
+        (find_proposal)
         (list_proposals)
         (list_voter_proposals)
         )
     private:
-        std::unique_ptr< detail::sps_api_impl > my;
+        std::unique_ptr<detail::sps_api_impl> my;
   };
 
   } } }
 
-  // Args and return types need to be reflected. We do not reflect typedefs of already reflected types
-FC_REFLECT(steem::plugins::sps::create_proposal_args, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url));
-FC_REFLECT(steem::plugins::sps::update_proposal_votes_args, (voter)(proposal_ids)(approve));
-FC_REFLECT(steem::plugins::sps::list_proposals_return, (result));
-FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, (voter));
-FC_REFLECT(steem::plugins::sps::list_voter_proposals_return, (result));
+// Args and return types need to be reflected. We do not reflect typedefs of already reflected types
+FC_REFLECT_ENUM(steem::plugins::sps::order_direction_type, 
+  (direction_ascending)
+  (direction_descending)
+  );
+
+FC_REFLECT(steem::plugins::sps::proposal_object, 
+  (id)
+  (creator)
+  (receiver)
+  (start_date)
+  (end_date)
+  (daily_pay)
+  (subject)
+  (url)
+  (total_votes) 
+  );
+
+FC_REFLECT(steem::plugins::sps::find_proposal_args, 
+  (id)
+  );
+
+FC_REFLECT(steem::plugins::sps::find_proposal_return, 
+  (result)
+  );
+
+FC_REFLECT(steem::plugins::sps::list_proposals_args, 
+  (order_by)
+  (order_direction)
+  (active)
+  );
+
+FC_REFLECT(steem::plugins::sps::list_proposals_return, 
+  (result)
+  );
+
+FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, 
+  (voter)
+  (order_by)
+  (order_direction)
+  (active)
+  );
+
+FC_REFLECT(steem::plugins::sps::list_voter_proposals_return, 
+  (result)
+  );
