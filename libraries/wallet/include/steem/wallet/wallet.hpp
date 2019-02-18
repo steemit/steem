@@ -1085,7 +1085,6 @@ class wallet_api
                            condenser_api::legacy_asset _daily_pay,
                            const std::string& _subject, 
                            const std::string& _url = "");
-
       /**
        * Update existing worker proposal(s)
        * @param _voter     - voiting account,
@@ -1095,7 +1094,6 @@ class wallet_api
       condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
                                  std::vector<int64_t> _proposals, 
                                  bool _approve = true);
-
       /**
        * List proposals
        * @param _order_by   - name a field for sorting operation
@@ -1125,7 +1123,6 @@ class wallet_api
        */
       void remove_proposal(account_name_type _deleter, 
                            int _id);
-
 };
 
 struct plain_keys {
