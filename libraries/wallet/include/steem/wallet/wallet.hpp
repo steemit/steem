@@ -3,7 +3,6 @@
 #include <steem/plugins/condenser_api/condenser_api.hpp>
 
 #include <steem/wallet/remote_node_api.hpp>
-#include <steem/wallet/worker_proposals.hpp>
 #include <steem/utilities/key_conversion.hpp>
 
 #include <fc/macros.hpp>
@@ -17,8 +16,6 @@ using namespace std;
 
 using namespace steem::utilities;
 using namespace steem::protocol;
-
-using namespace steem::proposal;
 
 typedef uint16_t transaction_handle_type;
 
@@ -1081,13 +1078,13 @@ class wallet_api
        * @param _subject    - briefly description of proposal of its title,
        * @param _url        - link to page with description of proposal.
        */
-      void create_proposal(account_name_type _creator,
+      condenser_api::legacy_signed_transaction create_proposal(account_name_type _creator,
                            account_name_type _receiver,
                            time_point_sec _start_date,
                            time_point_sec _end_date, 
                            condenser_api::legacy_asset _daily_pay,
                            const std::string& _subject, 
-                           const std::string& _url);
+                           const std::string& _url = "");
 
       /**
        * Update existing worker proposal(s)
@@ -1095,9 +1092,9 @@ class wallet_api
        * @param _proposals - array with proposal ids,
        * @param _approve   - set if proposal(s) should be approved or not.
        */
-      void update_proposal_votes(account_name_type _voter, 
-                                 UpdateProposalVotes::Proposals _proposals, 
-                                 bool _approve);
+      condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
+                                 std::vector<int64_t> _proposals, 
+                                 bool _approve = true);
 
       /**
        * List proposals
@@ -1122,14 +1119,12 @@ class wallet_api
                                 int _active = 1);
 
       /**
-       * Update given proposal data
+       * Remove given proposal 
+       * @param _deleter  - authorized account
        * @param _id       - proposal id to be updated
-       * @param _end_date - new end_date of proposal
-       * @param _url      - new url of proposal
        */
-      void update_proposal(int _id, 
-                           time_point_sec _end_date,
-                           const std::string& _url);
+      void remove_proposal(account_name_type _deleter, 
+                           int _id);
 
 };
 
@@ -1240,7 +1235,7 @@ FC_API( steem::wallet::wallet_api,
         (update_proposal_votes)
         (list_proposals)
         (list_voter_proposals)
-        (update_proposal)
+        (remove_proposal)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
