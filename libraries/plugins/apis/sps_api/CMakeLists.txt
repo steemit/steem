@@ -6,7 +6,7 @@ add_library( sps_api_plugin
              ${HEADERS}
            )
 
-target_link_libraries( sps_api_plugin json_rpc_plugin )
+target_link_libraries( sps_api_plugin chain_plugin json_rpc_plugin )
 target_include_directories( sps_api_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

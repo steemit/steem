@@ -1,6 +1,7 @@
 #pragma once
 #include <steem/plugins/sps_api/sps_api.hpp>
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #define STEEM_SPS_API_PLUGIN_NAME "sps_api"
 
@@ -12,7 +13,10 @@ namespace steem { namespace plugins { namespace sps {
       sps_api_plugin();
       virtual ~sps_api_plugin();
 
-      APPBASE_PLUGIN_REQUIRES((plugins::json_rpc::json_rpc_plugin));
+      APPBASE_PLUGIN_REQUIRES(
+        (plugins::json_rpc::json_rpc_plugin)
+        (steem::plugins::chain::chain_plugin)
+      );
 
       static const std::string& name() {
         static std::string name = STEEM_SPS_API_PLUGIN_NAME; 
