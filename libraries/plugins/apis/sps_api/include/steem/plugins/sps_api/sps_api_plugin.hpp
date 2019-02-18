@@ -3,10 +3,10 @@
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
-#define STEEM_SPS_API_PLUGIN_NAME "sps_api"
-
 namespace steem { namespace plugins { namespace sps {
-  using namespace appbase;
+
+  #define STEEM_SPS_API_PLUGIN_NAME "sps_api"
+  
   class sps_api_plugin : public appbase::plugin<sps_api_plugin>
   {
     public:
@@ -23,14 +23,14 @@ namespace steem { namespace plugins { namespace sps {
         return name; 
       }
 
-      virtual void set_program_options(options_description&, options_description&) override {
+      virtual void set_program_options(boost::program_options::options_description&, boost::program_options::options_description&) override {
       }
 
-      virtual void plugin_initialize(const variables_map& options) override;
+      virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      std::shared_ptr< class sps_api > api;
+      std::shared_ptr<class sps_api> api;
   };
 
 } } }
