@@ -42,6 +42,7 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
 #include <rocksdb/statistics.h>
+#include <rocksdb/rate_limiter.h>
 
 #include <iostream>
 
@@ -78,7 +79,7 @@ struct rocksdb_options_factory
 
    static std::shared_ptr< rocksdb::Statistics > get_shared_stats()
    {
-      static std::shared_ptr< rocksdb::Statistics > cache = ::rocksdb::CreateDBStatistics();;
+      static std::shared_ptr< rocksdb::Statistics > cache = ::rocksdb::CreateDBStatistics();
       return cache;
    }
 };
@@ -173,7 +174,8 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-//      _stats = rocksdb_options_factory::get_shared_stats();
+      //_stats = rocksdb_options_factory::get_shared_stats();
+      //_stats = ::rocksdb::CreateDBStatistics();
 
       ::rocksdb::Options opts;
 //
@@ -182,8 +184,11 @@ public:
 //      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
 //      opts.compression = rocksdb::CompressionType::kNoCompression;
 
-//      opts.statistics = _stats;
-//      opts.stats_dump_period_sec = 20;
+      //opts.statistics = _stats;
+      //opts.stats_dump_period_sec = 5;
+
+      //opts.bytes_per_sync = 6291456;
+      //opts.rate_limiter = std::shared_ptr< rocksdb::RateLimiter >( rocksdb::NewGenericRateLimiter( 1024000 ) );
 //*
 //      //opts.block_size = 8 << 10; //8K
 //      //opts.cache_size = 4 << 30; // 4G
@@ -214,7 +219,7 @@ public:
       ::rocksdb::BlockBasedTableOptions table_options;
       table_options.block_size = 8 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 12, false ) );
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 32 ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
       opts.allow_mmap_reads = true;
@@ -274,6 +279,8 @@ public:
          std::cout << std::string( s.getState() ) << std::endl;
          return false;
       }
+
+      super::cache_first_key();
 
       super::object_cache_factory_type::reset();
       return true;
@@ -647,7 +654,19 @@ primary_iterator erase( primary_iterator position )
       if( super::insert_rocksdb_( v ) )
       {
          status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch()).ok();
-         ++entry_count;
+         if( status )
+         {
+            ++entry_count;
+            super::commit_first_key_update();
+         }
+         else
+         {
+            super::reset_first_key_update();
+         }
+      }
+      else
+      {
+         super::reset_first_key_update();
       }
       super::_write_buffer.Clear();
 
@@ -657,9 +676,18 @@ primary_iterator erase( primary_iterator position )
    void erase_( value_type& v )
    {
       super::erase_( v );
-      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
-      --entry_count;
-      super::_cache->invalidate( v );
+      bool status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
+      if( status )
+      {
+         --entry_count;
+         super::_cache->invalidate( v );
+         super::commit_first_key_update();
+      }
+      else
+      {
+         super::reset_first_key_update();
+      }
+
       super::_write_buffer.Clear();
    }
 
@@ -686,8 +714,18 @@ primary_iterator erase( primary_iterator position )
             the value has already updated the cache, but in case something
             doesn't line up here, we update by moving the value to itself... */
             super::_cache->get_index_cache( ID_INDEX )->update( (void*)&super::id( v ), std::move( v ), modified_indices );
+            super::commit_first_key_update();
+         }
+         else
+         {
+            super::reset_first_key_update();
          }
       }
+      else
+      {
+         super::reset_first_key_update();
+      }
+
       super::_write_buffer.Clear();
 
       return status;
