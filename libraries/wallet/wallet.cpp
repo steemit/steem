@@ -3,11 +3,11 @@
 #include <steem/utilities/words.hpp>
 
 #include <steem/protocol/base.hpp>
+#include <steem/protocol/sps_operations.hpp>
 #include <steem/wallet/wallet.hpp>
 #include <steem/wallet/api_documentation.hpp>
 #include <steem/wallet/reflect_util.hpp>
 #include <steem/wallet/remote_node_api.hpp>
-#include <steem/wallet/worker_proposals.hpp>
 
 #include <steem/plugins/follow/follow_operations.hpp>
 
@@ -2403,7 +2403,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    return my->sign_transaction( trx, broadcast );
 }
 
-   void wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
+   condenser_api::legacy_signed_transaction  wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
                                     time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url)
    {
       auto now = time_point::now();
@@ -2418,27 +2418,59 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       auto creator  = get_account(_creator);
       auto receiver = get_account(_receiver);
 
-      proposal::CreateProposal cp = {  _creator, _receiver, _start_date, _end_date, _daily_pay, _subject, _url};
-      wdump((cp.creator));
-      wdump((cp.receiver));
-      wdump((cp.start_date));
-      wdump((cp.end_date));
-      wdump((cp.daily_pay));
-      wdump((cp.subject));
-      wdump((cp.url));
+
+      create_proposal_operation cp;
+      cp.creator = _creator;
+      cp.receiver = _receiver;
+      cp.start_date = _start_date;
+      cp.end_date = _end_date;
+      cp.daily_pay = _daily_pay;
+      cp.subject = _subject;
+      cp.url = _url;
+
+      ddump((cp.creator));
+      ddump((cp.receiver));
+      ddump((cp.start_date));
+      ddump((cp.end_date));
+      ddump((cp.daily_pay));
+      ddump((cp.subject));
+      ddump((cp.url));
+
+      signed_transaction trx;
+      trx.operations.push_back( cp );
+      trx.validate();
+      return my->sign_transaction( trx, true );
    }
 
-   void wallet_api::update_proposal_votes(account_name_type _voter, UpdateProposalVotes::Proposals _proposals, bool _approve)
+   condenser_api::legacy_signed_transaction  wallet_api::update_proposal_votes(account_name_type _voter,
+                                                                               std::vector<int64_t> _proposals,
+                                                                               bool _approve)
    {
       FC_ASSERT(_voter.size());
       FC_ASSERT(!_proposals.empty() );
 
       auto voter = get_account(_voter);
 
-      proposal::UpdateProposalVotes upv = { _voter, _proposals, _approve };
-      wdump((upv.voter));
-      wdump((upv.proposals));
-      wdump((upv.approve));
+      //remove duplicates
+      std::set<int64_t> temp(_proposals.begin(), _proposals.end());
+      std::vector<int64_t> uniqu(temp.begin(), temp.end());
+
+      update_proposal_votes_operation upv ;
+
+      upv.voter = _voter;
+      upv.proposal_ids = uniqu;
+      upv.approve = _approve;
+
+      
+
+      ddump((upv.voter));
+      ddump((upv.proposal_ids));
+      ddump((upv.approve));
+
+      signed_transaction trx;
+      trx.operations.push_back( upv );
+      trx.validate();
+      return my->sign_transaction( trx, true );
    }
 
    void wallet_api::list_proposals(std::string _order_by,
@@ -2458,13 +2490,11 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       
    }
 
-   void wallet_api::update_proposal(int _id, 
-                                    time_point_sec _end_date,
-                                    const std::string& _url)
+   void wallet_api::remove_proposal(account_name_type _deleter, 
+                                    int _id)
    {
+      FC_ASSERT(_deleter.size());
       FC_ASSERT(_id > 0);
-      auto now = time_point::now();
-      FC_ASSERT(_end_date > now);
    }
 
 } } // steem::wallet
