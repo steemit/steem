@@ -7,6 +7,8 @@ namespace steem { namespace plugins { namespace sps {
 
 namespace detail {
 
+using namespace steem::chain;
+
 class sps_api_impl
 {
   public:

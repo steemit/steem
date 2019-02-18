@@ -7,7 +7,7 @@ namespace steem { namespace plugins { namespace sps {
 
   sps_api_plugin::~sps_api_plugin() {}
 
-  void sps_api_plugin::plugin_initialize( const variables_map& options )
+  void sps_api_plugin::plugin_initialize( const boost::program_options::variables_map& options )
   {
     api = std::make_shared< sps_api >();
   }
