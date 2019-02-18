@@ -1,5 +1,7 @@
 #include <steem/plugins/sps_api/sps_api_plugin.hpp>
 #include <steem/plugins/sps_api/sps_api.hpp>
+#include <steem/chain/sps_objects.hpp>
+#include <appbase/application.hpp>
 
 namespace steem { namespace plugins { namespace sps {
 
@@ -8,37 +10,38 @@ namespace detail {
 class sps_api_impl
 {
   public:
+    sps_api_impl();
+    ~sps_api_impl();
+
     DECLARE_API_IMPL(
-        (create_proposal)
-        (update_proposal_votes)
+        (find_proposal)
         (list_proposals)
         (list_voter_proposals)
         )
+  private:
+    chain::database& _db;
 };
 
-DEFINE_API_IMPL(sps_api_impl, create_proposal) {
-  ilog("create_proposal called");
-  create_proposal_return result;
+sps_api_impl::sps_api_impl() : _db(appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db()) {}
 
-  return result;
-}
+sps_api_impl::~sps_api_impl() {}
 
-DEFINE_API_IMPL(sps_api_impl, update_proposal_votes) {
-  ilog("update_proposal_votes called");
-  update_proposal_votes_return result;
+DEFINE_API_IMPL(sps_api_impl, find_proposal) {
+  ilog("find_proposal called");
+  find_proposal_return result;
 
   return result;
 }
 
 DEFINE_API_IMPL(sps_api_impl, list_proposals) {
-  ilog("get_proposals called");
+  ilog("list_proposals called");
   list_proposals_return result;
 
   return result;
 }
 
 DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
-  ilog("get_voter_proposals called");
+  ilog("list_voter_proposals called");
   list_voter_proposals_return result;
 
   return result;
@@ -54,10 +57,9 @@ sps_api::sps_api(): my( new detail::sps_api_impl() )
 sps_api::~sps_api() {}
 
 DEFINE_LOCKLESS_APIS(sps_api,
+  (find_proposal)
   (list_proposals)
   (list_voter_proposals)
-  (create_proposal)
-  (update_proposal_votes)
 )
 
 } } } //steem::plugins::sps_api
