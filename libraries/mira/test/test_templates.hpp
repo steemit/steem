@@ -30,8 +30,8 @@ void basic_test( const std::vector< uint64_t >& v,
       auto it = c.begin();
       while ( it != c.end() )
       {
-         db.remove( *it );
-         ++it;
+         auto to_remove = it; ++it;
+         db.remove( *to_remove );
       }
    }
 
@@ -76,8 +76,8 @@ void basic_test( const std::vector< uint64_t >& v,
       auto it = c.begin();
       while (it != c.end())
       {
-         db.remove( *it );
-         ++it;
+         auto to_remove = it; ++it;
+         db.remove( *to_remove );
       }
    }
 
