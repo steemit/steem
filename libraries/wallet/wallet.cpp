@@ -2435,7 +2435,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((cp.daily_pay));
       ddump((cp.subject));
       ddump((cp.url));
-
+      
       signed_transaction trx;
       trx.operations.push_back( cp );
       trx.validate();
@@ -2473,21 +2473,26 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return my->sign_transaction( trx, true );
    }
 
-   void wallet_api::list_proposals(std::string _order_by,
-                                   std::string _order_type,
-                                   int _active)
+   steem::plugins::sps::list_proposals_return wallet_api::list_proposals(std::string _order_by,
+                                                                         std::string _order_type,
+                                                                         int _active)
    {
       FC_ASSERT(_active >= -1 and _active <= 1);
-
+      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
+      steem::plugins::sps::list_proposals_args args;
+      return api->list_proposals(args);
    }
 
-   void wallet_api::list_voter_proposals(account_name_type _voter,
-                                         std::string _order_by,
-                                         std::string _order_type,
-                                         int _active)
+   steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(account_name_type _voter,
+                                                                                     std::string _order_by,
+                                                                                     std::string _order_type,
+                                                                                     int _active)
    {
       FC_ASSERT(_active >= -1 and _active <= 1);
-      
+      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
+      steem::plugins::sps::list_voter_proposals_args args;
+      args.voter = _voter;
+      return api->list_voter_proposals(args);
    }
 
    void wallet_api::remove_proposal(account_name_type _deleter, 
