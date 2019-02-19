@@ -318,9 +318,14 @@
 #define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
 
+/// STEEM PROPOSAL SYSTEM support
+
 #define STEEM_TREASURY_FEE                         (10 * STEEM_BLOCKCHAIN_PRECISION)
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD          3600
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD_BLOCKS   (STEEM_PROPOSAL_MAINTENANCE_PERIOD / STEEM_BLOCK_INTERVAL)
+#define STEEM_PROPOSAL_SUBJECT_MAX_LENGTH          80
+/// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.
+#define STEEM_PROPOSAL_MAX_IDS_NUMBER              5
 
 #ifdef STEEM_ENABLE_SMT
 
