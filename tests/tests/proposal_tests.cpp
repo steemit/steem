@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
       {
          BOOST_TEST_MESSAGE( "---Voting for proposal( `id_proposal_00` )---" );
          op.voter = voter_01;
-         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_00 );
          op.approve = true;
 
          tx.operations.push_back( op );
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
          BOOST_TEST_MESSAGE( "---Unvoting proposal( `id_proposal_00` )---" );
          op.voter = voter_01;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_00 );
          op.approve = false;
 
          tx.operations.push_back( op );
@@ -221,8 +221,8 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
       {
          BOOST_TEST_MESSAGE( "---Voting by `voter_01` for proposals( `id_proposal_00`, `id_proposal_01` )---" );
          op.voter = voter_01;
-         op.proposal_ids.push_back( id_proposal_00 );
-         op.proposal_ids.push_back( id_proposal_01 );
+         op.proposal_ids.insert( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_01 );
          op.approve = true;
 
          tx.operations.push_back( op );
@@ -250,9 +250,9 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Voting by `voter_02` for proposals( `id_proposal_00`, `id_proposal_01`, `id_proposal_02` )---" );
          op.voter = voter_02;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_02 );
-         op.proposal_ids.push_back( id_proposal_00 );
-         op.proposal_ids.push_back( id_proposal_01 );
+         op.proposal_ids.insert( id_proposal_02 );
+         op.proposal_ids.insert( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_01 );
          op.approve = true;
 
          tx.operations.push_back( op );
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Voting by `voter_02` for proposals( `id_proposal_00` )---" );
          op.voter = voter_02;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_00 );
          op.approve = true;
 
          tx.operations.push_back( op );
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_02` )---" );
          op.voter = voter_01;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_02 );
+         op.proposal_ids.insert( id_proposal_02 );
          op.approve = false;
 
          tx.operations.push_back( op );
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_00` )---" );
          op.voter = voter_01;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_00 );
          op.approve = false;
 
          tx.operations.push_back( op );
@@ -348,9 +348,9 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Unvoting by `voter_02` proposals( `id_proposal_00`, `id_proposal_01`, `id_proposal_02` )---" );
          op.voter = voter_02;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_02 );
-         op.proposal_ids.push_back( id_proposal_01 );
-         op.proposal_ids.push_back( id_proposal_00 );
+         op.proposal_ids.insert( id_proposal_02 );
+         op.proposal_ids.insert( id_proposal_01 );
+         op.proposal_ids.insert( id_proposal_00 );
          op.approve = false;
 
          tx.operations.push_back( op );
@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          BOOST_TEST_MESSAGE( "---Unvoting by `voter_01` proposals( `id_proposal_01` )---" );
          op.voter = voter_01;
          op.proposal_ids.clear();
-         op.proposal_ids.push_back( id_proposal_01 );
+         op.proposal_ids.insert( id_proposal_01 );
          op.approve = false;
 
          tx.operations.push_back( op );

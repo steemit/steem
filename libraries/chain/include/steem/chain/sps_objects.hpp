@@ -14,8 +14,6 @@ using steem::chain::shared_string;
 using steem::chain::oid;
 using steem::chain::by_id;
 
-using namespace std;
-
 #ifndef STEEM_SPS_SPACE_ID
 #define STEEM_SPS_SPACE_ID 20
 #endif
@@ -96,8 +94,6 @@ typedef oid< proposal_vote_object > proposal_vote_id_type;
 struct by_date;
 struct by_creator;
 struct by_total_votes;
-
-using namespace boost::multi_index;
 
 typedef multi_index_container<
    proposal_object,

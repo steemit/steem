@@ -971,7 +971,7 @@ int64_t t_proposal_database_fixture< T >::create_proposal( std::string creator, 
    //It is necessary to find newly created object
    while( found != proposal_idx.end() && found->creator == creator )
    {
-      uint32_t val = stoi( found->subject.c_str() );
+      uint32_t val = std::stoi( found->subject.c_str() );
 
       if( val == cnt - 1 )
          return found->id;
@@ -988,7 +988,7 @@ void t_proposal_database_fixture< T >::vote_proposal( std::string voter, const s
    update_proposal_votes_operation op;
 
    op.voter = voter;
-   op.proposal_ids = id_proposals;
+   op.proposal_ids.insert(id_proposals.cbegin(), id_proposals.cend());
    op.approve = approve;
 
    signed_transaction tx;
