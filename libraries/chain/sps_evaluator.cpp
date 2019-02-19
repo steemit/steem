@@ -52,6 +52,8 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
 {
    try
    {
+      ilog("voting proposal: ${op}", ("op", o));
+
       if( o.proposal_ids.empty() )
          return;
 
@@ -86,5 +88,14 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
    FC_CAPTURE_AND_RETHROW( (o) )
 }
 
+void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
+{
+   try
+   {
+      ilog("Attempting to evaluate remove_proposal_operation: ${o}", ("o", op));
+
+   }
+   FC_CAPTURE_AND_RETHROW( (op) )
+}
 
 } } // steem::chain
