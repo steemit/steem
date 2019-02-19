@@ -2418,10 +2418,9 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       auto creator  = get_account(_creator);
       auto receiver = get_account(_receiver);
 
-
       create_proposal_operation cp;
-      cp.creator = _creator;
-      cp.receiver = _receiver;
+      cp.creator = creator.name;
+      cp.receiver = receiver.name;
       cp.start_date = _start_date;
       cp.end_date = _end_date;
       cp.daily_pay = _daily_pay;
@@ -2457,11 +2456,9 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
       update_proposal_votes_operation upv ;
 
-      upv.voter = _voter;
+      upv.voter = voter.name;
       upv.proposal_ids = uniqu;
       upv.approve = _approve;
-
-      
 
       ddump((upv.voter));
       ddump((upv.proposal_ids));
