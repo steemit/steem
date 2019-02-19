@@ -42,7 +42,7 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
 #include <rocksdb/statistics.h>
-#include <rocksdb/rate_limiter.h>
+#include <rocksdb/slice_transform.h>
 
 #include <iostream>
 
@@ -215,11 +215,12 @@ public:
 //      //opts.source_compaction_factor = 1;
 //      //opts.max_grandparent_overlap_factor = 5;
 //*/
-
+      //ilog(" value size = ${s}", ("s", sizeof( Value )) );
+/*
       ::rocksdb::BlockBasedTableOptions table_options;
       table_options.block_size = 8 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( sizeof( Value ), false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
       opts.allow_mmap_reads = true;
@@ -231,9 +232,18 @@ public:
       opts.max_background_compactions = 16;
       opts.max_background_flushes = 16;
       opts.min_write_buffer_number_to_merge = 8;
-
+*/
       opts.OptimizeLevelStyleCompaction();
       opts.IncreaseParallelism();
+      opts.prefix_extractor.reset( ::rocksdb::NewNoopTransform() );
+      ::rocksdb::BlockBasedTableOptions block_based_options;
+      block_based_options.index_type = ::rocksdb::BlockBasedTableOptions::kHashSearch;
+      block_based_options.data_block_index_type = ::rocksdb::BlockBasedTableOptions::kDataBlockBinaryAndHash;
+      block_based_options.data_block_hash_table_util_ratio = 0.75;
+      block_based_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+      block_based_options.block_cache = rocksdb_options_factory::get_shared_cache();
+      opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( block_based_options ) );
+      opts.memtable_prefix_bloom_size_ratio = 0.02;
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
