@@ -7,7 +7,8 @@
 
 namespace steem { namespace plugins { namespace sps {
   using plugins::json_rpc::void_type;
-  using namespace steem::chain;
+  using steem::chain::account_name_type;
+  using fc::time_point_sec;
   using steem::protocol::asset;
 
   namespace detail
@@ -53,44 +54,46 @@ namespace steem { namespace plugins { namespace sps {
     uint64_t total_votes = 0;
   };
 
+  // Struct with arguments for find_proposal methd
   struct find_proposal_args 
   {
+    // id of the proposal to find
     id_type id;
   };
 
-  struct find_proposal_return 
-  {
-    proposal_object result;
-  };
-
-  // args type for get_proposals
+  // Return type for find_proposal method
+  typedef proposal_object find_proposal_return;
+  
+  // Struct with argumentse for list_proposals method
   struct list_proposals_args 
   {
+    // name of the field by which results will be sored
     string order_by;
+    // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
+    // result will contain only data with active flag set to this value
     int8_t active;
   };
 
-  // return type for get_proposals
-  struct list_proposals_return 
-  {
-    std::vector<proposal_object> result;
-  };
-
+  // Return type for list_proposals
+  typedef std::vector<proposal_object> list_proposals_return;
+  
+  // Struct with arguments for list_voter_proposals methid
   struct list_voter_proposals_args 
   {
-    // voter
+    // list only proposal voted by this voter
     account_name_type voter;
+    // name of the field by which results will be sored
     string order_by;
+    // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
+    // result will contain only data with active flag set to this value
     int8_t active;
   };
 
-  struct list_voter_proposals_return 
-  {
-    std::vector<proposal_object> result;
-  };
-
+  // Return type for list_voter_proposals
+  typedef std::vector<proposal_object> list_voter_proposals_return;
+  
   class sps_api
   {
     public:
@@ -130,18 +133,10 @@ FC_REFLECT(steem::plugins::sps::find_proposal_args,
   (id)
   );
 
-FC_REFLECT(steem::plugins::sps::find_proposal_return, 
-  (result)
-  );
-
 FC_REFLECT(steem::plugins::sps::list_proposals_args, 
   (order_by)
   (order_direction)
   (active)
-  );
-
-FC_REFLECT(steem::plugins::sps::list_proposals_return, 
-  (result)
   );
 
 FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, 
@@ -151,6 +146,3 @@ FC_REFLECT(steem::plugins::sps::list_voter_proposals_args,
   (active)
   );
 
-FC_REFLECT(steem::plugins::sps::list_voter_proposals_return, 
-  (result)
-  );
