@@ -1,6 +1,8 @@
 #pragma once
 
 #include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/sps_api/sps_api_plugin.hpp>
+#include <steem/plugins/sps_api/sps_api.hpp>
 
 #include <steem/wallet/remote_node_api.hpp>
 #include <steem/utilities/key_conversion.hpp>
@@ -1092,17 +1094,17 @@ class wallet_api
        * @param _approve   - set if proposal(s) should be approved or not.
        */
       condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
-                                 std::vector<int64_t> _proposals, 
-                                 bool _approve = true);
+                                                                     std::vector<int64_t> _proposals, 
+                                                                     bool _approve = true);
       /**
        * List proposals
        * @param _order_by   - name a field for sorting operation
        * @param _order_type - set print order a - ascdending, d - descending,,
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
-      void list_proposals(std::string _order_by = "",
-                          std::string _order_type = "d",
-                          int _active = 1);
+      steem::plugins::sps::list_proposals_return list_proposals(std::string _order_by = "",
+                                                                std::string _order_type = "d",
+                                                                int _active = 1);
 
       /**
        * List proposals of given voter
@@ -1111,10 +1113,10 @@ class wallet_api
        * @param _order_type - set print order a - ascdending, d - descending,,
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
-      void list_voter_proposals(account_name_type _voter,
-                                std::string _order_by = "",
-                                std::string _order_type = "d",
-                                int _active = 1);
+      steem::plugins::sps::list_voter_proposals_return list_voter_proposals(account_name_type _voter,
+                                                                            std::string _order_by = "",
+                                                                            std::string _order_type = "d",
+                                                                            int _active = 1);
 
       /**
        * Remove given proposal 
