@@ -219,7 +219,7 @@ public:
       ::rocksdb::BlockBasedTableOptions table_options;
       table_options.block_size = 8 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( sizeof( Value ), false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
       opts.allow_mmap_reads = true;
