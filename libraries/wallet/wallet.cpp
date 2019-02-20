@@ -2470,9 +2470,29 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                          std::string _order_type,
                                                                          int _active)
    {
+      FC_ASSERT(!_order_by.empty());
+      FC_ASSERT(!_order_type.empty());
       FC_ASSERT(_active >= -1 and _active <= 1);
+
+      auto order_type_check = [&_order_type]() {
+         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
+         if ( _order_type == "desc" ) {
+            return order_direction_type::direction_descending;
+         } else {
+            return order_direction_type::direction_ascending;
+         }
+      };
+
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_proposals_args args;
+      args.order_by        = _order_by;
+      args.order_direction = order_type_check();
+      args.active          = _active;
+
+      ddump((args.order_by));
+      ddump((args.order_direction));
+      ddump((args.active));
+
       return api->list_proposals(args);
    }
 
@@ -2481,18 +2501,59 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                                      std::string _order_type,
                                                                                      int _active)
    {
+      FC_ASSERT(_voter.size());
+      FC_ASSERT(!_order_by.empty());
+      FC_ASSERT(!_order_type.empty());
       FC_ASSERT(_active >= -1 and _active <= 1);
+
+      auto voter = get_account(_voter);
+
+      auto order_type_check = [&_order_type]() {
+         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
+         if ( _order_type == "desc" ) {
+            return order_direction_type::direction_descending;
+         } else {
+            return order_direction_type::direction_ascending;
+         }
+      };
+
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
-      args.voter = _voter;
+      args.voter           = _voter;
+      args.order_by        = _order_by;
+      args.order_direction = order_type_check();
+      args.active          = _active;
+
+      ddump((args.voter));
+      ddump((args.order_by));
+      ddump((args.order_direction));
+      ddump((args.active));
+
       return api->list_voter_proposals(args);
    }
 
+   steem::plugins::sps::find_proposal_return wallet_api::find_proposal(int64_t _id)
+   {
+      FC_ASSERT(_id > 0);
+      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
+      steem::plugins::sps::find_proposal_args args;
+      args.id = _id;
+
+      ddump((args.id));
+
+      return api->find_proposal(args);
+   }
+
    void wallet_api::remove_proposal(account_name_type _deleter, 
-                                    int _id)
+                                    int64_t _id)
    {
       FC_ASSERT(_deleter.size());
       FC_ASSERT(_id > 0);
+      auto deleter = get_account(_deleter);
+
+      ddump((deleter));
+      ddump((_id));
+
    }
 
 } } // steem::wallet
