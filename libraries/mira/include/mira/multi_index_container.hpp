@@ -653,7 +653,8 @@ primary_iterator erase( primary_iterator position )
       bool status = false;
       if( super::insert_rocksdb_( v ) )
       {
-         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch()).ok();
+         auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch());
+         status = retval.ok();
          if( status )
          {
             ++entry_count;
@@ -661,6 +662,7 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
+            elog( "Error: ${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }
@@ -676,7 +678,8 @@ primary_iterator erase( primary_iterator position )
    void erase_( value_type& v )
    {
       super::erase_( v );
-      bool status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
+      auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+      bool status = retval.ok();
       if( status )
       {
          --entry_count;
@@ -685,6 +688,7 @@ primary_iterator erase( primary_iterator position )
       }
       else
       {
+         elog( "Error: ${e}", ("e", retval.ToString()) );
          super::reset_first_key_update();
       }
 
