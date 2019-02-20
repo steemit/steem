@@ -1,13 +1,15 @@
 #pragma once
 #include <steem/chain/steem_object_types.hpp>
 #include <boost/multi_index/composite_key.hpp>
+#include <steem/protocol/asset.hpp>
 
 namespace steem { namespace chain {
 
 using steem::chain::object;
 using steem::chain::allocator;
 using steem::chain::account_name_type;
-using steem::chain::asset;
+//using steem::chain::asset;
+using steem::protocol::asset;
 using steem::chain::shared_string;
 using steem::chain::oid;
 using steem::chain::by_id;
