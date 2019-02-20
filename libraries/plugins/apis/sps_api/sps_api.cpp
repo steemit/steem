@@ -27,6 +27,22 @@ sps_api_impl::sps_api_impl() : _db(appbase::app().get_plugin< steem::plugins::ch
 
 sps_api_impl::~sps_api_impl() {}
 
+api_proposal_object to_api_proposal_object(const proposal_object &po)
+{
+  api_proposal_object result;
+  result.id = po.id;
+  result.creator = po.creator;
+  result.receiver = po.receiver;
+  result.start_date = po.start_date;
+  result.end_date = po.end_date;
+  result.daily_pay = po.daily_pay;
+  result.subject = to_string(po.subject);
+  result.url = to_string(po.url);
+  result.total_votes = po.total_votes;
+
+  return result;
+}
+
 DEFINE_API_IMPL(sps_api_impl, find_proposal) {
   ilog("find_proposal called");
   find_proposal_return result;
@@ -34,20 +50,20 @@ DEFINE_API_IMPL(sps_api_impl, find_proposal) {
   auto found = pidx.find(args.id);
   if (found != pidx.end())
   {
-    result.emplace_back(*found);
+    result.emplace_back(to_api_proposal_object(*found));
   }
 
   return result;
 }
 
 template<typename RESULT_TYPE, typename FIELD_TYPE>
-void sort_results_helper(RESULT_TYPE &result, order_direction_type order_direction, FIELD_TYPE proposal_object::*field)
+void sort_results_helper(RESULT_TYPE &result, order_direction_type order_direction, FIELD_TYPE api_proposal_object::*field)
 {
   switch (order_direction)
   {
     case direction_ascending:
     {
-      std::sort(result.begin(), result.end(), [&](const proposal_object& a, const proposal_object& b)
+      std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
         return a.*field > b.*field;
       });
@@ -55,7 +71,7 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
     break;
     case direction_descending:
     {
-      std::sort(result.begin(), result.end(), [&](const proposal_object& a, const proposal_object& b)
+      std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
         return a.*field < b.*field;
       });
@@ -72,43 +88,43 @@ void sort_results(RESULT_TYPE &result, const string &field_name, order_direction
   // sorting operations
   if (field_name == "id")
   {
-    sort_results_helper<RESULT_TYPE, proposal_id_type>(result, order_direction, &proposal_object::id);
+    sort_results_helper<RESULT_TYPE, api_id_type>(result, order_direction, &api_proposal_object::id);
     return;
   }
 
   if (field_name == "creator")
   {
-    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &proposal_object::creator);
+    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &api_proposal_object::creator);
     return;
   }
 
   if (field_name == "receiver")
   {
-    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &proposal_object::receiver);
+    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &api_proposal_object::receiver);
     return;
   }
 
   if (field_name == "start_date")
   {
-    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &proposal_object::start_date);
+    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::start_date);
     return;
   }
 
   if (field_name == "end_date")
   {
-    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &proposal_object::end_date);
+    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::end_date);
     return;
   }
 
   if (field_name == "daily_pay")
   {
-    sort_results_helper<RESULT_TYPE, asset>(result, order_direction, &proposal_object::daily_pay);
+    sort_results_helper<RESULT_TYPE, asset>(result, order_direction, &api_proposal_object::daily_pay);
     return;
   }
 
   if (field_name == "total_votes")
   {
-    sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &proposal_object::total_votes);
+    sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &api_proposal_object::total_votes);
     return;
   }
 
@@ -122,7 +138,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
 
   // populate result vector
   std::for_each(pidx.begin(), pidx.end(), [&](auto& proposal) {
-    result.emplace_back(proposal);
+    result.emplace_back(to_api_proposal_object(proposal));
   });
 
   if (!result.empty())
@@ -139,7 +155,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
 
   const auto& pvidx = _db.get_index<proposal_vote_index>().indices().get<by_id>();
 
-  std::vector<proposal_id_type> proposal_ids_of_voter;
+  std::vector<api_id_type> proposal_ids_of_voter;
   // filter out only proposal ids voted by our voter
   std::for_each(pvidx.begin(), pvidx.end(), [&](auto& vote_object) {
     if (vote_object.voter == args.voter)
@@ -157,7 +173,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
       auto found = pidx.find(proposal_id);
       if (found != pidx.end())
       {
-        result.emplace_back(*found);
+        result.emplace_back(to_api_proposal_object(*found));
       }
     });
 
