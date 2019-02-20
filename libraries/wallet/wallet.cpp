@@ -2493,7 +2493,16 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((args.order_direction));
       ddump((args.active));
 
-      return api->list_proposals(args);
+      try {
+         return api->list_proposals(args);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig list_proposals: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig list_proposals: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in list_proposals.");
+      }
+      return steem::plugins::sps::list_proposals_return ();
    }
 
    steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(account_name_type _voter,
@@ -2528,8 +2537,16 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((args.order_by));
       ddump((args.order_direction));
       ddump((args.active));
-
-      return api->list_voter_proposals(args);
+      try {
+         return api->list_voter_proposals(args);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in list_voter_proposals.");
+      }
+      return steem::plugins::sps::list_voter_proposals_return ();
    }
 
    steem::plugins::sps::find_proposal_return wallet_api::find_proposal(int64_t _id)
@@ -2540,8 +2557,16 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       args.id = _id;
 
       ddump((args.id));
-
-      return api->find_proposal(args);
+      try {
+         return api->find_proposal(args);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in find_proposal_return.");
+      }
+      return steem::plugins::sps::find_proposal_return ();
    }
 
    void wallet_api::remove_proposal(account_name_type _deleter, 
@@ -2551,7 +2576,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       FC_ASSERT(_id > 0);
       auto deleter = get_account(_deleter);
 
-      ddump((deleter));
+      ddump((deleter.name));
       ddump((_id));
 
    }
