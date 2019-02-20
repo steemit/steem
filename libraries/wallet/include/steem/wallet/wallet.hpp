@@ -18,10 +18,9 @@ using namespace std;
 
 using namespace steem::utilities;
 using namespace steem::protocol;
+using namespace steem::plugins::sps;
 
 typedef uint16_t transaction_handle_type;
-
-
 
 struct memo_data {
 
@@ -1099,24 +1098,30 @@ class wallet_api
       /**
        * List proposals
        * @param _order_by   - name a field for sorting operation
-       * @param _order_type - set print order a - ascdending, d - descending,,
+       * @param _order_type - set print order asc - ascdending, desc - descending,,
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
-      steem::plugins::sps::list_proposals_return list_proposals(std::string _order_by = "",
-                                                                std::string _order_type = "d",
-                                                                int _active = 1);
+      list_proposals_return list_proposals(std::string _order_by = "id",
+                                           std::string _order_type = "desc",
+                                           int _active = 1);
 
       /**
        * List proposals of given voter
        * @param _voter      - given voter
        * @param _order_by   - name a field for sorting operation
-       * @param _order_type - set print order a - ascdending, d - descending,,
+       * @param _order_type - set print order asc - ascdending, desc - descending,,
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
-      steem::plugins::sps::list_voter_proposals_return list_voter_proposals(account_name_type _voter,
-                                                                            std::string _order_by = "",
-                                                                            std::string _order_type = "d",
-                                                                            int _active = 1);
+      list_voter_proposals_return list_voter_proposals(account_name_type _voter,
+                                                       std::string _order_by = "id",
+                                                       std::string _order_type = "desc",
+                                                       int _active = 1);
+
+      /**
+       * Find proposal with given id
+       * @param _id - id of wanted proposal
+       */
+      find_proposal_return find_proposal(int64_t _id);
 
       /**
        * Remove given proposal 
@@ -1124,7 +1129,7 @@ class wallet_api
        * @param _id       - proposal id to be updated
        */
       void remove_proposal(account_name_type _deleter, 
-                           int _id);
+                           int64_t _id);
 };
 
 struct plain_keys {
@@ -1234,6 +1239,7 @@ FC_API( steem::wallet::wallet_api,
         (update_proposal_votes)
         (list_proposals)
         (list_voter_proposals)
+        (find_proposal)
         (remove_proposal)
       )
 
