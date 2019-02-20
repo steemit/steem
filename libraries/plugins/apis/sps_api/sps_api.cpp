@@ -61,6 +61,8 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
       });
     }
     break;
+    default:
+      FC_ASSERT(false, "Unknown or unsupported sort order");
   }
 }
 
@@ -71,37 +73,46 @@ void sort_results(RESULT_TYPE &result, const string &field_name, order_direction
   if (field_name == "id")
   {
     sort_results_helper<RESULT_TYPE, proposal_id_type>(result, order_direction, &proposal_object::id);
+    return;
   }
 
   if (field_name == "creator")
   {
     sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &proposal_object::creator);
+    return;
   }
 
   if (field_name == "receiver")
   {
     sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &proposal_object::receiver);
+    return;
   }
 
   if (field_name == "start_date")
   {
     sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &proposal_object::start_date);
+    return;
   }
 
   if (field_name == "end_date")
   {
     sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &proposal_object::end_date);
+    return;
   }
 
   if (field_name == "daily_pay")
   {
     sort_results_helper<RESULT_TYPE, asset>(result, order_direction, &proposal_object::daily_pay);
+    return;
   }
 
   if (field_name == "total_votes")
   {
     sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &proposal_object::total_votes);
+    return;
   }
+
+  FC_ASSERT(false, "Unknown or unsupported field name");
 }
 
 DEFINE_API_IMPL(sps_api_impl, list_proposals) {
