@@ -2450,14 +2450,10 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
       auto voter = get_account(_voter);
 
-      //remove duplicates
-      std::set<int64_t> temp(_proposals.begin(), _proposals.end());
-      std::vector<int64_t> uniqu(temp.begin(), temp.end());
-
       update_proposal_votes_operation upv ;
 
       upv.voter = voter.name;
-      upv.proposal_ids = uniqu;
+      upv.proposal_ids.insert(_proposals.cbegin(), _proposals.cend());
       upv.approve = _approve;
 
       ddump((upv.voter));

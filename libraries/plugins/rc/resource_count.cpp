@@ -349,8 +349,20 @@ struct count_operation_visitor
    }
 #endif
 
-   void operator()( const create_proposal_operation& ) const {}
-   void operator()( const update_proposal_votes_operation& ) const {}
+   void operator()( const create_proposal_operation& ) const
+   {
+      FC_TODO("Change RC state bytes computation to take proposals into account");
+   }
+
+   void operator()( const update_proposal_votes_operation& ) const
+   {
+      FC_TODO("Change RC state bytes computation to take proposals into account");
+   }
+
+   void operator()(const remove_proposal_operation&) const
+   {
+      FC_TODO("Change RC state bytes computation to take proposals into account");
+   }
 
    void operator()( const recover_account_operation& ) const {}
    void operator()( const pow_operation& ) const {}
