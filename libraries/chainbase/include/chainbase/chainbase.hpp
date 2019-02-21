@@ -296,6 +296,8 @@ namespace chainbase {
 
          size_t get_cache_size() const { return _indices.get_cache_size(); }
 
+         void dump_lb_call_counts() { _indices.dump_lb_call_counts(); }
+
          void trim_cache( size_t cap ) { _indices.trim_cache( cap ); }
 
          class session {
@@ -644,6 +646,7 @@ namespace chainbase {
          virtual void flush() = 0;
          virtual size_t get_cache_usage() const = 0;
          virtual size_t get_cache_size() const = 0;
+         virtual void dump_lb_call_counts() = 0;
          virtual void trim_cache( size_t cap ) = 0;
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
@@ -731,6 +734,11 @@ namespace chainbase {
             return _base.get_cache_size();
          }
 
+         virtual void dump_lb_call_counts() override final
+         {
+            _base.dump_lb_call_counts();
+         }
+
          virtual void trim_cache( size_t cap ) override final
          {
             _base.trim_cache( cap );
@@ -816,6 +824,7 @@ namespace chainbase {
          void flush();
          size_t get_cache_usage() const;
          size_t get_cache_size() const;
+         void dump_lb_call_counts();
          void trim_cache( size_t cap );
          void wipe( const bfs::path& dir );
          void resize( size_t new_shared_file_size );
