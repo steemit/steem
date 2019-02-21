@@ -709,7 +709,8 @@ primary_iterator erase( primary_iterator position )
       std::vector< size_t > modified_indices;
       if( super::modify_( mod, v, modified_indices ) )
       {
-         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
+         auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+         status = retval.ok();
 
          if( status )
          {
@@ -722,6 +723,7 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
+            elog( "Error: ${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }
