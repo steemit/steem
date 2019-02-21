@@ -134,9 +134,12 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
+#ifndef ENABLE_STD_ALLOCATOR
          undo_all();
+#endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
+         idump( (head_block_num()) );
          if (args.do_validate_invariants)
             validate_invariants();
       });
@@ -298,6 +301,15 @@ void database::close(bool rewind)
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
       clear_pending();
+
+      idump( (head_block_num()) );
+      idump( (get_dynamic_global_properties().last_irreversible_block_num) );
+
+#ifdef ENABLE_STD_ALLOCATOR
+      undo_all();
+#endif
+
+      idump( (head_block_num()) );
 
       chainbase::database::flush();
       chainbase::database::close();
@@ -2936,6 +2948,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
+#ifndef ENABLE_STD_ALLOCATOR
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
@@ -2971,6 +2984,7 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
             elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
       }
    }
+#endif
 }
 
 void database::_apply_block( const signed_block& next_block )
