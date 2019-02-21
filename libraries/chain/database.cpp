@@ -2712,6 +2712,8 @@ void database::initialize_evaluators()
 
    _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
    _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
+   _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
+   
 
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
