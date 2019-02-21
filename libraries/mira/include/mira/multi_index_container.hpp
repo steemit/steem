@@ -43,6 +43,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/rate_limiter.h>
+#include <rocksdb/convenience.h>
 
 #include <iostream>
 
@@ -370,6 +371,8 @@ public:
    {
       if( super::_db )
       {
+         std::cout << "Closing " << _name << std::endl;
+         std::cout << "db share count: " << super::_db.use_count() << ", unique: " << super::_db.unique() << std::endl;
          auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
          auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
@@ -381,7 +384,9 @@ public:
 
          super::_cache->clear();
          assert( super::_db.unique() );
+         rocksdb::CancelAllBackgroundWork( &(*super::_db), true );
          super::cleanup_column_handles();
+         std::cout << "db share count: " << super::_db.use_count() << std::endl;
          super::_db.reset();
       }
    }
@@ -653,7 +658,8 @@ primary_iterator erase( primary_iterator position )
       bool status = false;
       if( super::insert_rocksdb_( v ) )
       {
-         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch()).ok();
+         auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+         status = retval.ok();
          if( status )
          {
             ++entry_count;
@@ -661,11 +667,13 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
+            elog( "${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }
       else
       {
+         elog( "Uniqueness Violation" );
          super::reset_first_key_update();
       }
       super::_write_buffer.Clear();
@@ -676,7 +684,8 @@ primary_iterator erase( primary_iterator position )
    void erase_( value_type& v )
    {
       super::erase_( v );
-      bool status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
+      auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+      bool status = retval.ok();
       if( status )
       {
          --entry_count;
@@ -685,6 +694,7 @@ primary_iterator erase( primary_iterator position )
       }
       else
       {
+         elog( "${e}", ("e", retval.ToString()) );
          super::reset_first_key_update();
       }
 
@@ -705,7 +715,8 @@ primary_iterator erase( primary_iterator position )
       std::vector< size_t > modified_indices;
       if( super::modify_( mod, v, modified_indices ) )
       {
-         status = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() ).ok();
+         auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+         status = retval.ok();
 
          if( status )
          {
@@ -718,6 +729,7 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
+            elog( "${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }

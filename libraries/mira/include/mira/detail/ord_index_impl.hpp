@@ -550,6 +550,8 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             _first_key_update = new_key;
          }
 
+         if( !s.ok() ) elog( "${e}", ("e", s.ToString()) );
+
          return s.ok();
       }
       return false;
