@@ -139,7 +139,6 @@ void database::open( const open_args& args )
 #endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
-         idump( (head_block_num()) );
          if (args.do_validate_invariants)
             validate_invariants();
       });
@@ -302,14 +301,9 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-      idump( (head_block_num()) );
-      idump( (get_dynamic_global_properties().last_irreversible_block_num) );
-
 #ifdef ENABLE_STD_ALLOCATOR
       undo_all();
 #endif
-
-      idump( (head_block_num()) );
 
       chainbase::database::flush();
       chainbase::database::close();

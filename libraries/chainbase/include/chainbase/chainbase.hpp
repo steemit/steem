@@ -273,9 +273,18 @@ namespace chainbase {
          {
             _indices.open( p );
             _revision = _indices.revision();
+            typename value_type::id_type next_id = 0;
+            if( _indices.get_metadata( "next_id", next_id ) )
+            {
+               _next_id = next_id;
+            }
          }
 
-         void close() { _indices.close(); }
+         void close()
+         {
+            _indices.put_metadata( "next_id", _next_id );
+            _indices.close();
+         }
 
          void wipe( const bfs::path& dir ) { _indices.wipe( dir ); }
 
