@@ -662,7 +662,7 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
-            elog( "Error: ${e}", ("e", retval.ToString()) );
+            elog( "${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }
@@ -688,7 +688,7 @@ primary_iterator erase( primary_iterator position )
       }
       else
       {
-         elog( "Error: ${e}", ("e", retval.ToString()) );
+         elog( "${e}", ("e", retval.ToString()) );
          super::reset_first_key_update();
       }
 
@@ -723,7 +723,7 @@ primary_iterator erase( primary_iterator position )
          }
          else
          {
-            elog( "Error: ${e}", ("e", retval.ToString()) );
+            elog( "${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
       }
