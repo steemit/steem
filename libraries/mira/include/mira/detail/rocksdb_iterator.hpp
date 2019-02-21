@@ -1,15 +1,48 @@
 #pragma once
 
 #include <boost/operators.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <mira/multi_index_container_fwd.hpp>
+#include <mira/composite_key.hpp>
 #include <mira/detail/object_cache.hpp>
+#include <mira/detail/slice_compare.hpp>
 
 #include <rocksdb/db.h>
 
 #include <iostream>
 
 namespace mira { namespace multi_index { namespace detail {
+
+template< typename T >
+struct is_less_ordering;
+
+template< typename T >
+struct is_less_ordering< std::less< T > > : boost::true_type {};
+
+template<>
+struct is_less_ordering< boost::tuples::null_type > : boost::true_type {};
+
+template< typename HT, typename TT >
+struct is_less_ordering< boost::tuples::cons< HT, TT > >
+{
+   static const bool value = is_less_ordering< HT >::value() && is_less_ordering< TT >::value;
+};
+
+template< typename... Args >
+struct is_less_ordering< composite_key_compare< Args... > >
+{
+   static const bool value = is_less_ordering< typename composite_key_compare< Args... >::key_comp_tuple >::value;
+};
+
+template< typename Key, typename CompareType >
+struct is_less_ordering< slice_comparator< Key, CompareType > >
+{
+   static const bool value = is_less_ordering< CompareType >::value;
+};
+
+template< typename T >
+struct is_less_ordering : boost::false_type {};
 
 template< typename Value, typename Key, typename KeyFromValue,
           typename KeyCompare, typename ID, typename IDFromValue >
@@ -43,6 +76,30 @@ private:
    std::shared_ptr< Value >                        _cache_value;
 
 public:
+
+   static uint64_t& lb_call_count()
+   {
+      static uint64_t count = 0;
+      return count;
+   }
+
+   static uint64_t& lb_miss_count()
+   {
+      static uint64_t count = 0;
+      return count;
+   }
+
+   static uint64_t& lb_prev_call_count()
+   {
+      static uint64_t count = 0;
+      return count;
+   }
+
+   static uint64_t& lb_no_prev_count()
+   {
+      static uint64_t count = 0;
+      return count;
+   }
 
    rocksdb_iterator( const column_handles& handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
@@ -484,6 +541,7 @@ public:
       const CompatibleKey& k )
    {
       static KeyCompare compare = KeyCompare();
+      lb_call_count()++;
       rocksdb_iterator itr( handles, index, db, cache );
       itr._iter.reset( db->NewIterator( itr._opts, handles[ index ] ) );
 
@@ -497,12 +555,14 @@ public:
          Key itr_key;
          unpack_from_slice( itr._iter->key(), itr_key );
 
-         if( !compare( itr_key, k ) )
+         //if( !key_equals( itr_key, k, compare ) )
+         if( !is_less_ordering< KeyCompare >::value && !compare( itr_key, k ) )
          {
             rocksdb_iterator prev( handles, index, db, cache );
             do
             {
                prev = itr--;
+               lb_prev_call_count()++;
                if( !itr.valid() ) return prev;
 
                unpack_from_slice( itr._iter->key(), itr_key );
@@ -510,6 +570,14 @@ public:
 
             return prev;
          }
+         else
+         {
+            lb_no_prev_count()++;
+         }
+      }
+      else
+      {
+         lb_miss_count()++;
       }
 
       return itr;

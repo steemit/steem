@@ -549,6 +549,13 @@ size_t get_cache_size() const
    return super::_cache->size();
 }
 
+void dump_lb_call_counts()
+{
+   ilog( "Object ${s}:", ("s",_name) );
+   super::dump_lb_call_counts();
+   ilog( "" );
+}
+
 primary_iterator iterator_to( const value_type& x )
 {
    return primary_index_type::iterator_to( x );
