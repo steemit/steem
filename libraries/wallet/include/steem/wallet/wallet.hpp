@@ -1094,7 +1094,7 @@ class wallet_api
        * @param _approve   - set if proposal(s) should be approved or not.
        */
       condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
-                                                                     std::vector<int64_t> _proposals, 
+                                                                     flat_set<int64_t> _proposals, 
                                                                      bool _approve = true);
       /**
        * List proposals
@@ -1127,10 +1127,10 @@ class wallet_api
       /**
        * Remove given proposal 
        * @param _deleter  - authorized account
-       * @param _id       - proposal id to be updated
+       * @param _ids       - proposal ids to be removed
        */
-      void remove_proposal(account_name_type _deleter, 
-                           int64_t _id);
+      condenser_api::legacy_signed_transaction remove_proposal(account_name_type _deleter, 
+                                                               flat_set<int64_t> _ids);
 };
 
 struct plain_keys {

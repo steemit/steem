@@ -72,6 +72,7 @@ namespace steem { namespace plugins { namespace condenser_api {
    typedef comment_payout_update_operation        legacy_comment_payout_update_operation;
    typedef create_proposal_operation              legacy_create_proposal_operation;
    typedef update_proposal_votes_operation        legacy_update_proposal_votes_operation;
+   typedef remove_proposal_operation              legacy_remove_proposal_operation;
 
    struct legacy_price
    {
@@ -1055,7 +1056,8 @@ namespace steem { namespace plugins { namespace condenser_api {
             legacy_comment_benefactor_reward_operation,
             legacy_producer_reward_operation,
             legacy_create_proposal_operation,
-            legacy_update_proposal_votes_operation
+            legacy_update_proposal_votes_operation,
+            legacy_remove_proposal_operation
          > legacy_operation;
 
    struct legacy_operation_conversion_visitor
@@ -1096,6 +1098,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       bool operator()( const create_proposal_operation& op )const                { l_op = op; return true; }
       bool operator()( const update_proposal_votes_operation& op )const          { l_op = op; return true; }
+      bool operator()( const remove_proposal_operation& op )const          { l_op = op; return true; }
 
       bool operator()( const transfer_operation& op )const
       {

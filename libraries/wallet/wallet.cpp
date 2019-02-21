@@ -2444,7 +2444,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    }
 
    condenser_api::legacy_signed_transaction  wallet_api::update_proposal_votes(account_name_type _voter,
-                                                                               std::vector<int64_t> _proposals,
+                                                                               flat_set<int64_t> _proposals,
                                                                                bool _approve)
    {
       FC_ASSERT(_voter.size());
@@ -2455,7 +2455,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       update_proposal_votes_operation upv ;
 
       upv.voter = voter.name;
-      upv.proposal_ids.insert(_proposals.cbegin(), _proposals.cend());
+      upv.proposal_ids = _proposals;
       upv.approve = _approve;
 
       ddump((upv.voter));
@@ -2530,7 +2530,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
-      args.voter           = _voter;
+      args.voter           = voter.name;
       args.order_by        = _order_by;
       args.order_direction = order_type_check();
       args.active          = _active;
@@ -2571,16 +2571,24 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return steem::plugins::sps::find_proposal_return ();
    }
 
-   void wallet_api::remove_proposal(account_name_type _deleter, 
-                                    int64_t _id)
+   condenser_api::legacy_signed_transaction wallet_api::remove_proposal(account_name_type _deleter, 
+                                                                        flat_set<int64_t> _ids )
    {
       FC_ASSERT(_deleter.size());
-      FC_ASSERT(_id > 0);
+      FC_ASSERT(!_ids.empty());
       auto deleter = get_account(_deleter);
 
-      ddump((deleter.name));
-      ddump((_id));
+      remove_proposal_operation rp;
+      rp.proposal_owner = deleter.name;
+      rp.proposal_ids   = _ids;
 
+      ddump((rp.proposal_owner));
+      ddump((rp.proposal_ids));
+
+      signed_transaction trx;
+      trx.operations.push_back( rp );
+      trx.validate();
+      return my->sign_transaction( trx, true );
    }
 
 } } // steem::wallet
