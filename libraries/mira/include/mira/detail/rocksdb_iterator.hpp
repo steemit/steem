@@ -7,42 +7,13 @@
 #include <mira/composite_key.hpp>
 #include <mira/detail/object_cache.hpp>
 #include <mira/detail/slice_compare.hpp>
+#include <mira/well_ordered.hpp>
 
 #include <rocksdb/db.h>
 
 #include <iostream>
 
 namespace mira { namespace multi_index { namespace detail {
-
-template< typename T >
-struct is_less_ordering;
-
-template< typename T >
-struct is_less_ordering< std::less< T > > : boost::true_type {};
-
-template<>
-struct is_less_ordering< boost::tuples::null_type > : boost::true_type {};
-
-template< typename HT, typename TT >
-struct is_less_ordering< boost::tuples::cons< HT, TT > >
-{
-   static const bool value = is_less_ordering< HT >::value() && is_less_ordering< TT >::value;
-};
-
-template< typename... Args >
-struct is_less_ordering< composite_key_compare< Args... > >
-{
-   static const bool value = is_less_ordering< typename composite_key_compare< Args... >::key_comp_tuple >::value;
-};
-
-template< typename Key, typename CompareType >
-struct is_less_ordering< slice_comparator< Key, CompareType > >
-{
-   static const bool value = is_less_ordering< CompareType >::value;
-};
-
-template< typename T >
-struct is_less_ordering : boost::false_type {};
 
 template< typename Value, typename Key, typename KeyFromValue,
           typename KeyCompare, typename ID, typename IDFromValue >
@@ -556,7 +527,7 @@ public:
          unpack_from_slice( itr._iter->key(), itr_key );
 
          //if( !key_equals( itr_key, k, compare ) )
-         if( !is_less_ordering< KeyCompare >::value && !compare( itr_key, k ) )
+         if( !is_well_ordered< KeyCompare, true >::value && !compare( itr_key, k ) )
          {
             rocksdb_iterator prev( handles, index, db, cache );
             do
