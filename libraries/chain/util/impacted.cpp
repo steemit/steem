@@ -252,6 +252,12 @@ struct get_impacted_account_visitor
       _impacted.insert( op.producer );
    }
 
+   void operator()(const proposal_pay_operation& op)
+   {
+      _impacted.insert(op.receiver);
+      _impacted.insert(STEEM_TREASURY_ACCOUNT);
+   }
+
    void operator()( const hardfork_operation& op )
    {
       _impacted.insert( STEEM_INIT_MINER_NAME );
