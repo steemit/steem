@@ -2,12 +2,16 @@
 #include <steem/plugins/json_rpc/utility.hpp>
 #include <steem/chain/sps_objects.hpp>
 
+#define SPS_API_SINGLE_QUERY_LIMIT 1000
+
 namespace steem { namespace plugins { namespace sps {
   using plugins::json_rpc::void_type;
   using steem::chain::account_name_type;
   using steem::chain::proposal_object;
   using steem::chain::proposal_id_type;
   using steem::protocol::asset;
+  using steem::chain::proposal_object;
+  using steem::chain::to_string;
 
   namespace detail
   {
@@ -16,14 +20,33 @@ namespace steem { namespace plugins { namespace sps {
 
   enum order_direction_type 
   {
-    direction_ascending,
-    direction_descending
+    direction_ascending, ///< sort with ascending order
+    direction_descending ///< sort with descending order
+  };
+
+  enum order_by_type
+  {
+    by_creator, ///< order by proposal creator
+    by_start_date, ///< order by proposal start date
+    by_total_votes, ///< order by total votes
   };
 
   typedef uint64_t api_id_type;
 
   struct api_proposal_object
   {
+    api_proposal_object(const proposal_object& po) : 
+      id(po.id),
+      creator(po.creator),
+      receiver(po.receiver),
+      start_date(po.start_date),
+      end_date(po.end_date),
+      daily_pay(po.daily_pay),
+      subject(to_string(po.subject)),
+      url(to_string(po.url)),
+      total_votes(po.total_votes)
+    {}
+
     //internal key
     api_id_type id;
 
@@ -58,9 +81,11 @@ namespace steem { namespace plugins { namespace sps {
     // set of ids of the proposals to find
     flat_set<api_id_type> id_set;
     // name of the field by which results will be sored
-    string order_by;
+    order_by_type order_by;
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
+    //
+
     // result will contain only data with active flag set to this value
     int8_t active;
   };
@@ -71,10 +96,14 @@ namespace steem { namespace plugins { namespace sps {
   // Struct with argumentse for list_proposals method
   struct list_proposals_args 
   {
+    // starting value for querying results
+    fc::variant start;
     // name of the field by which results will be sored
-    string order_by;
+    order_by_type order_by;
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
+    // query limit
+    uint16_t limit;
     // result will contain only data with active flag set to this value
     int8_t active;
   };
@@ -88,9 +117,11 @@ namespace steem { namespace plugins { namespace sps {
     // list only proposal voted by this voter
     account_name_type voter;
     // name of the field by which results will be sored
-    string order_by;
+    order_by_type order_by;
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
+    // query limit
+    uint16_t limit;
     // result will contain only data with active flag set to this value
     int8_t active;
   };
@@ -121,6 +152,12 @@ FC_REFLECT_ENUM(steem::plugins::sps::order_direction_type,
   (direction_descending)
   );
 
+FC_REFLECT_ENUM(steem::plugins::sps::order_by_type, 
+  (by_creator)
+  (by_start_date)
+  (by_total_votes)
+  );
+
 FC_REFLECT(steem::plugins::sps::api_proposal_object,
   (id)
   (creator)
@@ -141,8 +178,10 @@ FC_REFLECT(steem::plugins::sps::find_proposals_args,
   );
 
 FC_REFLECT(steem::plugins::sps::list_proposals_args, 
+  (start)
   (order_by)
   (order_direction)
+  (limit)
   (active)
   );
 
@@ -150,6 +189,7 @@ FC_REFLECT(steem::plugins::sps::list_voter_proposals_args,
   (voter)
   (order_by)
   (order_direction)
+  (limit)
   (active)
   );
 

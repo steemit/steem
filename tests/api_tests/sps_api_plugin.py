@@ -29,7 +29,7 @@ if not logger.hasHandlers():
 def get_random_id():
   return str(uuid.uuid4())
 
-def list_voter_proposals(voter, order_by, order_direction, active):
+def list_voter_proposals(voter, order_by, order_direction, limit, active):
   payload = {
     "jsonrpc" : "2.0",
     "id" : get_random_id(),
@@ -38,6 +38,7 @@ def list_voter_proposals(voter, order_by, order_direction, active):
       "voter" : voter,
       "order_by" : order_by, 
       "order_direction" : order_direction,
+      "limit" : limit,
       "active" : active
     }
   }
@@ -61,14 +62,16 @@ def find_proposals(id_set, order_by, order_direction, active):
   logger.info("New payload: {}".format(ret))
   return ret
 
-def list_proposals(order_by, order_direction, active):
+def list_proposals(start, order_by, order_direction, limit, active):
   payload = {
     "jsonrpc" : "2.0",
     "id" : get_random_id(),
     "method" : "sps_api.list_proposals", 
     "params" : {
+      "start" : start,
       "order_by" : order_by, 
       "order_direction" : order_direction,
+      "limit" : limit,
       "active" : active
     }
   }
@@ -96,12 +99,12 @@ if __name__ == '__main__':
   url = "{0}:{1}".format(args.node_ip, args.node_port)
   logger.info("Using node at: {}".format(url))
 
-  payload = find_proposals([1234, 2, 3, 4], "creator", "direction_ascending", 1)
+  payload = find_proposals([1234, 2, 3, 4], "by_creator", "direction_ascending", 1)
   run_test("Basic find_proposal test", None, url, payload)
 
-  payload = list_proposals("creator", "direction_ascending", 1)
+  payload = list_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
   run_test("Basic list_proposals test", None, url, payload)
 
-  payload = list_voter_proposals("blocktrades", "creator", "direction_ascending", 1)
+  payload = list_voter_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
   run_test("Basic list_voter_proposals test", None, url, payload)
 
