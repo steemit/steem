@@ -24,20 +24,20 @@
   - name: "find_proposals"
   - variable_binds:
     - method: "find_proposals"
-    - args: '{"id_set" : [1,2,3,4,5], "order_by":"creator", "order_direction":"direction_ascending","active":1}'
+    - args: '{"id_set" : [1,2,3,4,5], "order_by":"by_creator", "order_direction":"direction_ascending","active":1}'
   - <<: *base_test
 
 - test:
   - name: "list_proposals"
   - variable_binds:
     - method: "list_proposals"
-    - args: '{"order_by":"creator", "order_direction":"direction_ascending","active":1}}'
+    - args: '{"start": "blocktrades", "order_by":"by_creator", "order_direction":"direction_ascending","limit" : 1, "active":1}}'
   - <<: *base_test
 
 - test:
   - name: "list_voter_proposals"
   - variable_binds:
     - method: "list_voter_proposals"
-    - args: '{"voter : "blocktrades", ""order_by":"creator", "order_direction":"direction_ascending","active":1}}'
+    - args: '{"voter : "blocktrades", ""order_by":"by_creator", "order_direction":"direction_ascending","limit" : 1, "active" : 1}}'
   - <<: *base_test
 
