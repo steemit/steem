@@ -364,6 +364,11 @@ struct count_operation_visitor
       FC_TODO("Change RC state bytes computation to take proposals into account");
    }
 
+   void operator()(const proposal_pay_operation&) const
+   {
+      FC_TODO("Change RC state bytes computation to take proposals into account");
+   }
+
    void operator()( const recover_account_operation& ) const {}
    void operator()( const pow_operation& ) const {}
    void operator()( const pow2_operation& ) const {}
