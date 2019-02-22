@@ -16,7 +16,7 @@ class sps_api_impl
     ~sps_api_impl();
 
     DECLARE_API_IMPL(
-        (find_proposal)
+        (find_proposals)
         (list_proposals)
         (list_voter_proposals)
         )
@@ -43,21 +43,8 @@ api_proposal_object to_api_proposal_object(const proposal_object &po)
   return result;
 }
 
-DEFINE_API_IMPL(sps_api_impl, find_proposal) {
-  ilog("find_proposal called");
-  find_proposal_return result;
-  const auto& pidx = _db.get_index<proposal_index>().indices().get<by_id>();
-  auto found = pidx.find(args.id);
-  if (found != pidx.end())
-  {
-    result.emplace_back(to_api_proposal_object(*found));
-  }
-
-  return result;
-}
-
 template<typename RESULT_TYPE, typename FIELD_TYPE>
-void sort_results_helper(RESULT_TYPE &result, order_direction_type order_direction, FIELD_TYPE api_proposal_object::*field)
+void sort_results_helper(RESULT_TYPE& result, order_direction_type order_direction, FIELD_TYPE api_proposal_object::*field)
 {
   switch (order_direction)
   {
@@ -83,7 +70,7 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
 }
 
 template<typename RESULT_TYPE>
-void sort_results(RESULT_TYPE &result, const string &field_name, order_direction_type order_direction)
+void sort_results(RESULT_TYPE& result, const string& field_name, order_direction_type order_direction)
 {
   // sorting operations
   if (field_name == "id")
@@ -129,6 +116,27 @@ void sort_results(RESULT_TYPE &result, const string &field_name, order_direction
   }
 
   FC_ASSERT(false, "Unknown or unsupported field name");
+}
+
+DEFINE_API_IMPL(sps_api_impl, find_proposals) {
+  ilog("find_proposal called");
+  find_proposals_return result;
+  const auto& pidx = _db.get_index<proposal_index>().indices().get<by_id>();
+  std::for_each(args.id_set.begin(), args.id_set.end(), [&](auto& id) {
+    auto found = pidx.find(id);
+    if (found != pidx.end())
+    {
+      result.emplace_back(to_api_proposal_object(*found));
+    }
+  });
+
+  if (!result.empty())
+  {
+    // sorting operations
+    sort_results<find_proposals_return>(result, args.order_by, args.order_direction);
+  }
+
+  return result;
 }
 
 DEFINE_API_IMPL(sps_api_impl, list_proposals) {
@@ -193,7 +201,7 @@ sps_api::sps_api(): my( new detail::sps_api_impl() )
 sps_api::~sps_api() {}
 
 DEFINE_READ_APIS(sps_api,
-  (find_proposal)
+  (find_proposals)
   (list_proposals)
   (list_voter_proposals)
 )
