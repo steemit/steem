@@ -52,15 +52,21 @@ namespace steem { namespace plugins { namespace sps {
     uint64_t total_votes = 0;
   };
 
-  // Struct with arguments for find_proposal methd
-  struct find_proposal_args 
+  // Struct with arguments for find_proposals methd
+  struct find_proposals_args 
   {
-    // id of the proposal to find
-    api_id_type id;
+    // set of ids of the proposals to find
+    flat_set<api_id_type> id_set;
+    // name of the field by which results will be sored
+    string order_by;
+    // sorting order (ascending or descending) of the result vector
+    order_direction_type order_direction;
+    // result will contain only data with active flag set to this value
+    int8_t active;
   };
 
   // Return type for find_proposal method
-  typedef std::vector<api_proposal_object> find_proposal_return;
+  typedef std::vector<api_proposal_object> find_proposals_return;
   
   // Struct with argumentse for list_proposals method
   struct list_proposals_args 
@@ -99,7 +105,7 @@ namespace steem { namespace plugins { namespace sps {
       ~sps_api();
 
       DECLARE_API(
-        (find_proposal)
+        (find_proposals)
         (list_proposals)
         (list_voter_proposals)
         )
@@ -127,8 +133,11 @@ FC_REFLECT(steem::plugins::sps::api_proposal_object,
   (total_votes)
   );
 
-FC_REFLECT(steem::plugins::sps::find_proposal_args, 
-  (id)
+FC_REFLECT(steem::plugins::sps::find_proposals_args, 
+  (id_set)
+  (order_by)
+  (order_direction)
+  (active)
   );
 
 FC_REFLECT(steem::plugins::sps::list_proposals_args, 
