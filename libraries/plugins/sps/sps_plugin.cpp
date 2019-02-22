@@ -186,6 +186,8 @@ void sps_plugin_impl::transfer_payments( const time_point_sec& head_time, asset&
    if( maintenance_budget_limit.amount.value == 0 )
       return;
 
+   const auto& treasury_account = _db.get_account(STEEM_TREASURY_ACCOUNT);
+
    auto passed_time_seconds = ( head_time - _db.get_dynamic_global_properties().last_budget_time ).to_seconds();
    double ratio = static_cast< double >( passed_time_seconds ) / daily_seconds;
 
@@ -197,19 +199,26 @@ void sps_plugin_impl::transfer_payments( const time_point_sec& head_time, asset&
       if( _item.total_votes == 0 )
          break;
 
-      const auto& treasury_account = _db.get_account( STEEM_TREASURY_ACCOUNT );
       const auto& receiver_account = _db.get_account( _item.receiver );
 
       auto period_pay = asset( ratio * _item.daily_pay.amount.value, _item.daily_pay.symbol );
 
       if( period_pay >= maintenance_budget_limit )
       {
+         operation vop = proposal_pay_operation(_item.receiver, maintenance_budget_limit, _item.id._id);
+         /// Push vop to be recorded by other parts (like AH plugin etc.)
+         _db.push_virtual_operation(vop);
+         /// Virtual ops have no evaluators, so operation must be immediately "evaluated"
          _db.adjust_balance( treasury_account, -maintenance_budget_limit );
          _db.adjust_balance( receiver_account, maintenance_budget_limit );
          break;
       }
       else
       {
+         operation vop = proposal_pay_operation(_item.receiver, period_pay, _item.id._id);
+         /// Push vop to be recorded by other parts (like AH plugin etc.)
+         _db.push_virtual_operation(vop);
+         /// Virtual ops have no evaluators, so operation must be immediately "evaluated"
          _db.adjust_balance( treasury_account, -period_pay );
          _db.adjust_balance( receiver_account, period_pay );
          maintenance_budget_limit -= period_pay;
