@@ -105,6 +105,8 @@ private:
    std::shared_ptr< ::rocksdb::Statistics >        _stats;
    ::rocksdb::WriteOptions                         _wopts;
 
+   rocksdb::ReadOptions                            _ropts;
+
 public:
   /* All types are inherited from super, a few are explicitly
    * brought forward here to save us some typename's.
@@ -371,8 +373,6 @@ public:
    {
       if( super::_db )
       {
-         std::cout << "Closing " << _name << std::endl;
-         std::cout << "db share count: " << super::_db.use_count() << ", unique: " << super::_db.unique() << std::endl;
          auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
          auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
@@ -386,7 +386,6 @@ public:
          assert( super::_db.unique() );
          rocksdb::CancelAllBackgroundWork( &(*super::_db), true );
          super::cleanup_column_handles();
-         std::cout << "db share count: " << super::_db.use_count() << std::endl;
          super::_db.reset();
       }
    }
@@ -552,6 +551,13 @@ size_t get_cache_usage() const
 size_t get_cache_size() const
 {
    return super::_cache->size();
+}
+
+void dump_lb_call_counts()
+{
+   ilog( "Object ${s}:", ("s",_name) );
+   super::dump_lb_call_counts();
+   ilog( "" );
 }
 
 primary_iterator iterator_to( const value_type& x )
@@ -741,6 +747,47 @@ primary_iterator erase( primary_iterator position )
       super::_write_buffer.Clear();
 
       return status;
+   }
+
+   template< typename MetaKey, typename MetaValue >
+   bool get_metadata( const MetaKey& k, MetaValue& v )
+   {
+      if( !super::_db ) return false;
+
+      rocksdb::PinnableSlice key_slice, value_slice;
+
+      pack_to_slice( key_slice, k );
+
+      auto status = super::_db->Get(
+         _ropts,
+         super::_handles[ 0 ],
+         key_slice,
+         &value_slice );
+
+      if( status.ok() )
+      {
+         unpack_from_slice( value_slice, v );
+      }
+
+      return status.ok();
+   }
+
+   template< typename MetaKey, typename MetaValue >
+   bool put_metadata( const MetaKey& k, const MetaValue& v )
+   {
+      if( !super::_db ) return false;
+
+      rocksdb::PinnableSlice key_slice, value_slice;
+      pack_to_slice( key_slice, k );
+      pack_to_slice( value_slice, v );
+
+      auto status = super::_db->Put(
+         _wopts,
+         super::_handles[0],
+         key_slice,
+         value_slice );
+
+      return status.ok();
    }
 
 private:

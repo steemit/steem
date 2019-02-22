@@ -122,6 +122,16 @@ namespace chainbase {
 #endif
    }
 
+   void database::dump_lb_call_counts()
+   {
+#ifdef ENABLE_STD_ALLOCATOR
+      for( const auto& i : _index_list )
+      {
+         i->dump_lb_call_counts();
+      }
+#endif
+   }
+
    void database::trim_cache( size_t cap )
    {
 #ifdef ENABLE_STD_ALLOCATOR

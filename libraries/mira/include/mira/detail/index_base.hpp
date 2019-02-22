@@ -123,6 +123,8 @@ protected:
       _handles.clear();
    }
 
+   void dump_lb_call_counts() {}
+
    /* access to backbone memfuns of Final class */
 
    final_type&       final(){return *static_cast<final_type*>(this);}

@@ -139,7 +139,6 @@ void database::open( const open_args& args )
 #endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
-         idump( (head_block_num()) );
          if (args.do_validate_invariants)
             validate_invariants();
       });
@@ -250,6 +249,10 @@ uint32_t database::reindex( const open_args& args )
             if( cur_block_num % 100000 == 0 )
             {
                //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+               if( cur_block_num % 1000000 == 0 )
+               {
+                  dump_lb_call_counts();
+               }
             }
 
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
@@ -302,14 +305,9 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-      idump( (head_block_num()) );
-      idump( (get_dynamic_global_properties().last_irreversible_block_num) );
-
 #ifdef ENABLE_STD_ALLOCATOR
       undo_all();
 #endif
-
-      idump( (head_block_num()) );
 
       chainbase::database::flush();
       chainbase::database::close();
