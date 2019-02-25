@@ -50,3 +50,4 @@ witness_node_data_dir
 *.pyc
 *.pyo
 *.egg-info/
+*.log
