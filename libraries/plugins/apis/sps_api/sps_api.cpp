@@ -2,6 +2,7 @@
 #include <steem/plugins/sps_api/sps_api.hpp>
 #include <steem/chain/sps_objects.hpp>
 #include <appbase/application.hpp>
+#include <steem/utilities/iterate_results.hpp>
 
 namespace steem { namespace plugins { namespace sps {
 
@@ -20,25 +21,7 @@ class sps_api_impl
         (list_proposals)
         (list_voter_proposals)
         )
-
-
-    template< typename ResultType >
-    static ResultType on_push_default( const ResultType& r ) { return r; }
-
-    template< typename IndexType, typename OrderType, typename ValueType, typename ResultType, typename OnPush >
-    void iterate_results( ValueType start, vector< ResultType >& result, uint32_t limit, OnPush&& on_push = &sps_api_impl::on_push_default< ResultType > )
-    {
-        const auto& idx = _db.get_index< IndexType, OrderType >();
-        auto itr = idx.lower_bound( start );
-        auto end = idx.end();
-
-        while( result.size() < limit && itr != end )
-        {
-          result.push_back( on_push( *itr ) );
-          ++itr;
-        }
-    }
-
+    
     chain::database& _db;
 };
 
@@ -134,30 +117,33 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   {
     case by_creator:
     {
-      iterate_results<proposal_index, steem::chain::by_creator>(
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_creator>(
         args.start.as<account_name_type>(),
         result,
         args.limit,
+        _db,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_start_date:
     {
-      iterate_results<proposal_index, steem::chain::by_date>(
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_date>(
         args.start.as<time_point_sec>(),
         result,
         args.limit,
+        _db,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_total_votes:
     {
-      iterate_results<proposal_index, steem::chain::by_total_votes>(
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_total_votes>(
         args.start.as<uint64_t>(),
         result,
         args.limit,
+        _db,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -182,10 +168,11 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   result.reserve(args.limit);
 
   std::vector<api_id_type> proposal_ids_of_voter;
-  iterate_results<proposal_vote_index, by_voter_proposal>(
+  steem::utilities::iterate_results<proposal_vote_index, by_voter_proposal>(
     account_name_type(args.voter),
     proposal_ids_of_voter,
     args.limit,
+    _db,
     [&](auto& vote_object) { return vote_object.proposal_id; }
   );
 
