@@ -2468,15 +2468,29 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return my->sign_transaction( trx, true );
    }
 
-   steem::plugins::sps::list_proposals_return wallet_api::list_proposals(std::string _order_by,
+   steem::plugins::sps::list_proposals_return wallet_api::list_proposals(fc::variant _start,
+                                                                         std::string _order_by,
                                                                          std::string _order_type,
+                                                                         int _limit,
                                                                          int _active)
    {
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
+      FC_ASSERT(_limit > 0);
       FC_ASSERT(_active >= -1 and _active <= 1);
 
-      auto order_type_check = [&_order_type]() {
+      auto ordered_by = [&_order_by]() {
+         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
+         if ( _order_by == "date" ) {
+            return order_by_type::by_start_date;
+         } else if ( _order_by == "votes" ) {
+            return order_by_type::by_total_votes;
+         } else {
+            return order_by_type::by_creator;
+         }
+      };
+
+      auto ordered_type = [&_order_type]() {
          std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
          if ( _order_type == "desc" ) {
             return order_direction_type::direction_descending;
@@ -2487,12 +2501,16 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_proposals_args args;
-      args.order_by        = _order_by;
-      args.order_direction = order_type_check();
+      args.start           = _start;
+      args.order_by        = ordered_by();
+      args.order_direction = ordered_type();
+      args.limit           = _limit;
       args.active          = _active;
 
+      ddump((args.start));
       ddump((args.order_by));
       ddump((args.order_direction));
+      ddump((args.limit));
       ddump((args.active));
 
       try {
@@ -2510,16 +2528,29 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(account_name_type _voter,
                                                                                      std::string _order_by,
                                                                                      std::string _order_type,
+                                                                                     int _limit,
                                                                                      int _active)
    {
       FC_ASSERT(_voter.size());
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
+      FC_ASSERT(_limit > 0);
       FC_ASSERT(_active >= -1 and _active <= 1);
 
       auto voter = get_account(_voter);
 
-      auto order_type_check = [&_order_type]() {
+      auto ordered_by = [&_order_by]() {
+         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
+         if ( _order_by == "date" ) {
+            return order_by_type::by_start_date;
+         } else if ( _order_by == "votes" ) {
+            return order_by_type::by_total_votes;
+         } else {
+            return order_by_type::by_creator;
+         }
+      };
+
+      auto ordered_type = [&_order_type]() {
          std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
          if ( _order_type == "desc" ) {
             return order_direction_type::direction_descending;
@@ -2531,14 +2562,17 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
       args.voter           = voter.name;
-      args.order_by        = _order_by;
-      args.order_direction = order_type_check();
+      args.order_by        = ordered_by();
+      args.order_direction = ordered_type();
+      args.limit           = _limit;
       args.active          = _active;
 
       ddump((args.voter));
       ddump((args.order_by));
       ddump((args.order_direction));
+      ddump((args.limit));
       ddump((args.active));
+
       try {
          return api->list_voter_proposals(args);
       } catch( fc::exception& _e) {
@@ -2551,16 +2585,17 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return steem::plugins::sps::list_voter_proposals_return ();
    }
 
-   steem::plugins::sps::find_proposal_return wallet_api::find_proposal(int64_t _id)
+   steem::plugins::sps::find_proposals_return wallet_api::find_proposals(flat_set<uint64_t> _ids)
    {
-      FC_ASSERT(_id > 0);
+      FC_ASSERT(!_ids.empty());
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
-      steem::plugins::sps::find_proposal_args args;
-      args.id = _id;
+      steem::plugins::sps::find_proposals_args args;
+      args.id_set = _ids;
 
-      ddump((args.id));
+      ddump((args.id_set));
+
       try {
-         return api->find_proposal(args);
+         return api->find_proposals(args);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {
@@ -2568,7 +2603,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       } catch( ... ) {
          elog("Caught unhandled exception in find_proposal_return.");
       }
-      return steem::plugins::sps::find_proposal_return ();
+      return steem::plugins::sps::find_proposals_return ();
    }
 
    condenser_api::legacy_signed_transaction wallet_api::remove_proposal(account_name_type _deleter, 
