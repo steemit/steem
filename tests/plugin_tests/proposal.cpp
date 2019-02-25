@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance )
 
       plugin_prepare();
 
-      ACTORS( (alice)(bob)(carol)(dan) )
+      ACTORS( (alice)(bob) )
       generate_block();
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
