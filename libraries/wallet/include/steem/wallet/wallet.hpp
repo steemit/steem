@@ -1097,31 +1097,37 @@ class wallet_api
                                                                      bool _approve = true);
       /**
        * List proposals
-       * @param _order_by   - name a field for sorting operation
-       * @param _order_type - set print order asc - ascdending, desc - descending,,
+       * @param _start      - starting value for querying results,
+       * @param _order_by   - name a field for sorting operation,
+       * @param _order_type - set print order asc - ascdending, desc - descending,
+       * @param _limit      - query limit
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
-      list_proposals_return list_proposals(std::string _order_by = "id",
+      list_proposals_return list_proposals(fc::variant _start,
+                                           std::string _order_by = "creator",
                                            std::string _order_type = "desc",
+                                           int _limit = 10,
                                            int _active = 1);
 
       /**
        * List proposals of given voter
-       * @param _voter      - given voter
-       * @param _order_by   - name a field for sorting operation
-       * @param _order_type - set print order asc - ascdending, desc - descending,,
+       * @param _voter      - given voter,
+       * @param _order_by   - name a field for sorting operation,
+       * @param _order_type - set print order asc - ascdending, desc - descending,
+       * @param _limit      - query limit
        * @param _active     - set which proposals to list, for: 1 - list active proposals, 0 - list inactive proposals, -1 - list all.
        */
       list_voter_proposals_return list_voter_proposals(account_name_type _voter,
-                                                       std::string _order_by = "id",
+                                                       std::string _order_by = "creator",
                                                        std::string _order_type = "desc",
+                                                       int _limit = 10,
                                                        int _active = 1);
 
       /**
        * Find proposal with given id
-       * @param _id - id of wanted proposal
+       * @param _ids - array with ids of wanted proposals to be founded.
        */
-      find_proposal_return find_proposal(int64_t _id);
+      find_proposals_return find_proposals(flat_set<uint64_t> _ids);
 
       /**
        * Remove given proposal 
@@ -1239,7 +1245,7 @@ FC_API( steem::wallet::wallet_api,
         (update_proposal_votes)
         (list_proposals)
         (list_voter_proposals)
-        (find_proposal)
+        (find_proposals)
         (remove_proposal)
       )
 
