@@ -46,16 +46,13 @@ def list_voter_proposals(voter, order_by, order_direction, limit, active):
   logger.info("New payload: {}".format(ret))
   return ret
 
-def find_proposals(id_set, order_by, order_direction, active):
+def find_proposals(id_set):
      payload = {
     "jsonrpc" : "2.0",
     "id" : get_random_id(),
     "method" : "sps_api.find_proposals", 
     "params" : {
-      "id_set" : id_set,
-      "order_by" : order_by, 
-      "order_direction" : order_direction,
-      "active" : active
+      "id_set" : id_set
     }
   }
   ret = json.dumps(payload)
@@ -99,7 +96,7 @@ if __name__ == '__main__':
   url = "{0}:{1}".format(args.node_ip, args.node_port)
   logger.info("Using node at: {}".format(url))
 
-  payload = find_proposals([1234, 2, 3, 4], "by_creator", "direction_ascending", 1)
+  payload = find_proposals([1234, 2, 3, 4])
   run_test("Basic find_proposal test", None, url, payload)
 
   payload = list_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
