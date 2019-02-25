@@ -4,6 +4,7 @@
 
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/sps_objects.hpp>
+#include <steem/chain/sps_helper.hpp>
 
 
 namespace steem { namespace chain {
@@ -93,39 +94,8 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
    try
    {
       ilog("Attempting to evaluate remove_proposal_operation: ${o}", ("o", op));
-      
-      auto& proposalIdx = _db.get_mutable_index< proposal_index >();
-      auto& byIdIdx = proposalIdx.indices().get< by_id >();
 
-      auto& votesIndex = _db.get_mutable_index< proposal_vote_index >();
-      auto& byVoterIdx = votesIndex.indices().get< by_proposal_voter >();
-
-      for(auto id : op.proposal_ids)
-      {
-         auto foundPosI = byIdIdx.find(id);
-
-         if(foundPosI == byIdIdx.end())
-            continue;
-
-         const auto& proposal = *foundPosI;
-
-         FC_ASSERT(proposal.creator == op.proposal_owner, "Only proposal owner can remove it...");
-
-         ilog("Erasing all votes associated to proposal: ${p}", ("p", proposal));
-
-         /// Now remove all votes specific to given proposal.
-         auto propI = byVoterIdx.lower_bound(boost::make_tuple(proposal.id, account_name_type()));
-
-         while(propI != byVoterIdx.end() && propI->id == proposal.id)
-         {
-            propI = votesIndex.erase<by_proposal_voter>(propI);
-         }
-
-         ilog("Erasing proposal: ${p}", ("p", proposal));
-
-         proposalIdx.remove(proposal);
-      }
-
+      sps_helper::remove_proposals( _db, op.proposal_ids, op.proposal_owner );
    }
    FC_CAPTURE_AND_RETHROW( (op) )
 }

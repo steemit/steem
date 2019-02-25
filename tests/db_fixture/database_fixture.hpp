@@ -350,6 +350,8 @@ struct t_proposal_database_fixture : public T
    void transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 
    void transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
+
+   bool exist_proposal( int64_t id );
 };
 
 using proposal_database_fixture = t_proposal_database_fixture< clean_database_fixture >;
