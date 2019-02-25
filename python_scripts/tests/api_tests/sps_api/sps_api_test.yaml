@@ -24,7 +24,7 @@
   - name: "find_proposals"
   - variable_binds:
     - method: "find_proposals"
-    - args: '{"id_set" : [1,2,3,4,5], "order_by":"by_creator", "order_direction":"direction_ascending","active":1}'
+    - args: '{"id_set" : [1,2,3,4,5]}'
   - <<: *base_test
 
 - test:
