@@ -12,9 +12,20 @@
 
 namespace steem { namespace plugins { namespace sps {
 
-using namespace steem::chain;
-using namespace steem::protocol;
+using steem::protocol::asset;
+using steem::protocol::operation;
 
+using steem::chain::proposal_object;
+using steem::chain::by_start_date;
+using steem::chain::by_end_date;
+using steem::chain::proposal_index;
+using steem::chain::proposal_id_type;
+using steem::chain::proposal_vote_index;
+using steem::chain::by_proposal_voter;
+using steem::chain::by_voter_proposal;
+using steem::chain::proposal_pay_operation;
+using steem::chain::sps_helper;
+using steem::chain::dynamic_global_property_object;
 using steem::chain::block_notification;
 using steem::chain::generic_custom_operation_interpreter;
 
