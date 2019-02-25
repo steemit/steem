@@ -48,7 +48,7 @@ namespace steem { namespace plugins { namespace sps {
     {}
 
     //internal key
-    api_id_type id;
+    api_id_type id = 0;
 
     // account that created the proposal
     account_name_type creator;
@@ -80,14 +80,6 @@ namespace steem { namespace plugins { namespace sps {
   {
     // set of ids of the proposals to find
     flat_set<api_id_type> id_set;
-    // name of the field by which results will be sored
-    order_by_type order_by;
-    // sorting order (ascending or descending) of the result vector
-    order_direction_type order_direction;
-    //
-
-    // result will contain only data with active flag set to this value
-    int8_t active;
   };
 
   // Return type for find_proposal method
@@ -172,9 +164,6 @@ FC_REFLECT(steem::plugins::sps::api_proposal_object,
 
 FC_REFLECT(steem::plugins::sps::find_proposals_args, 
   (id_set)
-  (order_by)
-  (order_direction)
-  (active)
   );
 
 FC_REFLECT(steem::plugins::sps::list_proposals_args, 

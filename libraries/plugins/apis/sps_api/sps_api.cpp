@@ -38,7 +38,7 @@ void sort_results_helper(RESULT_TYPE& result, order_direction_type order_directi
     {
       std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
-        return a.*field > b.*field;
+        return a.*field < b.*field;
       });
     }
     break;
@@ -46,7 +46,7 @@ void sort_results_helper(RESULT_TYPE& result, order_direction_type order_directi
     {
       std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
-        return a.*field < b.*field;
+        return a.*field > b.*field;
       });
     }
     break;
@@ -96,12 +96,6 @@ DEFINE_API_IMPL(sps_api_impl, find_proposals) {
       result.emplace_back(api_proposal_object(*po));
     }
   });
-
-  if (!result.empty())
-  {
-    // sorting operations
-    sort_results<find_proposals_return>(result, args.order_by, args.order_direction);
-  }
 
   return result;
 }
@@ -167,26 +161,21 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   list_voter_proposals_return result;
   result.reserve(args.limit);
 
-  std::vector<api_id_type> proposal_ids_of_voter;
   steem::utilities::iterate_results<proposal_vote_index, by_voter_proposal>(
     account_name_type(args.voter),
-    proposal_ids_of_voter,
+    result,
     args.limit,
     _db,
-    [&](auto& vote_object) { return vote_object.proposal_id; }
+    [&](auto& vote_object) 
+    { 
+      auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(vote_object.proposal_id);
+      FC_ASSERT(po != nullptr, "Proposal with given id does not exists");
+      return api_proposal_object(*po);
+    }
   );
 
-  if (!proposal_ids_of_voter.empty())
+  if (!result.empty())
   {
-    // for each proposal id find proposal_obect and put it in result
-    std::for_each(proposal_ids_of_voter.begin(), proposal_ids_of_voter.end(), [&](auto &proposal_id) {
-      auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(proposal_id);
-      if (po != nullptr)
-      {
-        result.emplace_back(api_proposal_object(*po));
-      }
-    });
-
     // sorting operations
     sort_results<list_voter_proposals_return>(result, args.order_by, args.order_direction);
   }
