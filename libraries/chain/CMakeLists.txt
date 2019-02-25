@@ -7,7 +7,10 @@ add_library( steem_chain
              database.cpp
 
              smt_evaluator.cpp
+
              sps_evaluator.cpp
+             sps_helper.cpp
+
              smt_objects/smt_market_maker.cpp
              steem_evaluator.cpp
              steem_objects.cpp

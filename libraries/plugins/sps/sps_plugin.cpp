@@ -1,5 +1,6 @@
 #include <steem/plugins/sps/sps_plugin.hpp>
 #include <steem/chain/sps_objects.hpp>
+#include <steem/chain/sps_helper.hpp>
 #include <steem/protocol/sps_operations.hpp>
 
 #include <steem/chain/notifications.hpp>
@@ -24,6 +25,7 @@ class sps_plugin_impl
    public:
 
       using t_proposals = std::vector< std::reference_wrapper< const proposal_object > >;
+      using t_ids = flat_set<int64_t>;
 
    private:
 
@@ -37,6 +39,7 @@ class sps_plugin_impl
 
       bool is_maintenance_period( const time_point_sec& head_time ) const;
 
+      void find_inactive_proposals( const time_point_sec& head_time, t_ids& ids );
       void find_active_proposals( const time_point_sec& head_time, t_proposals& proposals );
 
       uint64_t calculate_votes( const proposal_id_type& id );
@@ -56,6 +59,7 @@ class sps_plugin_impl
 
       void update_settings( const time_point_sec& head_time );
 
+      void remove_old_proposals( const block_notification& note );
       void make_payments( const block_notification& note );
 
    public:
@@ -84,9 +88,21 @@ bool sps_plugin_impl::is_maintenance_period( const time_point_sec& head_time ) c
    return _db.get_dynamic_global_properties().next_maintenance_time <= head_time;
 }
 
+void sps_plugin_impl::find_inactive_proposals( const time_point_sec& head_time, t_ids& ids )
+{
+   const auto& pidx = _db.get_index< proposal_index >().indices().get< by_end_date >();
+
+   auto found = pidx.upper_bound( head_time );
+
+   std::for_each( pidx.begin(), found, [&ids]( const auto& proposal )
+                                       {
+                                          ids.insert( proposal.id );
+                                       });
+}
+
 void sps_plugin_impl::find_active_proposals( const time_point_sec& head_time, t_proposals& proposals )
 {
-   const auto& pidx = _db.get_index< proposal_index >().indices().get< by_date >();
+   const auto& pidx = _db.get_index< proposal_index >().indices().get< by_start_date >();
    auto it = pidx.begin();
 
    std::for_each( pidx.begin(), pidx.upper_bound( head_time ), [&]( auto& proposal )
@@ -235,6 +251,16 @@ void sps_plugin_impl::update_settings( const time_point_sec& head_time )
                                           } );
 }
 
+void sps_plugin_impl::remove_old_proposals( const block_notification& note )
+{
+   t_ids ids;
+
+   auto head_time = note.block.timestamp;
+
+   find_inactive_proposals( head_time, ids );
+   sps_helper::remove_proposals( _db, ids );
+}
+
 void sps_plugin_impl::make_payments( const block_notification& note ) 
 {
    auto head_time = note.block.timestamp;
@@ -272,6 +298,7 @@ void sps_plugin_impl::make_payments( const block_notification& note )
 
 void sps_plugin_impl::on_proposal_processing( const block_notification& note )
 {
+   remove_old_proposals( note );
    make_payments( note );
 }
 

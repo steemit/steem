@@ -995,16 +995,25 @@ void t_proposal_database_fixture< T >::transfer( std::string from, std::string t
    this->db->push_transaction( tx, 0 );
 }
 
+template< typename T >
+bool t_proposal_database_fixture< T >::exist_proposal( int64_t id )
+{
+   const auto& proposal_idx = this->db-> template get_index< proposal_index >().indices(). template get< by_id >();
+   return proposal_idx.find( id ) != proposal_idx.end();
+}
+
 template int64_t t_proposal_database_fixture< clean_database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
+template bool t_proposal_database_fixture< clean_database_fixture >::exist_proposal( int64_t id );
 
 template void t_proposal_database_fixture< database_fixture >::plugin_prepare();
 template int64_t t_proposal_database_fixture< database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
+template bool t_proposal_database_fixture< database_fixture >::exist_proposal( int64_t id );
 
 json_rpc_database_fixture::json_rpc_database_fixture()
 {
