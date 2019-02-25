@@ -2,6 +2,7 @@
 #include <steem/plugins/sps_api/sps_api.hpp>
 #include <steem/chain/sps_objects.hpp>
 #include <appbase/application.hpp>
+#include <steem/utilities/iterate_results.hpp>
 
 namespace steem { namespace plugins { namespace sps {
 
@@ -16,10 +17,11 @@ class sps_api_impl
     ~sps_api_impl();
 
     DECLARE_API_IMPL(
-        (find_proposal)
+        (find_proposals)
         (list_proposals)
         (list_voter_proposals)
         )
+    
     chain::database& _db;
 };
 
@@ -27,37 +29,8 @@ sps_api_impl::sps_api_impl() : _db(appbase::app().get_plugin< steem::plugins::ch
 
 sps_api_impl::~sps_api_impl() {}
 
-api_proposal_object to_api_proposal_object(const proposal_object &po)
-{
-  api_proposal_object result;
-  result.id = po.id;
-  result.creator = po.creator;
-  result.receiver = po.receiver;
-  result.start_date = po.start_date;
-  result.end_date = po.end_date;
-  result.daily_pay = po.daily_pay;
-  result.subject = to_string(po.subject);
-  result.url = to_string(po.url);
-  result.total_votes = po.total_votes;
-
-  return result;
-}
-
-DEFINE_API_IMPL(sps_api_impl, find_proposal) {
-  ilog("find_proposal called");
-  find_proposal_return result;
-  const auto& pidx = _db.get_index<proposal_index>().indices().get<by_id>();
-  auto found = pidx.find(args.id);
-  if (found != pidx.end())
-  {
-    result.emplace_back(to_api_proposal_object(*found));
-  }
-
-  return result;
-}
-
 template<typename RESULT_TYPE, typename FIELD_TYPE>
-void sort_results_helper(RESULT_TYPE &result, order_direction_type order_direction, FIELD_TYPE api_proposal_object::*field)
+void sort_results_helper(RESULT_TYPE& result, order_direction_type order_direction, FIELD_TYPE api_proposal_object::*field)
 {
   switch (order_direction)
   {
@@ -65,7 +38,7 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
     {
       std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
-        return a.*field > b.*field;
+        return a.*field < b.*field;
       });
     }
     break;
@@ -73,7 +46,7 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
     {
       std::sort(result.begin(), result.end(), [&](const api_proposal_object& a, const api_proposal_object& b)
       {
-        return a.*field < b.*field;
+        return a.*field > b.*field;
       });
     }
     break;
@@ -83,63 +56,95 @@ void sort_results_helper(RESULT_TYPE &result, order_direction_type order_directi
 }
 
 template<typename RESULT_TYPE>
-void sort_results(RESULT_TYPE &result, const string &field_name, order_direction_type order_direction)
+void sort_results(RESULT_TYPE& result, order_by_type order_by, order_direction_type order_direction)
 {
-  // sorting operations
-  if (field_name == "id")
+  switch (order_by)
   {
-    sort_results_helper<RESULT_TYPE, api_id_type>(result, order_direction, &api_proposal_object::id);
-    return;
-  }
+    case by_creator:
+    {
+      sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &api_proposal_object::creator);
+      return;
+    }
 
-  if (field_name == "creator")
-  {
-    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &api_proposal_object::creator);
-    return;
-  }
+    case by_start_date:
+    {
+      sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::start_date);
+      return;
+    }
 
-  if (field_name == "receiver")
-  {
-    sort_results_helper<RESULT_TYPE, account_name_type>(result, order_direction, &api_proposal_object::receiver);
-    return;
+    case by_total_votes:
+    {
+      sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &api_proposal_object::total_votes);
+      return;
+    }
+    default:
+      FC_ASSERT(false, "Unknown or unsupported field name");
   }
+}
 
-  if (field_name == "start_date")
-  {
-    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::start_date);
-    return;
-  }
+DEFINE_API_IMPL(sps_api_impl, find_proposals) {
+  ilog("find_proposal called");
+  // cannot query for more than SPS_API_SINGLE_QUERY_LIMIT ids
+  FC_ASSERT(args.id_set.size() <= SPS_API_SINGLE_QUERY_LIMIT);
 
-  if (field_name == "end_date")
-  {
-    sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::end_date);
-    return;
-  }
+  find_proposals_return result;
+  
+  std::for_each(args.id_set.begin(), args.id_set.end(), [&](auto& id) {
+    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(id);
+    if (po != nullptr)
+    {
+      result.emplace_back(api_proposal_object(*po));
+    }
+  });
 
-  if (field_name == "daily_pay")
-  {
-    sort_results_helper<RESULT_TYPE, asset>(result, order_direction, &api_proposal_object::daily_pay);
-    return;
-  }
-
-  if (field_name == "total_votes")
-  {
-    sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &api_proposal_object::total_votes);
-    return;
-  }
-
-  FC_ASSERT(false, "Unknown or unsupported field name");
+  return result;
 }
 
 DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   ilog("list_proposals called");
-  list_proposals_return result;
-  const auto& pidx = _db.get_index<proposal_index>().indices().get<by_id>();
+  FC_ASSERT(args.limit <= SPS_API_SINGLE_QUERY_LIMIT);
 
-  // populate result vector
-  std::for_each(pidx.begin(), pidx.end(), [&](auto& proposal) {
-    result.emplace_back(to_api_proposal_object(proposal));
-  });
+  list_proposals_return result;
+  result.reserve(args.limit);
+
+  switch(args.order_by)
+  {
+    case by_creator:
+    {
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_creator>(
+        args.start.as<account_name_type>(),
+        result,
+        args.limit,
+        _db,
+        [&](auto& proposal) { return api_proposal_object(proposal); } 
+      );
+    }
+    break;
+    case by_start_date:
+    {
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_date>(
+        args.start.as<time_point_sec>(),
+        result,
+        args.limit,
+        _db,
+        [&](auto& proposal) { return api_proposal_object(proposal); } 
+      );
+    }
+    break;
+    case by_total_votes:
+    {
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_total_votes>(
+        args.start.as<uint64_t>(),
+        result,
+        args.limit,
+        _db,
+        [&](auto& proposal) { return api_proposal_object(proposal); } 
+      );
+    }
+    break;
+    default:
+      FC_ASSERT( false, "Unknown or unsupported sort order" );
+  }
 
   if (!result.empty())
   {
@@ -151,32 +156,26 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
 
 DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   ilog("list_voter_proposals called");
+  FC_ASSERT(args.limit <= SPS_API_SINGLE_QUERY_LIMIT);
+
   list_voter_proposals_return result;
+  result.reserve(args.limit);
 
-  const auto& pvidx = _db.get_index<proposal_vote_index>().indices().get<by_id>();
-
-  std::vector<api_id_type> proposal_ids_of_voter;
-  // filter out only proposal ids voted by our voter
-  std::for_each(pvidx.begin(), pvidx.end(), [&](auto& vote_object) {
-    if (vote_object.voter == args.voter)
-    {
-      proposal_ids_of_voter.emplace_back(vote_object.proposal_id);
+  steem::utilities::iterate_results<proposal_vote_index, by_voter_proposal>(
+    account_name_type(args.voter),
+    result,
+    args.limit,
+    _db,
+    [&](auto& vote_object) 
+    { 
+      auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(vote_object.proposal_id);
+      FC_ASSERT(po != nullptr, "Proposal with given id does not exists");
+      return api_proposal_object(*po);
     }
-  });
+  );
 
-  if (!proposal_ids_of_voter.empty())
+  if (!result.empty())
   {
-    // get all proposals
-    const auto& pidx = _db.get_index<proposal_index>().indices().get<by_id>();
-    // for each proposal id find proposal_obect and put it in result
-    std::for_each(proposal_ids_of_voter.begin(), proposal_ids_of_voter.end(), [&](auto &proposal_id) {
-      auto found = pidx.find(proposal_id);
-      if (found != pidx.end())
-      {
-        result.emplace_back(to_api_proposal_object(*found));
-      }
-    });
-
     // sorting operations
     sort_results<list_voter_proposals_return>(result, args.order_by, args.order_direction);
   }
@@ -193,7 +192,7 @@ sps_api::sps_api(): my( new detail::sps_api_impl() )
 sps_api::~sps_api() {}
 
 DEFINE_READ_APIS(sps_api,
-  (find_proposal)
+  (find_proposals)
   (list_proposals)
   (list_voter_proposals)
 )
