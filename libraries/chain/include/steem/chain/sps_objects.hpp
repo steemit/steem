@@ -63,6 +63,14 @@ class proposal_object : public object< proposal_object_type, proposal_object >
 
       //This will be calculate every maintenance period
       uint64_t total_votes = 0;
+
+      time_point_sec get_end_date_with_delay() const
+      {
+         time_point_sec ret = end_date;
+         ret += STEEM_PROPOSAL_MAINTENANCE_CLEANUP;
+
+         return ret;
+      }
 };
 
 typedef oid< proposal_object > proposal_id_type;
@@ -101,7 +109,7 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< proposal_object, proposal_id_type, &proposal_object::id > >,
       ordered_non_unique< tag< by_start_date >, member< proposal_object, time_point_sec, &proposal_object::start_date > >,
-      ordered_non_unique< tag< by_end_date >, member< proposal_object, time_point_sec, &proposal_object::end_date > >,
+      ordered_non_unique< tag< by_end_date >, const_mem_fun< proposal_object, time_point_sec, &proposal_object::get_end_date_with_delay > >,
       ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >,
       ordered_non_unique< tag< by_total_votes >, member< proposal_object, uint64_t, &proposal_object::total_votes > >
    >,

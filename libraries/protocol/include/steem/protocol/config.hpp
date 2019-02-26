@@ -322,6 +322,7 @@
 
 #define STEEM_TREASURY_FEE                         (10 * STEEM_BLOCKCHAIN_PRECISION)
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD          3600
+#define STEEM_PROPOSAL_MAINTENANCE_CLEANUP         (60*60*24*1) /// 1 day
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD_BLOCKS   (STEEM_PROPOSAL_MAINTENANCE_PERIOD / STEEM_BLOCK_INTERVAL)
 #define STEEM_PROPOSAL_SUBJECT_MAX_LENGTH          80
 /// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.

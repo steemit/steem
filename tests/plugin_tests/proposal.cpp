@@ -142,6 +142,13 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance )
          BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
          BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
 
+         generate_blocks( start_time + fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP ) );
+         start_time = db->head_block_time();
+
+         BOOST_REQUIRE( exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
          generate_blocks( start_time + fc::minutes( 11 ) );
          BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
          BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
