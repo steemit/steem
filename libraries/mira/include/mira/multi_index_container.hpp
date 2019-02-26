@@ -289,86 +289,6 @@ public:
       return true;
    }
 
-   bool maybe_create_schema( const std::string& str_path )
-   {
-      ::rocksdb::DB* db = nullptr;
-
-      column_definitions column_defs;
-      populate_column_definitions_( column_defs );
-
-      ::rocksdb::Options opts;
-      //opts.IncreaseParallelism();
-      //opts.OptimizeLevelStyleCompaction();
-      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-
-      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
-
-      if( s.ok() )
-      {
-         super::cleanup_column_handles();
-         delete db;
-         return true;
-      }
-
-      opts.create_if_missing = true;
-
-      s = ::rocksdb::DB::Open( opts, str_path, &db );
-
-      if( s.ok() )
-      {
-         column_defs.clear();
-         populate_column_definitions_( column_defs );
-         column_defs.erase( column_defs.begin() );
-
-         s = db->CreateColumnFamilies( column_defs, &(super::_handles) );
-
-         if( s.ok() )
-         {
-            // Create default column keys
-
-            auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
-            auto ser_count_val = fc::raw::pack_to_vector( uint64_t(0) );
-
-            s = db->Put(
-               _wopts,
-               db->DefaultColumnFamily(),
-               ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
-               ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
-
-            if( !s.ok() ) return false;
-
-            auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
-            auto ser_rev_val = fc::raw::pack_to_vector( int64_t(0) );
-
-            db->Put(
-               _wopts,
-               db->DefaultColumnFamily(),
-               ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
-               ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
-
-            if( !s.ok() ) return false;
-
-            // Save schema info
-
-            super::cleanup_column_handles();
-         }
-         else
-         {
-            std::cout << std::string( s.getState() ) << std::endl;
-         }
-
-         delete db;
-
-         return true;
-      }
-      else
-      {
-         std::cout << std::string( s.getState() ) << std::endl;
-      }
-
-      return false;
-   }
-
    void close()
    {
       if( super::_db )
@@ -509,13 +429,6 @@ public:
     typedef typename index<Tag>::type::const_iterator type;
   };
 #endif
-
-size_t get_column_size() const { return super::COLUMN_INDEX; }
-
-void populate_column_definitions_( column_definitions& defs )const
-{
-   super::populate_column_definitions_( defs );
-}
 
 int64_t revision() { return _revision; }
 
@@ -791,7 +704,94 @@ primary_iterator erase( primary_iterator position )
    }
 
 private:
-  uint64_t entry_count;
+   uint64_t entry_count;
+
+   size_t get_column_size() const { return super::COLUMN_INDEX; }
+
+   void populate_column_definitions_( column_definitions& defs ) const
+   {
+      super::populate_column_definitions_( defs );
+   }
+
+   bool maybe_create_schema( const std::string& str_path )
+   {
+      ::rocksdb::DB* db = nullptr;
+
+      column_definitions column_defs;
+      populate_column_definitions_( column_defs );
+
+      ::rocksdb::Options opts;
+      //opts.IncreaseParallelism();
+      //opts.OptimizeLevelStyleCompaction();
+      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+
+      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
+
+      if( s.ok() )
+      {
+         super::cleanup_column_handles();
+         delete db;
+         return true;
+      }
+
+      opts.create_if_missing = true;
+
+      s = ::rocksdb::DB::Open( opts, str_path, &db );
+
+      if( s.ok() )
+      {
+         column_defs.clear();
+         populate_column_definitions_( column_defs );
+         column_defs.erase( column_defs.begin() );
+
+         s = db->CreateColumnFamilies( column_defs, &(super::_handles) );
+
+         if( s.ok() )
+         {
+            // Create default column keys
+
+            auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
+            auto ser_count_val = fc::raw::pack_to_vector( uint64_t(0) );
+
+            s = db->Put(
+               _wopts,
+               db->DefaultColumnFamily(),
+               ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
+               ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
+
+            if( !s.ok() ) return false;
+
+            auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
+            auto ser_rev_val = fc::raw::pack_to_vector( int64_t(0) );
+
+            db->Put(
+               _wopts,
+               db->DefaultColumnFamily(),
+               ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
+               ::rocksdb::Slice( ser_rev_val.data(), ser_rev_val.size() ) );
+
+            if( !s.ok() ) return false;
+
+            // Save schema info
+
+            super::cleanup_column_handles();
+         }
+         else
+         {
+            std::cout << std::string( s.getState() ) << std::endl;
+         }
+
+         delete db;
+
+         return true;
+      }
+      else
+      {
+         std::cout << std::string( s.getState() ) << std::endl;
+      }
+
+      return false;
+   }
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)

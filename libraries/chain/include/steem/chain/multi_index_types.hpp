@@ -1,4 +1,4 @@
-//*
+/*
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
@@ -6,22 +6,20 @@
 #include <mira/indexed_by.hpp>
 #include <mira/composite_key.hpp>
 #include <mira/mem_fun.hpp>
-//*/
-
+*/
 //#if defined(DISABLE_ROCKSDB)
-/*
+
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/tag.hpp>
-//*/
+#include <mira/boost_adapter.hpp>
 //#endif
 
 namespace steem { namespace chain {
-
-//*
+/*
 using mira::multi_index_container;
 using mira::multi_index::indexed_by;
 using mira::multi_index::ordered_unique;
@@ -30,11 +28,16 @@ using mira::multi_index::member;
 using mira::multi_index::composite_key;
 using mira::multi_index::composite_key_compare;
 using mira::multi_index::const_mem_fun;
-//*/
-
+*/
 //#if defined(DISABLE_ROCKSDB)
-/*
-using boost::multi_index_container;
+
+template< typename Value, typename IndexSpecifierList, typename Allocator >
+class multi_index_container : public mira::boost_multi_index_adapter< Value, IndexSpecifierList, Allocator >
+{
+public:
+   using mira::boost_multi_index_adapter< Value, IndexSpecifierList, Allocator >::boost_multi_index_adapter;
+};
+
 using boost::multi_index::indexed_by;
 using boost::multi_index::ordered_unique;
 using boost::multi_index::tag;
