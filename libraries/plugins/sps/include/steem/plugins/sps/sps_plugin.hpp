@@ -9,7 +9,8 @@ namespace steem { namespace plugins{ namespace sps {
 
 namespace detail { class sps_plugin_impl; }
 
-using namespace appbase;
+using appbase::options_description;
+using appbase::variables_map;
 
 class sps_plugin : public appbase::plugin< sps_plugin >
 {

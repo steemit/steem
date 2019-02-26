@@ -94,4 +94,80 @@ BOOST_AUTO_TEST_CASE( generating_payments )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( proposals_maintenance )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: removing inactive proposals" );
+
+      plugin_prepare();
+
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      auto creator = "alice";
+      auto receiver = "bob";
+
+      auto start_time = db->head_block_time();
+
+      auto start_date_00 = start_time + fc::seconds( 30 );
+      auto end_date_00 = start_time + fc::minutes( 10 );
+
+      auto start_date_01 = start_time + fc::seconds( 40 );
+      auto end_date_01 = start_time + fc::minutes( 30 );
+
+      auto start_date_02 = start_time + fc::seconds( 50 );
+      auto end_date_02 = start_time + fc::minutes( 20 );
+
+      auto daily_pay = asset( 100, SBD_SYMBOL );
+
+      FUND( creator, ASSET( "100.000 TBD" ) );
+      //=====================preparing=====================
+
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date_00, end_date_00, daily_pay, alice_private_key );
+      generate_block();
+
+      int64_t id_proposal_01 = create_proposal( creator, receiver, start_date_01, end_date_01, daily_pay, alice_private_key );
+      generate_block();
+
+      int64_t id_proposal_02 = create_proposal( creator, receiver, start_date_02, end_date_02, daily_pay, alice_private_key );
+      generate_block();
+
+      {
+         BOOST_REQUIRE( exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP ) );
+         start_time = db->head_block_time();
+
+         BOOST_REQUIRE( exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 11 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 21 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 31 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_02 ) );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
