@@ -28,6 +28,7 @@ namespace steem { namespace plugins { namespace sps {
   {
     by_creator, ///< order by proposal creator
     by_start_date, ///< order by proposal start date
+    by_end_date, ///< order by proposal end date
     by_total_votes, ///< order by total votes
   };
 
@@ -147,6 +148,7 @@ FC_REFLECT_ENUM(steem::plugins::sps::order_direction_type,
 FC_REFLECT_ENUM(steem::plugins::sps::order_by_type, 
   (by_creator)
   (by_start_date)
+  (by_end_date)
   (by_total_votes)
   );
 
