@@ -191,6 +191,18 @@ void sps_plugin_impl::transfer_payments( const time_point_sec& head_time, asset&
    auto passed_time_seconds = ( head_time - _db.get_dynamic_global_properties().last_budget_time ).to_seconds();
    double ratio = static_cast< double >( passed_time_seconds ) / daily_seconds;
 
+   auto processing = [this, &treasury_account]( const proposal_object& _item, const asset& payment )
+   {
+      const auto& receiver_account = _db.get_account( _item.receiver );
+
+      operation vop = proposal_pay_operation( _item.receiver, payment, _db.get_current_trx(), _db.get_current_op_in_trx() );
+      /// Push vop to be recorded by other parts (like AH plugin etc.)
+      _db.push_virtual_operation(vop);
+      /// Virtual ops have no evaluators, so operation must be immediately "evaluated"
+      _db.adjust_balance( treasury_account, -payment );
+      _db.adjust_balance( receiver_account, payment );
+   };
+
    for( auto& item : proposals )
    {
       const proposal_object& _item = item;
@@ -199,28 +211,16 @@ void sps_plugin_impl::transfer_payments( const time_point_sec& head_time, asset&
       if( _item.total_votes == 0 )
          break;
 
-      const auto& receiver_account = _db.get_account( _item.receiver );
-
       auto period_pay = asset( ratio * _item.daily_pay.amount.value, _item.daily_pay.symbol );
 
       if( period_pay >= maintenance_budget_limit )
       {
-         operation vop = proposal_pay_operation(_item.receiver, maintenance_budget_limit, _item.id._id);
-         /// Push vop to be recorded by other parts (like AH plugin etc.)
-         _db.push_virtual_operation(vop);
-         /// Virtual ops have no evaluators, so operation must be immediately "evaluated"
-         _db.adjust_balance( treasury_account, -maintenance_budget_limit );
-         _db.adjust_balance( receiver_account, maintenance_budget_limit );
+         processing( _item, maintenance_budget_limit );
          break;
       }
       else
       {
-         operation vop = proposal_pay_operation(_item.receiver, period_pay, _item.id._id);
-         /// Push vop to be recorded by other parts (like AH plugin etc.)
-         _db.push_virtual_operation(vop);
-         /// Virtual ops have no evaluators, so operation must be immediately "evaluated"
-         _db.adjust_balance( treasury_account, -period_pay );
-         _db.adjust_balance( receiver_account, period_pay );
+         processing( _item, period_pay );
          maintenance_budget_limit -= period_pay;
       }
    }
