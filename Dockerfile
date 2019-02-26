@@ -67,9 +67,10 @@ RUN \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
+    ./tests/mira_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \

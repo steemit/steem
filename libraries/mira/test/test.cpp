@@ -1,23 +1,11 @@
 #define BOOST_TEST_MODULE mira test
 
-#include <steem/protocol/fixed_string.hpp>
-
-#include <mira/multi_index_container.hpp>
-#include <mira/ordered_index.hpp>
-#include <mira/tag.hpp>
-#include <mira/member.hpp>
-#include <mira/indexed_by.hpp>
-#include <mira/composite_key.hpp>
-#include <mira/mem_fun.hpp>
+#include "test_objects.hpp"
+#include "test_templates.hpp"
 
 #include <boost/test/unit_test.hpp>
 
-#include <chainbase/chainbase.hpp>
-
 #include <iostream>
-
-#include "test_objects.hpp"
-#include "test_templates.hpp"
 
 using namespace mira;
 
