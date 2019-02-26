@@ -679,7 +679,6 @@ primary_iterator erase( primary_iterator position )
       }
       else
       {
-         elog( "Uniqueness Violation" );
          super::reset_first_key_update();
       }
       super::_write_buffer.Clear();

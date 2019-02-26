@@ -524,7 +524,11 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             &read_buffer );
 
          // Key already exists, uniqueness constraint violated
-         if( s.ok() ) return false;
+         if( s.ok() )
+         {
+            ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
+            return false;
+         }
 
          ::rocksdb::PinnableSlice value_slice;
 
@@ -626,7 +630,11 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
                &read_buffer );
 
             // New key already exists, uniqueness constraint violated
-            if( s.ok() ) return false;
+            if( s.ok() )
+            {
+               ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
+               return false;
+            }
 
             PinnableSlice old_key_slice;
             pack_to_slice( old_key_slice, old_key );
