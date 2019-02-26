@@ -555,6 +555,19 @@ namespace steem { namespace chain {
             return note;
          }
 
+      public:
+
+         const transaction_id_type& get_current_trx() const
+         {
+            return _current_trx_id;
+         }
+         uint16_t get_current_op_in_trx() const
+         {
+            return _current_op_in_trx;
+         }
+
+      private:
+
          std::unique_ptr< database_impl > _my;
 
          fork_database                 _fork_db;
