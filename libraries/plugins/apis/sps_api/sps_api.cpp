@@ -72,6 +72,12 @@ void sort_results(RESULT_TYPE& result, order_by_type order_by, order_direction_t
       return;
     }
 
+    case by_end_date:
+    {
+      sort_results_helper<RESULT_TYPE, time_point_sec>(result, order_direction, &api_proposal_object::end_date);
+      return;
+    }
+
     case by_total_votes:
     {
       sort_results_helper<RESULT_TYPE, uint64_t>(result, order_direction, &api_proposal_object::total_votes);
@@ -122,7 +128,18 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     break;
     case by_start_date:
     {
-      steem::utilities::iterate_results<proposal_index, steem::chain::by_date>(
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_start_date>(
+        args.start.as<time_point_sec>(),
+        result,
+        args.limit,
+        _db,
+        [&](auto& proposal) { return api_proposal_object(proposal); } 
+      );
+    }
+    break;
+    case by_end_date:
+    {
+      steem::utilities::iterate_results<proposal_index, steem::chain::by_end_date>(
         args.start.as<time_point_sec>(),
         result,
         args.limit,
