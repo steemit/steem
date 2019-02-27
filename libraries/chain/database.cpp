@@ -1543,7 +1543,8 @@ void database::clear_null_account_balance()
 
 void database::process_proposals( const block_notification& note )
 {
-   notify_on_proposal_processing( note );
+   if( has_hardfork( STEEM_PROPOSALS_HARDFORK ) )
+      notify_on_proposal_processing( note );
 }
 
 /**
@@ -4765,6 +4766,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
+   FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
+   _hardfork_versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
 #endif
 
 

@@ -60,8 +60,6 @@ BOOST_AUTO_TEST_CASE( generating_payments )
       transfer( creator, STEEM_TREASURY_ACCOUNT, ASSET( "0.001 TBD" ), alice_private_key );
       generate_block( 5 );
 
-      auto block_num = db->head_block_num();
-
       const account_object& _creator = db->get_account( creator );
       const account_object& _receiver = db->get_account( receiver );
       const account_object& _voter_01 = db->get_account( voter_01 );
@@ -75,8 +73,9 @@ BOOST_AUTO_TEST_CASE( generating_payments )
          auto before_voter_01_sbd_balance = _voter_01.sbd_balance;
          auto before_treasury_sbd_balance = _treasury.sbd_balance;
       
-         generate_blocks( STEEM_PROPOSAL_MAINTENANCE_PERIOD_BLOCKS - ( block_num % STEEM_PROPOSAL_MAINTENANCE_PERIOD_BLOCKS ) );
-         generate_block();
+         auto next_block = get_nr_blocks_until_maintenance_block();
+         generate_blocks( next_block - 1 );
+         generate_blocks( 1 );
 
          auto after_creator_sbd_balance = _creator.sbd_balance;
          auto after_receiver_sbd_balance = _receiver.sbd_balance;
