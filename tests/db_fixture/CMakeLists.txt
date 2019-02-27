@@ -24,5 +24,6 @@ target_link_libraries(db_fixture
                       debug_node_plugin
                       condenser_api_plugin
                       sps_plugin
+                      sps_api_plugin
                       fc
                       ${PLATFORM_SPECIFIC_LIBS})
