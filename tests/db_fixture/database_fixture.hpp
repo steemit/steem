@@ -12,6 +12,8 @@
 #include <steem/plugins/block_api/block_api_plugin.hpp>
 #include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 #include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/sps_api/sps_api.hpp>
+#include <steem/plugins/sps/sps_plugin.hpp>
 
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
@@ -350,7 +352,14 @@ struct t_proposal_database_fixture : public T
    void transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 
    bool exist_proposal( int64_t id );
+   steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, int _active) ;
+   steem::plugins::sps::list_voter_proposals_return list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, int _active) ;
+   steem::plugins::sps::find_proposals_return find_proposals(flat_set<uint64_t> _proposal_ids);
+   void remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
+
+   bool find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
 };
+
 
 using proposal_database_fixture = t_proposal_database_fixture< clean_database_fixture >;
 using proposal_database_fixture_for_plugin = t_proposal_database_fixture< database_fixture >;
