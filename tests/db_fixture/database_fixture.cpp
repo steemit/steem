@@ -1127,6 +1127,19 @@ bool t_proposal_database_fixture< T >::find_vote_for_proposal(const std::string&
       return found_vote != proposal_vote_idx.end() ;
 }
 
+template< typename T >
+uint64_t t_proposal_database_fixture< T >::get_nr_blocks_until_maintenance_block()
+{
+   auto block_time = this->db->head_block_time();
+
+   auto next_maintenance_time = this->db->get_dynamic_global_properties().next_maintenance_time;
+   auto ret = ( next_maintenance_time - block_time ).to_seconds() / STEEM_BLOCK_INTERVAL;
+
+   FC_ASSERT( next_maintenance_time >= block_time );
+
+   return ret;
+}
+
 template int64_t t_proposal_database_fixture< clean_database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
@@ -1137,6 +1150,7 @@ template list_voter_proposals_return t_proposal_database_fixture< clean_database
 template find_proposals_return t_proposal_database_fixture< clean_database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
 template void t_proposal_database_fixture< clean_database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< clean_database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
+template uint64_t t_proposal_database_fixture< clean_database_fixture >::get_nr_blocks_until_maintenance_block();
 
 template void t_proposal_database_fixture< database_fixture >::plugin_prepare();
 template int64_t t_proposal_database_fixture< database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
@@ -1149,6 +1163,7 @@ template list_voter_proposals_return t_proposal_database_fixture< database_fixtu
 template find_proposals_return t_proposal_database_fixture< database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
 template void t_proposal_database_fixture< database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
+template uint64_t t_proposal_database_fixture< database_fixture >::get_nr_blocks_until_maintenance_block();
 
 json_rpc_database_fixture::json_rpc_database_fixture()
 {

@@ -1,0 +1,9 @@
+#ifndef STEEM_HARDFORK_0_22
+#define STEEM_HARDFORK_0_22 22
+#define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_22
+
+#define STEEM_HARDFORK_0_22_TIME 1597970800 // Future 2020...
+
+#define STEEM_HARDFORK_0_22_VERSION hardfork_version( 0, 22 )
+
+#endif
