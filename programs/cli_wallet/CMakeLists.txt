@@ -12,10 +12,10 @@ endif()
 if( STEEM_STATIC_BUILD )
    target_link_libraries( cli_wallet PRIVATE
                           "-static-libstdc++ -static-libgcc -lreadline"
-                          graphene_net steem_chain steem_protocol steem_utilities steem_wallet condenser_api_plugin sps_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                          graphene_net steem_chain steem_protocol steem_utilities steem_wallet condenser_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 else( STEEM_STATIC_BUILD )
    target_link_libraries( cli_wallet PRIVATE
-                          graphene_net steem_chain steem_protocol steem_utilities steem_wallet condenser_api_plugin sps_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                          graphene_net steem_chain steem_protocol steem_utilities steem_wallet condenser_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 endif( STEEM_STATIC_BUILD )
 
 if( CLANG_TIDY_EXE )
