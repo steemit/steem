@@ -9,7 +9,8 @@
 #include <steem/plugins/follow_api/follow_api.hpp>
 #include <steem/plugins/reputation_api/reputation_api.hpp>
 #include <steem/plugins/market_history_api/market_history_api.hpp>
-
+#include <steem/plugins/sps_api/sps_api_plugin.hpp>
+#include <steem/plugins/sps_api/sps_api.hpp>
 #include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
 #include <fc/optional.hpp>
@@ -1014,6 +1015,9 @@ DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
+DEFINE_API_ARGS( list_proposals,                         vector< variant >,   steem::plugins::sps::list_proposals_return )
+DEFINE_API_ARGS( list_voter_proposals,                   vector< variant >,   steem::plugins::sps::list_voter_proposals_return )
+DEFINE_API_ARGS( find_proposals,                         vector< variant >,   steem::plugins::sps::find_proposals_return )
 
 #undef DEFINE_API_ARGS
 
@@ -1108,6 +1112,9 @@ public:
       (get_recent_trades)
       (get_market_history)
       (get_market_history_buckets)
+      (list_proposals)
+      (list_voter_proposals)
+      (find_proposals)
    )
 
    private:
