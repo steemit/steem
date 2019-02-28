@@ -36,6 +36,8 @@ namespace steem { namespace plugins { namespace sps {
 
   struct api_proposal_object
   {
+    api_proposal_object(){}
+    
     api_proposal_object(const proposal_object& po) : 
       id(po.id),
       creator(po.creator),

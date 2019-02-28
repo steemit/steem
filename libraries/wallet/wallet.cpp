@@ -2499,7 +2499,6 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
          }
       };
 
-      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_proposals_args args;
       args.start           = _start;
       args.order_by        = ordered_by();
@@ -2514,7 +2513,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((args.active));
 
       try {
-         return api->list_proposals(args);
+         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.active);
+         
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {
@@ -2559,7 +2559,6 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
          }
       };
 
-      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
       args.voter           = voter.name;
       args.order_by        = ordered_by();
@@ -2574,7 +2573,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((args.active));
 
       try {
-         return api->list_voter_proposals(args);
+         return my->_remote_api->list_voter_proposals(args.voter, args.order_by, args.order_direction, args.limit, args.active);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {
@@ -2588,14 +2587,13 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    steem::plugins::sps::find_proposals_return wallet_api::find_proposals(flat_set<uint64_t> _ids)
    {
       FC_ASSERT(!_ids.empty());
-      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::find_proposals_args args;
       args.id_set = _ids;
 
       ddump((args.id_set));
 
       try {
-         return api->find_proposals(args);
+         return my->_remote_api->find_proposals(args.id_set);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {

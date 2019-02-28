@@ -89,8 +89,6 @@ int main( int argc, char** argv )
       vector<string> allowed_ips;
 
       bpo::variables_map options;
-      appbase::app().register_plugin< steem::plugins::sps::sps_api_plugin >();
-      appbase::app().initialize<steem::plugins::sps::sps_api_plugin>( argc, argv );
       bpo::store( bpo::parse_command_line(argc, argv, opts), options );
 
       if( options.count("help") )

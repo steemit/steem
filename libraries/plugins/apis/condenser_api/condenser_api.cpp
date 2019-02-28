@@ -11,6 +11,7 @@
 #include <steem/plugins/reputation_api/reputation_api_plugin.hpp>
 #include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
 
+
 #include <steem/utilities/git_revision.hpp>
 
 #include <steem/chain/util/reward.hpp>
@@ -131,6 +132,9 @@ namespace detail
             (get_recent_trades)
             (get_market_history)
             (get_market_history_buckets)
+            (list_proposals)
+            (list_voter_proposals)
+            (find_proposals)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -153,7 +157,7 @@ namespace detail
          std::shared_ptr< follow::follow_api >                             _follow_api;
          std::shared_ptr< reputation::reputation_api >                     _reputation_api;
          std::shared_ptr< market_history::market_history_api >             _market_history_api;
-
+         std::shared_ptr< sps::sps_api >                                   _sps_api;
          map< transaction_id_type, confirmation_callback >                 _callbacks;
          map< time_point_sec, vector< transaction_id_type > >              _callback_expirations;
          boost::signals2::connection                                       _on_post_apply_block_conn;
@@ -1904,6 +1908,48 @@ namespace detail
       return _market_history_api->get_market_history_buckets( {} ).bucket_sizes;
    }
 
+   DEFINE_API_IMPL( condenser_api_impl, list_proposals )
+   {
+      CHECK_ARG_SIZE( 5 )
+      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
+
+      steem::plugins::sps::list_proposals_args list_args;
+      list_args.start           = args[0].as<fc::variant>();
+      list_args.order_by        = args[1].as< steem::plugins::sps::order_by_type >();
+      list_args.order_direction = args[2].as<steem::plugins::sps::order_direction_type>();
+      list_args.limit           = args[3].as<int>();
+      list_args.active          = args[4].as<int>();
+
+      //return _sps_api->list_proposals( {args[0].as<fc::variant>, args[1].as< steem::plugins::sps::order_by_type >, args[2].as<steem::plugins::sps::order_direction_type>, args[3].as<int>, args[4].as<int>} );
+      return _sps_api->list_proposals( list_args );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, list_voter_proposals )
+   {
+      CHECK_ARG_SIZE( 5 )
+      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
+      steem::plugins::sps::list_voter_proposals_args list_args;
+      list_args.voter           = args[0].as<account_name_type>();
+      list_args.order_by        = args[1].as< steem::plugins::sps::order_by_type >();
+      list_args.order_direction = args[2].as<steem::plugins::sps::order_direction_type>();
+      list_args.limit           = args[3].as<int>();
+      list_args.active          = args[4].as<int>();
+
+      //return _sps_api->list_voter_proposals( {args[0].as<account_name_type>, args[1].as< steem::plugins::sps::order_by_type >, args[2].as<steem::plugins::sps::order_direction_type>, args[3].as<int>, args[4].as<int>} );
+      return _sps_api->list_voter_proposals( list_args );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, find_proposals )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
+
+      steem::plugins::sps::find_proposals_args find_args;
+      find_args.id_set = args[0].as<flat_set<uint64_t> >();
+
+      return _sps_api->find_proposals( find_args  );
+   }
+
    /**
     *  This call assumes root already stored as part of state, it will
     *  modify root.replies to contain links to the reply posts and then
@@ -2161,6 +2207,12 @@ void condenser_api::api_startup()
    {
       my->_market_history_api = market_history->api;
    }
+
+   auto sps_api = appbase::app().find_plugin< sps::sps_api_plugin >();
+   if( sps_api != nullptr )
+   {
+      my->_sps_api = sps_api->api;
+   }
 }
 
 DEFINE_LOCKLESS_APIS( condenser_api,
@@ -2251,6 +2303,9 @@ DEFINE_READ_APIS( condenser_api,
    (get_trade_history)
    (get_recent_trades)
    (get_market_history)
+   (list_proposals)
+   (list_voter_proposals)
+   (find_proposals)
 )
 
 } } } // steem::plugins::condenser_api
