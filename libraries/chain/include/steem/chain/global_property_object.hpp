@@ -52,6 +52,7 @@ namespace steem { namespace chain {
          asset       virtual_supply             = asset( 0, STEEM_SYMBOL );
          asset       current_supply             = asset( 0, STEEM_SYMBOL );
          asset       confidential_supply        = asset( 0, STEEM_SYMBOL ); ///< total asset held in confidential balances
+         asset       virtual_sbd_supply         = asset( 0, SBD_SYMBOL );
          asset       current_sbd_supply         = asset( 0, SBD_SYMBOL );
          asset       confidential_sbd_supply    = asset( 0, SBD_SYMBOL ); ///< total asset held in confidential balances
          asset       total_vesting_fund_steem   = asset( 0, STEEM_SYMBOL );
@@ -153,6 +154,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (virtual_supply)
              (current_supply)
              (confidential_supply)
+             (virtual_sbd_supply)
              (current_sbd_supply)
              (confidential_sbd_supply)
              (total_vesting_fund_steem)
