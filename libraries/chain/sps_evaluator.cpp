@@ -25,10 +25,11 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
          "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_sbd) );
 
       //only for check if given account exists
-      _db.get_account( STEEM_TREASURY_ACCOUNT );
+      const auto& treasury_account =_db.get_account( STEEM_TREASURY_ACCOUNT );
 
       const auto& owner_account = _db.get_account( o.creator );
-      const auto& receiver_account = _db.get_account( o.receiver );
+      /// Just to check the receiver account exists.
+      _db.get_account( o.receiver );
 
       _db.create< proposal_object >( [&]( proposal_object& proposal )
       {
@@ -46,7 +47,8 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
       });
 
       _db.adjust_balance( owner_account, -fee_sbd );
-      _db.adjust_balance( receiver_account, fee_sbd );
+      /// Fee shall be paid to the treasury
+      _db.adjust_balance(treasury_account, fee_sbd );
    }
    FC_CAPTURE_AND_RETHROW( (o) )
 }

@@ -60,11 +60,13 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
 
       signed_transaction tx;
 
+      const account_object& before_treasury_account = db->get_account(STEEM_TREASURY_ACCOUNT);
       const account_object& before_alice_account = db->get_account( creator );
       const account_object& before_bob_account = db->get_account( receiver );
 
       auto before_alice_sbd_balance = before_alice_account.sbd_balance;
       auto before_bob_sbd_balance = before_bob_account.sbd_balance;
+      auto before_treasury_balance = before_treasury_account.sbd_balance;
 
       create_proposal_operation op;
 
@@ -86,14 +88,18 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       tx.operations.clear();
       tx.signatures.clear();
 
+      const auto& after_treasury_account = db->get_account(STEEM_TREASURY_ACCOUNT);
       const account_object& after_alice_account = db->get_account( creator );
       const account_object& after_bob_account = db->get_account( receiver );
 
       auto after_alice_sbd_balance = after_alice_account.sbd_balance;
       auto after_bob_sbd_balance = after_bob_account.sbd_balance;
+      auto after_treasury_balance = after_treasury_account.sbd_balance;
 
       BOOST_REQUIRE( before_alice_sbd_balance == after_alice_sbd_balance + fee );
-      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance - fee );
+      BOOST_REQUIRE( before_bob_sbd_balance == after_bob_sbd_balance );
+      /// Fee shall be paid to treasury account.
+      BOOST_REQUIRE(before_treasury_balance == after_treasury_balance - fee);
 
       const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_creator >();
       auto found = proposal_idx.find( creator );
