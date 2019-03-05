@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <iostream>
+#include <mutex>
 
 namespace mira { namespace multi_index { namespace detail {
 
@@ -133,6 +134,7 @@ public:
    virtual void update( cache_key_type key, Value&& v ) = 0;
    virtual void update( cache_key_type key, Value&& v, const std::vector< size_t >& modified_indices ) = 0;
    virtual bool contains( cache_key_type key ) = 0;
+   virtual std::mutex& get_lock() = 0;
 
 protected:
    std::shared_ptr< multi_index_cache_manager< Value > > _multi_index_cache_manager;
@@ -304,6 +306,7 @@ public:
 private:
    KeyFromValue                        _get_key;
    std::map< Key, cache_bundle_type >  _cache;
+   std::mutex                          _lock;
 
    const Key key( cache_key_type k )
    {
@@ -401,6 +404,11 @@ public:
    virtual bool contains( cache_key_type k ) override final
    {
       return _cache.find( key( k ) ) != _cache.end();
+   }
+
+   virtual std::mutex& get_lock() override final
+   {
+      return _lock;
    }
 };
 

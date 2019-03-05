@@ -126,6 +126,7 @@ public:
       _cache( cache )
    {
       key_type* id = (key_type*)&k;
+      std::lock_guard< std::mutex > lock( _cache.get_index_cache( _index )->get_lock() );
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( _cache_value == nullptr )
       {
@@ -154,6 +155,7 @@ public:
       Key k;
       unpack_from_slice( s, k );
       key_type* id = (key_type*)&k;
+      std::lock_guard< std::mutex > lock( _cache.get_index_cache( _index )->get_lock() );
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( _cache_value == nullptr )
       {
@@ -192,6 +194,7 @@ public:
          key_type key;
 
          unpack_from_slice( _iter->key(), key );
+         std::lock_guard< std::mutex > lock( _cache.get_index_cache( _index )->get_lock() );
          ptr = _cache.get_index_cache( _index )->get( (void*)&key );
 
          if ( !ptr )
@@ -406,6 +409,7 @@ public:
       static KeyCompare compare = KeyCompare();
 
       auto key = Key( k );
+      std::lock_guard< std::mutex > lock( cache.get_index_cache( index )->get_lock() );
       auto cache_value = cache.get_index_cache( index )->get( (void*)&key );
       if ( cache_value != nullptr )
       {
@@ -448,6 +452,7 @@ public:
       static KeyCompare compare = KeyCompare();
 
       key_type* id = (key_type*)&k;
+      std::lock_guard< std::mutex > lock( cache.get_index_cache( index )->get_lock() );
       auto cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( cache_value != nullptr )
       {
@@ -487,6 +492,7 @@ public:
       const Key& k )
    {
       key_type* id = (key_type*)&k;
+      std::lock_guard< std::mutex > lock( cache.get_index_cache( index )->get_lock() );
       auto cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( cache_value != nullptr )
       {
