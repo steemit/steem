@@ -15,6 +15,7 @@
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/webserver/webserver_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/sps/sps_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -94,7 +95,8 @@ int main( int argc, char** argv )
       bool initialized = appbase::app().initialize<
             steem::plugins::chain::chain_plugin,
             steem::plugins::p2p::p2p_plugin,
-            steem::plugins::webserver::webserver_plugin >
+            steem::plugins::webserver::webserver_plugin,
+            steem::plugins::sps::sps_plugin >
             ( argc, argv );
 
       info();
