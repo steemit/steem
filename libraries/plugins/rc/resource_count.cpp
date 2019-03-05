@@ -349,24 +349,24 @@ struct count_operation_visitor
    }
 #endif
 
-   void operator()( const create_proposal_operation& ) const
+   void operator()( const create_proposal_operation& op ) const
    {
-      FC_TODO("Change RC state bytes computation to take proposals into account");
+      state_bytes_count += _w.proposal_object_base_size;
+      state_bytes_count += sizeof( op.subject );
+      state_bytes_count += sizeof( op.url );
+      execution_time_count += _e.create_proposal_operation_exec_time;
    }
 
-   void operator()( const update_proposal_votes_operation& ) const
+   void operator()( const update_proposal_votes_operation& op ) const
    {
-      FC_TODO("Change RC state bytes computation to take proposals into account");
+      state_bytes_count += _w.proposal_vote_object_base_size;
+      state_bytes_count += _w.proposal_vote_object_member_size * op.proposal_ids.size();
+      execution_time_count += _e.update_proposal_votes_operation_exec_time;
    }
 
    void operator()(const remove_proposal_operation&) const
    {
-      FC_TODO("Change RC state bytes computation to take proposals into account");
-   }
-
-   void operator()(const proposal_pay_operation&) const
-   {
-      FC_TODO("Change RC state bytes computation to take proposals into account");
+      execution_time_count += _e.remove_proposal_operation_exec_time;
    }
 
    void operator()( const recover_account_operation& ) const {}
@@ -393,6 +393,7 @@ struct count_operation_visitor
    void operator()( const comment_benefactor_reward_operation& ) const {}
    void operator()( const producer_reward_operation& ) const {}
    void operator()( const clear_null_account_balance_operation& ) const {}
+   void operator()(const proposal_pay_operation&) const {}
 
    // Optional Actions
 #ifdef IS_TEST_NET

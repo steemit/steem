@@ -739,6 +739,22 @@ struct pre_apply_operation_visitor
       regenerate< false >( _current_witness );
    }
 
+   void operator()( const create_proposal_operation& op )const
+   {
+      regenerate( op.creator );
+      regenerate( op.receiver );
+   }
+
+   void operator()( const update_proposal_votes_operation& op )const
+   {
+      regenerate( op.voter );
+   }
+
+   void operator()( const remove_proposal_operation& op )const
+   {
+      regenerate( op.proposal_owner );
+   }
+
    template< typename Op >
    void operator()( const Op& op )const {}
 };
@@ -901,6 +917,22 @@ struct post_apply_operation_visitor
    void operator()( const clear_null_account_balance_operation& op )const
    {
       _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
+   }
+
+   void operator()( const create_proposal_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.creator );
+      _mod_accounts.emplace_back( op.receiver );
+   }
+
+   void operator()( const update_proposal_votes_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.voter );
+   }
+
+   void operator()( const remove_proposal_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.proposal_owner );
    }
 
    template< typename Op >
