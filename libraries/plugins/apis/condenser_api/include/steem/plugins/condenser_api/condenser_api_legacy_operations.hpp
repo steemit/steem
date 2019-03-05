@@ -67,6 +67,8 @@ namespace steem { namespace plugins { namespace condenser_api {
    typedef shutdown_witness_operation             legacy_shutdown_witness_operation;
    typedef hardfork_operation                     legacy_hardfork_operation;
    typedef comment_payout_update_operation        legacy_comment_payout_update_operation;
+   typedef update_proposal_votes_operation        legacy_update_proposal_votes_operation;
+   typedef remove_proposal_operation              legacy_remove_proposal_operation;
 
    struct legacy_price
    {
@@ -431,49 +433,6 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_asset daily_pay;
       string subject;
       string url;
-   };
-
-   struct legacy_update_proposal_votes_operation
-   {
-      legacy_update_proposal_votes_operation() {}
-      legacy_update_proposal_votes_operation( const update_proposal_votes_operation& op ) :
-         voter( op.voter ),
-         proposal_ids( op.proposal_ids ),
-         approve( op.approve )
-      {}
-
-      operator update_proposal_votes_operation()const
-      {
-         update_proposal_votes_operation op;
-         op.voter = voter;
-         op.proposal_ids = proposal_ids;
-         op.approve = approve;
-         return op;
-      }
-
-      account_name_type voter;
-      flat_set<int64_t> proposal_ids;
-      bool approve;
-   };
-
-   struct legacy_remove_proposal_operation
-   {
-      legacy_remove_proposal_operation() {}
-      legacy_remove_proposal_operation( const remove_proposal_operation& op ) :
-         proposal_owner( op.proposal_owner ),
-         proposal_ids( op.proposal_ids )
-      {}
-
-      operator remove_proposal_operation()const
-      {
-         remove_proposal_operation op;
-         op.proposal_owner = proposal_owner;
-         op.proposal_ids = proposal_ids;
-         return op;
-      }
-
-      account_name_type proposal_owner;
-      flat_set<int64_t> proposal_ids;
    };
 
    struct legacy_withdraw_vesting_operation
@@ -1167,6 +1126,8 @@ namespace steem { namespace plugins { namespace condenser_api {
       bool operator()( const shutdown_witness_operation& op )const               { l_op = op; return true; }
       bool operator()( const hardfork_operation& op )const                       { l_op = op; return true; }
       bool operator()( const comment_payout_update_operation& op )const          { l_op = op; return true; }
+      bool operator()( const update_proposal_votes_operation& op )const          { l_op = op; return true; }
+      bool operator()( const remove_proposal_operation& op )const                { l_op = op; return true; }
 
       bool operator()( const transfer_operation& op )const
       {
@@ -1360,18 +1321,6 @@ namespace steem { namespace plugins { namespace condenser_api {
          return true;
       }
 
-      bool operator()( const update_proposal_votes_operation& op )const
-      {
-         l_op = legacy_update_proposal_votes_operation( op );
-         return true;
-      }
-
-      bool operator()( const remove_proposal_operation& op )const
-      {
-         l_op = legacy_remove_proposal_operation( op );
-         return true;
-      }
-
       // Should only be SMT ops
       template< typename T >
       bool operator()( const T& )const { return false; }
@@ -1543,16 +1492,6 @@ struct convert_from_legacy_operation_visitor
       return operation( create_proposal_operation( op ) );
    }
 
-   operation operator()( const legacy_update_proposal_votes_operation& op )const
-   {
-      return operation( update_proposal_votes_operation( op ) );
-   }
-
-   operation operator()( const legacy_remove_proposal_operation& op )const
-   {
-      return operation( remove_proposal_operation( op ) );
-   }
-
    template< typename T >
    operation operator()( const T& t )const
    {
@@ -1676,7 +1615,5 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_oper
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_update_proposal_votes_operation, (voter)(proposal_ids)(approve) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_remove_proposal_operation, (proposal_owner)(proposal_ids) )
 
 FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )
