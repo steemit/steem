@@ -1085,7 +1085,8 @@ class wallet_api
                            time_point_sec _end_date, 
                            condenser_api::legacy_asset _daily_pay,
                            const std::string& _subject, 
-                           const std::string& _url = "");
+                           const std::string& _url,
+                           bool broadcast );
       /**
        * Update existing worker proposal(s)
        * @param _voter     - voiting account,
@@ -1094,7 +1095,8 @@ class wallet_api
        */
       condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
                                                                      flat_set<int64_t> _proposals, 
-                                                                     bool _approve = true);
+                                                                     bool _approve,
+                                                                     bool broadcast );
       /**
        * List proposals
        * @param _start      - starting value for querying results,
@@ -1135,7 +1137,7 @@ class wallet_api
        * @param _ids       - proposal ids to be removed
        */
       condenser_api::legacy_signed_transaction remove_proposal(account_name_type _deleter, 
-                                                               flat_set<int64_t> _ids);
+                                                               flat_set<int64_t> _ids, bool broadcast );
 };
 
 struct plain_keys {

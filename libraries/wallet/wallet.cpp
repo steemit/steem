@@ -2404,7 +2404,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 }
 
    condenser_api::legacy_signed_transaction  wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
-                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url)
+                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url, bool broadcast )
    {
       auto now = time_point::now();
 
@@ -2438,12 +2438,12 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       signed_transaction trx;
       trx.operations.push_back( cp );
       trx.validate();
-      return my->sign_transaction( trx, true );
+      return my->sign_transaction( trx, broadcast );
    }
 
    condenser_api::legacy_signed_transaction  wallet_api::update_proposal_votes(account_name_type _voter,
                                                                                flat_set<int64_t> _proposals,
-                                                                               bool _approve)
+                                                                               bool _approve, bool broadcast )
    {
       FC_ASSERT(_voter.size());
       FC_ASSERT(!_proposals.empty() );
@@ -2463,7 +2463,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       signed_transaction trx;
       trx.operations.push_back( upv );
       trx.validate();
-      return my->sign_transaction( trx, true );
+      return my->sign_transaction( trx, broadcast );
    }
 
    steem::plugins::sps::list_proposals_return wallet_api::list_proposals(fc::variant _start,
@@ -2603,7 +2603,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    }
 
    condenser_api::legacy_signed_transaction wallet_api::remove_proposal(account_name_type _deleter, 
-                                                                        flat_set<int64_t> _ids )
+                                                                        flat_set<int64_t> _ids, bool broadcast )
    {
       FC_ASSERT(_deleter.size());
       FC_ASSERT(!_ids.empty());
@@ -2619,7 +2619,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       signed_transaction trx;
       trx.operations.push_back( rp );
       trx.validate();
-      return my->sign_transaction( trx, true );
+      return my->sign_transaction( trx, broadcast );
    }
 
 } } // steem::wallet
