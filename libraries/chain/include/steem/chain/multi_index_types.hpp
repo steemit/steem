@@ -31,13 +31,14 @@ namespace steem { namespace chain {
 //using ::boost::multi_index::composite_key_compare;
 //using ::boost::multi_index::const_mem_fun;
 
-using indexed_by              = ::mira::multi_index::indexed_by_adapter;
-using ordered_unique          = ::mira::multi_index::ordered_unique_adapter;
-using tag                     = ::mira::multi_index::tag_adapter;
-using member                  = ::mira::multi_index::member_adapter;
-using composite_key           = ::mira::multi_index::composite_key_adapter;
-using composite_key_compare   = ::mira::multi_index::composite_key_compare_adapter;
-using const_mem_fun           = ::mira::multi_index::const_mem_fun_adapter;
+using mira::multi_index_container;
+using mira::multi_index::indexed_by;
+using mira::multi_index::ordered_unique;
+using mira::multi_index::tag;
+using mira::multi_index::member;
+using mira::multi_index::composite_key;
+using mira::multi_index::composite_key_compare;
+using mira::multi_index::const_mem_fun;
 /*
 template< typename... Args >
 using indexed_by = typename std::conditional< false, ::mira::multi_index::indexed_by< Args ... >, ::boost::multi_index::indexed_by< Args ... > >;

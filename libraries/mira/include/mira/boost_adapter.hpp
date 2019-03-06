@@ -1,3 +1,4 @@
+#pragma once
 #include <boost/multi_index_container.hpp>
 
 namespace mira {
