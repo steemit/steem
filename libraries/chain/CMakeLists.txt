@@ -9,6 +9,7 @@ add_library( steem_chain
 
              smt_evaluator.cpp
 
+             sps_objects/sps_processor.cpp
              sps_evaluator.cpp
              sps_helper.cpp
 
