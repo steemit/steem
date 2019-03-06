@@ -95,8 +95,7 @@ int main( int argc, char** argv )
       bool initialized = appbase::app().initialize<
             steem::plugins::chain::chain_plugin,
             steem::plugins::p2p::p2p_plugin,
-            steem::plugins::webserver::webserver_plugin,
-            steem::plugins::sps::sps_plugin >
+            steem::plugins::webserver::webserver_plugin >
             ( argc, argv );
 
       info();
