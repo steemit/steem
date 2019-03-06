@@ -1,4 +1,6 @@
 
+#include <mira/adapters.hpp>
+
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
@@ -29,13 +31,13 @@ namespace steem { namespace chain {
 //using ::boost::multi_index::composite_key_compare;
 //using ::boost::multi_index::const_mem_fun;
 
-using ::mira::multi_index::indexed_by;
-using ::mira::multi_index::ordered_unique;
-using ::mira::multi_index::tag;
-using ::mira::multi_index::member;
-using ::mira::multi_index::composite_key;
-using ::mira::multi_index::composite_key_compare;
-using ::mira::multi_index::const_mem_fun;
+using indexed_by              = ::mira::multi_index::indexed_by_adapter;
+using ordered_unique          = ::mira::multi_index::ordered_unique_adapter;
+using tag                     = ::mira::multi_index::tag_adapter;
+using member                  = ::mira::multi_index::member_adapter;
+using composite_key           = ::mira::multi_index::composite_key_adapter;
+using composite_key_compare   = ::mira::multi_index::composite_key_compare_adapter;
+using const_mem_fun           = ::mira::multi_index::const_mem_fun_adapter;
 /*
 template< typename... Args >
 using indexed_by = typename std::conditional< false, ::mira::multi_index::indexed_by< Args ... >, ::boost::multi_index::indexed_by< Args ... > >;
@@ -73,11 +75,13 @@ public:
    using mira::multi_index_container< T1, T2, T3 >::multi_index_container;
 };
 
+/*
 template< typename Value, typename IndexSpecifierList, typename Allocator >
 class multi_index_container : public mira_type< Value, IndexSpecifierList, Allocator >
 {
 public:
    using mira_type< Value, IndexSpecifierList, Allocator >::mira_type;
 };
+*/
 
 } } // steem::chain
