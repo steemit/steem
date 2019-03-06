@@ -67,8 +67,8 @@ template<
 >
 struct adapter_conversion< multi_index::indexed_by< BOOST_PP_ENUM_PARAMS(MIRA_INDEXED_BY_SIZE,T) > >
 {
-   typedef multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA(MIRA_INDEXED_BY_SIZE,T) > mira_type;
-   typedef boost::multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST(MIRA_INDEXED_BY_SIZE,T) > bmic_type;
+   typedef multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA(MIRA_INDEXED_BY_SIZE,T) >           mira_type;
+   typedef boost::multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST(MIRA_INDEXED_BY_SIZE,T) >   bmic_type;
 };
 
 template< typename Arg1, typename Arg2, typename Arg3 >
@@ -97,8 +97,8 @@ struct adapter_conversion< multi_index::composite_key< Value, MIRA_CK_ENUM_PARAM
 template< MIRA_CK_ENUM(MIRA_CK_TEMPLATE_PARM,Compare) >
 struct adapter_conversion< multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) > >
 {
-   typedef multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) > mira_type;
-   typedef boost::multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) >  bmic_type;
+   typedef multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) >          mira_type;
+   typedef boost::multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) >   bmic_type;
 };
 
 } //mira
