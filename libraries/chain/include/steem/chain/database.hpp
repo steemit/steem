@@ -266,8 +266,6 @@ namespace steem { namespace chain {
          void notify_pre_apply_transaction( const transaction_notification& note );
          void notify_post_apply_transaction( const transaction_notification& note );
 
-         void notify_on_proposal_processing( const block_notification& note );
-
          using apply_required_action_handler_t = std::function< void(const required_action_notification&) >;
          using apply_optional_action_handler_t = std::function< void(const optional_action_notification&) >;
          using apply_operation_handler_t = std::function< void(const operation_notification&) >;
@@ -304,8 +302,6 @@ namespace steem { namespace chain {
          boost::signals2::connection add_pre_reindex_handler               ( const reindex_handler_t&                   func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_post_reindex_handler              ( const reindex_handler_t&                   func, const abstract_plugin& plugin, int32_t group = -1 );
          boost::signals2::connection add_generate_optional_actions_handler ( const generate_optional_actions_handler_t& func, const abstract_plugin& plugin, int32_t group = -1 );
-
-         boost::signals2::connection add_on_proposal_processing_handler    ( const apply_block_handler_t&               func, const abstract_plugin& plugin, int32_t group = -1 );
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -630,11 +626,6 @@ namespace steem { namespace chain {
           *  released.
           */
          fc::signal<void(const block_notification&)>           _pre_apply_block_signal;
-
-         /**
-          *  This signal is emitted when all proposals are processed.
-          */
-         fc::signal<void(const block_notification&)>           _on_proposal_processing;
 
          fc::signal<void(uint32_t)>                            _on_irreversible_block;
 
