@@ -32,11 +32,11 @@
   BOOST_PP_ENUM_PARAMS(BOOST_MULTI_INDEX_COMPOSITE_KEY_SIZE,param)
 
 #define BOOST_MULTI_INDEX_CK_TEMPLATE_PARM(z,n,text)                         \
-  typename BOOST_PP_CAT(text,n) BOOST_PP_EXPR_IF(n,=tuples::null_type)
+  typename BOOST_PP_CAT(text,n) BOOST_PP_EXPR_IF(n,=boost::tuples::null_type)
 
 #define BOOST_MULTI_INDEX_INDEXED_BY_SIZE 20
 #define BOOST_MULTI_INDEX_INDEXED_BY_TEMPLATE_PARM(z,n,var) \
-  typename BOOST_PP_CAT(var,n) BOOST_PP_EXPR_IF(n,=mpl::na)
+  typename BOOST_PP_CAT(var,n) BOOST_PP_EXPR_IF(n,=boost::mpl::na)
 
 namespace mira {
 
@@ -75,7 +75,7 @@ struct adapter_conversion
    typedef T bmic_type;
 };
 
-template< template< typename Arg1, typename Arg2, typename Arg3 > >
+template< template< typename Arg1, typename Arg2, typename Arg3 > class >
 struct adapter_conversion< multi_index_container_adapter< Arg1, Arg2, Arg3 > >
 {
    typedef multi_index::multi_index_container<
@@ -89,7 +89,7 @@ struct adapter_conversion< multi_index_container_adapter< Arg1, Arg2, Arg3 > >
       adapter_conversion< Arg2 >::boost_type,
       adapter_conversion< Arg3 >::boost_type
       > boost_type;
-}
+};
 
 template<
    BOOST_PP_ENUM( BOOST_MULTI_INDEX_INDEXED_BY_SIZE, BOOST_MULTI_INDEX_INDEXED_BY_TEMPLATE_PARM, T )
