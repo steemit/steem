@@ -76,6 +76,39 @@ def list_proposals(start, order_by, order_direction, limit, active):
   logger.info("New payload: {}".format(ret))
   return ret
 
+def condenser_list_proposals(start, order_by, order_direction, limit, active):
+  payload = {
+    "jsonrpc" : "2.0",
+    "id" : get_random_id(),
+    "method" : "condenser_api.list_proposals", 
+    "params" : [start, order_by, order_direction, limit, active]
+  }
+  ret = json.dumps(payload)
+  logger.info("New payload: {}".format(ret))
+  return ret
+
+def condenser_list_voter_proposals(voter, order_by, order_direction, limit, active):
+  payload = {
+    "jsonrpc" : "2.0",
+    "id" : get_random_id(),
+    "method" : "condenser_api.list_voter_proposals", 
+    "params" : [voter, order_by, order_direction, limit, active]
+  }
+  ret = json.dumps(payload)
+  logger.info("New payload: {}".format(ret))
+  return ret
+
+def condenser_find_proposals(id_set):
+  payload = {
+    "jsonrpc" : "2.0",
+    "id" : get_random_id(),
+    "method" : "condenser_api.find_proposals", 
+    "params" : [id_set]
+  }
+  ret = json.dumps(payload)
+  logger.info("New payload: {}".format(ret))
+  return ret
+
 def run_test(test_name, expected_result, url, payload):
   logger.info("Running test: {}".format(test_name))
   try:
@@ -96,6 +129,7 @@ if __name__ == '__main__':
   url = "{0}:{1}".format(args.node_ip, args.node_port)
   logger.info("Using node at: {}".format(url))
 
+  logger.info("Running SPS RPC API tests")
   payload = find_proposals([1234, 2, 3, 4])
   run_test("Basic find_proposal test", None, url, payload)
 
@@ -103,5 +137,15 @@ if __name__ == '__main__':
   run_test("Basic list_proposals test", None, url, payload)
 
   payload = list_voter_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
+  run_test("Basic list_voter_proposals test", None, url, payload)
+
+  logger.info("Running SPS API tests via condeser API")
+  payload = condenser_find_proposals([1234, 2, 3, 4])
+  run_test("Basic find_proposal test", None, url, payload)
+
+  payload = condenser_list_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
+  run_test("Basic list_proposals test", None, url, payload)
+
+  payload = condenser_list_voter_proposals("blocktrades", "by_creator", "direction_ascending", 1, 1)
   run_test("Basic list_voter_proposals test", None, url, payload)
 
