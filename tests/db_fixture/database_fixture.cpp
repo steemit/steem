@@ -1036,9 +1036,11 @@ list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::varia
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "date" ) {
+         if ( _order_by == "start_date" ) {
             return order_by_type::by_start_date;
-         } else if ( _order_by == "votes" ) {
+         } else if ( _order_by == "end_date" ) {
+            return order_by_type::by_end_date;
+         } else if ( _order_by == "total_votes" ) {
             return order_by_type::by_total_votes;
          } else {
             return order_by_type::by_creator;
@@ -1079,9 +1081,11 @@ list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_propos
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "date" ) {
+         if ( _order_by == "start_date" ) {
             return order_by_type::by_start_date;
-         } else if ( _order_by == "votes" ) {
+         } else if ( _order_by == "end_date" ) {
+            return order_by_type::by_end_date;
+         } else if ( _order_by == "total_votes" ) {
             return order_by_type::by_total_votes;
          } else {
             return order_by_type::by_creator;
