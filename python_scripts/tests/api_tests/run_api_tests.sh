@@ -32,4 +32,7 @@ pyresttest $NODE:$RPC_PORT ./account_history_api/account_history_api_test.yaml -
 pyresttest $NODE:$RPC_PORT ./sps_api/sps_api_test.yaml --import_extensions='validator_ex;'$COMPARATOR
 [ $? -ne 0 ] && EXIT_CODE=-1
 
+pyresttest $NODE:$RPC_PORT ./sps_api/sps_via_condenser_test.yaml --import_extensions='validator_ex;'$COMPARATOR
+[ $? -ne 0 ] && EXIT_CODE=-1
+
 exit $EXIT_CODE

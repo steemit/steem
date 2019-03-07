@@ -88,6 +88,13 @@ void sort_results(RESULT_TYPE& result, order_by_type order_by, order_direction_t
   }
 }
 
+template <typename CONTAINER, typename PREDICATE>
+CONTAINER filter(const CONTAINER &container, PREDICATE predicate) {
+    CONTAINER result;
+    std::copy_if(container.begin(), container.end(), std::back_inserter(result), predicate);
+    return result;
+}
+
 DEFINE_API_IMPL(sps_api_impl, find_proposals) {
   ilog("find_proposal called");
   // cannot query for more than SPS_API_SINGLE_QUERY_LIMIT ids
@@ -163,6 +170,24 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
       FC_ASSERT( false, "Unknown or unsupported sort order" );
   }
 
+  // filter with active flag
+  result = filter(result, [&](const auto& proposal) {
+    const bool is_active = proposal.is_active(_db.head_block_time());
+    switch (args.active)
+    {
+      case 0:
+        return is_active == false;
+      break;
+
+      case 1:
+        return is_active == true;
+      break;
+
+      default:
+        return true;
+    }
+  });
+
   if (!result.empty())
   {
     // sorting operations
@@ -190,6 +215,24 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
       return api_proposal_object(*po);
     }
   );
+
+  // filter with active flag
+  result = filter(result, [&](const auto& proposal) {
+    const bool is_active = proposal.is_active(_db.head_block_time());
+    switch (args.active)
+    {
+      case 0:
+        return is_active == false;
+      break;
+
+      case 1:
+        return is_active == true;
+      break;
+
+      default:
+        return true;
+    }
+  });
 
   if (!result.empty())
   {

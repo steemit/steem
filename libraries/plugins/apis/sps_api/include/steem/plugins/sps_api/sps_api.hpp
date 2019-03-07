@@ -36,8 +36,6 @@ namespace steem { namespace plugins { namespace sps {
 
   struct api_proposal_object
   {
-    api_proposal_object(){}
-    
     api_proposal_object(const proposal_object& po) : 
       id(po.id),
       creator(po.creator),
@@ -76,6 +74,15 @@ namespace steem { namespace plugins { namespace sps {
 
     //This will be calculate every maintenance period
     uint64_t total_votes = 0;
+
+    const bool is_active(const time_point_sec &head_time) const
+    {
+      if (head_time >= start_date && head_time <= end_date)
+      {
+        return true;
+      }
+      return false;
+    }
   };
 
   // Struct with arguments for find_proposals methd
