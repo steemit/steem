@@ -170,23 +170,26 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
       FC_ASSERT( false, "Unknown or unsupported sort order" );
   }
 
-  // filter with active flag
-  result = filter(result, [&](const auto& proposal) {
-    const bool is_active = proposal.is_active(_db.head_block_time());
-    switch (args.active)
-    {
-      case 0:
-        return !is_active;
-      break;
+  if (args.active != -1) // avoid not needed rewrite in case of active set to all
+  {
+    // filter with active flag
+    result = filter(result, [&](const auto& proposal) {
+      const bool is_active = proposal.is_active(_db.head_block_time());
+      switch (args.active)
+      {
+        case 0:
+          return !is_active;
+        break;
 
-      case 1:
-        return is_active;
-      break;
+        case 1:
+          return is_active;
+        break;
 
-      default:
-        return true;
-    }
-  });
+        default:
+          return true;
+      }
+    });
+  }
 
   if (!result.empty())
   {
@@ -216,23 +219,26 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
     }
   );
 
-  // filter with active flag
-  result = filter(result, [&](const auto& proposal) {
-    const bool is_active = proposal.is_active(_db.head_block_time());
-    switch (args.active)
-    {
-      case 0:
-        return !is_active;
-      break;
+  if (args.active != -1) // avoid not needed rewrite in case of active set to all
+  {
+    // filter with active flag
+    result = filter(result, [&](const auto& proposal) {
+      const bool is_active = proposal.is_active(_db.head_block_time());
+      switch (args.active)
+      {
+        case 0:
+          return !is_active;
+        break;
 
-      case 1:
-        return is_active;
-      break;
+        case 1:
+          return is_active;
+        break;
 
-      default:
-        return true;
-    }
-  });
+        default:
+          return true;
+      }
+    });
+  }
 
   if (!result.empty())
   {
