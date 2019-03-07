@@ -176,11 +176,11 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     switch (args.active)
     {
       case 0:
-        return is_active == false;
+        return !is_active;
       break;
 
       case 1:
-        return is_active == true;
+        return is_active;
       break;
 
       default:
@@ -222,11 +222,11 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
     switch (args.active)
     {
       case 0:
-        return is_active == false;
+        return !is_active;
       break;
 
       case 1:
-        return is_active == true;
+        return is_active;
       break;
 
       default:
