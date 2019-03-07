@@ -1,0 +1,43 @@
+---
+- config:
+  - testset: "SPS via Condenser API Tests"
+  - api: &api "condenser_api"
+  - variable_binds:
+    - api: *api
+  - generators:
+    - test_id: {type: 'number_sequence', start: 1}
+
+- base_test: &base_test
+  - generator_binds:
+    - test_id: test_id
+  - group: *api
+  - url: "/rpc"
+  - method: "POST"
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_validator: {jsonpath_mini: "result", comparator: "json_compare", expected: {template: '$api/$method'}}
+
+- test:
+  - name: "find_proposals"
+  - variable_binds:
+    - method: "find_proposals"
+    - args: '[[1,2,3,4,5]]'
+  - <<: *base_test
+
+- test:
+  - name: "list_proposals"
+  - variable_binds:
+    - method: "list_proposals"
+    - args: '["blocktrades","by_creator","direction_ascending",1,1]'
+  - <<: *base_test
+
+- test:
+  - name: "list_voter_proposals"
+  - variable_binds:
+    - method: "list_voter_proposals"
+    - args: '["blocktrades","by_creator","direction_ascending",1,1]'
+  - <<: *base_test
+
