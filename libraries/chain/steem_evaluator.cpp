@@ -1156,8 +1156,16 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       {
          auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, VESTS_SYMBOL );
 
-         if( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
-            new_vesting_withdraw_rate.amount += 1;
+         if( db.has_hardfork( STEEM_HARDFORK_0_21 ) )
+         {
+            if( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
+               new_vesting_withdraw_rate.amount += 1;
+         }
+         else
+         {
+            if( new_vesting_withdraw_rate.amount == 0 )
+               new_vesting_withdraw_rate.amount = 1;         
+         }         
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
