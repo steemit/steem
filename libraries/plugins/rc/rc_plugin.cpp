@@ -224,7 +224,7 @@ void use_account_rcs(
    int64_t rc,
    rc_plugin_skip_flags skip )
 {
-#ifdef IS_STEEM_TESTNET
+#ifdef IS_TEST_NET
    static const account_name_type porter = account_name_type( "porter" );
    if( account_name == porter ) return;
 #endif
