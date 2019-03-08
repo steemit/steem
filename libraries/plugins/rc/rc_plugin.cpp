@@ -15,6 +15,8 @@
 
 #include <steem/jsonball/jsonball.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 #define STEEM_RC_REGEN_TIME   (60*60*24*5)
 // 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
 // TODO: What should this value be for testnet?
@@ -72,6 +74,10 @@ class rc_plugin_impl
       rc_plugin_skip_flags          _skip;
       std::map< account_name_type, int64_t > _account_to_max_rc;
       uint32_t                      _enable_at_block = 1;
+
+#ifdef IS_TEST_NET
+      std::set< account_name_type > _whitelist;
+#endif
 
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
@@ -222,7 +228,12 @@ void use_account_rcs(
    const dynamic_global_property_object& gpo,
    const account_name_type& account_name,
    int64_t rc,
-   rc_plugin_skip_flags skip )
+   rc_plugin_skip_flags skip
+#ifdef IS_TEST_NET
+   ,
+   set< account_name_type > whitelist
+#endif
+   )
 {
    if( account_name == account_name_type() )
    {
@@ -234,6 +245,10 @@ void use_account_rcs(
       }
       return;
    }
+
+#ifdef IS_TEST_NET
+   if( whitelist.count( account_name ) ) return;
+#endif
 
    // ilog( "use_account_rcs( ${n}, ${rc} )", ("n", account_name)("rc", rc) );
    const account_object& account = db.get< account_object, by_name >( account_name );
@@ -323,7 +338,12 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    }
 
    tx_info.resource_user = get_resource_user( note.transaction );
-   use_account_rcs( _db, gpo, tx_info.resource_user, total_cost, _skip );
+   use_account_rcs( _db, gpo, tx_info.resource_user, total_cost, _skip
+#ifdef IS_TEST_NET
+   ,
+   _whitelist
+#endif
+   );
 
    std::shared_ptr< exp_rc_data > export_data =
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
@@ -1028,7 +1048,12 @@ void rc_plugin_impl::on_post_apply_optional_action( const optional_action_notifi
    }
 
    opt_action_info.resource_user = get_resource_user( note.action );
-   use_account_rcs( _db, gpo, opt_action_info.resource_user, total_cost, _skip );
+   use_account_rcs( _db, gpo, opt_action_info.resource_user, total_cost, _skip
+#ifdef IS_TEST_NET
+   ,
+   _whitelist
+#endif
+   );
 
    std::shared_ptr< exp_rc_data > export_data =
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
@@ -1065,10 +1090,18 @@ void rc_plugin::set_program_options( options_description& cli, options_descripti
    cfg.add_options()
       ("rc-skip-reject-not-enough-rc", bpo::value<bool>()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
       ("rc-compute-historical-rc", bpo::value<bool>()->default_value( false ), "Generate historical resource credits" )
+#ifdef IS_TEST_NET
+      ("rc-start-at-block", bpo::value<uint32_t>()->default_value(0), "Start calculating RCs at a specific block" )
+      ("rc-account-whitelist", bpo::value< vector<string> >()->composing(), "Ignore RC calculations for the whitelist" )
+#endif
       ;
    cli.add_options()
       ("rc-skip-reject-not-enough-rc", bpo::bool_switch()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
       ("rc-compute-historical-rc", bpo::bool_switch()->default_value( false ), "Generate historical resource credits" )
+#ifdef IS_TEST_NET
+      ("rc-start-at-block", bpo::value<uint32_t>()->default_value(0), "Start calculating RCs at a specific block" )
+      ("rc-account-whitelist", bpo::value< vector<string> >()->composing(), "Ignore RC calculations for the whitelist" )
+#endif
       ;
 }
 
@@ -1117,6 +1150,26 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       if( !options.at( "rc-compute-historical-rc" ).as<bool>() )
       {
          my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
+      }
+#else
+      uint32_t start_block = options.at( "rc-start-at-block" ).as<uint32_t>();
+      if( start_block > 0 )
+      {
+         my->_enable_at_block = start_block;
+      }
+
+      if( options.count( "rc-account-whitelist" ) > 0 )
+      {
+         auto accounts = options.at( "rc-account-whitelist" ).as< vector< string > > ();
+         for( auto& arg : accounts )
+         {
+            vector< string > names;
+            boost::split( names, arg, boost::is_any_of( " \t" ) );
+            for( const std::string& name : names )
+               my->_whitelist.insert( account_name_type( name ) );
+         }
+
+         ilog( "Ignoring RC's for accounts: ${w}", ("w", my->_whitelist) );
       }
 #endif
 
