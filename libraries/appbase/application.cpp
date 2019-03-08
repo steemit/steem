@@ -224,17 +224,21 @@ void application::exec() {
 
    std::shared_ptr<boost::asio::signal_set> sigint_set(new boost::asio::signal_set(*io_serv, SIGINT));
    sigint_set->async_wait([sigint_set,this](const boost::system::error_code& err, int num) {
+     std::cout << "Caught SIGINT\n";
      quit();
      sigint_set->cancel();
    });
 
    std::shared_ptr<boost::asio::signal_set> sigterm_set(new boost::asio::signal_set(*io_serv, SIGTERM));
    sigterm_set->async_wait([sigterm_set,this](const boost::system::error_code& err, int num) {
+     std::cout << "Caught SIGTERM\n";
      quit();
      sigterm_set->cancel();
    });
 
    io_serv->run();
+
+   std::cout << "Shutting down...\n";
 
    shutdown(); /// perform synchronous shutdown
 }
