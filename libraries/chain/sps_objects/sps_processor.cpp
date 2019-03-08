@@ -13,7 +13,7 @@ using steem::chain::proposal_id_type;
 using steem::chain::proposal_vote_index;
 using steem::chain::by_proposal_voter;
 using steem::chain::by_voter_proposal;
-using steem::chain::proposal_pay_operation;
+using steem::protocol::proposal_pay_operation;
 using steem::chain::sps_helper;
 using steem::chain::dynamic_global_property_object;
 using steem::chain::block_notification;
