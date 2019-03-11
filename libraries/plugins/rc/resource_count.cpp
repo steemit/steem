@@ -353,7 +353,7 @@ struct count_operation_visitor
    {
       state_bytes_count += _w.proposal_object_base_size;
       state_bytes_count += sizeof( op.subject );
-      state_bytes_count += sizeof( op.url );
+      state_bytes_count += sizeof( op.permlink );
       execution_time_count += _e.create_proposal_operation_exec_time;
    }
 

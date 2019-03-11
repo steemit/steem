@@ -54,7 +54,8 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       auto daily_pay = asset( 100, SBD_SYMBOL );
 
       auto subject = "hello";
-      auto url = "http:://something.html";
+      FC_TODO("Pass valid permlink here");
+      auto permlink = "http:://something.html";
 
       FUND( creator, ASSET( "80.000 TBD" ) );
 
@@ -79,7 +80,7 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       op.daily_pay = daily_pay;
 
       op.subject = subject;
-      op.url = url;
+      op.permlink = permlink;
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -111,7 +112,7 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       BOOST_REQUIRE( found->end_date == end_date );
       BOOST_REQUIRE( found->daily_pay == daily_pay );
       BOOST_REQUIRE( found->subject == subject );
-      BOOST_REQUIRE( found->url == url );
+      BOOST_REQUIRE( found->permlink == permlink );
 
       validate_database();
    }
@@ -576,7 +577,7 @@ BOOST_AUTO_TEST_CASE( create_proposal_005 )
       cpo.end_date   = cpo.start_date + fc::days( 2 );
       cpo.daily_pay  = asset( 100, SBD_SYMBOL );
       cpo.subject    = "";
-      cpo.url        = "http:://something.html";
+      cpo.permlink        = "http:://something.html";
       FUND( cpo.creator, ASSET( "80.000 TBD" ) );
       generate_block();
       signed_transaction tx;
@@ -605,7 +606,7 @@ BOOST_AUTO_TEST_CASE( create_proposal_006 )
       cpo.end_date   = cpo.start_date + fc::days( 2 );
       cpo.daily_pay  = asset( 100, SBD_SYMBOL );
       cpo.subject    = "very very very very very very long long long long long long subject subject subject subject subject subject";
-      cpo.url        = "http:://something.html";
+      cpo.permlink        = "http:://something.html";
       FUND( cpo.creator, ASSET( "80.000 TBD" ) );
       generate_block();
       signed_transaction tx;
@@ -634,7 +635,7 @@ BOOST_AUTO_TEST_CASE( create_proposal_007 )
       cpo.end_date   = cpo.start_date + fc::days( 2 );
       cpo.daily_pay  = asset( 100, SBD_SYMBOL );
       cpo.subject    = "subject";
-      cpo.url        = "http:://something.html";
+      cpo.permlink        = "http:://something.html";
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;

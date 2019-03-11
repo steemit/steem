@@ -33,7 +33,7 @@ class proposal_object : public object< proposal_object_type, proposal_object >
 
       template<typename Constructor, typename Allocator>
       proposal_object( Constructor&& c, allocator< Allocator > a )
-      : subject( a ), url( a )
+      : subject( a ), permlink( a )
       {
          c(*this);
       };
@@ -59,8 +59,8 @@ class proposal_object : public object< proposal_object_type, proposal_object >
       //subject (a very brief description or title for the proposal)
       shared_string subject;
 
-      //url (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
-      shared_string url;
+      //permlink (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
+      shared_string permlink;
 
       //This will be calculate every maintenance period
       uint64_t total_votes = 0;
@@ -142,7 +142,7 @@ typedef multi_index_container<
 
 } } // steem::chain
 
-FC_REFLECT( steem::chain::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url)(total_votes) )
+FC_REFLECT( steem::chain::proposal_object, (id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_object, steem::chain::proposal_index )
 
 FC_REFLECT( steem::chain::proposal_vote_object, (id)(voter)(proposal_id) )

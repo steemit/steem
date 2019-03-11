@@ -934,6 +934,8 @@ int64_t t_proposal_database_fixture< T >::create_proposal( std::string creator, 
 {
    signed_transaction tx;
 
+   
+
    create_proposal_operation op;
 
    op.creator = creator;
@@ -946,7 +948,10 @@ int64_t t_proposal_database_fixture< T >::create_proposal( std::string creator, 
 
    static uint32_t cnt = 0;
    op.subject = std::to_string( cnt );
-   op.url = "http://" + std::to_string( cnt );
+
+   FC_TODO("Pass valid permlink here");
+
+   op.permlink = "http://" + std::to_string( cnt );
 
    tx.operations.push_back( op );
    tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
