@@ -410,7 +410,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          end_date( op.end_date ),
          daily_pay( legacy_asset::from_asset( op.daily_pay ) ),
          subject( op.subject ),
-         url( op.url )
+         permlink( op.permlink)
       {}
 
       operator create_proposal_operation()const
@@ -422,7 +422,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.end_date = end_date;
          op.daily_pay = daily_pay;
          op.subject = subject;
-         op.url = url;
+         op.permlink = permlink;
          return op;
       }
 
@@ -432,7 +432,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       time_point_sec end_date;
       legacy_asset daily_pay;
       string subject;
-      string url;
+      string permlink;
    };
 
    struct legacy_withdraw_vesting_operation
@@ -1614,6 +1614,6 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_oper
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink) )
 
 FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )

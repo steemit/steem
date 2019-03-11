@@ -20,8 +20,8 @@ struct create_proposal_operation : public base_operation
 
    string subject;
 
-   /// Given url shall be a valid permlink.
-   string url;
+   /// Given link shall be a valid permlink. Must be posted by creator or at least receiver.
+   string permlink;
 
    void validate()const;
 
@@ -78,7 +78,7 @@ struct proposal_pay_operation : public virtual_operation
 
 } } // steem::protocol
 
-FC_REFLECT( steem::protocol::create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(url) )
+FC_REFLECT( steem::protocol::create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink) )
 FC_REFLECT( steem::protocol::update_proposal_votes_operation, (voter)(proposal_ids)(approve) )
 FC_REFLECT( steem::protocol::remove_proposal_operation, (proposal_owner)(proposal_ids) )
 
