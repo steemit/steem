@@ -1,0 +1,17 @@
+[
+    {
+        "creator": "initminer",
+        "daily_pay": {
+            "amount": "16000",
+            "nai": "@@000000013",
+            "precision": 3
+        },
+        "end_date": "2019-03-11T15:22:08",
+        "id": 2,
+        "receiver": "treasury",
+        "start_date": "2019-03-09T15:22:08",
+        "subject": "493d4fc6-143f-458a-a28e-870c8352b9fa",
+        "total_votes": 0,
+        "url": "mypermlink"
+    }
+]
