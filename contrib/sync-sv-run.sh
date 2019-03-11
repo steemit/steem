@@ -42,11 +42,17 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     kill -SIGINT $STEEMD_PID
     echo steemdsync: waiting for steemd to exit cleanly
 
-    # wait 60 seconds for steemd to exit, to be safe.
+    # loop while the process is still running
     let WAIT_TIME=0
-    while ( kill -0 $STEEMD_PID ) && [[ WAIT_TIME -le 60 ]]; do
+    while kill -0 $STEEMD_PID 2> /dev/null; do
        sleep 1
        let WAIT_TIME++
+
+       # if we haven't stopped the process in 5 minutes break from the loop and emit a warning
+       if [[ WAIT_TIME -gt 300 ]]; then
+          echo warning: waited $WAIT_TIME seconds and process is still running
+          break;
+       fi
     done
 
     echo steemdsync: starting a new blockchainstate upload operation
