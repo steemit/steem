@@ -38,6 +38,6 @@
   - name: "list_voter_proposals"
   - variable_binds:
     - method: "list_voter_proposals"
-    - args: '{"voter : "blocktrades", ""order_by":"by_creator", "order_direction":"direction_ascending","limit" : 1, "active" : 1}}'
+    - args: '{"voter" : "blocktrades", "order_by":"by_creator", "order_direction":"direction_ascending","limit" : 1, "active":1}}'
   - <<: *base_test
 
