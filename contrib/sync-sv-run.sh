@@ -48,8 +48,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
        sleep 1
        let WAIT_TIME++
 
-       # if we haven't stopped the process in 5 minutes break from the loop and emit a warning
-       if [[ WAIT_TIME -gt 300 ]]; then
+       # if we haven't stopped the process in 15 minutes break from the loop and emit a warning
+       if [[ WAIT_TIME -gt 900 ]]; then
           echo warning: waited $WAIT_TIME seconds and process is still running
           break;
        fi
