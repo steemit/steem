@@ -52,7 +52,7 @@ namespace steem { namespace plugins { namespace sps {
       end_date(po.end_date),
       daily_pay(po.daily_pay),
       subject(to_string(po.subject)),
-      url(to_string(po.url)),
+      permlink(to_string(po.permlink)),
       total_votes(po.total_votes)
     {}
 
@@ -78,7 +78,7 @@ namespace steem { namespace plugins { namespace sps {
     string subject;
 
     //url (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
-    string url;
+    string permlink;
 
     //This will be calculate every maintenance period
     uint64_t total_votes = 0;
@@ -113,9 +113,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit;
-    // result will contain only data with status flag set to this value
-    proposal_status status;
+    uint16_t limit=0;
+    // result will contain only data with active flag set to this value
+    int8_t active=0;
   };
 
   // Return type for list_proposals
@@ -131,9 +131,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit;
-    // result will contain only data with status flag set to this value
-    proposal_status status;
+    uint16_t limit=0;
+    // result will contain only data with active flag set to this value
+    int8_t active=0;
   };
 
   // Return type for list_voter_proposals
@@ -183,7 +183,7 @@ FC_REFLECT(steem::plugins::sps::api_proposal_object,
   (end_date)
   (daily_pay)
   (subject)
-  (url)
+  (permlink)
   (total_votes)
   );
 
