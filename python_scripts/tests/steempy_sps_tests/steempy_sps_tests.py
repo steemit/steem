@@ -59,6 +59,8 @@ def test_create_proposal(node, account, wif):
         logger.error("Account: {} not found. {}".format("treasury", ex))
         sys.exit(1)
 
+    ret = s.commit.post("Steempy proposal title", "Steempy proposal body", creator["name"], permlink = "steempy-proposal-title", tags = "proposals")
+
     ret = s.commit.create_proposal(
       creator["name"], 
       receiver["name"], 
@@ -66,7 +68,7 @@ def test_create_proposal(node, account, wif):
       end_date,
       "16.000 TBD",
       SUBJECT,
-      "mypermlink"
+      "steempy-proposal-title"
     )
 
     assert ret["operations"][0][1]["creator"] == account
@@ -75,7 +77,7 @@ def test_create_proposal(node, account, wif):
     assert ret["operations"][0][1]["end_date"] == end_date
     assert ret["operations"][0][1]["daily_pay"] == "16.000 TBD"
     assert ret["operations"][0][1]["subject"] == SUBJECT
-    assert ret["operations"][0][1]["url"] == "mypermlink"
+    assert ret["operations"][0][1]["permlink"] == "steempy-proposal-title"
 
 def test_list_proposals(node, account, wif):
     logger.info("Testing: list_proposals")
@@ -149,12 +151,13 @@ def test_vote_proposal(node, account, wif):
 def test_list_voter_proposals(node, account, wif):
     logger.info("Testing: list_voter_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
-    proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, "inactive")
+    voter_proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, -1)
 
     found = None
-    for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
-            found = proposal
+    for voter, proposals in voter_proposals.items():
+        for proposal in proposals:
+            if proposal["subject"] == SUBJECT:
+                found = proposal
     
     assert found is not None
 
@@ -205,5 +208,6 @@ if __name__ == '__main__':
     test_list_proposals(url, args.account, args.wif)
     test_find_proposals(url, args.account, args.wif)
     test_vote_proposal(url, args.account, args.wif)
+    test_list_voter_proposals(url, args.account, args.wif)
     sleep(6)
     test_remove_proposal(url, args.account, args.wif)

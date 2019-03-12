@@ -31,6 +31,13 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
       /// Just to check the receiver account exists.
       _db.get_account( o.receiver );
 
+      const auto* commentObject = _db.find_comment(o.creator, o.permlink);
+      if(commentObject == nullptr)
+      {
+         commentObject = _db.find_comment(o.receiver, o.permlink);
+         FC_ASSERT(commentObject != nullptr, "Proposal permlink must point to the article posted by creator or receiver");
+      }
+
       _db.create< proposal_object >( [&]( proposal_object& proposal )
       {
          proposal.creator = o.creator;
@@ -43,7 +50,7 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 
          proposal.subject = o.subject.c_str();
 
-         proposal.url = o.url.c_str();
+         proposal.permlink = o.permlink.c_str();
       });
 
       _db.adjust_balance( owner_account, -fee_sbd );

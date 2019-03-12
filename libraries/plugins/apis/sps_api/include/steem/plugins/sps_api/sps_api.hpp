@@ -52,7 +52,7 @@ namespace steem { namespace plugins { namespace sps {
       end_date(po.end_date),
       daily_pay(po.daily_pay),
       subject(to_string(po.subject)),
-      url(to_string(po.url)),
+      permlink(to_string(po.permlink)),
       total_votes(po.total_votes)
     {}
 
@@ -78,7 +78,7 @@ namespace steem { namespace plugins { namespace sps {
     string subject;
 
     //url (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
-    string url;
+    string permlink;
 
     //This will be calculate every maintenance period
     uint64_t total_votes = 0;
@@ -112,10 +112,10 @@ namespace steem { namespace plugins { namespace sps {
     order_by_type order_by;
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
-    // query limit
-    uint16_t limit;
+     // query limit
+    uint16_t limit = 0;
     // result will contain only data with status flag set to this value
-    proposal_status status;
+    proposal_status status = proposal_status::all;
   };
 
   // Return type for list_proposals
@@ -131,13 +131,13 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit;
+    uint16_t limit = 0;
     // result will contain only data with status flag set to this value
-    proposal_status status;
+    proposal_status status = proposal_status::all;
   };
 
   // Return type for list_voter_proposals
-  typedef std::vector<api_proposal_object> list_voter_proposals_return;
+  typedef std::map<std::string, std::vector<api_proposal_object> > list_voter_proposals_return;
   
   class sps_api
   {
@@ -183,7 +183,7 @@ FC_REFLECT(steem::plugins::sps::api_proposal_object,
   (end_date)
   (daily_pay)
   (subject)
-  (url)
+  (permlink)
   (total_votes)
   );
 

@@ -2404,7 +2404,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 }
 
    condenser_api::legacy_signed_transaction  wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
-                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _url, bool broadcast )
+                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _permlink, bool broadcast )
    {
       auto now = time_point::now();
 
@@ -2425,7 +2425,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       cp.end_date = _end_date;
       cp.daily_pay = _daily_pay;
       cp.subject = _subject;
-      cp.url = _url;
+      cp.permlink = _permlink;
 
       ddump((cp.creator));
       ddump((cp.receiver));
@@ -2433,7 +2433,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       ddump((cp.end_date));
       ddump((cp.daily_pay));
       ddump((cp.subject));
-      ddump((cp.url));
+      ddump((cp.permlink));
       
       signed_transaction trx;
       trx.operations.push_back( cp );
