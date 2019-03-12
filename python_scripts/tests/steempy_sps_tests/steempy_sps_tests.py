@@ -59,6 +59,9 @@ def test_create_proposal(node, account, wif):
         logger.error("Account: {} not found. {}".format("treasury", ex))
         sys.exit(1)
 
+    ret = s.commit.post("Steempy proposal title", "Steempy proposal body", creator["name"], permlink = "steempy-proposal-title", tags = "proposals")
+    print(ret)
+
     ret = s.commit.create_proposal(
       creator["name"], 
       receiver["name"], 
@@ -66,7 +69,7 @@ def test_create_proposal(node, account, wif):
       end_date,
       "16.000 TBD",
       SUBJECT,
-      "mypermlink"
+      "steempy-proposal-title"
     )
 
     assert ret["operations"][0][1]["creator"] == account
@@ -75,7 +78,7 @@ def test_create_proposal(node, account, wif):
     assert ret["operations"][0][1]["end_date"] == end_date
     assert ret["operations"][0][1]["daily_pay"] == "16.000 TBD"
     assert ret["operations"][0][1]["subject"] == SUBJECT
-    assert ret["operations"][0][1]["url"] == "mypermlink"
+    assert ret["operations"][0][1]["permlink"] == "steempy-proposal-title"
 
 def test_list_proposals(node, account, wif):
     logger.info("Testing: list_proposals")
