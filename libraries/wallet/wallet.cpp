@@ -2472,12 +2472,12 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                          std::string _order_by,
                                                                          std::string _order_type,
                                                                          int _limit,
-                                                                         int _active)
+                                                                         std::string _status)
    {
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
       FC_ASSERT(_limit > 0);
-      FC_ASSERT(_active >= -1 and _active <= 1);
+      FC_ASSERT(!_status.empty());
 
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
@@ -2501,21 +2501,38 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
          }
       };
 
+      auto proposal_status = [&_status]() 
+      {
+         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
+         if (_status == "active")
+         {
+            return proposal_status::active;
+         }
+         else if (_status == "inactive")
+         {
+            return proposal_status::inactive;
+         }
+         else
+         {
+            return proposal_status::all;
+         }
+      };
+
       steem::plugins::sps::list_proposals_args args;
       args.start           = _start;
       args.order_by        = ordered_by();
       args.order_direction = ordered_type();
       args.limit           = _limit;
-      args.active          = _active;
+      args.status          = proposal_status();
 
       ddump((args.start));
       ddump((args.order_by));
       ddump((args.order_direction));
       ddump((args.limit));
-      ddump((args.active));
+      ddump((args.status));
 
       try {
-         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.active);
+         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.status);
          
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_proposals: ${error}",  ("error", _e));
@@ -2531,15 +2548,12 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                                      std::string _order_by,
                                                                                      std::string _order_type,
                                                                                      int _limit,
-                                                                                     int _active)
+                                                                                     std::string _status)
    {
-      FC_ASSERT(_voter.size());
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
       FC_ASSERT(_limit > 0);
-      FC_ASSERT(_active >= -1 and _active <= 1);
-
-      auto voter = get_account(_voter);
+      FC_ASSERT(!_status.empty());
 
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
@@ -2563,21 +2577,38 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
          }
       };
 
+      auto proposal_status = [&_status]() 
+      {
+         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
+         if (_status == "active")
+         {
+            return proposal_status::active;
+         }
+         else if (_status == "inactive")
+         {
+            return proposal_status::inactive;
+         }
+         else
+         {
+            return proposal_status::all;
+         }
+      };
+
       steem::plugins::sps::list_voter_proposals_args args;
-      args.voter           = voter.name;
+      args.voter           = _voter;
       args.order_by        = ordered_by();
       args.order_direction = ordered_type();
       args.limit           = _limit;
-      args.active          = _active;
+      args.status          = proposal_status();
 
       ddump((args.voter));
       ddump((args.order_by));
       ddump((args.order_direction));
       ddump((args.limit));
-      ddump((args.active));
+      ddump((args.status));
 
       try {
-         return my->_remote_api->list_voter_proposals(args.voter, args.order_by, args.order_direction, args.limit, args.active);
+         return my->_remote_api->list_voter_proposals(args.voter, args.order_by, args.order_direction, args.limit, args.status);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {
