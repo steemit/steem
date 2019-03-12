@@ -170,19 +170,19 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
       FC_ASSERT( false, "Unknown or unsupported sort order" );
   }
 
-  if (args.active != -1) // avoid not needed rewrite in case of active set to all
+  if (args.active != proposal_status::all) // avoid not needed rewrite in case of active set to all
   {
     // filter with active flag
     result = filter(result, [&](const auto& proposal) {
       const bool is_active = proposal.is_active(_db.head_block_time());
       switch (args.active)
       {
-        case 0:
+        case proposal_status::inactive:
           return !is_active;
         break;
 
         case 1:
-          return is_active;
+          return proposal_status::active;
         break;
 
         default:
@@ -209,16 +209,25 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   auto itr = idx.lower_bound(args.voter);
   auto end = idx.end();
 
-  while( result.size() < args.limit && itr != end )
+  if (args.active != proposal_status::all) // avoid not needed rewrite in case of active set to all
   {
-    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
-    FC_ASSERT(po != nullptr, "Proposal with given id does not exists");
-    auto apo = api_proposal_object(*po);
-    if (args.active == -1 || apo.is_active(_db.head_block_time()) == args.active)
-    {
-      result[itr->voter].push_back(apo);
-    }
-    ++itr;
+    // filter with active flag
+    result = filter(result, [&](const auto& proposal) {
+      const bool is_active = proposal.is_active(_db.head_block_time());
+      switch (args.active)
+      {
+        case proposal_status::inactive:
+          return !is_active;
+        break;
+
+        case proposal_status::active:
+          return is_active;
+        break;
+
+        default:
+          return true;
+      }
+    });
   }
 
   if (!result.empty())
