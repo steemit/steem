@@ -32,6 +32,13 @@ namespace steem { namespace plugins { namespace sps {
     by_total_votes, ///< order by total votes
   };
 
+  enum proposal_status
+  {
+    active = 1,
+    inactive = 0,
+    all = -1,
+  };
+
   typedef uint64_t api_id_type;
 
   struct api_proposal_object
@@ -106,9 +113,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit=0;
-    // result will contain only data with active flag set to this value
-    int8_t active=0;
+    uint16_t limit;
+    // result will contain only data with status flag set to this value
+    proposal_status status;
   };
 
   // Return type for list_proposals
@@ -124,9 +131,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit=0;
-    // result will contain only data with active flag set to this value
-    int8_t active=0;
+    uint16_t limit;
+    // result will contain only data with status flag set to this value
+    proposal_status status;
   };
 
   // Return type for list_voter_proposals
@@ -160,6 +167,12 @@ FC_REFLECT_ENUM(steem::plugins::sps::order_by_type,
   (by_start_date)
   (by_end_date)
   (by_total_votes)
+  );
+
+FC_REFLECT_ENUM(steem::plugins::sps::proposal_status,
+  (active)
+  (inactive)
+  (all)
   );
 
 FC_REFLECT(steem::plugins::sps::api_proposal_object,
