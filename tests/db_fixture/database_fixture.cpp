@@ -1028,7 +1028,7 @@ bool t_proposal_database_fixture< T >::exist_proposal( int64_t id )
 }
 
 template< typename T>
-list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, int _active) 
+list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, steem::plugins::sps::proposal_status _status) 
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
@@ -1052,13 +1052,30 @@ list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::varia
          }
       };
 
+      auto proposal_status = [&_status]() 
+      {
+         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
+         if (_status == "active")
+         {
+            return proposal_status::active;
+         }
+         else if (_status == "inactive")
+         {
+            return proposal_status::inactive;
+         }
+         else
+         {
+            return proposal_status::all;
+         }
+      };
+
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_proposals_args args;
       args.start           = _start;
       args.order_by        = ordered_by();
       args.order_direction = order_type_check();
       args.limit           = _limit;
-      args.active          = _active;
+      args.status          = proposal_status();
 
       try {
          return api->list_proposals(args);
@@ -1073,7 +1090,7 @@ list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::varia
 }
 
 template< typename T>
-list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, int _active) 
+list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, steem::plugins::sps::proposal_status _status) 
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
@@ -1097,13 +1114,30 @@ list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_propos
          }
       };
 
+      auto proposal_status = [&_status]() 
+      {
+         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
+         if (_status == "active")
+         {
+            return proposal_status::active;
+         }
+         else if (_status == "inactive")
+         {
+            return proposal_status::inactive;
+         }
+         else
+         {
+            return proposal_status::all;
+         }
+      };
+
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
       args.voter           = _voter;
       args.order_by        = ordered_by();
       args.order_direction = order_type_check();
       args.limit           = _limit;
-      args.active          = _active;
+      args.status          = proposal_status();
 
       try {
          return api->list_voter_proposals(args);
