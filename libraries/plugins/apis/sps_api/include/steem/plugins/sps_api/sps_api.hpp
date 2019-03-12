@@ -113,9 +113,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit=0;
-    // result will contain only data with active flag set to this value
-    int8_t active=0;
+    uint16_t limit;
+    // result will contain only data with status flag set to this value
+    proposal_status status;
   };
 
   // Return type for list_proposals
@@ -131,9 +131,9 @@ namespace steem { namespace plugins { namespace sps {
     // sorting order (ascending or descending) of the result vector
     order_direction_type order_direction;
     // query limit
-    uint16_t limit=0;
-    // result will contain only data with active flag set to this value
-    int8_t active=0;
+    uint16_t limit;
+    // result will contain only data with status flag set to this value
+    proposal_status status;
   };
 
   // Return type for list_voter_proposals
