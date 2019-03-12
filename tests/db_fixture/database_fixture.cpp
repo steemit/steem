@@ -949,9 +949,10 @@ int64_t t_proposal_database_fixture< T >::create_proposal( std::string creator, 
    static uint32_t cnt = 0;
    op.subject = std::to_string( cnt );
 
-   FC_TODO("Pass valid permlink here");
-
-   op.permlink = "http://" + std::to_string( cnt );
+   const std::string permlink = "permlink" + std::to_string( cnt );
+   post_comment(creator, permlink, "title", "body", "test", key);
+   
+   op.permlink = permlink;
 
    tx.operations.push_back( op );
    tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -1172,6 +1173,27 @@ uint64_t t_proposal_database_fixture< T >::get_nr_blocks_until_maintenance_block
    return ret;
 }
 
+template< typename T>
+void t_proposal_database_fixture< T >::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key)
+{
+   this->generate_blocks( this->db->head_block_time() + STEEM_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEM_BLOCK_INTERVAL ), true );
+   comment_operation comment;
+
+   comment.author = _authro;
+   comment.permlink = _permlink;
+   comment.title = _title;
+   comment.body = _body;
+   comment.parent_permlink = _parent_permlink;
+
+   signed_transaction trx;
+   trx.operations.push_back( comment );
+   trx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   this->sign( trx, _key );
+   this->db->push_transaction( trx, 0 );
+   trx.signatures.clear();
+   trx.operations.clear();
+}
+
 template int64_t t_proposal_database_fixture< clean_database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
@@ -1183,6 +1205,7 @@ template find_proposals_return t_proposal_database_fixture< clean_database_fixtu
 template void t_proposal_database_fixture< clean_database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< clean_database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
 template uint64_t t_proposal_database_fixture< clean_database_fixture >::get_nr_blocks_until_maintenance_block();
+template void t_proposal_database_fixture< clean_database_fixture >::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
 
 template void t_proposal_database_fixture< database_fixture >::plugin_prepare();
 template int64_t t_proposal_database_fixture< database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
@@ -1196,6 +1219,7 @@ template find_proposals_return t_proposal_database_fixture< database_fixture >::
 template void t_proposal_database_fixture< database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
 template uint64_t t_proposal_database_fixture< database_fixture >::get_nr_blocks_until_maintenance_block();
+template void t_proposal_database_fixture< database_fixture >::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
 
 json_rpc_database_fixture::json_rpc_database_fixture()
 {
