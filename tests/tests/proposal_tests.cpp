@@ -54,8 +54,9 @@ BOOST_AUTO_TEST_CASE( proposal_object_apply )
       auto daily_pay = asset( 100, SBD_SYMBOL );
 
       auto subject = "hello";
-      FC_TODO("Pass valid permlink here");
-      auto permlink = "http:://something.html";
+      auto permlink = "somethingpermlink";
+
+      post_comment(creator, permlink, "title", "body", "test", alice_private_key);
 
       FUND( creator, ASSET( "80.000 TBD" ) );
 
@@ -846,6 +847,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_001 )
       generate_block();
       FUND( cpd.creator, ASSET( "80.000 TBD" ) );
       generate_block();
+
 
       int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
       int64_t proposal_2 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
