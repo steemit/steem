@@ -170,7 +170,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
       FC_ASSERT( false, "Unknown or unsupported sort order" );
   }
 
-  if (args.active != proposal_status::all) // avoid not needed rewrite in case of active set to all
+  if (args.status != proposal_status::all) // avoid not needed rewrite in case of active set to all
   {
     // filter with active flag
     result = filter(result, [&](const auto& proposal) {
@@ -181,8 +181,8 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
           return !is_active;
         break;
 
-        case 1:
-          return proposal_status::active;
+        case proposal_status::active:
+          return is_active;
         break;
 
         default:
