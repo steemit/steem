@@ -130,7 +130,7 @@ namespace steem { namespace plugins { namespace sps {
   };
 
   // Return type for list_voter_proposals
-  typedef std::vector<api_proposal_object> list_voter_proposals_return;
+  typedef std::map<std::string, std::vector<api_proposal_object> > list_voter_proposals_return;
   
   class sps_api
   {

@@ -149,12 +149,13 @@ def test_vote_proposal(node, account, wif):
 def test_list_voter_proposals(node, account, wif):
     logger.info("Testing: list_voter_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
-    proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, -1)
+    voter_proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, -1)
 
     found = None
-    for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
-            found = proposal
+    for voter, proposals in voter_proposals.items():
+        for proposal in proposals:
+            if proposal["subject"] == SUBJECT:
+                found = proposal
     
     assert found is not None
 
@@ -205,5 +206,6 @@ if __name__ == '__main__':
     test_list_proposals(url, args.account, args.wif)
     test_find_proposals(url, args.account, args.wif)
     test_vote_proposal(url, args.account, args.wif)
+    test_list_voter_proposals(url, args.account, args.wif)
     sleep(6)
     test_remove_proposal(url, args.account, args.wif)
