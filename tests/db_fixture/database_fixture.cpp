@@ -1038,7 +1038,7 @@ bool t_proposal_database_fixture< T >::exist_proposal( int64_t id )
 }
 
 template< typename T>
-list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) 
+list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, steem::plugins::sps::proposal_status _status) 
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
@@ -1100,7 +1100,7 @@ list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::varia
 }
 
 template< typename T>
-list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, std::string _status) 
+list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, steem::plugins::sps::proposal_status _status) 
 {
       auto ordered_by = [&_order_by]() {
          std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
