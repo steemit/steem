@@ -1243,8 +1243,8 @@ template void t_proposal_database_fixture< clean_database_fixture >::vote_propos
 template void t_proposal_database_fixture< clean_database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< clean_database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template bool t_proposal_database_fixture< clean_database_fixture >::exist_proposal( int64_t id );
-template list_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, int _active);
-template list_voter_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, int _active);
+template list_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit,  steem::plugins::sps::proposal_status _status);
+template list_voter_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit,  steem::plugins::sps::proposal_status _status);
 template find_proposals_return t_proposal_database_fixture< clean_database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
 template void t_proposal_database_fixture< clean_database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< clean_database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
@@ -1257,8 +1257,8 @@ template void t_proposal_database_fixture< database_fixture >::vote_proposal( st
 template void t_proposal_database_fixture< database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template void t_proposal_database_fixture< database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 template bool t_proposal_database_fixture< database_fixture >::exist_proposal( int64_t id );
-template list_proposals_return t_proposal_database_fixture< database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, int _active);
-template list_voter_proposals_return t_proposal_database_fixture< database_fixture >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, int _active) ;
+template list_proposals_return t_proposal_database_fixture< database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit,  steem::plugins::sps::proposal_status _status);
+template list_voter_proposals_return t_proposal_database_fixture< database_fixture >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit,  steem::plugins::sps::proposal_status _status) ;
 template find_proposals_return t_proposal_database_fixture< database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
 template void t_proposal_database_fixture< database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 template bool t_proposal_database_fixture< database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
