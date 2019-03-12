@@ -204,46 +204,30 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   FC_ASSERT(args.limit <= SPS_API_SINGLE_QUERY_LIMIT);
 
   list_voter_proposals_return result;
-  result.reserve(args.limit);
 
-  steem::utilities::iterate_results<proposal_vote_index, by_voter_proposal>(
-    account_name_type(args.voter),
-    result,
-    args.limit,
-    _db,
-    [&](auto& vote_object) 
-    { 
-      auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(vote_object.proposal_id);
-      FC_ASSERT(po != nullptr, "Proposal with given id does not exists");
-      return api_proposal_object(*po);
-    }
-  );
+  const auto& idx = _db.get_index<proposal_vote_index, by_voter_proposal>();
+  auto itr = idx.lower_bound(args.voter);
+  auto end = idx.end();
 
-  if (args.active != -1) // avoid not needed rewrite in case of active set to all
+  while( result.size() < args.limit && itr != end )
   {
-    // filter with active flag
-    result = filter(result, [&](const auto& proposal) {
-      const bool is_active = proposal.is_active(_db.head_block_time());
-      switch (args.active)
-      {
-        case 0:
-          return !is_active;
-        break;
-
-        case 1:
-          return is_active;
-        break;
-
-        default:
-          return true;
-      }
-    });
+    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
+    FC_ASSERT(po != nullptr, "Proposal with given id does not exists");
+    auto apo = api_proposal_object(*po);
+    if (args.active == -1 || apo.is_active(_db.head_block_time()) == args.active)
+    {
+      result[itr->voter].push_back(apo);
+    }
+    ++itr;
   }
 
   if (!result.empty())
   {
     // sorting operations
-    sort_results<list_voter_proposals_return>(result, args.order_by, args.order_direction);
+    for (auto it = result.begin(); it != result.end(); ++it)
+    {
+      sort_results<std::vector<api_proposal_object> >(it->second, args.order_by, args.order_direction);
+    }
   }
   return result;
 }
