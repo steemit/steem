@@ -60,7 +60,6 @@ def test_create_proposal(node, account, wif):
         sys.exit(1)
 
     ret = s.commit.post("Steempy proposal title", "Steempy proposal body", creator["name"], permlink = "steempy-proposal-title", tags = "proposals")
-    print(ret)
 
     ret = s.commit.create_proposal(
       creator["name"], 
