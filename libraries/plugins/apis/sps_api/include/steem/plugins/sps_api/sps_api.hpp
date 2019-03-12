@@ -196,7 +196,7 @@ FC_REFLECT(steem::plugins::sps::list_proposals_args,
   (order_by)
   (order_direction)
   (limit)
-  (active)
+  (status)
   );
 
 FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, 
@@ -204,6 +204,6 @@ FC_REFLECT(steem::plugins::sps::list_voter_proposals_args,
   (order_by)
   (order_direction)
   (limit)
-  (active)
+  (status)
   );
 
