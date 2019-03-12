@@ -151,7 +151,7 @@ def test_vote_proposal(node, account, wif):
 def test_list_voter_proposals(node, account, wif):
     logger.info("Testing: list_voter_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
-    voter_proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, -1)
+    voter_proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, "inactive")
 
     found = None
     for voter, proposals in voter_proposals.items():
