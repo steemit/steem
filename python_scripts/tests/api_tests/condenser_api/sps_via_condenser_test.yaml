@@ -31,13 +31,13 @@
   - name: "list_proposals"
   - variable_binds:
     - method: "list_proposals"
-    - args: '["blocktrades","by_creator","direction_ascending",1,1]'
+    - args: '["blocktrades","by_creator","direction_ascending",1,"active"]'
   - <<: *base_test
 
 - test:
   - name: "list_voter_proposals"
   - variable_binds:
     - method: "list_voter_proposals"
-    - args: '["blocktrades","by_creator","direction_ascending",1,1]'
+    - args: '["blocktrades","by_creator","direction_ascending",1,"active"]'
   - <<: *base_test
 
