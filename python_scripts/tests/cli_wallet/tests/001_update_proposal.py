@@ -23,25 +23,25 @@ if __name__ == "__main__":
                             args.chain_id  )
         wallet.set_and_run_wallet()
 
-        wallet.create_account("initminer", "upvtest", "", "true")
-        json = last_message_as_json( wallet.list_voter_proposals("initminer", "creator", "asc", 20, 1))
-        proposals_before = len(json["result"])
+        creator, receiver = make_user_for_tests(wallet)
 
+        proposals_before = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all") )))
         log.info("proposals_before {0}".format(proposals_before))
 
-        wallet.create_proposal("initminer", "upvtest", "2029-06-02T00:00:00", "2029-08-01T00:00:00", "1.000 TBD", "this is subject", "http://url.html", "true")
+        wallet.post_comment(creator, "lorem", "", "ipsum", "Lorem Ipsum", "body", "{}", "true")
+        wallet.create_proposal(creator, receiver, "2029-06-02T00:00:00", "2029-08-01T00:00:00", "1.000 TBD", "this is subject", "lorem", "true")
         
-        json = last_message_as_json(wallet.list_proposals("initminer", "creator", "asc", 50, 1))
-        new_proposal_id = json["result"][len(json["result"])-1]["id"]
+        resp = find_creator_proposals(creator, last_message_as_json(wallet.list_proposals(creator, "creator", "asc", 50, "all")))
+        new_proposal_id = 0
+        for r in resp:
+            if r["id"] > new_proposal_id:
+                new_proposal_id = r["id"]
 
-        json = last_message_as_json(wallet.list_voter_proposals("initminer", "creator", "asc", 20, 1))
-        proposals_middle = len(json["result"])
-
+        proposals_middle = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all"))))
         log.info("proposals_middle {0}".format(proposals_middle))
 
-        wallet.update_proposal_votes("initminer", [new_proposal_id], "true", "true")
-        json = last_message_as_json(wallet.list_voter_proposals("initminer", "creator", "asc", 20, 1))
-        proposals_after = len(json["result"])
+        wallet.update_proposal_votes(creator, [new_proposal_id], "true", "true")
+        proposals_after = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all") )))
 
         log.info("proposals_after {0}".format(proposals_after))
 

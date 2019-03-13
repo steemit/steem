@@ -2,13 +2,14 @@
 
 import sys
 import json
-import time
 import queue
-import logging
+import requests
 import threading
 import subprocess
 
 from .logger import log
+
+from .test_utils import last_message_as_json, ws_to_http
 
 class CliWalletException(Exception):
     def __init__(self, _message):
@@ -62,6 +63,7 @@ class CliWallet(object):
             test_args = " ".join(test_args)
             return test_args
 
+
     def __init__(self, _path_to_executable,
                        _server_rpc_endpoint="ws://127.0.0.1:8090",
                        _cert_auth="_default",
@@ -91,6 +93,7 @@ class CliWallet(object):
             log.error("Cli_wallet is not set")
             raise CliWalletException("Cli_wallet is not set")
 
+
     def __call__(self,*_args):
         try:
             self.response = ""
@@ -98,6 +101,7 @@ class CliWallet(object):
             return self.response
         except Exception as _ex:
             log.exception("Exception `{0}` occuress while calling `{1}` with `{2}` args.".format(str(_ex), self.method_name, list(_args)))
+
 
     def set_and_run_wallet(self):
         try:
@@ -113,23 +117,44 @@ class CliWallet(object):
         except Exception as _ex:
             log.exception("Exception `{0}` occuress while while running cli_wallet.".format(str(_ex)))
 
-    def clear_previous(self):
+
+    #we dont have stansaction status api, so we need to combine...
+    def wait_for_transaction_approwal(self):
+        json_resp = last_message_as_json(self.response)
+        block_num = json_resp["result"]["block_num"]
+        trans_id  = json_resp["result"]["id"]
+        url = ws_to_http(self.cli_args.server_rpc_endpoint)
+        idx = -1
         while True:
-            try:
-                self.q.get(block=True, timeout=1)
-            except queue.Empty:
-                break
+            param = {"jsonrpc":"2.0", "method":"block_api.get_block", "params":{"block_num":block_num+idx}, "id":1}
+            resp = requests.post(url, json=param)
+            data = resp.json()
+            if "result" in data and "block" in data["result"]:
+                block_transactions = data["result"]["block"]["transaction_ids"]
+                if trans_id in block_transactions:
+                    log.info("Transaction `{0}` founded in block `{1}`".format(trans_id, block_num+idx))
+                    break
+            idx += 1
+
+    def check_if_transaction(self):
+        json_resp = last_message_as_json(self.response)
+        if "result" in json_resp:
+            if "id" in json_resp["result"]:
+                return True
+        return False
 
     def send_and_read(self, _data):
         log.info("Sending {0}".format(_data))
-        self.clear_previous()
         self.cli_proc.stdin.write(_data.encode("utf-8"))
         self.cli_proc.stdin.flush()
         while True:
             try:
-                self.response += self.q.get(block=True, timeout=1)
+                self.response += self.q.get(block=True, timeout=3)
             except queue.Empty:
                 break
+        if self.check_if_transaction():
+            self.wait_for_transaction_approwal()
+
         return self.response
 
 
@@ -167,3 +192,4 @@ class CliWallet(object):
             else:
                 prepared_args += "{0}".format(arg) + " "
         return prepared_args + "\n"
+
