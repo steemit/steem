@@ -2477,51 +2477,12 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       FC_ASSERT(_limit > 0);
       FC_ASSERT(!_status.empty());
 
-      auto ordered_by = [&_order_by]() {
-         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "start_date" ) {
-            return order_by_type::by_start_date;
-         } else if ( _order_by == "end_date" ) {
-            return order_by_type::by_end_date;
-         } else if ( _order_by == "total_votes" ) {
-            return order_by_type::by_total_votes;
-         } else {
-            return order_by_type::by_creator;
-         }
-      };
-
-      auto ordered_type = [&_order_type]() {
-         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_type == "desc" ) {
-            return order_direction_type::direction_descending;
-         } else {
-            return order_direction_type::direction_ascending;
-         }
-      };
-
-      auto proposal_status = [&_status]() 
-      {
-         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
-         if (_status == "active")
-         {
-            return proposal_status::active;
-         }
-         else if (_status == "inactive")
-         {
-            return proposal_status::inactive;
-         }
-         else
-         {
-            return proposal_status::all;
-         }
-      };
-
       steem::plugins::sps::list_proposals_args args;
       args.start           = _start;
-      args.order_by        = ordered_by();
-      args.order_direction = ordered_type();
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
-      args.status          = proposal_status();
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
 
       ddump((args.start));
       ddump((args.order_by));
@@ -2553,51 +2514,12 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       FC_ASSERT(_limit > 0);
       FC_ASSERT(!_status.empty());
 
-      auto ordered_by = [&_order_by]() {
-         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "start_date" ) {
-            return order_by_type::by_start_date;
-         } else if ( _order_by == "end_date" ) {
-            return order_by_type::by_end_date;
-         } else if ( _order_by == "total_votes" ) {
-            return order_by_type::by_total_votes;
-         } else {
-            return order_by_type::by_creator;
-         }
-      };
-
-      auto ordered_type = [&_order_type]() {
-         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_type == "desc" ) {
-            return order_direction_type::direction_descending;
-         } else {
-            return order_direction_type::direction_ascending;
-         }
-      };
-
-      auto proposal_status = [&_status]() 
-      {
-         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
-         if (_status == "active")
-         {
-            return proposal_status::active;
-         }
-         else if (_status == "inactive")
-         {
-            return proposal_status::inactive;
-         }
-         else
-         {
-            return proposal_status::all;
-         }
-      };
-
       steem::plugins::sps::list_voter_proposals_args args;
       args.voter           = _voter;
-      args.order_by        = ordered_by();
-      args.order_direction = ordered_type();
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
-      args.status          = proposal_status();
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
 
       ddump((args.voter));
       ddump((args.order_by));
