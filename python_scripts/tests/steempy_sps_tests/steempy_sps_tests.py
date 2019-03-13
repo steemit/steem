@@ -193,15 +193,20 @@ if __name__ == '__main__':
     logger.info("Performing SPS tests")
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("account", help = "Account to create proposals with")
+    parser.add_argument("wif", help = "Private key for accout for proposal generation")
     parser.add_argument("--node-ip", help = "IP address of steem node", default = "http://127.0.0.1", dest = "node_ip")
     parser.add_argument("--node-port", help = "Steem node port", default = 8090, dest = "node_port")
-    parser.add_argument("--account", default = "initminer", dest = "account")
-    parser.add_argument("--wif", default = "5JNHfZYKGaomSFvd4NUdQ9qMcEAC43kujbfjueTHpVapX1Kzq2n", dest = "wif")
+    parser.add_argument("--no-erase-proposal", action='store_false', dest = "no_erase_proposal", help = "Do not erase proposal created with this test")
 
     args = parser.parse_args()
 
     url = "{0}:{1}".format(args.node_ip, args.node_port)
     logger.info("Using node at: {}".format(url))
+
+#    if not args.wif:
+#        logger.error("WIF is required for account {}. Please use --wif <wif> option and specify WIF.".format(args.account))
+#        sys.exit(1)
 
     test_create_proposal(url, args.account, args.wif)
     sleep(6)
@@ -210,4 +215,5 @@ if __name__ == '__main__':
     test_vote_proposal(url, args.account, args.wif)
     test_list_voter_proposals(url, args.account, args.wif)
     sleep(6)
-    test_remove_proposal(url, args.account, args.wif)
+    if args.no_erase_proposal:
+        test_remove_proposal(url, args.account, args.wif)
