@@ -14,7 +14,6 @@ if __name__ == "__main__":
         wallet = CliWallet( args.path,
                             args.server_rpc_endpoint,
                             args.cert_auth,
-                            #args.rpc_endpoint,
                             args.rpc_tls_endpoint,
                             args.rpc_tls_cert,
                             args.rpc_http_endpoint,
@@ -24,16 +23,15 @@ if __name__ == "__main__":
                             args.chain_id  )
         wallet.set_and_run_wallet()
 
-        wallet.create_account("initminer", "crttest", "", "true")
-        json = last_message_as_json(wallet.list_proposals("initminer", "creator", "asc", 50, 1))
-        proposals_before = len(json["result"])
+        creator, receiver = make_user_for_tests(wallet)
 
+        proposals_before = len(find_creator_proposals(creator, last_message_as_json( wallet.list_proposals(creator, "creator", "asc", 50, "all"))))
         log.info("proposals_before {0}".format(proposals_before))
 
-        wallet.create_proposal("initminer", "crttest", "2029-06-02T00:00:00", "2029-08-01T00:00:00", "1.000 TBD", "this is subject", "http://url.html", "true")
-        json = last_message_as_json(wallet.list_proposals("initminer", "creator", "asc", 50, 1))
-        proposals_after = len(json["result"])
+        wallet.post_comment(creator, "lorem", "", "ipsum", "Lorem Ipsum", "body", "{}", "true")
+        create_prop = wallet.create_proposal(creator, receiver, "2029-06-02T00:00:00", "2029-08-01T00:00:00", "1.000 TBD", "this is subject", "lorem", "true")
 
+        proposals_after = len(find_creator_proposals(creator, last_message_as_json( wallet.list_proposals(creator, "creator", "asc", 50, "all"))))
         log.info("proposals_after {0}".format(proposals_after))
 
         if not proposals_before + 1 == proposals_after:

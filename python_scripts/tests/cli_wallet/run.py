@@ -7,6 +7,7 @@ import datetime
 import subprocess
 
 from tests.utils.cmd_args import parser
+from tests.utils.logger import log
 
 test_args = []
 summary_file_name = "summary.txt"
@@ -34,7 +35,7 @@ def run_script(_test, _multiplier = 1, _interpreter = None ):
             summary.writelines("Test `{0}` failed.\n".format(_test))
             return True
   except Exception as _ex:
-    print("Exception occures in run_script `{0}`".format(str(_ex)))
+    log.exception("Exception occures in run_script `{0}`".format(str(_ex)))
     return True
 
 
@@ -55,10 +56,12 @@ if __name__ == "__main__":
             error = check_subdirs("./tests")
 
     except Exception as _ex:
-        print("Exception occured `{0}`.".format(str(_ex)))
+        log.exception("Exception occured `{0}`.".format(str(_ex)))
         error = True
-        
-    if error:
-        exit(1)
-    else:
-        exit(0)
+    finally:
+        if error:
+            log.error("At least one test has faild. Please check summary.txt file.")
+            exit(1)
+        else:
+            log.info("All tests pass.")
+            exit(0)

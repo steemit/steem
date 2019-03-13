@@ -21,7 +21,7 @@ if __name__ == "__main__":
                             args.chain_id  )
         wallet.set_and_run_wallet()
 
-        active          = [1,0,-1]
+        active          = ["active", "inactive", "all"]
         order_by        = ["creator", "start_date", "end_date", "total_votes"]
         order_direction = ["asc", "desc"]
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
                         start = "2019-03-01T00:00:00"
                     else:
                         start = 0
-                    call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "active":act}
+                    call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "status":act}
                     call_and_check(wallet.list_proposals, call_args, "args")
 
     except Exception as _ex:
