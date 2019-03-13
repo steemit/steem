@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM phusion/baseimage:0.9.19
 
 RUN \
     apt-get update && \
