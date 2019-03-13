@@ -31,9 +31,7 @@ except Exception as ex:
     logger.error("SteemPy library is not installed.")
     sys.exit(1)
 
-SUBJECT = str(uuid4())
-
-def test_create_proposal(node, account, wif):
+def test_create_proposal(node, creator_account, receiver_account, wif, subject):
     logger.info("Testing: create_proposal")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     
@@ -48,15 +46,15 @@ def test_create_proposal(node, account, wif):
 
     from steem.account import Account
     try:
-        creator = Account(account)
+        creator = Account(creator_account)
     except Exception as ex:
-        logger.error("Account: {} not found. {}".format(account, ex))
+        logger.error("Account: {} not found. {}".format(creator_account, ex))
         sys.exit(1)
     
     try:
-        receiver = Account("treasury")
+        receiver = Account(receiver_account)
     except Exception as ex:
-        logger.error("Account: {} not found. {}".format("treasury", ex))
+        logger.error("Account: {} not found. {}".format(receiver_account, ex))
         sys.exit(1)
 
     ret = s.commit.post("Steempy proposal title", "Steempy proposal body", creator["name"], permlink = "steempy-proposal-title", tags = "proposals")
@@ -67,26 +65,26 @@ def test_create_proposal(node, account, wif):
       start_date, 
       end_date,
       "16.000 TBD",
-      SUBJECT,
+      subject,
       "steempy-proposal-title"
     )
 
-    assert ret["operations"][0][1]["creator"] == account
-    assert ret["operations"][0][1]["receiver"] == "treasury"
+    assert ret["operations"][0][1]["creator"] == creator["name"]
+    assert ret["operations"][0][1]["receiver"] == receiver["name"]
     assert ret["operations"][0][1]["start_date"] == start_date
     assert ret["operations"][0][1]["end_date"] == end_date
     assert ret["operations"][0][1]["daily_pay"] == "16.000 TBD"
-    assert ret["operations"][0][1]["subject"] == SUBJECT
+    assert ret["operations"][0][1]["subject"] == subject
     assert ret["operations"][0][1]["permlink"] == "steempy-proposal-title"
 
-def test_list_proposals(node, account, wif):
+def test_list_proposals(node, account, wif, subject):
     logger.info("Testing: list_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     # list inactive proposals, our proposal shoud be here
     proposals = s.list_proposals(account, "by_creator", "direction_ascending", 1000, "inactive")
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is not None
@@ -95,7 +93,7 @@ def test_list_proposals(node, account, wif):
     proposals = s.list_proposals(account, "by_creator", "direction_ascending", 1000, "active")
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is None
@@ -105,12 +103,12 @@ def test_list_proposals(node, account, wif):
 
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is not None
 
-def test_find_proposals(node, account, wif):
+def test_find_proposals(node, account, wif, subject):
     logger.info("Testing: find_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     # first we will find our special proposal and get its id
@@ -118,7 +116,7 @@ def test_find_proposals(node, account, wif):
 
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is not None
@@ -127,7 +125,7 @@ def test_find_proposals(node, account, wif):
     ret = s.find_proposals([proposal_id])
     assert ret[0]["subject"] == found["subject"]
 
-def test_vote_proposal(node, account, wif):
+def test_vote_proposal(node, account, wif, subject):
     logger.info("Testing: vote_proposal")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     # first we will find our special proposal and get its id
@@ -135,7 +133,7 @@ def test_vote_proposal(node, account, wif):
 
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is not None
@@ -148,7 +146,7 @@ def test_vote_proposal(node, account, wif):
     assert ret["operations"][0][1]["approve"] == True
     sleep(6)
 
-def test_list_voter_proposals(node, account, wif):
+def test_list_voter_proposals(node, account, wif, subject):
     logger.info("Testing: list_voter_proposals")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     voter_proposals = s.list_voter_proposals(account, "by_creator", "direction_ascending", 1000, "inactive")
@@ -156,12 +154,12 @@ def test_list_voter_proposals(node, account, wif):
     found = None
     for voter, proposals in voter_proposals.items():
         for proposal in proposals:
-            if proposal["subject"] == SUBJECT:
+            if proposal["subject"] == subject:
                 found = proposal
     
     assert found is not None
 
-def test_remove_proposal(node, account, wif):
+def test_remove_proposal(node, account, wif, subject):
     logger.info("Testing: remove_proposal")
     s = Steem(nodes = [node], no_broadcast = False, keys = [wif])
     # first we will find our special proposal and get its id
@@ -169,7 +167,7 @@ def test_remove_proposal(node, account, wif):
 
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
             found = proposal
     
     assert found is not None
@@ -183,7 +181,7 @@ def test_remove_proposal(node, account, wif):
 
     found = None
     for proposal in proposals:
-        if proposal["subject"] == SUBJECT:
+        if proposal["subject"] == subject:
           found = proposal
     
     assert found is None
@@ -193,27 +191,25 @@ if __name__ == '__main__':
     logger.info("Performing SPS tests")
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("account", help = "Account to create proposals with")
+    parser.add_argument("creator", help = "Account to create proposals with")
+    parser.add_argument("receiver", help = "Account to receive funds")
     parser.add_argument("wif", help = "Private key for accout for proposal generation")
-    parser.add_argument("--node-ip", help = "IP address of steem node", default = "http://127.0.0.1", dest = "node_ip")
-    parser.add_argument("--node-port", help = "Steem node port", default = 8090, dest = "node_port")
+    parser.add_argument("--node-address", help = "IP address and port of steem node", default = "http://127.0.0.1:8090", dest = "node_url")
     parser.add_argument("--no-erase-proposal", action='store_false', dest = "no_erase_proposal", help = "Do not erase proposal created with this test")
 
     args = parser.parse_args()
 
-    url = "{0}:{1}".format(args.node_ip, args.node_port)
-    logger.info("Using node at: {}".format(url))
+    logger.info("Using node at: {}".format(args.node_url))
 
-#    if not args.wif:
-#        logger.error("WIF is required for account {}. Please use --wif <wif> option and specify WIF.".format(args.account))
-#        sys.exit(1)
+    subject = str(uuid4())
+    logger.info("Subject of testing proposal is set to: {}".format(subject))
 
-    test_create_proposal(url, args.account, args.wif)
+    test_create_proposal(args.node_url, args.creator, args.receiver, args.wif, subject)
     sleep(6)
-    test_list_proposals(url, args.account, args.wif)
-    test_find_proposals(url, args.account, args.wif)
-    test_vote_proposal(url, args.account, args.wif)
-    test_list_voter_proposals(url, args.account, args.wif)
+    test_list_proposals(args.node_url, args.creator, args.wif, subject)
+    test_find_proposals(args.node_url, args.creator, args.wif, subject)
+    test_vote_proposal(args.node_url, args.creator, args.wif, subject)
+    test_list_voter_proposals(args.node_url, args.creator, args.wif, subject)
     sleep(6)
     if args.no_erase_proposal:
-        test_remove_proposal(url, args.account, args.wif)
+        test_remove_proposal(args.node_url, args.creator, args.wif, subject)
