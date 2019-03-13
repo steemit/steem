@@ -10,7 +10,6 @@ namespace steem { namespace plugins { namespace sps {
   using steem::chain::proposal_object;
   using steem::chain::proposal_id_type;
   using steem::protocol::asset;
-  using steem::chain::proposal_object;
   using steem::chain::to_string;
 
   namespace detail
@@ -18,13 +17,13 @@ namespace steem { namespace plugins { namespace sps {
     class sps_api_impl;
   }
 
-  enum order_direction_type 
+  enum order_direction_type : int
   {
     direction_ascending, ///< sort with ascending order
     direction_descending ///< sort with descending order
   };
 
-  enum order_by_type
+  enum order_by_type : int
   {
     by_creator, ///< order by proposal creator
     by_start_date, ///< order by proposal start date
@@ -32,18 +31,53 @@ namespace steem { namespace plugins { namespace sps {
     by_total_votes, ///< order by total votes
   };
 
-  enum proposal_status
+  enum proposal_status : int
   {
     active = 1,
     inactive = 0,
     all = -1,
   };
 
+   inline order_direction_type to_order_direction(std::string _order_type)
+   {
+      std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c) {return std::tolower(c); });
+      if(_order_type == "desc")
+         return order_direction_type::direction_descending;
+      else
+         return order_direction_type::direction_ascending;
+   }
+
+   inline order_by_type to_order_by(std::string _order_by)
+   {
+      std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c) {return std::tolower(c); });
+      if(_order_by == "start_date")
+         return order_by_type::by_start_date;
+      else if(_order_by == "end_date")
+         return order_by_type::by_end_date;
+      else if(_order_by == "total_votes")
+         return order_by_type::by_total_votes;
+      else
+         return order_by_type::by_creator; /// Consider exception throw when no constant was matched...
+   }
+
+   inline proposal_status to_proposal_status(std::string _status)
+   {
+   std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c) {return std::tolower(c); });
+
+   if(_status == "active")
+      return proposal_status::active;
+   else if(_status == "inactive")
+      return proposal_status::inactive;
+   else
+      return proposal_status::all;  /// Consider exception throw when no constant was matched...
+   }
+
   typedef uint64_t api_id_type;
 
   struct api_proposal_object
   {
-    api_proposal_object() {}  
+    api_proposal_object() = default;
+
     api_proposal_object(const proposal_object& po) : 
       id(po.id),
       creator(po.creator),

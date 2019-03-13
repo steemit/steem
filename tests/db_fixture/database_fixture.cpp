@@ -1040,52 +1040,13 @@ bool t_proposal_database_fixture< T >::exist_proposal( int64_t id )
 template< typename T>
 list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) 
 {
-      auto ordered_by = [&_order_by]() {
-         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "start_date" ) {
-            return order_by_type::by_start_date;
-         } else if ( _order_by == "end_date" ) {
-            return order_by_type::by_end_date;
-         } else if ( _order_by == "total_votes" ) {
-            return order_by_type::by_total_votes;
-         } else {
-            return order_by_type::by_creator;
-         }
-      };
-
-      auto order_type_check = [&_order_type]() {
-         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_type == "desc" ) {
-            return order_direction_type::direction_descending;
-         } else {
-            return order_direction_type::direction_ascending;
-         }
-      };
-
-      auto proposal_status = [&_status]() 
-      {
-         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
-         if (_status == "active")
-         {
-            return proposal_status::active;
-         }
-         else if (_status == "inactive")
-         {
-            return proposal_status::inactive;
-         }
-         else
-         {
-            return proposal_status::all;
-         }
-      };
-
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_proposals_args args;
       args.start           = _start;
-      args.order_by        = ordered_by();
-      args.order_direction = order_type_check();
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
-      args.status          = proposal_status();
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
 
       try {
          return api->list_proposals(args);
@@ -1102,52 +1063,13 @@ list_proposals_return t_proposal_database_fixture< T >::list_proposals(fc::varia
 template< typename T>
 list_voter_proposals_return  t_proposal_database_fixture< T >::list_voter_proposals(account_name_type _voter, std::string _order_by, std::string _order_type, int _limit, std::string _status) 
 {
-      auto ordered_by = [&_order_by]() {
-         std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_by == "start_date" ) {
-            return order_by_type::by_start_date;
-         } else if ( _order_by == "end_date" ) {
-            return order_by_type::by_end_date;
-         } else if ( _order_by == "total_votes" ) {
-            return order_by_type::by_total_votes;
-         } else {
-            return order_by_type::by_creator;
-         }
-      };
-
-      auto order_type_check = [&_order_type]() {
-         std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c){return std::tolower(c);});
-         if ( _order_type == "desc" ) {
-            return order_direction_type::direction_descending;
-         } else {
-            return order_direction_type::direction_ascending;
-         }
-      };
-
-      auto proposal_status = [&_status]() 
-      {
-         std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c){return std::tolower(c);});
-         if (_status == "active")
-         {
-            return proposal_status::active;
-         }
-         else if (_status == "inactive")
-         {
-            return proposal_status::inactive;
-         }
-         else
-         {
-            return proposal_status::all;
-         }
-      };
-
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
       args.voter           = _voter;
-      args.order_by        = ordered_by();
-      args.order_direction = order_type_check();
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
-      args.status          = proposal_status();
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
 
       try {
          return api->list_voter_proposals(args);
