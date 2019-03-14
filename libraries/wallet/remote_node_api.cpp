@@ -434,7 +434,7 @@ steem::plugins::sps::list_proposals_return remote_node_api::list_proposals(fc::v
    FC_ASSERT( false );
 }
 
-steem::plugins::sps::list_voter_proposals_return remote_node_api::list_voter_proposals(account_name_type _voter, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status)
+steem::plugins::sps::list_voter_proposals_return remote_node_api::list_voter_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status)
 {
    FC_ASSERT( false );
 }
