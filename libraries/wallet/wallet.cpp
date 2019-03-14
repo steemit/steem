@@ -2503,7 +2503,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return steem::plugins::sps::list_proposals_return ();
    }
 
-   steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(account_name_type _voter,
+   steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(fc::variant _start,
                                                                                      std::string _order_by,
                                                                                      std::string _order_type,
                                                                                      int _limit,
@@ -2515,20 +2515,20 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       FC_ASSERT(!_status.empty());
 
       steem::plugins::sps::list_voter_proposals_args args;
-      args.voter           = _voter;
+      args.start           = _start;
       args.order_by        = steem::plugins::sps::to_order_by(_order_by);
       args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
       args.status          = steem::plugins::sps::to_proposal_status(_status);
 
-      ddump((args.voter));
+      ddump((args.start));
       ddump((args.order_by));
       ddump((args.order_direction));
       ddump((args.limit));
       ddump((args.status));
 
       try {
-         return my->_remote_api->list_voter_proposals(args.voter, args.order_by, args.order_direction, args.limit, args.status);
+         return my->_remote_api->list_voter_proposals(args.start, args.order_by, args.order_direction, args.limit, args.status);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {

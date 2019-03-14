@@ -206,7 +206,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   list_voter_proposals_return result;
 
   const auto& idx = _db.get_index<proposal_vote_index, by_voter_proposal>();
-  auto itr = idx.lower_bound(args.voter);
+  auto itr = idx.lower_bound(args.start.as<account_name_type>());
   auto end = idx.end();
 
   if (args.status != proposal_status::all) // avoid not needed rewrite in case of active set to all

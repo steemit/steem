@@ -1113,13 +1113,13 @@ class wallet_api
 
       /**
        * List proposals of given voter
-       * @param _voter      - given voter,
+       * @param _start      - starting value for querying results,
        * @param _order_by   - name a field for sorting operation,
        * @param _order_type - set print order asc - ascdending, desc - descending,
        * @param _limit      - query limit
        * @param _status     - List only results with given status (inactive, active, all).
        */
-      list_voter_proposals_return list_voter_proposals(account_name_type _voter,
+      list_voter_proposals_return list_voter_proposals(fc::variant _start,
                                                        std::string _order_by = "creator",
                                                        std::string _order_type = "desc",
                                                        int _limit = 10,

@@ -159,7 +159,7 @@ namespace steem { namespace plugins { namespace sps {
   struct list_voter_proposals_args 
   {
     // list only proposal voted by this voter
-    account_name_type voter;
+    fc::variant start;
     // name of the field by which results will be sored
     order_by_type order_by;
     // sorting order (ascending or descending) of the result vector
@@ -234,7 +234,7 @@ FC_REFLECT(steem::plugins::sps::list_proposals_args,
   );
 
 FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, 
-  (voter)
+  (start)
   (order_by)
   (order_direction)
   (limit)
