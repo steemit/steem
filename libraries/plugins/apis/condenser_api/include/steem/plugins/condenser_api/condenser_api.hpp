@@ -358,7 +358,7 @@ struct extended_dynamic_global_properties
       virtual_supply( legacy_asset::from_asset( o.virtual_supply ) ),
       current_supply( legacy_asset::from_asset( o.current_supply ) ),
       confidential_supply( legacy_asset::from_asset( o.confidential_supply ) ),
-      virtual_sbd_supply( legacy_asset::from_asset( o.virtual_sbd_supply ) ),
+      init_sbd_supply( legacy_asset::from_asset( o.init_sbd_supply ) ),
       current_sbd_supply( legacy_asset::from_asset( o.current_sbd_supply ) ),
       confidential_sbd_supply( legacy_asset::from_asset( o.confidential_sbd_supply ) ),
       total_vesting_fund_steem( legacy_asset::from_asset( o.total_vesting_fund_steem ) ),
@@ -393,7 +393,7 @@ struct extended_dynamic_global_properties
    legacy_asset      virtual_supply;
    legacy_asset      current_supply;
    legacy_asset      confidential_supply;
-   legacy_asset      virtual_sbd_supply;
+   legacy_asset      init_sbd_supply;
    legacy_asset      current_sbd_supply;
    legacy_asset      confidential_sbd_supply;
    legacy_asset      total_vesting_fund_steem;
@@ -1180,7 +1180,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_comment_object,
 FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (head_block_number)(head_block_id)(time)
             (current_witness)(total_pow)(num_pow_witnesses)
-            (virtual_supply)(current_supply)(confidential_supply)(virtual_sbd_supply)(current_sbd_supply)(confidential_sbd_supply)
+            (virtual_supply)(current_supply)(confidential_supply)(init_sbd_supply)(current_sbd_supply)(confidential_sbd_supply)
             (total_vesting_fund_steem)(total_vesting_shares)
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)

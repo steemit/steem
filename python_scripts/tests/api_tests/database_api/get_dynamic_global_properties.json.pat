@@ -2,7 +2,7 @@
     "confidential_sbd_supply": "0.000 TBD",
     "confidential_supply": "0.000 TESTS",
     "current_aslot": 0,
-    "virtual_sbd_supply": "0.000 TBD",
+    "init_sbd_supply": "0.000 TBD",
     "current_sbd_supply": "0.000 TBD",
     "current_supply": "0.000 TESTS",
     "current_witness": "initminer",
