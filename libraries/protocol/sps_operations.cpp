@@ -11,6 +11,7 @@ void create_proposal_operation::validate()const
 
    FC_ASSERT( end_date > start_date, "end date must be greater than start date" );
 
+   FC_ASSERT( daily_pay.amount >= 0, "Daily pay can't be negative value" );
    FC_ASSERT( daily_pay.symbol.asset_num == STEEM_ASSET_NUM_SBD, "Daily pay should be expressed in SBD");
 
    FC_ASSERT( !subject.empty(), "subject is required" );
