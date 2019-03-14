@@ -19,17 +19,26 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 
       ilog("creating proposal: ${op}", ("op", o));
 
+      /** start date can be earlier than head_block_time - otherwise creating a proposal can be difficult,
+          since passed date should be adjusted by potential transaction execution delay (i.e. 3 sec
+          as a time for processed next block).
+      */
+      FC_ASSERT(o.end_date > _db.head_block_time(), "Can't create inactive proposals...");
+
       asset fee_sbd( STEEM_TREASURY_FEE, SBD_SYMBOL );
 
       FC_ASSERT( _db.get_balance( o.creator, SBD_SYMBOL ) >= fee_sbd,
          "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_sbd) );
 
-      //only for check if given account exists
+      //treasury account must exist, also we need it later to change its balance
       const auto& treasury_account =_db.get_account( STEEM_TREASURY_ACCOUNT );
 
       const auto& owner_account = _db.get_account( o.creator );
+      const auto* receiver_account = _db.find_account( o.receiver );
+
       /// Just to check the receiver account exists.
-      _db.get_account( o.receiver );
+      FC_ASSERT(receiver_account != nullptr, "Specified receiver account: ${r} must exist in the blockchain",
+         ("r", o.receiver));
 
       const auto* commentObject = _db.find_comment(o.creator, o.permlink);
       if(commentObject == nullptr)
