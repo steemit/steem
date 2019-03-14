@@ -15,8 +15,11 @@ class variant;
 template< typename T > void to_variant( const mira::multi_index::composite_key_result< T >& var,  variant& vo );
 template< typename T > void from_variant( const variant& vo, mira::multi_index::composite_key_result< T >& var );
 
-template< typename... Args > void to_variant( const boost::tuples::tuple< Args... >& var, variant& vo );
-template< typename... Args > void from_variant( const variant& vo, boost::tuples::tuple< Args... >& var );
+//template< typename... Args > void to_variant( const boost::tuples::tuple< Args... >& var, variant& vo );
+//template< typename... Args > void from_variant( const variant& vo, boost::tuples::tuple< Args... >& var );
+
+template< typename H, typename T > void to_variant( const boost::tuples::cons< H, T >& var, variant& vo );
+template< typename H, typename T > void from_variant( const variant& vo, boost::tuples::cons< H, T >& var );
 
 template< typename T > struct get_typename< mira::multi_index::composite_key_result< T > >;
 

@@ -592,7 +592,6 @@ primary_iterator erase( primary_iterator position )
       }
       else
       {
-         elog( "Uniqueness Violation" );
          super::reset_first_key_update();
       }
       super::_write_buffer.Clear();
@@ -680,6 +679,11 @@ primary_iterator erase( primary_iterator position )
       if( status.ok() )
       {
          unpack_from_slice( value_slice, v );
+         ilog( "Retrieved metdata for ${type}: ${key},${value}", ("type",boost::core::demangle(typeid(Value).name()))("key",k)("value",v) );
+      }
+      else
+      {
+         ilog( "Failed to retrieve metadata for ${type}: ${key}", ("type",boost::core::demangle(typeid(Value).name()))("key",k) );
       }
 
       return status.ok();
@@ -699,6 +703,15 @@ primary_iterator erase( primary_iterator position )
          super::_handles[0],
          key_slice,
          value_slice );
+
+      if( status.ok() )
+      {
+         ilog( "Stored metdata for ${type}: ${key},${value}", ("type",boost::core::demangle(typeid(Value).name()))("key",k)("value",v) );
+      }
+      else
+      {
+         ilog( "Failed to store metadata for ${type}: ${key},${value}", ("type",boost::core::demangle(typeid(Value).name()))("key",k)("value",v) );
+      }
 
       return status.ok();
    }

@@ -1538,6 +1538,47 @@ void from_variant( const variant& vo, mira::multi_index::composite_key_result< T
    from_variant( vo, var.key );
 }
 
+template< typename Cons > struct cons_to_variant;
+
+template< typename Cons >
+struct cons_to_variant_terminal
+{
+   static void push_variant( const Cons& c, fc::variants& vars )
+   {
+      fc::variant v;
+      to_variant( c.get_head(), v );
+      vars.push_back( v );
+   }
+};
+
+template< typename Cons >
+struct cons_to_variant_normal
+{
+   static void push_variant( const Cons& c, fc::variants& vars )
+   {
+      fc::variant v;
+      to_variant( c.get_head(), v );
+      vars.push_back( v );
+      cons_to_variant< typename Cons::tail_type >::push_variant( c.get_tail(), vars );
+   }
+};
+
+template< typename Cons >
+struct cons_to_variant :
+   boost::mpl::if_<
+      boost::is_same< typename Cons::tail_type, boost::tuples::null_type >,
+      cons_to_variant_terminal< Cons >,
+      cons_to_variant_normal< Cons >
+   >::type
+{};
+
+template< typename HT, typename TT > void to_variant( const boost::tuples::cons< HT, TT >& var, variant& vo )
+{
+   fc::variants v;
+   cons_to_variant< boost::tuples::cons< HT, TT > >::push_variant( var, v );
+   vo = v;
+}
+
 template< typename T >
 struct get_typename< mira::multi_index::composite_key_result< T > >
 {

@@ -1,5 +1,54 @@
 #pragma once
 
+#include <chainbase/chainbase.hpp>
+
+#include <fc/reflect/reflect.hpp>
+#include <fc/reflect/variant.hpp>
+
+namespace fc
+{
+
+template<typename T>
+void to_variant( const chainbase::oid<T>& var,  variant& vo )
+{
+   vo = var._id;
+}
+
+template<typename T>
+void from_variant( const variant& vo, chainbase::oid<T>& var )
+{
+   var._id = vo.as_int64();
+}
+
+template< typename T >
+struct get_typename< chainbase::oid< T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "chainbase::oid<" ) + get_typename< T >::name() + ">";
+      return n.c_str();
+   }
+};
+
+namespace raw
+{
+
+template<typename Stream, typename T>
+void pack( Stream& s, const chainbase::oid<T>& id )
+{
+   s.write( (const char*)&id._id, sizeof(id._id) );
+}
+
+template<typename Stream, typename T>
+void unpack( Stream& s, chainbase::oid<T>& id )
+{
+   s.read( (char*)&id._id, sizeof(id._id));
+}
+
+} }
+
+#include <steem/protocol/fixed_string.hpp>
+
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
@@ -7,8 +56,6 @@
 #include <mira/indexed_by.hpp>
 #include <mira/composite_key.hpp>
 #include <mira/mem_fun.hpp>
-
-#include <fc/reflect/reflect.hpp>
 
 enum test_object_type
 {
@@ -217,26 +264,26 @@ typedef mira::multi_index_container<
    chainbase::allocator< account_object >
 > account_index;
 
-FC_REFLECT( book::id_type, (_id) )
+//FC_REFLECT( book::id_type, (_id) )
 FC_REFLECT( book, (id)(a)(b) )
 CHAINBASE_SET_INDEX_TYPE( book, book_index )
 
-FC_REFLECT( single_index_object::id_type, (_id) )
+//FC_REFLECT( single_index_object::id_type, (_id) )
 FC_REFLECT( single_index_object, (id) )
 CHAINBASE_SET_INDEX_TYPE( single_index_object, single_index_index )
 
-FC_REFLECT( test_object::id_type, (_id) )
+//FC_REFLECT( test_object::id_type, (_id) )
 FC_REFLECT( test_object, (id)(val)(name) )
 CHAINBASE_SET_INDEX_TYPE( test_object, test_object_index )
 
-FC_REFLECT( test_object2::id_type, (_id) )
+//FC_REFLECT( test_object2::id_type, (_id) )
 FC_REFLECT( test_object2, (id)(val) )
 CHAINBASE_SET_INDEX_TYPE( test_object2, test_object2_index )
 
-FC_REFLECT( test_object3::id_type, (_id) )
+//FC_REFLECT( test_object3::id_type, (_id) )
 FC_REFLECT( test_object3, (id)(val)(val2)(val3) )
 CHAINBASE_SET_INDEX_TYPE( test_object3, test_object3_index )
 
-FC_REFLECT( account_object::id_type, (_id) )
+//FC_REFLECT( account_object::id_type, (_id) )
 FC_REFLECT( account_object, (id)(name) )
 CHAINBASE_SET_INDEX_TYPE( account_object, account_index )
