@@ -3185,6 +3185,7 @@ void database::_apply_block( const signed_block& next_block )
    account_recovery_processing();
    expire_escrow_ratification();
    process_decline_voting_rights();
+   process_proposals( note );
 
    generate_required_actions();
    generate_optional_actions();
@@ -3205,8 +3206,6 @@ void database::_apply_block( const signed_block& next_block )
    // reversible.
    migrate_irreversible_state();
    trim_cache();
-
-   process_proposals( note );
 
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 

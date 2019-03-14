@@ -204,11 +204,11 @@ void sps_processor::make_payments( const block_notification& note )
    if( !is_maintenance_period( head_time ) )
       return;
 
-   t_proposals proposals;
+   t_proposals active_proposals;
 
    //Find all active proposals, where actual_time >= start_date and actual_time <= end_date
-   find_active_proposals( head_time, proposals );
-   if( proposals.empty() )
+   find_active_proposals( head_time, active_proposals );
+   if( active_proposals.empty() )
    {
       //Set `new maintenance time` and `last budget time`
       update_settings( head_time );
@@ -216,16 +216,16 @@ void sps_processor::make_payments( const block_notification& note )
    }
 
    //Calculate total_votes for every active proposal
-   calculate_votes( proposals );
+   calculate_votes( active_proposals );
 
    //Sort all active proposals by total_votes
-   sort_by_votes( proposals );
+   sort_by_votes( active_proposals );
 
    //Calculate budget for given maintenance period
    asset maintenance_budget_limit = calculate_maintenance_budget( head_time );
 
    //Execute transfer for every active proposal
-   transfer_payments( head_time, maintenance_budget_limit, proposals );
+   transfer_payments( head_time, maintenance_budget_limit, active_proposals );
 
    //Set `new maintenance time` and `last budget time`
    update_settings( head_time );

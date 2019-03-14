@@ -111,7 +111,7 @@ namespace steem { namespace plugins { namespace sps {
     //subject (a very brief description or title for the proposal)
     string subject;
 
-    //url (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
+    //permlink (a link to a page describing the work proposal in depth, generally this will probably be to a Steem post).
     string permlink;
 
     //This will be calculate every maintenance period
