@@ -444,8 +444,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
     empty_initialize();
-    //_cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
-    _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value, key_compare > >() );
+    _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
   }
 
   ordered_index_impl(
@@ -777,7 +776,10 @@ private:
       bool res = this->final_emplace_rocksdb_( v );
 
       if ( res )
+      {
+         std::lock_guard< std::mutex > lock( _cache->get_lock() );
          _cache->cache( v );
+      }
 
       return std::pair< typename primary_index_type::iterator, bool >(
          res ? primary_index_type::iterator_to( v ) :
