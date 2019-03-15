@@ -136,6 +136,7 @@ class CliWallet(object):
                     break
             idx += 1
 
+
     def check_if_transaction(self):
         json_resp = last_message_as_json(self.response)
         if "result" in json_resp:
@@ -143,15 +144,28 @@ class CliWallet(object):
                 return True
         return False
 
-    def send_and_read(self, _data):
-        log.info("Sending {0}".format(_data))
-        self.cli_proc.stdin.write(_data.encode("utf-8"))
-        self.cli_proc.stdin.flush()
+
+    def read_output(self, _timeout):
         while True:
             try:
-                self.response += self.q.get(block=True, timeout=3)
+                self.response += self.q.get(block=True, timeout=_timeout)
             except queue.Empty:
                 break
+
+
+    def send(self, _data):
+        self.cli_proc.stdin.write(_data.encode("utf-8"))
+        self.cli_proc.stdin.flush()
+
+
+    def send_and_read(self, _data):
+        log.info("Sending {0}".format(_data))
+        self.send(_data)
+        self.read_output(3)
+
+        #asserions does not occures after above flush, so we need to send additiona `Enter`        
+        self.send("\n")
+        self.read_output(0.5)
         if self.check_if_transaction():
             self.wait_for_transaction_approwal()
 
