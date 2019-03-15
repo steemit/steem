@@ -93,13 +93,14 @@ BOOST_AUTO_TEST_CASE( generating_payments )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( proposals_maintenance, * boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE( proposals_maintenance )
 {
    try
    {
       BOOST_TEST_MESSAGE( "Testing: removing inactive proposals" );
       //Update see issue #85 -> https://github.com/blocktradesdevs/steem/issues/85
       //Remove proposal will be automatic action - this test shall be temporary disabled.
+      return;
 
       plugin_prepare();
 
