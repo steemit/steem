@@ -656,6 +656,25 @@ BOOST_AUTO_TEST_CASE( create_proposal_007 )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( create_proposal_008 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: create proposal: opration arguments validation - invalid daily payement (negative value)" );
+      create_proposal_data cpd(db->head_block_time());
+      ACTORS( (alice)(bob) )
+      generate_block();
+      FUND( cpd.creator, ASSET( "80.000 TBD" ) );
+      generate_block();
+      generate_block();
+      cpd.end_date = cpd.start_date + fc::days(20);
+      cpd.daily_pay = asset( -10, SBD_SYMBOL );
+      STEEM_REQUIRE_THROW(create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key ), fc::exception);
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( update_proposal_votes_000 )
 {
    try
