@@ -642,6 +642,7 @@ primary_iterator erase( primary_iterator position )
             most likely belongs to the shared ptr in the cache, so updating
             the value has already updated the cache, but in case something
             doesn't line up here, we update by moving the value to itself... */
+            std::lock_guard< std::mutex > lock( super::_cache->get_index_cache( ID_INDEX )->get_lock() );
             super::_cache->get_index_cache( ID_INDEX )->update( (void*)&super::id( v ), std::move( v ), modified_indices );
             super::commit_first_key_update();
          }
