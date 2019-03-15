@@ -7,6 +7,8 @@
 #include <steem/utilities/benchmark_dumper.hpp>
 
 #include <fc/string.hpp>
+#include <fc/io/json.hpp>
+#include <fc/io/fstream.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -445,6 +447,16 @@ void chain_plugin::plugin_startup()
       }
    };
 
+   fc::variant mira_options;
+   try
+   {
+      mira_options = fc::json::from_file( app().data_dir() / "mira.json", fc::json::strict_parser );
+   }
+   catch ( const std::exception& e )
+   {
+      wlog( "Exception while parsing mira configuration: ${e}", ("e", e.what()) );
+   }
+
    database::open_args db_open_args;
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
@@ -455,6 +467,7 @@ void chain_plugin::plugin_startup()
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
+   db_open_args.mira_opts = mira_options;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

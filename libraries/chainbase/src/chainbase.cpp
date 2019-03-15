@@ -30,7 +30,7 @@ namespace chainbase {
       bool                    windows = false;
    };
 
-   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size )
+   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size, const fc::variant& db_opts )
    {
       assert( dir.is_absolute() );
       bfs::create_directories( dir );
