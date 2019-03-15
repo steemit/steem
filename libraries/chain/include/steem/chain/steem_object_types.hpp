@@ -84,6 +84,8 @@ enum object_type
    vesting_delegation_expiration_object_type,
    pending_required_action_object_type,
    pending_optional_action_object_type,
+   proposal_object_type,
+   proposal_vote_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
@@ -375,6 +377,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (vesting_delegation_expiration_object_type)
                  (pending_required_action_object_type)
                  (pending_optional_action_object_type)
+                 (proposal_object_type)
+                 (proposal_vote_object_type)
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)

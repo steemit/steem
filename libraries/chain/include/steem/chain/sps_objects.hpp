@@ -14,17 +14,6 @@ using steem::chain::shared_string;
 using steem::chain::oid;
 using steem::chain::by_id;
 
-
-#ifndef STEEM_SPS_SPACE_ID
-#define STEEM_SPS_SPACE_ID 20
-#endif
-
-enum sps_plugin_object_type
-{
-   proposal_object_type       = ( STEEM_SPS_SPACE_ID << 8 ),
-   proposal_vote_object_type  = ( STEEM_SPS_SPACE_ID << 8 ) + 1
-};
-
 class proposal_object : public object< proposal_object_type, proposal_object >
 {
    proposal_object() = delete;
