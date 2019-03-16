@@ -98,10 +98,34 @@ typedef multi_index_container<
    proposal_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< proposal_object, proposal_id_type, &proposal_object::id > >,
-      ordered_non_unique< tag< by_start_date >, member< proposal_object, time_point_sec, &proposal_object::start_date > >,
-      ordered_non_unique< tag< by_end_date >, const_mem_fun< proposal_object, time_point_sec, &proposal_object::get_end_date_with_delay > >,
-      ordered_non_unique< tag< by_creator >, member< proposal_object, account_name_type, &proposal_object::creator > >,
-      ordered_non_unique< tag< by_total_votes >, member< proposal_object, uint64_t, &proposal_object::total_votes > >
+      ordered_unique< tag< by_start_date >,
+         composite_key< proposal_object,
+            member< proposal_object, time_point_sec, &proposal_object::start_date >,
+            member< proposal_object, proposal_id_type, &proposal_object::id >
+         >,
+         composite_key_compare< std::less< time_point_sec >, std::less< proposal_id_type > >
+      >,
+      ordered_unique< tag< by_end_date >,
+         composite_key< proposal_object,
+            const_mem_fun< proposal_object, time_point_sec, &proposal_object::get_end_date_with_delay >,
+            member< proposal_object, proposal_id_type, &proposal_object::id >
+         >,
+         composite_key_compare< std::less< time_point_sec >, std::less< proposal_id_type > >
+      >,
+      ordered_unique< tag< by_creator >,
+         composite_key< proposal_object,
+            member< proposal_object, account_name_type, &proposal_object::creator >,
+            member< proposal_object, proposal_id_type, &proposal_object::id >
+         >,
+         composite_key_compare< std::less< account_name_type >, std::less< proposal_id_type > >
+      >,
+      ordered_unique< tag< by_total_votes >,
+         composite_key< proposal_object,
+            member< proposal_object, uint64_t, &proposal_object::total_votes >,
+            member< proposal_object, proposal_id_type, &proposal_object::id >
+         >,
+         composite_key_compare< std::less< uint64_t >, std::less< proposal_id_type > >
+      >
    >,
    allocator< proposal_object >
 > proposal_index;
