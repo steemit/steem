@@ -37,6 +37,7 @@ public:
 private:
    list_type    _lru;
    size_t       _obj_threshold = 5;
+   std::mutex   _lock;
 
    void adjust_capactiy()
    {
@@ -46,17 +47,19 @@ private:
 public:
    iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
    {
-      //adjust_capacity();
+      std::lock_guard< std::mutex > lock( _lock );
       return _lru.insert( _lru.begin(), std::make_pair( v, m ) );
    }
 
    void update( const_iterator_type iter )
    {
+      std::lock_guard< std::mutex > lock( _lock );
       _lru.splice( _lru.begin(), _lru, iter );
    }
 
    void remove( iterator_type iter )
    {
+      std::lock_guard< std::mutex > lock( _lock );
       _lru.erase( iter );
    }
 
@@ -170,6 +173,7 @@ public:
 
 private:
    std::map< size_t, index_cache_type > _index_caches;
+   std::mutex                           _lock;
 
 public:
    void set_index_cache( size_t index, index_cache_type&& index_cache )
@@ -293,10 +297,14 @@ public:
    {
       return _index_caches.find( 1 )->second->size();
    }
+
+   std::mutex& get_lock()
+   {
+      return _lock;
+   }
 };
 
-template< typename Value, typename Key, typename KeyFromValue, typename CompareType >
-//template< typename Value, typename Key, typename KeyFromValue >
+template< typename Value, typename Key, typename KeyFromValue >
 class index_cache : public abstract_index_cache< Value >
 {
 public:
@@ -306,7 +314,6 @@ public:
 private:
    KeyFromValue                        _get_key;
    std::map< Key, cache_bundle_type >  _cache;
-   std::mutex                          _lock;
 
    const Key key( cache_key_type k )
    {
@@ -408,7 +415,7 @@ public:
 
    virtual std::mutex& get_lock() override final
    {
-      return _lock;
+      return abstract_index_cache< Value >::_multi_index_cache_manager->get_lock();
    }
 };
 
