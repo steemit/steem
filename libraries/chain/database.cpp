@@ -2830,8 +2830,15 @@ void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
          p.last_budget_time = STEEM_GENESIS_TIME;
       } );
 
+#ifdef IS_TEST_NET
+      create< feed_history_object >( [&]( feed_history_object& o )
+      {
+         o.current_median_history = price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
+      });
+#else
       // Nothing to do
       create< feed_history_object >( [&]( feed_history_object& o ) {});
+#endif
 
       for( int i = 0; i < 0x10000; i++ )
          create< block_summary_object >( [&]( block_summary_object& ) {});
