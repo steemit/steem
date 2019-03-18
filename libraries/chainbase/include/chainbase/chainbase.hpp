@@ -11,6 +11,7 @@
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 
+#include <boost/any.hpp>
 #include <boost/chrono.hpp>
 #include <boost/config.hpp>
 #include <boost/filesystem.hpp>
@@ -269,9 +270,9 @@ namespace chainbase {
 
          const index_type& indices()const { return _indices; }
 
-         void open( const bfs::path& p )
+         void open( const bfs::path& p, const boost::any& o )
          {
-            _indices.open( p );
+            _indices.open( p, o );
             _revision = _indices.revision();
             typename value_type::id_type next_id = 0;
             if( _indices.get_metadata( "next_id", next_id ) )
@@ -639,7 +640,7 @@ namespace chainbase {
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
-         virtual void open( const bfs::path& ) = 0;
+         virtual void open( const bfs::path&, const boost::any& ) = 0;
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
          virtual void clear() = 0;
@@ -699,9 +700,9 @@ namespace chainbase {
             return _base.indicies().size();
          }
 
-         virtual void open( const bfs::path& p ) override final
+         virtual void open( const bfs::path& p, const boost::any& o ) override final
          {
-            _base.open( p );
+            _base.open( p, o );
          }
 
          virtual void close() override final
@@ -819,7 +820,7 @@ namespace chainbase {
          };
 
       public:
-         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0, const boost::any& db_opts = nullptr );
          void close();
          void flush();
          size_t get_cache_usage() const;
@@ -1203,7 +1204,7 @@ namespace chainbase {
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
 
-             if( _is_open ) new_index->open( _data_dir );
+             if( _is_open ) new_index->open( _data_dir, _opts );
          }
 
          read_write_mutex_manager                                    _rw_manager;
@@ -1235,6 +1236,7 @@ namespace chainbase {
 
          int32_t                                                     _undo_session_count = 0;
          size_t                                                      _file_size = 0;
+         boost::any                                                  _opts = nullptr;
    };
 
 }  // namepsace chainbase
