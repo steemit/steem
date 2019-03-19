@@ -32,6 +32,7 @@
 #include <mira/detail/no_duplicate_tags.hpp>
 #include <mira/detail/object_cache.hpp>
 #include <mira/slice_pack.hpp>
+#include <mira/configuration.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
@@ -57,7 +58,6 @@
 
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
-#define MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 ) /* 4G */
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -70,21 +70,6 @@ namespace multi_index{
 #pragma warning(push)
 #pragma warning(disable:4522) /* spurious warning on multiple operator=()'s */
 #endif
-
-struct rocksdb_options_factory
-{
-   static std::shared_ptr< rocksdb::Cache > get_shared_cache()
-   {
-      static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE, 4 );
-      return cache;
-   }
-
-   static std::shared_ptr< rocksdb::Statistics > get_shared_stats()
-   {
-      static std::shared_ptr< rocksdb::Statistics > cache = ::rocksdb::CreateDBStatistics();
-      return cache;
-   }
-};
 
 template<typename Value,typename IndexSpecifierList,typename Allocator>
 class multi_index_container:
@@ -166,204 +151,6 @@ public:
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
 
-   fc::variant_object apply_configuration_overlay( const fc::variant& base, const fc::variant& overlay )
-   {
-      fc::mutable_variant_object config;
-      FC_ASSERT( base.is_object() );
-      FC_ASSERT( overlay.is_object() );
-
-      // Start with our base configuration
-      config = base.get_object();
-
-      // Iterate through the overlay overriding the base values
-      auto& overlay_obj = overlay.get_object();
-      for ( auto it = overlay_obj.begin(); it != overlay_obj.end(); ++it )
-         config[ it->key() ] = it->value();
-
-      return config;
-   }
-
-   std::string default_configuration()
-   {
-      return
-R"({
-   "default" : {
-      "allow_mmap_reads"                 : true,
-      "write_buffer_size"                : 2097152,
-      "max_bytes_for_level_base"         : 5242880,
-      "target_file_size_base"            : 102400,
-      "max_write_buffer_number"          : 16,
-      "max_background_compactions"       : 16,
-      "max_background_flushes"           : 16,
-      "optimize_level_style_compaction"  : true,
-      "increase_parallelism"             : true,
-      "min_write_buffer_number_to_merge" : 8
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 14,
-            "use_block_based_builder": false
-         }
-      }
-   },
-   "key_lookup_object" : {
-      "allow_mmap_reads" : false,
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 10,
-            "use_block_based_builder": false
-         }
-      }
-   }
-})";
-   }
-
-   fc::variant_object retrieve_active_configuration( const fc::variant_object& obj )
-   {
-      fc::mutable_variant_object active_config;
-      std::vector< std::string > split_v;
-      auto type = boost::core::demangle( typeid( Value ).name() );
-      boost::split( split_v, type, boost::is_any_of( ":" ) );
-      const auto type_name = *(split_v.rbegin());
-      const auto DEFAULT = "default";
-
-      // We look to apply an index configuration overlay
-      if ( obj.find( type_name ) != obj.end() )
-         active_config = apply_configuration_overlay( obj[ DEFAULT ], obj[ type_name ] );
-      else
-         active_config = obj[ DEFAULT ].get_object();
-
-      return active_config;
-   }
-
-   ::rocksdb::Options get_options_from_configuration( const boost::any& cfg )
-   {
-      ::rocksdb::Options opts;
-      const auto type_name = boost::core::demangle( typeid( Value ).name() );
-
-      try
-      {
-         auto c = boost::any_cast< fc::variant >( cfg );
-         FC_ASSERT( c.is_object() );
-         auto& obj = c.get_object();
-
-         fc::variant_object config = retrieve_active_configuration( obj );
-         static std::map< std::string, std::function< void( ::rocksdb::Options, fc::variant ) > > option_map {
-            { "allow_mmap_reads",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.allow_mmap_reads = v.as< bool >();
-               }
-            },
-            { "write_buffer_size",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.write_buffer_size = v.as< uint64_t >();
-               }
-            },
-            { "max_bytes_for_level_base",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.max_bytes_for_level_base = v.as< uint64_t >();
-               }
-            },
-            { "target_file_size_base",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.target_file_size_base = v.as< uint64_t >();
-               }
-            },
-            { "max_write_buffer_number",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.max_write_buffer_number = v.as< int >();
-               }
-            },
-            { "max_background_compactions",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.max_background_compactions = v.as< int >();
-               }
-            },
-            { "max_background_flushes",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.max_background_flushes = v.as< int >();
-               }
-            },
-            { "min_write_buffer_number_to_merge",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  o.min_write_buffer_number_to_merge = v.as< int >();
-               }
-            },
-            { "optimize_level_style_compaction",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  if ( v.as< bool >() )
-                     o.OptimizeLevelStyleCompaction();
-               }
-            },
-            { "increase_parallelism",
-               []( ::rocksdb::Options o, fc::variant v )
-               {
-                  if ( v.as< bool >() )
-                     o.IncreaseParallelism();
-               }
-            },
-            { "block_based_table_options",
-               []( ::rocksdb::Options o, auto v )
-               {
-                  ::rocksdb::BlockBasedTableOptions table_options;
-                  FC_ASSERT( v.is_object() );
-                  auto& obj = v.get_object();
-
-                  table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-
-                  if ( obj.contains( "block_size" ) )
-                     table_options.block_size = obj[ "block_size" ].template as< uint64_t >();
-
-                  if ( obj.contains( "bloom_filter_policy" ) )
-                  {
-                     auto filter_policy = obj[ "bloom_filter_policy" ].get_object();
-                     size_t bits_per_key;
-                     FC_ASSERT( filter_policy.contains( "bits_per_key" ) );
-
-                     bits_per_key = filter_policy[ "bits_per_key" ].template as< uint64_t >();
-
-                     if ( filter_policy.contains( "use_block_based_builder" ) )
-                        table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( bits_per_key, filter_policy[ "use_block_based_builder" ].template as< bool >() ) );
-                     else
-                        table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( bits_per_key ) );
-                  }
-
-                  o.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
-               }
-            }
-         };
-
-         for ( auto it = config.begin(); it != config.end(); ++it )
-         {
-            try
-            {
-               ilog( "${t} -> setting ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
-               option_map[ it->key() ]( opts, it->value() );
-            }
-            catch( const std::exception& e )
-            {
-               elog( "Error applying configuration: ${k}, ${v}", ("k", it->key())("v", it->value()) );
-            }
-         }
-
-      }
-      catch ( const std::exception& e )
-      {
-         elog( "Error parsing configuration for type '${t}': ${e}", ("t", type_name)("e", e.what()) );
-      }
-      return opts;
-   }
-
    void maybe_create_configuration( const boost::filesystem::path& p )
    {
       std::string cfg_filename = ( p / "mira.cfg" ).string();
@@ -371,7 +158,7 @@ R"({
       {
          std::ofstream f( cfg_filename );
          FC_ASSERT( f );
-         f << default_configuration();
+         f << configuration::default_configuration();
       }
    }
 
@@ -396,7 +183,7 @@ R"({
 
       auto cfg = fc::json::from_file( ( p / "mira.cfg" ).string(), fc::json::parse_type::strict_parser );
 
-      opts = get_options_from_configuration( cfg );
+      opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );

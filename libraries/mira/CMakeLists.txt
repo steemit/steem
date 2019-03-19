@@ -42,6 +42,7 @@ endif()
 
 add_library( mira
              src/mira.cpp
+             src/configuration.cpp
              ${HEADERS}
            )
 
