@@ -149,6 +149,8 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
 
    ilog( "Retrieving active config for ${t}", ("t", index_name) );
 
+   FC_ASSERT( obj[ DEFAULT ].is_object() );
+
    // We look to apply an index configuration overlay
    if ( obj.find( index_name ) != obj.end() )
       active_config = apply_configuration_overlay( obj[ DEFAULT ], obj[ index_name ] );
@@ -174,12 +176,19 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
       {
          try
          {
-            ilog( "${t} -> setting ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
-            OPTION_MAP[ it->key() ]( opts, it->value() );
+            if ( OPTION_MAP.find( it->key() ) != OPTION_MAP.end() )
+            {
+               ilog( "${t} -> option ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
+               OPTION_MAP[ it->key() ]( opts, it->value() );
+            }
+            else
+            {
+               wlog( "Encountered an unknown option: ${k}", ("k",it->key()) );
+            }
          }
          catch( const std::exception& e )
          {
-            elog( "Error applying configuration: ${k}, ${v}", ("k", it->key())("v", it->value()) );
+            elog( "Error applying option: ${k}, ${v}", ("k", it->key())("v", it->value()) );
          }
       }
 
@@ -188,6 +197,7 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
    {
       elog( "Error parsing configuration for type '${t}': ${e}", ("t", type_name)("e", e.what()) );
    }
+
    return opts;
 }
 
