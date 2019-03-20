@@ -94,6 +94,8 @@ class chain_plugin_impl
 
       vector< string >                 loaded_plugins;
       fc::mutable_variant_object       plugin_state_opts;
+      bfs::path                        mira_indices_cfg;
+      size_t                           mira_cache_size;
 
       database  db;
       std::string block_generator_registrant;
@@ -327,6 +329,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+         ("mira-indices-cfg", bpo::value<bfs::path>()->default_value("indices.cfg"), "The MIRA indices configuration file location")
+         ("mira-cache-size", bpo::value<uint64_t>()->default_value(40000000), "The amount of objects to maintain within MIRAs cache")
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -384,6 +388,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
+
+   my->mira_indices_cfg = options.at( "mira-indices-cfg" ).as< bfs::path >();
+   my->mira_cache_size = options.at( "mira-cache-size" ).as< uint64_t >();
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
@@ -447,14 +454,17 @@ void chain_plugin::plugin_startup()
       }
    };
 
-   fc::variant mira_options;
+   fc::variant mira_indices_options;
    try
    {
-      mira_options = fc::json::from_file( app().data_dir() / "mira.json", fc::json::strict_parser );
+      auto cfg_file = app().data_dir() / my->mira_indices_cfg;
+      if ( !bfs::exists( cfg_file ) )
+         ;// write out default config
+      mira_indices_options = fc::json::from_file( cfg_file, fc::json::strict_parser );
    }
    catch ( const std::exception& e )
    {
-      wlog( "Exception while parsing mira configuration: ${e}", ("e", e.what()) );
+      wlog( "Exception while parsing mira indices configuration: ${e}", ("e", e.what()) );
    }
 
    database::open_args db_open_args;
@@ -467,7 +477,8 @@ void chain_plugin::plugin_startup()
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
-   db_open_args.mira_opts = mira_options;
+   db_open_args.mira_opts = mira_indices_options;
+   db_open_args.mira_cache_size = my->mira_cache_size;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

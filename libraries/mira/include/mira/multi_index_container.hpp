@@ -162,7 +162,7 @@ public:
       }
    }
 
-   bool open( const boost::filesystem::path& p )
+   bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr )
    {
       assert( p.is_absolute() );
 
@@ -181,7 +181,7 @@ public:
 
       maybe_create_configuration( p.string() );
 
-      auto cfg = fc::json::from_file( ( p / "mira.cfg" ).string(), fc::json::parse_type::strict_parser );
+      //auto cfg = fc::json::from_file( ( p / "mira.cfg" ).string(), fc::json::parse_type::strict_parser );
 
       opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
 

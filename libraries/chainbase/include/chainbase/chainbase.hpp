@@ -820,7 +820,7 @@ namespace chainbase {
          };
 
       public:
-         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0, const boost::any& db_opts = nullptr );
+         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0, const boost::any& indices_opts = nullptr );
          void close();
          void flush();
          size_t get_cache_usage() const;
@@ -1204,7 +1204,7 @@ namespace chainbase {
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
 
-             if( _is_open ) new_index->open( _data_dir, _opts );
+             if( _is_open ) new_index->open( _data_dir, _indices_opts );
          }
 
          read_write_mutex_manager                                    _rw_manager;
@@ -1236,7 +1236,7 @@ namespace chainbase {
 
          int32_t                                                     _undo_session_count = 0;
          size_t                                                      _file_size = 0;
-         boost::any                                                  _opts = nullptr;
+         boost::any                                                  _indices_opts = nullptr;
    };
 
 }  // namepsace chainbase

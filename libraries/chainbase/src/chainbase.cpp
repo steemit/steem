@@ -30,13 +30,14 @@ namespace chainbase {
       bool                    windows = false;
    };
 
-   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size, const boost::any& db_opts )
+   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size, const boost::any& indices_opts )
    {
       assert( dir.is_absolute() );
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
       _data_dir = dir;
+      _indices_opts = indices_opts;
 
 #ifndef ENABLE_STD_ALLOCATOR
       auto abs_path = bfs::absolute( dir / "shared_memory.bin" );
@@ -74,7 +75,7 @@ namespace chainbase {
 #else
       for( auto& item : _index_list )
       {
-         item->open( _data_dir, db_opts );
+         item->open( _data_dir, _indices_opts );
       }
 #endif
       _is_open = true;
