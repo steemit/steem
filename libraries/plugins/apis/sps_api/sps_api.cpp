@@ -161,59 +161,48 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   {
     case by_creator:
     {
-      iterate_ordered_results<steem::chain::by_creator>(
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_creator>(
         args.start.as<account_name_type>(),
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
-        (args.start.as<std::string>()).empty(),
-        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_start_date:
     {
-      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
-      iterate_ordered_results<steem::chain::by_start_date>(
-        start_value,
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_start_date>(
+        args.start.as<time_point_sec>(),
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
-        (args.start.as<std::string>()).empty(),
-        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_end_date:
     {
-      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
-      iterate_ordered_results<steem::chain::by_end_date>(
-        start_value,
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_end_date>(
+        args.start.as<time_point_sec>(),
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
-        (args.start.as<std::string>()).empty(),
-        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_total_votes:
     {
-      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? 0 : args.start.as<uint64_t>();
-      iterate_ordered_results<steem::chain::by_total_votes>(
-        start_value,
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_total_votes>(
+        args.start.as<uint64_t>(),
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
-        (args.start.as<std::string>()).empty(),
-        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }

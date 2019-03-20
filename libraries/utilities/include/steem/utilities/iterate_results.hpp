@@ -16,4 +16,35 @@ namespace steem { namespace utilities {
       ++itr;
     }
   }
+
+  template<typename IndexType, typename OrderType, typename ValueType, typename ResultType, typename OnPush>
+  void iterate_ordered_results(ValueType start, std::vector<ResultType>& result, uint32_t limit, chain::database& db, bool ordered_ascending, OnPush&& on_push)
+  {
+    const auto& idx = db.get_index< IndexType, OrderType >();
+    if (ordered_ascending)
+    {
+      auto itr = idx.lower_bound( start );
+      auto end = idx.end();
+
+      while( result.size() < limit && itr != end )
+      {
+        result.push_back( on_push( *itr ) );
+        ++itr;
+      }
+    }
+    else
+    {
+      auto itr = idx.begin();
+      auto end = idx.upper_bound(start);
+
+      std::vector<ResultType> tmp;
+      while(itr != end )
+      {
+        tmp.push_back( on_push( *itr ) );
+        ++itr;
+      }
+
+      result.assign(tmp.rbegin(), ((tmp.rbegin() + limit) > tmp.rend() ? tmp.rend() : (tmp.rbegin() + limit)));
+    }
+  }
 }}
