@@ -32,12 +32,14 @@
 #include <mira/detail/no_duplicate_tags.hpp>
 #include <mira/detail/object_cache.hpp>
 #include <mira/slice_pack.hpp>
+#include <mira/configuration.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/utility/base_from_member.hpp>
 
 #include <fc/io/raw.hpp>
+#include <fc/io/json.hpp>
 
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
@@ -56,7 +58,6 @@
 
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
-#define MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 ) /* 4G */
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -69,21 +70,6 @@ namespace multi_index{
 #pragma warning(push)
 #pragma warning(disable:4522) /* spurious warning on multiple operator=()'s */
 #endif
-
-struct rocksdb_options_factory
-{
-   static std::shared_ptr< rocksdb::Cache > get_shared_cache()
-   {
-      static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE, 4 );
-      return cache;
-   }
-
-   static std::shared_ptr< rocksdb::Statistics > get_shared_stats()
-   {
-      static std::shared_ptr< rocksdb::Statistics > cache = ::rocksdb::CreateDBStatistics();
-      return cache;
-   }
-};
 
 template<typename Value,typename IndexSpecifierList,typename Allocator>
 class multi_index_container:
@@ -165,6 +151,17 @@ public:
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
 
+   void maybe_create_configuration( const boost::filesystem::path& p )
+   {
+      std::string cfg_filename = ( p / "mira.cfg" ).string();
+      if ( !boost::filesystem::exists( cfg_filename ) )
+      {
+         std::ofstream f( cfg_filename );
+         FC_ASSERT( f );
+         f << configuration::default_configuration();
+      }
+   }
+
    bool open( const boost::filesystem::path& p )
    {
       assert( p.is_absolute() );
@@ -181,62 +178,12 @@ public:
       //_stats = ::rocksdb::CreateDBStatistics();
 
       ::rocksdb::Options opts;
-//
-//      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
 
-//      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-//      opts.compression = rocksdb::CompressionType::kNoCompression;
+      maybe_create_configuration( p.string() );
 
-      //opts.statistics = _stats;
-      //opts.stats_dump_period_sec = 5;
+      auto cfg = fc::json::from_file( ( p / "mira.cfg" ).string(), fc::json::parse_type::strict_parser );
 
-      //opts.bytes_per_sync = 6291456;
-      //opts.rate_limiter = std::shared_ptr< rocksdb::RateLimiter >( rocksdb::NewGenericRateLimiter( 1024000 ) );
-//*
-//      //opts.block_size = 8 << 10; //8K
-//      //opts.cache_size = 4 << 30; // 4G
-//      opts.write_buffer_size = 4 << 10; // 64K
-//      opts.max_write_buffer_number = 1;
-//      //opts.min_write_buffer_number_to_merge = 4;
-//      opts.max_bytes_for_level_base = 2 << 30; // 3G
-//      opts.max_bytes_for_level_multiplier = 5;
-//      opts.target_file_size_base = 128 << 20; // 20M
-//      opts.target_file_size_multiplier = 1;
-//      opts.max_background_jobs = 32;
-//      opts.max_background_flushes = 1;
-//      opts.max_background_compactions = 8;
-//      opts.level0_file_num_compaction_trigger = 2;
-//      opts.level0_slowdown_writes_trigger = 24;
-//      opts.level0_stop_writes_trigger = 56;
-//      //opts.cache_numshardbits = 6;
-//      opts.table_cache_numshardbits = 0;
-//      opts.allow_mmap_reads = 1;
-//      opts.allow_mmap_writes = 1;
-//      opts.use_fsync = false;
-//      opts.use_adaptive_mutex = false;
-//      opts.bytes_per_sync = 2 << 20; // 2M
-//      //opts.source_compaction_factor = 1;
-//      //opts.max_grandparent_overlap_factor = 5;
-//*/
-
-      ::rocksdb::BlockBasedTableOptions table_options;
-      table_options.block_size = 8 << 10; // 8K
-      table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
-      opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
-
-      opts.allow_mmap_reads = true;
-
-      opts.write_buffer_size = 2048 * 1024;              // 128k
-      opts.max_bytes_for_level_base = 5 * 1024 * 1024;  // 1MB
-      opts.target_file_size_base = 100 * 1024;          // 100k
-      opts.max_write_buffer_number = 16;
-      opts.max_background_compactions = 16;
-      opts.max_background_flushes = 16;
-      opts.min_write_buffer_number_to_merge = 8;
-
-      opts.OptimizeLevelStyleCompaction();
-      opts.IncreaseParallelism();
+      opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
