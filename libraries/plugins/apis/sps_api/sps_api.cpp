@@ -124,44 +124,48 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   {
     case by_creator:
     {
-      steem::utilities::iterate_results<proposal_index, steem::chain::by_creator>(
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_creator>(
         args.start.as<account_name_type>(),
         result,
         args.limit,
         _db,
+        args.order_direction == sps::order_direction_type::direction_ascending,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_start_date:
     {
-      steem::utilities::iterate_results<proposal_index, steem::chain::by_start_date>(
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_start_date>(
         args.start.as<time_point_sec>(),
         result,
         args.limit,
         _db,
+        args.order_direction == sps::order_direction_type::direction_ascending,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_end_date:
     {
-      steem::utilities::iterate_results<proposal_index, steem::chain::by_end_date>(
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_end_date>(
         args.start.as<time_point_sec>(),
         result,
         args.limit,
         _db,
+        args.order_direction == sps::order_direction_type::direction_ascending,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_total_votes:
     {
-      steem::utilities::iterate_results<proposal_index, steem::chain::by_total_votes>(
+      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_total_votes>(
         args.start.as<uint64_t>(),
         result,
         args.limit,
         _db,
+        args.order_direction == sps::order_direction_type::direction_ascending,
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -191,11 +195,6 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     });
   }
 
-  if (!result.empty())
-  {
-    // sorting operations
-    sort_results<list_proposals_return>(result, args.order_by, args.order_direction);
-  }
   return result;
 }
 
