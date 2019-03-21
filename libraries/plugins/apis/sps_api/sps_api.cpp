@@ -130,42 +130,49 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
+        (args.start.as<std::string>()).empty(),
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_start_date:
     {
+      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
       steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_start_date>(
-        args.start.as<time_point_sec>(),
+        start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
+        (args.start.as<std::string>()).empty(),
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_end_date:
     {
+      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
       steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_end_date>(
-        args.start.as<time_point_sec>(),
+        start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
+        (args.start.as<std::string>()).empty(),
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
     break;
     case by_total_votes:
     {
+      const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? 0 : args.start.as<uint64_t>();
       steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_total_votes>(
-        args.start.as<uint64_t>(),
+        start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
+        (args.start.as<std::string>()).empty(),
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
