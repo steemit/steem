@@ -294,6 +294,7 @@ void chain_plugin_impl::stop_write_processing()
 
 void chain_plugin_impl::write_default_indices_config( bfs::path &p )
 {
+   ilog( "writing indices configuration to ${p}", ("p", p.string()) );
    fc::ofstream o( p );
    std::string default_cfg = \
 R"({
@@ -513,6 +514,7 @@ void chain_plugin::plugin_startup()
    try
    {
       auto cfg_file = app().data_dir() / my->mira_indices_cfg;
+      ilog( "reading indices configuration from ${p}", ("p", cfg_file.string()) );
       mira_indices_options = fc::json::from_file( cfg_file, fc::json::strict_parser );
    }
    catch ( const std::exception& e )
