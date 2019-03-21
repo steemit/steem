@@ -297,30 +297,17 @@ void chain_plugin_impl::write_default_indices_config( bfs::path &p )
    fc::ofstream o( p );
    std::string default_cfg = \
 R"({
-   // Global options apply to all indices
    "global" : {
-      // This cache is internal to RocksDB and is not related
-      // to MIRAs cache, which is determined by "object_count"
       "shared_cache" : {
          "capacity" : 1073741824,
          "num_shard_bits" : 4
       },
 
-      // Indicates the number of objects MIRA maintains in cache
       "object_count" : 40000000,
 
-      // WARNING: Enabling statistics severely degrades performance
-
-      // With statistics set to true, you can use the script
-      // programs/util/rocksdb_advisor.sh to analyze and adjust
-      // performance options.
       "statistics" : false
    },
 
-   // The default configuration is the base configuration for all
-   // MIRA indices. An overlay can be placed on top of the default
-   // configuration in order to change a specific option for a
-   // specific index
    "default" : {
       "allow_mmap_reads"                 : true,
       "write_buffer_size"                : 2097152,
@@ -341,11 +328,6 @@ R"({
       }
    },
 
-   // An example index configuration overlay. Override a specific
-   // value on a particular index
-
-   // NOTE: When overriding a top level value, the subsequent nested
-   // options must be defined
    "key_lookup_object" : {
       "allow_mmap_reads" : false,
       "block_based_table_options" : {
