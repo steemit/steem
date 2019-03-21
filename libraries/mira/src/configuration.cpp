@@ -215,7 +215,7 @@ size_t configuration::get_object_count( const boost::any& cfg )
       fc::variant_object global_config = retrieve_global_configuration( obj );
 
       FC_ASSERT( global_config.contains( OBJECT_COUNT ) );
-      FC_ASSERT( global_config[ OBJECT_COUNT ].is_bool() );
+      FC_ASSERT( global_config[ OBJECT_COUNT ].is_uint64() );
 
       object_count = global_config[ OBJECT_COUNT ].as< uint64_t >();
    }
