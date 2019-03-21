@@ -18,33 +18,31 @@ namespace steem { namespace utilities {
   }
 
   template<typename IndexType, typename OrderType, typename ValueType, typename ResultType, typename OnPush>
-  void iterate_ordered_results(ValueType start, std::vector<ResultType>& result, uint32_t limit, chain::database& db, bool ordered_ascending, OnPush&& on_push)
+  void iterate_ordered_results(ValueType start, std::vector<ResultType>& result, uint32_t limit, chain::database& db, bool ordered_ascending, bool start_from_end, OnPush&& on_push)
   {
     const auto& idx = db.get_index< IndexType, OrderType >();
+
     if (ordered_ascending)
     {
-      auto itr = idx.lower_bound( start );
+      auto itr = idx.lower_bound(start);
       auto end = idx.end();
 
-      while( result.size() < limit && itr != end )
+      while (result.size() < limit && itr != end)
       {
-        result.push_back( on_push( *itr ) );
+        result.push_back(on_push(*itr));
         ++itr;
       }
     }
     else
     {
-      auto itr = idx.begin();
-      auto end = idx.upper_bound(start);
+      auto itr = start_from_end ? idx.rbegin() : boost::reverse_iterator<decltype(idx.upper_bound(start))>(idx.upper_bound(start));
+      auto end = idx.rend();
 
-      std::vector<ResultType> tmp;
-      while(itr != end )
+      while (result.size() < limit && itr != end)
       {
-        tmp.push_back( on_push( *itr ) );
+        result.push_back(on_push(*itr));
         ++itr;
       }
-
-      result.assign(tmp.rbegin(), ((tmp.rbegin() + limit) > tmp.rend() ? tmp.rend() : (tmp.rbegin() + limit)));
     }
   }
 }}
