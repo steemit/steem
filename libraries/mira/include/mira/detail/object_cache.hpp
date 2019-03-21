@@ -39,11 +39,6 @@ private:
    size_t       _obj_threshold = 5;
    std::mutex   _lock;
 
-   void adjust_capactiy()
-   {
-      adjust_capacity( _obj_threshold );
-   }
-
 public:
    iterator_type insert( boost::any v, std::shared_ptr< abstract_multi_index_cache_manager >&& m )
    {
@@ -61,6 +56,16 @@ public:
    {
       std::lock_guard< std::mutex > lock( _lock );
       _lru.erase( iter );
+   }
+
+   void set_object_threshold( size_t capacity )
+   {
+      _obj_threshold = capacity;
+   }
+
+   void adjust_capacity()
+   {
+      adjust_capacity( _obj_threshold );
    }
 
    void adjust_capacity( size_t cap )

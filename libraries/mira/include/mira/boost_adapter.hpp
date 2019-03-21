@@ -27,7 +27,7 @@ class boost_multi_index_adapter : public boost::multi_index_container< Value, In
       void wipe( const boost::filesystem::path& p ) {}
       void flush() {}
       bool open( const boost::filesystem::path& p, const boost::any& opts ) { return true; }
-      void trim_cache( size_t cap ) {}
+      void trim_cache() {}
 
       void print_stats() const {}
 

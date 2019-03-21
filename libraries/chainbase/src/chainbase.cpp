@@ -133,12 +133,12 @@ namespace chainbase {
 #endif
    }
 
-   void database::trim_cache( size_t cap )
+   void database::trim_cache()
    {
 #ifdef ENABLE_STD_ALLOCATOR
       if( _index_list.size() )
       {
-         (*_index_list.begin())->trim_cache( cap );
+         (*_index_list.begin())->trim_cache();
       }
 #endif
    }

@@ -114,7 +114,7 @@ void database::open( const open_args& args )
    try
    {
       init_schema();
-      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.mira_opts );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.mira_indices_opts );
 
       initialize_indexes();
       initialize_evaluators();
@@ -128,8 +128,6 @@ void database::open( const open_args& args )
       _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
 
       _block_log.open( args.data_dir / "block_log" );
-
-      _mira_cache_size = args.mira_cache_size;
 
       auto log_head = _block_log.head();
 
@@ -3167,7 +3165,7 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
-   trim_cache( _mira_cache_size );
+   trim_cache();
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor

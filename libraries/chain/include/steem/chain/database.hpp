@@ -108,8 +108,7 @@ namespace steem { namespace chain {
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
-            fc::variant mira_opts;
-            size_t mira_cache_size;
+            fc::variant mira_indices_opts;
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
@@ -562,7 +561,6 @@ namespace steem { namespace chain {
          protocol::hardfork_version    _hardfork_versions[ STEEM_NUM_HARDFORKS + 1 ];
 
          block_log                     _block_log;
-         size_t                        _mira_cache_size;
 
          // this function needs access to _plugin_index_signal
          template< typename MultiIndexType >

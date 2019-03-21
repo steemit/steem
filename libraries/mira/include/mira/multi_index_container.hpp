@@ -151,17 +151,6 @@ public:
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
 
-   void maybe_create_configuration( const boost::filesystem::path& p )
-   {
-      std::string cfg_filename = ( p / "mira.cfg" ).string();
-      if ( !boost::filesystem::exists( cfg_filename ) )
-      {
-         std::ofstream f( cfg_filename );
-         FC_ASSERT( f );
-         f << configuration::default_configuration();
-      }
-   }
-
    bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr )
    {
       assert( p.is_absolute() );
@@ -174,14 +163,17 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-      //_stats = rocksdb_options_factory::get_shared_stats();
-      //_stats = ::rocksdb::CreateDBStatistics();
+      if ( configuration::gather_statistics( cfg ) )
+      {
+         wlog( "Enabling statistics on ${t}, performance will be impacted", ("t", boost::core::demangle( typeid( Value ).name())) );
+         _stats = ::rocksdb::CreateDBStatistics();
+      }
+
+      auto cached_object_count = configuration::get_object_count( cfg );
+      if ( cached_object_count > 0 )
+         detail::cache_manager::get()->set_object_threshold( cached_object_count );
 
       ::rocksdb::Options opts;
-
-      maybe_create_configuration( p.string() );
-
-      //auto cfg = fc::json::from_file( ( p / "mira.cfg" ).string(), fc::json::parse_type::strict_parser );
 
       opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
 
@@ -284,9 +276,9 @@ public:
       }
    }
 
-   void trim_cache( size_t cap )
+   void trim_cache()
    {
-      detail::cache_manager::get()->adjust_capacity( cap );
+      detail::cache_manager::get()->adjust_capacity();
    }
 
   allocator_type get_allocator()const BOOST_NOEXCEPT
