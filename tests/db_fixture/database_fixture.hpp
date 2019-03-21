@@ -336,11 +336,10 @@ using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture
 
 #endif
 
-template< typename T >
-struct t_proposal_database_fixture : public T
+struct sps_proposal_database_fixture : public clean_database_fixture
 {
-   t_proposal_database_fixture(){}
-   virtual ~t_proposal_database_fixture(){}
+   sps_proposal_database_fixture(){}
+   virtual ~sps_proposal_database_fixture(){}
 
    void plugin_prepare();
 
@@ -349,10 +348,6 @@ struct t_proposal_database_fixture : public T
                               asset daily_pay, const fc::ecc::private_key& key );
 
    void vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
-
-   void transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
-
-   void transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
 
    bool exist_proposal( int64_t id );
    steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) ;
@@ -366,10 +361,6 @@ struct t_proposal_database_fixture : public T
 
    void post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
 };
-
-
-using proposal_database_fixture = t_proposal_database_fixture< clean_database_fixture >;
-using proposal_database_fixture_for_plugin = t_proposal_database_fixture< database_fixture >;
 
 struct json_rpc_database_fixture : public database_fixture
 {
