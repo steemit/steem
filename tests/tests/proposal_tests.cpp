@@ -29,7 +29,165 @@ using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
 
-BOOST_FIXTURE_TEST_SUITE( proposal_tests, proposal_database_fixture )
+
+BOOST_FIXTURE_TEST_SUITE( proposal_tests, sps_proposal_database_fixture )
+
+BOOST_AUTO_TEST_CASE( generating_payments )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: generating payments" );
+
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      auto creator = "alice";
+      auto receiver = "bob";
+
+      auto start_date = db->head_block_time();
+      auto end_date = start_date + fc::days( 2 );
+
+      auto daily_pay = asset( 48, SBD_SYMBOL );
+      auto hourly_pay = asset( daily_pay.amount.value / 24, SBD_SYMBOL );
+
+      FUND( creator, ASSET( "160.000 TESTS" ) );
+      FUND( creator, ASSET( "80.000 TBD" ) );
+      FUND( STEEM_TREASURY_ACCOUNT, ASSET( "5000.000 TBD" ) );
+
+      auto voter_01 = "carol";
+      //=====================preparing=====================
+
+      //Needed basic operations
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date, end_date, daily_pay, alice_private_key );
+      generate_blocks( 1 );
+
+      vote_proposal( voter_01, { id_proposal_00 }, true/*approve*/, carol_private_key );
+      generate_blocks( 1 );
+
+      vest(STEEM_INIT_MINER_NAME, voter_01, ASSET( "1.000 TESTS" ));
+      generate_blocks( 1 );
+
+      //skipping interest generating is necessary
+      transfer( STEEM_INIT_MINER_NAME, receiver, ASSET( "0.001 TBD" ));
+      generate_block( 5 );
+      transfer( STEEM_INIT_MINER_NAME, STEEM_TREASURY_ACCOUNT, ASSET( "0.001 TBD" ) );
+      generate_block( 5 );
+
+      const account_object& _creator = db->get_account( creator );
+      const account_object& _receiver = db->get_account( receiver );
+      const account_object& _voter_01 = db->get_account( voter_01 );
+      const account_object& _treasury = db->get_account( STEEM_TREASURY_ACCOUNT );
+
+      {
+         BOOST_TEST_MESSAGE( "---Payment---" );
+
+         auto before_creator_sbd_balance = _creator.sbd_balance;
+         auto before_receiver_sbd_balance = _receiver.sbd_balance;
+         auto before_voter_01_sbd_balance = _voter_01.sbd_balance;
+         auto before_treasury_sbd_balance = _treasury.sbd_balance;
+      
+         auto next_block = get_nr_blocks_until_maintenance_block();
+         generate_blocks( next_block - 1 );
+         generate_blocks( 1 );
+
+         auto after_creator_sbd_balance = _creator.sbd_balance;
+         auto after_receiver_sbd_balance = _receiver.sbd_balance;
+         auto after_voter_01_sbd_balance = _voter_01.sbd_balance;
+         auto after_treasury_sbd_balance = _treasury.sbd_balance;
+   
+         BOOST_REQUIRE( before_creator_sbd_balance == after_creator_sbd_balance );
+         BOOST_REQUIRE( before_receiver_sbd_balance == after_receiver_sbd_balance - hourly_pay );
+         BOOST_REQUIRE( before_voter_01_sbd_balance == after_voter_01_sbd_balance );
+         BOOST_REQUIRE( before_treasury_sbd_balance == after_treasury_sbd_balance + hourly_pay );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( proposals_maintenance)
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: removing inactive proposals" );
+      //Update see issue #85 -> https://github.com/blocktradesdevs/steem/issues/85
+      //Remove proposal will be automatic action - this test shall be temporary disabled.
+
+      return ;
+
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      auto creator = "alice";
+      auto receiver = "bob";
+
+      auto start_time = db->head_block_time();
+
+      auto start_date_00 = start_time + fc::seconds( 30 );
+      auto end_date_00 = start_time + fc::minutes( 10 );
+
+      auto start_date_01 = start_time + fc::seconds( 40 );
+      auto end_date_01 = start_time + fc::minutes( 30 );
+
+      auto start_date_02 = start_time + fc::seconds( 50 );
+      auto end_date_02 = start_time + fc::minutes( 20 );
+
+      auto daily_pay = asset( 100, SBD_SYMBOL );
+
+      FUND( creator, ASSET( "100.000 TBD" ) );
+      //=====================preparing=====================
+
+      int64_t id_proposal_00 = create_proposal( creator, receiver, start_date_00, end_date_00, daily_pay, alice_private_key );
+      generate_block();
+
+      int64_t id_proposal_01 = create_proposal( creator, receiver, start_date_01, end_date_01, daily_pay, alice_private_key );
+      generate_block();
+
+      int64_t id_proposal_02 = create_proposal( creator, receiver, start_date_02, end_date_02, daily_pay, alice_private_key );
+      generate_block();
+
+      {
+         BOOST_REQUIRE( exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP ) );
+         start_time = db->head_block_time();
+
+         BOOST_REQUIRE( exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 11 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 21 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_02 ) );
+
+         generate_blocks( start_time + fc::minutes( 31 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_00 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_01 ) );
+         BOOST_REQUIRE( !exist_proposal( id_proposal_02 ) );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 
 BOOST_AUTO_TEST_CASE( proposal_object_apply )
 {
@@ -1278,6 +1436,230 @@ BOOST_AUTO_TEST_CASE( remove_proposal_012 )
       expected.insert( "alice" );
       rpo.get_required_active_authorities( auths );
       BOOST_REQUIRE( auths == expected );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( list_proposal_000 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: list proposals: arguments validation check - all ok" );
+      plugin_prepare();
+
+      std::vector<std::string> order_by        {"creator", "start_date", "end_date", "total_votes"};
+      for(auto by : order_by) {
+         auto order_by        = steem::plugins::sps::to_order_by(by);
+         if( by == "creator") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_creator );
+         } else if ( by == "start_date") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_start_date );
+         } else if ( by == "end_date") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_end_date );
+         } else if ( by == "total_votes"){
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_total_votes );
+         } else {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_creator );
+         }
+      }
+
+      std::vector<std::string> order_direction {"asc", "desc"};
+      for(auto direct : order_direction) {
+         auto order_direction = steem::plugins::sps::to_order_direction(direct);
+         if( direct == "asc") {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_ascending );
+         } else if ( direct == "desc") {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_descending );
+         } else {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_ascending );
+         }
+      }
+
+      std::vector<std::string> active          {"active", "inactive", "all"};
+      for(auto act : active){
+         auto status          = steem::plugins::sps::to_proposal_status(act);
+         if( act == "active") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::active );
+         } else if ( act == "inactive") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::inactive );
+         } else if ( act == "all") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::all );
+         } else {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::all );
+         }
+      }
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( list_proposal_001 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: list proposals: call result check - all ok" );
+      plugin_prepare();
+      create_proposal_data cpd(db->head_block_time());
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+      FUND( cpd.creator, ASSET( "80.000 TBD" ) );
+      generate_block();
+
+      auto checker = [this, cpd](bool _empty){
+         std::vector<std::string> active          {"active", "inactive", "all"};
+         std::vector<std::string> order_by        {"creator", "start_date", "end_date", "total_votes"};
+         std::vector<std::string> order_direction {"asc", "desc"};
+         fc::variant start = 0;
+         for(auto by : order_by) {
+            if (by == "creator"){
+               start = "";
+            } else if (by == "start_date" || by == "end_date") {
+               start = "2016-03-01T00:00:00";
+            } else {
+               start = 0;
+            }
+            for(auto direct : order_direction) {
+               for(auto act : active) {
+                  auto resp = list_proposals(start, by, direct,1, act);
+                  if(_empty) {
+                     BOOST_REQUIRE(resp.empty());
+                  } else {
+                     BOOST_REQUIRE(!resp.empty());
+                  }
+               }
+            }
+         }
+      };
+
+      checker(true);
+      int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
+      BOOST_REQUIRE(proposal_1 >= 0);
+      auto resp = list_proposals(cpd.creator, "creator", "asc", 10, "all");
+      BOOST_REQUIRE(!resp.empty());
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( list_voter_proposals_000 )
+{
+   try
+   {
+      plugin_prepare();
+
+      std::vector<std::string> order_by        {"creator", "start_date", "end_date", "total_votes"};
+      for(auto by : order_by) {
+         auto order_by        = steem::plugins::sps::to_order_by(by);
+         if( by == "creator") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_creator );
+         } else if ( by == "start_date") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_start_date );
+         } else if ( by == "end_date") {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_end_date );
+         } else if ( by == "total_votes"){
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_total_votes );
+         } else {
+            BOOST_REQUIRE( order_by == steem::plugins::sps::order_by_type::by_creator );
+         }
+      }
+
+      std::vector<std::string> order_direction {"asc", "desc"};
+      for(auto direct : order_direction) {
+         auto order_direction = steem::plugins::sps::to_order_direction(direct);
+         if( direct == "asc") {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_ascending );
+         } else if ( direct == "desc") {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_descending );
+         } else {
+            BOOST_REQUIRE( order_direction == steem::plugins::sps::order_direction_type::direction_ascending );
+         }
+      }
+
+      std::vector<std::string> active          {"active", "inactive", "all"};
+      for(auto act : active){
+         auto status          = steem::plugins::sps::to_proposal_status(act);
+         if( act == "active") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::active );
+         } else if ( act == "inactive") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::inactive );
+         } else if ( act == "all") {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::all );
+         } else {
+            BOOST_REQUIRE( status == steem::plugins::sps::proposal_status::all );
+         }
+      }
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( list_voter_proposals_001 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: list voter proposals: call result check - all ok" );
+      plugin_prepare();
+      create_proposal_data cpd(db->head_block_time());
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+      FUND( cpd.creator, ASSET( "80.000 TBD" ) );
+      generate_block();
+
+      auto checker = [this, cpd](bool _empty){
+         std::vector<std::string> active          {"active", "inactive", "all"};
+         std::vector<std::string> order_by        {"creator", "start_date", "end_date", "total_votes"};
+         std::vector<std::string> order_direction {"asc", "desc"};
+         for(auto by : order_by) {
+            for(auto direct : order_direction) {
+               for(auto act : active) {
+                  auto resp = list_voter_proposals(cpd.creator, by, direct,10, act);
+                  if(_empty) {
+                     BOOST_REQUIRE(resp.empty());
+                  } else {
+                     BOOST_REQUIRE(!resp.empty());
+                  }
+               }
+            }
+         }
+      };
+
+      checker(true);
+      int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
+      checker(true);
+      BOOST_REQUIRE(proposal_1 >= 0);
+      std::vector< int64_t > proposals = {proposal_1};
+      vote_proposal(cpd.creator, proposals, true, alice_private_key);
+      auto resp = list_voter_proposals(cpd.creator, "creator", "asc", 10, "all");
+      BOOST_REQUIRE(!resp.empty());
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( find_proposals_000 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: find proposals: call result check - all ok" );
+      plugin_prepare();
+      create_proposal_data cpd(db->head_block_time());
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+      FUND( cpd.creator, ASSET( "80.000 TBD" ) );
+      generate_block();
+
+      flat_set<uint64_t> prop_before = {0};
+      auto resp = find_proposals(prop_before);
+      BOOST_REQUIRE(resp.empty());
+
+      uint64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
+      BOOST_REQUIRE(proposal_1 >= 0);
+
+      flat_set<uint64_t> prop_after = {proposal_1};
+      resp = find_proposals(prop_after);
+      BOOST_REQUIRE(!resp.empty());
 
       validate_database();
    }
