@@ -67,6 +67,7 @@ class chain_plugin_impl
 
       void start_write_processing();
       void stop_write_processing();
+      void write_default_indices_config( bfs::path& p );
 
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
@@ -291,6 +292,74 @@ void chain_plugin_impl::stop_write_processing()
    write_processor_thread.reset();
 }
 
+void chain_plugin_impl::write_default_indices_config( bfs::path &p )
+{
+   fc::ofstream o( p );
+   std::string default_cfg = \
+R"({
+   // Global options apply to all indices
+   "global" : {
+      // This cache is internal to RocksDB and is not related
+      // to MIRAs cache, which is determined by "object_count"
+      "shared_cache" : {
+         "capacity" : 1073741824,
+         "num_shard_bits" : 4
+      },
+
+      // Indicates the number of objects MIRA maintains in cache
+      "object_count" : 40000000,
+
+      // WARNING: Enabling statistics severely degrades performance
+
+      // With statistics set to true, you can use the script
+      // programs/util/rocksdb_advisor.sh to analyze and adjust
+      // performance options.
+      "statistics" : false
+   },
+
+   // The default configuration is the base configuration for all
+   // MIRA indices. An overlay can be placed on top of the default
+   // configuration in order to change a specific option for a
+   // specific index
+   "default" : {
+      "allow_mmap_reads"                 : true,
+      "write_buffer_size"                : 2097152,
+      "max_bytes_for_level_base"         : 5242880,
+      "target_file_size_base"            : 102400,
+      "max_write_buffer_number"          : 16,
+      "max_background_compactions"       : 16,
+      "max_background_flushes"           : 16,
+      "optimize_level_style_compaction"  : true,
+      "increase_parallelism"             : true,
+      "min_write_buffer_number_to_merge" : 8
+      "block_based_table_options" : {
+         "block_size" : 8192,
+         "bloom_filter_policy" : {
+            "bits_per_key": 14,
+            "use_block_based_builder": false
+         }
+      }
+   },
+
+   // An example index configuration overlay. Override a specific
+   // value on a particular index
+
+   // NOTE: When overriding a top level value, the subsequent nested
+   // options must be defined
+   "key_lookup_object" : {
+      "allow_mmap_reads" : false,
+      "block_based_table_options" : {
+         "block_size" : 8192,
+         "bloom_filter_policy" : {
+            "bits_per_key": 10,
+            "use_block_based_builder": false
+         }
+      }
+   }
+})";
+   o << default_cfg;
+}
+
 } // detail
 
 
@@ -390,6 +459,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->mira_indices_cfg = options.at( "mira-indices-cfg" ).as< bfs::path >();
 
+   auto indices_cfg_path = app().data_dir() / my->mira_indices_cfg;
+   if( !bfs::exists( indices_cfg_path ) )
+   {
+      my->write_default_indices_config( indices_cfg_path );
+   }
+
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
    {
@@ -456,8 +531,6 @@ void chain_plugin::plugin_startup()
    try
    {
       auto cfg_file = app().data_dir() / my->mira_indices_cfg;
-      if ( !bfs::exists( cfg_file ) )
-         ;// write out default config
       mira_indices_options = fc::json::from_file( cfg_file, fc::json::strict_parser );
    }
    catch ( const std::exception& e )
