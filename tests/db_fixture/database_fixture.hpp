@@ -350,7 +350,7 @@ struct sps_proposal_database_fixture : public clean_database_fixture
    void vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
 
    bool exist_proposal( int64_t id );
-   steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, fc::optional<uint64_t> _last_id) ;
+   steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id) ;
    steem::plugins::sps::list_voter_proposals_return list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) ;
    steem::plugins::sps::find_proposals_return find_proposals(flat_set<uint64_t> _proposal_ids);
    void remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
