@@ -968,10 +968,7 @@ list_proposals_return sps_proposal_database_fixture::list_proposals(fc::variant 
       args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
       args.status          = steem::plugins::sps::to_proposal_status(_status);
-      if (_last_id.size() > 0)
-      {
-         args.last_id         = boost::lexical_cast<uint64_t>(_last_id);
-      }
+      args.last_id         = _last_id;
 
       try {
          return api->list_proposals(args);
