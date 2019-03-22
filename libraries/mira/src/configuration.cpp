@@ -190,7 +190,7 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
    boost::split( split_v, type_name, boost::is_any_of( ":" ) );
    const auto index_name = *(split_v.rbegin());
 
-   ilog( "Retrieving active config for ${t}", ("t", index_name) );
+   //ilog( "Retrieving active config for ${t}", ("t", index_name) );
 
    FC_ASSERT( obj[ DEFAULT ].is_object() );
 
@@ -295,7 +295,7 @@ bool configuration::gather_statistics( const boost::any& cfg )
          {
             if ( INDEX_OPTION_MAP.find( it->key() ) != INDEX_OPTION_MAP.end() )
             {
-               ilog( "${t} -> option ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
+               //ilog( "${t} -> option ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
                INDEX_OPTION_MAP[ it->key() ]( opts, it->value() );
             }
             else

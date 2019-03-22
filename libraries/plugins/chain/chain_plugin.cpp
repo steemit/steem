@@ -5,6 +5,7 @@
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/indices_cfg.hpp>
 
 #include <fc/string.hpp>
 #include <fc/io/json.hpp>
@@ -294,53 +295,8 @@ void chain_plugin_impl::stop_write_processing()
 
 void chain_plugin_impl::write_default_indices_config( bfs::path &p )
 {
-   ilog( "writing indices configuration to ${p}", ("p", p.string()) );
-   fc::ofstream o( p );
-   std::string default_cfg = \
-R"({
-   "global" : {
-      "shared_cache" : {
-         "capacity" : 1073741824,
-         "num_shard_bits" : 4
-      },
-
-      "object_count" : 40000000,
-
-      "statistics" : false
-   },
-
-   "default" : {
-      "allow_mmap_reads"                 : true,
-      "write_buffer_size"                : 2097152,
-      "max_bytes_for_level_base"         : 5242880,
-      "target_file_size_base"            : 102400,
-      "max_write_buffer_number"          : 16,
-      "max_background_compactions"       : 16,
-      "max_background_flushes"           : 16,
-      "optimize_level_style_compaction"  : true,
-      "increase_parallelism"             : true,
-      "min_write_buffer_number_to_merge" : 8
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 14,
-            "use_block_based_builder": false
-         }
-      }
-   },
-
-   "key_lookup_object" : {
-      "allow_mmap_reads" : false,
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 10,
-            "use_block_based_builder": false
-         }
-      }
-   }
-})";
-   o << default_cfg;
+   ilog( "Writing indices configuration to ${p}", ("p", p.string()) );
+   fc::json::save_to_file( steem::utilities::get_default_indices_cfg(), p );
 }
 
 } // detail
@@ -381,7 +337,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ("mira-indices-cfg", bpo::value<bfs::path>()->default_value("indices.cfg"), "The MIRA indices configuration file location")
-         ("mira-cache-count", bpo::value<uint64_t>()->default_value(40000000), "The number of objects to maintain within MIRAs cache")
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -514,7 +469,6 @@ void chain_plugin::plugin_startup()
    try
    {
       auto cfg_file = app().data_dir() / my->mira_indices_cfg;
-      ilog( "reading indices configuration from ${p}", ("p", cfg_file.string()) );
       mira_indices_options = fc::json::from_file( cfg_file, fc::json::strict_parser );
    }
    catch ( const std::exception& e )

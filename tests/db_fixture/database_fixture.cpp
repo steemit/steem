@@ -2,6 +2,7 @@
 #include <boost/program_options.hpp>
 
 #include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/indices_cfg.hpp>
 
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
@@ -147,6 +148,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.shared_file_size = size;
+      args.mira_indices_opts = steem::utilities::get_default_indices_cfg();
       db->open( args );
    }
 
@@ -193,6 +195,7 @@ live_database_fixture::live_database_fixture()
          database::open_args args;
          args.data_dir = _chain_dir;
          args.shared_mem_dir = args.data_dir;
+         args.mira_indices_opts = steem::utilities::get_default_indices_cfg();
          db->open( args );
       }
 
@@ -258,6 +261,7 @@ void database_fixture::open_database()
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      args.mira_indices_opts = steem::utilities::get_default_indices_cfg();
       db->open(args);
    }
    else
