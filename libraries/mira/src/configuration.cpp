@@ -61,10 +61,9 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
    { BLOCK_BASED_TABLE_OPTIONS, []( ::rocksdb::Options& o, auto v )
       {
          ::rocksdb::BlockBasedTableOptions table_options;
-         FC_ASSERT( v.is_object() );
+         FC_ASSERT( v.is_object(), "Expected 'block_based_table_options' to be an object" );
          auto& obj = v.get_object();
 
-//         table_options.block_cache = rocksdb_options_factory::get_shared_cache();
          table_options.block_cache = GLOBAL_SHARED_CACHE;
 
          if ( obj.contains( BLOCK_SIZE ) )
@@ -72,12 +71,12 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
 
          if ( obj.contains( BLOOM_FILTER_POLICY ) )
          {
-            FC_ASSERT( obj[ BLOOM_FILTER_POLICY ].is_object() );
+            FC_ASSERT( obj[ BLOOM_FILTER_POLICY ].is_object(), "Expected 'bloom_filter_policy' to be an object" );
             auto filter_policy = obj[ BLOOM_FILTER_POLICY ].get_object();
             size_t bits_per_key;
 
             // Bits per key is required for the bloom filter policy
-            FC_ASSERT( filter_policy.contains( BITS_PER_KEY ) );
+            FC_ASSERT( filter_policy.contains( BITS_PER_KEY ), "Expected 'bloom_filter_policy' to contain 'bits_per_key'" );
 
             bits_per_key = filter_policy[ BITS_PER_KEY ].template as< uint64_t >();
 
@@ -95,8 +94,8 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
 fc::variant_object configuration::apply_configuration_overlay( const fc::variant& base, const fc::variant& overlay )
 {
    fc::mutable_variant_object config;
-   FC_ASSERT( base.is_object() );
-   FC_ASSERT( overlay.is_object() );
+   FC_ASSERT( base.is_object(), "Expected 'default' configuration to be an object" );
+   FC_ASSERT( overlay.is_object(), "Expected index overlay configuration to be an object" );
 
    // Start with our base configuration
    config = base.get_object();
@@ -109,76 +108,10 @@ fc::variant_object configuration::apply_configuration_overlay( const fc::variant
    return config;
 }
 
-std::string configuration::default_configuration()
-{
-   return
-R"({
-// Global options apply to all indices
-   "global" : {
-      // This cache is internal to RocksDB and is not related
-      // to MIRAs cache, which is determined by "object_count"
-      "shared_cache" : {
-         "capacity" : 1073741824,
-         "num_shard_bits" : 4
-      },
-
-      // Indicates the number of objects MIRA maintains in cache
-      "object_count" : 40000000,
-
-      // WARNING: Enabling statistics severely degrades performance
-
-      // With statistics set to true, you can use the script
-      // programs/util/rocksdb_advisor.sh to analyze and adjust
-      // performance options.
-      "statistics" : false
-   },
-
-// The default configuration is the base configuration for all
-// MIRA indices. An overlay can be placed on top of the default
-// configuration in order to change a specific option for a
-// specific index
-   "default" : {
-      "allow_mmap_reads"                 : true,
-      "write_buffer_size"                : 2097152,
-      "max_bytes_for_level_base"         : 5242880,
-      "target_file_size_base"            : 102400,
-      "max_write_buffer_number"          : 16,
-      "max_background_compactions"       : 16,
-      "max_background_flushes"           : 16,
-      "optimize_level_style_compaction"  : true,
-      "increase_parallelism"             : true,
-      "min_write_buffer_number_to_merge" : 8
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 14,
-            "use_block_based_builder": false
-         }
-      }
-   },
-
-// An example index configuration overlay. Override a specific
-// value on a particular index
-
-// NOTE: When overriding a top level value, the subsequent nested
-// options must be defined
-   "key_lookup_object" : {
-      "allow_mmap_reads" : false,
-      "block_based_table_options" : {
-         "block_size" : 8192,
-         "bloom_filter_policy" : {
-            "bits_per_key": 10,
-            "use_block_based_builder": false
-         }
-      }
-   }
-})";
-}
-
 fc::variant_object configuration::retrieve_global_configuration( const fc::variant_object& obj )
 {
    fc::mutable_variant_object global_config;
-   FC_ASSERT( obj[ GLOBAL ].is_object() );
+   FC_ASSERT( obj[ GLOBAL ].is_object(), "Expected 'global' configuration to be an object" );
    global_config = obj[ GLOBAL ].get_object();
    return global_config;
 }
@@ -190,9 +123,7 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
    boost::split( split_v, type_name, boost::is_any_of( ":" ) );
    const auto index_name = *(split_v.rbegin());
 
-   //ilog( "Retrieving active config for ${t}", ("t", index_name) );
-
-   FC_ASSERT( obj[ DEFAULT ].is_object() );
+   FC_ASSERT( obj[ DEFAULT ].is_object(), "Expected 'default' configuration to be an object" );
 
    // We look to apply an index configuration overlay
    if ( obj.find( index_name ) != obj.end() )
@@ -209,13 +140,13 @@ size_t configuration::get_object_count( const boost::any& cfg )
    try
    {
       auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object() );
+      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
       auto& obj = c.get_object();
 
       fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      FC_ASSERT( global_config.contains( OBJECT_COUNT ) );
-      FC_ASSERT( global_config[ OBJECT_COUNT ].is_uint64() );
+      FC_ASSERT( global_config.contains( OBJECT_COUNT ), "Expected 'global' configuration to contain 'object_count'" );
+      FC_ASSERT( global_config[ OBJECT_COUNT ].is_uint64(), "Expected 'object_count' to be an unsigned integer" );
 
       object_count = global_config[ OBJECT_COUNT ].as< uint64_t >();
    }
@@ -234,13 +165,13 @@ bool configuration::gather_statistics( const boost::any& cfg )
    try
    {
       auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object() );
+      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
       auto& obj = c.get_object();
 
       fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      FC_ASSERT( global_config.contains( STATISTICS ) );
-      FC_ASSERT( global_config[ STATISTICS ].is_bool() );
+      FC_ASSERT( global_config.contains( STATISTICS ), "Expected 'global' configuration to contain 'statistics'" );
+      FC_ASSERT( global_config[ STATISTICS ].is_bool(), "Expected 'statistics' to be a boolean value" );
 
       statistics = global_config[ STATISTICS ].as< bool >();
    }
@@ -260,7 +191,7 @@ bool configuration::gather_statistics( const boost::any& cfg )
    try
    {
       auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object() );
+      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
       auto& obj = c.get_object();
 
       if ( GLOBAL_SHARED_CACHE == nullptr )
@@ -270,8 +201,8 @@ bool configuration::gather_statistics( const boost::any& cfg )
 
          fc::variant_object global_config = retrieve_global_configuration( obj );
 
-         FC_ASSERT( global_config.contains( SHARED_CACHE ) );
-         FC_ASSERT( global_config[ SHARED_CACHE ].is_object() );
+         FC_ASSERT( global_config.contains( SHARED_CACHE ), "Expected 'global' configuration to contain 'shared_cache'" );
+         FC_ASSERT( global_config[ SHARED_CACHE ].is_object(), "Expected 'shared_cache' to be an object" );
          auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
 
          if ( shared_cache_obj.contains( CAPACITY ) && shared_cache_obj[ CAPACITY ].is_uint64() )
