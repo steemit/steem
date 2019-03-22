@@ -33,44 +33,47 @@ namespace steem { namespace plugins { namespace sps {
 
   enum proposal_status : int
   {
-    active = 1,
     inactive = 0,
+    active = 1,
+    expired = 2,
     all = -1,
   };
 
-   inline order_direction_type to_order_direction(std::string _order_type)
-   {
-      std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c) {return std::tolower(c); });
-      if(_order_type == "desc")
-         return order_direction_type::direction_descending;
-      else
-         return order_direction_type::direction_ascending;
-   }
+  inline order_direction_type to_order_direction(std::string _order_type)
+  {
+    std::transform(_order_type.begin(), _order_type.end(), _order_type.begin(), [](unsigned char c) {return std::tolower(c); });
+    if(_order_type == "desc")
+        return order_direction_type::direction_descending;
+    else
+        return order_direction_type::direction_ascending;
+  }
 
-   inline order_by_type to_order_by(std::string _order_by)
-   {
-      std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c) {return std::tolower(c); });
-      if(_order_by == "start_date")
-         return order_by_type::by_start_date;
-      else if(_order_by == "end_date")
-         return order_by_type::by_end_date;
-      else if(_order_by == "total_votes")
-         return order_by_type::by_total_votes;
-      else
-         return order_by_type::by_creator; /// Consider exception throw when no constant was matched...
-   }
+  inline order_by_type to_order_by(std::string _order_by)
+  {
+    std::transform(_order_by.begin(), _order_by.end(), _order_by.begin(), [](unsigned char c) {return std::tolower(c); });
+    if(_order_by == "start_date")
+      return order_by_type::by_start_date;
+    else if(_order_by == "end_date")
+      return order_by_type::by_end_date;
+    else if(_order_by == "total_votes")
+      return order_by_type::by_total_votes;
+    else
+      return order_by_type::by_creator; /// Consider exception throw when no constant was matched...
+  }
 
-   inline proposal_status to_proposal_status(std::string _status)
-   {
-   std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c) {return std::tolower(c); });
+  inline proposal_status to_proposal_status(std::string _status)
+  {
+  std::transform(_status.begin(), _status.end(), _status.begin(), [](unsigned char c) {return std::tolower(c); });
 
-   if(_status == "active")
+    if(_status == "active")
       return proposal_status::active;
-   else if(_status == "inactive")
+    else if(_status == "inactive")
       return proposal_status::inactive;
-   else
+    else if(_status == "expired")
+      return proposal_status::expired;
+    else
       return proposal_status::all;  /// Consider exception throw when no constant was matched...
-   }
+  }
 
   typedef uint64_t api_id_type;
 
@@ -119,11 +122,27 @@ namespace steem { namespace plugins { namespace sps {
 
     const bool is_active(const time_point_sec &head_time) const
     {
+      return get_status(head_time) == proposal_status::active;
+    }
+
+    const proposal_status get_status(const time_point_sec &head_time) const
+    {
       if (head_time >= start_date && head_time <= end_date)
       {
-        return true;
+        return proposal_status::active;
       }
-      return false;
+
+      if (head_time < start_date)
+      {
+        return proposal_status::inactive;
+      }
+
+      if (head_time > end_date)
+      {
+        return proposal_status::expired;
+      }
+
+      FC_THROW("Unexpected status of the proposal");
     }
   };
 
@@ -149,7 +168,9 @@ namespace steem { namespace plugins { namespace sps {
     // query limit
     uint16_t limit;
     // result will contain only data with status flag set to this value
-    proposal_status status;
+    proposal_status status = proposal_status::all;
+    //
+    fc::optional<api_id_type> last_id;
   };
 
   // Return type for list_proposals
@@ -204,8 +225,9 @@ FC_REFLECT_ENUM(steem::plugins::sps::order_by_type,
   );
 
 FC_REFLECT_ENUM(steem::plugins::sps::proposal_status,
-  (active)
   (inactive)
+  (active)
+  (expired)
   (all)
   );
 
@@ -231,6 +253,7 @@ FC_REFLECT(steem::plugins::sps::list_proposals_args,
   (order_direction)
   (limit)
   (status)
+  (last_id)
   );
 
 FC_REFLECT(steem::plugins::sps::list_voter_proposals_args, 

@@ -429,7 +429,7 @@ flat_set< uint32_t > remote_node_api::get_market_history_buckets()
    FC_ASSERT( false );
 }
 
-steem::plugins::sps::list_proposals_return remote_node_api::list_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status)
+steem::plugins::sps::list_proposals_return remote_node_api::list_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status, fc::optional<uint64_t> _last_id)
 {
    FC_ASSERT( false );
 }
