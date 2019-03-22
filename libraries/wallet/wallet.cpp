@@ -2470,7 +2470,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                          std::string _order_by,
                                                                          std::string _order_type,
                                                                          int _limit,
-                                                                         std::string _status)
+                                                                         std::string _status,
+                                                                         std::string _last_id)
    {
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
@@ -2483,16 +2484,20 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
       args.status          = steem::plugins::sps::to_proposal_status(_status);
+      if (_last_id.size() > 0)
+      {
+         args.last_id         = boost::lexical_cast<uint64_t>(_last_id);
+      }
 
       ddump((args.start));
       ddump((args.order_by));
       ddump((args.order_direction));
       ddump((args.limit));
       ddump((args.status));
+      ddump((args.last_id));
 
       try {
-         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.status);
-         
+         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.status, args.last_id);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {

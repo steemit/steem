@@ -95,6 +95,43 @@ CONTAINER filter(const CONTAINER &container, PREDICATE predicate) {
     return result;
 }
 
+template<typename OrderType, typename ValueType, typename ResultType, typename OnPush>
+void iterate_ordered_results(ValueType start, std::vector<ResultType>& result, uint32_t limit, chain::database& db, bool ordered_ascending, bool start_from_end, fc::optional<uint64_t> last_id, OnPush&& on_push)
+{
+  const auto& idx = db.get_index< proposal_index, OrderType >();
+
+  if (ordered_ascending)
+  {
+    // we are introducing last_id parameter to fix situations where one wants to paginathe trough results with the same values that
+    // exceed given limit
+    auto itr = last_id.valid() ? 
+      (std::find_if(idx.begin(), idx.end(), [=](auto &proposal) {return static_cast<uint64_t>(proposal.id) == *last_id;})) : 
+      idx.lower_bound(start);
+    auto end = idx.end();
+
+    while (result.size() < limit && itr != end)
+    {
+      result.push_back(on_push(*itr));
+      ++itr;
+    }
+  }
+  else
+  {
+    // we are introducing last_id parameter to fix situations where one wants to paginathe trough results with the same values that
+    // exceed given limit
+    auto itr = last_id.valid() ? 
+      (std::find_if(idx.rbegin(), idx.rend(), [=](auto &proposal) {return static_cast<uint64_t>(proposal.id) == *last_id;})) :
+      (start_from_end ? idx.rbegin() : boost::reverse_iterator<decltype(idx.upper_bound(start))>(idx.upper_bound(start)));
+    auto end = idx.rend();
+
+    while (result.size() < limit && itr != end)
+    {
+      result.push_back(on_push(*itr));
+      ++itr;
+    }
+  }
+}
+
 DEFINE_API_IMPL(sps_api_impl, find_proposals) {
   ilog("find_proposal called");
   // cannot query for more than SPS_API_SINGLE_QUERY_LIMIT ids
@@ -124,13 +161,14 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   {
     case by_creator:
     {
-      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_creator>(
+      iterate_ordered_results<steem::chain::by_creator>(
         args.start.as<account_name_type>(),
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
+        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -138,13 +176,14 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     case by_start_date:
     {
       const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
-      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_start_date>(
+      iterate_ordered_results<steem::chain::by_start_date>(
         start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
+        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -152,13 +191,14 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     case by_end_date:
     {
       const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? time_point_sec() : args.start.as<time_point_sec>();
-      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_end_date>(
+      iterate_ordered_results<steem::chain::by_end_date>(
         start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
+        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -166,13 +206,14 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
     case by_total_votes:
     {
       const auto start_value = ((args.start.as<std::string>()).empty() && args.order_direction == sps::order_direction_type::direction_descending) ? 0 : args.start.as<uint64_t>();
-      steem::utilities::iterate_ordered_results<proposal_index, steem::chain::by_total_votes>(
+      iterate_ordered_results<steem::chain::by_total_votes>(
         start_value,
         result,
         args.limit,
         _db,
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
+        args.last_id, 
         [&](auto& proposal) { return api_proposal_object(proposal); } 
       );
     }
@@ -185,20 +226,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   {
     // filter with active flag
     result = filter(result, [&](const auto& proposal) {
-      const bool is_active = proposal.is_active(_db.head_block_time());
-      switch (args.status)
-      {
-        case proposal_status::inactive:
-          return !is_active;
-        break;
-
-        case proposal_status::active:
-          return is_active;
-        break;
-
-        default:
-          return true;
-      }
+      return args.status == proposal.get_status(_db.head_block_time());
     });
   }
 
@@ -220,7 +248,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
     auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
     FC_ASSERT(po != nullptr, "Proposal with given id does not exist");
     auto apo = api_proposal_object(*po);
-    if (args.status == proposal_status::all || apo.is_active(_db.head_block_time()) == args.status)
+    if (args.status == proposal_status::all || apo.get_status(_db.head_block_time()) == args.status)
     {
       result[itr->voter].push_back(apo);
     }

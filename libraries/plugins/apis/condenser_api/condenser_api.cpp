@@ -1910,7 +1910,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, list_proposals )
    {
-      CHECK_ARG_SIZE( 5 )
+      FC_ASSERT( args.size() >= 5 && args.size() <= 6, "Expected #s argument(s), was 5 or 6");
       FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
 
       steem::plugins::sps::list_proposals_args list_args;
@@ -1919,6 +1919,10 @@ namespace detail
       list_args.order_direction = args[2].as<steem::plugins::sps::order_direction_type>();
       list_args.limit           = args[3].as<int>();
       list_args.status          = args[4].as<steem::plugins::sps::proposal_status>();
+      if (args.size() == 6 && args[5].as<std::string>().size() > 0)
+      {
+         list_args.last_id = args[5].as<uint64_t>();
+      }
 
       //return _sps_api->list_proposals( {args[0].as<fc::variant>, args[1].as< steem::plugins::sps::order_by_type >, args[2].as<steem::plugins::sps::order_direction_type>, args[3].as<int>, args[4].as<int>} );
       return _sps_api->list_proposals( list_args );
