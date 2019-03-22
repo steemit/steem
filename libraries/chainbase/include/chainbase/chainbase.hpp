@@ -61,8 +61,10 @@ namespace helpers
       info->_item_count = index.size();
       info->_item_sizeof = sizeof(typename IndexType::value_type);
       info->_item_additional_allocation = 0;
+#ifndef ENABLE_STD_ALLOCATOR
       size_t pureNodeSize = IndexType::node_size - sizeof(typename IndexType::value_type);
       info->_additional_container_allocation = info->_item_count*pureNodeSize;
+#endif
    }
 
    template <class IndexType>

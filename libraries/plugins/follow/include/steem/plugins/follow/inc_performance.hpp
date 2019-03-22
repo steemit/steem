@@ -8,7 +8,7 @@ namespace steem { namespace plugins{ namespace follow {
 
 using namespace steem::chain;
 using steem::chain::database;
- 
+
 using steem::protocol::account_name_type;
 
 class performance_impl;
@@ -16,7 +16,7 @@ class performance_impl;
 class dumper
 {
    private:
-      
+
       std::ofstream f;
 
       static std::unique_ptr< dumper > self;
@@ -108,7 +108,7 @@ struct performance_data
       s.allow_modify = true;
       s.allow_delete = _is_empty;
    }
-   
+
 };
 
 class performance
@@ -119,7 +119,7 @@ class performance
       std::unique_ptr< performance_impl > my;
 
    public:
-   
+
       performance( database& _db );
       ~performance();
 

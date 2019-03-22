@@ -15,10 +15,10 @@
 #include <boost/preprocessor/repetition/enum_params.hpp>
 
 
-#define MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA_M(z, n, param) BOOST_PP_COMMA_IF(n) typename adapter_conversion< param ## n >::mira_type
+#define MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA_M(z, n, param) BOOST_PP_COMMA_IF(n) typename index_converter< param ## n >::mira_type
 #define MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA(count, param) BOOST_PP_REPEAT(count, MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA_M, param)
 
-#define MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST_M(z, n, param) BOOST_PP_COMMA_IF(n) typename adapter_conversion< param ## n >::bmic_type
+#define MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST_M(z, n, param) BOOST_PP_COMMA_IF(n) typename index_converter< param ## n >::bmic_type
 #define MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST(count, param) BOOST_PP_REPEAT(count, MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST_M, param)
 
 #define MIRA_COMPOSITE_KEY_SIZE 10
@@ -40,62 +40,62 @@
 namespace mira {
 
 template< typename T >
-struct adapter_conversion
+struct index_converter
 {
    typedef T mira_type;
    typedef T bmic_type;
 };
 
 template< typename Arg1, typename Arg2, typename Arg3 >
-struct adapter_conversion< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >
+struct index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >
 {
    typedef multi_index::multi_index_container<
-      typename adapter_conversion< Arg1 >::mira_type,
-      typename adapter_conversion< Arg2 >::mira_type,
-      typename adapter_conversion< Arg3 >::mira_type
+      typename index_converter< Arg1 >::mira_type,
+      typename index_converter< Arg2 >::mira_type,
+      typename index_converter< Arg3 >::mira_type
       > mira_type;
 
    typedef boost_multi_index_adapter<
-      typename adapter_conversion< Arg1 >::bmic_type,
-      typename adapter_conversion< Arg2 >::bmic_type,
-      typename adapter_conversion< Arg3 >::bmic_type
+      typename index_converter< Arg1 >::bmic_type,
+      typename index_converter< Arg2 >::bmic_type,
+      typename index_converter< Arg3 >::bmic_type
       > bmic_type;
 };
 
 template<
    BOOST_PP_ENUM(MIRA_INDEXED_BY_SIZE,MIRA_INDEXED_BY_TEMPLATE_PARM,T)
 >
-struct adapter_conversion< multi_index::indexed_by< BOOST_PP_ENUM_PARAMS(MIRA_INDEXED_BY_SIZE,T) > >
+struct index_converter< multi_index::indexed_by< BOOST_PP_ENUM_PARAMS(MIRA_INDEXED_BY_SIZE,T) > >
 {
    typedef multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_MIRA(MIRA_INDEXED_BY_SIZE,T) >           mira_type;
    typedef boost::multi_index::indexed_by< MIRA_ADAPTER_PP_ENUM_PARAMS_BOOST(MIRA_INDEXED_BY_SIZE,T) >   bmic_type;
 };
 
 template< typename Arg1, typename Arg2, typename Arg3 >
-struct adapter_conversion< multi_index::ordered_unique< Arg1, Arg2, Arg3 > >
+struct index_converter< multi_index::ordered_unique< Arg1, Arg2, Arg3 > >
 {
    typedef multi_index::ordered_unique<
-      typename adapter_conversion< Arg1 >::mira_type,
-      typename adapter_conversion< Arg2 >::mira_type,
-      typename adapter_conversion< Arg3 >::mira_type
+      typename index_converter< Arg1 >::mira_type,
+      typename index_converter< Arg2 >::mira_type,
+      typename index_converter< Arg3 >::mira_type
       > mira_type;
 
    typedef boost::multi_index::ordered_unique<
-      typename adapter_conversion< Arg1 >::bmic_type,
-      typename adapter_conversion< Arg2 >::bmic_type,
-      typename adapter_conversion< Arg3 >::bmic_type
+      typename index_converter< Arg1 >::bmic_type,
+      typename index_converter< Arg2 >::bmic_type,
+      typename index_converter< Arg3 >::bmic_type
       > bmic_type;
 };
 
 template< typename Value, MIRA_CK_ENUM(MIRA_CK_TEMPLATE_PARM,KeyFromValue) >
-struct adapter_conversion< multi_index::composite_key< Value, MIRA_CK_ENUM_PARAMS(KeyFromValue) > >
+struct index_converter< multi_index::composite_key< Value, MIRA_CK_ENUM_PARAMS(KeyFromValue) > >
 {
    typedef multi_index::composite_key< Value, MIRA_CK_ENUM_PARAMS(KeyFromValue) >        mira_type;
    typedef boost::multi_index::composite_key< Value, MIRA_CK_ENUM_PARAMS(KeyFromValue) > bmic_type;
 };
 
 template< MIRA_CK_ENUM(MIRA_CK_TEMPLATE_PARM,Compare) >
-struct adapter_conversion< multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) > >
+struct index_converter< multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) > >
 {
    typedef multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) >          mira_type;
    typedef boost::multi_index::composite_key_compare< MIRA_CK_ENUM_PARAMS(Compare) >   bmic_type;

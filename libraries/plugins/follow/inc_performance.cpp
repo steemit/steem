@@ -146,7 +146,8 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
          init = false;
       else
       {
-         auto removed = std::prev( actual );
+         auto removed = actual;
+         --removed;
          if( CreationType == performance_data::t_creation_type::full_feed )
             skip_modify( removed, pd );
          db.remove( *removed );
@@ -186,7 +187,10 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
       }
 
    if( !is_init )
-     modify< CreationType >( *std::prev( it ), start_account, next_id, pd );
+   {
+      auto prev = it;
+      modify< CreationType >( *(--prev), start_account, next_id, pd );
+   }
 
    return next_id;
 }

@@ -127,6 +127,7 @@ public:
   typedef typename super::primary_index_type       primary_index_type;
 
   typedef typename primary_index_type::iterator    primary_iterator;
+  typedef typename primary_index_type::reverse_iterator primary_reverse_iterator;
 
   static const size_t                              node_size = sizeof(value_type);
 

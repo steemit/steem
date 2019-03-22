@@ -1,5 +1,5 @@
 
-#include <mira/adapters.hpp>
+#include <mira/index_adapter.hpp>
 
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
@@ -23,15 +23,20 @@
 
 namespace steem { namespace chain {
 
-//using ::boost::multi_index::indexed_by;
-//using ::boost::multi_index::ordered_unique;
-//using ::boost::multi_index::tag;
-//using ::boost::multi_index::member;
-//using ::boost::multi_index::composite_key;
-//using ::boost::multi_index::composite_key_compare;
-//using ::boost::multi_index::const_mem_fun;
-
-using mira::multi_index_container;
+/*
+template< typename... Args >
+using multi_index_container = mira::boost_multi_index_adapter< Args... >;
+using boost::multi_index::indexed_by;
+using boost::multi_index::ordered_unique;
+using boost::multi_index::tag;
+using boost::multi_index::member;
+using boost::multi_index::composite_key;
+using boost::multi_index::composite_key_compare;
+using boost::multi_index::const_mem_fun;
+//*/
+//*
+template< typename... Args >
+using multi_index_container = mira::multi_index_adapter< Args... >;
 using mira::multi_index::indexed_by;
 using mira::multi_index::ordered_unique;
 using mira::multi_index::tag;
@@ -39,6 +44,7 @@ using mira::multi_index::member;
 using mira::multi_index::composite_key;
 using mira::multi_index::composite_key_compare;
 using mira::multi_index::const_mem_fun;
+//*/
 /*
 template< typename... Args >
 using indexed_by = typename std::conditional< false, ::mira::multi_index::indexed_by< Args ... >, ::boost::multi_index::indexed_by< Args ... > >;

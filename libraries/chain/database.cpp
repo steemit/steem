@@ -407,7 +407,7 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 
 const signed_transaction database::get_recent_transaction( const transaction_id_type& trx_id ) const
 { try {
-   auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
+   const auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
@@ -3498,6 +3498,8 @@ void database::apply_required_action( const required_automated_action& a )
 
 void database::process_optional_actions( const optional_automated_actions& actions )
 {
+   if( !has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    static const action_validate_visitor validate_visitor;
 
    for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
@@ -3509,6 +3511,12 @@ void database::process_optional_actions( const optional_automated_actions& actio
       // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
    }
+
+   // This expiration is based on the timestamp of the last irreversible block. For historical
+   // blocks, generation of optional actions should be disabled and the expiration can be skipped.
+   // For reindexing of the first 2 million blocks, this unnecessary read consumes almost 30%
+   // of runtime.
+   FC_TODO( "Optimize expiration for reindex." );
 
    // Clear out "expired" optional_actions. If the block when an optional action was generated
    // has become irreversible then a super majority of witnesses have chosen to not include it

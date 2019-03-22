@@ -16,6 +16,43 @@ namespace steem { namespace chain {
 
 void initialize_core_indexes( database& db )
 {
+/*
+   add_core_index< typename mira::adapter_conversion< dynamic_global_property_index >::bmic_type         >( db );
+   add_core_index< typename mira::adapter_conversion< account_index >::bmic_type                         >( db );
+   //add_core_index< typename mira::adapter_conversion< account_index >::mira_type                         >( db );
+   add_core_index< typename mira::adapter_conversion< account_metadata_index >::mira_type                >( db );
+   add_core_index< typename mira::adapter_conversion< account_authority_index >::mira_type               >( db );
+   add_core_index< typename mira::adapter_conversion< witness_index >::bmic_type                         >( db );
+   //add_core_index< typename mira::adapter_conversion< witness_index >::mira_type                         >( db );
+   add_core_index< typename mira::adapter_conversion< transaction_index >::mira_type                     >( db );
+   add_core_index< typename mira::adapter_conversion< block_summary_index >::mira_type                   >( db );
+   add_core_index< typename mira::adapter_conversion< witness_schedule_index >::mira_type                >( db );
+   add_core_index< typename mira::adapter_conversion< comment_index >::bmic_type                         >( db );
+   //add_core_index< typename mira::adapter_conversion< comment_index >::mira_type                         >( db );
+   add_core_index< typename mira::adapter_conversion< comment_content_index >::mira_type                 >( db );
+   add_core_index< typename mira::adapter_conversion< comment_vote_index >::mira_type                    >( db );
+   add_core_index< typename mira::adapter_conversion< witness_vote_index >::mira_type                    >( db );
+   add_core_index< typename mira::adapter_conversion< limit_order_index >::bmic_type                     >( db );
+   //add_core_index< typename mira::adapter_conversion< limit_order_index >::mira_type                     >( db );
+   add_core_index< typename mira::adapter_conversion< feed_history_index >::mira_type                    >( db );
+   add_core_index< typename mira::adapter_conversion< convert_request_index >::mira_type                 >( db );
+   add_core_index< typename mira::adapter_conversion< liquidity_reward_balance_index >::mira_type        >( db );
+   add_core_index< typename mira::adapter_conversion< operation_index >::mira_type                       >( db );
+   add_core_index< typename mira::adapter_conversion< account_history_index >::mira_type                 >( db );
+   add_core_index< typename mira::adapter_conversion< hardfork_property_index >::mira_type               >( db );
+   add_core_index< typename mira::adapter_conversion< withdraw_vesting_route_index >::mira_type          >( db );
+   add_core_index< typename mira::adapter_conversion< owner_authority_history_index >::mira_type         >( db );
+   add_core_index< typename mira::adapter_conversion< account_recovery_request_index >::mira_type        >( db );
+   add_core_index< typename mira::adapter_conversion< change_recovery_account_request_index >::mira_type >( db );
+   add_core_index< typename mira::adapter_conversion< escrow_index >::mira_type                          >( db );
+   add_core_index< typename mira::adapter_conversion< savings_withdraw_index >::mira_type                >( db );
+   add_core_index< typename mira::adapter_conversion< decline_voting_rights_request_index >::mira_type   >( db );
+   add_core_index< typename mira::adapter_conversion< reward_fund_index >::mira_type                     >( db );
+   add_core_index< typename mira::adapter_conversion< vesting_delegation_index >::mira_type              >( db );
+   add_core_index< typename mira::adapter_conversion< vesting_delegation_expiration_index >::mira_type   >( db );
+   add_core_index< typename mira::adapter_conversion< pending_required_action_index >::mira_type         >( db );
+   add_core_index< typename mira::adapter_conversion< pending_optional_action_index >::mira_type         >( db );
+*/
    add_core_index< dynamic_global_property_index           >( db );
    add_core_index< account_index                           >( db );
    add_core_index< account_metadata_index                  >( db );
