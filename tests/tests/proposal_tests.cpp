@@ -1522,7 +1522,7 @@ BOOST_AUTO_TEST_CASE( list_proposal_001 )
             }
             for(auto direct : order_direction) {
                for(auto act : active) {
-                  auto resp = list_proposals(start, by, direct,1, act);
+                  auto resp = list_proposals(start, by, direct,1, act, "");
                   if(_empty) {
                      BOOST_REQUIRE(resp.empty());
                   } else {
@@ -1536,7 +1536,7 @@ BOOST_AUTO_TEST_CASE( list_proposal_001 )
       checker(true);
       int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
       BOOST_REQUIRE(proposal_1 >= 0);
-      auto resp = list_proposals(cpd.creator, "creator", "asc", 10, "all");
+      auto resp = list_proposals(cpd.creator, "creator", "asc", 10, "all", "");
       BOOST_REQUIRE(!resp.empty());
       validate_database();
    }
