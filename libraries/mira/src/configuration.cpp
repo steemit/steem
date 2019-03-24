@@ -6,7 +6,7 @@
 namespace mira {
 
 // Base configuration for an index
-#define DEFAULT                          "default"
+#define BASE                             "base"
 
 // Global options
 #define GLOBAL                           "global"
@@ -123,13 +123,13 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
    boost::split( split_v, type_name, boost::is_any_of( ":" ) );
    const auto index_name = *(split_v.rbegin());
 
-   FC_ASSERT( obj[ DEFAULT ].is_object(), "Expected 'default' configuration to be an object" );
+   FC_ASSERT( obj[ BASE ].is_object(), "Expected 'base' configuration to be an object" );
 
    // We look to apply an index configuration overlay
    if ( obj.find( index_name ) != obj.end() )
-      active_config = apply_configuration_overlay( obj[ DEFAULT ], obj[ index_name ] );
+      active_config = apply_configuration_overlay( obj[ BASE ], obj[ index_name ] );
    else
-      active_config = obj[ DEFAULT ].get_object();
+      active_config = obj[ BASE ].get_object();
 
    return active_config;
 }
