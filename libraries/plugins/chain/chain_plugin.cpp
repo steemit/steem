@@ -399,10 +399,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #ifdef ENABLE_STD_ALLOCATOR
    my->mira_indices_cfg = options.at( "mira-indices-cfg" ).as< bfs::path >();
 
-   auto indices_cfg_path = app().data_dir() / my->mira_indices_cfg;
-   if( !bfs::exists( indices_cfg_path ) )
+   if( my->mira_indices_cfg.is_relative() )
+      my->mira_indices_cfg = app().data_dir() / my->mira_indices_cfg;
+
+   if( !bfs::exists( my->mira_indices_cfg ) )
    {
-      my->write_default_indices_config( indices_cfg_path );
+      my->write_default_indices_config( my->mira_indices_cfg );
    }
 #endif
 
@@ -472,8 +474,7 @@ void chain_plugin::plugin_startup()
    fc::variant mira_indices_options;
    try
    {
-      auto cfg_file = app().data_dir() / my->mira_indices_cfg;
-      mira_indices_options = fc::json::from_file( cfg_file, fc::json::strict_parser );
+      mira_indices_options = fc::json::from_file( my->mira_indices_cfg, fc::json::strict_parser );
    }
    catch ( const std::exception& e )
    {
