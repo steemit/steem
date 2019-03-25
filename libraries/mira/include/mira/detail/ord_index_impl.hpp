@@ -446,7 +446,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     empty_initialize();
     _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
   }
-
+/*
   ordered_index_impl(
     const ordered_index_impl<
       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x):
@@ -459,12 +459,11 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     _cache( object_cache_factory_type::get_shared_cache() ),
     comp_(x.comp_)
   {
-    /* Copy ctor just takes the key and compare objects from x. The rest is
-     * done in a subsequent call to copy_().
-     */
+
     _cache = new object_cache_type;
   }
-
+*/
+/*
   ordered_index_impl(
      const ordered_index_impl<
        KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x,
@@ -480,7 +479,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   {
     empty_initialize();
   }
-
+*/
   ~ordered_index_impl()
   {
     /* the container is guaranteed to be empty by now */

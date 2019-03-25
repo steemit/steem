@@ -28,12 +28,12 @@ struct index_adapter
    typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->rbegin()) ) >          mira_rev_iter_adapter;
    //typedef typename mira_iter_adapter::bar bar;
    //typedef decltype( (&MultiIndexAdapterType::mira_type::template get<IndexedBy>) )   mira_type;
-   //typedef decltype( ((mira_type).begin()) )                                mira_iter_type;
+   typedef decltype( (((mira_type*)nullptr)->begin()) )                                mira_iter_type;
    typedef typename std::remove_reference< decltype( (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
    typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >           bmic_iter_adapter;
    typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >          bmic_rev_iter_adapter;
    //typedef typename bmic_type::iterator                                             bmic_iter_type;
-   //typedef decltype( (bmic_type.begin()) )                                bmic_iter_type;
+   typedef decltype( (((bmic_type*)nullptr)->begin()) )                                bmic_iter_type;
    typedef iterator_wrapper< value_type >                                          iter_type;
 
    private:
@@ -53,6 +53,16 @@ struct index_adapter
                break;
          }
       }
+
+      index_adapter( const index_adapter& other ) :
+         _index( other._index ),
+         _type( other._type )
+      {}
+
+      index_adapter( const index_adapter&& other ) :
+         _index( other._index ),
+         _type( other._type )
+      {}
 
       iter_type iterator_to( const value_type& v )const
       {
@@ -124,6 +134,33 @@ struct index_adapter
             case bmic:
                result = bmic_iter_adapter( ((bmic_type*)_index)->upper_bound( k ) );
                break;
+         }
+
+         return result;
+      }
+
+      template< typename CompatibleKey >
+      std::pair< iter_type, iter_type > equal_range( const CompatibleKey& k )const
+      {
+         assert( _index );
+         std::pair< iter_type, iter_type > result;
+
+         switch( _type )
+         {
+            case mira:
+            {
+               auto mira_result = ((mira_type*)_index)->equal_range( k );
+               result.first = mira_iter_adapter( std::move( mira_result.first ) );
+               result.second = mira_iter_adapter( std::move( mira_result.second ) );
+               break;
+            }
+            case bmic:
+            {
+               auto bmic_result = ((bmic_type*)_index)->equal_range( k );
+               result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
+               result.second = bmic_iter_adapter( std::move( bmic_result.second ) );
+               break;
+            }
          }
 
          return result;
@@ -337,35 +374,17 @@ struct multi_index_adapter
    }
 
    template< typename IndexedBy >
-   index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >& get()
+   index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > get()
    {
       assert( _index );
-      static index_type type = _type;
-      static index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > index( _index, _type );
-
-      if( type != _type )
-      {
-         type = _type;
-         index = index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
-      }
-
-      return index;
+      return index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
    }
 
    template< typename IndexedBy >
-   const index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >& get()const
+   const index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > get()const
    {
       assert( _index );
-      static index_type type = _type;
-      static index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > index( _index, _type );
-
-      if( type != _type )
-      {
-         type = _type;
-         index = index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
-      }
-
-      return index;
+      return index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
    }
 
    int64_t revision()
@@ -567,6 +586,33 @@ struct multi_index_adapter
          case bmic:
             result = bmic_iter_adapter( ((bmic_type*)_index)->upper_bound( k ) );
             break;
+      }
+
+      return result;
+   }
+
+   template< typename CompatibleKey >
+   std::pair< iter_type, iter_type > equal_range( const CompatibleKey& k )const
+   {
+      assert( _index );
+      std::pair< iter_type, iter_type > result;
+
+      switch( _type )
+      {
+         case mira:
+         {
+            auto mira_result = ((mira_type*)_index)->equal_range( k );
+            result.first = mira_iter_adapter( std::move( mira_result.first ) );
+            result.second = mira_iter_adapter( std::move( mira_result.second ) );
+            break;
+         }
+         case bmic:
+         {
+            auto bmic_result = ((bmic_type*)_index)->equal_range( k );
+            result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
+            result.second = bmic_iter_adapter( std::move( bmic_result.second ) );
+            break;
+         }
       }
 
       return result;

@@ -94,15 +94,6 @@ class iterator_adapter : public abstract_iterator< ValueType >
          }
       }
 
-      /*abs_iter_type& operator =( abs_iter_type& other )override
-      {
-         assert( dynamic_cast< const iterator_adapter* >( &other ) != nullptr );
-         auto o = static_cast< const iterator_adapter* >( &other );
-         _iter = o->_iter;
-         o->_iter = nullptr;
-         return *this;
-      }*/
-
       iterator_adapter& operator =( iterator_adapter&& other )
       {
          _iter = other._iter;
@@ -117,34 +108,12 @@ class iterator_adapter : public abstract_iterator< ValueType >
          return *this;
       }
 
-      /*abs_iter_type operator ++(int) override
-      {
-         return iterator_adapter( ITERATOR++ );
-      }*/
-
       abs_iter_type& operator --() override
       {
          assert( _iter );
          --ITERATOR;
          return *this;
       }
-
-      /*abs_iter_type operator --(int) override
-      {
-         return iterator_adapter( ITERATOR-- );
-      }*/
-
-      /*
-      value_type& operator *() override
-      {
-         return *ITERATOR;
-      }
-
-      value_type* operator ->() override
-      {
-         return &(*ITERATOR);
-      }
-      */
 
       const value_type& operator *()const override
       {
@@ -188,19 +157,18 @@ class iterator_adapter : public abstract_iterator< ValueType >
 };
 
 template< typename ValueType >
-class iterator_wrapper
+class iterator_wrapper :
+   public boost::bidirectional_iterator_helper<
+      iterator_wrapper< ValueType >,
+      ValueType,
+      std::size_t,
+      const ValueType*,
+      const ValueType& >
 {
    typedef abstract_iterator< ValueType > abs_iter_type;
 
    public:
       iterator_wrapper() {}
-/*
-      template< typename IterType >
-      iterator_wrapper( iterator_adapter< ValueType, IterType >&& adapter )
-      {
-         _abs_iter = std::move( adapter );
-      }
-*/
 
       iterator_wrapper( abs_iter_type& iter )
       {
@@ -212,12 +180,6 @@ class iterator_wrapper
          _abs_iter = std::move( iter );
       }
 
-/*
-      iterator_wrapper( iterator_wrapper& other )
-      {
-         _abs_iter.reset( other.copy() );
-      }
-*/
       iterator_wrapper( const iterator_wrapper& other )
       {
          _abs_iter.reset( other._abs_iter->copy() );
@@ -240,10 +202,11 @@ class iterator_wrapper
          return *this;
       }
 
-      iterator_wrapper operator ++(int)
+      iterator_wrapper operator ++(int)const
       {
          iterator_wrapper copy;
          copy._abs_iter.reset( _abs_iter->copy() );
+         ++copy;
          return copy;
       }
 
@@ -253,11 +216,11 @@ class iterator_wrapper
          return *this;
       }
 
-      iterator_wrapper operator --(int)
+      iterator_wrapper operator --(int)const
       {
          iterator_wrapper copy;
          copy._abs_iter.reset( _abs_iter->copy() );
-         _abs_iter->operator--();
+         --copy;
          return copy;
       }
 
@@ -307,30 +270,5 @@ class iterator_wrapper
    private:
       std::unique_ptr< abstract_iterator< ValueType > > _abs_iter;
 };
-
-/*
-template< typename ValueType, typename IndexedBy = null_type >
-class iterator_wrapper
-{
-   public:
-      iterator_wrapper() = delete;
-      iterator_wrapper( abstract_iterator< ValueType, IndexedBy >&& iter )
-      {
-         _iter = new abstract_iterator< ValueType, IndexedBy >
-      }
-
-      iterator_wrapper< ValueType >& operator ++() { _iter->++(); return *this; }
-      iterator_wrapper< ValueType >& operator --() { _iter->--(); return *this;}
-
-      const ValueType& operator  *() { return _iter->*(); }
-      const ValueType* operator ->() { return _iter->->(); }
-
-      bool operator ==( const iterator_wrapper< ValueType >& other ) { return _iter->==( *(other._iter) ); }
-      bool operator !=( const iterator_wrapper< ValueType >& other ) { return *this != other; }
-
-   private:
-      abstract_iterator< ValueType, IndexedBy >* _iter;
-};
-*/
 
 }
