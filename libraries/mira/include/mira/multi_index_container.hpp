@@ -39,7 +39,7 @@
 #include <boost/utility/base_from_member.hpp>
 
 #include <fc/io/raw.hpp>
-#include <fc/io/json.hpp>
+#include <fc/log/logger.hpp>
 
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
@@ -163,19 +163,23 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-      if ( configuration::gather_statistics( cfg ) )
-      {
-         wlog( "Enabling statistics on ${t}, performance will be impacted", ("t", boost::core::demangle( typeid( Value ).name())) );
-         _stats = ::rocksdb::CreateDBStatistics();
-      }
-
-      auto cached_object_count = configuration::get_object_count( cfg );
-      if ( cached_object_count > 0 )
-         detail::cache_manager::get()->set_object_threshold( cached_object_count );
-
       ::rocksdb::Options opts;
 
-      opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+      try
+      {
+         if ( configuration::gather_statistics( cfg ) )
+            _stats = ::rocksdb::CreateDBStatistics();
+
+         detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
+
+         opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+      }
+      catch ( ... )
+      {
+         elog( "Failure while applying configuration for database: ${db}",
+            ("db", boost::core::demangle( typeid( Value ).name())) );
+         throw;
+      }
 
       ::rocksdb::DB* db = nullptr;
       ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );

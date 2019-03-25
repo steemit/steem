@@ -18,7 +18,7 @@ namespace mira {
 #define CAPACITY                         "capacity"
 #define NUM_SHARD_BITS                   "num_shard_bits"
 
-// RocksDB options
+// Database options
 #define ALLOW_MMAP_READS                 "allow_mmap_reads"
 #define WRITE_BUFFER_SIZE                "write_buffer_size"
 #define MAX_BYTES_FOR_LEVEL_BASE         "max_bytes_for_level_base"
@@ -35,9 +35,9 @@ namespace mira {
 #define BITS_PER_KEY                     "bits_per_key"
 #define USE_BLOCK_BASED_BUILDER          "use_block_based_builder"
 
-static std::shared_ptr< rocksdb::Cache > GLOBAL_SHARED_CACHE;
+static std::shared_ptr< rocksdb::Cache > global_shared_cache;
 
-static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::variant ) > > INDEX_OPTION_MAP {
+static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::variant ) > > global_database_option_map {
    { ALLOW_MMAP_READS,                  []( ::rocksdb::Options& o, fc::variant v ) { o.allow_mmap_reads = v.as< bool >(); }                 },
    { WRITE_BUFFER_SIZE,                 []( ::rocksdb::Options& o, fc::variant v ) { o.write_buffer_size = v.as< uint64_t >(); }            },
    { MAX_BYTES_FOR_LEVEL_BASE,          []( ::rocksdb::Options& o, fc::variant v ) { o.max_bytes_for_level_base = v.as< uint64_t >(); }     },
@@ -61,22 +61,28 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
    { BLOCK_BASED_TABLE_OPTIONS, []( ::rocksdb::Options& o, auto v )
       {
          ::rocksdb::BlockBasedTableOptions table_options;
-         FC_ASSERT( v.is_object(), "Expected 'block_based_table_options' to be an object" );
+         FC_ASSERT( v.is_object(), "Expected '${key}' to be an object",
+            ("key", BLOCK_BASED_TABLE_OPTIONS) );
+
          auto& obj = v.get_object();
 
-         table_options.block_cache = GLOBAL_SHARED_CACHE;
+         table_options.block_cache = global_shared_cache;
 
          if ( obj.contains( BLOCK_SIZE ) )
             table_options.block_size = obj[ BLOCK_SIZE ].template as< uint64_t >();
 
          if ( obj.contains( BLOOM_FILTER_POLICY ) )
          {
-            FC_ASSERT( obj[ BLOOM_FILTER_POLICY ].is_object(), "Expected 'bloom_filter_policy' to be an object" );
+            FC_ASSERT( obj[ BLOOM_FILTER_POLICY ].is_object(), "Expected '${key}' to be an object",
+               ("key", BLOOM_FILTER_POLICY) );
+
             auto filter_policy = obj[ BLOOM_FILTER_POLICY ].get_object();
             size_t bits_per_key;
 
             // Bits per key is required for the bloom filter policy
-            FC_ASSERT( filter_policy.contains( BITS_PER_KEY ), "Expected 'bloom_filter_policy' to contain 'bits_per_key'" );
+            FC_ASSERT( filter_policy.contains( BITS_PER_KEY ), "Expected '${parent}' to contain '${key}'",
+               ("parent", BLOOM_FILTER_POLICY)
+               ("key", BITS_PER_KEY) );
 
             bits_per_key = filter_policy[ BITS_PER_KEY ].template as< uint64_t >();
 
@@ -94,8 +100,10 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
 fc::variant_object configuration::apply_configuration_overlay( const fc::variant& base, const fc::variant& overlay )
 {
    fc::mutable_variant_object config;
-   FC_ASSERT( base.is_object(), "Expected 'default' configuration to be an object" );
-   FC_ASSERT( overlay.is_object(), "Expected index overlay configuration to be an object" );
+   FC_ASSERT( base.is_object(), "Expected '${key}' configuration to be an object",
+      ("key", BASE) );
+
+   FC_ASSERT( overlay.is_object(), "Expected database overlay configuration to be an object" );
 
    // Start with our base configuration
    config = base.get_object();
@@ -111,7 +119,10 @@ fc::variant_object configuration::apply_configuration_overlay( const fc::variant
 fc::variant_object configuration::retrieve_global_configuration( const fc::variant_object& obj )
 {
    fc::mutable_variant_object global_config;
-   FC_ASSERT( obj[ GLOBAL ].is_object(), "Expected 'global' configuration to be an object" );
+
+   FC_ASSERT( obj[ GLOBAL ].is_object(), "Expected '${key}' configuration to be an object",
+      ("key", GLOBAL) );
+
    global_config = obj[ GLOBAL ].get_object();
    return global_config;
 }
@@ -123,7 +134,8 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
    boost::split( split_v, type_name, boost::is_any_of( ":" ) );
    const auto index_name = *(split_v.rbegin());
 
-   FC_ASSERT( obj[ BASE ].is_object(), "Expected 'base' configuration to be an object" );
+   FC_ASSERT( obj[ BASE ].is_object(), "Expected '${key}' configuration to be an object",
+      ("key", BASE) );
 
    // We look to apply an index configuration overlay
    if ( obj.find( index_name ) != obj.end() )
@@ -137,24 +149,21 @@ fc::variant_object configuration::retrieve_active_configuration( const fc::varia
 size_t configuration::get_object_count( const boost::any& cfg )
 {
    size_t object_count = 0;
-   try
-   {
-      auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
-      auto& obj = c.get_object();
 
-      fc::variant_object global_config = retrieve_global_configuration( obj );
+   auto c = boost::any_cast< fc::variant >( cfg );
+   FC_ASSERT( c.is_object(), "Expected database configuration to be an object" );
+   auto& obj = c.get_object();
 
-      FC_ASSERT( global_config.contains( OBJECT_COUNT ), "Expected 'global' configuration to contain 'object_count'" );
-      FC_ASSERT( global_config[ OBJECT_COUNT ].is_uint64(), "Expected 'object_count' to be an unsigned integer" );
+   fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      object_count = global_config[ OBJECT_COUNT ].as< uint64_t >();
-   }
-   catch ( const std::exception& e )
-   {
-      elog( "Error parsing global configuration : ${e}", ("e", e.what()) );
-      throw;
-   }
+   FC_ASSERT( global_config.contains( OBJECT_COUNT ), "Expected '${parent}' configuration to contain '${key}'",
+      ("parent", GLOBAL)
+      ("key", OBJECT_COUNT) );
+
+   FC_ASSERT( global_config[ OBJECT_COUNT ].is_uint64(), "Expected '${key}' to be an unsigned integer",
+      ("key", OBJECT_COUNT) );
+
+   object_count = global_config[ OBJECT_COUNT ].as< uint64_t >();
 
    return object_count;
 }
@@ -162,24 +171,21 @@ size_t configuration::get_object_count( const boost::any& cfg )
 bool configuration::gather_statistics( const boost::any& cfg )
 {
    bool statistics = false;
-   try
-   {
-      auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
-      auto& obj = c.get_object();
 
-      fc::variant_object global_config = retrieve_global_configuration( obj );
+   auto c = boost::any_cast< fc::variant >( cfg );
+   FC_ASSERT( c.is_object(), "Expected database configuration to be an object" );
+   auto& obj = c.get_object();
 
-      FC_ASSERT( global_config.contains( STATISTICS ), "Expected 'global' configuration to contain 'statistics'" );
-      FC_ASSERT( global_config[ STATISTICS ].is_bool(), "Expected 'statistics' to be a boolean value" );
+   fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      statistics = global_config[ STATISTICS ].as< bool >();
-   }
-   catch ( const std::exception& e )
-   {
-      elog( "Error parsing global configuration : ${e}", ("e", e.what()) );
-      throw;
-   }
+   FC_ASSERT( global_config.contains( STATISTICS ), "Expected '${parent}' configuration to contain '${key}'",
+      ("parent", GLOBAL)
+      ("key", STATISTICS) );
+
+   FC_ASSERT( global_config[ STATISTICS ].is_bool(), "Expected '${key}' to be a boolean value",
+      ("key", STATISTICS) );
+
+   statistics = global_config[ STATISTICS ].as< bool >();
 
    return statistics;
 }
@@ -188,64 +194,55 @@ bool configuration::gather_statistics( const boost::any& cfg )
 {
    ::rocksdb::Options opts;
 
-   try
+   auto c = boost::any_cast< fc::variant >( cfg );
+   FC_ASSERT( c.is_object(), "Expected database configuration to be an object" );
+   auto& obj = c.get_object();
+
+   if ( global_shared_cache == nullptr )
    {
-      auto c = boost::any_cast< fc::variant >( cfg );
-      FC_ASSERT( c.is_object(), "Expected indices configuration to be an object" );
-      auto& obj = c.get_object();
+      size_t capacity = 0;
+      int num_shard_bits = 0;
 
-      if ( GLOBAL_SHARED_CACHE == nullptr )
-      {
-         size_t capacity = 0;
-         int num_shard_bits = 0;
+      fc::variant_object global_config = retrieve_global_configuration( obj );
 
-         fc::variant_object global_config = retrieve_global_configuration( obj );
+      FC_ASSERT( global_config.contains( SHARED_CACHE ), "Expected '${parent}' configuration to contain '${key}'",
+         ("parent", GLOBAL)
+         ("key", SHARED_CACHE) );
 
-         FC_ASSERT( global_config.contains( SHARED_CACHE ), "Expected 'global' configuration to contain 'shared_cache'" );
-         FC_ASSERT( global_config[ SHARED_CACHE ].is_object(), "Expected 'shared_cache' to be an object" );
-         auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
+      FC_ASSERT( global_config[ SHARED_CACHE ].is_object(), "Expected '${key}' to be an object",
+         ("key", SHARED_CACHE) );
 
-         if ( shared_cache_obj.contains( CAPACITY ) && shared_cache_obj[ CAPACITY ].is_uint64() )
-            capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
-         else
-            capacity = DEFAULT_MIRA_SHARED_CACHE_SIZE;
+      auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
 
-         if ( shared_cache_obj.contains( NUM_SHARD_BITS ) && shared_cache_obj[ NUM_SHARD_BITS ].is_uint64() )
-            num_shard_bits = shared_cache_obj[ NUM_SHARD_BITS ].as< int >();
-         else
-            num_shard_bits = DEFAULT_MIRA_NUM_SHARD_BITS;
+      if ( shared_cache_obj.contains( CAPACITY ) && shared_cache_obj[ CAPACITY ].is_uint64() )
+         capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
+      else
+         capacity = DEFAULT_MIRA_SHARED_CACHE_SIZE;
 
-         GLOBAL_SHARED_CACHE = rocksdb::NewLRUCache( capacity, num_shard_bits );
-      }
+      if ( shared_cache_obj.contains( NUM_SHARD_BITS ) && shared_cache_obj[ NUM_SHARD_BITS ].is_uint64() )
+         num_shard_bits = shared_cache_obj[ NUM_SHARD_BITS ].as< int >();
+      else
+         num_shard_bits = DEFAULT_MIRA_NUM_SHARD_BITS;
 
-      fc::variant_object config = retrieve_active_configuration( obj, type_name );
-
-      for ( auto it = config.begin(); it != config.end(); ++it )
-      {
-         try
-         {
-            if ( INDEX_OPTION_MAP.find( it->key() ) != INDEX_OPTION_MAP.end() )
-            {
-               //ilog( "${t} -> option ${k} : ${v}", ("t", type_name)("k", it->key())("v", it->value()) );
-               INDEX_OPTION_MAP[ it->key() ]( opts, it->value() );
-            }
-            else
-            {
-               wlog( "Encountered an unknown option: ${k}", ("k",it->key()) );
-            }
-         }
-         catch( const std::exception& e )
-         {
-            elog( "Error applying option: ${k}, ${v}", ("k", it->key())("v", it->value()) );
-            throw;
-         }
-      }
-
+      global_shared_cache = rocksdb::NewLRUCache( capacity, num_shard_bits );
    }
-   catch ( const std::exception& e )
+
+   fc::variant_object config = retrieve_active_configuration( obj, type_name );
+
+   for ( auto it = config.begin(); it != config.end(); ++it )
    {
-      elog( "Error parsing configuration for type '${t}': ${e}", ("t", type_name)("e", e.what()) );
-      throw;
+      try
+      {
+         if ( global_database_option_map.find( it->key() ) != global_database_option_map.end() )
+            global_database_option_map[ it->key() ]( opts, it->value() );
+         else
+            wlog( "Encountered an unknown database configuration option: ${key}", ("key",it->key()) );
+      }
+      catch( ... )
+      {
+         elog( "Error applying database option: ${key}", ("key", it->key()) );
+         throw;
+      }
    }
 
    return opts;
