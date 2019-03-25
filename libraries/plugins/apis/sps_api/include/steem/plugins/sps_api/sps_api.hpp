@@ -162,14 +162,16 @@ namespace steem { namespace plugins { namespace sps {
     // starting value for querying results
     fc::variant start;
     // name of the field by which results will be sored
-    order_by_type order_by;
+    order_by_type order_by = order_by_type::by_creator;
     // sorting order (ascending or descending) of the result vector
-    order_direction_type order_direction;
+    order_direction_type order_direction = order_direction_type::direction_ascending;
     // query limit
-    uint16_t limit;
+    uint16_t limit = 0;
     // result will contain only data with status flag set to this value
     proposal_status status = proposal_status::all;
-    //
+    /** optional ID of last displayed object. Allows to solve paging data problem when start values
+        are not unique.
+    */
     fc::optional<api_id_type> last_id;
   };
 
@@ -182,9 +184,9 @@ namespace steem { namespace plugins { namespace sps {
     // list only proposal voted by this voter
     fc::variant start;
     // name of the field by which results will be sored
-    order_by_type order_by;
+    order_by_type order_by = order_by_type::by_total_votes;
     // sorting order (ascending or descending) of the result vector
-    order_direction_type order_direction;
+    order_direction_type order_direction = order_direction_type::direction_descending;
     // query limit
     uint16_t limit;
     // result will contain only data with status flag set to this value
