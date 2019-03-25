@@ -3,6 +3,6 @@
 
 namespace steem { namespace utilities {
 
-fc::variant get_default_indices_cfg();
+fc::variant default_database_configuration();
 
 } } // steem::utilities

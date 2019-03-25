@@ -114,7 +114,7 @@ void database::open( const open_args& args )
    try
    {
       init_schema();
-      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.mira_indices_opts );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.database_cfg );
 
       initialize_indexes();
       initialize_evaluators();

@@ -5,7 +5,7 @@
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
-#include <steem/utilities/indices_cfg.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/string.hpp>
 #include <fc/io/json.hpp>
@@ -68,7 +68,7 @@ class chain_plugin_impl
 
       void start_write_processing();
       void stop_write_processing();
-      void write_default_indices_config( bfs::path& p );
+      void write_default_database_config( bfs::path& p );
 
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
@@ -96,7 +96,7 @@ class chain_plugin_impl
 
       vector< string >                 loaded_plugins;
       fc::mutable_variant_object       plugin_state_opts;
-      bfs::path                        mira_indices_cfg;
+      bfs::path                        database_cfg;
 
       database  db;
       std::string block_generator_registrant;
@@ -293,10 +293,10 @@ void chain_plugin_impl::stop_write_processing()
    write_processor_thread.reset();
 }
 
-void chain_plugin_impl::write_default_indices_config( bfs::path &p )
+void chain_plugin_impl::write_default_database_config( bfs::path &p )
 {
-   ilog( "Writing indices configuration to ${p}", ("p", p.string()) );
-   fc::json::save_to_file( steem::utilities::get_default_indices_cfg(), p );
+   ilog( "writing database configuration: ${p}", ("p", p.string()) );
+   fc::json::save_to_file( steem::utilities::default_database_configuration(), p );
 }
 
 } // detail
@@ -337,7 +337,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef ENABLE_STD_ALLOCATOR
-         ("mira-indices-cfg", bpo::value<bfs::path>()->default_value("indices.cfg"), "The MIRA indices configuration file location")
+         ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -397,14 +397,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
 #ifdef ENABLE_STD_ALLOCATOR
-   my->mira_indices_cfg = options.at( "mira-indices-cfg" ).as< bfs::path >();
+   my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
 
-   if( my->mira_indices_cfg.is_relative() )
-      my->mira_indices_cfg = app().data_dir() / my->mira_indices_cfg;
+   if( my->database_cfg.is_relative() )
+      my->database_cfg = app().data_dir() / my->database_cfg;
 
-   if( !bfs::exists( my->mira_indices_cfg ) )
+   if( !bfs::exists( my->database_cfg ) )
    {
-      my->write_default_indices_config( my->mira_indices_cfg );
+      my->write_default_database_config( my->database_cfg );
    }
 #endif
 
@@ -471,14 +471,15 @@ void chain_plugin::plugin_startup()
    };
 
 #ifdef ENABLE_STD_ALLOCATOR
-   fc::variant mira_indices_options;
+   fc::variant database_config;
    try
    {
-      mira_indices_options = fc::json::from_file( my->mira_indices_cfg, fc::json::strict_parser );
+      database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
    }
    catch ( const std::exception& e )
    {
-      wlog( "Exception while parsing mira indices configuration: ${e}", ("e", e.what()) );
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
    }
 #endif
 
@@ -492,7 +493,7 @@ void chain_plugin::plugin_startup()
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
-   db_open_args.mira_indices_opts = mira_indices_options;
+   db_open_args.database_cfg = database_config;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

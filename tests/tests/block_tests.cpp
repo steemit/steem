@@ -36,7 +36,7 @@
 #include <steem/plugins/witness/block_producer.hpp>
 
 #include <steem/utilities/tempdir.hpp>
-#include <steem/utilities/indices_cfg.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -58,7 +58,7 @@ void open_test_database( database& db, const fc::path& dir )
    args.shared_mem_dir = dir;
    args.initial_supply = INITIAL_TEST_SUPPLY;
    args.shared_file_size = TEST_SHARED_MEM_SIZE;
-   args.mira_indices_opts = steem::utilities::get_default_indices_cfg();
+   args.database_cfg = steem::utilities::default_database_configuration();
    db.open( args );
 }
 
