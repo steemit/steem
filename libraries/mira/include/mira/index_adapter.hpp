@@ -34,7 +34,7 @@ struct index_adapter
    typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >          bmic_rev_iter_adapter;
    //typedef typename bmic_type::iterator                                             bmic_iter_type;
    //typedef decltype( (bmic_type.begin()) )                                bmic_iter_type;
-   typedef abstract_iterator< value_type >                                          iter_type;
+   typedef iterator_wrapper< value_type >                                          iter_type;
 
    private:
       index_adapter() {}
@@ -56,6 +56,7 @@ struct index_adapter
 
       iter_type iterator_to( const value_type& v )const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -74,6 +75,7 @@ struct index_adapter
       template< typename CompatibleKey >
       iter_type find( const CompatibleKey& k )const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -92,6 +94,7 @@ struct index_adapter
       template< typename CompatibleKey >
       iter_type lower_bound( const CompatibleKey& k )const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -110,6 +113,7 @@ struct index_adapter
       template< typename CompatibleKey >
       iter_type upper_bound( const CompatibleKey& k )const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -127,6 +131,7 @@ struct index_adapter
 
       iter_type begin()const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -144,6 +149,7 @@ struct index_adapter
 
       iter_type end()const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -161,6 +167,7 @@ struct index_adapter
 
       iter_type rbegin()const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -178,6 +185,7 @@ struct index_adapter
 
       iter_type rend()const
       {
+         assert( _index );
          iter_type result;
 
          switch( _type )
@@ -195,6 +203,7 @@ struct index_adapter
 
       bool empty()const
       {
+         assert( _index );
          bool result = true;
 
          switch( _type )
@@ -212,6 +221,7 @@ struct index_adapter
 
       size_t size()const
       {
+         assert( _index );
          size_t result = 0;
 
          switch( _type )
@@ -261,7 +271,7 @@ struct multi_index_adapter
    typedef typename bmic_type::iterator                                                                  bmic_iter_type;
    typedef typename bmic_type::reverse_iterator                                                          bmic_rev_iter_type;
    typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >                  bmic_iter_adapter;
-   typedef abstract_iterator< value_type >                                                               iter_type;
+   typedef iterator_wrapper< value_type >                                                               iter_type;
    typedef typename bmic_type::allocator_type allocator_type;
 
    multi_index_adapter()
@@ -306,26 +316,30 @@ struct multi_index_adapter
 
    ~multi_index_adapter()
    {
-      switch( _type )
+      if( _index )
       {
-         case mira:
-            delete ((mira_type*)_index);
-            //mira_type* mira_ptr = (mira_type*) _index;
-            //delete mira_ptr;
-            break;
-         case bmic:
-            delete ((bmic_type*)_index);
-            //bmic_type* bmic_ptr = (bmic_type*) _index;
-            //delete bmic_ptr;
-            break;
-      }
+         switch( _type )
+         {
+            case mira:
+               delete ((mira_type*)_index);
+               //mira_type* mira_ptr = (mira_type*) _index;
+               //delete mira_ptr;
+               break;
+            case bmic:
+               delete ((bmic_type*)_index);
+               //bmic_type* bmic_ptr = (bmic_type*) _index;
+               //delete bmic_ptr;
+               break;
+         }
 
-      _index = nullptr;
+         _index = nullptr;
+      }
    }
 
    template< typename IndexedBy >
    index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >& get()
    {
+      assert( _index );
       static index_type type = _type;
       static index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > index( _index, _type );
 
@@ -341,6 +355,7 @@ struct multi_index_adapter
    template< typename IndexedBy >
    const index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >& get()const
    {
+      assert( _index );
       static index_type type = _type;
       static index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > index( _index, _type );
 
@@ -355,6 +370,7 @@ struct multi_index_adapter
 
    int64_t revision()
    {
+      assert( _index );
       int64_t result = 0;
 
       switch( _type )
@@ -372,6 +388,7 @@ struct multi_index_adapter
 
    int64_t set_revision( int64_t rev )
    {
+      assert( _index );
       int64_t result = 0;
 
       switch( _type )
@@ -391,6 +408,7 @@ struct multi_index_adapter
    std::pair< iter_type, bool >
    emplace( Constructor&& con, allocator_type alloc )
    {
+      assert( _index );
       std::pair< iter_type, bool > result;
 
       switch( _type )
@@ -418,6 +436,7 @@ struct multi_index_adapter
    std::pair< iter_type, bool >
    emplace( Constructor&& con )
    {
+      assert( _index );
       std::pair< iter_type, bool > result;
 
       switch( _type )
@@ -444,6 +463,7 @@ struct multi_index_adapter
    template< typename Modifier >
    bool modify( iter_type position, Modifier&& mod )
    {
+      assert( _index );
       bool result = false;
 
       switch( _type )
@@ -461,6 +481,7 @@ struct multi_index_adapter
 
    iter_type erase( iter_type position )
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -478,6 +499,7 @@ struct multi_index_adapter
 
    iter_type iterator_to( const value_type& v )const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -496,6 +518,7 @@ struct multi_index_adapter
    template< typename CompatibleKey >
    iter_type find( const CompatibleKey& k )const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -514,6 +537,7 @@ struct multi_index_adapter
    template< typename CompatibleKey >
    iter_type lower_bound( const CompatibleKey& k )const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -532,6 +556,7 @@ struct multi_index_adapter
    template< typename CompatibleKey >
    iter_type upper_bound( const CompatibleKey& k )const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -549,6 +574,7 @@ struct multi_index_adapter
 
    iter_type begin()const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -566,6 +592,7 @@ struct multi_index_adapter
 
    iter_type end()const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -583,6 +610,7 @@ struct multi_index_adapter
 
    iter_type rbegin()const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -600,6 +628,7 @@ struct multi_index_adapter
 
    iter_type rend()const
    {
+      assert( _index );
       iter_type result;
 
       switch( _type )
@@ -617,6 +646,7 @@ struct multi_index_adapter
 
    bool open( const boost::filesystem::path& p )
    {
+      assert( _index );
       bool result = false;
 
       switch( _type )
@@ -634,6 +664,7 @@ struct multi_index_adapter
 
    void close()
    {
+      assert( _index );
       switch( _type )
       {
          case mira:
@@ -647,6 +678,7 @@ struct multi_index_adapter
 
    void wipe( const boost::filesystem::path& p )
    {
+      assert( _index );
       switch( _type )
       {
          case mira:
@@ -660,6 +692,7 @@ struct multi_index_adapter
 
    void clear()
    {
+      assert( _index );
       switch( _type )
       {
          case mira:
@@ -686,6 +719,7 @@ struct multi_index_adapter
 
    size_t size()const
    {
+      assert( _index );
       size_t result = 0;
 
       switch( _type )
@@ -726,6 +760,7 @@ struct multi_index_adapter
    template< typename MetaKey, typename MetaValue >
    bool put_metadata( const MetaKey& k, const MetaValue& v )
    {
+      assert( _index );
       bool result = false;
 
       switch( _type )
@@ -744,6 +779,7 @@ struct multi_index_adapter
    template< typename MetaKey, typename MetaValue >
    bool get_metadata( const MetaKey& k, MetaValue& v )
    {
+      assert( _index );
       bool result = false;
 
       switch( _type )
@@ -761,6 +797,7 @@ struct multi_index_adapter
 
    size_t get_cache_usage()const
    {
+      assert( _index );
       size_t result = 0;
 
       switch( _type )
@@ -778,6 +815,7 @@ struct multi_index_adapter
 
    size_t get_cache_size()const
    {
+      assert( _index );
       bool result = false;
 
       switch( _type )
@@ -795,6 +833,7 @@ struct multi_index_adapter
 
    void dump_lb_call_counts()
    {
+      assert( _index );
       switch( _type )
       {
          case mira:
@@ -808,6 +847,7 @@ struct multi_index_adapter
 
    void trim_cache( size_t cap )
    {
+      assert( _index );
       switch( _type )
       {
          case mira:
@@ -821,6 +861,7 @@ struct multi_index_adapter
 
    void print_stats()const
    {
+      assert( _index );
       switch( _type )
       {
          case mira:

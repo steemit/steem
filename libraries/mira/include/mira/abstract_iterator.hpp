@@ -1,6 +1,10 @@
+#pragma once
+#include <memory>
+
 namespace mira {
 
-struct null_type{};
+//fwd declaration
+template< typename ValueType > class iterator_wrapper;
 
 template< typename ValueType >
 class abstract_iterator
@@ -10,18 +14,18 @@ class abstract_iterator
 
       virtual ~abstract_iterator() {}
 
-      virtual abs_iter_type& operator ++()    { assert(false); return *this; }
-      virtual abs_iter_type  operator ++(int) { assert(false); return *this; }
-      virtual abs_iter_type& operator --()    { assert(false); return *this; }
-      virtual abs_iter_type  operator --(int) { assert(false); return *this; }
+      virtual abs_iter_type& operator ++()    = 0; //{ assert(false); return *this; }
+      //virtual abs_iter_type& operator ++(int) = 0; //{ assert(false); return *this; }
+      virtual abs_iter_type& operator --()    = 0; //{ assert(false); return *this; }
+      //virtual abs_iter_type& operator --(int) = 0; //{ assert(false); return *this; }
 
       //virtual       ValueType& operator  *()       { assert(false); static ValueType v; return v; }
       //virtual       ValueType* operator ->()       { assert(false); static ValueType v; return &v; }
-      virtual const ValueType& operator  *() const { assert(false); static const ValueType v; return v; }
-      virtual const ValueType* operator ->() const { assert(false); static const ValueType v; return &v; }
+      virtual const ValueType& operator  *() const = 0;// { assert(false); static const ValueType v; return v; }
+      virtual const ValueType* operator ->() const = 0;// { assert(false); static const ValueType v; return &v; }
 
-      virtual bool operator ==( const abs_iter_type& ) { assert(false); return false; }
-      virtual bool operator !=( const abs_iter_type& ) { assert(false); return false; }
+      virtual bool operator ==( const abs_iter_type& )const = 0;// { assert(false); return false; }
+      virtual bool operator !=( const abs_iter_type& )const = 0;// { assert(false); return false; }
 
       //virtual abs_iter_type& operator =( abs_iter_type& ) { assert(false); return *this; }
 
@@ -29,6 +33,9 @@ class abstract_iterator
       IterType& as() { return *(IterType*)_iter; }
 
    protected:
+      friend class iterator_wrapper< ValueType >;
+      virtual abs_iter_type* copy()const { assert(false); return (abs_iter_type*)nullptr; }
+
       void* _iter = nullptr;
 };
 
@@ -60,6 +67,16 @@ class iterator_adapter : public abstract_iterator< ValueType >
       iterator_adapter( const iter_type&& iter )
       {
          _iter = new iter_type( iter );
+      }
+
+      iterator_adapter( iterator_adapter& other )
+      {
+         _iter = new iter_type( (*(iter_type*)(other._iter)) );
+      }
+
+      iterator_adapter( const iterator_adapter& other )
+      {
+         _iter = new iter_type( (*(iter_type*)(other._iter)) );
       }
 
       iterator_adapter( iterator_adapter&& other )
@@ -95,25 +112,27 @@ class iterator_adapter : public abstract_iterator< ValueType >
 
       abs_iter_type& operator ++() override
       {
+         assert( _iter );
          ++ITERATOR;
          return *this;
       }
 
-      abs_iter_type operator ++(int) override
+      /*abs_iter_type operator ++(int) override
       {
          return iterator_adapter( ITERATOR++ );
-      }
+      }*/
 
       abs_iter_type& operator --() override
       {
+         assert( _iter );
          --ITERATOR;
          return *this;
       }
 
-      abs_iter_type operator --(int) override
+      /*abs_iter_type operator --(int) override
       {
          return iterator_adapter( ITERATOR-- );
-      }
+      }*/
 
       /*
       value_type& operator *() override
@@ -129,16 +148,19 @@ class iterator_adapter : public abstract_iterator< ValueType >
 
       const value_type& operator *()const override
       {
+         assert( _iter );
          return *ITERATOR;
       }
 
       const value_type* operator ->()const override
       {
+         assert( _iter );
          return &(*ITERATOR);
       }
 
-      bool operator ==( const abs_iter_type& other ) override
+      bool operator ==( const abs_iter_type& other )const override
       {
+         assert( _iter );
          if( dynamic_cast< const iterator_adapter* >( &other ) != nullptr )
          {
             return ITERATOR == (*(iter_type*)(static_cast< const iterator_adapter* >( &other )->_iter));
@@ -147,9 +169,16 @@ class iterator_adapter : public abstract_iterator< ValueType >
          return false;
       }
 
-      bool operator !=( const abs_iter_type& other ) override
+      bool operator !=( const abs_iter_type& other )const override
       {
          return !(*this == other);
+      }
+
+      abs_iter_type* copy()const override
+      {
+         // Yeah, this is really dangerous, but should only be called via iterator_wrapper, which will
+         // immediately store it in a smart pointer.
+         return new iterator_adapter( *this );
       }
 
       iter_type& iterator()
@@ -157,6 +186,128 @@ class iterator_adapter : public abstract_iterator< ValueType >
          return ITERATOR;
       }
 };
+
+template< typename ValueType >
+class iterator_wrapper
+{
+   typedef abstract_iterator< ValueType > abs_iter_type;
+
+   public:
+      iterator_wrapper() {}
+/*
+      template< typename IterType >
+      iterator_wrapper( iterator_adapter< ValueType, IterType >&& adapter )
+      {
+         _abs_iter = std::move( adapter );
+      }
+*/
+
+      iterator_wrapper( abs_iter_type& iter )
+      {
+         _abs_iter.reset( iter.copy() );
+      }
+
+      iterator_wrapper( abs_iter_type&& iter )
+      {
+         _abs_iter = std::move( iter );
+      }
+
+/*
+      iterator_wrapper( iterator_wrapper& other )
+      {
+         _abs_iter.reset( other.copy() );
+      }
+*/
+      iterator_wrapper( const iterator_wrapper& other )
+      {
+         _abs_iter.reset( other._abs_iter->copy() );
+      }
+
+      iterator_wrapper( iterator_wrapper&& other )
+      {
+         _abs_iter = std::move( other._abs_iter );
+         other._abs_iter.reset();
+      }
+
+      abstract_iterator< ValueType >* iter()const
+      {
+         return &(*_abs_iter);
+      }
+
+      iterator_wrapper& operator ++()
+      {
+         _abs_iter->operator++();
+         return *this;
+      }
+
+      iterator_wrapper operator ++(int)
+      {
+         iterator_wrapper copy;
+         copy._abs_iter.reset( _abs_iter->copy() );
+         return copy;
+      }
+
+      iterator_wrapper& operator --()
+      {
+         _abs_iter->operator--();
+         return *this;
+      }
+
+      iterator_wrapper operator --(int)
+      {
+         iterator_wrapper copy;
+         copy._abs_iter.reset( _abs_iter->copy() );
+         _abs_iter->operator--();
+         return copy;
+      }
+
+      const ValueType& operator *()const
+      {
+         return _abs_iter->operator*();
+      }
+
+      const ValueType* operator ->()const
+      {
+         return _abs_iter->operator->();
+      }
+
+      bool operator ==( const iterator_wrapper& other )
+      {
+         return _abs_iter->operator==( *other._abs_iter );
+      }
+
+      bool operator !=( const iterator_wrapper& other )
+      {
+         return _abs_iter->operator!=( *other._abs_iter );
+      }
+
+      iterator_wrapper& operator =( iterator_wrapper& other )
+      {
+         _abs_iter = _abs_iter.reset( other._abs_iter->copy() );
+         return *this;
+      }
+
+      iterator_wrapper& operator =( iterator_wrapper&& other )
+      {
+         _abs_iter = std::move( other._abs_iter );
+         other._abs_iter.reset();
+         return *this;
+      }
+
+      template< typename IterType >
+      iterator_wrapper& operator =( iterator_adapter< ValueType, IterType >&& adapter )
+      {
+         _abs_iter.reset( new iterator_adapter< ValueType, IterType >( adapter ) );
+         return *this;
+      }
+
+      template< typename IterType >
+      IterType& as() { return _abs_iter->template as< IterType >(); }
+
+   private:
+      std::unique_ptr< abstract_iterator< ValueType > > _abs_iter;
+};
+
 /*
 template< typename ValueType, typename IndexedBy = null_type >
 class iterator_wrapper
