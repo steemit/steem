@@ -2,12 +2,6 @@
 #include <mira/index_converter.hpp>
 #include <mira/abstract_iterator.hpp>
 
-#define SIMPLE_ADAPTER_CALL( METHOD, __VA_ARGS__ )                         \
-switch( _type ) {                                                          \
-   case mira: return ((mira_type*)_index). METHOD ( __VA_ARGS_ ); break;   \
-   case bmic: return ((bmic_type*)_index). METHOD ( __VA_ARGS_ ); break;   \
-}
-
 namespace mira {
 
 enum index_type
@@ -21,20 +15,16 @@ template< typename Arg1, typename Arg2, typename Arg3 > struct multi_index_adapt
 template< typename MultiIndexAdapterType, typename IndexedBy >
 struct index_adapter
 {
-   typedef typename MultiIndexAdapterType::value_type                               value_type;
-   typedef typename std::remove_reference< decltype( (((typename MultiIndexAdapterType::mira_type*)nullptr)->template get<IndexedBy>()) ) >::type mira_type;
-   //typedef typename mira_type::foo foo;
-   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >           mira_iter_adapter;
-   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->rbegin()) ) >          mira_rev_iter_adapter;
-   //typedef typename mira_iter_adapter::bar bar;
-   //typedef decltype( (&MultiIndexAdapterType::mira_type::template get<IndexedBy>) )   mira_type;
-   typedef decltype( (((mira_type*)nullptr)->begin()) )                                mira_iter_type;
-   typedef typename std::remove_reference< decltype( (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
-   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >           bmic_iter_adapter;
-   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >          bmic_rev_iter_adapter;
-   //typedef typename bmic_type::iterator                                             bmic_iter_type;
-   typedef decltype( (((bmic_type*)nullptr)->begin()) )                                bmic_iter_type;
-   typedef iterator_wrapper< value_type >                                          iter_type;
+   typedef typename MultiIndexAdapterType::value_type                                              value_type;
+   typedef typename std::remove_reference< decltype(
+      (((typename MultiIndexAdapterType::mira_type*)nullptr)->template get<IndexedBy>()) ) >::type mira_type;
+   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >            mira_iter_adapter;
+   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->rbegin()) ) >           mira_rev_iter_adapter;
+   typedef typename std::remove_reference< decltype(
+      (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
+   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >            bmic_iter_adapter;
+   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >           bmic_rev_iter_adapter;
+   typedef iterator_wrapper< value_type >                                                          iter_type;
 
    private:
       index_adapter() {}
@@ -273,24 +263,7 @@ struct index_adapter
 
          return result;
       }
-/*
-      size_t node_size()const
-      {
-         size_t result = 0;
 
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->node_size();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->node_size();
-               break;
-         }
-
-         return result;
-      }
-*/
    private:
       void*       _index = nullptr;
       index_type  _type  = mira;
@@ -302,13 +275,11 @@ struct multi_index_adapter
    typedef Arg1                                                                                          value_type;
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::mira_type mira_type;
    typedef typename mira_type::primary_iterator                                                          mira_iter_type;
-   typedef typename mira_type::primary_reverse_iterator                                                  mira_rev_iter_type;
    typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >                  mira_iter_adapter;
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::bmic_type bmic_type;
    typedef typename bmic_type::iterator                                                                  bmic_iter_type;
-   typedef typename bmic_type::reverse_iterator                                                          bmic_rev_iter_type;
    typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >                  bmic_iter_adapter;
-   typedef iterator_wrapper< value_type >                                                               iter_type;
+   typedef iterator_wrapper< value_type >                                                                iter_type;
    typedef typename bmic_type::allocator_type allocator_type;
 
    multi_index_adapter()
@@ -359,13 +330,9 @@ struct multi_index_adapter
          {
             case mira:
                delete ((mira_type*)_index);
-               //mira_type* mira_ptr = (mira_type*) _index;
-               //delete mira_ptr;
                break;
             case bmic:
                delete ((bmic_type*)_index);
-               //bmic_type* bmic_ptr = (bmic_type*) _index;
-               //delete bmic_ptr;
                break;
          }
 
@@ -785,24 +752,7 @@ struct multi_index_adapter
    {
       return allocator_type();
    }
-/*
-   size_t node_size()const
-   {
-      size_t result = 0;
 
-      switch( _type )
-      {
-         case mira:
-            result = ((mira_type*)_index)->node_size();
-            break;
-         case bmic:
-            result = ((bmic_type*)_index)->node_size();
-            break;
-      }
-
-      return result;
-   }
-*/
    template< typename MetaKey, typename MetaValue >
    bool put_metadata( const MetaKey& k, const MetaValue& v )
    {
@@ -918,10 +868,6 @@ struct multi_index_adapter
             break;
       }
    }
-
-   /*
-   get_allocator
-   */
 
    private:
       void*       _index = nullptr;

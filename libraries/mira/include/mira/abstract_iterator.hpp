@@ -14,20 +14,14 @@ class abstract_iterator
 
       virtual ~abstract_iterator() {}
 
-      virtual abs_iter_type& operator ++()    = 0; //{ assert(false); return *this; }
-      //virtual abs_iter_type& operator ++(int) = 0; //{ assert(false); return *this; }
-      virtual abs_iter_type& operator --()    = 0; //{ assert(false); return *this; }
-      //virtual abs_iter_type& operator --(int) = 0; //{ assert(false); return *this; }
+      virtual abs_iter_type& operator ++()    = 0;
+      virtual abs_iter_type& operator --()    = 0;
 
-      //virtual       ValueType& operator  *()       { assert(false); static ValueType v; return v; }
-      //virtual       ValueType* operator ->()       { assert(false); static ValueType v; return &v; }
-      virtual const ValueType& operator  *() const = 0;// { assert(false); static const ValueType v; return v; }
-      virtual const ValueType* operator ->() const = 0;// { assert(false); static const ValueType v; return &v; }
+      virtual const ValueType& operator  *() const = 0;
+      virtual const ValueType* operator ->() const = 0;
 
-      virtual bool operator ==( const abs_iter_type& )const = 0;// { assert(false); return false; }
-      virtual bool operator !=( const abs_iter_type& )const = 0;// { assert(false); return false; }
-
-      //virtual abs_iter_type& operator =( abs_iter_type& ) { assert(false); return *this; }
+      virtual bool operator ==( const abs_iter_type& )const = 0;
+      virtual bool operator !=( const abs_iter_type& )const = 0;
 
       template< typename IterType >
       IterType& as() { return *(IterType*)_iter; }
@@ -44,18 +38,10 @@ class iterator_adapter : public abstract_iterator< ValueType >
 {
    #define ITERATOR (*(iter_type*)_iter)
 
-   //typedef decltype( ((MultiIndexType*)nullptr)->begin() ) iter_type;
-   //typedef typename MultiIndexType::value_type  value_type;
-
    public:
-      //typedef decltype( ((MultiIndexType).begin()) ) iter_type;
-
-      //typedef typename MultiIndexType::iterator    iter_type;
-      //typedef typename iter_type::foo bar;
-
-      typedef ValueType value_type;
-      typedef IterType iter_type;
-      typedef abstract_iterator< value_type >      abs_iter_type;
+      typedef ValueType                         value_type;
+      typedef IterType                          iter_type;
+      typedef abstract_iterator< value_type >   abs_iter_type;
 
       using abstract_iterator< value_type >::_iter;
 
