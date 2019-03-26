@@ -1625,14 +1625,15 @@ void inline pack( Stream& s, const mira::multi_index::composite_key_result< T >&
 }
 
 template<typename Stream, typename T>
-void inline unpack( Stream& s, mira::multi_index::composite_key_result< T >& var )
+void inline unpack( Stream& s, mira::multi_index::composite_key_result< T >& var, uint32_t depth )
 {
-   unpack( s, var.key );
+   depth++;
+   unpack( s, var.key, depth + 1 );
 }
 
 
 template< typename Stream > void pack( Stream&, const boost::tuples::null_type ) {}
-template< typename Stream > void unpack( Stream& s, boost::tuples::null_type ) {}
+template< typename Stream > void unpack( Stream& s, boost::tuples::null_type, uint32_t depth ) {}
 
 template< typename Stream, typename H, typename T > void pack( Stream& s, const boost::tuples::cons< H, T >& var )
 {
@@ -1640,10 +1641,11 @@ template< typename Stream, typename H, typename T > void pack( Stream& s, const 
    pack( s, var.get_tail() );
 }
 
-template< typename Stream, typename H, typename T > void unpack( Stream& s, boost::tuples::cons< H, T >& var )
+template< typename Stream, typename H, typename T > void unpack( Stream& s, boost::tuples::cons< H, T >& var, uint32_t depth )
 {
-   unpack( s, var.get_head() );
-   unpack( s, var.get_tail() );
+   depth++;
+   unpack( s, var.get_head(), depth );
+   unpack( s, var.get_tail(), depth );
 }
 
 } // raw

@@ -134,7 +134,7 @@ namespace fc
     template<typename Stream>
     inline void pack( Stream& s, const uint128& u ) { s.write( (char*)&u, sizeof(u) ); }
     template<typename Stream>
-    inline void unpack( Stream& s, uint128& u ) { s.read( (char*)&u, sizeof(u) ); }
+    inline void unpack( Stream& s, uint128& u, uint32_t ) { s.read( (char*)&u, sizeof(u) ); }
   }
 
   size_t city_hash_size_t(const char *buf, size_t len);
