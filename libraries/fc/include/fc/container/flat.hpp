@@ -18,15 +18,16 @@ namespace fc {
          }
        }
        template<typename Stream, typename T>
-       inline void unpack( Stream& s, flat_set<T>& value ) {
-         unsigned_int size; unpack( s, size );
+       inline void unpack( Stream& s, flat_set<T>& value, uint32_t depth ) {
+         depth++;
+         FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
+         unsigned_int size; unpack( s, size, depth );
          value.clear();
          FC_ASSERT( size.value*sizeof(T) < MAX_ARRAY_ALLOC_SIZE );
-         value.reserve(size.value);
          for( uint32_t i = 0; i < size.value; ++i )
          {
              T tmp;
-             fc::raw::unpack( s, tmp );
+             fc::raw::unpack( s, tmp, depth );
              value.insert( std::move(tmp) );
          }
        }
@@ -41,16 +42,17 @@ namespace fc {
          }
        }
        template<typename Stream, typename K, typename V, typename... A>
-       inline void unpack( Stream& s, flat_map<K,V,A...>& value ) 
+       inline void unpack( Stream& s, flat_map<K,V,A...>& value, uint32_t depth )
        {
-         unsigned_int size; unpack( s, size );
+         depth++;
+         FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
+         unsigned_int size; unpack( s, size, depth );
          value.clear();
          FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
-         value.reserve(size.value);
          for( uint32_t i = 0; i < size.value; ++i )
          {
              std::pair<K,V> tmp;
-             fc::raw::unpack( s, tmp );
+             fc::raw::unpack( s, tmp, depth );
              value.insert( std::move(tmp) );
          }
        }
@@ -71,13 +73,19 @@ namespace fc {
        }
 
        template<typename Stream, typename T, typename A>
-       void unpack( Stream& s, bip::vector<T,A>& value ) {
+       void unpack( Stream& s, bip::vector<T,A>& value, uint32_t depth ) {
+          depth++;
+          FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
           unsigned_int size;
-          unpack( s, size );
-          value.resize( size );
+          unpack( s, size, depth );
+          value.clear();
           if( !std::is_fundamental<T>::value ) {
-             for( auto& item : value )
-                unpack( s, item );
+             for ( size_t i = 0; i < size.value; i++ )
+             {
+               T tmp;
+               unpack( s, tmp, depth );
+               value.emplace_back( std::move( tmp ) );
+             }
           } else {
              s.read( (char*)value.data(), value.size() );
           }

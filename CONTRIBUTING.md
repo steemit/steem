@@ -8,7 +8,7 @@ If there is an existing feature that is not working correctly, or a glitch in th
 
 ## Enhancement Suggestions
 
-Do **not** use the issue tracker to suggest enhancements or improvements to the platform. The best place for these discussions is on Steemit.com. If there is a well vetted idea that has the support of the community that you feel should be considered by the development team, please email it to [sneak@steemit.com](mailto:sneak@steemit.com) for review.
+Do **not** use the issue tracker to suggest enhancements or improvements to the platform. The best place for these discussions is on Steemit.com. If there is a well vetted idea that has the support of the community that you feel should be considered by the development team, please email it to [suggestions@steemit.com](mailto:suggestions@steemit.com) for review.
 
 ## Implementation Discussion
 

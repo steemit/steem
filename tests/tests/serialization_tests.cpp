@@ -648,5 +648,112 @@ BOOST_AUTO_TEST_CASE( asset_symbol_type_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( unpack_clear_test )
+{
+   try
+   {
+      std::stringstream ss1;
+      std::stringstream ss2;
+
+      signed_block b1;
+
+      for ( int i = 0; i < 10; i++ )
+      {
+         signed_transaction tx;
+
+         vote_operation op;
+         op.voter = "alice";
+         op.author = "bob";
+         op.permlink = "permlink1";
+         op.weight = STEEM_100_PERCENT;
+         tx.operations.push_back( op );
+
+         vote_operation op2;
+         op2.voter = "charlie";
+         op2.author = "sam";
+         op2.permlink = "permlink2";
+         op2.weight = STEEM_100_PERCENT;
+         tx.operations.push_back( op2 );
+
+         tx.ref_block_num = 1000;
+         tx.ref_block_prefix = 1000000000;
+         tx.expiration = fc::time_point_sec( 1514764800 + i );
+
+         b1.transactions.push_back( tx );
+      }
+
+      signed_block b2;
+
+      for ( int i = 0; i < 20; i++ )
+      {
+         signed_transaction tx;
+         vote_operation op;
+         op.voter = "dave";
+         op.author = "greg";
+         op.permlink = "foobar";
+         op.weight = STEEM_100_PERCENT/2;
+         tx.ref_block_num = 4000;
+         tx.ref_block_prefix = 4000000000;
+         tx.expiration = fc::time_point_sec( 1714764800 + i );
+         tx.operations.push_back( op );
+
+         b2.transactions.push_back( tx );
+      }
+
+      fc::raw::pack( ss2, b2 );
+      fc::raw::pack( ss1, b1 );
+
+      signed_block unpacked_block;
+      fc::raw::unpack( ss2, unpacked_block );
+
+      // This operation should completely overwrite signed block 'b2'
+      fc::raw::unpack( ss1, unpacked_block );
+
+      BOOST_REQUIRE( b1.transactions.size() == unpacked_block.transactions.size() );
+      for ( size_t i = 0; i < unpacked_block.transactions.size(); i++ )
+      {
+         signed_transaction tx = unpacked_block.transactions[ i ];
+         BOOST_REQUIRE( unpacked_block.transactions[ i ].operations.size() == b1.transactions[ i ].operations.size() );
+
+         vote_operation op = tx.operations[ 0 ].get< vote_operation >();
+         BOOST_REQUIRE( op.voter == "alice" );
+         BOOST_REQUIRE( op.author == "bob" );
+         BOOST_REQUIRE( op.permlink == "permlink1" );
+         BOOST_REQUIRE( op.weight == STEEM_100_PERCENT );
+
+         vote_operation op2 = tx.operations[ 1 ].get< vote_operation >();
+         BOOST_REQUIRE( op2.voter == "charlie" );
+         BOOST_REQUIRE( op2.author == "sam" );
+         BOOST_REQUIRE( op2.permlink == "permlink2" );
+         BOOST_REQUIRE( op2.weight == STEEM_100_PERCENT );
+
+         BOOST_REQUIRE( tx.ref_block_num == 1000 );
+         BOOST_REQUIRE( tx.ref_block_prefix == 1000000000 );
+         BOOST_REQUIRE( tx.expiration == fc::time_point_sec( 1514764800 + i ) );
+      }
+   }
+   FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( unpack_recursion_test )
+{
+   try
+   {
+      std::stringstream ss;
+      int recursion_level = 100000;
+      uint64_t allocation_per_level = 500000;
+
+      for ( int i = 0; i < recursion_level; i++ )
+      {
+         fc::raw::pack( ss, unsigned_int( allocation_per_level ) );
+         fc::raw::pack( ss, static_cast< uint8_t >( variant::array_type ) );
+      }
+
+      std::vector< fc::variant > v;
+      STEEM_REQUIRE_THROW( fc::raw::unpack( ss, v ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
