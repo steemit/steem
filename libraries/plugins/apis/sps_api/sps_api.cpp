@@ -243,7 +243,8 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   auto itr = idx.lower_bound(args.start.as<account_name_type>());
   auto end = idx.end();
 
-  if (args.status != proposal_status::all) // avoid not needed rewrite in case of active set to all
+  size_t proposals_count = 0;
+  while( proposals_count < args.limit && itr != end )
   {
     auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
     FC_ASSERT(po != nullptr, "Proposal with given id does not exist");
@@ -251,6 +252,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
     if (args.status == proposal_status::all || apo.get_status(_db.head_block_time()) == args.status)
     {
       result[itr->voter].push_back(apo);
+      ++proposals_count;
     }
     ++itr;
   }
