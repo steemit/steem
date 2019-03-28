@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/steem_operations.hpp>
 
@@ -37,6 +38,10 @@
 #include <fc/io/fstream.hpp>
 
 #include <boost/scope_exit.hpp>
+
+#include <rocksdb/perf_context.h>
+
+#include <iostream>
 
 #include <cstdint>
 #include <deque>
@@ -129,7 +134,9 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
+#ifndef ENABLE_STD_ALLOCATOR
          undo_all();
+#endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
          if (args.do_validate_invariants)
@@ -188,6 +195,10 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
+#ifdef ENABLE_STD_ALLOCATOR
+      initialize_indexes();
+#endif
+
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
@@ -225,9 +236,24 @@ uint32_t database::reindex( const open_args& args )
          {
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
+            {
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
+               "   (" << (get_free_memory() >> 20) << "M free, " <<
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
+
+               //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
+               //rocksdb::get_perf_context()->Reset();
+            }
             apply_block( itr.first, skip_flags );
+
+            if( cur_block_num % 100000 == 0 )
+            {
+               //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+               if( cur_block_num % 1000000 == 0 )
+               {
+                  dump_lb_call_counts();
+               }
+            }
 
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
                args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
@@ -241,6 +267,8 @@ uint32_t database::reindex( const open_args& args )
             args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
+
+         get_index< account_index >().indices().print_stats();
       });
 
       if( _block_log.head()->block_num() )
@@ -276,6 +304,10 @@ void database::close(bool rewind)
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
       clear_pending();
+
+#ifdef ENABLE_STD_ALLOCATOR
+      undo_all();
+#endif
 
       chainbase::database::flush();
       chainbase::database::close();
@@ -2190,7 +2222,7 @@ void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
 {
    FC_ASSERT( db != nullptr );
    const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
-   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+   auto itr = idx.lower_bound( boost::make_tuple( phase, db->head_block_time() ) );
 
    while( itr != idx.end() && itr->phase == phase )
    {
@@ -2914,6 +2946,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
+#ifndef ENABLE_STD_ALLOCATOR
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
@@ -2949,6 +2982,7 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
             elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
       }
    }
+#endif
 }
 
 void database::_apply_block( const signed_block& next_block )
@@ -3088,6 +3122,12 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_transactions();
    clear_expired_orders();
    clear_expired_delegations();
+
+   if( next_block.block_num() % 100000 == 0 )
+   {
+
+   }
+
    update_witness_schedule(*this);
 
    update_median_feed();
@@ -3125,6 +3165,7 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
+   trim_cache( 4500000 );
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
@@ -5073,7 +5114,7 @@ void database::validate_invariants()const
 {
    try
    {
-      const auto& account_idx = get_index<account_index>().indices().get<by_name>();
+      const auto& account_idx = get_index< account_index, by_name >();
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
@@ -5315,7 +5356,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       } );
 
       // Need to update all VESTS in accounts and the total VESTS in the dgpo
-      for( const auto& account : get_index<account_index>().indices() )
+      for( const auto& account : get_index< account_index, by_id >() )
       {
          modify( account, [&]( account_object& a )
          {

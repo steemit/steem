@@ -61,17 +61,3 @@ struct schema_reflect< chainbase::oid< T > >
 };
 
 } }
-
-namespace fc {
-
-template< typename T >
-struct get_typename< chainbase::oid<T> >
-{
-   static const char* name()
-   {
-      static std::string n = std::string("chainbase::oid<") + get_typename<T>::name() + ">";
-      return n.c_str();
-   }
-};
-
-}

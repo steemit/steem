@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
@@ -6,7 +7,6 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 
@@ -74,7 +74,7 @@ namespace steem { namespace chain {
 
    class savings_withdraw_object : public object< savings_withdraw_object_type, savings_withdraw_object >
    {
-      savings_withdraw_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( savings_withdraw_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -154,7 +154,7 @@ namespace steem { namespace chain {
     */
    class feed_history_object  : public object< feed_history_object_type, feed_history_object >
    {
-      feed_history_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( feed_history_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -284,7 +284,12 @@ namespace steem { namespace chain {
       limit_order_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< limit_order_object, limit_order_id_type, &limit_order_object::id > >,
-         ordered_non_unique< tag< by_expiration >, member< limit_order_object, time_point_sec, &limit_order_object::expiration > >,
+         ordered_unique< tag< by_expiration >,
+            composite_key< limit_order_object,
+               member< limit_order_object, time_point_sec, &limit_order_object::expiration >,
+               member< limit_order_object, limit_order_id_type, &limit_order_object::id >
+            >
+         >,
          ordered_unique< tag< by_price >,
             composite_key< limit_order_object,
                member< limit_order_object, price, &limit_order_object::sell_price >,
@@ -459,6 +464,20 @@ namespace steem { namespace chain {
    > reward_fund_index;
 
 } } // steem::chain
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::convert_request_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::escrow_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::liquidity_reward_balance_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::limit_order_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::withdraw_vesting_route_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::decline_voting_rights_request_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::reward_fund_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/account_object.hpp>

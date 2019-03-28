@@ -1,5 +1,5 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <fc/time.hpp>
 
 #include <steem/plugins/chain/abstract_block_producer.hpp>

@@ -1,8 +1,6 @@
 #pragma once
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
+
+#include <steem/chain/steem_fwd.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -11,11 +9,28 @@
 
 #include <steem/chain/buffer_type.hpp>
 
-namespace steem { namespace chain {
+#include <steem/chain/multi_index_types.hpp>
 
-using namespace boost::multi_index;
+#ifndef ENABLE_STD_ALLOCATOR
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+      object_type () = delete;                           \
+   public:
+#else
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+   public:                                               \
+      object_type () {}
+#endif
 
-using boost::multi_index_container;
+namespace steem {
+
+namespace protocol {
+
+struct asset;
+struct price;
+
+}
+
+namespace chain {
 
 using chainbase::object;
 using chainbase::oid;
@@ -39,6 +54,7 @@ enum object_type
 {
    dynamic_global_property_object_type,
    account_object_type,
+   account_metadata_object_type,
    account_authority_object_type,
    witness_object_type,
    transaction_object_type,
@@ -81,6 +97,7 @@ enum object_type
 
 class dynamic_global_property_object;
 class account_object;
+class account_metadata_object;
 class account_authority_object;
 class witness_object;
 class transaction_object;
@@ -122,6 +139,7 @@ class smt_token_emissions_object;
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
+typedef oid< account_metadata_object                > account_metadata_id_type;
 typedef oid< account_authority_object               > account_authority_id_type;
 typedef oid< witness_object                         > witness_id_type;
 typedef oid< transaction_object                     > transaction_object_id_type;
@@ -170,10 +188,24 @@ enum bandwidth_type
 
 } } //steem::chain
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template< typename T > struct is_static_length< chainbase::oid< T > > : public boost::true_type {};
+template< typename T > struct is_static_length< fc::fixed_string< T > > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::account_name_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset_symbol_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::price > : public boost::true_type {};
+
+} // mira
+#endif
+
 namespace fc
 {
 class variant;
 
+#ifndef ENABLE_STD_ALLOCATOR
 inline void to_variant( const steem::chain::shared_string& s, variant& var )
 {
    var = fc::string( steem::chain::to_string( s ) );
@@ -184,6 +216,7 @@ inline void from_variant( const variant& var, steem::chain::shared_string& s )
    auto str = var.as_string();
    s.assign( str.begin(), str.end() );
 }
+#endif
 
 template<typename T>
 void to_variant( const chainbase::oid<T>& var,  variant& vo )
@@ -196,6 +229,16 @@ void from_variant( const variant& vo, chainbase::oid<T>& var )
 {
    var._id = vo.as_int64();
 }
+
+template< typename T >
+struct get_typename< chainbase::oid< T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "chainbase::oid<" ) + get_typename< T >::name() + ">";
+      return n.c_str();
+   }
+};
 
 namespace raw
 {
@@ -212,6 +255,7 @@ void unpack( Stream& s, chainbase::oid<T>& id, uint32_t )
    s.read( (char*)&id._id, sizeof(id._id));
 }
 
+#ifndef ENABLE_STD_ALLOCATOR
 template< typename Stream >
 void pack( Stream& s, const chainbase::shared_string& ss )
 {
@@ -227,6 +271,7 @@ void unpack( Stream& s, chainbase::shared_string& ss, uint32_t depth )
    fc::raw::unpack( s, str, depth );
    steem::chain::from_string( ss, str );
 }
+#endif
 
 template< typename Stream, typename E, typename A >
 void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
@@ -300,6 +345,7 @@ T unpack_from_vector( const steem::chain::buffer_type& s )
 FC_REFLECT_ENUM( steem::chain::object_type,
                  (dynamic_global_property_object_type)
                  (account_object_type)
+                 (account_metadata_object_type)
                  (account_authority_object_type)
                  (witness_object_type)
                  (transaction_object_type)

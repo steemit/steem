@@ -1074,6 +1074,7 @@ void rc_plugin_impl::validate_database()
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
       int64_t max_rc = get_maximum_rc( account, rc_account );
 
+      assert( max_rc == rc_account.last_max_rc );
       FC_ASSERT( max_rc == rc_account.last_max_rc,
          "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
          ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );

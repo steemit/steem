@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/plugins/database_api/database_api.hpp>
 #include <steem/plugins/block_api/block_api.hpp>

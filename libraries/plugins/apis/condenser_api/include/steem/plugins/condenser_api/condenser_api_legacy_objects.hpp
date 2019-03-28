@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/condenser_api/condenser_api_legacy_operations.hpp>
 
 #include <steem/plugins/block_api/block_api_objects.hpp>

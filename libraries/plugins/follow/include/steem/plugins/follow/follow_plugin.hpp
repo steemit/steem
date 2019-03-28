@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>

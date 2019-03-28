@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <appbase/application.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/plugins/chain/abstract_block_producer.hpp>

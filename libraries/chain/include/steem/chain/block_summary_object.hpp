@@ -40,5 +40,13 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::block_summary_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT( steem::chain::block_summary_object, (id)(block_id) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::block_summary_object, steem::chain::block_summary_index )

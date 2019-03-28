@@ -1,12 +1,11 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 
 namespace steem { namespace chain {
@@ -46,7 +45,7 @@ namespace steem { namespace chain {
 
    class comment_object : public object < comment_object_type, comment_object >
    {
-      comment_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -115,7 +114,7 @@ namespace steem { namespace chain {
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
    {
-      comment_content_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_content_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -140,6 +139,8 @@ namespace steem { namespace chain {
     */
    class comment_vote_object : public object< comment_vote_object_type, comment_vote_object>
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_vote_object )
+
       public:
          template< typename Constructor, typename Allocator >
          comment_vote_object( Constructor&& c, allocator< Allocator > a )
@@ -259,6 +260,14 @@ namespace steem { namespace chain {
    > comment_content_index;
 
 } } // steem::chain
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::comment_vote_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)

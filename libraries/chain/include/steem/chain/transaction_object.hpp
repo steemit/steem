@@ -1,10 +1,12 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/transaction.hpp>
 
 #include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
+//#include <boost/multi_index/hashed_index.hpp>
 
 namespace steem { namespace chain {
 
@@ -18,7 +20,7 @@ namespace steem { namespace chain {
     */
    class transaction_object : public object< transaction_object_type, transaction_object >
    {
-      transaction_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( transaction_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -43,8 +45,13 @@ namespace steem { namespace chain {
       transaction_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< transaction_object, transaction_object_id_type, &transaction_object::id > >,
-         hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
-         ordered_non_unique< tag< by_expiration >, member<transaction_object, time_point_sec, &transaction_object::expiration > >
+         ordered_unique< tag< by_trx_id >, member< transaction_object, transaction_id_type, &transaction_object::trx_id > >,
+         ordered_unique< tag< by_expiration >,
+            composite_key< transaction_object,
+               member<transaction_object, time_point_sec, &transaction_object::expiration >,
+               member<transaction_object, transaction_object::id_type, &transaction_object::id >
+            >
+         >
       >,
       allocator< transaction_object >
    > transaction_index;

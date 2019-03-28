@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/version.hpp>
 
@@ -10,6 +11,8 @@ namespace steem { namespace chain {
 
    class hardfork_property_object : public object< hardfork_property_object_type, hardfork_property_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( hardfork_property_object )
+
       public:
          template< typename Constructor, typename Allocator >
          hardfork_property_object( Constructor&& c, allocator< Allocator > a )
