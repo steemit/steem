@@ -36,6 +36,7 @@ namespace steem { namespace plugins { namespace sps {
     inactive = 0,
     active = 1,
     expired = 2,
+    votable = 3,
     all = -1,
   };
 
@@ -71,6 +72,8 @@ namespace steem { namespace plugins { namespace sps {
       return proposal_status::inactive;
     else if(_status == "expired")
       return proposal_status::expired;
+    else if(_status == "votable")
+      return proposal_status::votable;
     else
       return proposal_status::all;  /// Consider exception throw when no constant was matched...
   }
@@ -234,6 +237,7 @@ FC_REFLECT_ENUM(steem::plugins::sps::proposal_status,
   (inactive)
   (active)
   (expired)
+  (votable)
   (all)
   );
 
