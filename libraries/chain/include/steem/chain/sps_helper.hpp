@@ -24,7 +24,7 @@ class sps_helper
          /// Now remove all votes specific to given proposal.
          auto propI = byVoterIdx.lower_bound(boost::make_tuple(proposal->id, account_name_type()));
 
-         while(propI != byVoterIdx.end() && static_cast< size_t >( propI->id ) == static_cast< size_t >( proposal->id ) )
+         while(propI != byVoterIdx.end() && static_cast< size_t >( propI->proposal_id ) == static_cast< size_t >( proposal->id ) )
          {
             propI = votesIndex. template erase<by_proposal_voter>(propI);
          }
