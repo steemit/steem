@@ -138,12 +138,15 @@ DEFINE_API_IMPL(sps_api_impl, find_proposals) {
   FC_ASSERT(args.id_set.size() <= SPS_API_SINGLE_QUERY_LIMIT);
 
   find_proposals_return result;
-  
+  result.reserve(args.id_set.size());
+
+  auto currentTime = _db.head_block_time();
+
   std::for_each(args.id_set.begin(), args.id_set.end(), [&](auto& id) {
     auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(id);
     if (po != nullptr)
     {
-      result.emplace_back(api_proposal_object(*po));
+      result.emplace_back(api_proposal_object(*po, currentTime));
     }
   });
 
@@ -157,6 +160,8 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
   list_proposals_return result;
   result.reserve(args.limit);
 
+  auto currentTime = _db.head_block_time();
+
   switch(args.order_by)
   {
     case by_creator:
@@ -169,7 +174,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
         args.last_id, 
-        [&](auto& proposal) { return api_proposal_object(proposal); } 
+        [&currentTime](auto& proposal) { return api_proposal_object(proposal, currentTime); }
       );
     }
     break;
@@ -184,7 +189,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
         args.last_id, 
-        [&](auto& proposal) { return api_proposal_object(proposal); } 
+        [&currentTime](auto& proposal) { return api_proposal_object(proposal, currentTime); }
       );
     }
     break;
@@ -199,7 +204,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
         args.last_id, 
-        [&](auto& proposal) { return api_proposal_object(proposal); } 
+        [&currentTime](auto& proposal) { return api_proposal_object(proposal, currentTime); }
       );
     }
     break;
@@ -214,7 +219,7 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
         args.order_direction == sps::order_direction_type::direction_ascending,
         (args.start.as<std::string>()).empty(),
         args.last_id, 
-        [&](auto& proposal) { return api_proposal_object(proposal); } 
+        [&currentTime](auto& proposal) { return api_proposal_object(proposal, currentTime); }
       );
     }
     break;
@@ -239,6 +244,8 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
 
   list_voter_proposals_return result;
 
+  auto current_time = _db.head_block_time();
+
   const auto& idx = _db.get_index<proposal_vote_index, by_voter_proposal>();
   auto itr = idx.lower_bound(args.start.as<account_name_type>());
   auto end = idx.end();
@@ -248,8 +255,8 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   {
     auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
     FC_ASSERT(po != nullptr, "Proposal with given id does not exist");
-    auto apo = api_proposal_object(*po);
-    if (args.status == proposal_status::all || apo.get_status(_db.head_block_time()) == args.status)
+    auto apo = api_proposal_object(*po, current_time);
+    if (args.status == proposal_status::all || apo.get_status(current_time) == args.status)
     {
       result[itr->voter].push_back(apo);
       ++proposals_count;
