@@ -81,7 +81,7 @@ namespace steem { namespace plugins { namespace sps {
   {
     api_proposal_object() = default;
 
-    api_proposal_object(const proposal_object& po) : 
+    api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
       id(po.id),
       creator(po.creator),
       receiver(po.receiver),
@@ -90,7 +90,8 @@ namespace steem { namespace plugins { namespace sps {
       daily_pay(po.daily_pay),
       subject(to_string(po.subject)),
       permlink(to_string(po.permlink)),
-      total_votes(po.total_votes)
+      total_votes(po.total_votes),
+      status(get_status(current_time))
     {}
 
     //internal key
@@ -119,6 +120,9 @@ namespace steem { namespace plugins { namespace sps {
 
     //This will be calculate every maintenance period
     uint64_t total_votes = 0;
+
+    /// Status of given proposal evaluated agaist current head block time, so it can vary during subsequent calls.
+    proposal_status status = proposal_status::all;
 
     const bool is_active(const time_point_sec &head_time) const
     {
@@ -243,6 +247,7 @@ FC_REFLECT(steem::plugins::sps::api_proposal_object,
   (subject)
   (permlink)
   (total_votes)
+  (status)
   );
 
 FC_REFLECT(steem::plugins::sps::find_proposals_args, 
