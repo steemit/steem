@@ -55,6 +55,16 @@ void sort_results_helper(RESULT_TYPE& result, order_direction_type order_directi
   }
 }
 
+inline bool filter_proposal_status(const api_proposal_object& po, const proposal_status filter, const time_point_sec& current_time)
+{
+   if(filter == proposal_status::all)
+      return true;
+
+   auto prop_status = po.get_status(current_time);
+   return filter == prop_status ||
+      (filter == proposal_status::votable && (prop_status == proposal_status::active || prop_status == proposal_status::inactive));
+}
+
 template<typename RESULT_TYPE>
 void sort_results(RESULT_TYPE& result, order_by_type order_by, order_direction_type order_direction)
 {
@@ -229,9 +239,9 @@ DEFINE_API_IMPL(sps_api_impl, list_proposals) {
 
   if (args.status != proposal_status::all) // avoid not needed rewrite in case of active set to all
   {
-    // filter with active flag
+    // filter with flag(s) passed as an argument
     result = filter(result, [&](const auto& proposal) {
-      return args.status == proposal.get_status(_db.head_block_time());
+      return filter_proposal_status(proposal, args.status, _db.head_block_time());
     });
   }
 
@@ -256,7 +266,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
     auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
     FC_ASSERT(po != nullptr, "Proposal with given id does not exist");
     auto apo = api_proposal_object(*po, current_time);
-    if (args.status == proposal_status::all || apo.get_status(current_time) == args.status)
+    if (filter_proposal_status(apo, args.status, current_time))
     {
       result[itr->voter].push_back(apo);
       ++proposals_count;
