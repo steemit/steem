@@ -42,12 +42,11 @@ void sps_processor::remove_proposals( const time_point_sec& head_time )
 void sps_processor::find_active_proposals( const time_point_sec& head_time, t_proposals& proposals )
 {
    const auto& pidx = db.get_index< proposal_index >().indices().get< by_start_date >();
-   auto it = pidx.begin();
 
    std::for_each( pidx.begin(), pidx.upper_bound( head_time ), [&]( auto& proposal )
                                              {
                                                 if( head_time >= proposal.start_date && head_time <= proposal.end_date )
-                                                   proposals.emplace_back( *it );                                                
+                                                   proposals.emplace_back( proposal );                                                
                                              } );
 }
 

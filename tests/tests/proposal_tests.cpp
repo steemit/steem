@@ -110,6 +110,88 @@ BOOST_AUTO_TEST_CASE( generating_payments )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( generating_payments_01 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: generating payments" );
+
+      ACTORS( (tester001)(tester002)(tester003)(tester004)(tester005) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      const auto nr_proposals = 5;
+      std::vector< int64_t > proposals_id;
+      flat_map< std::string, asset > before_tbds;
+
+      struct initial_data
+      {
+         std::string account;
+         fc::ecc::private_key key;
+      };
+
+      std::vector< initial_data > inits = {
+                                       {"tester001", tester001_private_key },
+                                       {"tester002", tester002_private_key },
+                                       {"tester003", tester003_private_key },
+                                       {"tester004", tester004_private_key },
+                                       {"tester005", tester005_private_key },
+                                       };
+
+      for( auto item : inits )
+      {
+         FUND( item.account, ASSET( "400.000 TESTS" ) );
+         FUND( item.account, ASSET( "400.000 TBD" ) );
+         vest(STEEM_INIT_MINER_NAME, item.account, ASSET( "300.000 TESTS" ));
+      }
+
+      auto start_date = db->head_block_time();
+      const auto end_time_shift = fc::hours( 5 );
+      auto end_date = start_date + end_time_shift;
+
+      auto daily_pay = ASSET( "24.000 TBD" );
+      auto paid = ASSET( "5.000 TBD" );//because only 5 hours
+
+      FUND( STEEM_TREASURY_ACCOUNT, ASSET( "5000000.000 TBD" ) );
+      //=====================preparing=====================
+      for( int32_t i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i % inits.size() ];
+         proposals_id.push_back( create_proposal( item.account, item.account, start_date, end_date, daily_pay, item.key ) );
+         generate_block();
+      }
+
+      for( int32_t i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i % inits.size() ];
+         vote_proposal( item.account, proposals_id, true/*approve*/, item.key );
+         generate_block();
+      }
+
+      for( auto item : inits )
+      {
+         const account_object& account = db->get_account( item.account );
+         before_tbds[ item.account ] = account.sbd_balance;
+      }
+
+      generate_blocks( start_date + end_time_shift + fc::seconds( 10 ), false );
+
+      for( auto item : inits )
+      {
+         const account_object& account = db->get_account( item.account );
+         auto after_tbd = account.sbd_balance;
+         auto before_tbd = before_tbds[ item.account ];
+         BOOST_REQUIRE( before_tbd == after_tbd - paid );
+      }
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( proposals_maintenance)
 {
    try
