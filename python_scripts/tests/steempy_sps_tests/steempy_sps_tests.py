@@ -4,6 +4,8 @@ from uuid import uuid4
 from time import sleep
 import logging
 import sys
+import os
+import steem_utils.steem_runner
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
@@ -305,26 +307,32 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("creator", help = "Account to create proposals with")
     parser.add_argument("receiver", help = "Account to receive funds")
-    parser.add_argument("wif", help = "Private key for accout for proposal generation")
-    parser.add_argument("--node-address", help = "IP address and port of steem node", default = "http://127.0.0.1:8090", dest = "node_url")
     parser.add_argument("--no-erase-proposal", action='store_false', dest = "no_erase_proposal", help = "Do not erase proposal created with this test")
 
     args = parser.parse_args()
 
-    logger.info("Using node at: {}".format(args.node_url))
+    node = steem_utils.steem_runner.SteemNode("/home/dariusz-work/Builds/steem/programs/steemd/steemd", "/home/dariusz-work/steem-data", "./steem_utils/resources/config.ini.in")
+    node_url = node.get_node_url()
+    wif = node.get_from_config('private-key')[0]
+
+    logger.info("Using node at: {}".format(node_url))
+    logger.info("Using private-key: {}".format(wif))
 
     subject = str(uuid4())
     logger.info("Subject of testing proposal is set to: {}".format(subject))
-
-    test_create_proposal(args.node_url, args.creator, args.receiver, args.wif, subject)
-    sleep(6)
-    test_list_proposals(args.node_url, args.creator, args.wif, subject)
-    test_find_proposals(args.node_url, args.creator, args.wif, subject)
-    test_vote_proposal(args.node_url, args.creator, args.wif, subject)
-    test_list_voter_proposals(args.node_url, args.creator, args.wif, subject)
-    sleep(6)
-    if args.no_erase_proposal:
-        test_remove_proposal(args.node_url, args.creator, args.wif, subject)
-    sleep(6)
-    test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
-    sleep(6)
+    node.run_steem_node()
+    if node.is_running():
+        test_create_proposal(node_url, args.creator, args.receiver, wif, subject)
+        sleep(6)
+        test_list_proposals(node_url, args.creator, wif, subject)
+        test_find_proposals(node_url, args.creator, wif, subject)
+        test_vote_proposal(node_url, args.creator, wif, subject)
+        test_list_voter_proposals(node_url, args.creator, wif, subject)
+        sleep(6)
+        if args.no_erase_proposal:
+            test_remove_proposal(node_url, args.creator, wif, subject)
+        test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
+        sleep(6)
+        node.stop_steem_node()
+        sys.exit(0)
+    sys.exit(1)
