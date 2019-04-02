@@ -140,7 +140,7 @@ public:
    virtual std::mutex& get_lock() = 0;
 
 protected:
-   std::shared_ptr< multi_index_cache_manager< Value > > _multi_index_cache_manager;
+   std::weak_ptr< multi_index_cache_manager< Value > > _multi_index_cache_manager;
 
 private:
    virtual void set_multi_index_cache_manager( std::shared_ptr< multi_index_cache_manager< Value > >&& m )
@@ -387,14 +387,14 @@ public:
 
    virtual void update( cache_key_type k, Value&&v ) override final
    {
-      assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
-      abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ) );
+      assert( !abstract_index_cache< Value >::_multi_index_cache_manager.expired() );
+      abstract_index_cache< Value >::_multi_index_cache_manager.lock()->update( _cache[ key( k ) ], std::move( v ) );
    }
 
    virtual void update( cache_key_type k, Value&& v, const std::vector< size_t >& modified_indices ) override final
    {
-      assert( abstract_index_cache< Value >::_multi_index_cache_manager != nullptr );
-      abstract_index_cache< Value >::_multi_index_cache_manager->update( _cache[ key( k ) ], std::move( v ), modified_indices );
+      assert( !abstract_index_cache< Value >::_multi_index_cache_manager.expired() );
+      abstract_index_cache< Value >::_multi_index_cache_manager.lock()->update( _cache[ key( k ) ], std::move( v ), modified_indices );
    }
 
    virtual ptr_type get( cache_key_type k ) override final
@@ -415,7 +415,7 @@ public:
 
    virtual std::mutex& get_lock() override final
    {
-      return abstract_index_cache< Value >::_multi_index_cache_manager->get_lock();
+      return abstract_index_cache< Value >::_multi_index_cache_manager.lock()->get_lock();
    }
 };
 
