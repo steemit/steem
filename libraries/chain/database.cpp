@@ -5081,12 +5081,14 @@ void database::apply_hardfork( uint32_t hardfork )
                   auth.account = STEEM_TREASURY_ACCOUNT;
                   auth.owner.weight_threshold = 1;
                   auth.active.weight_threshold = 1;
+                  auth.posting.weight_threshold = 1;
                });
             else
                modify( *account_auth, [&]( account_authority_object& auth )
                {
                   auth.owner.weight_threshold = 1;
                   auth.active.weight_threshold = 1;
+                  auth.posting.weight_threshold = 1;
                });
          }
          break;
