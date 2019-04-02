@@ -307,32 +307,59 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("creator", help = "Account to create proposals with")
     parser.add_argument("receiver", help = "Account to receive funds")
+    parser.add_argument("wif", help="Private key for creator account")
+    parser.add_argument("--node-url", dest="node_url", default="http://127.0.0.1:8090", help="Url of working steem node")
+    parser.add_argument("--run-steemd", dest="steemd_path", help = "Path to steemd executable. Warning: using this option will erase contents of selected steemd working directory.")
+    parser.add_argument("--working_dir", dest="steemd_working_dir", default="/tmp/steemd-data/", help = "Path to steemd working directory")
+    parser.add_argument("--config_path", dest="steemd_config_path", default="./steem_utils/resources/config.ini.in",help = "Path to source config.ini file")
     parser.add_argument("--no-erase-proposal", action='store_false', dest = "no_erase_proposal", help = "Do not erase proposal created with this test")
 
     args = parser.parse_args()
 
-    node = steem_utils.steem_runner.SteemNode("/home/dariusz-work/Builds/steem/programs/steemd/steemd", "/home/dariusz-work/steem-data", "./steem_utils/resources/config.ini.in")
-    node_url = node.get_node_url()
-    wif = node.get_from_config('private-key')[0]
+    node = None
+    
+    if args.steemd_path:
+        logger.info("Running steemd via {} in {} with config {}".format(args.steemd_path, 
+            args.steemd_working_dir, 
+            args.steemd_config_path)
+        )
+        
+        node = steem_utils.steem_runner.SteemNode(
+            args.steemd_path, 
+            args.steemd_working_dir, 
+            args.steemd_config_path
+        )
+    
+    node_url = args.node_url
+    wif = args.wif
 
     logger.info("Using node at: {}".format(node_url))
     logger.info("Using private-key: {}".format(wif))
 
     subject = str(uuid4())
     logger.info("Subject of testing proposal is set to: {}".format(subject))
-    node.run_steem_node()
-    if node.is_running():
-        test_create_proposal(node_url, args.creator, args.receiver, wif, subject)
-        sleep(6)
-        test_list_proposals(node_url, args.creator, wif, subject)
-        test_find_proposals(node_url, args.creator, wif, subject)
-        test_vote_proposal(node_url, args.creator, wif, subject)
-        test_list_voter_proposals(node_url, args.creator, wif, subject)
-        sleep(6)
-        if args.no_erase_proposal:
-            test_remove_proposal(node_url, args.creator, wif, subject)
-        test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
-        sleep(6)
-        node.stop_steem_node()
-        sys.exit(0)
-    sys.exit(1)
+    if node is not None:
+        node.run_steem_node(["--enable-stale-production"])
+    try:
+        if node is None or node.is_running():
+            test_create_proposal(node_url, args.creator, args.receiver, wif, subject)
+            sleep(6)
+            test_list_proposals(node_url, args.creator, wif, subject)
+            test_find_proposals(node_url, args.creator, wif, subject)
+            test_vote_proposal(node_url, args.creator, wif, subject)
+            test_list_voter_proposals(node_url, args.creator, wif, subject)
+            sleep(6)
+            if args.no_erase_proposal:
+                test_remove_proposal(node_url, args.creator, wif, subject)
+            test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
+            sleep(6)
+            if node is not None:
+                node.stop_steem_node()
+            sys.exit(0)
+        sys.exit(1)
+    except Exception as ex:
+        logger.error("Exception: {}".format(ex))
+        if node is not None: 
+            node.stop_steem_node()
+        sys.exit(1)
+
