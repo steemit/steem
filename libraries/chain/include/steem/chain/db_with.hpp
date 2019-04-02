@@ -53,45 +53,76 @@ struct pending_transactions_restorer
 
    ~pending_transactions_restorer()
    {
+      auto start = fc::time_point::now();
+      bool apply_trxs = true;
+      uint32_t applied_txs = 0;
+      uint32_t postponed_txs = 0;
+
       for( const auto& tx : _db._popped_tx )
       {
-         try {
-            if( !_db.is_known_transaction( tx.id() ) ) {
-               // since push_transaction() takes a signed_transaction,
-               // the operation_results field will be ignored.
-               _db._push_transaction( tx );
-            }
-         } catch ( const fc::exception&  ) {
+         if( apply_trxs && fc::time_point::now() - start > STEEM_PENDING_TRANSACTION_EXECUTION_LIMIT ) apply_trxs = false;
+
+         if( apply_trxs )
+         {
+            try {
+               if( !_db.is_known_transaction( tx.id() ) ) {
+                  // since push_transaction() takes a signed_transaction,
+                  // the operation_results field will be ignored.
+                  _db._push_transaction( tx );
+                  applied_txs++;
+               }
+            } catch ( const fc::exception&  ) {}
+         }
+         else
+         {
+            _db._pending_tx.push_back( tx );
+            postponed_txs++;
          }
       }
       _db._popped_tx.clear();
       for( const signed_transaction& tx : _pending_transactions )
       {
-         try
+         if( apply_trxs && fc::time_point::now() - start > STEEM_PENDING_TRANSACTION_EXECUTION_LIMIT ) apply_trxs = false;
+
+         if( apply_trxs )
          {
-            if( !_db.is_known_transaction( tx.id() ) ) {
-               // since push_transaction() takes a signed_transaction,
-               // the operation_results field will be ignored.
-               _db._push_transaction( tx );
+            try
+            {
+               if( !_db.is_known_transaction( tx.id() ) ) {
+                  // since push_transaction() takes a signed_transaction,
+                  // the operation_results field will be ignored.
+                  _db._push_transaction( tx );
+                  applied_txs++;
+               }
+            }
+            catch( const transaction_exception& e )
+            {
+               dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
+                  ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
+               dlog( "The invalid transaction caused exception ${e}", ("e", e.to_detail_string()) );
+               dlog( "${t}", ("t", tx) );
+            }
+            catch( const fc::exception& e )
+            {
+
+               /*
+               dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
+                  ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
+               dlog( "The invalid pending transaction caused exception ${e}", ("e", e.to_detail_string() ) );
+               dlog( "${t}", ("t", tx) );
+               */
             }
          }
-         catch( const transaction_exception& e )
+         else
          {
-            dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
-               ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
-            dlog( "The invalid transaction caused exception ${e}", ("e", e.to_detail_string()) );
-            dlog( "${t}", ("t", tx) );
+            _db._pending_tx.push_back( tx );
+            postponed_txs++;
          }
-         catch( const fc::exception& e )
-         {
+      }
 
-            /*
-            dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
-               ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
-            dlog( "The invalid pending transaction caused exception ${e}", ("e", e.to_detail_string() ) );
-            dlog( "${t}", ("t", tx) );
-            */
-         }
+      if( postponed_txs++ )
+      {
+         wlog( "Postponed ${p} pending transactions. ${a} were applied.", ("p", postponed_txs)("a", applied_txs) );
       }
    }
 
