@@ -15,7 +15,6 @@
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/webserver/webserver_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin.hpp>
-#include <steem/plugins/sps/sps_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>

@@ -13,7 +13,6 @@
 #include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 #include <steem/plugins/database_api/database_api_plugin.hpp>
 #include <steem/plugins/sps_api/sps_api.hpp>
-#include <steem/plugins/sps/sps_plugin.hpp>
 
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
