@@ -108,6 +108,7 @@ namespace steem { namespace chain {
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
+            fc::variant database_cfg;
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
