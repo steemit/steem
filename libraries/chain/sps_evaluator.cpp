@@ -87,7 +87,7 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
       {
          //checking if proposal id exists
          auto found_id = pidx.find( id );
-         if( found_id == pidx.end() )
+         if( found_id == pidx.end() || found_id->removed )
             continue;
 
          auto found = pvidx.find( boost::make_tuple( o.voter, id ) );
@@ -120,6 +120,34 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
       ilog("Attempting to evaluate remove_proposal_operation: ${o}", ("o", op));
 
       sps_helper::remove_proposals( _db, op.proposal_ids, op.proposal_owner );
+
+      /*
+         Because of performance removing proposals are restricted due to the `sps_remove_threshold` threshold.
+         Therefore all proposals are marked with flag `removed` and `end_date` is moved beyond 'head_time + STEEM_PROPOSAL_MAINTENANCE_CLEANUP`
+         flag `removed` - it's information for 'sps_api' plugin
+         moving `end_date` - triggers the algorithm in `sps_processor::remove_proposals`
+
+         When automatic actions will be introduced, this code will disappear.
+      */
+      for( const auto id : op.proposal_ids )
+      {
+         const auto& pidx = _db.get_index< proposal_index >().indices().get< by_id >();
+
+         auto found_id = pidx.find( id );
+         if( found_id == pidx.end() || found_id->removed )
+            continue;
+
+         _db.modify( *found_id, [&]( proposal_object& proposal )
+         {
+            proposal.removed = true;
+
+            auto head_date = _db.head_block_time();
+            auto new_end_date = head_date - fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP );
+
+            proposal.end_date = new_end_date;
+         } );
+      }
+
    }
    FC_CAPTURE_AND_RETHROW( (op) )
 }

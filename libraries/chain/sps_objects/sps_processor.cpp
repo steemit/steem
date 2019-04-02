@@ -18,6 +18,8 @@ using steem::chain::sps_helper;
 using steem::chain::dynamic_global_property_object;
 using steem::chain::block_notification;
 
+const std::string sps_processor::name = "sps_processor";
+
 bool sps_processor::is_maintenance_period( const time_point_sec& head_time ) const
 {
    return db.get_dynamic_global_properties().next_maintenance_time <= head_time;
@@ -35,8 +37,14 @@ void sps_processor::remove_proposals( const time_point_sec& head_time )
    auto found = byEndDateIdx.upper_bound( head_time );
    auto itr = byEndDateIdx.begin();
 
+   sps_removing_reducer obj_perf( db.get_sps_remove_threshold() );
+
    while( itr != found )
-      itr = sps_helper::remove_proposal< by_end_date >( itr, proposalIndex, votesIndex, byVoterIdx );
+   {
+      itr = sps_helper::remove_proposal< by_end_date >( itr, proposalIndex, votesIndex, byVoterIdx, obj_perf );
+      if( obj_perf.done )
+         break;
+   }
 }
 
 void sps_processor::find_active_proposals( const time_point_sec& head_time, t_proposals& proposals )
@@ -191,9 +199,15 @@ void sps_processor::update_settings( const time_point_sec& head_time )
 
 void sps_processor::remove_old_proposals( const block_notification& note )
 {
-   //auto head_time = note.block.timestamp;
-   
-   // remove_proposals( head_time );
+   auto head_time = note.block.timestamp;
+
+   if( db.get_benchmark_dumper().is_enabled() )
+      db.get_benchmark_dumper().begin();
+
+   remove_proposals( head_time );
+
+   if( db.get_benchmark_dumper().is_enabled() )
+      db.get_benchmark_dumper().end( sps_processor::name );
 }
 
 void sps_processor::make_payments( const block_notification& note ) 

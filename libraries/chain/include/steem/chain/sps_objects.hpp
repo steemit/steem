@@ -54,6 +54,8 @@ class proposal_object : public object< proposal_object_type, proposal_object >
       //This will be calculate every maintenance period
       uint64_t total_votes = 0;
 
+      bool removed = false;
+
       time_point_sec get_end_date_with_delay() const
       {
          time_point_sec ret = end_date;

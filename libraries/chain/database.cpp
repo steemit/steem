@@ -168,6 +168,7 @@ void database::open( const open_args& args )
 
       _shared_file_full_threshold = args.shared_file_full_threshold;
       _shared_file_scale_rate = args.shared_file_scale_rate;
+      _sps_remove_threshold = args.sps_remove_threshold;
 
       auto account = find< account_object, by_name >( "nijeah" );
       if( account != nullptr && account->to_withdraw < 0 )

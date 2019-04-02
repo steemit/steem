@@ -266,7 +266,7 @@ void database_fixture::open_database()
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
       args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
-      args.database_cfg = steem::utilities::default_database_configuration();
+      args.sps_remove_threshold = 20;
       db->open(args);
    }
    else
@@ -990,6 +990,17 @@ bool sps_proposal_database_fixture::exist_proposal( int64_t id )
 {
    const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_id >();
    return proposal_idx.find( id ) != proposal_idx.end();
+}
+
+const proposal_object* sps_proposal_database_fixture::find_proposal( int64_t id )
+{
+   const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_id >();
+   auto found = proposal_idx.find( id );
+
+   if( found != proposal_idx.end() )
+      return &(*found);
+   else
+      return nullptr;
 }
 
 list_proposals_return sps_proposal_database_fixture::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id) 
