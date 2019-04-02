@@ -444,12 +444,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {
     empty_initialize();
-    static std::shared_ptr< index_cache< value_type, key_type, key_from_value > > static_index_cache;
-    if ( static_index_cache == nullptr )
-    {
-       static_index_cache = std::make_shared< index_cache< value_type, key_type, key_from_value > >();
-       _cache->set_index_cache( COLUMN_INDEX, static_index_cache );
-    }
+    _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
   }
 
   ordered_index_impl(

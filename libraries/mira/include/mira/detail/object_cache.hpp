@@ -165,7 +165,7 @@ class multi_index_cache_manager :
 public:
    multi_index_cache_manager() = default;
    ~multi_index_cache_manager() = default;
-   typedef std::shared_ptr< abstract_index_cache< Value > >              index_cache_type;
+   typedef std::unique_ptr< abstract_index_cache< Value > >              index_cache_type;
    typedef std::shared_ptr< Value >                                      ptr_type;
    typedef std::weak_ptr< Value >                                        manager_ptr_type;
    typedef cache_factory< Value >                                        factory_type;
@@ -176,10 +176,10 @@ private:
    std::mutex                           _lock;
 
 public:
-   void set_index_cache( size_t index, index_cache_type index_cache )
+   void set_index_cache( size_t index, index_cache_type&& index_cache )
    {
       index_cache->set_multi_index_cache_manager( this->shared_from_this() );
-      _index_caches[ index ] = index_cache;
+      _index_caches[ index ] = std::move( index_cache );
    }
 
    virtual bool purgeable( boost::any v )
