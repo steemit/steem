@@ -104,6 +104,7 @@ namespace steem { namespace chain {
             uint64_t shared_file_size = 0;
             uint16_t shared_file_full_threshold = 0;
             uint16_t shared_file_scale_rate = 0;
+            uint16_t sps_remove_threshold = 0;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
@@ -563,6 +564,16 @@ namespace steem { namespace chain {
             return _current_op_in_trx;
          }
 
+         int16_t get_sps_remove_threshold() const
+         {
+            return _sps_remove_threshold;
+         }
+
+         util::advanced_benchmark_dumper& get_benchmark_dumper()
+         {
+            return _benchmark_dumper;
+         }
+
       private:
 
          std::unique_ptr< database_impl > _my;
@@ -598,6 +609,7 @@ namespace steem { namespace chain {
 
          uint16_t                      _shared_file_full_threshold = 0;
          uint16_t                      _shared_file_scale_rate = 0;
+         int16_t                       _sps_remove_threshold = -1;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;

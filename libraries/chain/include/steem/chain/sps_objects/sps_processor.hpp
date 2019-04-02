@@ -19,6 +19,8 @@ class sps_processor
 
    private:
 
+      const static std::string name;
+
       //Get number of microseconds for 1 day( daily_ms )
       const int64_t daily_seconds = fc::days(1).to_seconds();
 

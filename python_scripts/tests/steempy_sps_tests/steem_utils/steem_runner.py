@@ -86,7 +86,10 @@ class SteemNode(object):
         parameters = [
             self.steem_executable,
             "-d",
-            self.working_dir
+            self.working_dir,
+            "--advanced-benchmark",
+            "--sps-remove-threshold",
+            "-1"
         ]
 
         parameters = parameters + additional_params
