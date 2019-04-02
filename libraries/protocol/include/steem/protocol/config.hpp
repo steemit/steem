@@ -300,6 +300,9 @@
 #define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
 #define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
+#define STEEM_BLOCK_GENERATION_POSTPONED_TX_LIMIT 5
+#define STEEM_PENDING_TRANSACTION_EXECUTION_LIMIT fc::milliseconds(200)
+
 /**
  *  Reserved Account IDs with special meaning
  */
