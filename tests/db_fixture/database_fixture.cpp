@@ -904,14 +904,12 @@ void sps_proposal_database_fixture::plugin_prepare()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
 
-   appbase::app().register_plugin< sps_plugin >();
    appbase::app().register_plugin< sps_api_plugin >();
    db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    db_plugin->logging = false;
    appbase::app().initialize<
-      steem::plugins::sps::sps_plugin,
       steem::plugins::sps::sps_api_plugin,
       steem::plugins::debug_node::debug_node_plugin
    >( argc, argv );
