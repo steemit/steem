@@ -57,6 +57,7 @@
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
 #define MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 ) /* 4G */
+#define MIRA_WRITE_BUFFER_SIZE (32 << 20) // 32M
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -228,9 +229,10 @@ public:
 
       opts.allow_mmap_reads = true;
 
-      opts.write_buffer_size = 2048 * 1024;              // 128k
-      opts.max_bytes_for_level_base = 5 * 1024 * 1024;  // 1MB
-      opts.target_file_size_base = 100 * 1024;          // 100k
+      opts.write_buffer_size = 128 << 10;       // 128k
+      opts.max_bytes_for_level_base = 5 << 20;  // 1MB
+      opts.target_file_size_base = 100 << 10;   // 100k
+      opts.write_buffer_size = 4 << 10;
       opts.max_write_buffer_number = 16;
       opts.max_background_compactions = 16;
       opts.max_background_flushes = 16;
