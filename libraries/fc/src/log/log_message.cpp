@@ -52,8 +52,7 @@ namespace fc
       my->line        = line;
       my->method      = method;
       my->timestamp   = time_point::now();
-      const char* current_task_desc = fc::thread::current().current_task_desc();
-      my->task_name   = current_task_desc ? current_task_desc : "?unnamed?";
+      my->task_name   = "";
    }
 
    log_context::log_context( const variant& v )
