@@ -171,18 +171,34 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("creator", help = "Account to create test accounts with")
-    parser.add_argument("treasury", help = "Account to create test accounts with")
+    parser.add_argument("treasury", help = "Treasury account")
+    parser.add_argument("wif", help="Private key for creator account")
+    parser.add_argument("--node-url", dest="node_url", default="http://127.0.0.1:8090", help="Url of working steem node")
+    parser.add_argument("--run-steemd", dest="steemd_path", help = "Path to steemd executable. Warning: using this option will erase contents of selected steemd working directory.")
+    parser.add_argument("--working_dir", dest="steemd_working_dir", default="/tmp/steemd-data/", help = "Path to steemd working directory")
+    parser.add_argument("--config_path", dest="steemd_config_path", default="./steem_utils/resources/config.ini.in",help = "Path to source config.ini file")
+    parser.add_argument("--no-erase-proposal", action='store_false', dest = "no_erase_proposal", help = "Do not erase proposal created with this test")
+
 
     args = parser.parse_args()
 
-    node = steem_utils.steem_runner.SteemNode(
-        "/home/dariusz-work/Builds/steem2/programs/steemd/steemd", 
-        "/home/dariusz-work/steem-data", 
-        "./steem_utils/resources/config.ini.in"
-    )
+    node = None
+
+    if args.steemd_path:
+        logger.info("Running steemd via {} in {} with config {}".format(args.steemd_path, 
+            args.steemd_working_dir, 
+            args.steemd_config_path)
+        )
+        
+        node = steem_utils.steem_runner.SteemNode(
+            args.steemd_path, 
+            args.steemd_working_dir, 
+            args.steemd_config_path
+        )
     
-    node_url = node.get_node_url()
-    wif = node.get_from_config('private-key')[0]
+    node_url = args.node_url
+    wif = args.wif
+
     if len(wif) == 0:
         logger.error("Private-key is not set in config.ini")
         sys.exit(1)
@@ -201,9 +217,10 @@ if __name__ == '__main__':
     for account in accounts:
         keys.append(account["private_key"])
     
-    node.run_steem_node(["--enable-stale-production"])
+    if node is not None:
+        node.run_steem_node(["--enable-stale-production"])
     try:
-        if node.is_running():
+        if node is None or node.is_running():
             node_client = Steem(nodes = [node_url], no_broadcast = False, 
                 keys = keys
             )
@@ -270,13 +287,13 @@ if __name__ == '__main__':
             votes = list_proposals(node_client, start_date_str, "inactive")
             for vote in votes:
                 #should be 0 for all
-                assert vote == 0
+                assert vote == 0, "All votes should be equal to 0"
 
             logger.info("Balances for accounts after creating proposals")
             balances = print_balance(node_client, accounts)
             for balance in balances:
                 #should be 390.000 TBD for all
-                assert balance == '390.000 TBD'
+                assert balance == '390.000 TBD', "All balances should be equal to 390.000 TBD"
 
             logger.info("Balances for treasury after creating proposals")
             print_balance(node_client, [{'name' : args.treasury}])
@@ -300,7 +317,7 @@ if __name__ == '__main__':
                 votes = list_proposals(node_client, start_date_str, "active")
                 for vote in votes:
                     # should be > 0 for all
-                    assert vote > 0
+                    assert vote > 0, "All votes counts shoud be greater than 0"
 
             # move additional hour to ensure that all proposals ended
             logger.info("Moving to date: {}".format(end_date_blocks_str))
@@ -309,18 +326,20 @@ if __name__ == '__main__':
             balances = print_balance(node_client, accounts)
             for balance in balances:
                 # shoud be 438.000 TBD for all
-                assert balance == '438.000 TBD'
+                assert balance == '438.000 TBD', "All balances should be equal 438.000 TBD"
             logger.info("Balances for treasury at time: {}".format(end_date_blocks_str))
             print_balance(node_client, [{'name' : args.treasury}])
             votes = list_proposals(node_client, start_date_str, "expired")
             for vote in votes:
                     # should be > 0 for all
-                    assert vote > 0
+                    assert vote > 0, "All votes counts shoud be greater than 0"
 
-            node.stop_steem_node()
+            if node is not None:
+                node.stop_steem_node()
             sys.exit(0)
         sys.exit(1)
     except Exception as ex:
         logger.error("Exception: {}".format(ex))
-        node.stop_steem_node()
+        if node is not None: 
+            node.stop_steem_node()
         sys.exit(1)
