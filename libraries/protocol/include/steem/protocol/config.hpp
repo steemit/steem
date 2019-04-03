@@ -216,7 +216,7 @@
 #define STEEM_SBD_START_PERCENT_HF14          (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
 #define STEEM_SBD_START_PERCENT_HF20          (9*STEEM_1_PERCENT) // Start reducing printing of SBD at 9% Market Cap
 
-#define STEEM_MIN_ACCOUNT_NAME_LENGTH          3
+#define STEEM_MIN_ACCOUNT_NAME_LENGTH          3                  // If value higher than 4 transfers to null will not work
 #define STEEM_MAX_ACCOUNT_NAME_LENGTH         16
 
 #define STEEM_MIN_PERMLINK_LENGTH             0
@@ -307,8 +307,10 @@
 /// Represents the current witnesses
 #define STEEM_MINER_ACCOUNT                   "miners"
 /// Represents the canonical account with NO authority (nobody can access funds in null account)
+/// If STEEM_MIN_ACCOUNT_NAME_LENGTH is set to a value higher than 4 rename this account accordinly
 #define STEEM_NULL_ACCOUNT                    "null"
 /// Represents the canonical account with WILDCARD authority (anybody can access funds in temp account)
+/// If STEEM_MIN_ACCOUNT_NAME_LENGTH is set to a value higher than 4 rename this account accordinly
 #define STEEM_TEMP_ACCOUNT                    "temp"
 /// Represents the canonical account for specifying you will vote for directly (as opposed to a proxy)
 #define STEEM_PROXY_TO_SELF_ACCOUNT           ""
