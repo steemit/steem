@@ -16,6 +16,7 @@ void create_proposal_operation::validate()const
 
    FC_ASSERT( !subject.empty(), "subject is required" );
    FC_ASSERT( subject.size() <= STEEM_PROPOSAL_SUBJECT_MAX_LENGTH, "Subject is too long");
+   FC_ASSERT( fc::is_utf8( subject ), "Subject is not valid UTF8" );
 
    FC_ASSERT( !permlink.empty(), "permlink is required" );
    validate_permlink(permlink);
@@ -24,6 +25,7 @@ void create_proposal_operation::validate()const
 void update_proposal_votes_operation::validate()const
 {
    validate_account_name( voter );
+   FC_ASSERT(proposal_ids.empty() == false);
    FC_ASSERT(proposal_ids.size() <= STEEM_PROPOSAL_MAX_IDS_NUMBER);
 }
 

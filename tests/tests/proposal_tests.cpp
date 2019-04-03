@@ -781,7 +781,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          sign( tx, voter_01_key );
-         db->push_transaction( tx, 0 );
+         STEEM_REQUIRE_THROW(db->push_transaction( tx, 0 ), fc::exception);
          tx.operations.clear();
          tx.signatures.clear();
 
@@ -804,7 +804,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_01_apply )
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          sign( tx, voter_01_key );
-         db->push_transaction( tx, 0 );
+         STEEM_REQUIRE_THROW(db->push_transaction( tx, 0 ), fc::exception);
          tx.operations.clear();
          tx.signatures.clear();
 
@@ -1099,7 +1099,7 @@ BOOST_AUTO_TEST_CASE( update_proposal_votes_002 )
       int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
       BOOST_REQUIRE(proposal_1 >= 0);
       std::vector< int64_t > proposals;
-      vote_proposal("carol", proposals, true, carol_private_key);
+      STEEM_REQUIRE_THROW( vote_proposal("carol", proposals, true, carol_private_key), fc::exception);
       validate_database();
    }
    FC_LOG_AND_RETHROW()
