@@ -142,6 +142,11 @@ protected:
       return final().emplace_rocksdb_(BOOST_MULTI_INDEX_FORWARD_PARAM_PACK);
    }
 
+   bool final_insert( value_type& v )
+   {
+      return final().insert_( v );
+   }
+
    void final_erase_( value_type& v )
    {
       final().erase_( v );

@@ -138,7 +138,7 @@ public:
 
   /* construct/copy/destroy */
 
-  multi_index_container( const allocator_type& al ):
+  multi_index_container():
     super(ctor_args_list()),
     entry_count(0)
    {
@@ -150,7 +150,7 @@ public:
       _name = "rocksdb_" + *(split_v.rbegin());
    }
 
-  explicit multi_index_container( const allocator_type& al, const boost::filesystem::path& p ):
+  explicit multi_index_container( const boost::filesystem::path& p ):
     super(ctor_args_list()),
     entry_count(0)
    {
@@ -162,6 +162,29 @@ public:
       _wopts.disableWAL = true;
 
       open( p );
+
+      BOOST_MULTI_INDEX_CHECK_INVARIANT;
+   }
+
+   template< typename InputIterator >
+   explicit multi_index_container( InputIterator& first, InputIterator& last, const boost::filesystem::path& p ):
+    super(ctor_args_list()),
+    entry_count(0)
+   {
+      std::vector< std::string > split_v;
+      auto type = boost::core::demangle( typeid( Value ).name() );
+      boost::split( split_v, type, boost::is_any_of( ":" ) );
+
+      _name = "rocksdb_" + *(split_v.rbegin());
+      _wopts.disableWAL = true;
+
+      open( p );
+
+      while( first != last )
+      {
+         insert_( *(const_cast<value_type*>(first.operator->())) );
+         ++first;
+      }
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
@@ -304,7 +327,7 @@ public:
             ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
 
          super::_cache->clear();
-         assert( super::_db.unique() );
+         //assert( super::_db.unique() );
          rocksdb::CancelAllBackgroundWork( &(*super::_db), true );
          super::cleanup_column_handles();
          super::_db.reset();
@@ -575,6 +598,11 @@ primary_iterator erase( primary_iterator position )
    bool emplace_rocksdb_( Args&&... args )
    {
       Value v( std::forward< Args >(args)... );
+      return insert_( v );
+   }
+
+   bool insert_( value_type& v )
+   {
       bool status = false;
       if( super::insert_rocksdb_( v ) )
       {

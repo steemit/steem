@@ -269,6 +269,8 @@ namespace chainbase {
             return *ptr;
          }
 
+         index_type& mutable_indices() { return _indices; }
+
          const index_type& indices()const { return _indices; }
 
          void open( const bfs::path& p )

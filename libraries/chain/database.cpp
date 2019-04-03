@@ -201,6 +201,12 @@ uint32_t database::reindex( const open_args& args )
 
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
+      get_mutable_index< account_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< dynamic_global_property_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< witness_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< witness_schedule_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      //get_mutable_index< transaction_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      //get_mutable_index< block_summary_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();

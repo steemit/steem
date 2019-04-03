@@ -289,7 +289,7 @@ struct multi_index_adapter
 
    multi_index_adapter( allocator_type& a )
    {
-      _index = (void*) new mira_type( a );
+      _index = (void*) new mira_type();
    }
 
    multi_index_adapter( index_type type )
@@ -312,7 +312,7 @@ struct multi_index_adapter
       switch( type )
       {
          case mira:
-            _index = (void*) new mira_type( a );
+            _index = (void*) new mira_type();
             _type = mira;
             break;
          case bmic:
@@ -352,6 +352,52 @@ struct multi_index_adapter
    {
       assert( _index );
       return index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
+   }
+
+   void set_index_type( index_type type, const boost::filesystem::path& p )
+   {
+      if( type == _type ) return;
+
+      if( _index )
+      {
+         void* new_index = nullptr;
+
+         switch( type )
+         {
+            case mira:
+            {
+               auto first = ((bmic_type*)_index)->begin();
+               auto last = ((bmic_type*)_index)->end();
+               new_index = (void*) new mira_type( first, last, p );
+               delete ((bmic_type*)_index);
+               break;
+            }
+            case bmic:
+            {
+               auto first = ((mira_type*)_index)->begin();
+               auto last = ((mira_type*)_index)->end();
+               new_index = (void*) new bmic_type( first, last );
+               delete ((mira_type*)_index);
+               break;
+            }
+         }
+
+         _index = new_index;
+      }
+      else
+      {
+         switch( type )
+         {
+            case mira:
+               _index = (void*) new mira_type();
+               break;
+            case bmic:
+               _index = (void*) new bmic_type();
+               break;
+         }
+      }
+
+      _type = type;
    }
 
    int64_t revision()
@@ -812,7 +858,7 @@ struct multi_index_adapter
    size_t get_cache_size()const
    {
       assert( _index );
-      bool result = false;
+      size_t result = 0;
 
       switch( _type )
       {
