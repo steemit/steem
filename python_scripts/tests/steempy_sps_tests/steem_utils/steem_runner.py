@@ -40,7 +40,7 @@ class SteemNode(object):
         # remove old data from node
         if os.path.exists(self.working_dir):
             rmtree(self.working_dir)
-        os.makedirs(self.working_dir)
+        os.makedirs(self.working_dir+"/blockchain")
         # copy config file to working dir
         copy(self.config_src_path, self.working_dir + "/config.ini")
 

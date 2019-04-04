@@ -288,7 +288,7 @@ if __name__ == '__main__':
     #for account in accounts:
     keys.append(accounts[0]["private_key"])
     
-    node.run_steem_node()
+    node.run_steem_node(["--enable-stale-production"])
     try:
         if node.is_running():
             node_client = Steem(nodes = [node_url], no_broadcast = False, keys = keys)
