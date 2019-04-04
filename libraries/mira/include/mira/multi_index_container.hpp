@@ -463,14 +463,15 @@ void print_stats() const
       "rocksdb.cur-size-all-mem-tables"
    };
 
+   std::cout << "Database: " << boost::core::demangle(typeid(Value).name()) << "\n";
    for ( auto& p : properties )
    {
       std::string out;
       super::_db->GetProperty( p, &out );
-      std::cout << out << "\n";
+      std::cout << p << ": " << out << "\n";
    }
-   std::cout << "PinnedUsage: " << rocksdb_options_factory::get_shared_cache()->GetPinnedUsage() << "\n";
-   std::cout << "BlockCache: " << rocksdb_options_factory::get_shared_cache()->GetUsage() << "\n";
+   std::cout << "BlockCache->PinnedUsage: " << rocksdb_options_factory::get_shared_cache()->GetPinnedUsage() << "\n";
+   std::cout << "BlockCache->Usage: " << rocksdb_options_factory::get_shared_cache()->GetUsage() << "\n";
 }
 
 size_t get_cache_usage() const
