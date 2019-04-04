@@ -366,17 +366,21 @@ struct multi_index_adapter
          {
             case mira:
             {
+               {
                auto first = ((bmic_type*)_index)->begin();
                auto last = ((bmic_type*)_index)->end();
                new_index = (void*) new mira_type( first, last, p );
+               }
                delete ((bmic_type*)_index);
                break;
             }
             case bmic:
             {
+               {
                auto first = ((mira_type*)_index)->begin();
                auto last = ((mira_type*)_index)->end();
-               new_index = (void*) new bmic_type( first, last );
+               new_index = (void*) new bmic_type( ((mira_type*)_index)->begin(), ((mira_type*)_index)->end() );
+               }
                delete ((mira_type*)_index);
                break;
             }

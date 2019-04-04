@@ -201,12 +201,38 @@ uint32_t database::reindex( const open_args& args )
 
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
-      get_mutable_index< account_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< dynamic_global_property_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< witness_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< witness_schedule_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      //get_mutable_index< transaction_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      //get_mutable_index< block_summary_index >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+
+      get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< account_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< account_authority_index                 >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< witness_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< transaction_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< block_summary_index                     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< witness_schedule_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< comment_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< comment_content_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< comment_vote_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< witness_vote_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< limit_order_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< feed_history_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< convert_request_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< liquidity_reward_balance_index          >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< operation_index                         >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< account_history_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< hardfork_property_index                 >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< withdraw_vesting_route_index            >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< owner_authority_history_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< account_recovery_request_index          >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< change_recovery_account_request_index   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< escrow_index                            >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< savings_withdraw_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< decline_voting_rights_request_index     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< reward_fund_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< vesting_delegation_index                >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+      get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();

@@ -327,7 +327,7 @@ public:
             ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
 
          super::_cache->clear();
-         //assert( super::_db.unique() );
+         assert( super::_db.unique() );
          rocksdb::CancelAllBackgroundWork( &(*super::_db), true );
          super::cleanup_column_handles();
          super::_db.reset();
