@@ -457,6 +457,20 @@ void print_stats() const
       std::cout << _name << " stats:\n";
       std::cout << _stats->ToString() << "\n";
    }
+
+   std::vector< std::string > properties = {
+      "rocksdb.estimate-table-readers-mem",
+      "rocksdb.cur-size-all-mem-tables"
+   };
+
+   for ( auto& p : properties )
+   {
+      std::string out;
+      super::_db->GetProperty( p, &out );
+      std::cout << out << "\n";
+   }
+   std::cout << "PinnedUsage: " << rocksdb_options_factory::get_shared_cache()->GetPinnedUsage() << "\n";
+   std::cout << "BlockCache: " << rocksdb_options_factory::get_shared_cache()->GetUsage() << "\n";
 }
 
 size_t get_cache_usage() const
