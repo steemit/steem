@@ -62,7 +62,8 @@ namespace helpers
       info->_item_sizeof = sizeof(typename IndexType::value_type);
       info->_item_additional_allocation = 0;
 #ifndef ENABLE_STD_ALLOCATOR
-      size_t pureNodeSize = IndexType::node_size - sizeof(typename IndexType::value_type);
+      size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+         sizeof(typename IndexType::value_type);
       info->_additional_container_allocation = info->_item_count*pureNodeSize;
 #endif
    }
@@ -205,13 +206,17 @@ namespace chainbase {
          generic_index( allocator<value_type> a, bfs::path p )
          :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
+#ifdef ENABLE_STD_ALLOCATOR
             _revision = _indices.revision();
+#endif
          }
 
          generic_index( allocator<value_type> a )
          :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
+#ifdef ENABLE_STD_ALLOCATOR
             _revision = _indices.revision();
+#endif
          }
 
          void validate()const {
@@ -273,6 +278,9 @@ namespace chainbase {
 
          const index_type& indices()const { return _indices; }
 
+         void clear() { _indices.clear(); }
+
+#ifdef ENABLE_STD_ALLOCATOR
          void open( const bfs::path& p )
          {
             _indices.open( p );
@@ -292,8 +300,6 @@ namespace chainbase {
 
          void wipe( const bfs::path& dir ) { _indices.wipe( dir ); }
 
-         void clear() { _indices.clear(); }
-
          void flush() { _indices.flush(); }
 
          size_t get_cache_usage() const { return _indices.get_cache_usage(); }
@@ -303,6 +309,7 @@ namespace chainbase {
          void dump_lb_call_counts() { _indices.dump_lb_call_counts(); }
 
          void trim_cache( size_t cap ) { _indices.trim_cache( cap ); }
+#endif
 
          class session {
             public:
@@ -348,8 +355,11 @@ namespace chainbase {
          // TODO: This function needs some work to make it consistent on failure.
          session start_undo_session()
          {
-            _indices.set_revision( ++_revision );
+            ++_revision;
+#ifdef ENABLE_STD_ALLOCATOR
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
             _stack.emplace_back( _indices.get_allocator() );
             _stack.back().old_next_id = _next_id;
             _stack.back().revision = _revision;
@@ -388,8 +398,11 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            _indices.set_revision( --_revision );
+            --_revision;
+#ifdef ENABLE_STD_ALLOCATOR
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
          /**
@@ -497,8 +510,11 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            _indices.set_revision( --_revision );
+            --_revision;
+#ifdef ENABLE_STD_ALLOCATOR
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
          /**
@@ -525,8 +541,10 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
+#ifdef ENABLE_STD_ALLOCATOR
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
       private:
@@ -641,17 +659,19 @@ namespace chainbase {
          virtual uint32_t type_id()const  = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
-         virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
+         virtual void clear() = 0;
+#ifdef ENABLE_STD_ALLOCATOR
          virtual void open( const bfs::path& ) = 0;
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
-         virtual void clear() = 0;
          virtual void flush() = 0;
          virtual size_t get_cache_usage() const = 0;
          virtual size_t get_cache_size() const = 0;
          virtual void dump_lb_call_counts() = 0;
          virtual void trim_cache( size_t cap ) = 0;
+         virtual void print_stats() const = 0;
+#endif
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -678,7 +698,13 @@ namespace chainbase {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
          }
 
-         virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
+         virtual void     set_revision( int64_t revision ) override
+         {
+#ifdef ENABLE_STD_ALLOCATOR
+            _base.set_revision( revision );
+#endif
+         }
+
          virtual int64_t  revision()const  override { return _base.revision(); }
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
@@ -693,16 +719,17 @@ namespace chainbase {
             return provider.gather_statistics(_base.indices(), onlyStaticInfo);
          }
 
-         virtual void print_stats() const override final
-         {
-            _base.indicies().print_stats();
-         }
-
          virtual size_t size() const override final
          {
             return _base.indicies().size();
          }
 
+         virtual void clear() override final
+         {
+            _base.clear();
+         }
+
+#ifdef ENABLE_STD_ALLOCATOR
          virtual void open( const bfs::path& p ) override final
          {
             _base.open( p );
@@ -716,11 +743,6 @@ namespace chainbase {
          virtual void wipe( const bfs::path& dir ) override final
          {
             _base.wipe( dir );
-         }
-
-         virtual void clear() override final
-         {
-            _base.clear();
          }
 
          virtual void flush() override final
@@ -747,6 +769,12 @@ namespace chainbase {
          {
             _base.trim_cache( cap );
          }
+
+         virtual void print_stats() const override final
+         {
+            _base.indicies().print_stats();
+         }
+#endif
 
       private:
          BaseIndex& _base;
@@ -916,10 +944,12 @@ namespace chainbase {
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
+#ifdef ENABLE_STD_ALLOCATOR
          void print_stats()
          {
             for( const auto& i : _index_list )  i->print_stats();
          }
+#endif
 
          template<typename MultiIndexType>
          void add_index()
@@ -1178,36 +1208,35 @@ namespace chainbase {
       private:
          template<typename MultiIndexType>
          void add_index_helper() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
+            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+            typedef generic_index<MultiIndexType>          index_type;
+            typedef typename index_type::allocator_type    index_alloc;
 
-             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+            std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
 
-             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
-                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
-             }
+            if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
+               BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
+            }
 
-             index_type* idx_ptr =  nullptr;
-#ifndef ENABLE_STD_ALLOCATOR
-             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+            index_type* idx_ptr =  nullptr;
+#ifdef ENABLE_STD_ALLOCATOR
+            idx_ptr = new index_type( index_alloc() );
 #else
-             idx_ptr = new index_type( index_alloc() );
+            idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
 #endif
-             idx_ptr->validate();
+            idx_ptr->validate();
 
-             if( type_id >= _index_map.size() )
-                _index_map.resize( type_id + 1 );
+            if( type_id >= _index_map.size() )
+               _index_map.resize( type_id + 1 );
+
+            auto new_index = new index<index_type>( *idx_ptr );
+
+            _index_map[ type_id ].reset( new_index );
+            _index_list.push_back( new_index );
 
 #ifdef ENABLE_STD_ALLOCATOR
-             auto new_index = new index<index_type>( *idx_ptr );
-#else
-             auto new_index = new index<index_type>( *idx_ptr, _data_dir );
+            if( _is_open ) new_index->open( _data_dir );
 #endif
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
-
-             if( _is_open ) new_index->open( _data_dir );
          }
 
          read_write_mutex_manager                                    _rw_manager;
