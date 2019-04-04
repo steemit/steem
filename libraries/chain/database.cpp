@@ -3123,7 +3123,7 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_orders();
    clear_expired_delegations();
 
-   if( next_block.block_num() % 100000 == 0 )
+   if( next_block.block_num() % 1000 == 0 )
    {
       print_stats();
    }
