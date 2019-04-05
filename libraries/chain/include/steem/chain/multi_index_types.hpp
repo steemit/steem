@@ -35,6 +35,18 @@ using boost::multi_index::composite_key;
 using boost::multi_index::composite_key_compare;
 using boost::multi_index::const_mem_fun;
 #else
+/*
+template< typename... Args >
+using multi_index_container = mira::boost_multi_index_adapter< Args... >;
+using boost::multi_index::indexed_by;
+using boost::multi_index::ordered_unique;
+using boost::multi_index::tag;
+using boost::multi_index::member;
+using boost::multi_index::composite_key;
+using boost::multi_index::composite_key_compare;
+using boost::multi_index::const_mem_fun;
+*/
+//*
 template< typename... Args >
 using multi_index_container = mira::multi_index_adapter< Args... >;
 using mira::multi_index::indexed_by;
@@ -44,7 +56,7 @@ using mira::multi_index::member;
 using mira::multi_index::composite_key;
 using mira::multi_index::composite_key_compare;
 using mira::multi_index::const_mem_fun;
-
+//*/
 template< typename T1, typename T2, typename T3 >
 class bmic_type : public ::mira::boost_multi_index_adapter< T1, T2, T3 >
 {

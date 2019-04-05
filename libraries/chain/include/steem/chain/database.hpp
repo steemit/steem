@@ -44,11 +44,7 @@ namespace steem { namespace chain {
       class advanced_benchmark_dumper;
    }
 
-   struct reindex_notification
-   {
-      bool reindex_success = false;
-      uint32_t last_block_number = 0;
-   };
+   struct reindex_notification;
 
    struct generate_optional_actions_notification {};
 
@@ -662,6 +658,15 @@ namespace steem { namespace chain {
           * Internal signal to execute deferred registration of plugin indexes.
           */
          fc::signal<void()>                                    _plugin_index_signal;
+   };
+
+   struct reindex_notification
+   {
+      reindex_notification( const database::open_args& a ) : args( a ) {}
+
+      bool reindex_success = false;
+      uint32_t last_block_number = 0;
+      const database::open_args& args;
    };
 
 } }

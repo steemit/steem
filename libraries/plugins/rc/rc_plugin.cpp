@@ -50,6 +50,7 @@ class rc_plugin_impl
          _skip.skip_reject_unknown_delta_vests = 1;
       }
 
+      void on_pre_reindex( const reindex_notification& node );
       void on_post_apply_block( const block_notification& note );
       //void on_pre_apply_transaction( const transaction_notification& note );
       void on_post_apply_transaction( const transaction_notification& note );
@@ -73,6 +74,7 @@ class rc_plugin_impl
       std::map< account_name_type, int64_t > _account_to_max_rc;
       uint32_t                      _enable_at_block = 1;
 
+      boost::signals2::connection   _pre_reindex_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
       boost::signals2::connection   _post_apply_transaction_conn;
@@ -357,6 +359,13 @@ struct block_extensions_count_resources_visitor
    template< typename T >
    void operator()( const T& ) {}
 };
+
+void rc_plugin_impl::on_pre_reindex( const reindex_notification& note )
+{
+   _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir );
+   _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir );
+   _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir );
+}
 
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 {
@@ -1091,6 +1100,9 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
+      my->_pre_reindex_conn = db.add_pre_reindex_handler( [&]( const reindex_notification& note )
+         { try { my->on_pre_reindex( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+
       my->_post_apply_block_conn = db.add_post_apply_block_handler( [&]( const block_notification& note )
          { try { my->on_post_apply_block( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       //my->_pre_apply_transaction_conn = db.add_pre_apply_transaction_handler( [&]( const transaction_notification& note )
@@ -1132,6 +1144,7 @@ void rc_plugin::plugin_startup() {}
 
 void rc_plugin::plugin_shutdown()
 {
+   chain::util::disconnect_signal( my->_pre_reindex_conn );
    chain::util::disconnect_signal( my->_post_apply_block_conn );
    // chain::util::disconnect_signal( my->_pre_apply_transaction_conn );
    chain::util::disconnect_signal( my->_post_apply_transaction_conn );

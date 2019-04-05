@@ -4,12 +4,6 @@
 
 namespace mira {
 
-enum index_type
-{
-   mira,
-   bmic
-};
-
 template< typename Arg1, typename Arg2, typename Arg3 > struct multi_index_adapter;
 
 template< typename MultiIndexAdapterType, typename IndexedBy >
@@ -18,13 +12,20 @@ struct index_adapter
    typedef typename MultiIndexAdapterType::value_type                                              value_type;
    typedef typename std::remove_reference< decltype(
       (((typename MultiIndexAdapterType::mira_type*)nullptr)->template get<IndexedBy>()) ) >::type mira_type;
-   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >            mira_iter_adapter;
-   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->rbegin()) ) >           mira_rev_iter_adapter;
+   //typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >            mira_iter_adapter;
+   //typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->rbegin()) ) >           mira_rev_iter_adapter;
    typedef typename std::remove_reference< decltype(
       (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
-   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >            bmic_iter_adapter;
-   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >           bmic_rev_iter_adapter;
-   typedef iterator_wrapper< value_type >                                                          iter_type;
+   //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >            bmic_iter_adapter;
+   //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >           bmic_rev_iter_adapter;
+   typedef iterator_wrapper<
+      value_type,
+      decltype( (((mira_type*)nullptr)->begin()) ),
+      decltype( (((bmic_type*)nullptr)->begin()) ) >                                                     iter_type;
+   typedef iterator_wrapper<
+      value_type,
+      decltype( (((mira_type*)nullptr)->rbegin()) ),
+      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    rev_iter_type;
 
    private:
       index_adapter() {}
@@ -62,10 +63,10 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = std::move( mira_iter_adapter( ((mira_type*)_index)->iterator_to( v ) ) );
+               result = ((mira_type*)_index)->iterator_to( v );
                break;
             case bmic:
-               result = std::move( bmic_iter_adapter( ((bmic_type*)_index)->iterator_to( v ) ) );
+               result = ((bmic_type*)_index)->iterator_to( v );
                break;
          }
 
@@ -81,10 +82,10 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = mira_iter_adapter( ((mira_type*)_index)->find( k ) );
+               result = ((mira_type*)_index)->find( k );
                break;
             case bmic:
-               result = bmic_iter_adapter( ((bmic_type*)_index)->find( k ) );
+               result = ((bmic_type*)_index)->find( k );
                break;
          }
 
@@ -100,10 +101,10 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = mira_iter_adapter( ((mira_type*)_index)->lower_bound( k ) );
+               result = ((mira_type*)_index)->lower_bound( k );
                break;
             case bmic:
-               result = bmic_iter_adapter( ((bmic_type*)_index)->lower_bound( k ) );
+               result = ((bmic_type*)_index)->lower_bound( k );
                break;
          }
 
@@ -119,10 +120,10 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = mira_iter_adapter( ((mira_type*)_index)->upper_bound( k ) );
+               result = ((mira_type*)_index)->upper_bound( k );
                break;
             case bmic:
-               result = bmic_iter_adapter( ((bmic_type*)_index)->upper_bound( k ) );
+               result = ((bmic_type*)_index)->upper_bound( k );
                break;
          }
 
@@ -140,15 +141,15 @@ struct index_adapter
             case mira:
             {
                auto mira_result = ((mira_type*)_index)->equal_range( k );
-               result.first = mira_iter_adapter( std::move( mira_result.first ) );
-               result.second = mira_iter_adapter( std::move( mira_result.second ) );
+               result.first = std::move( mira_result.first );
+               result.second = std::move( mira_result.second );
                break;
             }
             case bmic:
             {
                auto bmic_result = ((bmic_type*)_index)->equal_range( k );
-               result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
-               result.second = bmic_iter_adapter( std::move( bmic_result.second ) );
+               result.first = std::move( bmic_result.first );
+               result.second = std::move( bmic_result.second );
                break;
             }
          }
@@ -164,10 +165,10 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = mira_iter_adapter( ((mira_type*)_index)->begin() );
+               result = ((mira_type*)_index)->begin();
                break;
             case bmic:
-               result = bmic_iter_adapter( ((bmic_type*)_index)->begin() );
+               result = ((bmic_type*)_index)->begin();
                break;
          }
 
@@ -182,46 +183,46 @@ struct index_adapter
          switch( _type )
          {
             case mira:
-               result = mira_iter_adapter( ((mira_type*)_index)->end() );
+               result = ((mira_type*)_index)->end();
                break;
             case bmic:
-               result = bmic_iter_adapter( ((bmic_type*)_index)->end() );
+               result = ((bmic_type*)_index)->end();
                break;
          }
 
          return result;
       }
 
-      iter_type rbegin()const
+      rev_iter_type rbegin()const
       {
          assert( _index );
-         iter_type result;
+         rev_iter_type result;
 
          switch( _type )
          {
             case mira:
-               result = mira_rev_iter_adapter( ((mira_type*)_index)->rbegin() );
+               result = ((mira_type*)_index)->rbegin();
                break;
             case bmic:
-               result = bmic_rev_iter_adapter( ((bmic_type*)_index)->rbegin() );
+               result = ((bmic_type*)_index)->rbegin();
                break;
          }
 
          return result;
       }
 
-      iter_type rend()const
+      rev_iter_type rend()const
       {
          assert( _index );
-         iter_type result;
+         rev_iter_type result;
 
          switch( _type )
          {
             case mira:
-               result = mira_rev_iter_adapter( ((mira_type*)_index)->rend() );
+               result = ((mira_type*)_index)->rend();
                break;
             case bmic:
-               result = bmic_rev_iter_adapter( ((bmic_type*)_index)->rend() );
+               result = ((bmic_type*)_index)->rend();
                break;
          }
 
@@ -275,11 +276,19 @@ struct multi_index_adapter
    typedef Arg1                                                                                          value_type;
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::mira_type mira_type;
    typedef typename mira_type::primary_iterator                                                          mira_iter_type;
-   typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >                  mira_iter_adapter;
+   //typedef typename mira_type::
+   //typedef iterator_adapter< value_type, decltype( (((mira_type*)nullptr)->begin()) ) >                  mira_iter_adapter;
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::bmic_type bmic_type;
    typedef typename bmic_type::iterator                                                                  bmic_iter_type;
-   typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >                  bmic_iter_adapter;
-   typedef iterator_wrapper< value_type >                                                                iter_type;
+   //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >                  bmic_iter_adapter;
+   typedef iterator_wrapper<
+      value_type,
+      decltype( (((mira_type*)nullptr)->begin()) ),
+      decltype( (((bmic_type*)nullptr)->begin()) ) >                                                     iter_type;
+   typedef iterator_wrapper<
+      value_type,
+      decltype( (((mira_type*)nullptr)->rbegin()) ),
+      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    rev_iter_type;
    typedef typename bmic_type::allocator_type allocator_type;
 
    multi_index_adapter()
@@ -452,14 +461,14 @@ struct multi_index_adapter
          case mira:
          {
             auto mira_result = ((mira_type*)_index)->emplace( std::forward< Constructor>( con ), alloc );
-            result.first = mira_iter_adapter( std::move( mira_result.first ) );
+            result.first = std::move( mira_result.first );
             result.second = mira_result.second;
             break;
          }
          case bmic:
          {
             auto bmic_result = ((bmic_type*)_index)->emplace( std::forward< Constructor>( con ), alloc );
-            result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
+            result.first = std::move( bmic_result.first );
             result.second = bmic_result.second;
             break;
          }
@@ -480,14 +489,14 @@ struct multi_index_adapter
          case mira:
          {
             auto mira_result = ((mira_type*)_index)->emplace( std::forward< Constructor>( con ) );
-            result.first = mira_iter_adapter( std::move( mira_result.first ) );
+            result.first = std::move( mira_result.first );
             result.second = mira_result.second;
             break;
          }
          case bmic:
          {
             auto bmic_result = ((bmic_type*)_index)->emplace( std::forward< Constructor>( con ) );
-            result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
+            result.first = std::move( bmic_result.first );
             result.second = bmic_result.second;
             break;
          }
@@ -523,10 +532,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->erase( position.template as< mira_iter_type >() ) );
+            result = ((mira_type*)_index)->erase( position.template as< mira_iter_type >() );
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->erase( position.template as< bmic_iter_type >() ) );
+            result = ((bmic_type*)_index)->erase( position.template as< bmic_iter_type >() );
             break;
       }
 
@@ -541,10 +550,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->iterator_to( v ) );
+            result = ((mira_type*)_index)->iterator_to( v );
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->iterator_to( v ) );
+            result = ((bmic_type*)_index)->iterator_to( v );
             break;
       }
 
@@ -560,10 +569,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->find( k ) );
+            result = ((mira_type*)_index)->find( k );
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->find( k ) );
+            result = ((bmic_type*)_index)->find( k );
             break;
       }
 
@@ -579,10 +588,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->lower_bound( k ) );
+            result = ((mira_type*)_index)->lower_bound( k );
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->lower_bound( k ) );
+            result = ((bmic_type*)_index)->lower_bound( k );
             break;
       }
 
@@ -598,10 +607,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->upper_bound( k ) );
+            result = ((mira_type*)_index)->upper_bound( k );
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->upper_bound( k ) );
+            result = ((bmic_type*)_index)->upper_bound( k );
             break;
       }
 
@@ -619,15 +628,15 @@ struct multi_index_adapter
          case mira:
          {
             auto mira_result = ((mira_type*)_index)->equal_range( k );
-            result.first = mira_iter_adapter( std::move( mira_result.first ) );
-            result.second = mira_iter_adapter( std::move( mira_result.second ) );
+            result.first = std::move( mira_result.first );
+            result.second = std::move( mira_result.second );
             break;
          }
          case bmic:
          {
             auto bmic_result = ((bmic_type*)_index)->equal_range( k );
-            result.first = bmic_iter_adapter( std::move( bmic_result.first ) );
-            result.second = bmic_iter_adapter( std::move( bmic_result.second ) );
+            result.first = std::move( bmic_result.first );
+            result.second = std::move( bmic_result.second );
             break;
          }
       }
@@ -643,10 +652,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->begin() );
+            result = ((mira_type*)_index)->begin();
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->begin() );
+            result = ((bmic_type*)_index)->begin();
             break;
       }
 
@@ -661,46 +670,46 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = mira_iter_adapter( ((mira_type*)_index)->end() );
+            result = ((mira_type*)_index)->end();
             break;
          case bmic:
-            result = bmic_iter_adapter( ((bmic_type*)_index)->end() );
+            result = ((bmic_type*)_index)->end();
             break;
       }
 
       return result;
    }
 
-   iter_type rbegin()const
+   rev_iter_type rbegin()const
    {
       assert( _index );
-      iter_type result;
+      rev_iter_type result;
 
       switch( _type )
       {
          case mira:
-            result = mira_rev_iter_adapter( ((mira_type*)_index)->rbegin() );
+            result = ((mira_type*)_index)->rbegin();
             break;
          case bmic:
-            result = bmic_rev_iter_adapter( ((bmic_type*)_index)->rbegin() );
+            result = ((bmic_type*)_index)->rbegin();
             break;
       }
 
       return result;
    }
 
-   iter_type rend()const
+   rev_iter_type rend()const
    {
       assert( _index );
-      iter_type result;
+      rev_iter_type result;
 
       switch( _type )
       {
          case mira:
-            result = mira_rev_iter_adapter( ((mira_type*)_index)->rend() );
+            result = ((mira_type*)_index)->rend();
             break;
          case bmic:
-            result = bmic_rev_iter_adapter( ((bmic_type*)_index)->rend() );
+            result = ((bmic_type*)_index)->rend();
             break;
       }
 

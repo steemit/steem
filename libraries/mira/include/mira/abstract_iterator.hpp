@@ -3,9 +3,15 @@
 
 namespace mira {
 
-//fwd declaration
-template< typename ValueType > class iterator_wrapper;
+enum index_type
+{
+   mira,
+   bmic
+};
 
+//fwd declaration
+//template< typename ValueType > class iterator_wrapper;
+/*
 template< typename ValueType >
 class abstract_iterator
 {
@@ -255,6 +261,264 @@ class iterator_wrapper :
 
    private:
       std::unique_ptr< abstract_iterator< ValueType > > _abs_iter;
-};
+};*/
 
+template< typename ValueType, typename MiraType, typename BmicType >
+class iterator_wrapper :
+   public boost::bidirectional_iterator_helper<
+      iterator_wrapper< ValueType, MiraType, BmicType >,
+      ValueType,
+      std::size_t,
+      const ValueType*,
+      const ValueType& >
+{
+   union iter_union
+   {
+      MiraType mira_iter;
+      BmicType bmic_iter;
+   };
+
+   iter_union _iter;
+   index_type _type = mira;
+
+   //typedef abstract_iterator< ValueType > abs_iter_type;
+
+   iterator_wrapper() {}
+
+   public:
+      iterator_wrapper( const MiraType& mira_iter )
+      {
+         _iter.mira_iter = mira_iter;
+         _type = mira;
+      }
+
+      iterator_wrapper( MiraType&& mira_iter )
+      {
+         _iter.mira_iter = std::move( mira_iter );
+         _type = mira;
+      }
+
+      iterator_wrapper( const BmicType& bmic_iter )
+      {
+         _iter.bmic_iter = bmic_iter;
+         _type = bmic;
+      }
+
+      iterator_wrapper( BmicType&& bmic_iter )
+      {
+         _iter.bmic_iter = std::move( bmic_iter );
+         _type = bmic;
+      }
+
+      iterator_wrapper( const iterator_wrapper& other )
+      {
+         switch( other._type )
+         {
+            case mira:
+               _iter.mira_iter = other._iter.mira_iter;
+               _type = mira;
+               break;
+            case bmic:
+               _iter.bmic_iter = other._iter.bmic_iter;
+               _type = bmic;
+               break;
+         }
+      }
+
+      iterator_wrapper( iterator_wrapper&& other )
+      {
+         switch( other._type )
+         {
+            case mira:
+               _iter.mira_iter = std::move( other._iter.mira_iter );
+               _type = mira;
+               break;
+            case bmic:
+               _iter.bmic_iter = std::move( other._iter.bmic_iter );
+               _type = bmic;
+               break;
+         }
+      }
+
+      iterator_wrapper& operator ++()
+      {
+         switch( _type )
+         {
+            case mira:
+               _iter.mira_iter++();
+               break;
+            case bmic:
+               _iter.bmic_iter++();
+               break;
+         }
+
+         return *this;
+      }
+
+      iterator_wrapper operator ++(int)const
+      {
+         iterator_wrapper copy( *this );
+         ++copy;
+         return copy;
+      }
+
+      iterator_wrapper& operator --()
+      {
+         switch( _type )
+         {
+            case mira:
+               _iter.mira_iter--();
+               break;
+            case bmic:
+               _iter.bmic_iter--();
+               break;
+         }
+
+         return *this;
+      }
+
+      iterator_wrapper operator --(int)const
+      {
+         iterator_wrapper copy( *this );
+         --copy;
+         return copy;
+      }
+
+      const ValueType& operator *()const
+      {
+         return *(operator->());
+      }
+
+      const ValueType* operator ->()const
+      {
+         ValueType* result = nullptr;
+
+         switch( _type )
+         {
+            case mira:
+               result = _iter.mira_iter.operator->();
+               break;
+            case bmic:
+               result = _iter.bmic_iter.operator->();
+               break;
+         }
+
+         return result;
+      }
+
+      bool operator ==( const iterator_wrapper& other )
+      {
+         bool result = false;
+
+         if( _type == other._type )
+         {
+            switch( _type )
+            {
+               case mira:
+                  result = _iter.mira_iter == other._iter.mira_iter;
+                  break;
+               case bmic:
+                  result = _iter.bmic_iter == other._iter.mira_iter;
+                  break;
+            }
+         }
+
+         return result;
+      }
+
+      bool operator !=( const iterator_wrapper& other )
+      {
+         bool result = false;
+
+         if( _type == other._type )
+         {
+            switch( _type )
+            {
+               case mira:
+                  result = _iter.mira_iter != other._iter.mira_iter;
+                  break;
+               case bmic:
+                  result = _iter.bmic_iter != other._iter.mira_iter;
+                  break;
+            }
+         }
+
+         return result;
+      }
+
+      iterator_wrapper& operator =( const iterator_wrapper& other )
+      {
+         switch( other._type )
+         {
+            case mira:
+               _iter.mira_iter = other._iter.mira_iter;
+               _type = mira;
+               break;
+            case bmic:
+               _iter.bmic_iter = other._iter.bmic_iter;
+               _type = bmic;
+               break;
+         }
+
+         return *this;
+      }
+
+      iterator_wrapper& operator =( iterator_wrapper&& other )
+      {
+         switch( other._type )
+         {
+            case mira:
+               _iter.mira_iter = std::move( other._iter.mira_iter );
+               _type = mira;
+               break;
+            case bmic:
+               _iter.bmic_iter = std::move( other._iter.bmic_iter );
+               _type = bmic;
+               break;
+         }
+
+         return *this;
+      }
+
+      iterator_wrapper& operator =( const MiraType& mira_iter )
+      {
+         _iter.mira_iter = mira_iter;
+         _type = mira;
+      }
+
+      iterator_wrapper& operator =( MiraType&& mira_iter )
+      {
+         _iter.mira_iter = std::move( mira_iter );
+         _type = mira;
+      }
+
+      iterator_wrapper& operator =( const BmicType& bmic_iter )
+      {
+         _iter.bmic_iter = bmic_iter;
+         _type = bmic;
+      }
+
+      iterator_wrapper& operator =( BmicType&& bmic_iter )
+      {
+         _iter.bmic_iter = std::move( bmic_iter );
+         _type = bmic;
+      }
+
+      //template< typename IndexType > IndexType& as();
+};
+/*
+template< typename ValueType, typename MiraType, typename BmicType >
+MiraType& iterator_wrapper< ValueType, MiraType, BmicType >::as()
+{
+   assert( _type = mira );
+   return _iter.mira_iter;
+}
+
+template< typename ValueType, typename MiraType, typename BmicType >
+BmicType& iterator_wrapper< ValueType, MiraType, BmicType >as()
+{
+   assert( _type = bmic );
+   return _iter.bmic_iter;
+}
+*/
 }

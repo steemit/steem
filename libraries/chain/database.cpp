@@ -184,7 +184,7 @@ void database::open( const open_args& args )
 
 uint32_t database::reindex( const open_args& args )
 {
-   reindex_notification note;
+   reindex_notification note( args );
 
    BOOST_SCOPE_EXIT(this_,&note) {
       STEEM_TRY_NOTIFY(this_->_post_reindex_signal, note);
@@ -192,7 +192,6 @@ uint32_t database::reindex( const open_args& args )
 
    try
    {
-      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
 #ifdef ENABLE_STD_ALLOCATOR
@@ -202,7 +201,10 @@ uint32_t database::reindex( const open_args& args )
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
 
+      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
+
 #ifdef ENABLE_STD_ALLOCATOR
+//*
       get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< account_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
@@ -234,6 +236,7 @@ uint32_t database::reindex( const open_args& args )
       get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
+//*/
 #endif
 
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
