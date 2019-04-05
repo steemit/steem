@@ -185,7 +185,7 @@ public:
 //
 //      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
 
-//      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
 //      opts.compression = rocksdb::CompressionType::kNoCompression;
 
       //opts.statistics = _stats;
