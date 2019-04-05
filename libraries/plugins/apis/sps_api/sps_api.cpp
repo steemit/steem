@@ -20,6 +20,16 @@ bool check_proposal(const Proposal* proposal)
   return !proposal->removed;
 }
 
+inline bool filter_proposal_status(const api_proposal_object& po, const proposal_status filter, const time_point_sec& current_time)
+{
+   if(filter == proposal_status::all)
+      return true;
+
+   auto prop_status = po.get_status(current_time);
+   return filter == prop_status ||
+      (filter == proposal_status::votable && (prop_status == proposal_status::active || prop_status == proposal_status::inactive));
+}
+
 class sps_api_impl
 {
   public:
@@ -46,6 +56,7 @@ class sps_api_impl
       const auto& idx = _db.get_index<proposal_index, OrderType>();
       const std::string& start_as_str = start.as<std::string>();
       const bool last_id_valid = last_id.valid();
+      const auto currentTime = _db.head_block_time();
 
       switch (direction)
       {
@@ -70,8 +81,8 @@ class sps_api_impl
           {
             if(check_proposal<false/*NullCheck*/>(&(*itr)))
             {
-              auto apo = api_proposal_object(*itr, _db.head_block_time());
-              if (status == proposal_status::all || apo.status == status)
+              auto apo = api_proposal_object(*itr, currentTime);
+              if (filter_proposal_status(apo, status, currentTime))
               {
                 result.push_back(apo);
               }
@@ -106,8 +117,8 @@ class sps_api_impl
           {
             if (check_proposal<false/*NullCheck*/>( &(*itr)))
             {
-              auto apo = api_proposal_object(*itr, _db.head_block_time());
-              if (status == proposal_status::all || apo.status == status)
+              auto apo = api_proposal_object(*itr, currentTime);
+              if (filter_proposal_status(apo, status, currentTime))
               {
                 result.push_back(apo);
               }
@@ -147,16 +158,6 @@ void sort_results_helper(RESULT_TYPE& result, order_direction_type order_directi
     default:
       FC_ASSERT(false, "Unknown or unsupported sort order");
   }
-}
-
-inline bool filter_proposal_status(const api_proposal_object& po, const proposal_status filter, const time_point_sec& current_time)
-{
-   if(filter == proposal_status::all)
-      return true;
-
-   auto prop_status = po.get_status(current_time);
-   return filter == prop_status ||
-      (filter == proposal_status::votable && (prop_status == proposal_status::active || prop_status == proposal_status::inactive));
 }
 
 template<typename RESULT_TYPE>
