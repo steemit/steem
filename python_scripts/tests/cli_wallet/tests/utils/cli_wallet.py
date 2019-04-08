@@ -7,8 +7,8 @@ import requests
 import threading
 import subprocess
 
-from .logger import log
-
+from .logger     import log
+from .cmd_args   import args
 from .test_utils import last_message_as_json, ws_to_http
 
 class CliWalletException(Exception):
@@ -113,7 +113,7 @@ class CliWallet(object):
             self.t.start()
             self.set_password("{0}".format("testpassword"))
             self.unlock("{0}".format("testpassword"))
-            self.import_key("{0}".format("5JNHfZYKGaomSFvd4NUdQ9qMcEAC43kujbfjueTHpVapX1Kzq2n"))
+            self.import_key("{0}".format(args.wif))
         except Exception as _ex:
             log.exception("Exception `{0}` occuress while while running cli_wallet.".format(str(_ex)))
 

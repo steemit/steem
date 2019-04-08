@@ -4,6 +4,8 @@ args = None
 
 parser = argparse.ArgumentParser(description='Steemd cli wallet test args.')
 parser.add_argument('--path-to-cli'        , dest='path'               , help ='Path to cli_wallet executable')
+parser.add_argument('--creator'            , dest='creator'            , help ='Account to create proposals with')
+parser.add_argument('--wif'                , dest='wif'                , help ='Private key for creator account')
 parser.add_argument('--server-rpc-endpoint', dest="server_rpc_endpoint", help = "Set server endpoint [=ws://127.0.0.1:8090]", default ="ws://127.0.0.1:8090")
 parser.add_argument('--cert-auth'          , dest="cert_auth"          , help = "Set cert auth [=_default]"                 , default ="_default")
 #this argument causes error
