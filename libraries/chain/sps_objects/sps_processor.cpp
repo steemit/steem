@@ -18,7 +18,8 @@ using steem::chain::sps_helper;
 using steem::chain::dynamic_global_property_object;
 using steem::chain::block_notification;
 
-const std::string sps_processor::name = "sps_processor";
+const std::string sps_processor::removing_name = "sps_processor_remove";
+const std::string sps_processor::calculating_name = "sps_processor_calculate";
 
 bool sps_processor::is_maintenance_period( const time_point_sec& head_time ) const
 {
@@ -207,7 +208,7 @@ void sps_processor::remove_old_proposals( const block_notification& note )
    remove_proposals( head_time );
 
    if( db.get_benchmark_dumper().is_enabled() )
-      db.get_benchmark_dumper().end( sps_processor::name );
+      db.get_benchmark_dumper().end( sps_processor::removing_name );
 }
 
 void sps_processor::make_payments( const block_notification& note ) 
@@ -218,12 +219,18 @@ void sps_processor::make_payments( const block_notification& note )
    if( !is_maintenance_period( head_time ) )
       return;
 
+   if( db.get_benchmark_dumper().is_enabled() )
+      db.get_benchmark_dumper().begin();
+
    t_proposals active_proposals;
 
    //Find all active proposals, where actual_time >= start_date and actual_time <= end_date
    find_active_proposals( head_time, active_proposals );
    if( active_proposals.empty() )
    {
+      if( db.get_benchmark_dumper().is_enabled() )
+         db.get_benchmark_dumper().end( sps_processor::calculating_name );
+
       //Set `new maintenance time` and `last budget time`
       update_settings( head_time );
       return;
@@ -243,6 +250,19 @@ void sps_processor::make_payments( const block_notification& note )
 
    //Set `new maintenance time` and `last budget time`
    update_settings( head_time );
+
+   if( db.get_benchmark_dumper().is_enabled() )
+      db.get_benchmark_dumper().end( sps_processor::calculating_name );
+}
+
+const std::string& sps_processor::get_removing_name()
+{
+   return removing_name;
+}
+
+const std::string& sps_processor::get_calculating_name()
+{
+   return calculating_name;
 }
 
 void sps_processor::run( const block_notification& note )

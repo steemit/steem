@@ -210,7 +210,7 @@ struct database_fixture {
 #ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
 #endif
-   void open_database();
+   void open_database( uint16_t shared_file_size_in_mb = 8 );
    void generate_block(uint32_t skip = 0,
                                const fc::ecc::private_key& key = generate_private_key("init_key"),
                                int miss_blocks = 0);
@@ -275,7 +275,7 @@ struct database_fixture {
 
 struct clean_database_fixture : public database_fixture
 {
-   clean_database_fixture();
+   clean_database_fixture( uint16_t shared_file_size_in_mb = 8 );
    virtual ~clean_database_fixture();
 
    void resize_shared_mem( uint64_t size );
@@ -337,7 +337,8 @@ using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture
 
 struct sps_proposal_database_fixture : public clean_database_fixture
 {
-   sps_proposal_database_fixture(){}
+   sps_proposal_database_fixture( uint16_t shared_file_size_in_mb = 8 )
+                           : clean_database_fixture( shared_file_size_in_mb ){}
    virtual ~sps_proposal_database_fixture(){}
 
    void plugin_prepare();
@@ -360,6 +361,16 @@ struct sps_proposal_database_fixture : public clean_database_fixture
    uint64_t get_nr_blocks_until_maintenance_block();
 
    void post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
+};
+
+struct sps_proposal_database_fixture_performance : public sps_proposal_database_fixture
+{
+   sps_proposal_database_fixture_performance( uint16_t shared_file_size_in_mb = 512 )
+                           : sps_proposal_database_fixture( shared_file_size_in_mb )
+   {
+      db->get_benchmark_dumper().set_enabled( true );
+      db->set_sps_remove_threshold( -1 );
+   }
 };
 
 struct json_rpc_database_fixture : public database_fixture

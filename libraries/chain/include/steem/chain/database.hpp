@@ -106,7 +106,7 @@ namespace steem { namespace chain {
             uint64_t shared_file_size = 0;
             uint16_t shared_file_full_threshold = 0;
             uint16_t shared_file_scale_rate = 0;
-            uint16_t sps_remove_threshold = 0;
+            int16_t  sps_remove_threshold = -1;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
@@ -572,6 +572,11 @@ namespace steem { namespace chain {
          int16_t get_sps_remove_threshold() const
          {
             return _sps_remove_threshold;
+         }
+
+         void set_sps_remove_threshold( int16_t val )
+         {
+            _sps_remove_threshold = val;
          }
 
          util::advanced_benchmark_dumper& get_benchmark_dumper()
