@@ -68,7 +68,7 @@ class chain_plugin_impl
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
       uint16_t                         shared_file_scale_rate = 0;
-      uint16_t                         sps_remove_threshold = 0;
+      int16_t                          sps_remove_threshold = -1;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;

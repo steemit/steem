@@ -40,7 +40,7 @@ namespace steem { namespace chain {
 using std::cout;
 using std::cerr;
 
-clean_database_fixture::clean_database_fixture()
+clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb )
 {
    try {
    int argc = boost::unit_test::framework::master_test_suite().argc;
@@ -79,7 +79,7 @@ clean_database_fixture::clean_database_fixture()
 
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   open_database();
+   open_database( shared_file_size_in_mb );
 
    generate_block();
    db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
@@ -245,7 +245,7 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
 }
 #endif
 
-void database_fixture::open_database()
+void database_fixture::open_database( uint16_t shared_file_size_in_mb )
 {
    if( !data_dir )
    {
@@ -257,7 +257,7 @@ void database_fixture::open_database()
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
-      args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      args.shared_file_size = 1024 * 1024 * shared_file_size_in_mb; // 8MB(default) or more:  file for testing
       args.sps_remove_threshold = 20;
       db->open(args);
    }

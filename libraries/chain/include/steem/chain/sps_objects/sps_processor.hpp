@@ -19,7 +19,8 @@ class sps_processor
 
    private:
 
-      const static std::string name;
+      const static std::string removing_name;
+      const static std::string calculating_name;
 
       //Get number of microseconds for 1 day( daily_ms )
       const int64_t daily_seconds = fc::days(1).to_seconds();
@@ -55,6 +56,10 @@ class sps_processor
    public:
 
       sps_processor( chain::database& _db ) : db( _db ){}
+
+      const static std::string& get_removing_name();
+      const static std::string& get_calculating_name();
+
       void run( const block_notification& note );
 };
 

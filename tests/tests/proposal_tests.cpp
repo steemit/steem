@@ -14,6 +14,7 @@
 #include <steem/plugins/rc/resource_count.hpp>
 
 #include <steem/chain/sps_objects.hpp>
+#include <steem/chain/sps_objects/sps_processor.hpp>
 
 #include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>
@@ -28,9 +29,6 @@ using namespace steem;
 using namespace steem::chain;
 using namespace steem::protocol;
 using fc::string;
-
-
-BOOST_FIXTURE_TEST_SUITE( proposal_tests, sps_proposal_database_fixture )
 
 template< typename PROPOSAL_IDX >
 int64_t calc_proposals( const PROPOSAL_IDX& proposal_idx, const std::vector< int64_t >& proposals_id )
@@ -62,6 +60,8 @@ int64_t calc_votes( const PROPOSAL_VOTE_IDX& proposal_vote_idx, const std::vecto
       cnt += calc_proposal_votes( proposal_vote_idx, id );
    return cnt;
 }
+
+BOOST_FIXTURE_TEST_SUITE( proposal_tests, sps_proposal_database_fixture )
 
 BOOST_AUTO_TEST_CASE( generating_payments )
 {
@@ -2707,6 +2707,297 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_02 )
          found_votes = calc_votes( proposal_vote_idx, proposals_id );
          BOOST_REQUIRE( found_votes == 0 );
       }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_FIXTURE_TEST_SUITE( proposal_tests_performance, sps_proposal_database_fixture_performance )
+
+int32_t get_time( database& db, const std::string& name )
+{
+   int32_t benchmark_time = -1;
+
+   db.get_benchmark_dumper().dump();
+
+   fc::path benchmark_file( "advanced_benchmark.json" );
+
+   if( !fc::exists( benchmark_file ) )
+      return benchmark_time;
+
+   /*
+   {
+   "total_time": 1421,
+   "items": [{
+         "op_name": "sps_processor",
+         "time": 80
+      },...
+   */
+   auto file = fc::json::from_file( benchmark_file ).as< fc::variant >();
+   if( file.is_object() )
+   {
+      auto vo = file.get_object();
+      if( vo.contains( "items" ) )
+      {
+         auto items = vo[ "items" ];
+         if( items.is_array() )
+         {
+            auto v = items.as< std::vector< fc::variant > >();
+            for( auto& item : v )
+            {
+               if( !item.is_object() )
+                  continue;
+
+               auto vo_item = item.get_object();
+               if( vo_item.contains( "op_name" ) && vo_item[ "op_name" ].is_string() )
+               {
+                  std::string str = vo_item[ "op_name" ].as_string();
+                  if( str == name )
+                  {
+                     if( vo_item.contains( "time" ) && vo_item[ "time" ].is_uint64() )
+                     {
+                        benchmark_time = vo_item[ "time" ].as_int64();
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+   return benchmark_time;
+}
+
+struct initial_data
+{
+   std::string account;
+
+   fc::ecc::private_key key;
+
+   initial_data( database_fixture* db, const std::string& _account ): account( _account )
+   {
+      key = db->generate_private_key( account );
+
+      db->account_create( account, key.get_public_key(), db->generate_private_key( account + "_post" ).get_public_key() );
+   }
+};
+
+std::vector< initial_data > generate_accounts( database_fixture* db, int32_t number_accounts )
+{
+   const std::string basic_name = "tester";
+
+   std::vector< initial_data > res;
+
+   for( int32_t i = 0; i< number_accounts; ++i  )
+   {
+      std::string name = basic_name + std::to_string( i );
+      res.push_back( initial_data( db, name ) );
+
+      if( ( i + 1 ) % 100 == 0 )
+         db->generate_block();
+
+      if( ( i + 1 ) % 1000 == 0 )
+         ilog( "Created: ${accs} accounts",( "accs", i+1 ) );
+   }
+
+   db->validate_database();
+   db->generate_block();
+
+   return res;
+}
+
+BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_03 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: removing of all proposals/votes in one block using threshold = -1" );
+
+      std::vector< initial_data > inits = generate_accounts( this, 200 );
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      auto receiver = "steem.dao";
+
+      auto start_time = db->head_block_time();
+
+      const auto start_time_shift = fc::hours( 20 );
+      const auto end_time_shift = fc::hours( 6 );
+      const auto block_interval = fc::seconds( STEEM_BLOCK_INTERVAL );
+
+      auto start_date_00 = start_time + start_time_shift;
+      auto end_date_00 = start_date_00 + end_time_shift;
+
+      auto daily_pay = asset( 100, SBD_SYMBOL );
+
+      const auto nr_proposals = 200;
+      std::vector< int64_t > proposals_id;
+
+      struct initial_data
+      {
+         std::string account;
+         fc::ecc::private_key key;
+      };
+
+      for( auto item : inits )
+         FUND( item.account, ASSET( "10000.000 TBD" ) );
+      //=====================preparing=====================
+
+      for( auto i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i ];
+         proposals_id.push_back( create_proposal( item.account, receiver, start_date_00, end_date_00, daily_pay, item.key ) );
+         if( ( i + 1 ) % 10 == 0 )
+            generate_block();
+      }
+      generate_block();
+
+      std::vector< int64_t > ids;
+      uint32_t i = 0;
+      for( auto id : proposals_id )
+      {
+         ids.push_back( id );
+         if( ids.size() == STEEM_PROPOSAL_MAX_IDS_NUMBER )
+         {
+            for( auto item : inits )
+            {
+               ++i;
+               vote_proposal( item.account, ids, true/*approve*/, item.key );
+               if( ( i + 1 ) % 10 == 0 )
+                  generate_block();
+            }
+            ids.clear();
+         }
+      }
+      generate_block();
+
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
+
+      auto current_active_proposals = nr_proposals;
+      BOOST_REQUIRE( calc_proposals( proposal_idx, proposals_id ) == current_active_proposals );
+
+      auto current_active_votes = current_active_proposals * static_cast< int16_t > ( inits.size() );
+      BOOST_REQUIRE( calc_votes( proposal_vote_idx, proposals_id ) == current_active_votes );
+
+      auto threshold = db->get_sps_remove_threshold();
+      BOOST_REQUIRE( threshold == -1 );
+
+      generate_blocks( start_time + fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP ) );
+      start_time = db->head_block_time();
+
+      generate_blocks( start_time + ( start_time_shift + end_time_shift - block_interval ) );
+
+      generate_blocks( 1 );
+
+      BOOST_REQUIRE( calc_proposals( proposal_idx, proposals_id ) == 0 );
+      BOOST_REQUIRE( calc_votes( proposal_vote_idx, proposals_id ) == 0 );
+
+      int32_t benchmark_time = get_time( *db, sps_processor::get_removing_name() );
+      BOOST_REQUIRE( benchmark_time == -1 || benchmark_time < 100 );
+
+      /*
+         Local test: 4 cores/16 MB RAM
+         nr objects to be removed: `40200`
+         time of removing: 80 ms
+         speed of removal: ~502/ms
+      */
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( generating_payments )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: generating payments for a lot of accounts" );
+
+      std::vector< initial_data > inits = generate_accounts( this, 30000 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      const auto nr_proposals = 5;
+      std::vector< int64_t > proposals_id;
+      flat_map< std::string, asset > before_tbds;
+
+      auto call = [&]( uint32_t& i, uint32_t max, const std::string& info )
+      {
+         ++i;
+         if( i % max == 0 )
+            generate_block();
+
+         if( i % 1000 == 0 )
+            ilog( info.c_str(),( "x", i ) );
+      };
+
+      uint32_t i = 0;
+      for( auto item : inits )
+      {
+         if( i < 5 )
+            FUND( item.account, ASSET( "11.000 TBD" ) );
+         vest(STEEM_INIT_MINER_NAME, item.account, ASSET( "30.000 TESTS" ));
+
+         call( i, 50, "${x} accounts got VESTS" );
+      }
+
+      auto start_time = db->head_block_time();
+
+      const auto start_time_shift = fc::hours( 10 );
+      const auto end_time_shift = fc::hours( 1 );
+      const auto block_interval = fc::seconds( STEEM_BLOCK_INTERVAL );
+
+      auto start_date = start_time + start_time_shift;
+      auto end_date = start_date + end_time_shift;
+
+      auto daily_pay = ASSET( "24.000 TBD" );
+      auto paid = ASSET( "1.000 TBD" );//because only 1 hour
+
+      FUND( STEEM_TREASURY_ACCOUNT, ASSET( "5000000.000 TBD" ) );
+      //=====================preparing=====================
+      for( int32_t i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i % inits.size() ];
+         proposals_id.push_back( create_proposal( item.account, item.account, start_date, end_date, daily_pay, item.key ) );
+         generate_block();
+      }
+
+      i = 0;
+      for( auto item : inits )
+      {
+         vote_proposal( item.account, proposals_id, true/*approve*/, item.key );
+
+         call( i, 100, "${x} accounts voted" );
+      }
+
+      for( int32_t i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i % inits.size() ];
+         const account_object& account = db->get_account( item.account );
+         before_tbds[ item.account ] = account.sbd_balance;
+      }
+
+      generate_blocks( start_time + ( start_time_shift - block_interval ) );
+      start_time = db->head_block_time();
+      generate_blocks( start_time + end_time_shift + block_interval );
+
+      for( int32_t i = 0; i < nr_proposals; ++i )
+      {
+         auto item = inits[ i % inits.size() ];
+         const account_object& account = db->get_account( item.account );
+
+         auto after_tbd = account.sbd_balance;
+         auto before_tbd = before_tbds[ item.account ];
+         BOOST_REQUIRE( before_tbd == after_tbd - paid );
+      }
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
