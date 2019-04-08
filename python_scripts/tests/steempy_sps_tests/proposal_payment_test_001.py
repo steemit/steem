@@ -6,13 +6,14 @@ import logging
 import sys
 import steem_utils.steem_runner
 import steem_utils.steem_tools
+import test_utils
 
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
-MAIN_LOG_PATH = "./sps_proposal_payment.log"
+MAIN_LOG_PATH = "./sps_proposal_payment_001.log"
 
-MODULE_NAME = "SPS Tester via steempy - proposal payment test"
+MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
 
@@ -35,84 +36,10 @@ except Exception as ex:
     sys.exit(1)
 
 
-# 1. create few proposals.
+# 1. create few proposals - in this scenatio all proposals have the same start and end date
 # 2. vote on them to show differences in asset distribution (depending on collected votes)
 # 3. wait for proposal payment phase
 # 4. verify (using account history and by checking regular account balance) that given accounts have been correctly paid.
-
-
-# create_account "initminer" "pychol" "" true
-def create_accounts(node, creator, accounts):
-    for account in accounts:
-        logger.info("Creating account: {}".format(account['name']))
-        node.commit.create_account(account['name'], 
-            owner_key=account['public_key'], 
-            active_key=account['public_key'], 
-            posting_key=account['public_key'],
-            memo_key=account['public_key'],
-            store_keys = False,
-            creator=creator,
-            asset='TESTS'
-        )
-    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
-
-# transfer_to_vesting initminer pychol "310.000 TESTS" true
-def transfer_to_vesting(node, from_account, accounts, amount, asset):
-    for acnt in accounts:
-        logger.info("Transfer to vesting from {} to {} amount {} {}".format(
-            from_account, acnt['name'], amount, asset)
-        )
-        
-        node.commit.transfer_to_vesting(amount, to = acnt['name'], 
-            account = from_account, asset = asset
-        )
-    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
-
-# transfer initminer pychol "399.000 TESTS" "initial transfer" true
-# transfer initminer pychol "398.000 TBD" "initial transfer" true
-def transfer_assets_to_accounts(node, from_account, accounts, amount, asset):
-    for acnt in accounts:
-        logger.info("Transfer from {} to {} amount {} {}".format(from_account, 
-            acnt['name'], amount, asset)
-        )
-        node.commit.transfer(acnt['name'], amount, asset, 
-            memo = "initial transfer", account = from_account
-        )
-    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
-
-def transfer_assets_to_treasury(node, from_account, treasury_account, amount, asset):
-    logger.info("Transfer from {} to {} amount {} {}".format(from_account, 
-        treasury_account, amount, asset)
-    )
-    node.commit.transfer(treasury_account, amount, asset, 
-        memo = "initial transfer", account = from_account
-    )
-    steem_utils.steem_tools.wait_for_blocks_produced(2, node.url)
-
-
-def get_permlink(account):
-    return "steempy-proposal-title-{}".format(account)
-
-def create_posts(node, accounts):
-    logger.info("Creating posts...")
-    for acnt in accounts:
-        logger.info("New post ==> ({},{},{},{},{})".format(
-            "Steempy proposal title [{}]".format(acnt['name']), 
-            "Steempy proposal body [{}]".format(acnt['name']), 
-            acnt['name'], 
-            get_permlink(acnt['name']), 
-            "proposals"
-        ))
-        node.commit.post("Steempy proposal title [{}]".format(acnt['name']), 
-            "Steempy proposal body [{}]".format(acnt['name']), 
-            acnt['name'], 
-            permlink = get_permlink(acnt['name']), 
-            tags = "proposals")
-    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
 
 def create_proposals(node, accounts, start_date, end_date):
     logger.info("Creating proposals...")
@@ -124,7 +51,7 @@ def create_proposals(node, accounts, start_date, end_date):
             end_date,
             "24.000 TBD",
             "Proposal from account {}".format(acnt['name']),
-            get_permlink(acnt['name'])
+            test_utils.get_permlink(acnt['name'])
         ))
         node.commit.create_proposal(
             acnt['name'], 
@@ -133,37 +60,9 @@ def create_proposals(node, accounts, start_date, end_date):
             end_date,
             "24.000 TBD",
             "Proposal from account {}".format(acnt['name']),
-            get_permlink(acnt['name'])
+            test_utils.get_permlink(acnt['name'])
         )
     steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
-
-def vote_proposals(node, accounts):
-    logger.info("Voting proposals...")
-    for acnt in accounts:
-        proposal_set = [x for x in range(0, len(accounts))]
-        logger.info("Account {} voted for proposals: {}".format(acnt["name"], ",".join(str(x) for x in proposal_set)))
-        node.commit.update_proposal_votes(acnt["name"], proposal_set, True)
-    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
-
-
-def list_proposals(node, start_date, status):
-    proposals = node.list_proposals(start_date, "by_start_date", "direction_ascending", 1000, status)
-    ret = []
-    votes = []
-    for proposal in proposals:
-        ret.append("{}:{}".format(proposal.get('id', 'Error'), proposal.get('total_votes', 'Error')))
-        votes.append(int(proposal.get('total_votes', -1)))
-    logger.info("Listing proposals with status {} (id:total_votes): {}".format(status, ",".join(ret)))
-    return votes
-
-def print_balance(node, accounts):
-    balances = []
-    for acnt in accounts:
-        ret = node.get_account(acnt['name'])
-        logger.info("{} :: balance ==> {}, sbd_balance ==> {}".format(acnt['name'], ret.get('balance', 'Error'), ret.get('sbd_balance', 'Error')))
-        balances.append(ret.get('sbd_balance', 'Error'))
-    return balances
 
 
 if __name__ == '__main__':
@@ -226,36 +125,34 @@ if __name__ == '__main__':
             )
 
             # create accounts
-            create_accounts(node_client, args.creator, accounts)
+            test_utils.create_accounts(node_client, args.creator, accounts)
             # tranfer to vesting
-            transfer_to_vesting(node_client, args.creator, accounts, "300.000", 
+            test_utils.transfer_to_vesting(node_client, args.creator, accounts, "300.000", 
                 "TESTS"
             )
             # transfer assets to accounts
-            transfer_assets_to_accounts(node_client, args.creator, accounts, 
+            test_utils.transfer_assets_to_accounts(node_client, args.creator, accounts, 
                 "400.000", "TESTS"
             )
 
-            transfer_assets_to_accounts(node_client, args.creator, accounts, 
+            test_utils.transfer_assets_to_accounts(node_client, args.creator, accounts, 
                 "400.000", "TBD"
             )
 
             logger.info("Balances for accounts after initial transfer")
-            print_balance(node_client, accounts)
+            test_utils.print_balance(node_client, accounts)
             # transfer assets to treasury
-            transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
+            test_utils.transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
                 "1000000.000", "TESTS"
             )
 
-            transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
+            test_utils.transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
                 "1000000.000", "TBD"
             )
-
-            logger.info("Balances for treasury account after initial transfer")
-            print_balance(node_client, [{'name' : args.treasury}])
+            test_utils.print_balance(node_client, [{'name' : args.treasury}])
 
             # create post for valid permlinks
-            create_posts(node_client, accounts)
+            test_utils.create_posts(node_client, accounts)
 
             import datetime
             import dateutil.parser
@@ -278,25 +175,23 @@ if __name__ == '__main__':
             create_proposals(node_client, accounts, start_date_str, end_date_str)
 
             # list proposals with inactive status, it shoud be list of pairs id:total_votes
-            list_proposals(node_client, start_date_str, "inactive")
+            test_utils.list_proposals(node_client, start_date_str, "inactive")
 
             # each account is voting on proposal
-            vote_proposals(node_client, accounts)
+            test_utils.vote_proposals(node_client, accounts)
 
             # list proposals with inactive status, it shoud be list of pairs id:total_votes
-            votes = list_proposals(node_client, start_date_str, "inactive")
+            votes = test_utils.list_proposals(node_client, start_date_str, "inactive")
             for vote in votes:
                 #should be 0 for all
                 assert vote == 0, "All votes should be equal to 0"
 
             logger.info("Balances for accounts after creating proposals")
-            balances = print_balance(node_client, accounts)
+            balances = test_utils.print_balance(node_client, accounts)
             for balance in balances:
                 #should be 390.000 TBD for all
                 assert balance == '390.000 TBD', "All balances should be equal to 390.000 TBD"
-
-            logger.info("Balances for treasury after creating proposals")
-            print_balance(node_client, [{'name' : args.treasury}])
+            test_utils.print_balance(node_client, [{'name' : args.treasury}])
 
             # move forward in time to see if proposals are paid
             # moving is made in 1h increments at a time, after each 
@@ -311,10 +206,9 @@ if __name__ == '__main__':
                 node_client.debug_generate_blocks_until(wif, current_date_str, False)
 
                 logger.info("Balances for accounts at time: {}".format(current_date_str))
-                print_balance(node_client, accounts)
-                logger.info("Balances for treasury at time: {}".format(current_date_str))
-                print_balance(node_client, [{'name' : args.treasury}])
-                votes = list_proposals(node_client, start_date_str, "active")
+                test_utils.print_balance(node_client, accounts)
+                test_utils.print_balance(node_client, [{'name' : args.treasury}])
+                votes = test_utils.list_proposals(node_client, start_date_str, "active")
                 for vote in votes:
                     # should be > 0 for all
                     assert vote > 0, "All votes counts shoud be greater than 0"
@@ -323,13 +217,12 @@ if __name__ == '__main__':
             logger.info("Moving to date: {}".format(end_date_blocks_str))
             node_client.debug_generate_blocks_until(wif, end_date_blocks_str, False)
             logger.info("Balances for accounts at time: {}".format(end_date_blocks_str))
-            balances = print_balance(node_client, accounts)
+            balances = test_utils.print_balance(node_client, accounts)
             for balance in balances:
                 # shoud be 438.000 TBD for all
                 assert balance == '438.000 TBD', "All balances should be equal 438.000 TBD"
-            logger.info("Balances for treasury at time: {}".format(end_date_blocks_str))
-            print_balance(node_client, [{'name' : args.treasury}])
-            votes = list_proposals(node_client, start_date_str, "expired")
+            test_utils.print_balance(node_client, [{'name' : args.treasury}])
+            votes = test_utils.list_proposals(node_client, start_date_str, "expired")
             for vote in votes:
                     # should be > 0 for all
                     assert vote > 0, "All votes counts shoud be greater than 0"

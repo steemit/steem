@@ -12,23 +12,11 @@ import uuid
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
-MAIN_LOG_PATH = "./steem_tools.log"
 
-MODULE_NAME = "Steem Tools Py"
+MODULE_NAME = "SPS-Tester-via-steempy.Tools-Py"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
 
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(LOG_LEVEL)
-ch.setFormatter(logging.Formatter(LOG_FORMAT))
-
-fh = logging.FileHandler(MAIN_LOG_PATH)
-fh.setLevel(LOG_LEVEL)
-fh.setFormatter(logging.Formatter(LOG_FORMAT))
-
-if not logger.hasHandlers():
-    logger.addHandler(ch)
-    logger.addHandler(fh)
 
 def save_screen_cfg(cfg_file_name, log_file_path):
     """Creates a config file for screen command. In config file we configure logging path and interval.
