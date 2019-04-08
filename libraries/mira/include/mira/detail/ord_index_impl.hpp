@@ -86,7 +86,7 @@
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT
 #endif
 
-#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db, *_cache
+#define ROCKSDB_ITERATOR_PARAM_PACK const_cast< column_handles* >( &_handles ), COLUMN_INDEX, super::_db, *_cache
 
 namespace mira{
 
@@ -255,6 +255,7 @@ protected:
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
    std::shared_ptr< object_cache_type >               _cache;
+   column_handles&                                    _handles;
 
    uint32_t                                           _key_modification_count = 0;
    rocksdb::FlushOptions                              _flush_opts;
@@ -440,6 +441,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
   ordered_index_impl(const ctor_args_list& args_list):
     super(args_list.get_tail()),
     _cache( object_cache_factory_type::get_shared_cache() ),
+    _handles( super::_handles ),
     key(boost::tuples::get<0>(args_list.get_head())),
     comp_(boost::tuples::get<1>(args_list.get_head()))
   {

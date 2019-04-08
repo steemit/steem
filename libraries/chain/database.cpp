@@ -204,7 +204,7 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
 #ifdef ENABLE_STD_ALLOCATOR
-//*
+/*
       get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< account_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
       get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );

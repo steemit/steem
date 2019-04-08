@@ -1,4 +1,6 @@
 #pragma once
+#include <boost/variant.hpp>
+
 #include <memory>
 
 namespace mira {
@@ -263,199 +265,227 @@ class iterator_wrapper :
       std::unique_ptr< abstract_iterator< ValueType > > _abs_iter;
 };*/
 
-template< typename ValueType, typename MiraType, typename BmicType >
-class iterator_wrapper :
+template< typename ValueType, typename MiraType, typename RevMiraType, typename BmicType, typename RevBmicType >
+class iterator_adapter :
    public boost::bidirectional_iterator_helper<
-      iterator_wrapper< ValueType, MiraType, BmicType >,
+      iterator_adapter< ValueType, MiraType, RevMiraType, BmicType, RevBmicType >,
       ValueType,
       std::size_t,
       const ValueType*,
       const ValueType& >
 {
+
+   typedef boost::variant< MiraType, RevMiraType, BmicType, RevBmicType > iter_variant;
+/*
+   struct equality_visitor
+   {
+      const iter_variant& a;
+
+      typedef bool result_type;
+
+      equality_visitor( const iter_variant& _a ) : a( _a ) {}
+
+      template< typename U >
+      result_type operator()( U& b )
+      {
+         return b == boost::get< U >( a );
+      }
+   };
+*/
+/*
    union iter_union
    {
-      MiraType mira_iter;
-      BmicType bmic_iter;
+      MiraType mira_itr;
+      BmicType bmic_itr;
+
+      iter_union()
+      {
+         bmic_itr = BmicType();
+      }
    };
-
-   iter_union _iter;
-   index_type _type = mira;
-
-   //typedef abstract_iterator< ValueType > abs_iter_type;
-
-   iterator_wrapper() {}
+*/
+   iter_variant   _itr;
+   index_type     _type = bmic;
 
    public:
-      iterator_wrapper( const MiraType& mira_iter )
+      iterator_adapter() {}
+/*
+      template< typename IterType >
+      iterator_adapter( const IterType& itr )
       {
-         _iter.mira_iter = mira_iter;
-         _type = mira;
+         _itr = itr;
       }
 
-      iterator_wrapper( MiraType&& mira_iter )
+      template< typename IterType >
+      iterator_adapter( IterType&& itr )
       {
-         _iter.mira_iter = std::move( mira_iter );
-         _type = mira;
+         _itr = std::move( itr );
+      }
+*/
+//*
+      iterator_adapter( const MiraType& mira_itr )
+      {
+         _itr = mira_itr;
       }
 
-      iterator_wrapper( const BmicType& bmic_iter )
+      iterator_adapter( MiraType&& mira_itr )
       {
-         _iter.bmic_iter = bmic_iter;
-         _type = bmic;
+         _itr = std::move( mira_itr );
       }
 
-      iterator_wrapper( BmicType&& bmic_iter )
+      iterator_adapter( const RevMiraType& rev_mira_itr )
       {
-         _iter.bmic_iter = std::move( bmic_iter );
-         _type = bmic;
+         _itr = rev_mira_itr;
       }
 
-      iterator_wrapper( const iterator_wrapper& other )
+      iterator_adapter( RevMiraType&& rev_mira_itr )
+      {
+         _itr = std::move( rev_mira_itr );
+      }
+
+      iterator_adapter( const BmicType& bmic_itr )
+      {
+         _itr = bmic_itr;
+      }
+
+      iterator_adapter( BmicType&& bmic_itr )
+      {
+         _itr = std::move( bmic_itr );
+      }
+
+      iterator_adapter( const RevBmicType& rev_bmic_itr )
+      {
+         _itr = rev_bmic_itr;
+      }
+
+      iterator_adapter( RevBmicType&& rev_bmic_itr )
+      {
+         _itr = std::move( rev_bmic_itr );
+      }
+//*/
+      iterator_adapter( const iterator_adapter& other )
       {
          switch( other._type )
          {
             case mira:
-               _iter.mira_iter = other._iter.mira_iter;
+               _itr = other._itr;
                _type = mira;
                break;
             case bmic:
-               _iter.bmic_iter = other._iter.bmic_iter;
+               _itr = other._itr;
                _type = bmic;
                break;
          }
       }
 
-      iterator_wrapper( iterator_wrapper&& other )
+      iterator_adapter( iterator_adapter&& other )
       {
          switch( other._type )
          {
             case mira:
-               _iter.mira_iter = std::move( other._iter.mira_iter );
+               _itr = std::move( other._itr );
                _type = mira;
                break;
             case bmic:
-               _iter.bmic_iter = std::move( other._iter.bmic_iter );
+               _itr = std::move( other._itr );
                _type = bmic;
                break;
          }
       }
 
-      iterator_wrapper& operator ++()
+/*
+      ~iterator_adapter()
       {
          switch( _type )
          {
             case mira:
-               _iter.mira_iter++();
+               _itr.mira_itr.~MiraType();
                break;
             case bmic:
-               _iter.bmic_iter++();
+               _itr.bmic_itr.~BmicType();
                break;
          }
+      }
+*/
+      iterator_adapter& operator ++()
+      {
+         boost::apply_visitor(
+            []( auto& itr ){ ++itr; },
+            _itr
+         );
 
          return *this;
       }
 
-      iterator_wrapper operator ++(int)const
+      iterator_adapter operator ++(int)const
       {
-         iterator_wrapper copy( *this );
-         ++copy;
-         return copy;
+         return boost::apply_visitor(
+            []( auto& itr ){ return iterator_adapter( itr++ ); },
+            _itr
+         );
       }
 
-      iterator_wrapper& operator --()
+      iterator_adapter& operator --()
       {
-         switch( _type )
-         {
-            case mira:
-               _iter.mira_iter--();
-               break;
-            case bmic:
-               _iter.bmic_iter--();
-               break;
-         }
+         boost::apply_visitor(
+            []( auto& itr ){ --itr; },
+            _itr
+         );
 
          return *this;
       }
 
-      iterator_wrapper operator --(int)const
+      iterator_adapter operator --(int)const
       {
-         iterator_wrapper copy( *this );
-         --copy;
-         return copy;
+         return boost::apply_visitor(
+            []( auto& itr ){ return iterator_adapter( itr-- ); },
+            _itr
+         );
       }
 
-      const ValueType& operator *()const
+      const ValueType& operator *()
       {
-         return *(operator->());
+         return *(operator ->());
       }
 
-      const ValueType* operator ->()const
+      const ValueType* operator ->()
       {
-         ValueType* result = nullptr;
-
-         switch( _type )
-         {
-            case mira:
-               result = _iter.mira_iter.operator->();
-               break;
-            case bmic:
-               result = _iter.bmic_iter.operator->();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto& itr ){ return itr.operator->(); },
+            _itr
+         );
       }
 
-      bool operator ==( const iterator_wrapper& other )
+      bool operator ==( const iterator_adapter& other )
       {
-         bool result = false;
+         return _itr == other._itr;
+         //return _itr.which() != other._itr.which();
+/*
+         if( _itr.which() != other._itr.which() ) return false;
 
-         if( _type == other._type )
-         {
-            switch( _type )
-            {
-               case mira:
-                  result = _iter.mira_iter == other._iter.mira_iter;
-                  break;
-               case bmic:
-                  result = _iter.bmic_iter == other._iter.mira_iter;
-                  break;
-            }
-         }
-
-         return result;
+         return boost::apply_visitor(
+            equality_visitor( other ),
+            _itr
+         );
+*/
       }
 
-      bool operator !=( const iterator_wrapper& other )
+      bool operator !=( const iterator_adapter& other )
       {
-         bool result = false;
-
-         if( _type == other._type )
-         {
-            switch( _type )
-            {
-               case mira:
-                  result = _iter.mira_iter != other._iter.mira_iter;
-                  break;
-               case bmic:
-                  result = _iter.bmic_iter != other._iter.mira_iter;
-                  break;
-            }
-         }
-
-         return result;
+         return _itr != other._itr;
+         //return !( *this == other );
       }
 
-      iterator_wrapper& operator =( const iterator_wrapper& other )
+      iterator_adapter& operator =( const iterator_adapter& other )
       {
          switch( other._type )
          {
             case mira:
-               _iter.mira_iter = other._iter.mira_iter;
+               _itr = other._itr;
                _type = mira;
                break;
             case bmic:
-               _iter.bmic_iter = other._iter.bmic_iter;
+               _itr = other._itr;
                _type = bmic;
                break;
          }
@@ -463,62 +493,105 @@ class iterator_wrapper :
          return *this;
       }
 
-      iterator_wrapper& operator =( iterator_wrapper&& other )
+      iterator_adapter& operator =( iterator_adapter&& other )
       {
          switch( other._type )
          {
             case mira:
-               _iter.mira_iter = std::move( other._iter.mira_iter );
+               _itr = std::move( other._itr );
                _type = mira;
                break;
             case bmic:
-               _iter.bmic_iter = std::move( other._iter.bmic_iter );
+               _itr = std::move( other._itr );
                _type = bmic;
                break;
          }
 
          return *this;
       }
-
-      iterator_wrapper& operator =( const MiraType& mira_iter )
+/*
+      template< typename IterType >
+      iterator_adapter& operator =( const IterType& itr )
       {
-         _iter.mira_iter = mira_iter;
-         _type = mira;
+         _itr = itr;
+         return *this;
       }
 
-      iterator_wrapper& operator =( MiraType&& mira_iter )
+      template< typename IterType >
+      iterator_adapter& operator =( IterType&& itr )
       {
-         _iter.mira_iter = std::move( mira_iter );
-         _type = mira;
+         _itr = std::move( itr );
+         return *this;
+      }
+//*/
+//*
+      iterator_adapter& operator =( MiraType& mira_itr )
+      {
+         _itr = mira_itr;
+         return *this;
       }
 
-      iterator_wrapper& operator =( const BmicType& bmic_iter )
+      iterator_adapter& operator =( MiraType&& mira_itr )
       {
-         _iter.bmic_iter = bmic_iter;
+         _itr = std::move( mira_itr );
+         return *this;
+      }
+
+      iterator_adapter& operator =( RevMiraType& rev_mira_itr )
+      {
+         _itr = rev_mira_itr;
+         return *this;
+      }
+
+      iterator_adapter& operator =( RevMiraType&& rev_mira_itr )
+      {
+         _itr = std::move( rev_mira_itr );
+         return *this;
+      }
+
+      iterator_adapter& operator =( const BmicType& bmic_itr )
+      {
+         _itr = bmic_itr;
          _type = bmic;
+         return *this;
       }
 
-      iterator_wrapper& operator =( BmicType&& bmic_iter )
+      iterator_adapter& operator =( BmicType&& bmic_itr )
       {
-         _iter.bmic_iter = std::move( bmic_iter );
+         _itr = std::move( bmic_itr );
          _type = bmic;
+         return *this;
       }
 
-      //template< typename IndexType > IndexType& as();
+      iterator_adapter& operator =( const RevBmicType& rev_bmic_itr )
+      {
+         _itr = rev_bmic_itr;
+         return *this;
+      }
+
+      iterator_adapter& operator =( RevBmicType&& rev_bmic_itr )
+      {
+         _itr = std::move( rev_bmic_itr );
+         return *this;
+      }
+//*/
+
+      template< typename IterType >
+      IterType& get() { return boost::get< IterType >( _itr ); }
 };
 /*
 template< typename ValueType, typename MiraType, typename BmicType >
-MiraType& iterator_wrapper< ValueType, MiraType, BmicType >::as()
+MiraType& iterator_adapter< ValueType, MiraType, BmicType >::as()
 {
    assert( _type = mira );
-   return _iter.mira_iter;
+   return _itr.mira_itr;
 }
 
 template< typename ValueType, typename MiraType, typename BmicType >
-BmicType& iterator_wrapper< ValueType, MiraType, BmicType >as()
+BmicType& iterator_adapter< ValueType, MiraType, BmicType >as()
 {
    assert( _type = bmic );
-   return _iter.bmic_iter;
+   return _itr.bmic_itr;
 }
 */
 }

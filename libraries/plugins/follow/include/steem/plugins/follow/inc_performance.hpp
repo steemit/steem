@@ -123,8 +123,8 @@ class performance
       performance( database& _db );
       ~performance();
 
-      template< performance_data::t_creation_type CreationType, typename Index >
-      uint32_t delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+      //template< performance_data::t_creation_type CreationType, typename Index >
+      //uint32_t delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
       template< typename T, typename T2 >
       static void dump( const char* message, const T& data, const T2& data2 )

@@ -18,14 +18,17 @@ struct index_adapter
       (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
    //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >            bmic_iter_adapter;
    //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->rbegin()) ) >           bmic_rev_iter_adapter;
-   typedef iterator_wrapper<
+   typedef iterator_adapter<
       value_type,
       decltype( (((mira_type*)nullptr)->begin()) ),
-      decltype( (((bmic_type*)nullptr)->begin()) ) >                                                     iter_type;
-   typedef iterator_wrapper<
+      decltype( (((mira_type*)nullptr)->rbegin()) ),
+      decltype( (((bmic_type*)nullptr)->begin()) ),
+      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    iter_type;
+   typedef iter_type                                                                                     rev_iter_type;
+   /*typedef iterator_adapter<
       value_type,
       decltype( (((mira_type*)nullptr)->rbegin()) ),
-      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    rev_iter_type;
+      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    rev_iter_type;*/
 
    private:
       index_adapter() {}
@@ -281,14 +284,18 @@ struct multi_index_adapter
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::bmic_type bmic_type;
    typedef typename bmic_type::iterator                                                                  bmic_iter_type;
    //typedef iterator_adapter< value_type, decltype( (((bmic_type*)nullptr)->begin()) ) >                  bmic_iter_adapter;
-   typedef iterator_wrapper<
+   typedef iterator_adapter<
       value_type,
       decltype( (((mira_type*)nullptr)->begin()) ),
-      decltype( (((bmic_type*)nullptr)->begin()) ) >                                                     iter_type;
-   typedef iterator_wrapper<
+      decltype( (((mira_type*)nullptr)->rbegin()) ),
+      decltype( (((bmic_type*)nullptr)->begin()) ),
+      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    iter_type;
+   typedef iter_type                                                                                     rev_iter_type;
+   /*typedef iterator_adapter<
       value_type,
       decltype( (((mira_type*)nullptr)->rbegin()) ),
       decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    rev_iter_type;
+      */
    typedef typename bmic_type::allocator_type allocator_type;
 
    multi_index_adapter()
@@ -351,6 +358,13 @@ struct multi_index_adapter
 
    template< typename IndexedBy >
    index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > get()
+   {
+      assert( _index );
+      return index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
+   }
+
+   template< typename IndexedBy >
+   index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy > mutable_get()
    {
       assert( _index );
       return index_adapter< multi_index_adapter< Arg1, Arg2, Arg3 >, IndexedBy >( _index, _type );
@@ -514,10 +528,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = ((mira_type*)_index)->modify( position.template as< mira_iter_type >(), mod );
+            result = ((mira_type*)_index)->modify( position.template get< mira_iter_type >(), mod );
             break;
          case bmic:
-            result = ((bmic_type*)_index)->modify( position.template as< bmic_iter_type >(), mod );
+            result = ((bmic_type*)_index)->modify( position.template get< bmic_iter_type >(), mod );
             break;
       }
 
@@ -532,10 +546,10 @@ struct multi_index_adapter
       switch( _type )
       {
          case mira:
-            result = ((mira_type*)_index)->erase( position.template as< mira_iter_type >() );
+            result = ((mira_type*)_index)->erase( position.template get< mira_iter_type >() );
             break;
          case bmic:
-            result = ((bmic_type*)_index)->erase( position.template as< bmic_iter_type >() );
+            result = ((bmic_type*)_index)->erase( position.template get< bmic_iter_type >() );
             break;
       }
 
