@@ -4,10 +4,11 @@ import subprocess
 
 from utils.test_utils import *
 from utils.cmd_args   import args
-from utils.logger     import log
+from utils.logger     import log, init_logger
 
 if __name__ == "__main__":
     try:
+        init_logger(__file__)
         error = False
         output = subprocess.run([args.path+"/cli_wallet", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output_stdout = output.stdout.decode('utf-8')
