@@ -29,7 +29,7 @@ if __name__ == "__main__":
         for by in order_by:
             for direct in  order_direction:
                 for act in active:
-                    call_args = {"start":"initminer", "order_by":by, "order_direction":direct, "limit":10, "status":act}
+                    call_args = {"start":args.creator, "order_by":by, "order_direction":direct, "limit":10, "status":act}
                     call_and_check(wallet.list_voter_proposals, call_args, "args")
 
 

@@ -22,19 +22,19 @@ if __name__ == "__main__":
         wallet.set_and_run_wallet()
 
         error_msg_x  = "The value `x` for `_last_id` argument is invalid, it should be integer type."
-        resp_error_x = wallet.list_proposals("initminer", "creator", "asc", 50, "all", "x")
+        resp_error_x = wallet.list_proposals(args.creator, "creator", "asc", 50, "all", "x")
         log.info(resp_error_x)
         if resp_error_x.find(error_msg_x) == -1:
             raise ArgsCheckException("Assertion `{0}` is required.".format(error_msg_x))
 
         error_msg_y  = "The value `y` for `_last_id` argument is invalid, it should be integer type."
-        resp_error_y = wallet.list_proposals("initminer", "creator", "asc", 50, "all", "y")
+        resp_error_y = wallet.list_proposals(args.creator, "creator", "asc", 50, "all", "y")
         log.info(resp_error_y)
         if resp_error_y.find(error_msg_y) == -1:
             raise ArgsCheckException("Assertion `{0}` is required.".format(error_msg_y))
 
         error_msg_10 = "The value `10` for `_last_id` argument is invalid, it should be integer type."
-        resp_10      = wallet.list_proposals("initminer", "creator", "asc", 50, "all", "10")
+        resp_10      = wallet.list_proposals(args.creator, "creator", "asc", 50, "all", "10")
         log.info(resp_10)
         if resp_10.find(error_msg_10) != -1:
             raise ArgsCheckException("There should be no assertion `{0}`.".format(error_msg_10))
