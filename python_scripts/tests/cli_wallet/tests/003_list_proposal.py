@@ -3,10 +3,11 @@
 from utils.test_utils import *
 from utils.cmd_args   import args
 from utils.cli_wallet import CliWallet
-from utils.logger     import log
+from utils.logger     import log, init_logger
 
 if __name__ == "__main__":
     try:
+        init_logger(__file__)
         error = False
         wallet = CliWallet( args.path,
                             args.server_rpc_endpoint,
@@ -34,7 +35,7 @@ if __name__ == "__main__":
                         start = "2019-03-01T00:00:00"
                     else:
                         start = 0
-                    call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "status":act}
+                    call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "status":act, "last_id":""}
                     call_and_check(wallet.list_proposals, call_args, "args")
 
     except Exception as _ex:
