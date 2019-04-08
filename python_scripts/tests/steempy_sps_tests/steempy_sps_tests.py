@@ -6,12 +6,18 @@ import logging
 import sys
 import os
 import steem_utils.steem_runner
+import steem_utils.steem_tools
+import test_utils
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
 MAIN_LOG_PATH = "./sps_test.log"
 
-MODULE_NAME = "SPS Tester via steempy"
+steem_utils.steem_runner.initialize_logging(MAIN_LOG_PATH)
+steem_utils.steem_tools.initialize_logging(MAIN_LOG_PATH)
+test_utils.initialize_logging(MAIN_LOG_PATH)
+
+MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
 
@@ -33,21 +39,6 @@ except Exception as ex:
     logger.error("SteemPy library is not installed.")
     sys.exit(1)
 
-def get_date_as_isostr(date):
-    return date.replace(microsecond=0).isoformat()
-
-
-def get_isostr_start_end_date(now, start_date_delta, end_date_delta):
-    from datetime import timedelta
-
-    start_date = now + timedelta(days = start_date_delta)
-    end_date = start_date + timedelta(days = end_date_delta)
-
-    start_date = start_date.replace(microsecond=0).isoformat()
-    end_date = end_date.replace(microsecond=0).isoformat()
-
-    return start_date, end_date
-
 
 def test_create_proposal(node, creator_account, receiver_account, wif, subject):
     logger.info("Testing: create_proposal")
@@ -56,7 +47,7 @@ def test_create_proposal(node, creator_account, receiver_account, wif, subject):
     import datetime
     now = datetime.datetime.now()
 
-    start_date, end_date = get_isostr_start_end_date(now, 10, 2)
+    start_date, end_date = test_utils.get_start_and_end_date(now, 10, 2)
 
     from steem.account import Account
     try:
@@ -158,7 +149,7 @@ def test_vote_proposal(node, account, wif, subject):
     assert ret["operations"][0][1]["voter"] == account
     assert ret["operations"][0][1]["proposal_ids"][0] == proposal_id
     assert ret["operations"][0][1]["approve"] == True
-    sleep(6)
+    steem_utils.steem_tools.wait_for_blocks_produced(2, node)
 
 def test_list_voter_proposals(node, account, wif, subject):
     logger.info("Testing: list_voter_proposals")
@@ -243,7 +234,7 @@ def test_iterate_results_test(node, creator_account, receiver_account, wif, subj
     ]
 
     for start_end_pair in start_end_pairs:
-        start_date, end_date = get_isostr_start_end_date(now, start_end_pair[0], start_end_pair[1])
+        start_date, end_date = test_utils.get_start_and_end_date(now, start_end_pair[0], start_end_pair[1])
 
         s.commit.create_proposal(
             creator["name"], 
@@ -254,10 +245,9 @@ def test_iterate_results_test(node, creator_account, receiver_account, wif, subj
             subject,
             "steempy-proposal-title"
             )
-        sleep(3)
-    sleep(6)
+    steem_utils.steem_tools.wait_for_blocks_produced(5, node)
 
-    start_date = get_date_as_isostr(now + datetime.timedelta(days = 5))
+    start_date = test_utils.date_to_iso(now + datetime.timedelta(days = 5))
 
     # 2 then we will list proposals starting from kth proposal with limit set to m < k
     proposals = s.list_proposals(start_date, "by_start_date", "direction_descending", 3, "all")
@@ -284,21 +274,21 @@ def test_iterate_results_test(node, creator_account, receiver_account, wif, subj
     # 4 then we will use newly introduced last_id field, we should see diferent set of proposals
     proposals = s.list_proposals(start_date, "by_start_date", "direction_descending", 3, "all", oids[-1])
 
-    start_date, end_date = get_isostr_start_end_date(now, 5, 4)
+    start_date, end_date = test_utils.get_start_and_end_date(now, 5, 4)
 
     assert proposals[-1]["start_date"] == start_date, "Expected start_date do not match {} != {}".format(start_date, proposals[-1]["start_date"])
     assert proposals[-1]["end_date"] == end_date, "Expected end_date do not match {} != {}".format(end_date, proposals[-1]["end_date"])
 
     # remove all created proposals
     if remove:
-        start_date = get_date_as_isostr(now + datetime.timedelta(days = 6))
+        start_date = test_utils.date_to_iso(now + datetime.timedelta(days = 6))
         for a in range(0, 2):
             proposals = s.list_proposals(start_date, "by_start_date", "direction_descending", 5, "all")
             ids = []
             for proposal in proposals:
                 ids.append(int(proposal['id']))
             s.commit.remove_proposal(creator["name"], ids)
-            sleep(12)
+            steem_utils.steem_tools.wait_for_blocks_produced(3, node)
 
 
 if __name__ == '__main__':
@@ -343,16 +333,16 @@ if __name__ == '__main__':
     try:
         if node is None or node.is_running():
             test_create_proposal(node_url, args.creator, args.receiver, wif, subject)
-            sleep(6)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
             test_list_proposals(node_url, args.creator, wif, subject)
             test_find_proposals(node_url, args.creator, wif, subject)
             test_vote_proposal(node_url, args.creator, wif, subject)
             test_list_voter_proposals(node_url, args.creator, wif, subject)
-            sleep(6)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
             if args.no_erase_proposal:
                 test_remove_proposal(node_url, args.creator, wif, subject)
             test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
-            sleep(6)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
             if node is not None:
                 node.stop_steem_node()
             sys.exit(0)

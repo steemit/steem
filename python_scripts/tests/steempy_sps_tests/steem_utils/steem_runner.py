@@ -14,21 +14,10 @@ LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
 MAIN_LOG_PATH = "./steem_runner.log"
 
-MODULE_NAME = "STEEM Runner Py"
+MODULE_NAME = "SPS-Tester-via-steempy.Runner-Py"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
 
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(LOG_LEVEL)
-ch.setFormatter(logging.Formatter(LOG_FORMAT))
-
-fh = logging.FileHandler(MAIN_LOG_PATH)
-fh.setLevel(LOG_LEVEL)
-fh.setFormatter(logging.Formatter(LOG_FORMAT))
-
-if not logger.hasHandlers():
-    logger.addHandler(ch)
-    logger.addHandler(fh)
 
 class SteemNode(object):
     def __init__(self, steem_executable, working_dir, config_src_path):
