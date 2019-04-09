@@ -9,6 +9,8 @@ ENV BUILD_STEP ${BUILD_STEP}
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
 
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
 RUN \
     apt-get update && \
     apt-get install -y \
