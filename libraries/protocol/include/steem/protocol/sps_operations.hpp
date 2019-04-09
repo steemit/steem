@@ -33,7 +33,7 @@ struct update_proposal_votes_operation : public base_operation
    account_name_type voter;
 
    /// IDs of proposals to vote for/against. Nonexisting IDs are ignored.
-   flat_set<int64_t> proposal_ids;
+   flat_set_ex<int64_t> proposal_ids;
 
    bool approve = false;
 
@@ -50,7 +50,7 @@ struct remove_proposal_operation : public base_operation
    account_name_type proposal_owner;
 
    /// IDs of proposals to be removed. Nonexisting IDs are ignored.
-   flat_set<int64_t> proposal_ids;
+   flat_set_ex<int64_t> proposal_ids;
 
    void validate() const;
 
@@ -77,6 +77,49 @@ struct proposal_pay_operation : public virtual_operation
 };
 
 } } // steem::protocol
+
+namespace fc {
+
+   namespace raw {
+       template<typename Stream, typename T>
+       inline void pack( Stream& s, const flat_set_ex<T>& value ) {
+            pack( s, static_cast< const flat_set<T>& >( value ) );
+       }
+
+       template<typename Stream, typename T>
+       inline void unpack( Stream& s, flat_set_ex<T>& value, uint32_t depth ) {
+         unpack( s, static_cast< flat_set<T>& >( value ), depth );
+       }
+
+   }
+
+   template<typename T>
+   void to_variant( const flat_set_ex<T>& var,  variant& vo )
+   {
+      to_variant( static_cast< const flat_set<T>& >( var ), vo );
+   }
+
+   template<typename T>
+   void from_variant( const variant& var, flat_set_ex<T>& vo )
+   {
+      const variants& vars = var.get_array();
+      vo.clear();
+      vo.reserve( vars.size() );
+      for( auto itr = vars.begin(); itr != vars.end(); ++itr )
+      {
+         //Items from variant have to be sorted
+         T tmp = itr->as<T>();
+         if( !vo.empty() )
+         {
+            T last = *( vo.rbegin() );
+            FC_ASSERT( tmp > last, "Items should be unique and sorted" );
+         }
+
+         vo.insert( tmp );
+      }
+   }
+   
+}
 
 FC_REFLECT( steem::protocol::create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink) )
 FC_REFLECT( steem::protocol::update_proposal_votes_operation, (voter)(proposal_ids)(approve) )
