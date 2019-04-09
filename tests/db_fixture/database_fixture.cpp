@@ -1020,7 +1020,7 @@ list_proposals_return sps_proposal_database_fixture::list_proposals(fc::variant 
       } FC_CAPTURE_AND_RETHROW();
 }
 
-list_voter_proposals_return  sps_proposal_database_fixture::list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) 
+list_voter_proposals_return  sps_proposal_database_fixture::list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id) 
 {
       auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
       steem::plugins::sps::list_voter_proposals_args args;
@@ -1029,6 +1029,10 @@ list_voter_proposals_return  sps_proposal_database_fixture::list_voter_proposals
       args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
       args.limit           = _limit;
       args.status          = steem::plugins::sps::to_proposal_status(_status);
+      if (_last_id.size() > 0)
+      {
+         args.last_id         = boost::lexical_cast<uint64_t>(_last_id);
+      }
 
       try {
          return api->list_voter_proposals(args);

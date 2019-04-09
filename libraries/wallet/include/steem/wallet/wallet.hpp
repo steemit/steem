@@ -1103,7 +1103,7 @@ class wallet_api
        * @param _order_by   - name a field for sorting operation,
        * @param _order_type - set print order asc - ascdending, desc - descending,
        * @param _limit      - query limit
-       * @param _status     - List only results with given status (expired, inactive, active, all).
+       * @param _status     - List only results with given status (expired, inactive, active, all, votable).
        * @param _last_id    - (optional) Start search from given id.
        */
       list_proposals_return list_proposals(fc::variant _start,
@@ -1119,13 +1119,15 @@ class wallet_api
        * @param _order_by   - name a field for sorting operation,
        * @param _order_type - set print order asc - ascdending, desc - descending,
        * @param _limit      - query limit
-       * @param _status     - List only results with given status (expired, inactive, active, all).
+       * @param _status     - List only results with given status (expired, inactive, active, all, votable).
+       * @param _last_id    - (optional) Start search from given id.
        */
       list_voter_proposals_return list_voter_proposals(fc::variant _start,
                                                        std::string _order_by = "creator",
                                                        std::string _order_type = "desc",
                                                        int _limit = 10,
-                                                       std::string _status = "all");
+                                                       std::string _status = "all",
+                                                       std::string _last_id = "");
 
       /**
        * Find proposal with given id

@@ -287,7 +287,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   auto current_time = _db.head_block_time();
 
   const auto& idx = _db.get_index<proposal_vote_index, by_voter_proposal>();
-  auto itr = idx.lower_bound(args.start.as<account_name_type>());
+  auto itr = args.last_id.valid() ? idx.find(boost::make_tuple(args.start.as<account_name_type>(), *(args.last_id))) : idx.lower_bound(args.start.as<account_name_type>());
   auto end = idx.end();
 
   size_t proposals_count = 0;

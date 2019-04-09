@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
         creator, receiver = make_user_for_tests(wallet)
 
-        proposals_before = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all") )))
+        proposals_before = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all", "") )))
         log.info("proposals_before {0}".format(proposals_before))
 
         wallet.post_comment(creator, "lorem", "", "ipsum", "Lorem Ipsum", "body", "{}", "true")
@@ -38,11 +38,11 @@ if __name__ == "__main__":
             if r["id"] > new_proposal_id:
                 new_proposal_id = r["id"]
 
-        proposals_middle = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all"))))
+        proposals_middle = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all", ""))))
         log.info("proposals_middle {0}".format(proposals_middle))
 
         wallet.update_proposal_votes(creator, [new_proposal_id], "true", "true")
-        proposals_after = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all") )))
+        proposals_after = len(find_voter_proposals(creator, last_message_as_json( wallet.list_voter_proposals(creator, "creator", "asc", 20, "all", "") )))
 
         log.info("proposals_after {0}".format(proposals_after))
 
