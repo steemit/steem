@@ -2516,7 +2516,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
                                                                                      std::string _order_by,
                                                                                      std::string _order_type,
                                                                                      int _limit,
-                                                                                     std::string _status)
+                                                                                     std::string _status,
+                                                                                     std::string _last_id)
    {
       FC_ASSERT(!_order_by.empty());
       FC_ASSERT(!_order_type.empty());
@@ -2530,14 +2531,24 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       args.limit           = _limit;
       args.status          = steem::plugins::sps::to_proposal_status(_status);
 
-      ddump((args.start));
-      ddump((args.order_by));
-      ddump((args.order_direction));
-      ddump((args.limit));
-      ddump((args.status));
-
       try {
-         return my->_remote_api->list_voter_proposals(args.start, args.order_by, args.order_direction, args.limit, args.status);
+         if (!_last_id.empty() ) {
+            uint64_t last_id = 0;
+            if( !boost::conversion::try_lexical_convert(_last_id, last_id) ) {
+               elog("The value `${value}` for `_last_id` argument is invalid, it should be integer type.", ("value", _last_id));
+               return steem::plugins::sps::list_voter_proposals_return();
+            } else {
+               args.last_id = last_id;
+            }
+         }
+         ddump((args.start));
+         ddump((args.order_by));
+         ddump((args.order_direction));
+         ddump((args.limit));
+         ddump((args.status));
+         ddump((args.last_id));
+
+         return my->_remote_api->list_voter_proposals(args.start, args.order_by, args.order_direction, args.limit, args.status, args.last_id);
       } catch( fc::exception& _e) {
          elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
       } catch( std::exception& _e ) {

@@ -1826,7 +1826,7 @@ BOOST_AUTO_TEST_CASE( list_voter_proposals_001 )
          for(auto by : order_by) {
             for(auto direct : order_direction) {
                for(auto act : active) {
-                  auto resp = list_voter_proposals(cpd.creator, by, direct,10, act);
+                  auto resp = list_voter_proposals(cpd.creator, by, direct,10, act, "");
                   if(_empty) {
                      BOOST_REQUIRE(resp.empty());
                   } else {
@@ -1843,7 +1843,7 @@ BOOST_AUTO_TEST_CASE( list_voter_proposals_001 )
       BOOST_REQUIRE(proposal_1 >= 0);
       std::vector< int64_t > proposals = {proposal_1};
       vote_proposal(cpd.creator, proposals, true, alice_private_key);
-      auto resp = list_voter_proposals(cpd.creator, "creator", "asc", 10, "all");
+      auto resp = list_voter_proposals(cpd.creator, "creator", "asc", 10, "all", "");
       BOOST_REQUIRE(!resp.empty());
       validate_database();
    }
