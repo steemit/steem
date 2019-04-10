@@ -9,7 +9,7 @@ ENV BUILD_STEP ${BUILD_STEP}
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update
-RUN apt-get -y install locales runit
+RUN apt-get -y install locales runit curl
 
 # Set the locale
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
