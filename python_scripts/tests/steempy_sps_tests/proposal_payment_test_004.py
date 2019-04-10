@@ -146,10 +146,10 @@ if __name__ == '__main__':
             now = test_utils.date_from_iso(now)
 
             proposal_data = [
-                ['tester001', 1 + 0, 5, '24.000 TBD'], # starts one day from now and lasts two days
-                ['tester002', 1 + 0, 5, '24.000 TBD'], # starts three days from now and lasts one day
-                ['tester003', 1 + 0, 5, '24.000 TBD'],  # starts four days from now and lasts one day
-                ['tester004', 1 + 0, 5, '240000.000 TBD'], # starts one day from now and lasts five days
+                ['tester001', 1 + 0, 3, '24.000 TBD'], # starts 1 day from now and lasts 3 days
+                ['tester002', 1 + 0, 3, '24.000 TBD'], # starts 1 days from now and lasts 3 day
+                ['tester003', 1 + 0, 3, '24.000 TBD'],  # starts 1 days from now and lasts 3 day
+                ['tester004', 1 + 0, 3, '240000.000 TBD'], # starts 1 day from now and lasts 3 days
             ]
 
             proposals = [
@@ -166,7 +166,7 @@ if __name__ == '__main__':
             test_start_date = now + datetime.timedelta(days = 1)
             test_start_date_iso = test_utils.date_to_iso(test_start_date)
 
-            test_end_date = test_start_date + datetime.timedelta(days = 6, hours = 1)
+            test_end_date = test_start_date + datetime.timedelta(days = 4, hours = 1)
             test_end_date_iso = test_utils.date_to_iso(test_end_date)
 
             test_utils.create_proposals(node_client, proposals)
@@ -217,10 +217,10 @@ if __name__ == '__main__':
             logger.info("Balances for accounts at time: {}".format(test_end_date_iso))
             balances = test_utils.print_balance(node_client, accounts)
             test_balances = [
-                '510.000 TBD',
-                '438.000 TBD',
-                '414.000 TBD',
-                '414.000 TBD',
+                '462.000 TBD',
+                '462.000 TBD',
+                '462.000 TBD',
+                '29735.682 TBD',
             ]
             for idx in range(0, len(test_balances)):
                 assert balances[idx] == test_balances[idx], "Balances dont match {} != {}".format(balances[idx], test_balances[idx])
