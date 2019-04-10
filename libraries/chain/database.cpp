@@ -5087,8 +5087,13 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *account_auth, [&]( account_authority_object& auth )
                {
                   auth.owner.weight_threshold = 1;
+                  auth.owner.clear();
+
                   auth.active.weight_threshold = 1;
+                  auth.active.clear();
+
                   auth.posting.weight_threshold = 1;
+                  auth.posting.clear();
                });
          }
          break;
