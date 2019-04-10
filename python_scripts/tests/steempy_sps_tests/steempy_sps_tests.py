@@ -13,10 +13,6 @@ LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
 MAIN_LOG_PATH = "./sps_test.log"
 
-steem_utils.steem_runner.initialize_logging(MAIN_LOG_PATH)
-steem_utils.steem_tools.initialize_logging(MAIN_LOG_PATH)
-test_utils.initialize_logging(MAIN_LOG_PATH)
-
 MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
@@ -333,16 +329,16 @@ if __name__ == '__main__':
     try:
         if node is None or node.is_running():
             test_create_proposal(node_url, args.creator, args.receiver, wif, subject)
-            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node_url)
             test_list_proposals(node_url, args.creator, wif, subject)
             test_find_proposals(node_url, args.creator, wif, subject)
             test_vote_proposal(node_url, args.creator, wif, subject)
             test_list_voter_proposals(node_url, args.creator, wif, subject)
-            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node_url)
             if args.no_erase_proposal:
                 test_remove_proposal(node_url, args.creator, wif, subject)
-            test_iterate_results_test(args.node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
-            steem_utils.steem_tools.wait_for_blocks_produced(2, node)
+            test_iterate_results_test(node_url, args.creator, args.receiver, args.wif, str(uuid4()), args.no_erase_proposal)
+            steem_utils.steem_tools.wait_for_blocks_produced(2, node_url)
             if node is not None:
                 node.stop_steem_node()
             sys.exit(0)

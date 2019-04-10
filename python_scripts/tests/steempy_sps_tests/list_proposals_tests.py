@@ -11,9 +11,9 @@ import steem_utils.utils
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
-MAIN_LOG_PATH = "./sps_proposal_payment.log"
+MAIN_LOG_PATH = "./sps_list_proposal.log"
 
-MODULE_NAME = "SPS Tester via steempy - list proposals test"
+MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
 logger.setLevel(LOG_LEVEL)
 
