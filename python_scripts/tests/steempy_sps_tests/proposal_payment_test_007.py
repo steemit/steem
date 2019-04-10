@@ -11,7 +11,7 @@ import test_utils
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
-MAIN_LOG_PATH = "./sps_proposal_payment_006.log"
+MAIN_LOG_PATH = "./sps_proposal_payment_007.log"
 
 MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
@@ -35,15 +35,22 @@ except Exception as ex:
     logger.error("SteemPy library is not installed.")
     sys.exit(1)
 
-# Greedy baby scenario
-# 0. In this scenario we have one proposal with huge daily pay and couple with low daily pay
-#    all proposals have the same number of votes, greedy proposal is last
-# 1. create few proposals - in this scenario proposals have different starting and ending dates
+# Unvote proposal during payment
+# 1. create few proposals - in this scenario proposals have the same starting and ending dates
 # 2. vote on them to show differences in asset distribution (depending on collected votes)
 # 3. wait for proposal payment phase
+# 4. Unvote one of the proposal duting payment phase
 # 4. verify (using account history and by checking regular account balance) that given accounts have been correctly paid.
 
 # Expected result: all got paid.
+
+def unvote_proposals(node, accounts, debug_key):
+    logger.info("Unvoting proposals...")
+    for acnt in accounts:
+        proposal_set = [0]
+        logger.info("Account {} unvoted proposals: {}".format(acnt["name"], ",".join(str(x) for x in proposal_set)))
+        node.commit.update_proposal_votes(acnt["name"], proposal_set, False)
+    node.debug_generate_blocks(debug_key, 3)
 
 
 if __name__ == '__main__':
@@ -146,10 +153,10 @@ if __name__ == '__main__':
             now = test_utils.date_from_iso(now)
 
             proposal_data = [
-                ['tester001', 1 + 0, 1, '24.000 TBD'], # starts 1 day from now and lasts 1 day
-                ['tester002', 1 + 1, 1, '24.000 TBD'], # starts 2 days from now and lasts 1 day
-                ['tester003', 1 + 2, 1, '24.000 TBD'],  # starts 3 days from now and lasts 1 day
-                ['tester004', 1 + 0, 3, '240000.000 TBD'], # starts one day from now and lasts 3 days
+                ['tester001', 1 + 0, 4, '24.000 TBD'], # starts 1 day from now and lasts 3 day
+                ['tester002', 1 + 0, 4, '24.000 TBD'], # starts 1 days from now and lasts 3 day
+                ['tester003', 1 + 0, 4, '24.000 TBD'],  # starts 1 days from now and lasts 3 day
+                ['tester004', 1 + 0, 4, '24.000 TBD'], # starts 1 day from now and lasts 3 days
             ]
 
             proposals = [
@@ -166,7 +173,9 @@ if __name__ == '__main__':
             test_start_date = now + datetime.timedelta(days = 1)
             test_start_date_iso = test_utils.date_to_iso(test_start_date)
 
-            test_end_date = test_start_date + datetime.timedelta(days = 4, hours = 1)
+            test_mid_date = test_start_date + datetime.timedelta(days = 3, hours = 1)
+
+            test_end_date = test_start_date + datetime.timedelta(days = 5, hours = 1)
             test_end_date_iso = test_utils.date_to_iso(test_end_date)
 
             test_utils.create_proposals(node_client, proposals)
@@ -196,6 +205,23 @@ if __name__ == '__main__':
             logger.info("Moving to date: {}".format(test_start_date_iso))
             node_client.debug_generate_blocks_until(wif, test_start_date_iso, False)
             current_date = test_start_date
+            while current_date < test_mid_date:
+                current_date = current_date + datetime.timedelta(hours = 1)
+                current_date_iso = test_utils.date_to_iso(current_date)
+
+                logger.info("Moving to date: {}".format(current_date_iso))
+                node_client.debug_generate_blocks_until(wif, current_date_iso, False)
+
+                logger.info("Balances for accounts at time: {}".format(current_date_iso))
+                test_utils.print_balance(node_client, accounts)
+                test_utils.print_balance(node_client, [{'name' : args.treasury}])
+
+                votes = test_utils.list_proposals(node_client, test_start_date_iso, "active")
+                votes = test_utils.list_proposals(node_client, test_start_date_iso, "expired")
+                votes = test_utils.list_proposals(node_client, test_start_date_iso, "all")
+
+            unvote_proposals(node_client, accounts, wif)
+
             while current_date < test_end_date:
                 current_date = current_date + datetime.timedelta(hours = 1)
                 current_date_iso = test_utils.date_to_iso(current_date)
@@ -217,10 +243,10 @@ if __name__ == '__main__':
             logger.info("Balances for accounts at time: {}".format(test_end_date_iso))
             balances = test_utils.print_balance(node_client, accounts)
             test_balances = [
-                '414.000 TBD',
-                '390.000 TBD',
-                '290.000 TBD',
-                '29927.682 TBD',
+                '463.000 TBD',
+                '486.000 TBD',
+                '486.000 TBD',
+                '486.000 TBD',
             ]
             for idx in range(0, len(test_balances)):
                 assert balances[idx] == test_balances[idx], "Balances dont match {} != {}".format(balances[idx], test_balances[idx])
