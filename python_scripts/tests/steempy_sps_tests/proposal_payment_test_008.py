@@ -11,7 +11,7 @@ import test_utils
 
 LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
-MAIN_LOG_PATH = "./sps_proposal_payment_006.log"
+MAIN_LOG_PATH = "./sps_proposal_payment_008.log"
 
 MODULE_NAME = "SPS-Tester-via-steempy"
 logger = logging.getLogger(MODULE_NAME)
@@ -35,16 +35,22 @@ except Exception as ex:
     logger.error("SteemPy library is not installed.")
     sys.exit(1)
 
-# Greedy baby scenario
-# 0. In this scenario we have one proposal with huge daily pay and couple with low daily pay
-#    all proposals have the same number of votes, greedy proposal is last
-# 1. create few proposals - in this scenario proposals have different starting and ending dates
+# Circular payment
+# 1. create few proposals - in this scenario proposals have the same starting and ending dates
+#    one of the proposals will by paying to the treasury
 # 2. vote on them to show differences in asset distribution (depending on collected votes)
 # 3. wait for proposal payment phase
 # 4. verify (using account history and by checking regular account balance) that given accounts have been correctly paid.
 
 # Expected result: all got paid.
 
+def vote_proposals(node, accounts):
+    logger.info("Voting proposals...")
+    for acnt in accounts:
+        proposal_set = [0,1,2,3,4]
+        logger.info("Account {} voted for proposals: {}".format(acnt["name"], ",".join(str(x) for x in proposal_set)))
+        node.commit.update_proposal_votes(acnt["name"], proposal_set, True)
+    steem_utils.steem_tools.wait_for_blocks_produced(5, node.url)
 
 if __name__ == '__main__':
     logger.info("Performing SPS tests")
@@ -129,11 +135,11 @@ if __name__ == '__main__':
             test_utils.print_balance(node_client, accounts)
             # transfer assets to treasury
             test_utils.transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
-                "1000000.000", "TESTS"
+                "999950.000", "TESTS"
             )
 
             test_utils.transfer_assets_to_treasury(node_client, args.creator, args.treasury, 
-                "1000000.000", "TBD"
+                "999950.000", "TBD"
             )
             test_utils.print_balance(node_client, [{'name' : args.treasury}])
 
@@ -146,10 +152,10 @@ if __name__ == '__main__':
             now = test_utils.date_from_iso(now)
 
             proposal_data = [
-                ['tester001', 1 + 0, 1, '24.000 TBD'], # starts 1 day from now and lasts 1 day
-                ['tester002', 1 + 1, 1, '24.000 TBD'], # starts 2 days from now and lasts 1 day
-                ['tester003', 1 + 2, 1, '24.000 TBD'],  # starts 3 days from now and lasts 1 day
-                ['tester004', 1 + 0, 3, '240000.000 TBD'], # starts one day from now and lasts 3 days
+                ['tester001', 1 + 0, 4, '24.000 TBD'], # starts 1 day from now and lasts 3 day
+                ['tester002', 1 + 0, 4, '24.000 TBD'], # starts 1 days from now and lasts 3 day
+                ['tester003', 1 + 0, 4, '24.000 TBD'],  # starts 1 days from now and lasts 3 day
+                ['tester004', 1 + 0, 4, '24.000 TBD'], # starts 1 day from now and lasts 3 days
             ]
 
             proposals = [
@@ -162,11 +168,16 @@ if __name__ == '__main__':
                 proposal = {'creator' : pd[0], 'receiver' : pd[0], 'start_date' : start_date, 'end_date' : end_date, 'daily_pay' : pd[3]}
                 proposals.append(proposal)
 
+            start_date, end_date = test_utils.get_start_and_end_date(now, 1, 4)
+            proposals.append({'creator' : 'tester001', 'receiver' : 'steem.dao', 'start_date' : start_date, 'end_date' : end_date, 'daily_pay' : '96.000 TBD'})
+
             import datetime
             test_start_date = now + datetime.timedelta(days = 1)
             test_start_date_iso = test_utils.date_to_iso(test_start_date)
 
-            test_end_date = test_start_date + datetime.timedelta(days = 4, hours = 1)
+            test_mid_date = test_start_date + datetime.timedelta(days = 3, hours = 1)
+
+            test_end_date = test_start_date + datetime.timedelta(days = 5, hours = 1)
             test_end_date_iso = test_utils.date_to_iso(test_end_date)
 
             test_utils.create_proposals(node_client, proposals)
@@ -175,7 +186,7 @@ if __name__ == '__main__':
             test_utils.list_proposals(node_client, test_start_date_iso, "inactive")
 
             # each account is voting on proposal
-            test_utils.vote_proposals(node_client, accounts)
+            vote_proposals(node_client, accounts)
 
             # list proposals with inactive status, it shoud be list of pairs id:total_votes
             votes = test_utils.list_proposals(node_client, test_start_date_iso, "inactive")
@@ -184,10 +195,15 @@ if __name__ == '__main__':
                 assert vote == 0, "All votes should be equal to 0"
 
             logger.info("Balances for accounts after creating proposals")
+            test_balances = [
+                '380.000 TBD',
+                '390.000 TBD',
+                '390.000 TBD',
+                '390.000 TBD',
+            ]
             balances = test_utils.print_balance(node_client, accounts)
-            for balance in balances:
-                #should be 390.000 TBD for all
-                assert balance == '390.000 TBD', "All balances should be equal to 390.000 TBD"
+            for idx in range(0, len(test_balances)):
+                assert balances[idx] == test_balances[idx],  "Balances dont match {} != {}".format(balances[idx], test_balances[idx])
             test_utils.print_balance(node_client, [{'name' : args.treasury}])
 
             # move forward in time to see if proposals are paid
@@ -217,10 +233,10 @@ if __name__ == '__main__':
             logger.info("Balances for accounts at time: {}".format(test_end_date_iso))
             balances = test_utils.print_balance(node_client, accounts)
             test_balances = [
-                '414.000 TBD',
-                '390.000 TBD',
-                '290.000 TBD',
-                '29927.682 TBD',
+                '476.000 TBD',
+                '486.000 TBD',
+                '486.000 TBD',
+                '486.000 TBD',
             ]
             for idx in range(0, len(test_balances)):
                 assert balances[idx] == test_balances[idx], "Balances dont match {} != {}".format(balances[idx], test_balances[idx])
