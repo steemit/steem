@@ -49,6 +49,8 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 
       _db.create< proposal_object >( [&]( proposal_object& proposal )
       {
+         proposal.proposal_id = proposal.id;
+
          proposal.creator = o.creator;
          proposal.receiver = o.receiver;
 
@@ -80,7 +82,7 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
       if( o.proposal_ids.empty() )
          return;
 
-      const auto& pidx = _db.get_index< proposal_index >().indices().get< by_id >();
+      const auto& pidx = _db.get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& pvidx = _db.get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
 
       for( const auto id : o.proposal_ids )
@@ -131,7 +133,7 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
       */
       for( const auto id : op.proposal_ids )
       {
-         const auto& pidx = _db.get_index< proposal_index >().indices().get< by_id >();
+         const auto& pidx = _db.get_index< proposal_index >().indices().get< by_proposal_id >();
 
          auto found_id = pidx.find( id );
          if( found_id == pidx.end() || found_id->removed )

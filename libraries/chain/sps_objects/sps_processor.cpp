@@ -82,7 +82,7 @@ void sps_processor::calculate_votes( const t_proposals& proposals )
    for( auto& item : proposals )
    {
       const proposal_object& _item = item;
-      auto total_votes = calculate_votes( _item.id );
+      auto total_votes = calculate_votes( _item.proposal_id );
 
       db.modify( _item, [&]( auto& proposal )
                         {
