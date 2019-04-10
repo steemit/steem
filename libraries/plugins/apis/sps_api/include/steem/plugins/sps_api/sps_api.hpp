@@ -85,7 +85,7 @@ namespace steem { namespace plugins { namespace sps {
     api_proposal_object() = default;
 
     api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
-      id(po.id),
+      id(po.proposal_id),
       creator(po.creator),
       receiver(po.receiver),
       start_date(po.start_date),

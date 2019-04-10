@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_02 )
          vest(STEEM_INIT_MINER_NAME, item.account, ASSET( "300.000 TESTS" ));
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto start_date = db->head_block_time() + fc::hours( 2 );
@@ -1356,7 +1356,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_003 )
 
       found = proposal_idx.find( cpd.creator );
       BOOST_REQUIRE( found != proposal_idx.end() );
-      BOOST_REQUIRE( int64_t(found->id)  == proposals[1]);
+      BOOST_REQUIRE( int64_t(found->proposal_id)  == proposals[1]);
       BOOST_REQUIRE( proposal_idx.size() == 1 );
 
       proposals_to_erase.clear();
@@ -1404,8 +1404,8 @@ BOOST_AUTO_TEST_CASE( remove_proposal_004 )
       found = proposal_idx.find( cpd.creator );
       BOOST_REQUIRE( found != proposal_idx.end() );
       for(auto& it : proposal_idx) {
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[0] );
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[5] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[0] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[5] );
       }
       BOOST_REQUIRE( proposal_idx.size() == 4 );
 
@@ -1416,10 +1416,10 @@ BOOST_AUTO_TEST_CASE( remove_proposal_004 )
       remove_proposal(cpd.creator, proposals_to_erase, alice_private_key);
       found = proposal_idx.find( cpd.creator );
       for(auto& it : proposal_idx) {
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[0] );
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[1] );
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[4] );
-         BOOST_REQUIRE( static_cast< int64_t >(it.id) != proposals[5] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[0] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[1] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[4] );
+         BOOST_REQUIRE( static_cast< int64_t >(it.proposal_id) != proposals[5] );
       }
       BOOST_REQUIRE( found != proposal_idx.end() );
       BOOST_REQUIRE( proposal_idx.size() == 2 );
@@ -1932,7 +1932,7 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance_01 )
          generate_block();
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
 
       auto current_active_proposals = nr_proposals;
       BOOST_REQUIRE( calc_proposals( proposal_idx, proposals_id ) == current_active_proposals );
@@ -2028,7 +2028,7 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance_02 )
          generate_blocks( 1 );
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto current_active_proposals = nr_proposals;
@@ -2123,7 +2123,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold )
          generate_blocks( 1 );
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto current_active_proposals = nr_proposals;
@@ -2226,7 +2226,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_01 )
          generate_block();
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto current_active_proposals = nr_proposals;
@@ -2466,7 +2466,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_02 )
          generate_block();
       }
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto current_active_proposals = nr_proposals;
@@ -2876,7 +2876,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_03 )
       }
       generate_block();
 
-      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_id >();
+      const auto& proposal_idx = db->get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices().get< by_proposal_voter >();
 
       auto current_active_proposals = nr_proposals;

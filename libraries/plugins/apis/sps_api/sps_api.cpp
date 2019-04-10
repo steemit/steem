@@ -69,7 +69,7 @@ class sps_api_impl
           {
             if (last_id_valid)
             {
-              return idx.iterator_to(*(_db.get_index<proposal_index, by_id>().find(*last_id)));
+              return idx.iterator_to(*(_db.get_index<proposal_index, by_proposal_id>().find(*last_id)));
             }
             return idx.begin();
           };
@@ -102,7 +102,7 @@ class sps_api_impl
           {
             if (last_id_valid)
             {
-              auto itr = idx.iterator_to(*(_db.get_index<proposal_index, by_id>().find(*last_id)));
+              auto itr = idx.iterator_to(*(_db.get_index<proposal_index, by_proposal_id>().find(*last_id)));
               ++itr;
               return make_reverse_iterator(itr);
             }
@@ -204,7 +204,7 @@ DEFINE_API_IMPL(sps_api_impl, find_proposals) {
   auto currentTime = _db.head_block_time();
 
   std::for_each(args.id_set.begin(), args.id_set.end(), [&](auto& id) {
-    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(id);
+    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_proposal_id>(id);
     if ( check_proposal< true/*NullCheck*/>( po ) )
     {
       result.emplace_back(api_proposal_object(*po, currentTime));
@@ -293,7 +293,7 @@ DEFINE_API_IMPL(sps_api_impl, list_voter_proposals) {
   size_t proposals_count = 0;
   while( proposals_count < args.limit && itr != end )
   {
-    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_id>(itr->proposal_id);
+    auto po = _db.find<steem::chain::proposal_object, steem::chain::by_proposal_id>(itr->proposal_id);
     FC_ASSERT(check_proposal< true/*NullCheck*/>( po ), "Proposal with given id does not exist");
     auto apo = api_proposal_object(*po, current_time);
     if (filter_proposal_status(apo, args.status, current_time))
