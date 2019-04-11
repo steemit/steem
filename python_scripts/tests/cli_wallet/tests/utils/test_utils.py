@@ -46,7 +46,9 @@ def check_call_args(_call_args, _response, _arg_prefix):
 
 def call_and_check(_func, _call_args, _arg_prefix):
     response = _func(*_call_args.values())
+    log.info("Call response: {0}".format(response))
     check_call_args(_call_args, response, _arg_prefix)
+    return response
 
 
 def call_and_check_transaction(_func, _call_args, _arg_prefix, _broadcast):

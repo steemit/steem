@@ -30,7 +30,9 @@ if __name__ == "__main__":
             for direct in  order_direction:
                 for act in active:
                     call_args = {"start":args.creator, "order_by":by, "order_direction":direct, "limit":10, "status":act, "last_id" : ""}
-                    call_and_check(wallet.list_voter_proposals, call_args, "args")
+                    resp = last_message_as_json( call_and_check(wallet.list_voter_proposals, call_args, "args"))
+                    if not "result" in resp:
+                        raise ArgsCheckException("No `result` in response")
 
 
     except Exception as _ex:
