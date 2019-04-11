@@ -94,10 +94,10 @@ if __name__ == '__main__':
 
     accounts = [
         # place accounts here in the format: {'name' : name, 'private_key' : private-key, 'public_key' : public-key}
-        {"name" : "tester001", "private_key" : "5JBuekd1sVXXK3wBu6nvPB1LWypZ83BYdu7tGcUNYVd42xQGGh1", "public_key" : "TST5kSj1yTzBz3PDoJ5QUyVVagdgYfs8Y4vVsZG3dqKJU8hg7WmQN"},
-        {"name" : "tester002", "private_key" : "5KgfcV9bgEen3v9mxkoGw6Rhuf2giDRZTHZjzwisjkrpF4FUh3N", "public_key" : "TST5gQPYm5bs9dRPHpqBy6dU32M8FcoKYFdF4YWEChUarc9FdYHzn"},
-        {"name" : "tester003", "private_key" : "5Jz3fcrrgKMbL8ncpzTdQmdRVHdxMhi8qScoxSR3TnAFUcdyD5N", "public_key" : "TST57wy5bXyJ4Z337Bo6RbinR6NyTRJxzond5dmGsP4gZ51yN6Zom"},
-        {"name" : "tester004", "private_key" : "5KcmobLVMSAVzETrZxfEGG73Zvi5SKTgJuZXtNgU3az2VK3Krye", "public_key" : "TST8dPte853xAuLMDV7PTVmiNMRwP6itMyvSmaht7J5tVczkDLa5K"},
+        {"name" : "tester001", "private_key" : "", "public_key" : ""},
+        {"name" : "tester002", "private_key" : "", "public_key" : ""},
+        {"name" : "tester003", "private_key" : "", "public_key" : ""},
+        {"name" : "tester004", "private_key" : "", "public_key" : ""},
     ]
 
     if not accounts:
