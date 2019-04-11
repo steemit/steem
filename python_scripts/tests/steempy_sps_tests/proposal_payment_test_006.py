@@ -218,9 +218,9 @@ if __name__ == '__main__':
             balances = test_utils.print_balance(node_client, accounts)
             test_balances = [
                 '414.000 TBD',
-                '390.000 TBD',
-                '290.000 TBD',
-                '29927.682 TBD',
+                '414.000 TBD',
+                '414.000 TBD',
+                '29879.682 TBD',
             ]
             for idx in range(0, len(test_balances)):
                 assert balances[idx] == test_balances[idx], "Balances dont match {} != {}".format(balances[idx], test_balances[idx])

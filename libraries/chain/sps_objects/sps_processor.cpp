@@ -95,6 +95,10 @@ void sps_processor::sort_by_votes( t_proposals& proposals )
 { 
    std::sort( proposals.begin(), proposals.end(), []( const proposal_object& a, const proposal_object& b )
                                                       {
+                                                         if (a.total_votes == b.total_votes)
+                                                         {
+                                                            return a.id < b.id;
+                                                         }
                                                          return a.total_votes > b.total_votes;
                                                       } );
 }
