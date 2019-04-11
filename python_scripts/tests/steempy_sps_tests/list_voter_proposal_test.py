@@ -183,7 +183,9 @@ if __name__ == '__main__':
     logger.info("Using node at: {}".format(node_url))
     logger.info("Using private-key: {}".format(wif))
 
-    account = {"name" : "tester001", "private_key" : "5JBuekd1sVXXK3wBu6nvPB1LWypZ83BYdu7tGcUNYVd42xQGGh1", "public_key" : "TST5kSj1yTzBz3PDoJ5QUyVVagdgYfs8Y4vVsZG3dqKJU8hg7WmQN"}
+    account = {"name" : "tester001", "private_key" : "", "public_key" : ""}
+
+    assert len(account["private_key"]) != 0, "Private key is empty"
 
     keys = [wif]
     keys.append(account["private_key"])

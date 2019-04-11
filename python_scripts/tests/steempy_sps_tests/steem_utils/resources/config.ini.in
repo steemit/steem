@@ -95,7 +95,7 @@ required-participation = 0
 witness = "initminer"
 
 # WIF PRIVATE KEY to be used by one or more witnesses or miners
-private-key = 5JNHfZYKGaomSFvd4NUdQ9qMcEAC43kujbfjueTHpVapX1Kzq2n
+private-key = 
 
 # Skip enforcing bandwidth restrictions. Default is true in favor of rc_plugin.
 witness-skip-enforce-bandwidth = 1
