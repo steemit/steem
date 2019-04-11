@@ -176,7 +176,7 @@ else()
   endif()
 endif()
 
-option(PORTABLE "build a portable binary" ON)
+option(PORTABLE "build a portable binary" OFF)
 option(FORCE_SSE42 "force building with SSE4.2, even when PORTABLE=ON" OFF)
 if(PORTABLE)
   # MSVC does not need a separate compiler flag to enable SSE4.2; if nmmintrin.h
