@@ -26,245 +26,130 @@ struct index_adapter
       decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                              iter_type;
    typedef iter_type                                                                               rev_iter_type;
 
+   typedef boost::variant< mira_type*, bmic_type* > index_variant;
+
    private:
       index_adapter() {}
 
    public:
-      index_adapter( const mira_type& mira_index ) :
-         _type( mira )
+      index_adapter( const mira_type& mira_index )
       {
-         _index = (void*) &const_cast< mira_type& >( mira_index );
+         _index = const_cast< mira_type* >( &mira_index );
       }
 
-      index_adapter( const bmic_type& bmic_index ) :
-         _type( bmic )
+      index_adapter( const bmic_type& bmic_index )
       {
-         _index = (void*) &const_cast< bmic_type& >( bmic_index );
+         _index = const_cast< bmic_type* >( &bmic_index );
       }
 
       index_adapter( const index_adapter& other ) :
-         _index( other._index ),
-         _type( other._type )
+         _index( other._index )
       {}
 
       index_adapter( index_adapter&& other ) :
-         _index( other._index ),
-         _type( other._type )
+         _index( std::move( other._index ) )
       {}
 
       iter_type iterator_to( const value_type& v )const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->iterator_to( v );
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->iterator_to( v );
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+         [&]( auto* index ){ return iter_type( index->iterator_to( v ) ); },
+         _index
+      );
       }
 
       template< typename CompatibleKey >
       iter_type find( const CompatibleKey& k )const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->find( k );
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->find( k );
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            [&k]( auto* index ){ return iter_type( index->find( k ) ); },
+            _index
+         );
       }
 
       template< typename CompatibleKey >
       iter_type lower_bound( const CompatibleKey& k )const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->lower_bound( k );
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->lower_bound( k );
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            [&k]( auto* index ){ return iter_type( index->lower_bound( k ) ); },
+            _index
+         );
       }
 
       template< typename CompatibleKey >
       iter_type upper_bound( const CompatibleKey& k )const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->upper_bound( k );
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->upper_bound( k );
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            [&k]( auto* index ){ return iter_type( index->upper_bound( k ) ); },
+            _index
+         );
       }
 
       template< typename CompatibleKey >
       std::pair< iter_type, iter_type > equal_range( const CompatibleKey& k )const
       {
-         assert( _index );
-         std::pair< iter_type, iter_type > result;
-
-         switch( _type )
-         {
-            case mira:
+         return boost::apply_visitor(
+            [&k]( auto* index )
             {
-               auto mira_result = ((mira_type*)_index)->equal_range( k );
-               result.first = std::move( mira_result.first );
-               result.second = std::move( mira_result.second );
-               break;
-            }
-            case bmic:
-            {
-               auto bmic_result = ((bmic_type*)_index)->equal_range( k );
-               result.first = std::move( bmic_result.first );
-               result.second = std::move( bmic_result.second );
-               break;
-            }
-         }
-
-         return result;
+               auto result = index->equal_range( k );
+               return std::pair< iter_type, iter_type >(
+                  std::move( result.first ),
+                  std::move( result.second ) );
+            },
+            _index
+         );
       }
 
       iter_type begin()const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->begin();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->begin();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return iter_type( index->begin() ); },
+            _index
+         );
       }
 
       iter_type end()const
       {
-         assert( _index );
-         iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->end();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->end();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return iter_type( index->end() ); },
+            _index
+         );
       }
 
       rev_iter_type rbegin()const
       {
-         assert( _index );
-         rev_iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->rbegin();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->rbegin();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return rev_iter_type( index->rbegin() ); },
+            _index
+         );
       }
 
       rev_iter_type rend()const
       {
-         assert( _index );
-         rev_iter_type result;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->rend();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->rend();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return rev_iter_type( index->rend() ); },
+            _index
+         );
       }
 
       bool empty()const
       {
-         assert( _index );
-         bool result = true;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->empty();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->empty();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return index->empty(); },
+            _index
+         );
       }
 
       size_t size()const
       {
-         assert( _index );
-         size_t result = 0;
-
-         switch( _type )
-         {
-            case mira:
-               result = ((mira_type*)_index)->size();
-               break;
-            case bmic:
-               result = ((bmic_type*)_index)->size();
-               break;
-         }
-
-         return result;
+         return boost::apply_visitor(
+            []( auto* index ){ return index->size(); },
+            _index
+         );
       }
 
    private:
-      void*       _index = nullptr;
-      index_type  _type  = mira;
+      index_variant _index;
 };
 
 template< typename Arg1, typename Arg2, typename Arg3 >
@@ -482,7 +367,6 @@ struct multi_index_adapter
          [&]( auto& index ){ return iter_type( index.iterator_to( v ) ); },
          _index
       );
-
    }
 
    template< typename CompatibleKey >

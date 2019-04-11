@@ -438,16 +438,25 @@ public:
    }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
-  ordered_index_impl(const ctor_args_list& args_list):
-    super(args_list.get_tail()),
-    _cache( object_cache_factory_type::get_shared_cache() ),
-    _handles( super::_handles ),
-    key(boost::tuples::get<0>(args_list.get_head())),
-    comp_(boost::tuples::get<1>(args_list.get_head()))
-  {
-    empty_initialize();
-    _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
-  }
+   ordered_index_impl(const ctor_args_list& args_list):
+      super(args_list.get_tail()),
+      _cache( object_cache_factory_type::get_shared_cache() ),
+      _handles( super::_handles ),
+      key(boost::tuples::get<0>(args_list.get_head())),
+      comp_(boost::tuples::get<1>(args_list.get_head()))
+   {
+      empty_initialize();
+      _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
+   }
+
+   ordered_index_impl() :
+      super(),
+      _cache( object_cache_factory_type::get_shared_cache() ),
+      _handles( super::_handles )
+   {
+      empty_initialize();
+      _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
+   }
 
    ordered_index_impl( const ordered_index_impl& other ) :
       super( other ),
@@ -847,18 +856,16 @@ public:
   typedef typename super::allocator_type          allocator_type;
   typedef typename super::iterator                iterator;
 
-  /* construct/copy/destroy
-   * Default and copy ctors are in the protected section as indices are
-   * not supposed to be created on their own. No range ctor either.
-   */
-
+   ordered_index()                                   = default;
+   ordered_index( const ordered_index& )             = default;
+   ordered_index( ordered_index&& )                  = default;
+   ordered_index& operator =( const ordered_index& ) = default;
+   ordered_index& operator =( ordered_index&& )      = default;
 
 protected:
   ordered_index(
     const ctor_args_list& args_list):
     super(args_list){}
-
-  ordered_index(const ordered_index& x):super(x){};
 
   ordered_index(const ordered_index& x,do_not_copy_elements_tag):
     super(x,do_not_copy_elements_tag()){};
