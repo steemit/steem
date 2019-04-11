@@ -45,7 +45,7 @@ using boost::multi_index::member;
 using boost::multi_index::composite_key;
 using boost::multi_index::composite_key_compare;
 using boost::multi_index::const_mem_fun;
-*/
+//*/
 //*
 template< typename... Args >
 using multi_index_container = mira::multi_index_adapter< Args... >;

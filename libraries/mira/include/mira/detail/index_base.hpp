@@ -73,15 +73,37 @@ protected:
 
    static const size_t                       COLUMN_INDEX = 0;
 
-   index_base(
-      const index_base<Value,IndexSpecifierList,Allocator>&,
-      do_not_copy_elements_tag )
+   index_base( const index_base& other ) :
+      _db( other._db ),
+      _write_buffer( other._write_buffer ),
+      _handles( other._handles )
    {}
 
-   ~index_base()
+   index_base( index_base&& other ) :
+      _db( std::move( other._db ) ),
+      _write_buffer( std::move( other._write_buffer ) ),
+      _handles( std::move( other._handles ) )
+   {}
+
+   index_base& operator=( const index_base& rhs )
    {
-      cleanup_column_handles();
+      _db = rhs._db;
+      _write_buffer = rhs._write_buffer;
+      _handles = rhs._handles;
+
+      return *this;
    }
+
+   index_base& operator=( index_base&& rhs )
+   {
+      _db = std::move( rhs._db );
+      _write_buffer = std::move( rhs._write_buffer );
+      _handles = std::move( rhs._handles );
+
+      return *this;
+   }
+
+   ~index_base() {}
 
    void flush() {}
 
@@ -117,9 +139,6 @@ protected:
 
    void cleanup_column_handles()
    {
-      for( auto* h : _handles )
-         delete h;
-
       _handles.clear();
    }
 

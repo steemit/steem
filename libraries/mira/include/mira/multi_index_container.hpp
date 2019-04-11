@@ -176,6 +176,7 @@ public:
       boost::split( split_v, type, boost::is_any_of( ":" ) );
 
       _name = "rocksdb_" + *(split_v.rbegin());
+      idump( (_name) );
       _wopts.disableWAL = true;
 
       open( p );
@@ -187,6 +188,49 @@ public:
       }
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
+   }
+
+   // This really shouldn't be done but is needed for boost variant
+   multi_index_container( const multi_index_container& other ) :
+      super( other ),
+      _revision( other._revision ),
+      _name( other._name ),
+      _stats( other._stats ),
+      _wopts( other._wopts ),
+      _ropts( other._ropts )
+   {}
+
+   multi_index_container( multi_index_container&& other ) :
+      super( std::move( other ) ),
+      _revision( other._revision ),
+      _name( std::move( other._name ) ),
+      _stats( std::move( other._stats ) ),
+      _wopts( std::move( other._wopts ) ),
+      _ropts( std::move( other._ropts ) )
+   {}
+
+   multi_index_container& operator=( const multi_index_container& rhs )
+   {
+      super::operator=( rhs );
+      _revision = rhs._revision;
+      _name = rhs._name;
+      _stats = rhs._stats;
+      _wopts = rhs._wopts;
+      _ropts = rhs._ropts;
+
+      return *this;
+   }
+
+   multi_index_container& operator=( multi_index_container&& rhs )
+   {
+      super::operator=( std::move( rhs ) );
+      _revision = rhs._revision;
+      _name = std::move( rhs._name );
+      _stats = std::move( rhs._stats );
+      _wopts = std::move( rhs._wopts );
+      _ropts = std::move( rhs._ropts );
+
+      return *this;
    }
 
    bool open( const boost::filesystem::path& p )
@@ -262,8 +306,15 @@ public:
       opts.OptimizeLevelStyleCompaction();
       opts.IncreaseParallelism();
 
+      std::vector< ::rocksdb::ColumnFamilyHandle* > handles;
+
       ::rocksdb::DB* db = nullptr;
-      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &(super::_handles), &db );
+      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &handles, &db );
+
+      for( ::rocksdb::ColumnFamilyHandle* h : handles )
+      {
+         super::_handles.push_back( std::shared_ptr< ::rocksdb::ColumnFamilyHandle >( h ) );
+      }
 
       if( s.ok() )
       {
@@ -278,7 +329,7 @@ public:
 
          s = super::_db->Get(
             read_opts,
-            super::_handles[0],
+            &*super::_handles[0],
             ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
             &value_slice );
 
@@ -292,7 +343,7 @@ public:
 
          s = super::_db->Get(
             read_opts,
-            super::_handles[0],
+            &*super::_handles[0],
             ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
             &value_slice );
 
@@ -315,19 +366,18 @@ public:
 
    void close()
    {
-      if( super::_db )
+      if( super::_db && super::_db.unique() )
       {
          auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
          auto ser_count_val = fc::raw::pack_to_vector( entry_count );
 
          super::_db->Put(
             _wopts,
-            super::_handles[ DEFAULT_COLUMN ],
+            &*(super::_handles[ DEFAULT_COLUMN ]),
             ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
             ::rocksdb::Slice( ser_count_val.data(), ser_count_val.size() ) );
 
          super::_cache->clear();
-         assert( super::_db.unique() );
          rocksdb::CancelAllBackgroundWork( &(*super::_db), true );
          super::cleanup_column_handles();
          super::_db.reset();
@@ -703,7 +753,7 @@ primary_iterator erase( primary_iterator position )
 
       auto status = super::_db->Get(
          _ropts,
-         super::_handles[ 0 ],
+         &*super::_handles[ 0 ],
          key_slice,
          &value_slice );
 
@@ -731,7 +781,7 @@ primary_iterator erase( primary_iterator position )
 
       auto status = super::_db->Put(
          _wopts,
-         super::_handles[0],
+         &*super::_handles[0],
          key_slice,
          value_slice );
 
@@ -764,16 +814,18 @@ private:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
+      std::vector< ::rocksdb::ColumnFamilyHandle* > handles;
+
       ::rocksdb::Options opts;
       //opts.IncreaseParallelism();
       //opts.OptimizeLevelStyleCompaction();
       opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
 
-      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &(super::_handles), &db );
+      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &handles, &db );
 
       if( s.ok() )
       {
-         super::cleanup_column_handles();
+         for( auto* h : handles ) delete h;
          delete db;
          return true;
       }
@@ -788,7 +840,7 @@ private:
          populate_column_definitions_( column_defs );
          column_defs.erase( column_defs.begin() );
 
-         s = db->CreateColumnFamilies( column_defs, &(super::_handles) );
+         s = db->CreateColumnFamilies( column_defs, &handles );
 
          if( s.ok() )
          {
@@ -818,7 +870,7 @@ private:
 
             // Save schema info
 
-            super::cleanup_column_handles();
+            for( auto* h : handles ) delete h;
          }
          else
          {

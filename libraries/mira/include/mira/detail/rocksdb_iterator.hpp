@@ -87,7 +87,7 @@ public:
    {
       if ( other._iter )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
          if( other._iter->Valid() )
             _iter->Seek( other._iter->key() );
@@ -104,7 +104,7 @@ public:
    {
       if ( other._iter )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
          if( other._iter->Valid() )
             _iter->Seek( other._iter->key() );
@@ -134,7 +134,7 @@ public:
       // Not sure the implicit move constuctor for ManageSnapshot isn't going to release the snapshot...
       //_snapshot = std::make_shared< ::rocksdb::ManagedSnapshot >( &(*_db) );
       //_opts.snapshot = _snapshot->snapshot();
-      //_iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+      //_iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
    }
    rocksdb_iterator( std::shared_ptr< Value >& cache_value, column_handles* handles, size_t index, db_ptr db, cache_type& cache ) :
       _handles( handles ),
@@ -166,7 +166,7 @@ public:
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( _cache_value == nullptr )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
          PinnableSlice key_slice;
          pack_to_slice( key_slice, k );
@@ -195,7 +195,7 @@ public:
       _cache_value = cache.get_index_cache( index )->get( (void*)id );
       if ( _cache_value == nullptr )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
          _iter->Seek( s );
 
          assert( _iter->status().ok() && _iter->Valid() );
@@ -232,7 +232,7 @@ public:
             else
             {
                ::rocksdb::PinnableSlice value_slice;
-               auto s = _db->Get( _opts, (*_handles)[ ID_INDEX ], _iter->value(), &value_slice );
+               auto s = _db->Get( _opts, &*(*_handles)[ ID_INDEX ], _iter->value(), &value_slice );
                assert( s.ok() );
 
                ptr = std::make_shared< value_type >();
@@ -257,7 +257,7 @@ public:
       static KeyFromValue key_from_value = KeyFromValue();
       static KeyCompare compare = KeyCompare();
       //BOOST_ASSERT( valid() );
-      if( !valid() ) _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+      if( !valid() ) _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
       if ( _cache_value != nullptr )
       {
@@ -269,7 +269,7 @@ public:
             ::rocksdb::PinnableSlice slice;
             pack_to_slice( slice, key );
 
-            _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+            _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
             _iter->Seek( slice );
 
             if( _iter->Valid() )
@@ -279,13 +279,13 @@ public:
 
                if( compare( found_key, key ) != compare( key, found_key ) )
                {
-                  _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+                  _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
                   return *this;
                }
             }
             else
             {
-               _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+               _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
                return *this;
             }
          }
@@ -309,7 +309,7 @@ public:
       static KeyFromValue key_from_value = KeyFromValue();
       if( !valid() )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
          _iter->SeekToLast();
       }
       else
@@ -324,7 +324,7 @@ public:
                ::rocksdb::PinnableSlice slice;
                pack_to_slice( slice, key );
 
-               _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+               _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
                _iter->Seek( slice );
 
                if( _iter->Valid() )
@@ -332,13 +332,13 @@ public:
                   ::rocksdb::Slice found_key = _iter->key();
                   if( memcmp( slice.data(), found_key.data(), std::min( slice.size(), found_key.size() ) ) != 0 )
                   {
-                     _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+                     _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
                      return *this;
                   }
                }
                else
                {
-                  _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index ] ) );
+                  _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
                   return *this;
                }
             }
@@ -398,7 +398,7 @@ public:
 
       if ( other._iter )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
          if( other._iter->Valid() )
             _iter->Seek( other._iter->key() );
@@ -418,7 +418,7 @@ public:
 
       if ( other._iter )
       {
-         _iter.reset( _db->NewIterator( _opts, (*_handles)[ _index] ) );
+         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
 
          if( other._iter->Valid() )
             _iter->Seek( other._iter->key() );
@@ -450,7 +450,7 @@ public:
    {
       rocksdb_iterator itr( handles, index, db, cache );
       //itr._opts.readahead_size = 4 << 10; // 4K
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
       itr._iter->SeekToFirst();
       return itr;
    }
@@ -483,7 +483,7 @@ public:
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, key );
@@ -497,12 +497,12 @@ public:
 
          if( compare( k, found_key ) != compare( found_key, k ) )
          {
-            itr._iter.reset( itr._db->NewIterator( itr._opts, (*itr._handles)[ itr._index ] ) );
+            itr._iter.reset( itr._db->NewIterator( itr._opts, &*(*itr._handles)[ itr._index ] ) );
          }
       }
       else
       {
-         itr._iter.reset( itr._db->NewIterator( itr._opts, (*itr._handles)[ itr._index ] ) );
+         itr._iter.reset( itr._db->NewIterator( itr._opts, &*(*itr._handles)[ itr._index ] ) );
       }
 
       return itr;
@@ -526,7 +526,7 @@ public:
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, k );
@@ -539,12 +539,12 @@ public:
 
          if( compare( k, found_key ) != compare( found_key, k ) )
          {
-            itr._iter.reset( itr._db->NewIterator( itr._opts, (*itr._handles)[ itr._index ] ) );
+            itr._iter.reset( itr._db->NewIterator( itr._opts, &*(*itr._handles)[ itr._index ] ) );
          }
       }
       else
       {
-         itr._iter.reset( itr._db->NewIterator( itr._opts, (*itr._handles)[ itr._index ] ) );
+         itr._iter.reset( itr._db->NewIterator( itr._opts, &*(*itr._handles)[ itr._index ] ) );
       }
 
       return itr;
@@ -566,7 +566,7 @@ public:
       }
 
       rocksdb_iterator itr( handles, index, db, cache );
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, k );
@@ -586,7 +586,7 @@ public:
       static KeyCompare compare = KeyCompare();
       lb_call_count()++;
       rocksdb_iterator itr( handles, index, db, cache );
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, Key( k ) );
@@ -634,7 +634,7 @@ public:
       const Key& k )
    {
       rocksdb_iterator itr( handles, index, db, cache );
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       PinnableSlice key_slice;
       pack_to_slice( key_slice, k );
@@ -660,7 +660,7 @@ public:
       static KeyCompare compare = KeyCompare();
       rocksdb_iterator itr( handles, index, db, cache );
       //itr._opts.readahead_size = 4 << 10; // 4K
-      itr._iter.reset( db->NewIterator( itr._opts, (*handles)[ index ] ) );
+      itr._iter.reset( db->NewIterator( itr._opts, &*(*handles)[ index ] ) );
 
       auto key = Key( k );
       PinnableSlice key_slice;
