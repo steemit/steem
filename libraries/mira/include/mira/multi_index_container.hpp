@@ -56,7 +56,7 @@
 
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
-#define MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 ) /* 4G */
+#define MIRA_SHARED_CACHE_SIZE (2ull * 1024 * 1024 * 1024 ) /* 1G */
 #define MIRA_WRITE_BUFFER_SIZE (32 << 20) // 32M
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
@@ -182,61 +182,22 @@ public:
       //_stats = ::rocksdb::CreateDBStatistics();
 
       ::rocksdb::Options opts;
-//
-//      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
 
       opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-//      opts.compression = rocksdb::CompressionType::kNoCompression;
 
-      //opts.statistics = _stats;
-      //opts.stats_dump_period_sec = 5;
-
-      //opts.bytes_per_sync = 6291456;
-      //opts.rate_limiter = std::shared_ptr< rocksdb::RateLimiter >( rocksdb::NewGenericRateLimiter( 1024000 ) );
-//*
-//      //opts.block_size = 8 << 10; //8K
-//      //opts.cache_size = 4 << 30; // 4G
-//      opts.write_buffer_size = 4 << 10; // 64K
-//      opts.max_write_buffer_number = 1;
-//      //opts.min_write_buffer_number_to_merge = 4;
-//      opts.max_bytes_for_level_base = 2 << 30; // 3G
-//      opts.max_bytes_for_level_multiplier = 5;
-//      opts.target_file_size_base = 128 << 20; // 20M
-//      opts.target_file_size_multiplier = 1;
-//      opts.max_background_jobs = 32;
-//      opts.max_background_flushes = 1;
-//      opts.max_background_compactions = 8;
-//      opts.level0_file_num_compaction_trigger = 2;
-//      opts.level0_slowdown_writes_trigger = 24;
-//      opts.level0_stop_writes_trigger = 56;
-//      //opts.cache_numshardbits = 6;
-//      opts.table_cache_numshardbits = 0;
-//      opts.allow_mmap_reads = 1;
-//      opts.allow_mmap_writes = 1;
-//      opts.use_fsync = false;
-//      opts.use_adaptive_mutex = false;
-//      opts.bytes_per_sync = 2 << 20; // 2M
-//      //opts.source_compaction_factor = 1;
-//      //opts.max_grandparent_overlap_factor = 5;
-//*/
 
       ::rocksdb::BlockBasedTableOptions table_options;
-//      table_options.block_size = 8 << 10; // 8K
+      table_options.block_size = 32 << 10; // 32kB
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
       table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
-//      table_options.cache_index_and_filter_blocks = true;
+      table_options.cache_index_and_filter_blocks = true;
+      table_options.pin_l0_filter_and_index_blocks_in_cache = true;
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
       opts.allow_mmap_reads = true;
 
-//      opts.write_buffer_size = 128 << 10;       // 128k
-//      opts.max_bytes_for_level_base = 5 << 20;  // 1MB
-//      opts.target_file_size_base = 100 << 10;   // 100k
-//      opts.write_buffer_size = 4 << 10;
-//      opts.max_write_buffer_number = 16;
-//      opts.max_background_compactions = 16;
-//      opts.max_background_flushes = 16;
-//      opts.min_write_buffer_number_to_merge = 8;
+      // Remove this if performance is poor
+      opts.optimize_filters_for_hits = true;
 
       opts.OptimizeLevelStyleCompaction();
       opts.IncreaseParallelism();
