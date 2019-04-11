@@ -97,7 +97,7 @@ void sps_processor::sort_by_votes( t_proposals& proposals )
                                                       {
                                                          if (a.total_votes == b.total_votes)
                                                          {
-                                                            return a.id < b.id;
+                                                            return a.proposal_id < b.proposal_id;
                                                          }
                                                          return a.total_votes > b.total_votes;
                                                       } );
