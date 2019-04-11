@@ -26,7 +26,9 @@ if __name__ == "__main__":
 
         for ids in id_sets:
             call_args = {"id_set":ids}
-            call_and_check(wallet.find_proposals, call_args, "args")
+            resp = last_message_as_json(call_and_check(wallet.find_proposals, call_args, "args"))
+            if not "result" in resp:
+                raise ArgsCheckException("No `result` in response")
         
     except Exception as _ex:
         log.exception(str(_ex))

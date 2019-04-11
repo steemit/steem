@@ -36,7 +36,9 @@ if __name__ == "__main__":
                     else:
                         start = 0
                     call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "status":act, "last_id":""}
-                    call_and_check(wallet.list_proposals, call_args, "args")
+                    resp = last_message_as_json(call_and_check(wallet.list_proposals, call_args, "args"))
+                    if not "result" in resp:
+                        raise ArgsCheckException("No `result` in response")
 
     except Exception as _ex:
         log.exception(str(_ex))
