@@ -183,17 +183,29 @@ public:
 
       ::rocksdb::Options opts;
 
-      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+      opts.max_open_files = 4;
 
 
       ::rocksdb::BlockBasedTableOptions table_options;
-      table_options.block_size = 32 << 10; // 32kB
+      table_options.block_size = 32 << 10;
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+
+      table_options.index_type = rocksdb::BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
+
+      table_options.partition_filters = true;
+      table_options.metadata_block_size = 4096;
       table_options.cache_index_and_filter_blocks = true;
-      table_options.pin_l0_filter_and_index_blocks_in_cache = true;
+      table_options.pin_top_level_index_and_filter = false;
+      table_options.pin_l0_filter_and_index_blocks_in_cache = false;
+      table_options.cache_index_and_filter_blocks_with_high_priority = true;
+
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
+
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
+      opts.limit_tcache_size = true;
+      opts.tcache_size_lower_bound = 16 * 1024 * 1024;
+      opts.tcache_size_upper_bound = 32 * 1024 * 1024;
       opts.allow_mmap_reads = true;
 
       // Remove this if performance is poor
