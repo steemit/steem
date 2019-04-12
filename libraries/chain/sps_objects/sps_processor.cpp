@@ -69,7 +69,15 @@ uint64_t sps_processor::calculate_votes( const proposal_id_type& id )
    while( found != pvidx.end() && found->proposal_id == id )
    {
       const auto& _voter = db.get_account( found->voter );
-      ret += _voter.vesting_shares.amount.value;
+
+      //If _voter has set proxy, then his votes aren't taken into consideration
+      if( _voter.proxy == STEEM_PROXY_TO_SELF_ACCOUNT )
+      {
+         auto sum = std::accumulate(   _voter.proxied_vsf_votes.begin(),
+                                       _voter.proxied_vsf_votes.end(),
+                                       _voter.vesting_shares.amount );
+         ret += sum.value;
+      }
 
       ++found;
    }

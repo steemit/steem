@@ -326,6 +326,162 @@ BOOST_AUTO_TEST_CASE( generating_payments_02 )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( generating_payments_03 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: generating payments" );
+
+      std::string tester00_account = "tester00";
+      std::string tester01_account = "tester01";
+      std::string tester02_account = "tester02";
+
+      ACTORS( (tester00)(tester01)(tester02) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      //=====================preparing=====================
+      std::vector< int64_t > proposals_id;
+      flat_map< std::string, asset > before_tbds;
+
+      flat_map< std::string, fc::ecc::private_key > inits;
+      inits[ "tester00" ] = tester00_private_key;
+      inits[ "tester01" ] = tester01_private_key;
+      inits[ "tester02" ] = tester02_private_key;
+
+      for( auto item : inits )
+      {
+         if( item.first == tester02_account )
+         {
+            FUND( item.first, ASSET( "41.000 TESTS" ) );
+            FUND( item.first, ASSET( "41.000 TBD" ) );
+            vest(STEEM_INIT_MINER_NAME, item.first, ASSET( "31.000 TESTS" ));
+         }
+         else
+         {
+            FUND( item.first, ASSET( "40.000 TESTS" ) );
+            FUND( item.first, ASSET( "40.000 TBD" ) );
+            vest(STEEM_INIT_MINER_NAME, item.first, ASSET( "30.000 TESTS" ));
+         }
+      }
+
+      auto start_date = db->head_block_time();
+      uint16_t interval = 0;
+      std::vector< fc::microseconds > end_time_shift = { fc::hours( 1 ), fc::hours( 2 ), fc::hours( 3 ), fc::hours( 4 ) };
+      auto end_date = start_date + end_time_shift[ 3 ];
+
+      auto huge_daily_pay = ASSET( "50000001.000 TBD" );
+      auto daily_pay = ASSET( "24.000 TBD" );
+
+      FUND( STEEM_TREASURY_ACCOUNT, ASSET( "5000000.000 TBD" ) );
+      //=====================preparing=====================
+      uint16_t i = 0;
+      for( auto item : inits )
+      {
+         auto _pay = ( item.first == tester02_account ) ? huge_daily_pay : daily_pay;
+         proposals_id.push_back( create_proposal( item.first, item.first, start_date, end_date, _pay, item.second ) );
+         generate_block();
+
+         if( item.first == tester02_account )
+            continue;
+
+         vote_proposal( item.first, {i++}, true/*approve*/, item.second );
+         generate_block();
+      }
+
+      for( auto item : inits )
+      {
+         const account_object& account = db->get_account( item.first );
+         before_tbds[ item.first ] = account.sbd_balance;
+      }
+
+      auto payment_checker = [&]( const std::vector< asset >& payouts )
+      {
+         uint16_t i = 0;
+         for( const auto& item : inits )
+         {
+            const account_object& account = db->get_account( item.first );
+            auto after_tbd = account.sbd_balance;
+            auto before_tbd = before_tbds[ item.first ];
+            BOOST_REQUIRE( before_tbd == after_tbd - payouts[i++] );
+         }
+      };
+
+      /*
+         Initial conditions.
+            `tester00` has own proposal id = 0 : voted for it
+            `tester01` has own proposal id = 1 : voted for it
+            `tester02` has own proposal id = 2 : lack of votes
+      */
+
+      generate_blocks( start_date + end_time_shift[ interval++ ] + fc::seconds( 10 ), false );
+      /*
+         `tester00` - got payout
+         `tester01` - got payout
+         `tester02` - no payout, because of lack of votes
+      */
+      payment_checker( { ASSET( "1.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) } );
+
+      {
+         BOOST_TEST_MESSAGE( "Setting proxy. The account `tester01` don't want to vote. Every decision is made by account `tester00`" );
+         account_witness_proxy_operation op;
+         op.account = tester01_account;
+         op.proxy = tester00_account;
+
+         signed_transaction tx;
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         tx.operations.push_back( op );
+         sign( tx, inits[ tester01_account ] );
+         db->push_transaction( tx, 0 );
+      }
+
+      generate_blocks( start_date + end_time_shift[ interval++ ] + fc::seconds( 10 ), false );
+      /*
+         `tester00` - got payout
+         `tester01` - no payout, because this account set proxy
+         `tester02` - no payout, because of lack of votes
+      */
+      payment_checker( { ASSET( "2.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) } );
+
+      vote_proposal( tester02_account, {2}, true/*approve*/, inits[ tester02_account ] );
+      generate_block();
+
+      generate_blocks( start_date + end_time_shift[ interval++ ] + fc::seconds( 10 ), false );
+      /*
+         `tester00` - got payout, `tester02` has less votes than `tester00`
+         `tester01` - no payout, because this account set proxy
+         `tester02` - got payout, because voted for his proposal
+      */
+      payment_checker( { ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "2082.346 TBD" ) } );
+
+      {
+         BOOST_TEST_MESSAGE( "Proxy doesn't exist. Now proposal with id = 3 has the most votes. This proposal grabs all payouts." );
+         account_witness_proxy_operation op;
+         op.account = tester01_account;
+         op.proxy = "";
+
+         signed_transaction tx;
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         tx.operations.push_back( op );
+         sign( tx, inits[ tester01_account ] );
+         db->push_transaction( tx, 0 );
+      }
+
+      generate_blocks( start_date + end_time_shift[ interval++ ] + fc::seconds( 10 ), false );
+      /*
+         `tester00` - no payout, because is not enough money. `tester01` removed proxy and the most votes has `tester02`. Whole payout goes to `tester02`
+         `tester01` - no payout, because is not enough money
+         `tester02` - got payout, because voted for his proposal
+      */
+      payment_checker( { ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "4164.824 TBD" ) } );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( proposals_maintenance)
 {
    try
