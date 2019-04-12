@@ -220,6 +220,7 @@ public:
 //*/
 
       ::rocksdb::BlockBasedTableOptions table_options;
+      table_options.cache_index_and_filter_blocks = true;
       table_options.block_size = 8 << 10; // 8K
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
       table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
