@@ -203,9 +203,6 @@ public:
 
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
-      opts.limit_tcache_size = true;
-      opts.tcache_size_lower_bound = 16 * 1024 * 1024;
-      opts.tcache_size_upper_bound = 32 * 1024 * 1024;
       opts.allow_mmap_reads = true;
 
       // Remove this if performance is poor
