@@ -37,7 +37,6 @@ except Exception as ex:
 
 # Voter proxy test
 # 1. create few proposals - in this scenario proposals have the same starting and ending dates
-#    one of the proposals will by paying to the treasury
 # 2. vote on them to show differences in asset distribution, one voter sets the other as the proxy
 # 3. wait for proposal payment phase
 # 4. verify (using account history and by checking regular account balance) that given accounts have been correctly paid.
