@@ -225,7 +225,7 @@ public:
       table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
-      opts.allow_mmap_reads = true;
+      opts.allow_mmap_reads = false;
 
       opts.write_buffer_size = 2048 * 1024;              // 128k
       opts.max_bytes_for_level_base = 5 * 1024 * 1024;  // 1MB
