@@ -454,6 +454,30 @@ void print_stats() const
       std::cout << _name << " stats:\n";
       std::cout << _stats->ToString() << "\n";
    }
+
+   std::vector< std::string > properties = {
+      "rocksdb.estimate-table-readers-mem",
+      "rocksdb.cur-size-all-mem-tables",
+      "rocksdb.cur-size-active-mem-table",
+      "rocksdb.size-all-mem-tables",
+      "rocksdb.estimate-live-data-size",
+      "rocksdb.estimate-pending-compaction-bytes",
+      "rocksdb.block-cache-capacity",
+      "rocksdb.block-cache-usage",
+      "rocksdb.block-cache-pinned-usage"
+   };
+
+   const std::string& log_prefix = "[MIRA_MEM_TEST]";
+   ilog( "${prefix} --------------------------------------------------> database: ${type}", ("prefix", log_prefix)("type", boost::core::demangle( typeid( Value ).name())) );
+   for ( auto& p : properties )
+   {
+      for ( auto& handle : super::_handles )
+      {
+         std::string out;
+         super::_db->GetProperty( handle, p, &out );
+         ilog( "${prefix} <${handle_name}> ${property_name} : ${value}", ("prefix", log_prefix)("handle_name", handle->GetName())("property_name", p)("value", out) );
+      }
+   }
 }
 
 size_t get_cache_usage() const

@@ -3123,9 +3123,11 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_orders();
    clear_expired_delegations();
 
-   if( next_block.block_num() % 100000 == 0 )
+   static fc::time_point t = fc::time_point::now();
+   if ( fc::time_point::now() - t > fc::minutes(30) )
    {
-
+      print_stats();
+      t = fc::time_point::now();
    }
 
    update_witness_schedule(*this);
