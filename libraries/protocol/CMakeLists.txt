@@ -24,8 +24,6 @@ add_library( steem_protocol
              smt_operations.cpp
              steem_operations.cpp
              sps_operations.cpp
-             steem_required_actions.cpp
-             steem_optional_actions.cpp
              types.cpp
              schema_types.cpp
              authority.cpp
