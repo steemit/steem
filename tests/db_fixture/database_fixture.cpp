@@ -1072,33 +1072,6 @@ void sps_proposal_database_fixture::post_comment( std::string _authro, std::stri
    trx.operations.clear();
 }
 
-template int64_t t_proposal_database_fixture< clean_database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< clean_database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< clean_database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< clean_database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
-template bool t_proposal_database_fixture< clean_database_fixture >::exist_proposal( int64_t id );
-template list_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit,  std::string _status, fc::optional<uint64_t> _last_id);
-template list_voter_proposals_return t_proposal_database_fixture< clean_database_fixture >::list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit,  std::string _status);
-template find_proposals_return t_proposal_database_fixture< clean_database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
-template void t_proposal_database_fixture< clean_database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
-template bool t_proposal_database_fixture< clean_database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
-template uint64_t t_proposal_database_fixture< clean_database_fixture >::get_nr_blocks_until_maintenance_block();
-template void t_proposal_database_fixture< clean_database_fixture >::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
-
-template void t_proposal_database_fixture< database_fixture >::plugin_prepare();
-template int64_t t_proposal_database_fixture< database_fixture >::create_proposal( std::string creator, std::string receiver, time_point_sec start_date, time_point_sec end_date, asset daily_pay, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< database_fixture >::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< database_fixture >::transfer_vests( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
-template void t_proposal_database_fixture< database_fixture >::transfer( std::string from, std::string to, asset amount, const fc::ecc::private_key& key );
-template bool t_proposal_database_fixture< database_fixture >::exist_proposal( int64_t id );
-template list_proposals_return t_proposal_database_fixture< database_fixture >::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit,  std::string _status, fc::optional<uint64_t> _last_id);
-template list_voter_proposals_return t_proposal_database_fixture< database_fixture >::list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status) ;
-template find_proposals_return t_proposal_database_fixture< database_fixture >::find_proposals(flat_set<uint64_t> _proposal_ids);
-template void t_proposal_database_fixture< database_fixture >::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
-template bool t_proposal_database_fixture< database_fixture >::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
-template uint64_t t_proposal_database_fixture< database_fixture >::get_nr_blocks_until_maintenance_block();
-template void t_proposal_database_fixture< database_fixture >::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
-
 json_rpc_database_fixture::json_rpc_database_fixture()
 {
    try {

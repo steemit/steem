@@ -2715,13 +2715,6 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
    _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
    _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
-   
-
-#ifdef IS_TEST_NET
-   _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
-
-   _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
-#endif
 }
 
 
@@ -2779,6 +2772,8 @@ void database::initialize_indexes()
    add_core_index< account_rewards_balance_index           >(*this);
 #endif
 
+   add_core_index< proposal_index                          >( *this );
+   add_core_index< proposal_vote_index                     >( *this );
    _plugin_index_signal();
 }
 
@@ -3706,12 +3701,6 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
-}
-
-boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
-   const abstract_plugin& plugin, int32_t group )
-{
-   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -5097,18 +5086,6 @@ void database::apply_hardfork( uint32_t hardfork )
                });
          }
          break;
-      case STEEM_SMT_HARDFORK:
-      {
-#ifdef STEEM_ENABLE_SMT
-         replenish_nai_pool( *this );
-#endif
-         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
-         {
-            gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
-         });
-
-         break;
-#endif
       default:
          break;
    }

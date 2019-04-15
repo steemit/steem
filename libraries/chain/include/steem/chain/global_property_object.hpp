@@ -179,5 +179,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif
+             (next_maintenance_time)
+             (last_budget_time)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::dynamic_global_property_object, steem::chain::dynamic_global_property_index )
