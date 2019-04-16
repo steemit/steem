@@ -236,7 +236,7 @@ public:
       opts.max_background_flushes = 16;
       opts.min_write_buffer_number_to_merge = 8;
 
-      opts.OptimizeLevelStyleCompaction();
+      opts.OptimizeLevelStyleCompaction( 128 * 1024 * 1024 );
       opts.IncreaseParallelism();
 
       ::rocksdb::DB* db = nullptr;
