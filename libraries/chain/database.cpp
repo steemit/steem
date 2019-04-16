@@ -3177,7 +3177,6 @@ void database::_apply_block( const signed_block& next_block )
    if( has_hardfork( STEEM_HARDFORK_0_12 ) )
    {
       FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
-      ilog( "Block Size: ${s}", ("s", block_size) );
    }
 
    if( block_size < STEEM_MIN_BLOCK_SIZE )
