@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from collections      import OrderedDict
+
 from utils.test_utils import *
 from utils.cmd_args   import args
 from utils.cli_wallet import CliWallet
@@ -35,7 +37,13 @@ if __name__ == "__main__":
                         start = "2019-03-01T00:00:00"
                     else:
                         start = 0
-                    call_args = {"start":start, "order_by":by, "order_direction":direct, "limit":10, "status":act, "last_id":""}
+                    call_args = OrderedDict()
+                    call_args["start"]=start
+                    call_args["order_by"]=by
+                    call_args["order_direction"]=direct
+                    call_args["limit"]=10
+                    call_args["status"]=act
+                    call_args["last_id"]=""
                     resp = last_message_as_json(call_and_check(wallet.list_proposals, call_args, "args"))
                     if not "result" in resp:
                         raise ArgsCheckException("No `result` in response")
