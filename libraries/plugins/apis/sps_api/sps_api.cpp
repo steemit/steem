@@ -2,7 +2,6 @@
 #include <steem/plugins/sps_api/sps_api.hpp>
 #include <steem/chain/sps_objects.hpp>
 #include <appbase/application.hpp>
-#include <steem/utilities/iterate_results.hpp>
 
 namespace steem { namespace plugins { namespace sps {
 

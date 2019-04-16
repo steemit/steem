@@ -5,6 +5,7 @@
 #include <steem/plugins/sps_api/sps_api.hpp>
 
 #include <steem/wallet/remote_node_api.hpp>
+
 #include <steem/utilities/key_conversion.hpp>
 
 #include <fc/macros.hpp>
@@ -1071,8 +1072,8 @@ class wallet_api
 
       /**
        * Create worker proposal
-       * @param _creator    - account that create the proposal,
-       * @param _receiver   - account that will be funded,
+       * @param _creator    - the account that creates the proposal,
+       * @param _receiver   - the account that will be funded,
        * @param _start_date - start date of proposal,
        * @param _end_date   - end date of proposal,
        * @param _daily_pay  - the amount of SBD that is being requested to be paid out daily,
@@ -1089,7 +1090,7 @@ class wallet_api
                            bool broadcast );
       /**
        * Update existing worker proposal(s)
-       * @param _voter     - voiting account,
+       * @param _voter     - the account that votes,
        * @param _proposals - array with proposal ids,
        * @param _approve   - set if proposal(s) should be approved or not.
        */
@@ -1102,9 +1103,9 @@ class wallet_api
        * @param _start      - starting value for querying results,
        * @param _order_by   - name a field for sorting operation,
        * @param _order_type - set print order asc - ascdending, desc - descending,
-       * @param _limit      - query limit
-       * @param _status     - List only results with given status (expired, inactive, active, all, votable).
-       * @param _last_id    - (optional) Start search from given id.
+       * @param _limit      - query limit,
+       * @param _status     - list only results with given status (expired, inactive, active, all, votable),
+       * @param _last_id    - (optional) start search from given id.
        */
       list_proposals_return list_proposals(fc::variant _start,
                                            std::string _order_by = "creator",
@@ -1118,9 +1119,9 @@ class wallet_api
        * @param _start      - starting value for querying results,
        * @param _order_by   - name a field for sorting operation,
        * @param _order_type - set print order asc - ascdending, desc - descending,
-       * @param _limit      - query limit
-       * @param _status     - List only results with given status (expired, inactive, active, all, votable).
-       * @param _last_id    - (optional) Start search from given id.
+       * @param _limit      - query limit,
+       * @param _status     - list only results with given status (expired, inactive, active, all, votable),
+       * @param _last_id    - (optional) start search from given id.
        */
       list_voter_proposals_return list_voter_proposals(fc::variant _start,
                                                        std::string _order_by = "creator",
@@ -1137,8 +1138,8 @@ class wallet_api
 
       /**
        * Remove given proposal 
-       * @param _deleter  - authorized account
-       * @param _ids       - proposal ids to be removed
+       * @param _deleter   - authorized account,
+       * @param _ids       - proposal ids to be removed.
        */
       condenser_api::legacy_signed_transaction remove_proposal(account_name_type _deleter, 
                                                                flat_set<int64_t> _ids, bool broadcast );

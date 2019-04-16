@@ -44,7 +44,7 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 9) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -315,8 +315,8 @@
 /// Represents the canonical account for specifying you will vote for directly (as opposed to a proxy)
 #define STEEM_PROXY_TO_SELF_ACCOUNT           ""
 /// Represents the canonical root post parent account
-#define STEEM_ROOT_POST_PARENT                (account_name_type())/// Represents the canonical account with NO authority (nobody can access funds in null account)
-/// Represents the account which holds resources needed when proposal is paid
+#define STEEM_ROOT_POST_PARENT                (account_name_type())
+/// Represents the account with NO authority which holds resources for payouts according to given proposals
 #define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
 
@@ -325,7 +325,6 @@
 #define STEEM_TREASURY_FEE                         (10 * STEEM_BLOCKCHAIN_PRECISION)
 #define STEEM_PROPOSAL_MAINTENANCE_PERIOD          3600
 #define STEEM_PROPOSAL_MAINTENANCE_CLEANUP         (60*60*24*1) /// 1 day
-#define STEEM_PROPOSAL_MAINTENANCE_PERIOD_BLOCKS   (STEEM_PROPOSAL_MAINTENANCE_PERIOD / STEEM_BLOCK_INTERVAL)
 #define STEEM_PROPOSAL_SUBJECT_MAX_LENGTH          80
 /// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.
 #define STEEM_PROPOSAL_MAX_IDS_NUMBER              5
