@@ -89,6 +89,7 @@ int main( int argc, char** argv )
       vector<string> allowed_ips;
 
       bpo::variables_map options;
+
       bpo::store( bpo::parse_command_line(argc, argv, opts), options );
 
       if( options.count("help") )
@@ -258,8 +259,6 @@ int main( int argc, char** argv )
                conn->on_request( req, resp );
             } );
       }
-
-
 
       if( !options.count( "daemon" ) )
       {

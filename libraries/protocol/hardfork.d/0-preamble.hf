@@ -15,5 +15,5 @@
 #ifdef IS_TEST_NET
 #define STEEM_NUM_HARDFORKS 22
 #else
-#define STEEM_NUM_HARDFORKS 20
+#define STEEM_NUM_HARDFORKS 21
 #endif
