@@ -60,33 +60,6 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_STEEM_TESTNET=ON \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=ON \
-        -DSKIP_BY_TX_ID=ON \
-        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
-        .. && \
-    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
-    ./tests/chain_test && \
-    ./tests/plugin_test && \
-    ./libraries/mira/test/mira_test && \
-    ./programs/util/test_fixed_string && \
-    cd /usr/local/src/steem && \
-    doxygen && \
-    PYTHONPATH=programs/build_helpers \
-    python3 -m steem_build_helpers.check_reflect && \
-    programs/build_helpers/get_config_check.sh && \
-    rm -rf /usr/local/src/steem/build ; \
-    fi
-
-RUN \
-    if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
-    mkdir build && \
-    cd build && \
-    cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-testnet \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_STEEM_TESTNET=ON \
@@ -97,88 +70,14 @@ RUN \
         -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j$(nproc) steemd && \
     make install && \
-    ./tests/chain_test && \
-    ./tests/plugin_test && \
-    ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
     PYTHONPATH=programs/build_helpers \
     python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build ; \
-    fi
-
-RUN \
-    if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Debug \
-        -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_STEEM_TESTNET=ON \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=ON \
-        -DSKIP_BY_TX_ID=ON \
-        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
-        -DCHAINBASE_CHECK_LOCKING=OFF \
-        .. && \
-    make -j$(nproc) chain_test plugin_test && \
-    ./tests/chain_test && \
-    ./tests/plugin_test && \
-    mkdir -p /var/cobertura && \
-    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --gcov-exclude=".*vendor*" --output="/var/cobertura/coverage.xml" && \
-    cd /usr/local/src/steem && \
-    rm -rf /usr/local/src/steem/build ; \
-    fi
-
-RUN \
-    if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=ON \
-        -DCLEAR_VOTES=ON \
-        -DSKIP_BY_TX_ID=OFF \
-        -DBUILD_STEEM_TESTNET=OFF \
-        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
-        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
-        .. \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    ( /usr/local/steemd-default/bin/steemd --version \
-      | grep -o '[0-9]*\.[0-9]*\.[0-9]*' \
-      && echo '_' \
-      && git rev-parse --short HEAD ) \
-      | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' \
-      > /etc/steemdversion && \
-    cat /etc/steemdversion && \
-    rm -rfv build && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=OFF \
-        -DSKIP_BY_TX_ID=ON \
-        -DBUILD_STEEM_TESTNET=OFF \
-        -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
-        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
-        .. \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    rm -rf /usr/local/src/steem ; \
     fi
 
 RUN \
