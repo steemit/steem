@@ -177,66 +177,16 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-      //_stats = rocksdb_options_factory::get_shared_stats();
-      //_stats = ::rocksdb::CreateDBStatistics();
-
       ::rocksdb::Options opts;
-//
-//      opts.OptimizeUniversalStyleCompaction( 4 << 20 );
-
-//      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-//      opts.compression = rocksdb::CompressionType::kNoCompression;
-
-      //opts.statistics = _stats;
-      //opts.stats_dump_period_sec = 5;
-
-      //opts.bytes_per_sync = 6291456;
-      //opts.rate_limiter = std::shared_ptr< rocksdb::RateLimiter >( rocksdb::NewGenericRateLimiter( 1024000 ) );
-//*
-//      //opts.block_size = 8 << 10; //8K
-//      //opts.cache_size = 4 << 30; // 4G
-//      opts.write_buffer_size = 4 << 10; // 64K
-//      opts.max_write_buffer_number = 1;
-//      //opts.min_write_buffer_number_to_merge = 4;
-//      opts.max_bytes_for_level_base = 2 << 30; // 3G
-//      opts.max_bytes_for_level_multiplier = 5;
-//      opts.target_file_size_base = 128 << 20; // 20M
-//      opts.target_file_size_multiplier = 1;
-//      opts.max_background_jobs = 32;
-//      opts.max_background_flushes = 1;
-//      opts.max_background_compactions = 8;
-//      opts.level0_file_num_compaction_trigger = 2;
-//      opts.level0_slowdown_writes_trigger = 24;
-//      opts.level0_stop_writes_trigger = 56;
-//      //opts.cache_numshardbits = 6;
-//      opts.table_cache_numshardbits = 0;
-//      opts.allow_mmap_reads = 1;
-//      opts.allow_mmap_writes = 1;
-//      opts.use_fsync = false;
-//      opts.use_adaptive_mutex = false;
-//      opts.bytes_per_sync = 2 << 20; // 2M
-//      //opts.source_compaction_factor = 1;
-//      //opts.max_grandparent_overlap_factor = 5;
-//*/
 
       ::rocksdb::BlockBasedTableOptions table_options;
       table_options.cache_index_and_filter_blocks = true;
-      table_options.block_size = 8 << 10; // 8K
-      table_options.block_cache = rocksdb_options_factory::get_shared_cache();
-      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 14, false ) );
+      table_options.block_size = 8 * 1024;
+      table_options.block_cache = rocksdb::NewLRUCache( 128 * 1024 * 1024 );
+      table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
-      opts.allow_mmap_reads = true;
-
-      opts.write_buffer_size = 2048 * 1024;              // 128k
-      opts.max_bytes_for_level_base = 5 * 1024 * 1024;  // 1MB
-      opts.target_file_size_base = 100 * 1024;          // 100k
-      opts.max_write_buffer_number = 16;
-      opts.max_background_compactions = 16;
-      opts.max_background_flushes = 16;
-      opts.min_write_buffer_number_to_merge = 8;
-
-      opts.OptimizeLevelStyleCompaction( 128 * 1024 * 1024 );
+      opts.OptimizeLevelStyleCompaction( 32 * 1024 * 1024 );
       opts.IncreaseParallelism();
 
       ::rocksdb::DB* db = nullptr;
