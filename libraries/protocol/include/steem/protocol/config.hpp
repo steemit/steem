@@ -43,7 +43,7 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 9) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 10) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -299,6 +299,9 @@
 // Default rate is 0.5 accounts per block
 #define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
 #define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
+
+#define STEEM_BLOCK_GENERATION_POSTPONED_TX_LIMIT 5
+#define STEEM_PENDING_TRANSACTION_EXECUTION_LIMIT fc::milliseconds(200)
 
 /**
  *  Reserved Account IDs with special meaning
