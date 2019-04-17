@@ -46,6 +46,8 @@
 #include <rocksdb/convenience.h>
 
 #include <iostream>
+#include <string>
+#include <sstream>
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
 #include <initializer_list>
@@ -464,7 +466,29 @@ void print_stats() const
       "rocksdb.estimate-pending-compaction-bytes",
       "rocksdb.block-cache-capacity",
       "rocksdb.block-cache-usage",
-      "rocksdb.block-cache-pinned-usage"
+      "rocksdb.block-cache-pinned-usage",
+      "rocksdb.estimate-num-keys",
+
+      "rocksdb.num-deletes-imm-mem-tables",
+      "rocksdb.num-deletes-active-mem-table",
+      "rocksdb.num-entries-imm-mem-tables",
+      "rocksdb.num-entries-active-mem-table",
+      "rocksdb.background-errors",
+      "rocksdb.num-running-compactions",
+      "rocksdb.compaction-pending",
+      "rocksdb.num-running-flushes",
+      "rocksdb.mem-table-flush-pending",
+      "rocksdb.num-immutable-mem-table-flushed",
+      "rocksdb.num-immutable-mem-table",
+
+
+      "rocksdb.estimate-oldest-key-time",
+      "rocksdb.is-write-stopped",
+      "rocksdb.actual-delayed-write-rate",
+      "rocksdb.aggregated-table-properties",
+      "rocksdb.base-level",
+      "rocksdb.dbstats",
+      "rocksdb.levelstats"
    };
 
    const std::string& log_prefix = "[MIRA_MEM_TEST]";
@@ -475,7 +499,12 @@ void print_stats() const
       {
          std::string out;
          super::_db->GetProperty( handle, p, &out );
-         ilog( "${prefix} <${handle_name}> ${property_name} : ${value}", ("prefix", log_prefix)("handle_name", handle->GetName())("property_name", p)("value", out) );
+         std::istringstream iss( out );
+
+         for ( std::string line; std::getline( iss, line ); )
+         {
+             ilog( "${prefix} <${handle_name}> ${property_name} : ${value}", ("prefix", log_prefix)("handle_name", handle->GetName())("property_name", p)("value", line) );
+         }
       }
    }
 }
