@@ -67,7 +67,7 @@ RUN \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         .. && \
-    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
+    make -j8 chain_test mira_test test_fixed_string plugin_test && \
     cd /usr/local/src/steem && \
     doxygen && \
     PYTHONPATH=programs/build_helpers \
@@ -93,7 +93,7 @@ RUN \
         -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j8 chain_test test_fixed_string plugin_test && \
     make install && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
@@ -120,7 +120,7 @@ RUN \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
-    make -j$(nproc) chain_test plugin_test && \
+    make -j8 chain_test plugin_test && \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --gcov-exclude=".*vendor*" --output="/var/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
@@ -144,7 +144,7 @@ RUN \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
-    make -j$(nproc) && \
+    make -j8 && \
     make install && \
     cd .. && \
     ( /usr/local/steemd-default/bin/steemd --version \
@@ -168,7 +168,7 @@ RUN \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
-    make -j$(nproc) && \
+    make -j8 && \
     make install && \
     rm -rf /usr/local/src/steem ; \
     fi
