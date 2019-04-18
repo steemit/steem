@@ -47,6 +47,7 @@ RUN \
         libbz2-dev \
         liblz4-dev \
         libzstd-dev \
+        zlib1g-dev \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
