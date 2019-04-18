@@ -43,6 +43,7 @@ if(POLICY CMP0042)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
+message("rocksdb cmake module path: ${CMAKE_MODULE_PATH}")
 
 option(WITH_JEMALLOC "build with JeMalloc" OFF)
 option(WITH_SNAPPY "build with SNAPPY" OFF)
