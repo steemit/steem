@@ -18,6 +18,7 @@ RUN \
         bsdmainutils \
         build-essential \
         cmake \
+        cmake-packages \
         doxygen \
         gdb \
         git \
