@@ -58,7 +58,12 @@
 
 #define DEFAULT_COLUMN 0
 #define MIRA_MAX_OPEN_FILES_PER_DB 64
-#define MIRA_SHARED_CACHE_SIZE (4ull * 1024 * 1024 * 1024 ) /* 4G */
+
+#define KB(x)   ((size_t) (x) << 10)
+#define MB(x)   ((size_t) (x) << 20)
+#define GB(x)   ((size_t) (x) << 30)
+#define MIRA_SHARED_CACHE_SIZE GB(5)
+#define MIRA_WRITE_BUFFER_SIZE GB(1)
 
 #define ENTRY_COUNT_KEY "ENTRY_COUNT"
 #define REVISION_KEY "REV"
@@ -78,6 +83,12 @@ struct rocksdb_options_factory
    {
       static std::shared_ptr< rocksdb::Cache > cache = rocksdb::NewLRUCache( MIRA_SHARED_CACHE_SIZE );
       return cache;
+   }
+
+   static std::shared_ptr< rocksdb::WriteBufferManager > get_write_buffer_manager()
+   {
+      static std::shared_ptr< rocksdb::WriteBufferManager > write_buf_mgr = std::make_shared< rocksdb::WriteBufferManager >( MIRA_WRITE_BUFFER_SIZE, rocksdb_options_factory::get_shared_cache() );
+      return write_buf_mgr;
    }
 
    static std::shared_ptr< rocksdb::Statistics > get_shared_stats()
@@ -183,13 +194,13 @@ public:
 
       ::rocksdb::BlockBasedTableOptions table_options;
       table_options.cache_index_and_filter_blocks = true;
-      table_options.block_size = 8 * 1024;
+      table_options.block_size = KB(8);
       table_options.block_cache = rocksdb_options_factory::get_shared_cache();
       table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( 10, false ) );
       opts.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
 
-      opts.db_write_buffer_size = 128 * 1024 * 1024;
-      opts.OptimizeLevelStyleCompaction( 32 * 1024 * 1024 );
+      opts.write_buffer_manager = rocksdb_options_factory::get_write_buffer_manager();
+      opts.OptimizeLevelStyleCompaction();
       opts.IncreaseParallelism();
 
       ::rocksdb::DB* db = nullptr;
