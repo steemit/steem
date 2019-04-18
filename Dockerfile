@@ -95,7 +95,6 @@ RUN \
         .. && \
     make -j8 chain_test test_fixed_string plugin_test && \
     make install && \
-    ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
     PYTHONPATH=programs/build_helpers \
