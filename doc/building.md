@@ -185,12 +185,15 @@ Install Homebrew by following the instructions here: http://brew.sh/
         openssl \
         snappy \
         zlib \
+        bzip2 \
         python3
         
     pip3 install --user jinja2
     
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
 steem. Until then, this will allow you to install boost 1.60.0.
+You may also need to install zlib and bzip2 libraries manually.
+In that case, change the directories for `export` accordingly.
 
 *Optional.* To use TCMalloc in LevelDB:
 
@@ -208,11 +211,11 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 ### Compile
 
-    export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
     export BOOST_ROOT=$(brew --prefix)/Cellar/boost@1.60/1.60.0/
-    export SNAPPY_LIBRARIES=$(brew --prefix)/Cellar/snappy/1.1.7_1/lib/
-    export SNAPPY_INCLUDE_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1/include/
-    export ZLIB_LIBRARIES=$(brew --prefix)/Cellar/zlib/1.2.11/lib/
+    export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2q/
+    export SNAPPY_ROOT_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1
+    export ZLIB_ROOT_DIR=$(brew --prefix)/Cellar/zlib/1.2.11
+    export BZIP2_ROOT_DIR=$(brew --prefix)/Cellar/bzip2/1.0.6_1
     git checkout stable
     git submodule update --init --recursive
     mkdir build && cd build

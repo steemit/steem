@@ -44,7 +44,7 @@ namespace fc {
     template<typename Stream>
     inline void pack( Stream& s, const real128& value_to_pack ) { s.write( (char*)&value_to_pack, sizeof(value_to_pack) ); }
     template<typename Stream>
-    inline void unpack( Stream& s, real128& value_to_unpack ) { s.read( (char*)&value_to_unpack, sizeof(value_to_unpack) ); }
+    inline void unpack( Stream& s, real128& value_to_unpack, uint32_t ) { s.read( (char*)&value_to_unpack, sizeof(value_to_unpack) ); }
   }
 
 
