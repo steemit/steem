@@ -1,22 +1,17 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/steem_object_types.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <steem/protocol/asset.hpp>
 
 namespace steem { namespace chain {
 
-using steem::chain::object;
-using steem::chain::allocator;
-using steem::chain::account_name_type;
-//using steem::chain::asset;
 using steem::protocol::asset;
-using steem::chain::shared_string;
-using steem::chain::oid;
-using steem::chain::by_id;
 
 class proposal_object : public object< proposal_object_type, proposal_object >
 {
-   proposal_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( proposal_object )
 
    public:
 
@@ -68,11 +63,9 @@ class proposal_object : public object< proposal_object_type, proposal_object >
       }
 };
 
-typedef oid< proposal_object > proposal_id_type;
-
 class proposal_vote_object : public object< proposal_vote_object_type, proposal_vote_object>
 {
-   proposal_vote_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( proposal_vote_object )
 
    public:
 
@@ -91,8 +84,6 @@ class proposal_vote_object : public object< proposal_vote_object_type, proposal_
       //the voter voted for this proposal number
       proposal_id_type proposal_id;
 };
-
-typedef oid< proposal_vote_object > proposal_vote_id_type;
 
 struct by_proposal_id;
 struct by_start_date;
@@ -161,6 +152,14 @@ typedef multi_index_container<
 > proposal_vote_index;
 
 } } // steem::chain
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::proposal_vote_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 FC_REFLECT( steem::chain::proposal_object, (id)(proposal_id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_object, steem::chain::proposal_index )

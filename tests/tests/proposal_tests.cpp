@@ -1,5 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
 #include <steem/protocol/sps_operations.hpp>
@@ -690,7 +692,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
          tx.operations.clear();
          tx.signatures.clear();
 
-         auto found = proposal_vote_idx.find( std::make_tuple( voter_01, id_proposal_00 ) );
+         auto found = proposal_vote_idx.find( boost::make_tuple( voter_01, id_proposal_00 ) );
          BOOST_REQUIRE( found->voter == voter_01 );
          BOOST_REQUIRE( static_cast< int64_t >( found->proposal_id ) == id_proposal_00 );
       }
@@ -709,7 +711,7 @@ BOOST_AUTO_TEST_CASE( proposal_vote_object_apply )
          tx.operations.clear();
          tx.signatures.clear();
 
-         auto found = proposal_vote_idx.find( std::make_tuple( voter_01, id_proposal_00 ) );
+         auto found = proposal_vote_idx.find( boost::make_tuple( voter_01, id_proposal_00 ) );
          BOOST_REQUIRE( found == proposal_vote_idx.end() );
       }
 

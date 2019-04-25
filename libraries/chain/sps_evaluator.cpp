@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/sps_operations.hpp>
 
 #include <steem/chain/database.hpp>

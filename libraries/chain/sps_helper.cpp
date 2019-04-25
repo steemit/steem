@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/sps_helper.hpp>
 
 namespace steem { namespace chain {

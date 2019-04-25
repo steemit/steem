@@ -72,7 +72,7 @@ class sps_helper
       template<   typename ByProposalType,
                   typename ProposalObjectIterator,
                   typename ProposalIndex, typename VotesIndex, typename ByVoterIdx >
-      static ProposalObjectIterator remove_proposal( const ProposalObjectIterator& proposal,
+      static ProposalObjectIterator remove_proposal( ProposalObjectIterator& proposal,
                   ProposalIndex& proposalIndex, VotesIndex& votesIndex, const ByVoterIdx& byVoterIdx, sps_removing_reducer& obj_perf )
       {
          ilog("Erasing all votes associated to proposal: ${p}", ("p", *proposal));
