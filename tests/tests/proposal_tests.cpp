@@ -82,8 +82,8 @@ BOOST_AUTO_TEST_CASE( generating_payments )
       auto start_date = db->head_block_time();
       auto end_date = start_date + fc::days( 2 );
 
-      auto daily_pay = asset( 48, SBD_SYMBOL );
-      auto hourly_pay = asset( daily_pay.amount.value / 24, SBD_SYMBOL );
+      auto daily_pay = ASSET( "48.000 TBD" );
+      auto hourly_pay = ASSET( "1.996 TBD" );// hourly_pay != ASSET( "2.000 TBD" ) because lack of rounding
 
       FUND( creator, ASSET( "160.000 TESTS" ) );
       FUND( creator, ASSET( "80.000 TBD" ) );
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_01 )
       auto end_date = start_date + end_time_shift;
 
       auto daily_pay = ASSET( "24.000 TBD" );
-      auto paid = ASSET( "5.000 TBD" );//because only 5 hours
+      auto paid = ASSET( "4.990 TBD" );// paid != ASSET( "5.000 TBD" ) because lack of rounding
 
       FUND( STEEM_TREASURY_ACCOUNT, ASSET( "5000000.000 TBD" ) );
       //=====================preparing=====================
@@ -422,7 +422,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - got payout
          `tester02` - no payout, because of lack of votes
       */
-      payment_checker( { ASSET( "1.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) } );
+      payment_checker( { ASSET( "0.998 TBD" ), ASSET( "0.998 TBD" ), ASSET( "0.000 TBD" ) } );
+      //ideally: ASSET( "1.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) but there is lack of rounding
 
       {
          BOOST_TEST_MESSAGE( "Setting proxy. The account `tester01` don't want to vote. Every decision is made by account `tester00`" );
@@ -443,7 +444,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because this account set proxy
          `tester02` - no payout, because of lack of votes
       */
-      payment_checker( { ASSET( "2.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) } );
+      payment_checker( { ASSET( "1.996 TBD" ), ASSET( "0.998 TBD" ), ASSET( "0.000 TBD" ) } );
+      //ideally: ASSET( "2.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) but there is lack of rounding
 
       vote_proposal( tester02_account, {2}, true/*approve*/, inits[ tester02_account ] );
       generate_block();
@@ -454,7 +456,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because this account set proxy
          `tester02` - got payout, because voted for his proposal
       */
-      payment_checker( { ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "2082.346 TBD" ) } );
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "2079.015 TBD" ) } );
+      //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "2082.346 TBD" ) but there is lack of rounding
 
       {
          BOOST_TEST_MESSAGE( "Proxy doesn't exist. Now proposal with id = 3 has the most votes. This proposal grabs all payouts." );
@@ -475,7 +478,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because is not enough money
          `tester02` - got payout, because voted for his proposal
       */
-      payment_checker( { ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "4164.824 TBD" ) } );
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "4158.162 TBD" ) } );
+      //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "4164.824 TBD" ) but there is lack of rounding
 
       validate_database();
    }

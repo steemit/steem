@@ -75,8 +75,6 @@ class sps_helper
       static ProposalObjectIterator remove_proposal( const ProposalObjectIterator& proposal,
                   ProposalIndex& proposalIndex, VotesIndex& votesIndex, const ByVoterIdx& byVoterIdx, sps_removing_reducer& obj_perf )
       {
-         ilog("Erasing all votes associated to proposal: ${p}", ("p", *proposal));
-
          /// Now remove all votes specific to given proposal.
          auto propI = byVoterIdx.lower_bound(boost::make_tuple(proposal->proposal_id, account_name_type()));
 
@@ -88,8 +86,6 @@ class sps_helper
 
             propI = votesIndex. template erase<by_proposal_voter>(propI);
          }
-
-         ilog("Erasing proposal: ${p}", ("p", *proposal));
 
          return checker< ByProposalType, false/*Loop*/ >( proposal, proposalIndex, obj_perf );
       }

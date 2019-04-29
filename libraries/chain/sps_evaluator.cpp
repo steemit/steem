@@ -17,8 +17,6 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
    {
       FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
 
-      ilog("creating proposal: ${op}", ("op", o));
-
       /** start date can be earlier than head_block_time - otherwise creating a proposal can be difficult,
           since passed date should be adjusted by potential transaction execution delay (i.e. 3 sec
           as a time for processed next block).
@@ -77,11 +75,6 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
    {
       FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
 
-      ilog("voting proposal: ${op}", ("op", o));
-
-      if( o.proposal_ids.empty() )
-         return;
-
       const auto& pidx = _db.get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& pvidx = _db.get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
 
@@ -118,8 +111,6 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
    try
    {
       FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
-
-      ilog("Attempting to evaluate remove_proposal_operation: ${o}", ("o", op));
 
       sps_helper::remove_proposals( _db, op.proposal_ids, op.proposal_owner );
 
