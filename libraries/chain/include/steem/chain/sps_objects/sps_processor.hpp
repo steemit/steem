@@ -21,6 +21,7 @@ class sps_processor
 
       const static std::string removing_name;
       const static std::string calculating_name;
+      const static uint32_t total_amount_divider = 100;
 
       //Get number of microseconds for 1 day( daily_ms )
       const int64_t daily_seconds = fc::days(1).to_seconds();
