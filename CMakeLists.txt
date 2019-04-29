@@ -42,7 +42,6 @@ LIST(APPEND BOOST_COMPONENTS thread
                              system
                              filesystem
                              program_options
-                             signals
                              serialization
                              chrono
                              unit_test_framework
