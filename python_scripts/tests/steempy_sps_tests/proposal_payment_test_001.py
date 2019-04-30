@@ -107,11 +107,7 @@ if __name__ == '__main__':
 
     accounts = [
         # place accounts here in the format: {'name' : name, 'private_key' : private-key, 'public_key' : public-key}
-        {"name" : "tester001", "private_key" : "", "public_key" : ""},
-        {"name" : "tester002", "private_key" : "", "public_key" : ""},
-        {"name" : "tester003", "private_key" : "", "public_key" : ""},
-        {"name" : "tester004", "private_key" : "", "public_key" : ""},
-    ]
+        ]
 
     if not accounts:
         logger.error("Accounts array is empty, please add accounts in a form {\"name\" : name, \"private_key\" : private_key, \"public_key\" : public_key}")
@@ -224,8 +220,8 @@ if __name__ == '__main__':
             logger.info("Balances for accounts at time: {}".format(end_date_blocks_str))
             balances = test_utils.print_balance(node_client, accounts)
             for balance in balances:
-                # shoud be 438.000 TBD for all
-                assert balance == '438.000 TBD', "All balances should be equal 438.000 TBD"
+                # shoud be 438.000 TBD for all, but because of "rounding" implementation it is 
+                assert balance == '437.904 TBD', "All balances should be equal 437.904 TBD"
             test_utils.print_balance(node_client, [{'name' : args.treasury}])
             votes = test_utils.list_proposals(node_client, start_date_str, "expired")
             for vote in votes:

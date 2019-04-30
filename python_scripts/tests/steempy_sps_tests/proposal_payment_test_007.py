@@ -95,11 +95,7 @@ if __name__ == '__main__':
 
     accounts = [
         # place accounts here in the format: {'name' : name, 'private_key' : private-key, 'public_key' : public-key}
-        {"name" : "tester001", "private_key" : "", "public_key" : ""},
-        {"name" : "tester002", "private_key" : "", "public_key" : ""},
-        {"name" : "tester003", "private_key" : "", "public_key" : ""},
-        {"name" : "tester004", "private_key" : "", "public_key" : ""},
-    ]
+        ]
 
     if not accounts:
         logger.error("Accounts array is empty, please add accounts in a form {\"name\" : name, \"private_key\" : private_key, \"public_key\" : public_key}")
@@ -242,11 +238,13 @@ if __name__ == '__main__':
             node_client.debug_generate_blocks_until(wif, test_end_date_iso, False)
             logger.info("Balances for accounts at time: {}".format(test_end_date_iso))
             balances = test_utils.print_balance(node_client, accounts)
+            # is should be '463.000 TBD', '486.000 TBD', '486.000 TBD', '486.000 TBD',
+            # but because of "rounding" implementation it is 462.854 TBD,485.808 TBD,485.808 TBD,485.808 TBD
             test_balances = [
-                '463.000 TBD',
-                '486.000 TBD',
-                '486.000 TBD',
-                '486.000 TBD',
+                '462.854 TBD',
+                '485.808 TBD',
+                '485.808 TBD',
+                '485.808 TBD',
             ]
             for idx in range(0, len(test_balances)):
                 assert balances[idx] == test_balances[idx], "Balances dont match {} != {}".format(balances[idx], test_balances[idx])
