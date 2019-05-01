@@ -37,3 +37,4 @@ seed.brandonfrye.us:2001            # brandonfrye
 seed.firepower.ltd:01"              # firepower
 witness.chitty.tech:01"             # chitty
 seed1.cervantes.one:01"             # cervantes
+steem-seed.arcange.eu:2001          # arcange
