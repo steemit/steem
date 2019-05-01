@@ -1,4 +1,5 @@
 #include <steem/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/webserver/local_endpoint.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
@@ -76,8 +77,40 @@ namespace detail {
 
          static const long timeout_open_handshake = 0;
    };
+   struct asio_local_with_stub_log : public websocketpp::config::asio {
+          typedef asio_local_with_stub_log type;
+          typedef asio base;
+
+          typedef base::concurrency_type concurrency_type;
+
+          typedef base::request_type request_type;
+          typedef base::response_type response_type;
+
+          typedef base::message_type message_type;
+          typedef base::con_msg_manager_type con_msg_manager_type;
+          typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
+
+          typedef base::alog_type alog_type;
+          typedef base::elog_type elog_type;
+
+          typedef base::rng_type rng_type;
+
+          struct transport_config : public base::transport_config {
+              typedef type::concurrency_type concurrency_type;
+              typedef type::alog_type alog_type;
+              typedef type::elog_type elog_type;
+              typedef type::request_type request_type;
+              typedef type::response_type response_type;
+              typedef websocketpp::transport::asio::basic_socket::local_endpoint socket_type;
+          };
+
+          typedef websocketpp::transport::asio::local_endpoint<transport_config> transport_type;
+
+          static const long timeout_open_handshake = 0;
+    };
 
 using websocket_server_type = websocketpp::server< detail::asio_with_stub_log >;
+using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
 
 class webserver_plugin_impl
 {
@@ -94,11 +127,17 @@ class webserver_plugin_impl
 
       void handle_ws_message( websocket_server_type*, connection_hdl, detail::websocket_server_type::message_ptr );
       void handle_http_message( websocket_server_type*, connection_hdl );
+      void handle_http_request( websocket_local_server_type*, connection_hdl );
 
       shared_ptr< std::thread >  http_thread;
       asio::io_service           http_ios;
       optional< tcp::endpoint >  http_endpoint;
       websocket_server_type      http_server;
+
+      shared_ptr< std::thread >              unix_thread;
+      asio::io_service                       unix_ios;
+      optional< boost::asio::local::stream_protocol::endpoint >  unix_endpoint;
+      websocket_local_server_type            unix_server;
 
       shared_ptr< std::thread >  ws_thread;
       asio::io_service           ws_ios;
@@ -176,6 +215,33 @@ void webserver_plugin_impl::start_webserver()
          }
       });
    }
+
+   if( unix_endpoint ) {
+      unix_thread = std::make_shared<std::thread>( [&]() {
+         ilog( "start processing unix http thread" );
+         try {
+          unix_server.clear_access_channels( websocketpp::log::alevel::all );
+          unix_server.clear_error_channels( websocketpp::log::elevel::all );
+          unix_server.init_asio( &http_ios );
+
+          unix_server.set_http_handler( boost::bind( &webserver_plugin_impl::handle_http_request, this, &unix_server, _1 ) );
+          //unix_server.set_http_handler([&](connection_hdl hdl) {
+          //   webserver_plugin_impl::handle_http_request<detail::asio_local_with_stub_log>( unix_server.get_con_from_hdl(hdl) );
+          //});
+
+          ilog( "start listening for unix http requests" );
+          unix_server.listen( *unix_endpoint );
+          ilog( "start accpeting unix http requests" );
+          unix_server.start_accept();
+
+          ilog( "start running unix http requests" );
+          http_ios.run();
+          ilog( "unix http io service exit" );
+         } catch( ... ) {
+            elog( "error thrown from unix http io service" );
+         }
+      });
+   }
 }
 
 void webserver_plugin_impl::stop_webserver()
@@ -185,6 +251,9 @@ void webserver_plugin_impl::stop_webserver()
 
    if( http_server.is_listening() )
       http_server.stop_listening();
+
+   if( unix_server.is_listening() )
+      unix_server.stop_listening();
 
    thread_pool_ios.stop();
    thread_pool.join_all();
@@ -201,6 +270,13 @@ void webserver_plugin_impl::stop_webserver()
       http_ios.stop();
       http_thread->join();
       http_thread.reset();
+   }
+
+   if( unix_thread )
+   {
+      unix_ios.stop();
+      unix_thread->join();
+      unix_thread.reset();
    }
 }
 
@@ -288,6 +364,51 @@ void webserver_plugin_impl::handle_http_message( websocket_server_type* server, 
    });
 }
 
+void webserver_plugin_impl::handle_http_request(websocket_local_server_type* server, connection_hdl hdl ) {
+   auto con = server->get_con_from_hdl( hdl );
+   con->defer_http_response();
+
+   thread_pool_ios.post( [con, this]()
+   {
+      auto body = con->get_request_body();
+
+      try
+      {
+         con->set_body( api->call( body ) );
+         con->append_header( "Content-Type", "application/json" );
+         con->set_status( websocketpp::http::status_code::ok );
+      }
+      catch( fc::exception& e )
+      {
+         edump( (e) );
+         con->set_body( "Could not call API" );
+         con->set_status( websocketpp::http::status_code::not_found );
+      }
+      catch( ... )
+      {
+         auto eptr = std::current_exception();
+
+         try
+         {
+            if( eptr )
+               std::rethrow_exception( eptr );
+
+            con->set_body( "unknown error occurred" );
+            con->set_status( websocketpp::http::status_code::internal_server_error );
+         }
+         catch( const std::exception& e )
+         {
+            std::stringstream s;
+            s << "unknown exception: " << e.what();
+            con->set_body( s.str() );
+            con->set_status( websocketpp::http::status_code::internal_server_error );
+         }
+      }
+
+      con->send_http_response();
+   });
+}
+
 } // detail
 
 webserver_plugin::webserver_plugin() {}
@@ -297,6 +418,7 @@ void webserver_plugin::set_program_options( options_description&, options_descri
 {
    cfg.add_options()
       ("webserver-http-endpoint", bpo::value< string >(), "Local http endpoint for webserver requests.")
+      ("webserver-unix-endpoint", bpo::value< string >(), "Local unix http endpoint for webserver requests.")
       ("webserver-ws-endpoint", bpo::value< string >(), "Local websocket endpoint for webserver requests.")
       ("rpc-endpoint", bpo::value< string >(), "Local http and websocket endpoint for webserver requests. Deprecated in favor of webserver-http-endpoint and webserver-ws-endpoint" )
       ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(32),
@@ -318,6 +440,14 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
       FC_ASSERT( endpoints.size(), "webserver-http-endpoint ${hostname} did not resolve", ("hostname", http_endpoint) );
       my->http_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured http to listen on ${ep}", ("ep", endpoints[0]) );
+   }
+
+   if( options.count( "webserver-unix-endpoint" ) )
+   {
+      auto unix_endpoint = options.at( "webserver-unix-endpoint" ).as< string >();
+      boost::asio::local::stream_protocol::endpoint ep(unix_endpoint);
+      my->unix_endpoint = ep;
+      ilog( "configured http to listen on ${ep}", ("ep", unix_endpoint ));
    }
 
    if( options.count( "webserver-ws-endpoint" ) )
