@@ -644,12 +644,12 @@ protected:
      * The loggers are located in the main endpoint class. As such, the
      * transport doesn't have direct access to them. This method is called
      * by the endpoint constructor to allow shared logging from the transport
-     * component. These are raw pointers to member variables of the endpoint.
+     * component. These are pointers to member variables of the endpoint.
      * In particular, they cannot be used in the transport constructor as they
      * haven't been constructed yet, and cannot be used in the transport
      * destructor as they will have been destroyed by then.
      */
-    void init_logging(alog_type* a, elog_type* e) {
+    void init_logging(lib::shared_ptr<alog_type> a, lib::shared_ptr<elog_type> e) {
         m_alog = a;
         m_elog = e;
     }
@@ -779,8 +779,8 @@ private:
     acceptor_ptr        m_acceptor;
     work_ptr            m_work;
 
-    elog_type* m_elog;
-    alog_type* m_alog;
+    lib::shared_ptr<alog_type> m_alog;
+    lib::shared_ptr<elog_type> m_elog;
 
     // Transport state
     state               m_state;
