@@ -1,8 +1,6 @@
 #pragma once
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace plugins { namespace account_by_key {
 
 using namespace std;
@@ -26,6 +24,8 @@ class key_lookup_object : public object< key_lookup_object_type, key_lookup_obje
          c( *this );
       }
 
+      key_lookup_object() {}
+
       id_type           id;
 
       public_key_type   key;
@@ -33,9 +33,6 @@ class key_lookup_object : public object< key_lookup_object_type, key_lookup_obje
 };
 
 typedef key_lookup_object::id_type key_lookup_id_type;
-
-
-using namespace boost::multi_index;
 
 struct by_key;
 

@@ -1,3 +1,6 @@
+#pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/operations.hpp>
 
 #include <steem/chain/witness_objects.hpp>

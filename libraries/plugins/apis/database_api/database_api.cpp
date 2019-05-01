@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <appbase/application.hpp>
 
 #include <steem/plugins/database_api/database_api.hpp>

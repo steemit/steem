@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/uint128.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
@@ -146,6 +148,14 @@ namespace steem { namespace chain {
    > dynamic_global_property_index;
 
 } } // steem::chain
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::dynamic_global_property_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 FC_REFLECT( steem::chain::dynamic_global_property_object,
              (id)

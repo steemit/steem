@@ -1,5 +1,3 @@
-#include <appbase/application.hpp>
-
 #include <steem/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
 #include <steem/plugins/transaction_status_api/transaction_status_api.hpp>
 

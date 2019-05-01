@@ -33,7 +33,8 @@ class SstFileManagerImpl;
 class DeleteScheduler {
  public:
   DeleteScheduler(Env* env, int64_t rate_bytes_per_sec, Logger* info_log,
-                  SstFileManagerImpl* sst_file_manager);
+                  SstFileManagerImpl* sst_file_manager,
+                  double max_trash_db_ratio, uint64_t bytes_max_delete_chunk);
 
   ~DeleteScheduler();
 
@@ -42,11 +43,11 @@ class DeleteScheduler {
 
   // Set delete rate limit in bytes per second
   void SetRateBytesPerSecond(int64_t bytes_per_sec) {
-    return rate_bytes_per_sec_.store(bytes_per_sec);
+    rate_bytes_per_sec_.store(bytes_per_sec);
   }
 
   // Mark file as trash directory and schedule it's deletion
-  Status DeleteFile(const std::string& fname);
+  Status DeleteFile(const std::string& fname, const std::string& dir_to_sync);
 
   // Wait for all files being deleteing in the background to finish or for
   // destructor to be called.
@@ -58,9 +59,15 @@ class DeleteScheduler {
 
   uint64_t GetTotalTrashSize() { return total_trash_size_.load(); }
 
-  void TEST_SetMaxTrashDBRatio(double r) {
+  // Return trash/DB size ratio where new files will be deleted immediately
+  double GetMaxTrashDBRatio() {
+    return max_trash_db_ratio_.load();
+  }
+
+  // Update trash/DB size ratio where new files will be deleted immediately
+  void SetMaxTrashDBRatio(double r) {
     assert(r >= 0);
-    max_trash_db_ratio_ = r;
+    max_trash_db_ratio_.store(r);
   }
 
   static const std::string kTrashExtension;
@@ -75,7 +82,8 @@ class DeleteScheduler {
   Status MarkAsTrash(const std::string& file_path, std::string* path_in_trash);
 
   Status DeleteTrashFile(const std::string& path_in_trash,
-                         uint64_t* deleted_bytes);
+                         const std::string& dir_to_sync,
+                         uint64_t* deleted_bytes, bool* is_complete);
 
   void BackgroundEmptyTrash();
 
@@ -86,12 +94,22 @@ class DeleteScheduler {
   std::atomic<int64_t> rate_bytes_per_sec_;
   // Mutex to protect queue_, pending_files_, bg_errors_, closing_
   InstrumentedMutex mu_;
+
+  struct FileAndDir {
+    FileAndDir(const std::string& f, const std::string& d) : fname(f), dir(d) {}
+    std::string fname;
+    std::string dir;  // empty will be skipped.
+  };
+
   // Queue of trash files that need to be deleted
-  std::queue<std::string> queue_;
+  std::queue<FileAndDir> queue_;
   // Number of trash files that are waiting to be deleted
   int32_t pending_files_;
+  uint64_t bytes_max_delete_chunk_;
   // Errors that happened in BackgroundEmptyTrash (file_path => error)
   std::map<std::string, Status> bg_errors_;
+
+  bool num_link_error_printed_ = false;
   // Set to true in ~DeleteScheduler() to force BackgroundEmptyTrash to stop
   bool closing_;
   // Condition variable signaled in these conditions
@@ -105,9 +123,10 @@ class DeleteScheduler {
   InstrumentedMutex file_move_mu_;
   Logger* info_log_;
   SstFileManagerImpl* sst_file_manager_;
-  // If the trash size constitutes for more than 25% of the total DB size
-  // we will start deleting new files passed to DeleteScheduler immediately
-  double max_trash_db_ratio_ = 0.25;
+  // If the trash size constitutes for more than this fraction of the total DB
+  // size we will start deleting new files passed to DeleteScheduler
+  // immediately
+  std::atomic<double> max_trash_db_ratio_;
   static const uint64_t kMicrosInSecond = 1000 * 1000LL;
 };
 

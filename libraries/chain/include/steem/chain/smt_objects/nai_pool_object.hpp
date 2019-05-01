@@ -1,5 +1,6 @@
 #pragma once
 
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/asset_symbol.hpp>
 
@@ -9,7 +10,7 @@ namespace steem { namespace chain {
 
    class nai_pool_object : public object< nai_pool_object_type, nai_pool_object >
    {
-      nai_pool_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( nai_pool_object );
 
    public:
       template< typename Constructor, typename Allocator >

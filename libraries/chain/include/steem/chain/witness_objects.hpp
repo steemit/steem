@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
@@ -6,8 +7,6 @@
 #include <steem/chain/util/rd_dynamics.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 namespace steem { namespace chain {
 
@@ -63,7 +62,7 @@ namespace steem { namespace chain {
     */
    class witness_object : public object< witness_object_type, witness_object >
    {
-      witness_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( witness_object )
 
       public:
          enum witness_schedule_type
@@ -224,9 +223,19 @@ namespace steem { namespace chain {
       witness_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< witness_object, witness_id_type, &witness_object::id > >,
-         ordered_non_unique< tag< by_work >, member< witness_object, digest_type, &witness_object::last_work > >,
+         ordered_unique< tag< by_work >,
+            composite_key< witness_object,
+               member< witness_object, digest_type, &witness_object::last_work >,
+               member< witness_object, witness_id_type, &witness_object::id >
+            >
+         >,
          ordered_unique< tag< by_name >, member< witness_object, account_name_type, &witness_object::owner > >,
-         ordered_non_unique< tag< by_pow >, member< witness_object, uint64_t, &witness_object::pow_worker > >,
+         ordered_unique< tag< by_pow >,
+            composite_key< witness_object,
+               member< witness_object, uint64_t, &witness_object::pow_worker >,
+               member< witness_object, witness_id_type, &witness_object::id >
+            >
+         >,
          ordered_unique< tag< by_vote_name >,
             composite_key< witness_object,
                member< witness_object, share_type, &witness_object::votes >,
@@ -277,6 +286,15 @@ namespace steem { namespace chain {
    > witness_schedule_index;
 
 } }
+
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::witness_vote_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::witness_schedule_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 FC_REFLECT_ENUM( steem::chain::witness_object::witness_schedule_type, (elected)(timeshare)(miner)(none) )
 

@@ -29,6 +29,8 @@ class block_log_hash_state_object : public object< block_log_hash_state_object_t
          c( *this );
       }
 
+      block_log_hash_state_object() {}
+
       id_type                  id;
 
       uint64_t                 total_size = 0;
@@ -53,6 +55,8 @@ class block_log_pending_message_object : public object< block_log_pending_messag
          c( *this );
       }
 
+      block_log_pending_message_object() {}
+
       id_type                  id;
 
       block_log_message_data   data;
@@ -60,8 +64,6 @@ class block_log_pending_message_object : public object< block_log_pending_messag
 
 typedef block_log_hash_state_object::id_type block_log_hash_state_id_type;
 typedef block_log_pending_message_object::id_type block_log_pending_message_id_type;
-
-using namespace boost::multi_index;
 
 typedef multi_index_container<
    block_log_hash_state_object,

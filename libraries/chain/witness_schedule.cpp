@@ -1,4 +1,5 @@
 
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/witness_schedule.hpp>
@@ -435,7 +436,7 @@ void update_witness_schedule(database& db)
       /// Add the next POW witness to the active set if there is one...
       const auto& pow_idx = db.get_index<witness_index>().indices().get<by_pow>();
 
-      auto itr = pow_idx.upper_bound(0);
+      auto itr = pow_idx.lower_bound(1);
       /// if there is more than 1 POW witness, then pop the first one from the queue...
       if( props.num_pow_witnesses > STEEM_MAX_WITNESSES )
       {
@@ -453,7 +454,7 @@ void update_witness_schedule(database& db)
       }
 
       /// add all of the pow witnesses to the round until voting takes over, then only add one per round
-      itr = pow_idx.upper_bound(0);
+      itr = pow_idx.lower_bound(1);
       while( itr != pow_idx.end() )
       {
          active_witnesses.push_back( itr->owner );
