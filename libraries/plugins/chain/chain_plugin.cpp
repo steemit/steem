@@ -476,9 +476,14 @@ void chain_plugin::plugin_startup()
    {
       database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
    }
-   catch ( ... )
+   catch ( const std::exception& e )
    {
-      elog( "Error while parsing database configuration" );
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+   catch ( const fc::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
       exit( EXIT_FAILURE );
    }
 #endif
