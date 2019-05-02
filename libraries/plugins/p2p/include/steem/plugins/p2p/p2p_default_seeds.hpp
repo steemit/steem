@@ -14,7 +14,7 @@ const std::vector< std::string > default_seeds = {
    "steem-seed1.abit-more.com:2001",      // abit
    "52.74.152.79:2001",                   // smooth.witness
    "seed.steemd.com:34191",               // roadscape
-   "anyx.co:2001",                        // anyx
+   "anyx.io:2001",                        // anyx
    "seed.xeldal.com:12150",               // xeldal
    "seed.steemnodes.com:2001",            // wackou
    "seed.liondani.com:2016",              // liondani
@@ -44,9 +44,9 @@ const std::vector< std::string > default_seeds = {
    "seed1.cryptobot.news:2001",           // libertyranger
    "seed.thecryptodrive.com:2001",        // thecryptodrive
    "seed.brandonfrye.us:2001",            // brandonfrye
-   "seed.firepower.ltd:2001"              // firepower
-   "witness.chitty.tech:2001"             // chitty
-   "seed1.cervantes.one:2001"             // cervantes
+   "seed.firepower.ltd:2001",             // firepower
+   "witness.chitty.tech:2001",            // chitty
+   "seed1.cervantes.one:2001",            // cervantes
    "steem-seed.arcange.eu:2001"           // arcange
 };
 #endif
