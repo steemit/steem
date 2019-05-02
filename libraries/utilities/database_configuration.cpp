@@ -59,7 +59,7 @@ fc::variant default_database_configuration()
    config.global.statistics = false;   // Incurs severe performance degradation when true
 
    // global::shared_cache
-   config.global.shared_cache.capacity = std::to_string( GB(1) );
+   config.global.shared_cache.capacity = std::to_string( GB(5) );
 
    // global::write_buffer_manager
    config.global.write_buffer_manager.write_buffer_size = std::to_string( GB(1) ); // Write buffer manager is within the shared cache
