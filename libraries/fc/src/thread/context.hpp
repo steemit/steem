@@ -1,8 +1,5 @@
 #pragma once
 #include <fc/thread/thread.hpp>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic pop
 #include <fc/exception/exception.hpp>
 #include <vector>
 
@@ -16,7 +13,10 @@
 #if BOOST_VERSION >= 106800
 #include <boost/context/continuation_fcontext.hpp>
 #else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <boost/context/all.hpp>
+#pragma GCC diagnostic pop
 #endif
 
 #if BOOST_VERSION >= 106100
