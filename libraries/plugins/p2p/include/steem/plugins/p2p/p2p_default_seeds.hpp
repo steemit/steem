@@ -47,6 +47,7 @@ const std::vector< std::string > default_seeds = {
    "seed.firepower.ltd:2001"              // firepower
    "witness.chitty.tech:2001"             // chitty
    "seed1.cervantes.one:2001"             // cervantes
+   "steem-seed.arcange.eu:2001"           // arcange
 };
 #endif
 
