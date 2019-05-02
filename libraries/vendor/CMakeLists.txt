@@ -5,9 +5,12 @@ set(BUILD_SHARED_LIBS OFF)
 #Configure needed build options of RocksDB.
 SET(WITH_TESTS OFF CACHE BOOL "build with tests")
 SET(WITH_SNAPPY ON CACHE BOOL "build with SNAPPY")
-SET(WITH_ZLIB ON CACHE BOOL "build with ZLIB")
-SET(WITH_BZ2 ON CACHE BOOL "build with BZ2")
+SET(WITH_ZLIB OFF CACHE BOOL "build with ZLIB")
+SET(WITH_BZ2 OFF CACHE BOOL "build with BZ2")
 SET(WITH_BENCHMARKS OFF CACHE BOOL "build with BENCHMARKS")
+SET(WITH_GFLAGS OFF CACHE BOOL "build with GFlags")
+SET(USE_RTTI ON CACHE BOOL "build with RTTI")
+SET(PORTABLE ON CACHE BOOL "build a portable binary")
 
 # If we don't have CMake variables defined, try to get them from the environment
 if (NOT DEFINED ZLIB_ROOT_DIR)

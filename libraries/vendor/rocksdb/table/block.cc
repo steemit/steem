@@ -63,6 +63,39 @@ struct DecodeEntry {
   }
 };
 
+// Helper routine: similar to DecodeEntry but does not have assertions.
+// Instead, returns nullptr so that caller can detect and report failure.
+struct CheckAndDecodeEntry {
+  inline const char* operator()(const char* p, const char* limit,
+                                uint32_t* shared, uint32_t* non_shared,
+                                uint32_t* value_length) {
+    // We need 2 bytes for shared and non_shared size. We also need one more
+    // byte either for value size or the actual value in case of value delta
+    // encoding.
+    if (limit - p < 3) {
+      return nullptr;
+    }
+    *shared = reinterpret_cast<const unsigned char*>(p)[0];
+    *non_shared = reinterpret_cast<const unsigned char*>(p)[1];
+    *value_length = reinterpret_cast<const unsigned char*>(p)[2];
+    if ((*shared | *non_shared | *value_length) < 128) {
+      // Fast path: all three values are encoded in one byte each
+      p += 3;
+    } else {
+      if ((p = GetVarint32Ptr(p, limit, shared)) == nullptr) return nullptr;
+      if ((p = GetVarint32Ptr(p, limit, non_shared)) == nullptr) return nullptr;
+      if ((p = GetVarint32Ptr(p, limit, value_length)) == nullptr) {
+        return nullptr;
+      }
+    }
+
+    if (static_cast<uint32_t>(limit - p) < (*non_shared + *value_length)) {
+      return nullptr;
+    }
+    return p;
+  }
+};
+
 struct DecodeKey {
   inline const char* operator()(const char* p, const char* limit,
                                 uint32_t* shared, uint32_t* non_shared) {
@@ -96,7 +129,12 @@ struct DecodeKeyV4 {
 
 void DataBlockIter::Next() {
   assert(Valid());
-  ParseNextDataKey();
+  ParseNextDataKey<DecodeEntry>();
+}
+
+void DataBlockIter::NextOrReport() {
+  assert(Valid());
+  ParseNextDataKey<CheckAndDecodeEntry>();
 }
 
 void IndexBlockIter::Next() {
@@ -179,7 +217,7 @@ void DataBlockIter::Prev() {
   SeekToRestartPoint(restart_index_);
 
   do {
-    if (!ParseNextDataKey()) {
+    if (!ParseNextDataKey<DecodeEntry>()) {
       break;
     }
     Slice current_key = key();
@@ -218,7 +256,7 @@ void DataBlockIter::Seek(const Slice& target) {
   // Linear search (within restart block) for first key >= target
 
   while (true) {
-    if (!ParseNextDataKey() || Compare(key_, seek_key) >= 0) {
+    if (!ParseNextDataKey<DecodeEntry>() || Compare(key_, seek_key) >= 0) {
       return;
     }
   }
@@ -297,7 +335,7 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
     //
     // TODO(fwu): check the left and write boundary of the restart interval
     // to avoid linear seek a target key that is out of range.
-    if (!ParseNextDataKey(limit) || Compare(key_, target) >= 0) {
+    if (!ParseNextDataKey<DecodeEntry>(limit) || Compare(key_, target) >= 0) {
       // we stop at the first potential matching user key.
       break;
     }
@@ -391,7 +429,7 @@ void DataBlockIter::SeekForPrev(const Slice& target) {
   SeekToRestartPoint(index);
   // Linear search (within restart block) for first key >= seek_key
 
-  while (ParseNextDataKey() && Compare(key_, seek_key) < 0) {
+  while (ParseNextDataKey<DecodeEntry>() && Compare(key_, seek_key) < 0) {
   }
   if (!Valid()) {
     SeekToLast();
@@ -407,7 +445,15 @@ void DataBlockIter::SeekToFirst() {
     return;
   }
   SeekToRestartPoint(0);
-  ParseNextDataKey();
+  ParseNextDataKey<DecodeEntry>();
+}
+
+void DataBlockIter::SeekToFirstOrReport() {
+  if (data_ == nullptr) {  // Not init yet
+    return;
+  }
+  SeekToRestartPoint(0);
+  ParseNextDataKey<CheckAndDecodeEntry>();
 }
 
 void IndexBlockIter::SeekToFirst() {
@@ -423,7 +469,7 @@ void DataBlockIter::SeekToLast() {
     return;
   }
   SeekToRestartPoint(num_restarts_ - 1);
-  while (ParseNextDataKey() && NextEntryOffset() < restarts_) {
+  while (ParseNextDataKey<DecodeEntry>() && NextEntryOffset() < restarts_) {
     // Keep skipping
   }
 }
@@ -447,6 +493,7 @@ void BlockIter<TValue>::CorruptionError() {
   value_.clear();
 }
 
+template <typename DecodeEntryFunc>
 bool DataBlockIter::ParseNextDataKey(const char* limit) {
   current_ = NextEntryOffset();
   const char* p = data_ + current_;
@@ -463,7 +510,7 @@ bool DataBlockIter::ParseNextDataKey(const char* limit) {
 
   // Decode next entry
   uint32_t shared, non_shared, value_length;
-  p = DecodeEntry()(p, limit, &shared, &non_shared, &value_length);
+  p = DecodeEntryFunc()(p, limit, &shared, &non_shared, &value_length);
   if (p == nullptr || key_.Size() < shared) {
     CorruptionError();
     return false;
@@ -781,47 +828,45 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
     size_ = 0;  // Error marker
   } else {
     // Should only decode restart points for uncompressed blocks
-    if (compression_type() == kNoCompression) {
-      num_restarts_ = NumRestarts();
-      switch (IndexType()) {
-        case BlockBasedTableOptions::kDataBlockBinarySearch:
-          restart_offset_ = static_cast<uint32_t>(size_) -
-                            (1 + num_restarts_) * sizeof(uint32_t);
-          if (restart_offset_ > size_ - sizeof(uint32_t)) {
-            // The size is too small for NumRestarts() and therefore
-            // restart_offset_ wrapped around.
-            size_ = 0;
-          }
+    num_restarts_ = NumRestarts();
+    switch (IndexType()) {
+      case BlockBasedTableOptions::kDataBlockBinarySearch:
+        restart_offset_ = static_cast<uint32_t>(size_) -
+                          (1 + num_restarts_) * sizeof(uint32_t);
+        if (restart_offset_ > size_ - sizeof(uint32_t)) {
+          // The size is too small for NumRestarts() and therefore
+          // restart_offset_ wrapped around.
+          size_ = 0;
+        }
+        break;
+      case BlockBasedTableOptions::kDataBlockBinaryAndHash:
+        if (size_ < sizeof(uint32_t) /* block footer */ +
+                        sizeof(uint16_t) /* NUM_BUCK */) {
+          size_ = 0;
           break;
-        case BlockBasedTableOptions::kDataBlockBinaryAndHash:
-          if (size_ < sizeof(uint32_t) /* block footer */ +
-                          sizeof(uint16_t) /* NUM_BUCK */) {
-            size_ = 0;
-            break;
-          }
+        }
 
-          uint16_t map_offset;
-          data_block_hash_index_.Initialize(
-              contents.data.data(),
-              static_cast<uint16_t>(contents.data.size() -
-                                    sizeof(uint32_t)), /*chop off
-                                                   NUM_RESTARTS*/
-              &map_offset);
+        uint16_t map_offset;
+        data_block_hash_index_.Initialize(
+            contents.data.data(),
+            static_cast<uint16_t>(contents.data.size() -
+                                  sizeof(uint32_t)), /*chop off
+                                                 NUM_RESTARTS*/
+            &map_offset);
 
-          restart_offset_ = map_offset - num_restarts_ * sizeof(uint32_t);
+        restart_offset_ = map_offset - num_restarts_ * sizeof(uint32_t);
 
-          if (restart_offset_ > map_offset) {
-            // map_offset is too small for NumRestarts() and
-            // therefore restart_offset_ wrapped around.
-            size_ = 0;
-            break;
-          }
+        if (restart_offset_ > map_offset) {
+          // map_offset is too small for NumRestarts() and
+          // therefore restart_offset_ wrapped around.
+          size_ = 0;
           break;
-        default:
-          size_ = 0;  // Error marker
-      }
+        }
+        break;
+      default:
+        size_ = 0;  // Error marker
     }
-  }
+    }
   if (read_amp_bytes_per_bit != 0 && statistics && size_ != 0) {
     read_amp_bitmap_.reset(new BlockReadAmpBitmap(
         restart_offset_, read_amp_bytes_per_bit, statistics));
@@ -834,6 +879,7 @@ DataBlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
                                   bool /*total_order_seek*/,
                                   bool /*key_includes_seq*/,
                                   bool /*value_is_full*/,
+                                  bool block_contents_pinned,
                                   BlockPrefixIndex* /*prefix_index*/) {
   DataBlockIter* ret_iter;
   if (iter != nullptr) {
@@ -852,7 +898,7 @@ DataBlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
   } else {
     ret_iter->Initialize(
         cmp, ucmp, data_, restart_offset_, num_restarts_, global_seqno_,
-        read_amp_bitmap_.get(), cachable(),
+        read_amp_bitmap_.get(), block_contents_pinned,
         data_block_hash_index_.Valid() ? &data_block_hash_index_ : nullptr);
     if (read_amp_bitmap_) {
       if (read_amp_bitmap_->GetStatistics() != stats) {
@@ -870,6 +916,7 @@ IndexBlockIter* Block::NewIterator(const Comparator* cmp,
                                    const Comparator* ucmp, IndexBlockIter* iter,
                                    Statistics* /*stats*/, bool total_order_seek,
                                    bool key_includes_seq, bool value_is_full,
+                                   bool block_contents_pinned,
                                    BlockPrefixIndex* prefix_index) {
   IndexBlockIter* ret_iter;
   if (iter != nullptr) {
@@ -890,7 +937,8 @@ IndexBlockIter* Block::NewIterator(const Comparator* cmp,
         total_order_seek ? nullptr : prefix_index;
     ret_iter->Initialize(cmp, ucmp, data_, restart_offset_, num_restarts_,
                          prefix_index_ptr, key_includes_seq, value_is_full,
-                         cachable(), nullptr /* data_block_hash_index */);
+                         block_contents_pinned,
+                         nullptr /* data_block_hash_index */);
   }
 
   return ret_iter;

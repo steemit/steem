@@ -10,6 +10,7 @@
 
 #include "monitoring/histogram.h"
 #include "monitoring/instrumented_mutex.h"
+#include "monitoring/perf_context_imp.h"
 #include "monitoring/thread_status_util.h"
 #include "port/port.h"
 #include "rocksdb/db.h"
@@ -579,18 +580,18 @@ TEST_F(PerfContextTest, SeekKeyComparison) {
 
 TEST_F(PerfContextTest, DBMutexLockCounter) {
   int stats_code[] = {0, static_cast<int>(DB_MUTEX_WAIT_MICROS)};
-  for (PerfLevel perf_level :
+  for (PerfLevel perf_level_test :
        {PerfLevel::kEnableTimeExceptForMutex, PerfLevel::kEnableTime}) {
     for (int c = 0; c < 2; ++c) {
     InstrumentedMutex mutex(nullptr, Env::Default(), stats_code[c]);
     mutex.Lock();
     rocksdb::port::Thread child_thread([&] {
-      SetPerfLevel(perf_level);
+      SetPerfLevel(perf_level_test);
       get_perf_context()->Reset();
       ASSERT_EQ(get_perf_context()->db_mutex_lock_nanos, 0);
       mutex.Lock();
       mutex.Unlock();
-      if (perf_level == PerfLevel::kEnableTimeExceptForMutex ||
+      if (perf_level_test == PerfLevel::kEnableTimeExceptForMutex ||
           stats_code[c] != DB_MUTEX_WAIT_MICROS) {
         ASSERT_EQ(get_perf_context()->db_mutex_lock_nanos, 0);
       } else {
@@ -686,7 +687,133 @@ TEST_F(PerfContextTest, MergeOperatorTime) {
 
   delete db;
 }
+
+TEST_F(PerfContextTest, CopyAndMove) {
+  // Assignment operator
+  {
+    get_perf_context()->Reset();
+    get_perf_context()->EnablePerLevelPerfContext();
+    PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 5);
+    ASSERT_EQ(
+        1,
+        (*(get_perf_context()->level_to_perf_context))[5].bloom_filter_useful);
+    PerfContext perf_context_assign;
+    perf_context_assign = *get_perf_context();
+    ASSERT_EQ(
+        1,
+        (*(perf_context_assign.level_to_perf_context))[5].bloom_filter_useful);
+    get_perf_context()->ClearPerLevelPerfContext();
+    get_perf_context()->Reset();
+    ASSERT_EQ(
+        1,
+        (*(perf_context_assign.level_to_perf_context))[5].bloom_filter_useful);
+    perf_context_assign.ClearPerLevelPerfContext();
+    perf_context_assign.Reset();
+  }
+  // Copy constructor
+  {
+    get_perf_context()->Reset();
+    get_perf_context()->EnablePerLevelPerfContext();
+    PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 5);
+    ASSERT_EQ(
+        1,
+        (*(get_perf_context()->level_to_perf_context))[5].bloom_filter_useful);
+    PerfContext perf_context_copy(*get_perf_context());
+    ASSERT_EQ(
+        1, (*(perf_context_copy.level_to_perf_context))[5].bloom_filter_useful);
+    get_perf_context()->ClearPerLevelPerfContext();
+    get_perf_context()->Reset();
+    ASSERT_EQ(
+        1, (*(perf_context_copy.level_to_perf_context))[5].bloom_filter_useful);
+    perf_context_copy.ClearPerLevelPerfContext();
+    perf_context_copy.Reset();
+  }
+  // Move constructor
+  {
+    get_perf_context()->Reset();
+    get_perf_context()->EnablePerLevelPerfContext();
+    PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 5);
+    ASSERT_EQ(
+        1,
+        (*(get_perf_context()->level_to_perf_context))[5].bloom_filter_useful);
+    PerfContext perf_context_move = std::move(*get_perf_context());
+    ASSERT_EQ(
+        1, (*(perf_context_move.level_to_perf_context))[5].bloom_filter_useful);
+    get_perf_context()->ClearPerLevelPerfContext();
+    get_perf_context()->Reset();
+    ASSERT_EQ(
+        1, (*(perf_context_move.level_to_perf_context))[5].bloom_filter_useful);
+    perf_context_move.ClearPerLevelPerfContext();
+    perf_context_move.Reset();
+  }
 }
+
+TEST_F(PerfContextTest, PerfContextDisableEnable) {
+  get_perf_context()->Reset();
+  get_perf_context()->EnablePerLevelPerfContext();
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_full_positive, 1, 0);
+  get_perf_context()->DisablePerLevelPerfContext();
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 5);
+  get_perf_context()->EnablePerLevelPerfContext();
+  PERF_COUNTER_BY_LEVEL_ADD(block_cache_hit_count, 1, 0);
+  get_perf_context()->DisablePerLevelPerfContext();
+  PerfContext perf_context_copy(*get_perf_context());
+  ASSERT_EQ(1, (*(perf_context_copy.level_to_perf_context))[0]
+                   .bloom_filter_full_positive);
+  // this was set when per level perf context is disabled, should not be copied
+  ASSERT_NE(
+      1, (*(perf_context_copy.level_to_perf_context))[5].bloom_filter_useful);
+  ASSERT_EQ(
+      1, (*(perf_context_copy.level_to_perf_context))[0].block_cache_hit_count);
+  perf_context_copy.ClearPerLevelPerfContext();
+  perf_context_copy.Reset();
+  get_perf_context()->ClearPerLevelPerfContext();
+  get_perf_context()->Reset();
+}
+
+TEST_F(PerfContextTest, PerfContextByLevelGetSet) {
+  get_perf_context()->Reset();
+  get_perf_context()->EnablePerLevelPerfContext();
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_full_positive, 1, 0);
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 5);
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 7);
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, 7);
+  PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_full_true_positive, 1, 2);
+  PERF_COUNTER_BY_LEVEL_ADD(block_cache_hit_count, 1, 0);
+  PERF_COUNTER_BY_LEVEL_ADD(block_cache_hit_count, 5, 2);
+  PERF_COUNTER_BY_LEVEL_ADD(block_cache_miss_count, 2, 3);
+  PERF_COUNTER_BY_LEVEL_ADD(block_cache_miss_count, 4, 1);
+  ASSERT_EQ(
+      0, (*(get_perf_context()->level_to_perf_context))[0].bloom_filter_useful);
+  ASSERT_EQ(
+      1, (*(get_perf_context()->level_to_perf_context))[5].bloom_filter_useful);
+  ASSERT_EQ(
+      2, (*(get_perf_context()->level_to_perf_context))[7].bloom_filter_useful);
+  ASSERT_EQ(1, (*(get_perf_context()->level_to_perf_context))[0]
+                   .bloom_filter_full_positive);
+  ASSERT_EQ(1, (*(get_perf_context()->level_to_perf_context))[2]
+                   .bloom_filter_full_true_positive);
+  ASSERT_EQ(1, (*(get_perf_context()->level_to_perf_context))[0]
+                  .block_cache_hit_count);
+  ASSERT_EQ(5, (*(get_perf_context()->level_to_perf_context))[2]
+                  .block_cache_hit_count);
+  ASSERT_EQ(2, (*(get_perf_context()->level_to_perf_context))[3]
+                  .block_cache_miss_count);
+  ASSERT_EQ(4, (*(get_perf_context()->level_to_perf_context))[1]
+                  .block_cache_miss_count);
+  std::string zero_excluded = get_perf_context()->ToString(true);
+  ASSERT_NE(std::string::npos,
+            zero_excluded.find("bloom_filter_useful = 1@level5, 2@level7"));
+  ASSERT_NE(std::string::npos,
+            zero_excluded.find("bloom_filter_full_positive = 1@level0"));
+  ASSERT_NE(std::string::npos,
+            zero_excluded.find("bloom_filter_full_true_positive = 1@level2"));
+  ASSERT_NE(std::string::npos,
+            zero_excluded.find("block_cache_hit_count = 1@level0, 5@level2"));
+  ASSERT_NE(std::string::npos,
+            zero_excluded.find("block_cache_miss_count = 4@level1, 2@level3"));
+}
+}  // namespace rocksdb
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

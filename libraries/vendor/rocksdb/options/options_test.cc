@@ -90,6 +90,7 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
       {"compaction_measure_io_stats", "false"},
       {"inplace_update_num_locks", "25"},
       {"memtable_prefix_bloom_size_ratio", "0.26"},
+      {"memtable_whole_key_filtering", "true"},
       {"memtable_huge_page_size", "28"},
       {"bloom_locality", "29"},
       {"max_successive_merges", "30"},
@@ -127,6 +128,8 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
       {"is_fd_close_on_exec", "true"},
       {"skip_log_error_on_recovery", "false"},
       {"stats_dump_period_sec", "46"},
+      {"stats_persist_period_sec", "57"},
+      {"stats_history_buffer_size", "69"},
       {"advise_random_on_open", "true"},
       {"use_adaptive_mutex", "false"},
       {"new_table_reader_for_compaction_inputs", "true"},
@@ -195,6 +198,7 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
   ASSERT_EQ(new_cf_opt.inplace_update_support, true);
   ASSERT_EQ(new_cf_opt.inplace_update_num_locks, 25U);
   ASSERT_EQ(new_cf_opt.memtable_prefix_bloom_size_ratio, 0.26);
+  ASSERT_EQ(new_cf_opt.memtable_whole_key_filtering, true);
   ASSERT_EQ(new_cf_opt.memtable_huge_page_size, 28U);
   ASSERT_EQ(new_cf_opt.bloom_locality, 29U);
   ASSERT_EQ(new_cf_opt.max_successive_merges, 30U);
@@ -260,6 +264,8 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
   ASSERT_EQ(new_db_opt.is_fd_close_on_exec, true);
   ASSERT_EQ(new_db_opt.skip_log_error_on_recovery, false);
   ASSERT_EQ(new_db_opt.stats_dump_period_sec, 46U);
+  ASSERT_EQ(new_db_opt.stats_persist_period_sec, 57U);
+  ASSERT_EQ(new_db_opt.stats_history_buffer_size, 69U);
   ASSERT_EQ(new_db_opt.advise_random_on_open, true);
   ASSERT_EQ(new_db_opt.use_adaptive_mutex, false);
   ASSERT_EQ(new_db_opt.new_table_reader_for_compaction_inputs, true);
@@ -704,8 +710,8 @@ TEST_F(OptionsTest, GetMemTableRepFactoryFromString) {
                                              &new_mem_factory));
 
   ASSERT_NOK(GetMemTableRepFactoryFromString("cuckoo", &new_mem_factory));
-  ASSERT_OK(GetMemTableRepFactoryFromString("cuckoo:1024", &new_mem_factory));
-  ASSERT_EQ(std::string(new_mem_factory->Name()), "HashCuckooRepFactory");
+  // CuckooHash memtable is already removed.
+  ASSERT_NOK(GetMemTableRepFactoryFromString("cuckoo:1024", &new_mem_factory));
 
   ASSERT_NOK(GetMemTableRepFactoryFromString("bad_factory", &new_mem_factory));
 }
@@ -1528,6 +1534,7 @@ TEST_F(OptionsParserTest, DifferentDefault) {
   const std::string kOptionsFileName = "test-persisted-options.ini";
 
   ColumnFamilyOptions cf_level_opts;
+  ASSERT_EQ(CompactionPri::kMinOverlappingRatio, cf_level_opts.compaction_pri);
   cf_level_opts.OptimizeLevelStyleCompaction();
 
   ColumnFamilyOptions cf_univ_opts;
@@ -1597,6 +1604,14 @@ TEST_F(OptionsParserTest, DifferentDefault) {
     Options old_default_opts;
     old_default_opts.OldDefaults(5, 2);
     ASSERT_EQ(16 * 1024U * 1024U, old_default_opts.delayed_write_rate);
+    ASSERT_TRUE(old_default_opts.compaction_pri ==
+                CompactionPri::kByCompensatedSize);
+  }
+  {
+    Options old_default_opts;
+    old_default_opts.OldDefaults(5, 18);
+    ASSERT_TRUE(old_default_opts.compaction_pri ==
+                CompactionPri::kByCompensatedSize);
   }
 
   Options small_opts;

@@ -25,9 +25,9 @@ class DBSSTTest : public DBTestBase {
 class FlushedFileCollector : public EventListener {
  public:
   FlushedFileCollector() {}
-  ~FlushedFileCollector() {}
+  ~FlushedFileCollector() override {}
 
-  virtual void OnFlushCompleted(DB* /*db*/, const FlushJobInfo& info) override {
+  void OnFlushCompleted(DB* /*db*/, const FlushJobInfo& info) override {
     std::lock_guard<std::mutex> lock(mutex_);
     flushed_files_.push_back(info.file_path);
   }
@@ -385,6 +385,7 @@ TEST_F(DBSSTTest, RateLimitedDelete) {
 
   // Compaction will move the 4 files in L0 to trash and create 1 L1 file
   ASSERT_OK(db_->CompactRange(CompactRangeOptions(), nullptr, nullptr));
+  ASSERT_OK(dbfull()->TEST_WaitForCompact(true));
   ASSERT_EQ("0,1", FilesPerLevel(0));
 
   uint64_t delete_start_time = env_->NowMicros();

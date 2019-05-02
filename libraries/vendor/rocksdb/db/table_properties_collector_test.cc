@@ -28,7 +28,7 @@ namespace rocksdb {
 class TablePropertiesTest : public testing::Test,
                             public testing::WithParamInterface<bool> {
  public:
-  virtual void SetUp() override { backward_mode_ = GetParam(); }
+  void SetUp() override { backward_mode_ = GetParam(); }
 
   bool backward_mode_;
 };
@@ -45,7 +45,7 @@ void MakeBuilder(const Options& options, const ImmutableCFOptions& ioptions,
                      int_tbl_prop_collector_factories,
                  std::unique_ptr<WritableFileWriter>* writable,
                  std::unique_ptr<TableBuilder>* builder) {
-  unique_ptr<WritableFile> wf(new test::StringSink);
+  std::unique_ptr<WritableFile> wf(new test::StringSink);
   writable->reset(
       new WritableFileWriter(std::move(wf), "" /* don't care */, EnvOptions()));
   int unknown_level = -1;
@@ -106,7 +106,7 @@ class RegularKeysStartWithA: public TablePropertiesCollector {
     return Status::OK();
   }
 
-  virtual UserCollectedProperties GetReadableProperties() const override {
+  UserCollectedProperties GetReadableProperties() const override {
     return UserCollectedProperties{};
   }
 
@@ -143,7 +143,7 @@ class RegularKeysStartWithABackwardCompatible
     return Status::OK();
   }
 
-  virtual UserCollectedProperties GetReadableProperties() const override {
+  UserCollectedProperties GetReadableProperties() const override {
     return UserCollectedProperties{};
   }
 
@@ -172,7 +172,7 @@ class RegularKeysStartWithAInternal : public IntTblPropCollector {
     return Status::OK();
   }
 
-  virtual UserCollectedProperties GetReadableProperties() const override {
+  UserCollectedProperties GetReadableProperties() const override {
     return UserCollectedProperties{};
   }
 
@@ -185,7 +185,7 @@ class RegularKeysStartWithAFactory : public IntTblPropCollectorFactory,
  public:
   explicit RegularKeysStartWithAFactory(bool backward_mode)
       : backward_mode_(backward_mode) {}
-  virtual TablePropertiesCollector* CreateTablePropertiesCollector(
+  TablePropertiesCollector* CreateTablePropertiesCollector(
       TablePropertiesCollectorFactory::Context context) override {
     EXPECT_EQ(kTestColumnFamilyId, context.column_family_id);
     if (!backward_mode_) {
@@ -194,7 +194,7 @@ class RegularKeysStartWithAFactory : public IntTblPropCollectorFactory,
       return new RegularKeysStartWithABackwardCompatible();
     }
   }
-  virtual IntTblPropCollector* CreateIntTblPropCollector(
+  IntTblPropCollector* CreateIntTblPropCollector(
       uint32_t /*column_family_id*/) override {
     return new RegularKeysStartWithAInternal();
   }
@@ -205,7 +205,7 @@ class RegularKeysStartWithAFactory : public IntTblPropCollectorFactory,
 
 class FlushBlockEveryThreePolicy : public FlushBlockPolicy {
  public:
-  virtual bool Update(const Slice& /*key*/, const Slice& /*value*/) override {
+  bool Update(const Slice& /*key*/, const Slice& /*value*/) override {
     return (++count_ % 3U == 0);
   }
 
@@ -399,9 +399,6 @@ void TestInternalKeyPropertiesCollector(
     ImmutableCFOptions ioptions(options);
     GetIntTblPropCollectorFactory(ioptions, &int_tbl_prop_collector_factories);
     options.comparator = comparator;
-  } else {
-    int_tbl_prop_collector_factories.emplace_back(
-        new InternalKeyPropertiesCollectorFactory);
   }
   const ImmutableCFOptions ioptions(options);
   MutableCFOptions moptions(options);
@@ -418,8 +415,9 @@ void TestInternalKeyPropertiesCollector(
 
     test::StringSink* fwf =
         static_cast<test::StringSink*>(writable->writable_file());
-    unique_ptr<RandomAccessFileReader> reader(test::GetRandomAccessFileReader(
-        new test::StringSource(fwf->contents())));
+    std::unique_ptr<RandomAccessFileReader> reader(
+        test::GetRandomAccessFileReader(
+            new test::StringSource(fwf->contents())));
     TableProperties* props;
     Status s =
         ReadTableProperties(reader.get(), fwf->contents().size(), magic_number,

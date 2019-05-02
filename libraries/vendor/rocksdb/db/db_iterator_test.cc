@@ -50,13 +50,14 @@ class DBIteratorTest : public DBTestBase,
 
 class FlushBlockEveryKeyPolicy : public FlushBlockPolicy {
  public:
-  virtual bool Update(const Slice& /*key*/, const Slice& /*value*/) override {
+  bool Update(const Slice& /*key*/, const Slice& /*value*/) override {
     if (!start_) {
       start_ = true;
       return false;
     }
     return true;
   }
+
  private:
   bool start_ = false;
 };
@@ -85,7 +86,7 @@ TEST_P(DBIteratorTest, IteratorProperty) {
   ReadOptions ropt;
   ropt.pin_data = false;
   {
-    unique_ptr<Iterator> iter(NewIterator(ropt, handles_[1]));
+    std::unique_ptr<Iterator> iter(NewIterator(ropt, handles_[1]));
     iter->SeekToFirst();
     std::string prop_value;
     ASSERT_NOK(iter->GetProperty("non_existing.value", &prop_value));
@@ -179,9 +180,7 @@ TEST_P(DBIteratorTest, NonBlockingIteration) {
 
     // This test verifies block cache behaviors, which is not used by plain
     // table format.
-    // Exclude kHashCuckoo as it does not support iteration currently
-  } while (ChangeOptions(kSkipPlainTable | kSkipNoSeekToLast | kSkipHashCuckoo |
-                         kSkipMmapReads));
+  } while (ChangeOptions(kSkipPlainTable | kSkipNoSeekToLast | kSkipMmapReads));
 }
 
 TEST_P(DBIteratorTest, IterSeekBeforePrev) {
@@ -765,8 +764,7 @@ TEST_P(DBIteratorTest, IterWithSnapshot) {
     }
     db_->ReleaseSnapshot(snapshot);
     delete iter;
-    // skip as HashCuckooRep does not support snapshot
-  } while (ChangeOptions(kSkipHashCuckoo));
+  } while (ChangeOptions());
 }
 
 TEST_P(DBIteratorTest, IteratorPinsRef) {
@@ -1951,6 +1949,7 @@ TEST_P(DBIteratorTest, ReadAhead) {
   size_t bytes_read = env_->random_read_bytes_counter_;
   delete iter;
 
+  int64_t num_file_closes = TestGetTickerCount(options, NO_FILE_CLOSES);
   env_->random_read_bytes_counter_ = 0;
   options.statistics->setTickerCount(NO_FILE_OPENS, 0);
   read_options.readahead_size = 1024 * 10;
@@ -1959,7 +1958,10 @@ TEST_P(DBIteratorTest, ReadAhead) {
   int64_t num_file_opens_readahead = TestGetTickerCount(options, NO_FILE_OPENS);
   size_t bytes_read_readahead = env_->random_read_bytes_counter_;
   delete iter;
+  int64_t num_file_closes_readahead =
+      TestGetTickerCount(options, NO_FILE_CLOSES);
   ASSERT_EQ(num_file_opens + 3, num_file_opens_readahead);
+  ASSERT_EQ(num_file_closes + 3, num_file_closes_readahead);
   ASSERT_GT(bytes_read_readahead, bytes_read);
   ASSERT_GT(bytes_read_readahead, read_options.readahead_size * 3);
 
@@ -2373,7 +2375,7 @@ TEST_P(DBIteratorTest, SeekAfterHittingManyInternalKeys) {
   Delete("5");
   Put("6", "val_6");
 
-  unique_ptr<Iterator> iter(NewIterator(ropts));
+  std::unique_ptr<Iterator> iter(NewIterator(ropts));
   iter->SeekToFirst();
 
   ASSERT_TRUE(iter->Valid());
@@ -2392,7 +2394,7 @@ TEST_P(DBIteratorTest, SeekAfterHittingManyInternalKeys) {
   ASSERT_EQ("4", prop_value);
 
   // Create a new iterator to seek to the internal key.
-  unique_ptr<Iterator> iter2(NewIterator(ropts));
+  std::unique_ptr<Iterator> iter2(NewIterator(ropts));
   iter2->Seek(prop_value);
   ASSERT_TRUE(iter2->Valid());
   ASSERT_OK(iter2->status());
@@ -2420,7 +2422,7 @@ TEST_P(DBIteratorTest, NonBlockingIterationBugRepro) {
   // Create a nonblocking iterator before writing to memtable.
   ReadOptions ropt;
   ropt.read_tier = kBlockCacheTier;
-  unique_ptr<Iterator> iter(NewIterator(ropt));
+  std::unique_ptr<Iterator> iter(NewIterator(ropt));
 
   // Overwrite a key in memtable many times to hit
   // max_sequential_skip_in_iterations (which is 8 by default).
@@ -2430,7 +2432,7 @@ TEST_P(DBIteratorTest, NonBlockingIterationBugRepro) {
 
   // Load the second block in sst file into the block cache.
   {
-    unique_ptr<Iterator> iter2(NewIterator(ReadOptions()));
+    std::unique_ptr<Iterator> iter2(NewIterator(ReadOptions()));
     iter2->Seek("d");
   }
 

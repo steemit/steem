@@ -429,7 +429,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
 
     Status* status;
     bool ignore_error;  // true if db_options_.paranoid_checks==false
-    virtual void Corruption(size_t bytes, const Status& s) override {
+    void Corruption(size_t bytes, const Status& s) override {
       ROCKS_LOG_WARN(info_log, "[WalManager] %s%s: dropping %d bytes; %s",
                      (this->ignore_error ? "(ignoring error) " : ""), fname,
                      static_cast<int>(bytes), s.ToString().c_str());
@@ -443,7 +443,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   std::unique_ptr<SequentialFile> file;
   Status status = env_->NewSequentialFile(
       fname, &file, env_->OptimizeForLogRead(env_options_));
-  unique_ptr<SequentialFileReader> file_reader(
+  std::unique_ptr<SequentialFileReader> file_reader(
       new SequentialFileReader(std::move(file), fname));
 
   if (!status.ok()) {
@@ -457,7 +457,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   reporter.status = &status;
   reporter.ignore_error = !db_options_.paranoid_checks;
   log::Reader reader(db_options_.info_log, std::move(file_reader), &reporter,
-                     true /*checksum*/, number);
+                     true /*checksum*/, number, false /* retry_after_eof */);
   std::string scratch;
   Slice record;
 
