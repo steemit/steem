@@ -67,7 +67,7 @@ RUN \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         .. && \
-    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
+    make -j$((`nproc` / 2 )) chain_test mira_test test_fixed_string plugin_test && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     ./libraries/mira/test/mira_test && \
@@ -97,7 +97,7 @@ RUN \
         -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j$((`nproc` / 2 )) chain_test test_fixed_string plugin_test && \
     make install && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
@@ -126,7 +126,7 @@ RUN \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
         -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
-    make -j$(nproc) chain_test plugin_test && \
+    make -j$((`nproc` / 2 )) chain_test plugin_test && \
     ./tests/chain_test && \
     ./tests/plugin_test && \
     mkdir -p /var/cobertura && \
@@ -152,7 +152,7 @@ RUN \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
-    make -j$(nproc) && \
+    make -j$((`nproc` / 2 )) && \
     make install && \
     cd .. && \
     ( /usr/local/steemd-default/bin/steemd --version \
@@ -176,7 +176,7 @@ RUN \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
-    make -j$(nproc) && \
+    make -j$((`nproc` / 2 )) && \
     make install && \
     rm -rf /usr/local/src/steem ; \
     fi
