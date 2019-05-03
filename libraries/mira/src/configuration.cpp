@@ -1,8 +1,5 @@
 #include <mira/configuration.hpp>
 
-#define DEFAULT_MIRA_SHARED_CACHE_SIZE (1ull * 1024 * 1024 * 1024 )
-#define DEFAULT_MIRA_NUM_SHARD_BITS    (4)
-
 namespace mira {
 
 // Base configuration for an index
@@ -11,8 +8,12 @@ namespace mira {
 // Global options
 #define GLOBAL                           "global"
 #define SHARED_CACHE                     "shared_cache"
+#define WRITE_BUFFER_MANAGER             "write_buffer_manager"
 #define OBJECT_COUNT                     "object_count"
 #define STATISTICS                       "statistics"
+
+// Write buffer manager options
+#define WRITE_BUFFER_SIZE                "write_buffer_size"
 
 // Shared cache options
 #define CAPACITY                         "capacity"
@@ -34,8 +35,10 @@ namespace mira {
 #define BLOOM_FILTER_POLICY              "bloom_filter_policy"
 #define BITS_PER_KEY                     "bits_per_key"
 #define USE_BLOCK_BASED_BUILDER          "use_block_based_builder"
+#define CACHE_INDEX_AND_FILTER_BLOCKS    "cache_index_and_filter_blocks"
 
 static std::shared_ptr< rocksdb::Cache > global_shared_cache;
+static std::shared_ptr< rocksdb::WriteBufferManager > global_write_buffer_manager;
 
 static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::variant ) > > global_database_option_map {
    { ALLOW_MMAP_READS,                  []( ::rocksdb::Options& o, fc::variant v ) { o.allow_mmap_reads = v.as< bool >(); }                 },
@@ -69,7 +72,20 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
          table_options.block_cache = global_shared_cache;
 
          if ( obj.contains( BLOCK_SIZE ) )
+         {
+            FC_ASSERT( obj[ BLOCK_SIZE ].is_uint64(), "Expected '${key}' to be an unsigned integer",
+               ("key", BLOCK_SIZE) );
+
             table_options.block_size = obj[ BLOCK_SIZE ].template as< uint64_t >();
+         }
+
+         if ( obj.contains( CACHE_INDEX_AND_FILTER_BLOCKS ) )
+         {
+            FC_ASSERT( obj[ CACHE_INDEX_AND_FILTER_BLOCKS ].is_bool(), "Expected '${key}' to be a boolean",
+               ("key", CACHE_INDEX_AND_FILTER_BLOCKS) );
+
+            table_options.cache_index_and_filter_blocks = obj[ CACHE_INDEX_AND_FILTER_BLOCKS ].template as< bool >();
+         }
 
          if ( obj.contains( BLOOM_FILTER_POLICY ) )
          {
@@ -84,12 +100,22 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
                ("parent", BLOOM_FILTER_POLICY)
                ("key", BITS_PER_KEY) );
 
+            FC_ASSERT( filter_policy[ BITS_PER_KEY ].is_uint64(), "Expected '${key}' to be an unsigned integer",
+               ("key", BITS_PER_KEY) );
+
             bits_per_key = filter_policy[ BITS_PER_KEY ].template as< uint64_t >();
 
             if ( filter_policy.contains( USE_BLOCK_BASED_BUILDER ) )
+            {
+               FC_ASSERT( filter_policy[ USE_BLOCK_BASED_BUILDER ].is_bool(), "Expected '${key}' to be a boolean",
+                  ("key", USE_BLOCK_BASED_BUILDER) );
+
                table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( bits_per_key, filter_policy[ USE_BLOCK_BASED_BUILDER ].template as< bool >() ) );
+            }
             else
+            {
                table_options.filter_policy.reset( rocksdb::NewBloomFilterPolicy( bits_per_key ) );
+            }
          }
 
          o.table_factory.reset( ::rocksdb::NewBlockBasedTableFactory( table_options ) );
@@ -214,18 +240,59 @@ bool configuration::gather_statistics( const boost::any& cfg )
 
       auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
 
-      if ( shared_cache_obj.contains( CAPACITY ) && shared_cache_obj[ CAPACITY ].is_uint64() )
-         capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
-      else
-         capacity = DEFAULT_MIRA_SHARED_CACHE_SIZE;
+      FC_ASSERT( shared_cache_obj.contains( CAPACITY ), "Expected '${parent}' configuration to contain '${key}'",
+         ("parent", SHARED_CACHE)
+         ("key", CAPACITY) );
 
-      if ( shared_cache_obj.contains( NUM_SHARD_BITS ) && shared_cache_obj[ NUM_SHARD_BITS ].is_uint64() )
+      FC_ASSERT( shared_cache_obj[ CAPACITY ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
+         ("key", CAPACITY) );
+
+      capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
+
+      if ( shared_cache_obj.contains( NUM_SHARD_BITS ) )
+      {
+         FC_ASSERT( shared_cache_obj[ NUM_SHARD_BITS ].is_uint64(), "Expected '${key}' to be an unsigned integer",
+            ("key", NUM_SHARD_BITS) );
+
          num_shard_bits = shared_cache_obj[ NUM_SHARD_BITS ].as< int >();
-      else
-         num_shard_bits = DEFAULT_MIRA_NUM_SHARD_BITS;
 
-      global_shared_cache = rocksdb::NewLRUCache( capacity, num_shard_bits );
+         global_shared_cache = rocksdb::NewLRUCache( capacity, num_shard_bits );
+      }
+      else
+      {
+         global_shared_cache = rocksdb::NewLRUCache( capacity );
+      }
    }
+
+   if ( global_write_buffer_manager == nullptr )
+   {
+      size_t write_buf_size = 0;
+
+      fc::variant_object global_config = retrieve_global_configuration( obj );
+
+      FC_ASSERT( global_config.contains( WRITE_BUFFER_MANAGER ), "Expected '${parent}' configuration to contain '${key}'",
+         ("parent", GLOBAL)
+         ("key", WRITE_BUFFER_MANAGER) );
+
+      FC_ASSERT( global_config[ WRITE_BUFFER_MANAGER ].is_object(), "Expected '${key}' to be an object",
+         ("key", WRITE_BUFFER_MANAGER) );
+
+      auto& write_buffer_mgr_obj = global_config[ WRITE_BUFFER_MANAGER ].get_object();
+
+      FC_ASSERT( write_buffer_mgr_obj.contains( WRITE_BUFFER_SIZE ), "Expected '${parent}' configuration to contain '${key}'",
+         ("parent", WRITE_BUFFER_MANAGER)
+         ("key", WRITE_BUFFER_SIZE) );
+
+      FC_ASSERT( write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
+         ("key", WRITE_BUFFER_SIZE) );
+
+      write_buf_size = write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].as< uint64_t >();
+
+      global_write_buffer_manager = std::make_shared< ::rocksdb::WriteBufferManager >( write_buf_size, global_shared_cache );
+   }
+
+   // We assign the global write buffer manager to all databases
+   opts.write_buffer_manager = global_write_buffer_manager;
 
    fc::variant_object config = retrieve_active_configuration( obj, type_name );
 

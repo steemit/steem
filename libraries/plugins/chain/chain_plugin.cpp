@@ -481,6 +481,11 @@ void chain_plugin::plugin_startup()
       elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
       exit( EXIT_FAILURE );
    }
+   catch ( const fc::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
 #endif
 
    database::open_args db_open_args;
