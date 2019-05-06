@@ -24,8 +24,8 @@
 #ifndef GFLAGS
 bool FLAGS_enable_print = false;
 #else
-#include <gflags/gflags.h>
-using GFLAGS::ParseCommandLineFlags;
+#include "util/gflags_compat.h"
+using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 #endif  // GFLAGS
 
@@ -34,7 +34,7 @@ class OptionsUtilTest : public testing::Test {
  public:
   OptionsUtilTest() : rnd_(0xFB) {
     env_.reset(new test::StringEnv(Env::Default()));
-    dbname_ = test::TmpDir() + "/options_util_test";
+    dbname_ = test::PerThreadDBPath("options_util_test");
   }
 
  protected:
@@ -98,34 +98,35 @@ namespace {
 class DummyTableFactory : public TableFactory {
  public:
   DummyTableFactory() {}
-  virtual ~DummyTableFactory() {}
+  ~DummyTableFactory() override {}
 
-  virtual const char* Name() const override { return "DummyTableFactory"; }
+  const char* Name() const override { return "DummyTableFactory"; }
 
-  virtual Status NewTableReader(
-      const TableReaderOptions& table_reader_options,
-      unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
-      unique_ptr<TableReader>* table_reader,
-      bool prefetch_index_and_filter_in_cache) const override {
+  Status NewTableReader(
+      const TableReaderOptions& /*table_reader_options*/,
+      std::unique_ptr<RandomAccessFileReader>&& /*file*/,
+      uint64_t /*file_size*/, std::unique_ptr<TableReader>* /*table_reader*/,
+      bool /*prefetch_index_and_filter_in_cache*/) const override {
     return Status::NotSupported();
   }
 
-  virtual TableBuilder* NewTableBuilder(
-      const TableBuilderOptions& table_builder_options,
-      uint32_t column_family_id, WritableFileWriter* file) const override {
+  TableBuilder* NewTableBuilder(
+      const TableBuilderOptions& /*table_builder_options*/,
+      uint32_t /*column_family_id*/,
+      WritableFileWriter* /*file*/) const override {
     return nullptr;
   }
 
-  virtual Status SanitizeOptions(
-      const DBOptions& db_opts,
-      const ColumnFamilyOptions& cf_opts) const override {
+  Status SanitizeOptions(
+      const DBOptions& /*db_opts*/,
+      const ColumnFamilyOptions& /*cf_opts*/) const override {
     return Status::NotSupported();
   }
 
-  virtual std::string GetPrintableTableOptions() const override { return ""; }
+  std::string GetPrintableTableOptions() const override { return ""; }
 
-  Status GetOptionString(std::string* opt_string,
-                         const std::string& delimiter) const override {
+  Status GetOptionString(std::string* /*opt_string*/,
+                         const std::string& /*delimiter*/) const override {
     return Status::OK();
   }
 };
@@ -133,39 +134,39 @@ class DummyTableFactory : public TableFactory {
 class DummyMergeOperator : public MergeOperator {
  public:
   DummyMergeOperator() {}
-  virtual ~DummyMergeOperator() {}
+  ~DummyMergeOperator() override {}
 
-  virtual bool FullMergeV2(const MergeOperationInput& merge_in,
-                           MergeOperationOutput* merge_out) const override {
+  bool FullMergeV2(const MergeOperationInput& /*merge_in*/,
+                   MergeOperationOutput* /*merge_out*/) const override {
     return false;
   }
 
-  virtual bool PartialMergeMulti(const Slice& key,
-                                 const std::deque<Slice>& operand_list,
-                                 std::string* new_value,
-                                 Logger* logger) const override {
+  bool PartialMergeMulti(const Slice& /*key*/,
+                         const std::deque<Slice>& /*operand_list*/,
+                         std::string* /*new_value*/,
+                         Logger* /*logger*/) const override {
     return false;
   }
 
-  virtual const char* Name() const override { return "DummyMergeOperator"; }
+  const char* Name() const override { return "DummyMergeOperator"; }
 };
 
 class DummySliceTransform : public SliceTransform {
  public:
   DummySliceTransform() {}
-  virtual ~DummySliceTransform() {}
+  ~DummySliceTransform() override {}
 
   // Return the name of this transformation.
-  virtual const char* Name() const { return "DummySliceTransform"; }
+  const char* Name() const override { return "DummySliceTransform"; }
 
   // transform a src in domain to a dst in the range
-  virtual Slice Transform(const Slice& src) const { return src; }
+  Slice Transform(const Slice& src) const override { return src; }
 
   // determine whether this is a valid src upon the function applies
-  virtual bool InDomain(const Slice& src) const { return false; }
+  bool InDomain(const Slice& /*src*/) const override { return false; }
 
   // determine whether dst=Transform(src) for some src
-  virtual bool InRange(const Slice& dst) const { return false; }
+  bool InRange(const Slice& /*dst*/) const override { return false; }
 };
 
 }  // namespace
@@ -310,7 +311,7 @@ int main(int argc, char** argv) {
 #else
 #include <cstdio>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   printf("Skipped in RocksDBLite as utilities are not supported.\n");
   return 0;
 }

@@ -9,6 +9,8 @@
 
 namespace steem { namespace protocol {
 
+   void validate_auth_size( const authority& a );
+
    struct account_create_operation : public base_operation
    {
       asset             fee;
@@ -269,8 +271,7 @@ namespace steem { namespace protocol {
       string            memo;
 
       void              validate()const;
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
-      void get_required_owner_authorities( flat_set<account_name_type>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(from); }
    };
 
 
@@ -570,7 +571,7 @@ namespace steem { namespace protocol {
    {
       flat_set< account_name_type > required_auths;
       flat_set< account_name_type > required_posting_auths;
-      string                        id; ///< must be less than 32 characters long
+      custom_id_type                id; ///< must be less than 32 characters long
       string                        json; ///< must be proper utf8 / JSON string.
 
       void validate()const;
@@ -586,7 +587,7 @@ namespace steem { namespace protocol {
       flat_set< account_name_type > required_posting_auths;
       vector< authority >           required_auths;
 
-      string                        id; ///< must be less than 32 characters long
+      custom_id_type                id; ///< must be less than 32 characters long
       vector< char >                data;
 
       void validate()const;

@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/steem_operations.hpp>
 
 #include <steem/chain/block_summary_object.hpp>
@@ -9,13 +11,15 @@
 #include <steem/chain/evaluator_registry.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/history_object.hpp>
-#include <steem/chain/index.hpp>
+#include <steem/chain/optional_action_evaluator.hpp>
+#include <steem/chain/pending_required_action_object.hpp>
+#include <steem/chain/pending_optional_action_object.hpp>
+#include <steem/chain/required_action_evaluator.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
 #include <steem/chain/util/asset.hpp>
@@ -23,6 +27,8 @@
 #include <steem/chain/util/uint256.hpp>
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/manabar.hpp>
+#include <steem/chain/util/rd_setup.hpp>
+#include <steem/chain/util/nai_generator.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -32,6 +38,10 @@
 #include <fc/io/fstream.hpp>
 
 #include <boost/scope_exit.hpp>
+
+#include <rocksdb/perf_context.h>
+
+#include <iostream>
 
 #include <cstdint>
 #include <deque>
@@ -82,12 +92,14 @@ class database_impl
    public:
       database_impl( database& self );
 
-      database&                              _self;
-      evaluator_registry< operation >        _evaluator_registry;
+      database&                                       _self;
+      evaluator_registry< operation >                 _evaluator_registry;
+      evaluator_registry< required_automated_action > _req_action_evaluator_registry;
+      evaluator_registry< optional_automated_action > _opt_action_evaluator_registry;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _req_action_evaluator_registry(self), _opt_action_evaluator_registry(self) {}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -102,7 +114,7 @@ void database::open( const open_args& args )
    try
    {
       init_schema();
-      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.database_cfg );
 
       initialize_indexes();
       initialize_evaluators();
@@ -122,7 +134,9 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
+#ifndef ENABLE_STD_ALLOCATOR
          undo_all();
+#endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
          if (args.do_validate_invariants)
@@ -181,6 +195,10 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
+#ifdef ENABLE_STD_ALLOCATOR
+      initialize_indexes();
+#endif
+
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
@@ -218,9 +236,24 @@ uint32_t database::reindex( const open_args& args )
          {
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
+            {
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
+               "   (" << (get_free_memory() >> 20) << "M free, " <<
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
+
+               //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
+               //rocksdb::get_perf_context()->Reset();
+            }
             apply_block( itr.first, skip_flags );
+
+            if( cur_block_num % 100000 == 0 )
+            {
+               //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+               if( cur_block_num % 1000000 == 0 )
+               {
+                  dump_lb_call_counts();
+               }
+            }
 
             if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
                args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
@@ -234,6 +267,8 @@ uint32_t database::reindex( const open_args& args )
             args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
          set_revision( head_block_num() );
          _block_log.set_locking( true );
+
+         get_index< account_index >().indices().print_stats();
       });
 
       if( _block_log.head()->block_num() )
@@ -269,6 +304,10 @@ void database::close(bool rewind)
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
       clear_pending();
+
+#ifdef ENABLE_STD_ALLOCATOR
+      undo_all();
+#endif
 
       chainbase::database::flush();
       chainbase::database::close();
@@ -356,10 +395,10 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
 optional<signed_block> database::fetch_block_by_number( uint32_t block_num )const
 { try {
    optional< signed_block > b;
+   shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
 
-   auto results = _fork_db.fetch_block_by_number( block_num );
-   if( results.size() == 1 )
-      b = results[0]->data;
+   if( fitem )
+      b = fitem->data;
    else
       b = _block_log.read_block_by_num( block_num );
 
@@ -629,6 +668,29 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
    //fc::time_point begin_time = fc::time_point::now();
 
+   auto block_num = new_block.block_num();
+   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
+   {
+      auto itr = _checkpoints.find( block_num );
+      if( itr != _checkpoints.end() )
+         FC_ASSERT( new_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",new_block.id()) );
+
+      if( _checkpoints.rbegin()->first >= block_num )
+         skip = skip_witness_signature
+              | skip_transaction_signatures
+              | skip_transaction_dupe_check
+              /*| skip_fork_db Fork db cannot be skipped or else blocks will not be written out to block log */
+              | skip_block_size_check
+              | skip_tapos_check
+              | skip_authority_check
+              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
+              | skip_undo_history_check
+              | skip_witness_schedule_check
+              | skip_validate
+              | skip_validate_invariants
+              ;
+   }
+
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
@@ -688,7 +750,7 @@ bool database::_push_block(const signed_block& new_block)
          //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
          {
-            // wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
+            wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
             auto branches = _fork_db.fetch_branch_from(new_head->data.id(), head_block_id());
 
             // pop blocks until we hit the forked block
@@ -698,10 +760,11 @@ bool database::_push_block(const signed_block& new_block)
             // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
             {
-                // ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
+                ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
                 optional<fc::exception> except;
                 try
                 {
+                   _fork_db.set_head( *ritr );
                    auto session = start_undo_session();
                    apply_block( (*ritr)->data, skip );
                    session.push();
@@ -709,14 +772,13 @@ bool database::_push_block(const signed_block& new_block)
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   // wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
+                   wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
                       _fork_db.remove( (*ritr)->data.id() );
                       ++ritr;
                    }
-                   _fork_db.set_head( branches.second.front() );
 
                    // pop all blocks from the bad fork
                    while( head_block_id() != branches.second.back()->data.previous )
@@ -725,6 +787,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
+                      _fork_db.set_head( *ritr );
                       auto session = start_undo_session();
                       apply_block( (*ritr)->data, skip );
                       session.push();
@@ -812,164 +875,6 @@ void database::_push_transaction( const signed_transaction& trx )
    temp_session.squash();
 }
 
-signed_block database::generate_block(
-   fc::time_point_sec when,
-   const account_name_type& witness_owner,
-   const fc::ecc::private_key& block_signing_private_key,
-   uint32_t skip /* = 0 */
-   )
-{
-   signed_block result;
-   detail::with_skip_flags( *this, skip, [&]()
-   {
-      try
-      {
-         result = _generate_block( when, witness_owner, block_signing_private_key );
-      }
-      FC_CAPTURE_AND_RETHROW( (witness_owner) )
-   });
-   return result;
-}
-
-
-signed_block database::_generate_block(
-   fc::time_point_sec when,
-   const account_name_type& witness_owner,
-   const fc::ecc::private_key& block_signing_private_key
-   )
-{
-   uint32_t skip = get_node_properties().skip_flags;
-   uint32_t slot_num = get_slot_at_time( when );
-   FC_ASSERT( slot_num > 0 );
-   string scheduled_witness = get_scheduled_witness( slot_num );
-   FC_ASSERT( scheduled_witness == witness_owner );
-
-   const auto& witness_obj = get_witness( witness_owner );
-
-   if( !(skip & skip_witness_signature) )
-      FC_ASSERT( witness_obj.signing_key == block_signing_private_key.get_public_key() );
-
-   static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = get_dynamic_global_properties().maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
-   size_t total_block_size = max_block_header_size;
-
-   signed_block pending_block;
-
-   //
-   // The following code throws away existing pending_tx_session and
-   // rebuilds it by re-applying pending transactions.
-   //
-   // This rebuild is necessary because pending transactions' validity
-   // and semantics may have changed since they were received, because
-   // time-based semantics are evaluated based on the current block
-   // time.  These changes can only be reflected in the database when
-   // the value of the "when" variable is known, which means we need to
-   // re-apply pending transactions in this method.
-   //
-   _pending_tx_session.reset();
-   _pending_tx_session = start_undo_session();
-
-   FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
-   if( has_hardfork( STEEM_HARDFORK_0_20 ) )
-   {
-      /// modify current witness so transaction evaluators can know who included the transaction
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
-      {
-         dgp.current_witness = scheduled_witness;
-      });
-   }
-
-   uint64_t postponed_tx_count = 0;
-   // pop pending state (reset to head block state)
-   for( const signed_transaction& tx : _pending_tx )
-   {
-      // Only include transactions that have not expired yet for currently generating block,
-      // this should clear problem transactions and allow block production to continue
-
-      if( tx.expiration < when )
-         continue;
-
-      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
-
-      // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
-      {
-         postponed_tx_count++;
-         continue;
-      }
-
-      try
-      {
-         auto temp_session = start_undo_session();
-         _apply_transaction( tx );
-         temp_session.squash();
-
-         total_block_size += fc::raw::pack_size( tx );
-         pending_block.transactions.push_back( tx );
-      }
-      catch ( const fc::exception& e )
-      {
-         // Do nothing, transaction will not be re-applied
-         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         //wlog( "The transaction was ${t}", ("t", tx) );
-      }
-   }
-   if( postponed_tx_count > 0 )
-   {
-      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
-   }
-
-   _pending_tx_session.reset();
-
-   // We have temporarily broken the invariant that
-   // _pending_tx_session is the result of applying _pending_tx, as
-   // _pending_tx now consists of the set of postponed transactions.
-   // However, the push_block() call below will re-create the
-   // _pending_tx_session.
-
-   pending_block.previous = head_block_id();
-   pending_block.timestamp = when;
-   pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
-   pending_block.witness = witness_owner;
-
-   FC_TODO( "Remove HF5 check because no more pre HF5 blocks will ever be created" );
-   if( has_hardfork( STEEM_HARDFORK_0_5__54 ) )
-   {
-      const auto& witness = get_witness( witness_owner );
-
-      if( witness.running_version != STEEM_BLOCKCHAIN_VERSION )
-         pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
-
-      const auto& hfp = get_hardfork_property_object();
-
-      if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
-         && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
-      {
-         // Make vote match binary configuration
-         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
-      }
-      else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
-         && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
-      {
-         // Make vote match binary configuration. This is vote to not apply the new hardfork.
-         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
-      }
-   }
-
-   if( !(skip & skip_witness_signature) )
-      pending_block.sign( block_signing_private_key, has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
-
-   // TODO:  Move this to _push_block() so session is restored.
-   if( !(skip & skip_block_size_check) )
-   {
-      FC_ASSERT( fc::raw::pack_size(pending_block) <= STEEM_MAX_BLOCK_SIZE );
-   }
-
-   push_block( pending_block, skip );
-
-   return pending_block;
-}
-
 /**
  * Removes the most recent block from the database and
  * undoes any changes it made.
@@ -1008,7 +913,7 @@ void database::clear_pending()
 void database::push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -1018,7 +923,7 @@ void database::push_virtual_operation( const operation& op )
 void database::pre_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    ++_current_virtual_op;
    note.virtual_op = _current_virtual_op;
    notify_pre_apply_operation( note );
@@ -1027,19 +932,85 @@ void database::pre_push_virtual_operation( const operation& op )
 void database::post_push_virtual_operation( const operation& op )
 {
    FC_ASSERT( is_virtual_operation( op ) );
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    note.virtual_op = _current_virtual_op;
    notify_post_apply_operation( note );
 }
 
-void database::notify_pre_apply_operation( operation_notification& note )
+void database::notify_pre_apply_operation( const operation_notification& note )
 {
-   note.trx_id       = _current_trx_id;
-   note.block        = _current_block_num;
-   note.trx_in_block = _current_trx_in_block;
-   note.op_in_trx    = _current_op_in_trx;
-
    STEEM_TRY_NOTIFY( _pre_apply_operation_signal, note )
+}
+
+struct action_validate_visitor
+{
+   typedef void result_type;
+
+   template< typename Action >
+   void operator()( const Action& a )const
+   {
+      a.validate();
+   }
+};
+
+void database::push_required_action( const required_automated_action& a, time_point_sec execution_time )
+{
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push required action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+      ("h", head_block_time())("e", execution_time) );
+
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
+   create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+   {
+      pending_action.action = a;
+      pending_action.execution_time = execution_time;
+   });
+}
+
+void database::push_required_action( const required_automated_action& a )
+{
+   push_required_action( a, head_block_time() );
+}
+
+void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
+{
+   FC_ASSERT( execution_time >= head_block_time(), "Cannot push optional action to execute in the past. head_block_time: ${h} execution_time: ${e}",
+      ("h", head_block_time())("e", execution_time) );
+
+   static const action_validate_visitor validate_visitor;
+   a.visit( validate_visitor );
+
+   create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+   {
+      pending_action.action = a;
+      pending_action.execution_time = execution_time;
+   });
+}
+
+void database::push_optional_action( const optional_automated_action& a )
+{
+   push_optional_action( a, head_block_time() );
+}
+
+void database::notify_pre_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_required_action_signal, note );
+}
+
+void database::notify_post_apply_required_action( const required_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_required_action_signal, note );
+}
+
+void database::notify_pre_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _pre_apply_optional_action_signal, note );
+}
+
+void database::notify_post_apply_optional_action( const optional_action_notification& note )
+{
+   STEEM_TRY_NOTIFY( _post_apply_optional_action_signal, note );
 }
 
 void database::notify_post_apply_operation( const operation_notification& note )
@@ -1248,6 +1219,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             db.modify( to_account, [&]( account_object& a )
             {
                util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
                a.voting_manabar.regenerate_mana( params, db.head_block_time() );
                a.voting_manabar.use_mana( -new_vesting.amount.value );
             });
@@ -2250,7 +2222,7 @@ void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
 {
    FC_ASSERT( db != nullptr );
    const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
-   auto itr = idx.lower_bound( std::make_tuple( phase, db->head_block_time() ) );
+   auto itr = idx.lower_bound( boost::make_tuple( phase, db->head_block_time() ) );
 
    while( itr != idx.end() && itr->phase == phase )
    {
@@ -2641,17 +2613,24 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
+
+#ifdef IS_TEST_NET
+   _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
+
+   _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
+#endif
 }
 
 
-void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
+void database::register_custom_operation_interpreter( std::shared_ptr< custom_operation_interpreter > interpreter )
 {
-   bool inserted = _custom_operation_interpreters.emplace( id, registry ).second;
+   FC_ASSERT( interpreter );
+   bool inserted = _custom_operation_interpreters.emplace( interpreter->get_custom_id(), interpreter ).second;
    // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
    FC_ASSERT( inserted );
 }
 
-std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evaluator( const std::string& id )
+std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evaluator( const custom_id_type& id )
 {
    auto it = _custom_operation_interpreters.find( id );
    if( it != _custom_operation_interpreters.end() )
@@ -2659,43 +2638,11 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
    return std::shared_ptr< custom_operation_interpreter >();
 }
 
+void initialize_core_indexes( database& db );
+
 void database::initialize_indexes()
 {
-   add_core_index< dynamic_global_property_index           >(*this);
-   add_core_index< account_index                           >(*this);
-   add_core_index< account_authority_index                 >(*this);
-   add_core_index< witness_index                           >(*this);
-   add_core_index< transaction_index                       >(*this);
-   add_core_index< block_summary_index                     >(*this);
-   add_core_index< witness_schedule_index                  >(*this);
-   add_core_index< comment_index                           >(*this);
-   add_core_index< comment_content_index                   >(*this);
-   add_core_index< comment_vote_index                      >(*this);
-   add_core_index< witness_vote_index                      >(*this);
-   add_core_index< limit_order_index                       >(*this);
-   add_core_index< feed_history_index                      >(*this);
-   add_core_index< convert_request_index                   >(*this);
-   add_core_index< liquidity_reward_balance_index          >(*this);
-   add_core_index< operation_index                         >(*this);
-   add_core_index< account_history_index                   >(*this);
-   add_core_index< hardfork_property_index                 >(*this);
-   add_core_index< withdraw_vesting_route_index            >(*this);
-   add_core_index< owner_authority_history_index           >(*this);
-   add_core_index< account_recovery_request_index          >(*this);
-   add_core_index< change_recovery_account_request_index   >(*this);
-   add_core_index< escrow_index                            >(*this);
-   add_core_index< savings_withdraw_index                  >(*this);
-   add_core_index< decline_voting_rights_request_index     >(*this);
-   add_core_index< reward_fund_index                       >(*this);
-   add_core_index< vesting_delegation_index                >(*this);
-   add_core_index< vesting_delegation_expiration_index     >(*this);
-#ifdef STEEM_ENABLE_SMT
-   add_core_index< smt_token_index                         >(*this);
-   add_core_index< smt_event_token_index                   >(*this);
-   add_core_index< account_regular_balance_index           >(*this);
-   add_core_index< account_rewards_balance_index           >(*this);
-#endif
-
+   initialize_core_indexes( *this );
    _plugin_index_signal();
 }
 
@@ -2869,8 +2816,33 @@ void database::init_genesis( uint64_t init_supply )
       // Create witness scheduler
       create< witness_schedule_object >( [&]( witness_schedule_object& wso )
       {
+         FC_TODO( "Copied from witness_schedule.cpp, do we want to abstract this to a separate function?" );
          wso.current_shuffled_witnesses[0] = STEEM_INIT_MINER_NAME;
+         util::rd_system_params account_subsidy_system_params;
+         account_subsidy_system_params.resource_unit = STEEM_ACCOUNT_SUBSIDY_PRECISION;
+         account_subsidy_system_params.decay_per_time_unit_denom_shift = STEEM_RD_DECAY_DENOM_SHIFT;
+         util::rd_user_params account_subsidy_user_params;
+         account_subsidy_user_params.budget_per_time_unit = wso.median_props.account_subsidy_budget;
+         account_subsidy_user_params.decay_per_time_unit = wso.median_props.account_subsidy_decay;
+
+         util::rd_user_params account_subsidy_per_witness_user_params;
+         int64_t w_budget = wso.median_props.account_subsidy_budget;
+         w_budget = (w_budget * STEEM_WITNESS_SUBSIDY_BUDGET_PERCENT) / STEEM_100_PERCENT;
+         w_budget = std::min( w_budget, int64_t(std::numeric_limits<int32_t>::max()) );
+         uint64_t w_decay = wso.median_props.account_subsidy_decay;
+         w_decay = (w_decay * STEEM_WITNESS_SUBSIDY_DECAY_PERCENT) / STEEM_100_PERCENT;
+         w_decay = std::min( w_decay, uint64_t(std::numeric_limits<uint32_t>::max()) );
+
+         account_subsidy_per_witness_user_params.budget_per_time_unit = int32_t(w_budget);
+         account_subsidy_per_witness_user_params.decay_per_time_unit = uint32_t(w_decay);
+
+         util::rd_setup_dynamics_params( account_subsidy_user_params, account_subsidy_system_params, wso.account_subsidy_rd );
+         util::rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, wso.account_subsidy_witness_rd );
       } );
+
+#ifdef STEEM_ENABLE_SMT
+      create< nai_pool_object >( [&]( nai_pool_object& npo ) {} );
+#endif
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -2927,29 +2899,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    //fc::time_point begin_time = fc::time_point::now();
 
-   auto block_num = next_block.block_num();
-   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
-   {
-      auto itr = _checkpoints.find( block_num );
-      if( itr != _checkpoints.end() )
-         FC_ASSERT( next_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()) );
-
-      if( _checkpoints.rbegin()->first >= block_num )
-         skip = skip_witness_signature
-              | skip_transaction_signatures
-              | skip_transaction_dupe_check
-              | skip_fork_db
-              | skip_block_size_check
-              | skip_tapos_check
-              | skip_authority_check
-              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
-              | skip_undo_history_check
-              | skip_witness_schedule_check
-              | skip_validate
-              | skip_validate_invariants
-              ;
-   }
-
    detail::with_skip_flags( *this, skip, [&]()
    {
       _apply_block( next_block );
@@ -2962,6 +2911,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (next_block) );*/
+
+   auto block_num = next_block.block_num();
 
    //fc::time_point end_time = fc::time_point::now();
    //fc::microseconds dt = end_time - begin_time;
@@ -2996,6 +2947,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
+#ifndef ENABLE_STD_ALLOCATOR
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
@@ -3031,6 +2983,7 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
             elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
       }
    }
+#endif
 }
 
 void database::_apply_block( const signed_block& next_block )
@@ -3130,8 +3083,10 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   required_automated_actions req_actions;
+   optional_automated_actions opt_actions;
    /// parse witness version reporting
-   process_header_extensions( next_block );
+   process_header_extensions( next_block, req_actions, opt_actions );
 
    if( has_hardfork( STEEM_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
@@ -3168,6 +3123,12 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_transactions();
    clear_expired_orders();
    clear_expired_delegations();
+
+   if( next_block.block_num() % 100000 == 0 )
+   {
+
+   }
+
    update_witness_schedule(*this);
 
    update_median_feed();
@@ -3187,23 +3148,40 @@ void database::_apply_block( const signed_block& next_block )
    expire_escrow_ratification();
    process_decline_voting_rights();
 
+   generate_required_actions();
+   generate_optional_actions();
+
+   process_required_actions( req_actions );
+   process_optional_actions( opt_actions );
+
    process_hardforks();
 
    // notify observers that the block has been applied
    notify_post_apply_block( note );
 
    notify_changed_objects();
-} //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
-FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
-}
+
+   // This moves newly irreversible blocks from the fork db to the block log
+   // and commits irreversible state to the database. This should always be the
+   // last call of applying a block because it is the only thing that is not
+   // reversible.
+   migrate_irreversible_state();
+   trim_cache();
+} FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
 {
-   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, required_automated_actions& req_actions, optional_automated_actions& opt_actions, database& db ) :
+      _witness( witness ),
+      _req_actions( req_actions ),
+      _opt_actions( opt_actions ),
+      _db( db ) {}
 
    typedef void result_type;
 
    const std::string& _witness;
+   required_automated_actions& _req_actions;
+   optional_automated_actions& _opt_actions;
    database& _db;
 
    void operator()( const void_t& obj ) const
@@ -3238,16 +3216,25 @@ struct process_header_visitor
          });
    }
 
-   template<typename T>
-   void operator()( const T& unknown_obj ) const
+   void operator()( const required_automated_actions& req_actions ) const
    {
-      FC_ASSERT( false, "Unknown extension in block header" );
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
+
+FC_TODO( "Remove when optional automated actions are created" )
+#ifdef IS_TEST_NET
+   void operator()( const optional_automated_actions& opt_actions ) const
+   {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
+      std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
+   }
+#endif
 };
 
-void database::process_header_extensions( const signed_block& next_block )
+void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
 {
-   process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, req_actions, opt_actions, *this );
 
    for( const auto& e : next_block.extensions )
       e.visit( _v );
@@ -3312,8 +3299,16 @@ try {
 #endif
             if( has_hardfork( STEEM_HARDFORK_0_14__230 ) )
             {
+               // This block limits the effective median price to force SBD to remain at or
+               // below 10% of the combined market cap of STEEM and SBD.
+               //
+               // For example, if we have 500 STEEM and 100 SBD, the price is limited to
+               // 900 SBD / 500 STEEM which works out to be $1.80.  At this price, 500 Steem
+               // would be valued at 500 * $1.80 = $900.  100 SBD is by definition always $100,
+               // so the combined market cap is $900 + $100 = $1000.
+
                const auto& gpo = get_dynamic_global_properties();
-               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply ); // This price limits SBD to 10% market cap
+               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
 
                if( min_price > fho.current_median_history )
                   fho.current_median_history = min_price;
@@ -3356,6 +3351,8 @@ void database::_apply_transaction(const signed_transaction& trx)
       try
       {
          trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEM_MAX_SIG_CHECK_DEPTH,
+            has_hardfork( STEEM_HARDFORK_0_20 ) || is_producing() ? STEEM_MAX_AUTHORITY_MEMBERSHIP : 0,
+            has_hardfork( STEEM_HARDFORK_0_20 ) || is_producing() ? STEEM_MAX_SIG_CHECK_ACCOUNTS : 0,
             has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
       }
       catch( protocol::tx_missing_active_auth& e )
@@ -3415,7 +3412,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   operation_notification note(op);
+   operation_notification note = create_operation_notification( op );
    notify_pre_apply_operation( note );
 
    if( _benchmark_dumper.is_enabled() )
@@ -3429,6 +3426,120 @@ void database::apply_operation(const operation& op)
    notify_post_apply_operation( note );
 }
 
+struct action_equal_visitor
+{
+   typedef bool result_type;
+
+   const required_automated_action& action_a;
+
+   action_equal_visitor( const required_automated_action& a ) : action_a( a ) {}
+
+   template< typename Action >
+   bool operator()( const Action& action_b )const
+   {
+      if( action_a.which() != required_automated_action::tag< Action >::value ) return false;
+
+      return action_a.get< Action >() == action_b;
+   }
+};
+
+void database::process_required_actions( const required_automated_actions& actions )
+{
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
+   auto actions_itr = actions.begin();
+   uint64_t total_actions_size = 0;
+
+   while( true )
+   {
+      auto pending_itr = pending_action_idx.begin();
+
+      if( actions_itr == actions.end() )
+      {
+         // We're done processing actions in the block.
+         if( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= head_block_time() )
+         {
+            total_actions_size += fc::raw::pack_size( pending_itr->action );
+            const auto& gpo = get_dynamic_global_properties();
+            uint64_t required_actions_partition_size = ( gpo.maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
+            FC_ASSERT( total_actions_size > required_actions_partition_size,
+               "Expected action was not included in block. total_actions_size: ${as}, required_actions_partition_action: ${rs}, pending_action: ${pa}",
+               ("as", total_actions_size)
+               ("rs", required_actions_partition_size)
+               ("pa", *pending_itr) );
+         }
+         break;
+      }
+
+      FC_ASSERT( pending_itr != pending_action_idx.end(),
+         "Block included required action that does not exist in queue" );
+
+      action_equal_visitor equal_visitor( pending_itr->action );
+      FC_ASSERT( actions_itr->visit( equal_visitor ),
+         "Unexpected action included. Expected: ${e} Observed: ${o}",
+         ("e", pending_itr->action)("o", *actions_itr) );
+
+      apply_required_action( *actions_itr );
+
+      total_actions_size += fc::raw::pack_size( *actions_itr );
+
+      remove( *pending_itr );
+      ++actions_itr;
+   }
+}
+
+void database::apply_required_action( const required_automated_action& a )
+{
+   required_action_notification note( a );
+   notify_pre_apply_required_action( note );
+
+   _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_required_action( note );
+}
+
+void database::process_optional_actions( const optional_automated_actions& actions )
+{
+   static const action_validate_visitor validate_visitor;
+
+   for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
+   {
+      actions_itr->visit( validate_visitor );
+
+      // There is no execution check because we don't have a good way of indexing into local
+      // optional actions from those contained in a block. It is the responsibility of the
+      // action evaluator to prevent early execution.
+      apply_optional_action( *actions_itr );
+   }
+
+   // Clear out "expired" optional_actions. If the block when an optional action was generated
+   // has become irreversible then a super majority of witnesses have chosen to not include it
+   // and it is safe to delete.
+   const auto& pending_action_idx = get_index< pending_optional_action_index, by_execution >();
+   auto pending_itr = pending_action_idx.begin();
+   auto lib = fetch_block_by_number( get_dynamic_global_properties().last_irreversible_block_num );
+
+   // This is always valid when running on mainnet because there are irreversible blocks
+   // Testnet and unit tests, not so much. Could be ifdeffed with IS_TEST_NET, but seems
+   // like a reasonable check and will be optimized via speculative execution.
+   if( lib.valid() )
+   {
+      while( pending_itr != pending_action_idx.end() && pending_itr->execution_time <= lib->timestamp )
+      {
+         remove( *pending_itr );
+         pending_itr = pending_action_idx.begin();
+      }
+   }
+}
+
+void database::apply_optional_action( const optional_automated_action& a )
+{
+   optional_action_notification note( a );
+   notify_pre_apply_optional_action( note );
+
+   _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   notify_post_apply_optional_action( note );
+}
 
 template <typename TFunction> struct fcall {};
 
@@ -3509,6 +3620,30 @@ boost::signals2::connection database::any_apply_operation_handler_impl( const ap
       return _post_apply_operation_signal.connect(group, complex_func);
 }
 
+boost::signals2::connection database::add_pre_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_required_action_signal, func, plugin, group, "->required_action");
+}
+
+boost::signals2::connection database::add_post_apply_required_action_handler( const apply_required_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_required_action_signal, func, plugin, group, "<-required_action");
+}
+
+boost::signals2::connection database::add_pre_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_pre_apply_optional_action_signal, func, plugin, group, "->optional_action");
+}
+
+boost::signals2::connection database::add_post_apply_optional_action_handler( const apply_optional_action_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_post_apply_optional_action_signal, func, plugin, group, "<-optional_action");
+}
+
 boost::signals2::connection database::add_pre_apply_operation_handler( const apply_operation_handler_t& func,
    const abstract_plugin& plugin, int32_t group )
 {
@@ -3561,6 +3696,12 @@ boost::signals2::connection database::add_post_reindex_handler(const reindex_han
    const abstract_plugin& plugin, int32_t group )
 {
    return connect_impl(_post_reindex_signal, func, plugin, group, "<-reindex");
+}
+
+boost::signals2::connection database::add_generate_optional_actions_handler(const generate_optional_actions_handler_t& func,
+   const abstract_plugin& plugin, int32_t group )
+{
+   return connect_impl(_generate_optional_actions_signal, func, plugin, group, "->generate_optional_actions");
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3746,38 +3887,66 @@ void database::update_last_irreversible_block()
       }
    }
 
-   commit( dpo.last_irreversible_block_num );
-
    for( uint32_t i = old_last_irreversible; i <= dpo.last_irreversible_block_num; ++i )
    {
       notify_irreversible_block( i );
    }
-
-   if( !( get_node_properties().skip_flags & skip_block_log ) )
-   {
-      // output to block log based on new last irreverisible block num
-      const auto& tmp_head = _block_log.head();
-      uint64_t log_head_num = 0;
-
-      if( tmp_head )
-         log_head_num = tmp_head->block_num();
-
-      if( log_head_num < dpo.last_irreversible_block_num )
-      {
-         while( log_head_num < dpo.last_irreversible_block_num )
-         {
-            shared_ptr< fork_item > block = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
-            FC_ASSERT( block, "Current fork in the fork database does not contain the last_irreversible_block" );
-            _block_log.append( block->data );
-            log_head_num++;
-         }
-
-         _block_log.flush();
-      }
-   }
-
-   _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
 } FC_CAPTURE_AND_RETHROW() }
+
+void database::migrate_irreversible_state()
+{
+   // This method should happen atomically. We cannot prevent unclean shutdown in the middle
+   // of the call, but all side effects happen at the end to minize the chance that state
+   // invariants will be violated.
+   try
+   {
+      const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+
+      auto fork_head = _fork_db.head();
+      if( fork_head )
+      {
+         FC_ASSERT( fork_head->num == dpo.head_block_number, "Fork Head: ${f} Chain Head: ${c}", ("f",fork_head->num)("c", dpo.head_block_number) );
+      }
+
+      if( !( get_node_properties().skip_flags & skip_block_log ) )
+      {
+         // output to block log based on new last irreverisible block num
+         const auto& tmp_head = _block_log.head();
+         uint64_t log_head_num = 0;
+         vector< item_ptr > blocks_to_write;
+
+         if( tmp_head )
+            log_head_num = tmp_head->block_num();
+
+         if( log_head_num < dpo.last_irreversible_block_num )
+         {
+            // Check for all blocks that we want to write out to the block log but don't write any
+            // unless we are certain they all exist in the fork db
+            while( log_head_num < dpo.last_irreversible_block_num )
+            {
+               item_ptr block_ptr = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
+               FC_ASSERT( block_ptr, "Current fork in the fork database does not contain the last_irreversible_block" );
+               blocks_to_write.push_back( block_ptr );
+               log_head_num++;
+            }
+
+            for( auto block_itr = blocks_to_write.begin(); block_itr != blocks_to_write.end(); ++block_itr )
+            {
+               _block_log.append( block_itr->get()->data );
+            }
+
+            _block_log.flush();
+         }
+      }
+
+      // This deletes blocks from the fork db
+      _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
+
+      // This deletes undo state
+      commit( dpo.last_irreversible_block_num );
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
 
 
 bool database::apply_order( const limit_order_object& new_order_object )
@@ -4026,6 +4195,7 @@ void database::clear_expired_delegations()
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
             a.voting_manabar.regenerate_mana( params, head_block_time() );
             a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
          }
@@ -4470,6 +4640,17 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
    }
 }
 
+void database::generate_required_actions()
+{
+
+}
+
+void database::generate_optional_actions()
+{
+   static const generate_optional_actions_notification note;
+   STEEM_TRY_NOTIFY( _generate_optional_actions_signal, note );
+}
+
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEM_GENESIS_TIME );
@@ -4531,10 +4712,10 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_19 ] = fc::time_point_sec( STEEM_HARDFORK_0_19_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_19 ] = STEEM_HARDFORK_0_19_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
+#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
@@ -4762,7 +4943,7 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.recent_claims = STEEM_HF_17_RECENT_CLAIMS;
 #endif
                rfo.author_reward_curve = curve_id::quadratic;
-               rfo.curation_reward_curve = curve_id::quadratic_curation;
+               rfo.curation_reward_curve = curve_id::bounded_curation;
             });
 
             // As a shortcut in payout processing, we use the id as an array index.
@@ -4890,11 +5071,25 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEM_HARDFORK_0_21:
+      {
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
                gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
             });
          break;
+      }
+      case STEEM_SMT_HARDFORK:
+      {
+#ifdef STEEM_ENABLE_SMT
+         replenish_nai_pool( *this );
+#endif
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
+         });
+
+         break;
+      }
       default:
          break;
    }
@@ -4928,7 +5123,7 @@ void database::validate_invariants()const
 {
    try
    {
-      const auto& account_idx = get_index<account_index>().indices().get<by_name>();
+      const auto& account_idx = get_index< account_index, by_name >();
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
@@ -5170,7 +5365,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       } );
 
       // Need to update all VESTS in accounts and the total VESTS in the dgpo
-      for( const auto& account : get_index<account_index>().indices() )
+      for( const auto& account : get_index< account_index, by_id >() )
       {
          modify( account, [&]( account_object& a )
          {
@@ -5311,45 +5506,9 @@ void database::retally_witness_vote_counts( bool force )
    }
 }
 
-#ifdef STEEM_ENABLE_SMT
-// 1. NAI number is stored in 32 bits, minus 4 for precision, minus 1 for control.
-// 2. NAI string has 8 characters (each between '0' and '9') available (11 minus '@@', minus checksum character is 8 )
-// 3. Max 27 bit decimal is 134,217,727 but only 8 characters are available to represent it as string so we are left
-//    with [0 : 99,999,999] range.
-// 4. The numbers starting with 0 decimal digit are reserved. Now we are left with 10 milions of reserved NAIs
-//    [0 : 09,999,999] and 90 millions available for SMT creators [10,000,000 : 99,999,999]
-// 5. The least significant bit is used as liquid/vesting variant indicator so the 10 and 90 milions are numbers
-//    of liquid/vesting *pairs* of reserved/available NAIs.
-// 6. 45 milions of SMT await for their creators.
-
-vector< asset_symbol_type > database::get_smt_next_identifier()
+optional< chainbase::database::session >& database::pending_transaction_session()
 {
-   // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
-   // Although a container of available nais is returned, it contains only one entry for simplicity.
-   // Note that no decimal places argument is required from SMT creator at this stage.
-   // This is because asset_symbol_type's to_string method omits the precision when serializing.
-   // For appropriate use of this method see e.g. smt_database_fixture::create_smt
-
-   uint8_t decimal_places = 0;
-
-   FC_ASSERT( _next_available_nai >= SMT_MIN_NON_RESERVED_NAI );
-   FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
-   // Assume that _next_available_nai value shows the liquid version of NAI.
-   FC_ASSERT( (_next_available_nai & 0x1) == 0, "Can't start with vesting version of NAI." );
-   uint32_t new_nai = _next_available_nai;
-   // Skip vesting version of produced NAI - it differs only by least significant bit set.
-   _next_available_nai += 2;
-
-   uint32_t new_asset_num = (new_nai << 5) | 0x10 | decimal_places;
-   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( new_asset_num );
-   new_symbol.validate();
-   FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
-
-   return vector< asset_symbol_type >( 1, new_symbol );
+   return _pending_tx_session;
 }
-#endif
-
-index_info::index_info() {}
-index_info::~index_info() {}
 
 } } //steem::chain

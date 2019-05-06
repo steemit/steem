@@ -2,6 +2,7 @@
 #include <boost/program_options.hpp>
 
 #include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
@@ -13,6 +14,8 @@
 #include <steem/plugins/witness/witness_plugin.hpp>
 
 #include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
+
+#include <steem/chain/smt_objects/nai_pool_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -79,7 +82,7 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -145,6 +148,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.shared_file_size = size;
+      args.database_cfg = steem::utilities::default_database_configuration();
       db->open( args );
    }
 
@@ -152,7 +156,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
 
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -191,6 +195,7 @@ live_database_fixture::live_database_fixture()
          database::open_args args;
          args.data_dir = _chain_dir;
          args.shared_mem_dir = args.data_dir;
+         args.database_cfg = steem::utilities::default_database_configuration();
          db->open( args );
       }
 
@@ -233,20 +238,14 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
-   auto available_nais =  db->get_smt_next_identifier();
-   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
-   const asset_symbol_type& new_nai = available_nais[0];
+   static std::vector< asset_symbol_type >::size_type next_nai = 0;
+   auto available_nais = db->get< nai_pool_object >().pool();
+   FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_nai_pool." );
+   const asset_symbol_type& new_nai = available_nais[ next_nai++ % available_nais.size() ];
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
 }
 #endif
-
-string database_fixture::generate_anon_acct_name()
-{
-   // names of the form "anon-acct-x123" ; the "x" is necessary
-   //    to workaround issue #46
-   return "anon-acct-x" + std::to_string( anon_acct_count++ );
-}
 
 void database_fixture::open_database()
 {
@@ -255,12 +254,19 @@ void database_fixture::open_database()
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
 
+      idump( (data_dir->path()) );
+
       database::open_args args;
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
       args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      args.database_cfg = steem::utilities::default_database_configuration();
       db->open(args);
+   }
+   else
+   {
+      idump( (data_dir->path()) );
    }
 }
 
@@ -657,8 +663,8 @@ void database_fixture::validate_database()
 #ifdef STEEM_ENABLE_SMT
 
 template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
-   uint8_t token_decimal_places )
+asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+   uint32_t nai, uint8_t token_decimal_places )
 {
    smt_create_operation op;
    signed_transaction tx;
@@ -670,9 +676,9 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
-      op.symbol = this->get_new_smt_symbol( token_decimal_places, this->db );
+      op.symbol = asset_symbol_type::from_nai( nai, token_decimal_places );
       op.precision = op.symbol.decimals();
-      op.smt_creation_fee = ASSET( "1000.000 TBD" );
+      op.smt_creation_fee = this->db->get_dynamic_global_properties().smt_creation_fee;
       op.control_account = account_name;
 
       tx.operations.push_back( op );
@@ -688,23 +694,38 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account
    return op.symbol;
 }
 
-void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)
+template< typename T >
+asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
+   uint8_t token_decimal_places )
+{
+   asset_symbol_type symbol;
+   try
+   {
+      auto nai_symbol = this->get_new_smt_symbol( token_decimal_places, this->db );
+      symbol = create_smt_with_nai( account_name, key, nai_symbol.to_nai(), token_decimal_places );
+   }
+   FC_LOG_AND_RETHROW();
+
+   return symbol;
+}
+
+void sub_set_create_op( smt_create_operation* op, account_name_type control_acount, chain::database& db )
 {
    op->precision = op->symbol.decimals();
-   op->smt_creation_fee = ASSET( "1000.000 TBD" );
+   op->smt_creation_fee = db.get_dynamic_global_properties().smt_creation_fee;
    op->control_account = control_acount;
 }
 
-void set_create_op(chain::database* db, smt_create_operation* op, account_name_type control_account, uint8_t token_decimal_places)
+void set_create_op( smt_create_operation* op, account_name_type control_account, uint8_t token_decimal_places, chain::database& db )
 {
-   op->symbol = database_fixture::get_new_smt_symbol( token_decimal_places, db );
-   sub_set_create_op(op, control_account);
+   op->symbol = database_fixture::get_new_smt_symbol( token_decimal_places, &db );
+   sub_set_create_op( op, control_account, db );
 }
 
-void set_create_op(smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places)
+void set_create_op( smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places, chain::database& db )
 {
    op->symbol.from_nai(token_nai, token_decimal_places);
-   sub_set_create_op(op, control_account);
+   sub_set_create_op( op, control_account, db );
 }
 
 template< typename T >
@@ -722,9 +743,9 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
 
-      set_create_op(this->db, &op0, control_account_name, 0);
-      set_create_op(this->db, &op1, control_account_name, 1);
-      set_create_op(this->db, &op2, control_account_name, 1);
+      set_create_op( &op0, control_account_name, 0, *this->db );
+      set_create_op( &op1, control_account_name, 1, *this->db );
+      set_create_op( &op2, control_account_name, 1, *this->db );
 
       signed_transaction tx;
       tx.operations.push_back( op0 );
@@ -740,6 +761,11 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       retVal[0] = op0.symbol;
       retVal[1] = op1.symbol;
       retVal[2] = op2.symbol;
+      std::sort(retVal.begin(), retVal.end(),
+           [](const asset_symbol_type & a, const asset_symbol_type & b) -> bool
+      {
+         return a.to_nai() < b.to_nai();
+      });
       return retVal;
    }
    FC_LOG_AND_RETHROW();
@@ -759,7 +785,7 @@ void t_smt_database_fixture< T >::create_invalid_smt( const char* control_accoun
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
-   STEEM_REQUIRE_THROW( set_create_op(this->db, &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
+   STEEM_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
 }
 
 template< typename T >
@@ -768,11 +794,11 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
 {
    // Fail due to the same nai & precision.
    smt_create_operation op_same;
-   set_create_op( &op_same, control_account_name, existing_smt.to_nai(), existing_smt.decimals() );
+   set_create_op( &op_same, control_account_name, existing_smt.to_nai(), existing_smt.decimals(), *this->db );
    push_invalid_operation( op_same, key, this->db );
    // Fail due to the same nai (though different precision).
    smt_create_operation op_same_nai;
-   set_create_op( &op_same_nai, control_account_name, existing_smt.to_nai(), existing_smt.decimals() == 0 ? 1 : 0 );
+   set_create_op( &op_same_nai, control_account_name, existing_smt.to_nai(), existing_smt.decimals() == 0 ? 1 : 0, *this->db );
    push_invalid_operation (op_same_nai, key, this->db );
 }
 
@@ -900,7 +926,7 @@ json_rpc_database_fixture::json_rpc_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -924,7 +950,7 @@ json_rpc_database_fixture::json_rpc_database_fixture()
 }
 
 json_rpc_database_fixture::~json_rpc_database_fixture()
-{ try {
+{
    // If we're unwinding due to an exception, don't do any more checks.
    // This way, boost test's last checkpoint tells us approximately where the error was.
    if( !std::uncaught_exception() )
@@ -935,7 +961,7 @@ json_rpc_database_fixture::~json_rpc_database_fixture()
    if( data_dir )
       db->wipe( data_dir->path(), data_dir->path(), true );
    return;
-} FC_CAPTURE_AND_RETHROW() }
+}
 
 fc::variant json_rpc_database_fixture::get_answer( std::string& request )
 {

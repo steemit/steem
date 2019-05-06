@@ -1,7 +1,26 @@
 #pragma once
+#include <steem/protocol/required_automated_actions.hpp>
+#include <steem/protocol/optional_automated_actions.hpp>
 #include <steem/protocol/base.hpp>
 
 namespace steem { namespace protocol {
+
+   typedef vector< required_automated_action > required_automated_actions;
+   typedef vector< optional_automated_action > optional_automated_actions;
+
+   FC_TODO( "Remove when automated actions are created" )
+   typedef static_variant<
+      void_t,
+      version,                // Normal witness version reporting, for diagnostics and voting
+      hardfork_version_vote   // Voting for the next hardfork to trigger
+#ifdef IS_TEST_NET
+,
+      required_automated_actions,
+      optional_automated_actions
+#endif
+      >                                block_header_extensions;
+
+   typedef flat_set<block_header_extensions > block_header_extensions_type;
 
    struct block_header
    {
@@ -28,6 +47,8 @@ namespace steem { namespace protocol {
 
 
 } } // steem::protocol
+
+FC_REFLECT_TYPENAME( steem::protocol::block_header_extensions )
 
 FC_REFLECT( steem::protocol::block_header, (previous)(timestamp)(witness)(transaction_merkle_root)(extensions) )
 FC_REFLECT_DERIVED( steem::protocol::signed_block_header, (steem::protocol::block_header), (witness_signature) )

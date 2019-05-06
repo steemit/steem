@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
 #include <steem/chain/database.hpp>
@@ -702,13 +705,22 @@ private:
 
 void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_options::variables_map& options)
 {
+    fc::mutable_variant_object state_opts;
+
    typedef std::pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-rocksdb-track-account-range", _tracked_accounts, pairstring);
+
+   state_opts[ "account-history-rocksdb-track-account-range" ] = _tracked_accounts;
 
    if(options.count("account-history-rocksdb-whitelist-ops"))
    {
       const auto& args = options.at("account-history-rocksdb-whitelist-ops").as<std::vector<std::string>>();
       storeOpFilteringParameters(args, &_op_list);
+
+      if( _op_list.size() )
+      {
+         state_opts["account-history-rocksdb-whitelist-ops"] = _op_list;
+      }
    }
 
    if(_op_list.empty() == false)
@@ -718,10 +730,17 @@ void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_o
    {
       const auto& args = options.at("account-history-rocksdb-blacklist-ops").as<std::vector<std::string>>();
       storeOpFilteringParameters(args, &_blacklisted_op_list);
+
+      if( _blacklisted_op_list.size() )
+      {
+         state_opts["account-history-rocksdb-blacklist-ops"] = _blacklisted_op_list;
+      }
    }
 
    if(_blacklisted_op_list.empty() == false)
       ilog( "Account History: blacklisting ops ${o}", ("o", _blacklisted_op_list) );
+
+   appbase::app().get_plugin< chain::chain_plugin >().report_state_options( _self.name(), state_opts );
 }
 
 inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const

@@ -132,7 +132,7 @@ void webserver_plugin_impl::start_webserver()
             if( http_endpoint && http_endpoint == ws_endpoint )
             {
                ws_server.set_http_handler( boost::bind( &webserver_plugin_impl::handle_http_message, this, &ws_server, _1 ) );
-               ilog( "start listending for http requests" );
+               ilog( "start listening for http requests" );
             }
 
             ilog( "start listening for ws requests" );
@@ -254,6 +254,7 @@ void webserver_plugin_impl::handle_http_message( websocket_server_type* server, 
       try
       {
          con->set_body( api->call( body ) );
+         con->append_header( "Content-Type", "application/json" );
          con->set_status( websocketpp::http::status_code::ok );
       }
       catch( fc::exception& e )

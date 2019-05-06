@@ -81,12 +81,21 @@ void application::set_program_options()
       boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->get_name());
       boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->get_name());
       plug.second->set_program_options(plugin_cli_opts, plugin_cfg_opts);
-      if(plugin_cfg_opts.options().size()) {
-         my->_app_options.add(plugin_cfg_opts);
-         my->_cfg_options.add(plugin_cfg_opts);
-      }
       if(plugin_cli_opts.options().size())
          my->_app_options.add(plugin_cli_opts);
+      if(plugin_cfg_opts.options().size())
+      {
+         my->_cfg_options.add(plugin_cfg_opts);
+
+         for(const boost::shared_ptr<bpo::option_description> od : plugin_cfg_opts.options())
+         {
+            // If the config option is not already present as a cli option, add it.
+            if( plugin_cli_opts.find_nothrow( od->long_name(), false ) == nullptr )
+            {
+               my->_app_options.add( od );
+            }
+         }
+      }
    }
 }
 
@@ -215,17 +224,21 @@ void application::exec() {
 
    std::shared_ptr<boost::asio::signal_set> sigint_set(new boost::asio::signal_set(*io_serv, SIGINT));
    sigint_set->async_wait([sigint_set,this](const boost::system::error_code& err, int num) {
+     std::cout << "Caught SIGINT\n";
      quit();
      sigint_set->cancel();
    });
 
    std::shared_ptr<boost::asio::signal_set> sigterm_set(new boost::asio::signal_set(*io_serv, SIGTERM));
    sigterm_set->async_wait([sigterm_set,this](const boost::system::error_code& err, int num) {
+     std::cout << "Caught SIGTERM\n";
      quit();
      sigterm_set->cancel();
    });
 
    io_serv->run();
+
+   std::cout << "Shutting down...\n";
 
    shutdown(); /// perform synchronous shutdown
 }

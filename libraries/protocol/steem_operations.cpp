@@ -8,6 +8,12 @@
 
 namespace steem { namespace protocol {
 
+   void validate_auth_size( const authority& a )
+   {
+      size_t size = a.account_auths.size() + a.key_auths.size();
+      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+   }
+
    void account_create_operation::validate() const
    {
       validate_account_name( new_account_name );
@@ -153,6 +159,9 @@ namespace steem { namespace protocol {
       owner.validate();
       active.validate();
       posting.validate();
+      validate_auth_size( owner );
+      validate_auth_size( active );
+      validate_auth_size( posting );
 
       if( json_metadata.size() > 0 )
       {
@@ -313,18 +322,18 @@ namespace steem { namespace protocol {
 
    void custom_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
-      FC_ASSERT( required_auths.size() > 0, "at least on account must be specified" );
+      FC_ASSERT( required_auths.size() > 0, "at least one account must be specified" );
    }
    void custom_json_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
-      FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
       FC_ASSERT( id.size() <= 32, "id is too long" );
       FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
       FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
    void custom_binary_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
-      FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
       FC_ASSERT( id.size() <= 32, "id is too long" );
       for( const auto& a : required_auths ) a.validate();
    }

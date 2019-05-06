@@ -30,7 +30,7 @@ class SpecialTimeEnv : public EnvWrapper {
   }
 
   void Sleep(int64_t sleep_time) { current_time_ += sleep_time; }
-  virtual Status GetCurrentTime(int64_t* current_time) override {
+  Status GetCurrentTime(int64_t* current_time) override {
     *current_time = current_time_;
     return Status::OK();
   }
@@ -43,7 +43,7 @@ class TtlTest : public testing::Test {
  public:
   TtlTest() {
     env_.reset(new SpecialTimeEnv(Env::Default()));
-    dbname_ = test::TmpDir() + "/db_ttl";
+    dbname_ = test::PerThreadDBPath("db_ttl");
     options_.create_if_missing = true;
     options_.env = env_.get();
     // ensure that compaction is kicked in to always strip timestamp from kvs
@@ -53,7 +53,7 @@ class TtlTest : public testing::Test {
     DestroyDB(dbname_, Options());
   }
 
-  ~TtlTest() {
+  ~TtlTest() override {
     CloseTtl();
     DestroyDB(dbname_, Options());
   }
@@ -283,6 +283,12 @@ class TtlTest : public testing::Test {
     delete dbiter;
   }
 
+  // Set ttl on open db
+  void SetTtl(int32_t ttl, ColumnFamilyHandle* cf = nullptr) {
+    ASSERT_TRUE(db_ttl_);
+    cf == nullptr ? db_ttl_->SetTtl(ttl) : db_ttl_->SetTtl(cf, ttl);
+  }
+
   class TestFilter : public CompactionFilter {
    public:
     TestFilter(const int64_t kSampleSize, const std::string& kNewValue)
@@ -295,9 +301,8 @@ class TtlTest : public testing::Test {
     // Keeps key if it is in [kSampleSize_/3, 2*kSampleSize_/3),
     // Change value if it is in [2*kSampleSize_/3, kSampleSize_)
     // Eg. kSampleSize_=6. Drop:key0-1...Keep:key2-3...Change:key4-5...
-    virtual bool Filter(int level, const Slice& key,
-                        const Slice& value, std::string* new_value,
-                        bool* value_changed) const override {
+    bool Filter(int /*level*/, const Slice& key, const Slice& /*value*/,
+                std::string* new_value, bool* value_changed) const override {
       assert(new_value != nullptr);
 
       std::string search_str = "0123456789";
@@ -328,9 +333,7 @@ class TtlTest : public testing::Test {
       }
     }
 
-    virtual const char* Name() const override {
-      return "TestFilter";
-    }
+    const char* Name() const override { return "TestFilter"; }
 
    private:
     const int64_t kSampleSize_;
@@ -344,17 +347,15 @@ class TtlTest : public testing::Test {
           kNewValue_(kNewValue) {
       }
 
-      virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
-          const CompactionFilter::Context& context) override {
+      std::unique_ptr<CompactionFilter> CreateCompactionFilter(
+          const CompactionFilter::Context& /*context*/) override {
         return std::unique_ptr<CompactionFilter>(
             new TestFilter(kSampleSize_, kNewValue_));
       }
 
-      virtual const char* Name() const override {
-        return "TestFilterFactory";
-      }
+      const char* Name() const override { return "TestFilterFactory"; }
 
-    private:
+     private:
       const int64_t kSampleSize_;
       const std::string kNewValue_;
   };
@@ -364,14 +365,14 @@ class TtlTest : public testing::Test {
   static const int64_t kSampleSize_ = 100;
   std::string dbname_;
   DBWithTTL* db_ttl_;
-  unique_ptr<SpecialTimeEnv> env_;
+  std::unique_ptr<SpecialTimeEnv> env_;
 
  private:
   Options options_;
   KVMap kvmap_;
   KVMap::iterator kv_it_;
   const std::string kNewValue_ = "new_value";
-  unique_ptr<CompactionFilter> test_comp_filter_;
+  std::unique_ptr<CompactionFilter> test_comp_filter_;
 }; // class TtlTest
 
 // If TTL is non positive or not provided, the behaviour is TTL = infinity
@@ -626,6 +627,18 @@ TEST_F(TtlTest, ColumnFamiliesTest) {
   db_ttl_ = nullptr;
 }
 
+// Puts a set of values and checks its absence using Get after ttl
+TEST_F(TtlTest, ChangeTtlOnOpenDb) {
+  MakeKVMap(kSampleSize_);
+
+  OpenTtl(1);                                  // T=0:Open the db with ttl = 2
+  SetTtl(3);
+  // @lint-ignore TXT2 T25377293 Grandfathered in
+  PutValues(0, kSampleSize_);		       // T=0:Insert Set1. Delete at t=2
+  SleepCompactCheck(2, 0, kSampleSize_, true); // T=2:Set1 should be there
+  CloseTtl();
+}
+
 } //  namespace rocksdb
 
 // A black-box test for the ttl wrapper around rocksdb
@@ -637,7 +650,7 @@ int main(int argc, char** argv) {
 #else
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   fprintf(stderr, "SKIPPED as DBWithTTL is not supported in ROCKSDB_LITE\n");
   return 0;
 }

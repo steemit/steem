@@ -1,4 +1,5 @@
 #include <steem/protocol/types_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/schema/schema.hpp>
 #include <steem/schema/schema_impl.hpp>
@@ -88,6 +89,7 @@ int main( int argc, char** argv, char** envp )
    steem_schema ss;
 
    std::vector< std::string > chain_objects;
+   /*
    db.for_each_index_extension< steem::chain::index_info >(
       [&]( std::shared_ptr< steem::chain::index_info > info )
       {
@@ -98,6 +100,8 @@ int main( int argc, char** argv, char** envp )
          add_to_schema_map( ss.schema_map, info->get_schema() );
          ss.chain_object_types.push_back( name );
       } );
+   */
+   add_to_schema_map( ss.schema_map, steem::schema::get_schema_for_type< steem::protocol::signed_block >() );
 
    std::cout << fc::json::to_string( ss ) << std::endl;
 

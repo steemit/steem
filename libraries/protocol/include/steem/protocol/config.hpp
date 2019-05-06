@@ -43,7 +43,7 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 0) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 6) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -58,7 +58,7 @@
 #define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEM_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
 #define STEEM_UPVOTE_LOCKOUT_SECONDS          (60*60*12)    /// 12 hours
-#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::seconds(12))
+#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE           1
 #define STEEM_MAX_ACCOUNT_CREATION_FEE           int64_t(1000000000)
@@ -227,6 +227,7 @@
 #define STEEM_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEM_MAX_SATOSHIS                    int64_t(4611686018427387903ll)
 #define STEEM_MAX_SIG_CHECK_DEPTH             2
+#define STEEM_MAX_SIG_CHECK_ACCOUNTS          125
 
 #define STEEM_MIN_TRANSACTION_SIZE_LIMIT      1024
 #define STEEM_SECONDS_PER_YEAR                (uint64_t(60*60*24*365ll))
@@ -255,7 +256,7 @@
 #define STEEM_BLOCKCHAIN_PRECISION_DIGITS     3
 #define STEEM_MAX_INSTANCE_ID                 (uint64_t(-1)>>16)
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
-#define STEEM_MAX_AUTHORITY_MEMBERSHIP        10
+#define STEEM_MAX_AUTHORITY_MEMBERSHIP        40
 #define STEEM_MAX_ASSET_WHITELIST_AUTHORITIES 10
 #define STEEM_MAX_URL_LENGTH                  127
 
@@ -269,7 +270,7 @@
 
 #define STEEM_MAX_LIMIT_ORDER_EXPIRATION     (60*60*24*28) // 28 days
 #define STEEM_DELEGATION_RETURN_PERIOD_HF0   (STEEM_CASHOUT_WINDOW_SECONDS)
-#define STEEM_DELEGATION_RETURN_PERIOD_HF20  (STEEM_VOTING_MANA_REGENERATION_SECONDS * 2)
+#define STEEM_DELEGATION_RETURN_PERIOD_HF20  (STEEM_VOTING_MANA_REGENERATION_SECONDS)
 
 #define STEEM_RD_MIN_DECAY_BITS               6
 #define STEEM_RD_MAX_DECAY_BITS              32
@@ -320,7 +321,13 @@
 
 #define SMT_MAX_VOTABLE_ASSETS 2
 #define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
-#define SMT_UPVOTE_LOCKOUT                      (60*60*12)  /// 12 hours
+#define SMT_UPVOTE_LOCKOUT                      (60*60*12)   /// 12 hours
+#define SMT_EMISSION_MIN_INTERVAL_SECONDS       (60*60*6)    /// 6 hours
+#define SMT_EMIT_INDEFINITELY                   (std::numeric_limits<uint32_t>::max())
+#define SMT_MAX_NOMINAL_VOTES_PER_DAY           (1000)
+#define SMT_MAX_VOTES_PER_REGENERATION          ((SMT_MAX_NOMINAL_VOTES_PER_DAY * SMT_VESTING_WITHDRAW_INTERVAL_SECONDS) / 86400)
+#define SMT_DEFAULT_VOTES_PER_REGEN_PERIOD      (50)
+#define SMT_DEFAULT_PERCENT_CURATION_REWARDS    (25 * STEEM_1_PERCENT)
 
 #endif /// STEEM_ENABLE_SMT
 

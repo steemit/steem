@@ -11,8 +11,7 @@
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 
-#include <boost/multi_index_container.hpp>
-
+#include <boost/any.hpp>
 #include <boost/chrono.hpp>
 #include <boost/config.hpp>
 #include <boost/filesystem.hpp>
@@ -63,8 +62,7 @@ namespace helpers
       info->_item_count = index.size();
       info->_item_sizeof = sizeof(typename IndexType::value_type);
       info->_item_additional_allocation = 0;
-      size_t pureNodeSize = sizeof(typename IndexType::node_type) -
-         sizeof(typename IndexType::value_type);
+      size_t pureNodeSize = IndexType::node_size - sizeof(typename IndexType::value_type);
       info->_additional_container_allocation = info->_item_count*pureNodeSize;
    }
 
@@ -203,11 +201,20 @@ namespace chainbase {
          typedef allocator< generic_index >                            allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
 
+         generic_index( allocator<value_type> a, bfs::path p )
+         :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
+         {
+            _revision = _indices.revision();
+         }
+
          generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
+         {
+            _revision = _indices.revision();
+         }
 
          void validate()const {
-            if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
+            if( sizeof(typename MultiIndexType::value_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
                BOOST_THROW_EXCEPTION( std::runtime_error("content of memory does not match data expected by executable") );
          }
 
@@ -263,6 +270,37 @@ namespace chainbase {
 
          const index_type& indices()const { return _indices; }
 
+         void open( const bfs::path& p, const boost::any& o )
+         {
+            _indices.open( p, o );
+            _revision = _indices.revision();
+            typename value_type::id_type next_id = 0;
+            if( _indices.get_metadata( "next_id", next_id ) )
+            {
+               _next_id = next_id;
+            }
+         }
+
+         void close()
+         {
+            _indices.put_metadata( "next_id", _next_id );
+            _indices.close();
+         }
+
+         void wipe( const bfs::path& dir ) { _indices.wipe( dir ); }
+
+         void clear() { _indices.clear(); }
+
+         void flush() { _indices.flush(); }
+
+         size_t get_cache_usage() const { return _indices.get_cache_usage(); }
+
+         size_t get_cache_size() const { return _indices.get_cache_size(); }
+
+         void dump_lb_call_counts() { _indices.dump_lb_call_counts(); }
+
+         void trim_cache() { _indices.trim_cache(); }
+
          class session {
             public:
                session( session&& mv )
@@ -304,11 +342,14 @@ namespace chainbase {
                int64_t        _revision = 0;
          };
 
+         // TODO: This function needs some work to make it consistent on failure.
          session start_undo_session()
          {
+            _indices.set_revision( ++_revision );
+            assert( _indices.revision() == _revision );
             _stack.emplace_back( _indices.get_allocator() );
             _stack.back().old_next_id = _next_id;
-            _stack.back().revision = ++_revision;
+            _stack.back().revision = _revision;
             return session( *this, _revision );
          }
 
@@ -344,7 +385,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
+            _indices.set_revision( --_revision );
+            assert( _indices.revision() == _revision );
          }
 
          /**
@@ -452,7 +494,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
+            _indices.set_revision( --_revision );
+            assert( _indices.revision() == _revision );
          }
 
          /**
@@ -479,6 +522,8 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
+            _indices.set_revision( _revision );
+            assert( _indices.revision() == _revision );
          }
 
       private:
@@ -593,13 +638,24 @@ namespace chainbase {
          virtual uint32_t type_id()const  = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
+         virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
+         virtual void open( const bfs::path&, const boost::any& ) = 0;
+         virtual void close() = 0;
+         virtual void wipe( const bfs::path& dir ) = 0;
+         virtual void clear() = 0;
+         virtual void flush() = 0;
+         virtual size_t get_cache_usage() const = 0;
+         virtual size_t get_cache_size() const = 0;
+         virtual void dump_lb_call_counts() = 0;
+         virtual void trim_cache() = 0;
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
-      private:
+      protected:
          void*              _idx_ptr;
+      private:
          index_extensions   _extensions;
    };
 
@@ -609,6 +665,11 @@ namespace chainbase {
          using abstract_index::statistic_info;
 
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
+
+         ~index_impl()
+         {
+            delete (BaseIndex*) abstract_index::_idx_ptr;
+         }
 
          virtual unique_ptr<abstract_session> start_undo_session() override {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
@@ -628,8 +689,61 @@ namespace chainbase {
             helpers::index_statistic_provider<index_type> provider;
             return provider.gather_statistics(_base.indices(), onlyStaticInfo);
          }
+
+         virtual void print_stats() const override final
+         {
+            _base.indicies().print_stats();
+         }
+
          virtual size_t size() const override final
-            { return _base.indicies().size(); }
+         {
+            return _base.indicies().size();
+         }
+
+         virtual void open( const bfs::path& p, const boost::any& o ) override final
+         {
+            _base.open( p, o );
+         }
+
+         virtual void close() override final
+         {
+            _base.close();
+         }
+
+         virtual void wipe( const bfs::path& dir ) override final
+         {
+            _base.wipe( dir );
+         }
+
+         virtual void clear() override final
+         {
+            _base.clear();
+         }
+
+         virtual void flush() override final
+         {
+            _base.flush();
+         }
+
+         virtual size_t get_cache_usage() const override final
+         {
+            return _base.get_cache_usage();
+         }
+
+         virtual size_t get_cache_size() const override final
+         {
+            return _base.get_cache_size();
+         }
+
+         virtual void dump_lb_call_counts() override final
+         {
+            _base.dump_lb_call_counts();
+         }
+
+         virtual void trim_cache() override final
+         {
+            _base.trim_cache();
+         }
 
       private:
          BaseIndex& _base;
@@ -706,9 +820,13 @@ namespace chainbase {
          };
 
       public:
-         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0, const boost::any& database_cfg = nullptr );
          void close();
          void flush();
+         size_t get_cache_usage() const;
+         size_t get_cache_size() const;
+         void dump_lb_call_counts();
+         void trim_cache();
          void wipe( const bfs::path& dir );
          void resize( size_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
@@ -795,6 +913,10 @@ namespace chainbase {
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
+         void print_stats()
+         {
+            for( const auto& i : _index_list )  i->print_stats();
+         }
 
          template<typename MultiIndexType>
          void add_index()
@@ -930,7 +1052,10 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
-             if( !obj ) BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             if( !obj )
+             {
+                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             }
              return *obj;
          }
 
@@ -975,7 +1100,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
          {
 #ifndef ENABLE_STD_ALLOCATOR
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
@@ -1002,7 +1127,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
          {
             write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
@@ -1071,9 +1196,15 @@ namespace chainbase {
              if( type_id >= _index_map.size() )
                 _index_map.resize( type_id + 1 );
 
+#ifdef ENABLE_STD_ALLOCATOR
              auto new_index = new index<index_type>( *idx_ptr );
+#else
+             auto new_index = new index<index_type>( *idx_ptr, _data_dir );
+#endif
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
+
+             if( _is_open ) new_index->open( _data_dir, _database_cfg );
          }
 
          read_write_mutex_manager                                    _rw_manager;
@@ -1101,11 +1232,12 @@ namespace chainbase {
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
 
+         bool                                                        _is_open = false;
+
          int32_t                                                     _undo_session_count = 0;
          size_t                                                      _file_size = 0;
+         boost::any                                                  _database_cfg = nullptr;
    };
 
-   template<typename Object, typename... Args>
-   using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
 }  // namepsace chainbase
 

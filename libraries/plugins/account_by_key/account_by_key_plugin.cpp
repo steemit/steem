@@ -1,10 +1,12 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/account_by_key/account_by_key_plugin.hpp>
 #include <steem/plugins/account_by_key/account_by_key_objects.hpp>
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 namespace steem { namespace plugins { namespace account_by_key {
 
@@ -192,7 +194,7 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
       // If the key was not in the authority, add it to the lookup
       if( cached_keys.find( key ) == cached_keys.end() )
       {
-         auto lookup_itr = _db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+         auto lookup_itr = _db.find< key_lookup_object, by_key >( boost::make_tuple( key, a.account ) );
 
          if( lookup_itr == nullptr )
          {
@@ -213,7 +215,7 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    // Loop over the keys that were in authority but are no longer and remove them from the lookup
    for( const auto& key : cached_keys )
    {
-      auto lookup_itr = _db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+      auto lookup_itr = _db.find< key_lookup_object, by_key >( boost::make_tuple( key, a.account ) );
 
       if( lookup_itr != nullptr )
       {
@@ -253,6 +255,8 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
       add_plugin_index< key_lookup_index >(db);
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), fc::variant_object() );
    }
    FC_CAPTURE_AND_RETHROW()
 }

@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/steem/plugins/market_history_api/*.hpp")
 add_library( market_history_api_plugin
              market_history_api_plugin.cpp
              market_history_api.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( market_history_api_plugin market_history_plugin json_rpc_plugin )

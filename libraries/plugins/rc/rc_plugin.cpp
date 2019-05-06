@@ -1,4 +1,6 @@
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 
 #include <steem/plugins/rc/rc_curve.hpp>
@@ -10,11 +12,23 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 #include <steem/jsonball/jsonball.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 #define STEEM_RC_REGEN_TIME   (60*60*24*5)
+// 2020.748973 VESTS == 1.000 STEEM when HF20 occurred on mainnet
+// TODO: What should this value be for testnet?
+#define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
+
+#ifndef IS_TEST_NET
+#define STEEM_HF20_BLOCK_NUM                              26256743
+#endif
+
+// 1.66% is ~2 hours of regen.
+// 2 / ( 24 * 5 ) = 0.01666...
+#define STEEM_RC_MAX_NEGATIVE_PERCENT 166
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -43,45 +57,35 @@ class rc_plugin_impl
       void on_post_apply_transaction( const transaction_notification& note );
       void on_pre_apply_operation( const operation_notification& note );
       void on_post_apply_operation( const operation_notification& note );
+      void on_pre_apply_optional_action( const optional_action_notification& note );
+      void on_post_apply_optional_action( const optional_action_notification& note );
 
       void on_first_block();
       void validate_database();
 
       bool before_first_block()
       {
-         //
-         // This method returns _db.count< rc_account_object >() == 0.
-         // But we know that if this check ever returns false, all
-         // subsequent executions of the check will return false.
-         //
-         // So we can do an optimization which saves the per-op count()
-         // call in the common case with a simple caching algorithm:
-         //
-         // - Initialize the cached check result to true
-         // - Cache a false check result forever
-         // - Don't cache a true check result (i.e. re-run the check
-         // if the cached result is true)
-         //
-         if( _before_first_block_last_result )
-         {
-            _before_first_block_last_result = (_db.count< rc_account_object >() == 0);
-         }
-         return _before_first_block_last_result;
+         return (_db.count< rc_account_object >() == 0);
       }
 
       database&                     _db;
       rc_plugin&                    _self;
 
-      bool                          _before_first_block_last_result = true;
-
       rc_plugin_skip_flags          _skip;
       std::map< account_name_type, int64_t > _account_to_max_rc;
+      uint32_t                      _enable_at_block = 1;
+
+#ifdef IS_TEST_NET
+      std::set< account_name_type > _whitelist;
+#endif
 
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
       boost::signals2::connection   _post_apply_transaction_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
+      boost::signals2::connection   _pre_apply_optional_action_conn;
+      boost::signals2::connection   _post_apply_optional_action_conn;
 };
 
 inline int64_t get_next_vesting_withdrawal( const account_object& account )
@@ -91,16 +95,6 @@ inline int64_t get_next_vesting_withdrawal( const account_object& account )
    int64_t next_withdrawal = (withdraw_per_period <= total_left) ? withdraw_per_period : total_left;
    bool is_done = (account.next_vesting_withdrawal == fc::time_point_sec::maximum());
    return is_done ? 0 : next_withdrawal;
-}
-
-int64_t get_maximum_rc( const account_object& account, const rc_account_object& rc_account )
-{
-   int64_t result = account.vesting_shares.amount.value;
-   result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
-   result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
-   result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
-   result = fc::signed_sat_sub( result, get_next_vesting_withdrawal( account ) );
-   return result;
 }
 
 template< bool account_may_exist = false >
@@ -114,14 +108,30 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
          return;
    }
 
+   if( max_rc_creation_adjustment.symbol == STEEM_SYMBOL )
+   {
+      const dynamic_global_property_object& gpo = db.get_dynamic_global_properties();
+      max_rc_creation_adjustment = max_rc_creation_adjustment * gpo.get_vesting_share_price();
+   }
+   else if( max_rc_creation_adjustment.symbol == VESTS_SYMBOL )
+   {
+      // This occurs naturally when rc_account is initialized, so don't logspam
+      // wlog( "Encountered max_rc_creation_adjustment.symbol == VESTS_SYMBOL creating account ${acct}", ("acct", account.name) );
+   }
+   else
+   {
+      elog( "Encountered unknown max_rc_creation_adjustment creating account ${acct}", ("acct", account.name) );
+      max_rc_creation_adjustment = asset( 0, VESTS_SYMBOL );
+   }
+
    db.create< rc_account_object >( [&]( rc_account_object& rca )
    {
       rca.account = account.name;
-      rca.rc_manabar.current_mana = get_maximum_rc( account, rca );
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
-      rca.max_rc = rca.rc_manabar.current_mana;
-      rca.last_max_rc = get_maximum_rc( account, rca );
+      int64_t max_rc = get_maximum_rc( account, rca );
+      rca.rc_manabar.current_mana = max_rc;
+      rca.last_max_rc = max_rc;
    } );
 }
 
@@ -206,12 +216,24 @@ account_name_type get_resource_user( const signed_transaction& tx )
    return account_name_type();
 }
 
+account_name_type get_resource_user( const optional_automated_action& action )
+{
+   get_resource_user_visitor vtor;
+
+   return action.visit( vtor );
+}
+
 void use_account_rcs(
    database& db,
    const dynamic_global_property_object& gpo,
    const account_name_type& account_name,
    int64_t rc,
-   rc_plugin_skip_flags skip )
+   rc_plugin_skip_flags skip
+#ifdef IS_TEST_NET
+   ,
+   set< account_name_type > whitelist
+#endif
+   )
 {
    if( account_name == account_name_type() )
    {
@@ -224,6 +246,10 @@ void use_account_rcs(
       return;
    }
 
+#ifdef IS_TEST_NET
+   if( whitelist.count( account_name ) ) return;
+#endif
+
    // ilog( "use_account_rcs( ${n}, ${rc} )", ("n", account_name)("rc", rc) );
    const account_object& account = db.get< account_object, by_name >( account_name );
    const rc_account_object& rc_account = db.get< rc_account_object, by_name >( account_name );
@@ -234,36 +260,55 @@ void use_account_rcs(
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
-      rca.rc_manabar.regenerate_mana( mbparams, gpo.time.sec_since_epoch() );
+      rca.rc_manabar.regenerate_mana< true >( mbparams, gpo.time.sec_since_epoch() );
 
       bool has_mana = rc_account.rc_manabar.has_mana( rc );
 
-      if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) && db.is_producing() )
+      if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
-         STEEM_ASSERT( has_mana, plugin_exception,
-            "Account: ${account} needs ${rc_needed} RC. Please wait to transact, or power up STEEM.",
-            ("account", account_name)
-            ("rc_needed", rc)
-            );
+         if( db.is_producing() )
+         {
+            STEEM_ASSERT( has_mana, plugin_exception,
+               "Account: ${account} has ${rc_current} RC, needs ${rc_needed} RC. Please wait to transact, or power up STEEM.",
+               ("account", account_name)
+               ("rc_needed", rc)
+               ("rc_current", rca.rc_manabar.current_mana)
+               );
+         }
+         else
+         {
+            if( !has_mana )
+            {
+               const dynamic_global_property_object& gpo = db.get_dynamic_global_properties();
+               ilog( "Accepting transaction by ${account}, has ${rc_current} RC, needs ${rc_needed} RC, block ${b}, witness ${w}.",
+                  ("account", account_name)
+                  ("rc_needed", rc)
+                  ("rc_current", rca.rc_manabar.current_mana)
+                  ("b", gpo.head_block_number)
+                  ("w", gpo.current_witness)
+                  );
+            }
+         }
       }
 
-      if( (!has_mana) && skip.skip_negative_rc_balance )
+      if( (!has_mana) && ( skip.skip_negative_rc_balance || (gpo.time.sec_since_epoch() <= 1538211600) ) )
          return;
 
       if( skip.skip_deduct_rc )
          return;
-      rca.rc_manabar.use_mana( rc );
+
+      int64_t min_mana = -1 * ( STEEM_RC_MAX_NEGATIVE_PERCENT * mbparams.max_mana ) / STEEM_100_PERCENT;
+
+      rca.rc_manabar.use_mana( rc, min_mana );
    } );
 }
 
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
-   bool debug_print = (gpo.head_block_number > 160785) && (gpo.head_block_number < 160795);
-   if( debug_print )
-   {
-      dlog( "processing tx: ${txid} ${tx}", ("txid", note.transaction_id)("tx", note.transaction) );
-   }
+   if( before_first_block() )
+      return;
+
    int64_t rc_regen = (gpo.total_vesting_shares.amount.value / (STEEM_RC_REGEN_TIME / STEEM_BLOCK_INTERVAL));
 
    rc_transaction_info tx_info;
@@ -293,7 +338,12 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    }
 
    tx_info.resource_user = get_resource_user( note.transaction );
-   use_account_rcs( _db, gpo, tx_info.resource_user, total_cost, _skip );
+   use_account_rcs( _db, gpo, tx_info.resource_user, total_cost, _skip
+#ifdef IS_TEST_NET
+   ,
+   _whitelist
+#endif
+   );
 
    std::shared_ptr< exp_rc_data > export_data =
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
@@ -305,13 +355,38 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
       export_data->tx_info.push_back( tx_info );
 }
 
+struct block_extensions_count_resources_visitor
+{
+   typedef void result_type;
+
+   count_resources_result& _r;
+
+   block_extensions_count_resources_visitor( count_resources_result& r ) : _r( r ) {}
+
+   // Only optional actions need to be counted. We decided in design that
+   // the operation should pay the cost for any required actions created
+   // as a result.
+   void operator()( const optional_automated_actions& opt_actions )
+   {
+      for( const auto& a : opt_actions )
+      {
+         count_resources( a, _r );
+      }
+   }
+
+   template< typename T >
+   void operator()( const T& ) {}
+};
+
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
-
-   if( gpo.head_block_number == 1 )
+   if( before_first_block() )
    {
-      on_first_block();
+      if( gpo.head_block_number == _enable_at_block )
+         on_first_block();
+      else
+         return;
    }
 
    /*
@@ -353,6 +428,12 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       count_resources( tx, count );
    }
 
+   block_extensions_count_resources_visitor ext_visitor( count );
+   for( const auto& e : note.block.extensions )
+   {
+      e.visit( ext_visitor );
+   }
+
    const witness_schedule_object& wso = _db.get_witness_schedule_object();
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
 
@@ -361,7 +442,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
    if( params_obj.resource_param_array[ resource_new_accounts ].resource_dynamics_params !=
        wso.account_subsidy_rd )
    {
-      ilog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
+      dlog( "Copying changed subsidy params from consensus in block ${b}", ("b", gpo.head_block_number) );
       _db.modify( params_obj, [&]( rc_resource_param_object& p )
       {
          p.resource_param_array[ resource_new_accounts ].resource_dynamics_params = wso.account_subsidy_rd;
@@ -469,7 +550,7 @@ void rc_plugin_impl::on_first_block()
    const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
    for( auto it=idx.begin(); it!=idx.end(); ++it )
    {
-      create_rc_account( _db, now.sec_since_epoch(), *it, asset(0, VESTS_SYMBOL ) );
+      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ) );
    }
 
    return;
@@ -510,7 +591,11 @@ struct pre_apply_operation_visitor
    rc_plugin_skip_flags                     _skip;
 
    pre_apply_operation_visitor( database& db ) : _db(db)
-   {}
+   {
+      const auto& gpo = _db.get_dynamic_global_properties();
+      _current_time = gpo.time.sec_since_epoch();
+      _current_block_number = gpo.head_block_number;
+   }
 
    void regenerate( const account_object& account, const rc_account_object& rc_account )const
    {
@@ -545,7 +630,7 @@ struct pre_apply_operation_visitor
 
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
-         rca.rc_manabar.regenerate_mana( mbparams, _current_time );
+         rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
       } );
    }
 
@@ -654,11 +739,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const producer_reward_operation& op )const
    {
-      // Producer reward for block 1 doesn't trigger regen because
-      //   it doesn't exist.  We could possibly handle this better
-      //   by implementing the first block check in a pre-handler.
-      if( _current_block_number > 1 )
-         regenerate( op.producer );
+      regenerate( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
@@ -682,18 +763,29 @@ struct pre_apply_operation_visitor
    void operator()( const Op& op )const {}
 };
 
+typedef pre_apply_operation_visitor pre_apply_optional_action_vistor;
+
+struct account_regen_info
+{
+   account_regen_info( const account_name_type& a, bool r = true )
+      : account_name(a), fill_new_mana(r) {}
+
+   account_name_type         account_name;
+   bool                      fill_new_mana = true;
+};
+
 struct post_apply_operation_visitor
 {
    typedef void result_type;
 
-   vector< account_name_type >&             _mod_accounts;
+   vector< account_regen_info >&            _mod_accounts;
    database&                                _db;
    uint32_t                                 _current_time = 0;
    uint32_t                                 _current_block_number = 0;
    account_name_type                        _current_witness;
 
    post_apply_operation_visitor(
-      vector< account_name_type >& ma,
+      vector< account_regen_info >& ma,
       database& db,
       uint32_t t,
       uint32_t b,
@@ -709,7 +801,7 @@ struct post_apply_operation_visitor
    void operator()( const account_create_with_delegation_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee );
-      _mod_accounts.push_back( op.creator );
+      _mod_accounts.emplace_back( op.creator );
    }
 
    void operator()( const create_claimed_account_operation& op )const
@@ -721,66 +813,66 @@ struct post_apply_operation_visitor
    {
       // ilog( "handling post-apply pow_operation" );
       create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ) );
-      _mod_accounts.push_back( op.worker_account );
-      _mod_accounts.push_back( _current_witness );
+      _mod_accounts.emplace_back( op.worker_account );
+      _mod_accounts.emplace_back( _current_witness );
    }
 
    void operator()( const pow2_operation& op )const
    {
       auto worker_name = get_worker_name( op.work );
       create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ) );
-      _mod_accounts.push_back( worker_name );
-      _mod_accounts.push_back( _current_witness );
+      _mod_accounts.emplace_back( worker_name );
+      _mod_accounts.emplace_back( _current_witness );
    }
 
    void operator()( const transfer_to_vesting_operation& op )
    {
       account_name_type target = op.to.size() ? op.to : op.from;
-      _mod_accounts.push_back( target );
+      _mod_accounts.emplace_back( target );
    }
 
    void operator()( const withdraw_vesting_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account, false );
    }
 
    void operator()( const delegate_vesting_shares_operation& op )const
    {
-      _mod_accounts.push_back( op.delegator );
-      _mod_accounts.push_back( op.delegatee );
+      _mod_accounts.emplace_back( op.delegator );
+      _mod_accounts.emplace_back( op.delegatee );
    }
 
    void operator()( const author_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.author );
+      _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const curation_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.curator );
+      _mod_accounts.emplace_back( op.curator );
    }
 
    // Is this one actually necessary?
    void operator()( const comment_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.author );
+      _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
-      _mod_accounts.push_back( op.from_account );
-      _mod_accounts.push_back( op.to_account );
+      _mod_accounts.emplace_back( op.from_account );
+      _mod_accounts.emplace_back( op.to_account );
    }
 
    void operator()( const claim_reward_balance_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 
 #ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 #endif
 
@@ -791,14 +883,21 @@ struct post_apply_operation_visitor
          const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
          for( auto it=idx.begin(); it!=idx.end(); ++it )
          {
-            _mod_accounts.push_back( it->name );
+            _mod_accounts.emplace_back( it->name );
          }
       }
 
       if( op.hardfork_id == STEEM_HARDFORK_0_20 )
       {
+         const auto& params = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
+
          _db.modify( _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() ), [&]( rc_pool_object& p )
          {
+            for( size_t i = 0; i < STEEM_NUM_RESOURCE_TYPES; i++ )
+            {
+               p.pool_array[ i ] = int64_t( params.resource_param_array[ i ].resource_dynamics_params.max_pool_size );
+            }
+
             p.pool_array[ resource_new_accounts ] = 0;
          });
       }
@@ -806,26 +905,22 @@ struct post_apply_operation_visitor
 
    void operator()( const return_vesting_delegation_operation& op )const
    {
-      _mod_accounts.push_back( op.account );
+      _mod_accounts.emplace_back( op.account );
    }
 
    void operator()( const comment_benefactor_reward_operation& op )const
    {
-      _mod_accounts.push_back( op.benefactor );
+      _mod_accounts.emplace_back( op.benefactor );
    }
 
    void operator()( const producer_reward_operation& op )const
    {
-      // Producer reward for block 1 doesn't trigger regen because
-      //   it doesn't exist.  We could possibly handle this better
-      //   by implementing the first block check in a pre-handler.
-      if( _current_block_number > 1 )
-         _mod_accounts.push_back( op.producer );
+      _mod_accounts.emplace_back( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
    {
-      _mod_accounts.push_back( STEEM_NULL_ACCOUNT );
+      _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
    }
 
    template< typename Op >
@@ -834,6 +929,8 @@ struct post_apply_operation_visitor
       // ilog( "handling post-apply operation default" );
    }
 };
+
+typedef post_apply_operation_visitor post_apply_optional_action_visitor;
 
 
 
@@ -849,8 +946,6 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
    if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       vtor._vesting_share_price = gpo.get_vesting_share_price();
 
-   vtor._current_time = gpo.time.sec_since_epoch();
-   vtor._current_block_number = gpo.head_block_number;
    vtor._current_witness = gpo.current_witness;
    vtor._skip = _skip;
 
@@ -858,15 +953,21 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
    note.op.visit( vtor );
 }
 
-void update_last_vesting( database& db, const std::vector< account_name_type >& regen_accounts )
+void update_modified_accounts( database& db, const std::vector< account_regen_info >& modified_accounts )
 {
-   for( const account_name_type& name : regen_accounts )
+   for( const account_regen_info& regen_info : modified_accounts )
    {
-      const account_object& account = db.get< account_object, by_name >( name );
-      const rc_account_object& rc_account = db.get< rc_account_object, by_name >( name );
+      const account_object& account = db.get< account_object, by_name >( regen_info.account_name );
+      const rc_account_object& rc_account = db.get< rc_account_object, by_name >( regen_info.account_name );
+
+      int64_t new_last_max_rc = get_maximum_rc( account, rc_account );
+      int64_t drc = new_last_max_rc - rc_account.last_max_rc;
+      drc = regen_info.fill_new_mana ? drc : 0;
+
       db.modify( rc_account, [&]( rc_account_object& rca )
       {
-         rca.last_max_rc = get_maximum_rc( account, rca );
+         rca.last_max_rc = new_last_max_rc;
+         rca.rc_manabar.current_mana += std::max( drc, int64_t( 0 ) );
       } );
    }
 }
@@ -879,13 +980,89 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
-   vector< account_name_type > modified_accounts;
+   vector< account_regen_info > modified_accounts;
 
    // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
    post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
    note.op.visit( vtor );
 
-   update_last_vesting( _db, modified_accounts );
+   update_modified_accounts( _db, modified_accounts );
+}
+
+void rc_plugin_impl::on_pre_apply_optional_action( const optional_action_notification& note )
+{
+   if( before_first_block() )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   pre_apply_optional_action_vistor vtor( _db );
+
+   vtor._current_witness = gpo.current_witness;
+   vtor._skip = _skip;
+
+   note.action.visit( vtor );
+}
+
+void rc_plugin_impl::on_post_apply_optional_action( const optional_action_notification& note )
+{
+   if( before_first_block() )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   const uint32_t now = gpo.time.sec_since_epoch();
+
+   vector< account_regen_info > modified_accounts;
+
+   post_apply_optional_action_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   note.action.visit( vtor );
+
+   update_modified_accounts( _db, modified_accounts );
+
+   // There is no transaction equivalent for actions, so post apply transaction logic for actions go here.
+   int64_t rc_regen = (gpo.total_vesting_shares.amount.value / (STEEM_RC_REGEN_TIME / STEEM_BLOCK_INTERVAL));
+
+   rc_optional_action_info opt_action_info;
+
+   // How many resources does the transaction use?
+   count_resources( note.action, opt_action_info.usage );
+
+   // How many RC does this transaction cost?
+   const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
+   const rc_pool_object& pool_obj = _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() );
+
+   int64_t total_cost = 0;
+
+   // When rc_regen is 0, everything is free
+   if( rc_regen > 0 )
+   {
+      for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
+      {
+         const rc_resource_params& params = params_obj.resource_param_array[i];
+         int64_t pool = pool_obj.pool_array[i];
+
+         // TODO:  Move this multiplication to resource_count.cpp
+         opt_action_info.usage.resource_count[i] *= int64_t( params.resource_dynamics_params.resource_unit );
+         opt_action_info.cost[i] = compute_rc_cost_of_resource( params.price_curve_params, pool, opt_action_info.usage.resource_count[i], rc_regen );
+         total_cost += opt_action_info.cost[i];
+      }
+   }
+
+   opt_action_info.resource_user = get_resource_user( note.action );
+   use_account_rcs( _db, gpo, opt_action_info.resource_user, total_cost, _skip
+#ifdef IS_TEST_NET
+   ,
+   _whitelist
+#endif
+   );
+
+   std::shared_ptr< exp_rc_data > export_data =
+      steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
+   if( (gpo.head_block_number % 10000) == 0 )
+   {
+      dlog( "${t} : ${i}", ("t", gpo.time)("i", opt_action_info) );
+   }
+   if( export_data )
+      export_data->opt_action_info.push_back( opt_action_info );
 }
 
 void rc_plugin_impl::validate_database()
@@ -897,6 +1074,7 @@ void rc_plugin_impl::validate_database()
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
       int64_t max_rc = get_maximum_rc( account, rc_account );
 
+      assert( max_rc == rc_account.last_max_rc );
       FC_ASSERT( max_rc == rc_account.last_max_rc,
          "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
          ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
@@ -911,7 +1089,20 @@ rc_plugin::~rc_plugin() {}
 void rc_plugin::set_program_options( options_description& cli, options_description& cfg )
 {
    cfg.add_options()
+      ("rc-skip-reject-not-enough-rc", bpo::value<bool>()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ("rc-compute-historical-rc", bpo::value<bool>()->default_value( false ), "Generate historical resource credits" )
+#ifdef IS_TEST_NET
+      ("rc-start-at-block", bpo::value<uint32_t>()->default_value(0), "Start calculating RCs at a specific block" )
+      ("rc-account-whitelist", bpo::value< vector<string> >()->composing(), "Ignore RC calculations for the whitelist" )
+#endif
+      ;
+   cli.add_options()
       ("rc-skip-reject-not-enough-rc", bpo::bool_switch()->default_value( false ), "Skip rejecting transactions when account has insufficient RCs. This is not recommended." )
+      ("rc-compute-historical-rc", bpo::bool_switch()->default_value( false ), "Generate historical resource credits" )
+#ifdef IS_TEST_NET
+      ("rc-start-at-block", bpo::value<uint32_t>()->default_value(0), "Start calculating RCs at a specific block" )
+      ("rc-account-whitelist", bpo::value< vector<string> >()->composing(), "Ignore RC calculations for the whitelist" )
+#endif
       ;
 }
 
@@ -943,12 +1134,49 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
          { try { my->on_pre_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note )
          { try { my->on_post_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_pre_apply_optional_action_conn = db.add_pre_apply_optional_action_handler( [&]( const optional_action_notification& note )
+         { try { my->on_pre_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )
+         { try { my->on_post_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
 
       add_plugin_index< rc_resource_param_index >(db);
       add_plugin_index< rc_pool_index >(db);
       add_plugin_index< rc_account_index >(db);
 
+      fc::mutable_variant_object state_opts;
+
       my->_skip.skip_reject_not_enough_rc = options.at( "rc-skip-reject-not-enough-rc" ).as< bool >();
+      state_opts["rc-compute-historical-rc"] = options.at( "rc-compute-historical-rc" ).as<bool>();
+#ifndef IS_TEST_NET
+      if( !options.at( "rc-compute-historical-rc" ).as<bool>() )
+      {
+         my->_enable_at_block = STEEM_HF20_BLOCK_NUM;
+      }
+#else
+      uint32_t start_block = options.at( "rc-start-at-block" ).as<uint32_t>();
+      if( start_block > 0 )
+      {
+         my->_enable_at_block = start_block;
+      }
+
+      if( options.count( "rc-account-whitelist" ) > 0 )
+      {
+         auto accounts = options.at( "rc-account-whitelist" ).as< vector< string > > ();
+         for( auto& arg : accounts )
+         {
+            vector< string > names;
+            boost::split( names, arg, boost::is_any_of( " \t" ) );
+            for( const std::string& name : names )
+               my->_whitelist.insert( account_name_type( name ) );
+         }
+
+         ilog( "Ignoring RC's for accounts: ${w}", ("w", my->_whitelist) );
+      }
+#endif
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
+
+      ilog( "RC's will be computed starting at block ${b}", ("b", my->_enable_at_block) );
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -962,6 +1190,8 @@ void rc_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->_post_apply_transaction_conn );
    chain::util::disconnect_signal( my->_pre_apply_operation_conn );
    chain::util::disconnect_signal( my->_post_apply_operation_conn );
+   chain::util::disconnect_signal( my->_pre_apply_optional_action_conn );
+   chain::util::disconnect_signal( my->_post_apply_optional_action_conn );
 }
 
 void rc_plugin::set_rc_plugin_skip_flags( rc_plugin_skip_flags skip )
@@ -985,6 +1215,16 @@ exp_rc_data::~exp_rc_data() {}
 void exp_rc_data::to_variant( fc::variant& v )const
 {
    fc::to_variant( *this, v );
+}
+
+int64_t get_maximum_rc( const account_object& account, const rc_account_object& rc_account )
+{
+   int64_t result = account.vesting_shares.amount.value;
+   result = fc::signed_sat_sub( result, account.delegated_vesting_shares.amount.value );
+   result = fc::signed_sat_add( result, account.received_vesting_shares.amount.value );
+   result = fc::signed_sat_add( result, rc_account.max_rc_creation_adjustment.amount.value );
+   result = fc::signed_sat_sub( result, detail::get_next_vesting_withdrawal( account ) );
+   return result;
 }
 
 } } } // steem::plugins::rc

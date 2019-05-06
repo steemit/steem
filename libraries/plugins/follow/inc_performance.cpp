@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/database.hpp>

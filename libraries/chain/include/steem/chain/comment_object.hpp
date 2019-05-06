@@ -1,12 +1,11 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/steem_operations.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 
 namespace steem { namespace chain {
@@ -46,7 +45,7 @@ namespace steem { namespace chain {
 
    class comment_object : public object < comment_object_type, comment_object >
    {
-      comment_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -115,7 +114,7 @@ namespace steem { namespace chain {
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
    {
-      comment_content_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_content_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -140,6 +139,8 @@ namespace steem { namespace chain {
     */
    class comment_vote_object : public object< comment_vote_object_type, comment_vote_object>
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_vote_object )
+
       public:
          template< typename Constructor, typename Allocator >
          comment_vote_object( Constructor&& c, allocator< Allocator > a )
@@ -260,19 +261,14 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
-#ifdef STEEM_ENABLE_SMT
-FC_REFLECT( steem::chain::comment_object,
-             (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
-             (last_update)(created)(active)(last_payout)
-             (depth)(children)
-             (net_rshares)(abs_rshares)(vote_rshares)
-             (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
-             (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
-             (beneficiaries)(allowed_vote_assets)
-          )
-#else
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::comment_vote_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
@@ -283,8 +279,11 @@ FC_REFLECT( steem::chain::comment_object,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-          )
+#ifdef STEEM_ENABLE_SMT
+             (allowed_vote_assets)
 #endif
+          )
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
 
 FC_REFLECT( steem::chain::comment_content_object,
@@ -299,7 +298,7 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comme
 namespace helpers
 {
    using steem::chain::shared_string;
-   
+
    template <>
    class index_statistic_provider<steem::chain::comment_index>
    {

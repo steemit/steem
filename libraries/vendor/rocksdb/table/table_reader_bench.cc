@@ -11,8 +11,6 @@ int main() {
 }
 #else
 
-#include <gflags/gflags.h>
-
 #include "db/db_impl.h"
 #include "db/dbformat.h"
 #include "monitoring/histogram.h"
@@ -25,11 +23,12 @@ int main() {
 #include "table/plain_table_factory.h"
 #include "table/table_builder.h"
 #include "util/file_reader_writer.h"
+#include "util/gflags_compat.h"
 #include "util/testharness.h"
 #include "util/testutil.h"
 
-using GFLAGS::ParseCommandLineFlags;
-using GFLAGS::SetUsageMessage;
+using GFLAGS_NAMESPACE::ParseCommandLineFlags;
+using GFLAGS_NAMESPACE::SetUsageMessage;
 
 namespace rocksdb {
 
@@ -71,37 +70,38 @@ uint64_t Now(Env* env, bool measured_by_nanosecond) {
 namespace {
 void TableReaderBenchmark(Options& opts, EnvOptions& env_options,
                           ReadOptions& read_options, int num_keys1,
-                          int num_keys2, int num_iter, int prefix_len,
+                          int num_keys2, int num_iter, int /*prefix_len*/,
                           bool if_query_empty_keys, bool for_iterator,
                           bool through_db, bool measured_by_nanosecond) {
   rocksdb::InternalKeyComparator ikc(opts.comparator);
 
-  std::string file_name = test::TmpDir()
-      + "/rocksdb_table_reader_benchmark";
-  std::string dbname = test::TmpDir() + "/rocksdb_table_reader_bench_db";
+  std::string file_name =
+      test::PerThreadDBPath("rocksdb_table_reader_benchmark");
+  std::string dbname = test::PerThreadDBPath("rocksdb_table_reader_bench_db");
   WriteOptions wo;
   Env* env = Env::Default();
   TableBuilder* tb = nullptr;
   DB* db = nullptr;
   Status s;
   const ImmutableCFOptions ioptions(opts);
-  unique_ptr<WritableFileWriter> file_writer;
+  const ColumnFamilyOptions cfo(opts);
+  const MutableCFOptions moptions(cfo);
+  std::unique_ptr<WritableFileWriter> file_writer;
   if (!through_db) {
-    unique_ptr<WritableFile> file;
+    std::unique_ptr<WritableFile> file;
     env->NewWritableFile(file_name, &file, env_options);
 
     std::vector<std::unique_ptr<IntTblPropCollectorFactory> >
         int_tbl_prop_collector_factories;
 
-    file_writer.reset(new WritableFileWriter(std::move(file), env_options));
+    file_writer.reset(
+        new WritableFileWriter(std::move(file), file_name, env_options));
     int unknown_level = -1;
     tb = opts.table_factory->NewTableBuilder(
-        TableBuilderOptions(ioptions, ikc, &int_tbl_prop_collector_factories,
-                            CompressionType::kNoCompression,
-                            CompressionOptions(),
-                            nullptr /* compression_dict */,
-                            false /* skip_filters */, kDefaultColumnFamilyName,
-                            unknown_level),
+        TableBuilderOptions(
+            ioptions, moptions, ikc, &int_tbl_prop_collector_factories,
+            CompressionType::kNoCompression, CompressionOptions(),
+            false /* skip_filters */, kDefaultColumnFamilyName, unknown_level),
         0 /* column_family_id */, file_writer.get());
   } else {
     s = DB::Open(opts, dbname, &db);
@@ -126,9 +126,9 @@ void TableReaderBenchmark(Options& opts, EnvOptions& env_options,
     db->Flush(FlushOptions());
   }
 
-  unique_ptr<TableReader> table_reader;
+  std::unique_ptr<TableReader> table_reader;
   if (!through_db) {
-    unique_ptr<RandomAccessFile> raf;
+    std::unique_ptr<RandomAccessFile> raf;
     s = env->NewRandomAccessFile(file_name, &raf, env_options);
     if (!s.ok()) {
       fprintf(stderr, "Create File Error: %s\n", s.ToString().c_str());
@@ -136,11 +136,12 @@ void TableReaderBenchmark(Options& opts, EnvOptions& env_options,
     }
     uint64_t file_size;
     env->GetFileSize(file_name, &file_size);
-    unique_ptr<RandomAccessFileReader> file_reader(
+    std::unique_ptr<RandomAccessFileReader> file_reader(
         new RandomAccessFileReader(std::move(raf), file_name));
     s = opts.table_factory->NewTableReader(
-        TableReaderOptions(ioptions, env_options, ikc), std::move(file_reader),
-        file_size, &table_reader);
+        TableReaderOptions(ioptions, moptions.prefix_extractor.get(),
+                           env_options, ikc),
+        std::move(file_reader), file_size, &table_reader);
     if (!s.ok()) {
       fprintf(stderr, "Open Table Error: %s\n", s.ToString().c_str());
       exit(1);
@@ -168,13 +169,13 @@ void TableReaderBenchmark(Options& opts, EnvOptions& env_options,
           if (!through_db) {
             PinnableSlice value;
             MergeContext merge_context;
-            RangeDelAggregator range_del_agg(ikc, {} /* snapshots */);
+            SequenceNumber max_covering_tombstone_seq = 0;
             GetContext get_context(ioptions.user_comparator,
                                    ioptions.merge_operator, ioptions.info_log,
                                    ioptions.statistics, GetContext::kNotFound,
                                    Slice(key), &value, nullptr, &merge_context,
-                                   &range_del_agg, env);
-            s = table_reader->Get(read_options, key, &get_context);
+                                   &max_covering_tombstone_seq, env);
+            s = table_reader->Get(read_options, key, &get_context, nullptr);
           } else {
             s = db->Get(read_options, key, &result);
           }
@@ -196,7 +197,7 @@ void TableReaderBenchmark(Options& opts, EnvOptions& env_options,
           Iterator* iter = nullptr;
           InternalIterator* iiter = nullptr;
           if (!through_db) {
-            iiter = table_reader->NewIterator(read_options);
+            iiter = table_reader->NewIterator(read_options, nullptr);
           } else {
             iter = db->NewIterator(read_options);
           }

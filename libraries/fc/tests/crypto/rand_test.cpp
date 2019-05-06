@@ -33,11 +33,4 @@ BOOST_AUTO_TEST_CASE(rand_test)
     check_randomness( buffer, sizeof(buffer) );
 }
 
-BOOST_AUTO_TEST_CASE(pseudo_rand_test)
-{
-    char buffer[10013];
-    fc::rand_pseudo_bytes( buffer, sizeof(buffer) );
-    check_randomness( buffer, sizeof(buffer) );
-}
-
 BOOST_AUTO_TEST_SUITE_END()

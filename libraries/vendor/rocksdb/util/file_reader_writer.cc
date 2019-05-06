@@ -62,7 +62,7 @@ Status SequentialFileReader::Read(size_t n, Slice* result, char* scratch) {
 Status SequentialFileReader::Skip(uint64_t n) {
 #ifndef ROCKSDB_LITE
   if (use_direct_io()) {
-    offset_ += n;
+    offset_ += static_cast<size_t>(n);
     return Status::OK();
   }
 #endif  // !ROCKSDB_LITE
@@ -75,20 +75,22 @@ Status RandomAccessFileReader::Read(uint64_t offset, size_t n, Slice* result,
   uint64_t elapsed = 0;
   {
     StopWatch sw(env_, stats_, hist_type_,
-                 (stats_ != nullptr) ? &elapsed : nullptr);
+                 (stats_ != nullptr) ? &elapsed : nullptr, true /*overwrite*/,
+                true /*delay_enabled*/);
+    auto prev_perf_level = GetPerfLevel();
     IOSTATS_TIMER_GUARD(read_nanos);
     if (use_direct_io()) {
 #ifndef ROCKSDB_LITE
       size_t alignment = file_->GetRequiredBufferAlignment();
-      size_t aligned_offset = TruncateToPageBoundary(alignment, offset);
-      size_t offset_advance = offset - aligned_offset;
-      size_t read_size = Roundup(offset + n, alignment) - aligned_offset;
+      size_t aligned_offset = TruncateToPageBoundary(alignment, static_cast<size_t>(offset));
+      size_t offset_advance = static_cast<size_t>(offset) - aligned_offset;
+      size_t read_size = Roundup(static_cast<size_t>(offset + n), alignment) - aligned_offset;
       AlignedBuffer buf;
       buf.Alignment(alignment);
       buf.AllocateNewBuffer(read_size);
       while (buf.CurrentSize() < read_size) {
         size_t allowed;
-        if (rate_limiter_ != nullptr) {
+        if (for_compaction_ && rate_limiter_ != nullptr) {
           allowed = rate_limiter_->RequestToken(
               buf.Capacity() - buf.CurrentSize(), buf.Alignment(),
               Env::IOPriority::IO_LOW, stats_, RateLimiter::OpType::kRead);
@@ -97,8 +99,24 @@ Status RandomAccessFileReader::Read(uint64_t offset, size_t n, Slice* result,
           allowed = read_size;
         }
         Slice tmp;
-        s = file_->Read(aligned_offset + buf.CurrentSize(), allowed, &tmp,
-                        buf.Destination());
+
+        FileOperationInfo::TimePoint start_ts;
+        uint64_t orig_offset = 0;
+        if (ShouldNotifyListeners()) {
+          start_ts = std::chrono::system_clock::now();
+          orig_offset = aligned_offset + buf.CurrentSize();
+        }
+        {
+          IOSTATS_CPU_TIMER_GUARD(cpu_read_nanos, env_);
+          s = file_->Read(aligned_offset + buf.CurrentSize(), allowed, &tmp,
+                          buf.Destination());
+        }
+        if (ShouldNotifyListeners()) {
+          auto finish_ts = std::chrono::system_clock::now();
+          NotifyOnFileReadFinish(orig_offset, tmp.size(), start_ts, finish_ts,
+                                 s);
+        }
+
         buf.Size(buf.CurrentSize() + tmp.size());
         if (!s.ok() || tmp.size() < allowed) {
           break;
@@ -117,14 +135,38 @@ Status RandomAccessFileReader::Read(uint64_t offset, size_t n, Slice* result,
       while (pos < n) {
         size_t allowed;
         if (for_compaction_ && rate_limiter_ != nullptr) {
+          if (rate_limiter_->IsRateLimited(RateLimiter::OpType::kRead)) {
+            sw.DelayStart();
+          }
           allowed = rate_limiter_->RequestToken(n - pos, 0 /* alignment */,
                                                 Env::IOPriority::IO_LOW, stats_,
                                                 RateLimiter::OpType::kRead);
+          if (rate_limiter_->IsRateLimited(RateLimiter::OpType::kRead)) {
+            sw.DelayStop();
+          }
         } else {
           allowed = n;
         }
         Slice tmp_result;
-        s = file_->Read(offset + pos, allowed, &tmp_result, scratch + pos);
+
+#ifndef ROCKSDB_LITE
+        FileOperationInfo::TimePoint start_ts;
+        if (ShouldNotifyListeners()) {
+          start_ts = std::chrono::system_clock::now();
+        }
+#endif
+        {
+          IOSTATS_CPU_TIMER_GUARD(cpu_read_nanos, env_);
+          s = file_->Read(offset + pos, allowed, &tmp_result, scratch + pos);
+        }
+#ifndef ROCKSDB_LITE
+        if (ShouldNotifyListeners()) {
+          auto finish_ts = std::chrono::system_clock::now();
+          NotifyOnFileReadFinish(offset + pos, tmp_result.size(), start_ts,
+                                 finish_ts, s);
+        }
+#endif
+
         if (res_scratch == nullptr) {
           // we can't simply use `scratch` because reads of mmap'd files return
           // data in a different buffer.
@@ -141,10 +183,12 @@ Status RandomAccessFileReader::Read(uint64_t offset, size_t n, Slice* result,
       *result = Slice(res_scratch, s.ok() ? pos : 0);
     }
     IOSTATS_ADD_IF_POSITIVE(bytes_read, result->size());
+    SetPerfLevel(prev_perf_level);
   }
   if (stats_ != nullptr && file_read_hist_ != nullptr) {
     file_read_hist_->Add(elapsed);
   }
+
   return s;
 }
 
@@ -219,6 +263,31 @@ Status WritableFileWriter::Append(const Slice& data) {
   return s;
 }
 
+Status WritableFileWriter::Pad(const size_t pad_bytes) {
+  assert(pad_bytes < kDefaultPageSize);
+  size_t left = pad_bytes;
+  size_t cap = buf_.Capacity() - buf_.CurrentSize();
+
+  // Assume pad_bytes is small compared to buf_ capacity. So we always
+  // use buf_ rather than write directly to file in certain cases like
+  // Append() does.
+  while (left) {
+    size_t append_bytes = std::min(cap, left);
+    buf_.PadWith(append_bytes, 0);
+    left -= append_bytes;
+    if (left > 0) {
+      Status s = Flush();
+      if (!s.ok()) {
+        return s;
+      }
+    }
+    cap = buf_.Capacity() - buf_.CurrentSize();
+  }
+  pending_sync_ = true;
+  filesize_ += pad_bytes;
+  return Status::OK();
+}
+
 Status WritableFileWriter::Close() {
 
   // Do not quit immediately on failure the file MUST be closed
@@ -239,6 +308,9 @@ Status WritableFileWriter::Close() {
   // we need to let the file know where data ends.
   if (use_direct_io()) {
     interim = writable_file_->Truncate(filesize_);
+    if (interim.ok()) {
+      interim = writable_file_->Fsync();
+    }
     if (!interim.ok() && s.ok()) {
       s = interim;
     }
@@ -266,7 +338,9 @@ Status WritableFileWriter::Flush() {
   if (buf_.CurrentSize() > 0) {
     if (use_direct_io()) {
 #ifndef ROCKSDB_LITE
-      s = WriteDirect();
+      if (pending_sync_) {
+        s = WriteDirect();
+      }
 #endif  // !ROCKSDB_LITE
     } else {
       s = WriteBuffered(buf_.BufferStart(), buf_.CurrentSize());
@@ -344,11 +418,14 @@ Status WritableFileWriter::SyncInternal(bool use_fsync) {
   Status s;
   IOSTATS_TIMER_GUARD(fsync_nanos);
   TEST_SYNC_POINT("WritableFileWriter::SyncInternal:0");
+  auto prev_perf_level = GetPerfLevel();
+  IOSTATS_CPU_TIMER_GUARD(cpu_write_nanos, env_);
   if (use_fsync) {
     s = writable_file_->Fsync();
   } else {
     s = writable_file_->Sync();
   }
+  SetPerfLevel(prev_perf_level);
   return s;
 }
 
@@ -379,7 +456,27 @@ Status WritableFileWriter::WriteBuffered(const char* data, size_t size) {
     {
       IOSTATS_TIMER_GUARD(write_nanos);
       TEST_SYNC_POINT("WritableFileWriter::Flush:BeforeAppend");
-      s = writable_file_->Append(Slice(src, allowed));
+
+#ifndef ROCKSDB_LITE
+      FileOperationInfo::TimePoint start_ts;
+      uint64_t old_size = writable_file_->GetFileSize();
+      if (ShouldNotifyListeners()) {
+        start_ts = std::chrono::system_clock::now();
+        old_size = next_write_offset_;
+      }
+#endif
+      {
+        auto prev_perf_level = GetPerfLevel();
+        IOSTATS_CPU_TIMER_GUARD(cpu_write_nanos, env_);
+        s = writable_file_->Append(Slice(src, allowed));
+        SetPerfLevel(prev_perf_level);
+      }
+#ifndef ROCKSDB_LITE
+      if (ShouldNotifyListeners()) {
+        auto finish_ts = std::chrono::system_clock::now();
+        NotifyOnFileWriteFinish(old_size, allowed, start_ts, finish_ts, s);
+      }
+#endif
       if (!s.ok()) {
         return s;
       }
@@ -442,8 +539,16 @@ Status WritableFileWriter::WriteDirect() {
     {
       IOSTATS_TIMER_GUARD(write_nanos);
       TEST_SYNC_POINT("WritableFileWriter::Flush:BeforeAppend");
+      FileOperationInfo::TimePoint start_ts;
+      if (ShouldNotifyListeners()) {
+        start_ts = std::chrono::system_clock::now();
+      }
       // direct writes must be positional
       s = writable_file_->PositionedAppend(Slice(src, size), write_offset);
+      if (ShouldNotifyListeners()) {
+        auto finish_ts = std::chrono::system_clock::now();
+        NotifyOnFileWriteFinish(write_offset, size, start_ts, finish_ts, s);
+      }
       if (!s.ok()) {
         buf_.Size(file_advance + leftover_tail);
         return s;
@@ -481,9 +586,7 @@ class ReadaheadRandomAccessFile : public RandomAccessFile {
         alignment_(file_->GetRequiredBufferAlignment()),
         readahead_size_(Roundup(readahead_size, alignment_)),
         buffer_(),
-        buffer_offset_(0),
-        buffer_len_(0) {
-
+        buffer_offset_(0) {
     buffer_.Alignment(alignment_);
     buffer_.AllocateNewBuffer(readahead_size_);
   }
@@ -492,89 +595,93 @@ class ReadaheadRandomAccessFile : public RandomAccessFile {
 
  ReadaheadRandomAccessFile& operator=(const ReadaheadRandomAccessFile&) = delete;
 
-  virtual Status Read(uint64_t offset, size_t n, Slice* result,
-                      char* scratch) const override {
+ Status Read(uint64_t offset, size_t n, Slice* result,
+             char* scratch) const override {
+   if (n + alignment_ >= readahead_size_) {
+     return file_->Read(offset, n, result, scratch);
+   }
 
-    if (n + alignment_ >= readahead_size_) {
-      return file_->Read(offset, n, result, scratch);
-    }
+   std::unique_lock<std::mutex> lk(lock_);
 
-    std::unique_lock<std::mutex> lk(lock_);
+   size_t cached_len = 0;
+   // Check if there is a cache hit, means that [offset, offset + n) is either
+   // completely or partially in the buffer
+   // If it's completely cached, including end of file case when offset + n is
+   // greater than EOF, return
+   if (TryReadFromCache(offset, n, &cached_len, scratch) &&
+       (cached_len == n ||
+        // End of file
+        buffer_.CurrentSize() < readahead_size_)) {
+     *result = Slice(scratch, cached_len);
+     return Status::OK();
+   }
+   size_t advanced_offset = static_cast<size_t>(offset + cached_len);
+   // In the case of cache hit advanced_offset is already aligned, means that
+   // chunk_offset equals to advanced_offset
+   size_t chunk_offset = TruncateToPageBoundary(alignment_, advanced_offset);
+   Slice readahead_result;
 
-    size_t cached_len = 0;
-    // Check if there is a cache hit, means that [offset, offset + n) is either
-    // completely or partially in the buffer
-    // If it's completely cached, including end of file case when offset + n is
-    // greater than EOF, return
-    if (TryReadFromCache(offset, n, &cached_len, scratch) &&
-        (cached_len == n ||
-         // End of file
-         buffer_len_ < readahead_size_)) {
-      *result = Slice(scratch, cached_len);
-      return Status::OK();
-    }
-    size_t advanced_offset = offset + cached_len;
-    // In the case of cache hit advanced_offset is already aligned, means that
-    // chunk_offset equals to advanced_offset
-    size_t chunk_offset = TruncateToPageBoundary(alignment_, advanced_offset);
-    Slice readahead_result;
+   Status s = ReadIntoBuffer(chunk_offset, readahead_size_);
+   if (s.ok()) {
+     // In the case of cache miss, i.e. when cached_len equals 0, an offset can
+     // exceed the file end position, so the following check is required
+     if (advanced_offset < chunk_offset + buffer_.CurrentSize()) {
+       // In the case of cache miss, the first chunk_padding bytes in buffer_
+       // are
+       // stored for alignment only and must be skipped
+       size_t chunk_padding = advanced_offset - chunk_offset;
+       auto remaining_len =
+           std::min(buffer_.CurrentSize() - chunk_padding, n - cached_len);
+       memcpy(scratch + cached_len, buffer_.BufferStart() + chunk_padding,
+              remaining_len);
+       *result = Slice(scratch, cached_len + remaining_len);
+     } else {
+       *result = Slice(scratch, cached_len);
+     }
+   }
+   return s;
+ }
 
-    Status s = ReadIntoBuffer(chunk_offset, readahead_size_);
-    if (s.ok()) {
-      // In the case of cache miss, i.e. when cached_len equals 0, an offset can
-      // exceed the file end position, so the following check is required
-      if (advanced_offset < chunk_offset + buffer_len_) {
-        // In the case of cache miss, the first chunk_padding bytes in buffer_
-        // are
-        // stored for alignment only and must be skipped
-        size_t chunk_padding = advanced_offset - chunk_offset;
-        auto remaining_len =
-            std::min(buffer_len_ - chunk_padding, n - cached_len);
-        memcpy(scratch + cached_len, buffer_.BufferStart() + chunk_padding,
-               remaining_len);
-        *result = Slice(scratch, cached_len + remaining_len);
-      } else {
-        *result = Slice(scratch, cached_len);
-      }
-    }
-    return s;
-  }
+ Status Prefetch(uint64_t offset, size_t n) override {
+   if (n < readahead_size_) {
+     // Don't allow smaller prefetches than the configured `readahead_size_`.
+     // `Read()` assumes a smaller prefetch buffer indicates EOF was reached.
+     return Status::OK();
+   }
+   size_t offset_ = static_cast<size_t>(offset);
+   size_t prefetch_offset = TruncateToPageBoundary(alignment_, offset_);
+   if (prefetch_offset == buffer_offset_) {
+     return Status::OK();
+   }
+   return ReadIntoBuffer(prefetch_offset,
+                         Roundup(offset_ + n, alignment_) - prefetch_offset);
+ }
 
-  virtual Status Prefetch(uint64_t offset, size_t n) override {
-    size_t prefetch_offset = TruncateToPageBoundary(alignment_, offset);
-    if (prefetch_offset == buffer_offset_) {
-      return Status::OK();
-    }
-    return ReadIntoBuffer(prefetch_offset,
-                          Roundup(offset + n, alignment_) - prefetch_offset);
-  }
+ size_t GetUniqueId(char* id, size_t max_size) const override {
+   return file_->GetUniqueId(id, max_size);
+ }
 
-  virtual size_t GetUniqueId(char* id, size_t max_size) const override {
-    return file_->GetUniqueId(id, max_size);
-  }
+ void Hint(AccessPattern pattern) override { file_->Hint(pattern); }
 
-  virtual void Hint(AccessPattern pattern) override { file_->Hint(pattern); }
+ Status InvalidateCache(size_t offset, size_t length) override {
+   return file_->InvalidateCache(offset, length);
+ }
 
-  virtual Status InvalidateCache(size_t offset, size_t length) override {
-    return file_->InvalidateCache(offset, length);
-  }
+ bool use_direct_io() const override { return file_->use_direct_io(); }
 
-  virtual bool use_direct_io() const override {
-    return file_->use_direct_io();
-  }
-
- private:
-  bool TryReadFromCache(uint64_t offset, size_t n, size_t* cached_len,
-                         char* scratch) const {
-    if (offset < buffer_offset_ || offset >= buffer_offset_ + buffer_len_) {
-      *cached_len = 0;
-      return false;
-    }
-    uint64_t offset_in_buffer = offset - buffer_offset_;
-    *cached_len =
-        std::min(buffer_len_ - static_cast<size_t>(offset_in_buffer), n);
-    memcpy(scratch, buffer_.BufferStart() + offset_in_buffer, *cached_len);
-    return true;
+private:
+ bool TryReadFromCache(uint64_t offset, size_t n, size_t* cached_len,
+                       char* scratch) const {
+   if (offset < buffer_offset_ ||
+       offset >= buffer_offset_ + buffer_.CurrentSize()) {
+     *cached_len = 0;
+     return false;
+   }
+   uint64_t offset_in_buffer = offset - buffer_offset_;
+   *cached_len = std::min(
+       buffer_.CurrentSize() - static_cast<size_t>(offset_in_buffer), n);
+   memcpy(scratch, buffer_.BufferStart() + offset_in_buffer, *cached_len);
+   return true;
   }
 
   Status ReadIntoBuffer(uint64_t offset, size_t n) const {
@@ -587,7 +694,8 @@ class ReadaheadRandomAccessFile : public RandomAccessFile {
     Status s = file_->Read(offset, n, &result, buffer_.BufferStart());
     if (s.ok()) {
       buffer_offset_ = offset;
-      buffer_len_ = result.size();
+      buffer_.Size(result.size());
+      assert(buffer_.BufferStart() == result.data());
     }
     return s;
   }
@@ -599,33 +707,106 @@ class ReadaheadRandomAccessFile : public RandomAccessFile {
   mutable std::mutex lock_;
   mutable AlignedBuffer buffer_;
   mutable uint64_t buffer_offset_;
-  mutable size_t buffer_len_;
 };
 }  // namespace
 
 Status FilePrefetchBuffer::Prefetch(RandomAccessFileReader* reader,
                                     uint64_t offset, size_t n) {
   size_t alignment = reader->file()->GetRequiredBufferAlignment();
-  uint64_t roundup_offset = Roundup(offset, alignment);
-  uint64_t roundup_len = Roundup(n, alignment);
-  buffer_.Alignment(alignment);
-  buffer_.AllocateNewBuffer(roundup_len);
+  size_t offset_ = static_cast<size_t>(offset);
+  uint64_t rounddown_offset = Rounddown(offset_, alignment);
+  uint64_t roundup_end = Roundup(offset_ + n, alignment);
+  uint64_t roundup_len = roundup_end - rounddown_offset;
+  assert(roundup_len >= alignment);
+  assert(roundup_len % alignment == 0);
+
+  // Check if requested bytes are in the existing buffer_.
+  // If all bytes exist -- return.
+  // If only a few bytes exist -- reuse them & read only what is really needed.
+  //     This is typically the case of incremental reading of data.
+  // If no bytes exist in buffer -- full pread.
+
+  Status s;
+  uint64_t chunk_offset_in_buffer = 0;
+  uint64_t chunk_len = 0;
+  bool copy_data_to_new_buffer = false;
+  if (buffer_.CurrentSize() > 0 && offset >= buffer_offset_ &&
+      offset <= buffer_offset_ + buffer_.CurrentSize()) {
+    if (offset + n <= buffer_offset_ + buffer_.CurrentSize()) {
+      // All requested bytes are already in the buffer. So no need to Read
+      // again.
+      return s;
+    } else {
+      // Only a few requested bytes are in the buffer. memmove those chunk of
+      // bytes to the beginning, and memcpy them back into the new buffer if a
+      // new buffer is created.
+      chunk_offset_in_buffer = Rounddown(static_cast<size_t>(offset - buffer_offset_), alignment);
+      chunk_len = buffer_.CurrentSize() - chunk_offset_in_buffer;
+      assert(chunk_offset_in_buffer % alignment == 0);
+      assert(chunk_len % alignment == 0);
+      assert(chunk_offset_in_buffer + chunk_len <=
+             buffer_offset_ + buffer_.CurrentSize());
+      if (chunk_len > 0) {
+        copy_data_to_new_buffer = true;
+      } else {
+        // this reset is not necessary, but just to be safe.
+        chunk_offset_in_buffer = 0;
+      }
+    }
+  }
+
+  // Create a new buffer only if current capacity is not sufficient, and memcopy
+  // bytes from old buffer if needed (i.e., if chunk_len is greater than 0).
+  if (buffer_.Capacity() < roundup_len) {
+    buffer_.Alignment(alignment);
+    buffer_.AllocateNewBuffer(static_cast<size_t>(roundup_len),
+                              copy_data_to_new_buffer, chunk_offset_in_buffer,
+                              static_cast<size_t>(chunk_len));
+  } else if (chunk_len > 0) {
+    // New buffer not needed. But memmove bytes from tail to the beginning since
+    // chunk_len is greater than 0.
+    buffer_.RefitTail(static_cast<size_t>(chunk_offset_in_buffer), static_cast<size_t>(chunk_len));
+  }
 
   Slice result;
-  Status s =
-      reader->Read(roundup_offset, roundup_len, &result, buffer_.BufferStart());
+  s = reader->Read(rounddown_offset + chunk_len,
+                   static_cast<size_t>(roundup_len - chunk_len), &result,
+                   buffer_.BufferStart() + chunk_len);
   if (s.ok()) {
-    buffer_offset_ = roundup_offset;
-    buffer_len_ = result.size();
+    buffer_offset_ = rounddown_offset;
+    buffer_.Size(static_cast<size_t>(chunk_len) + result.size());
   }
   return s;
 }
 
 bool FilePrefetchBuffer::TryReadFromCache(uint64_t offset, size_t n,
-                                          Slice* result) const {
-  if (offset < buffer_offset_ || offset + n > buffer_offset_ + buffer_len_) {
+                                          Slice* result) {
+  if (track_min_offset_ && offset < min_offset_read_) {
+    min_offset_read_ = static_cast<size_t>(offset);
+  }
+  if (!enable_ || offset < buffer_offset_) {
     return false;
   }
+
+  // If the buffer contains only a few of the requested bytes:
+  //    If readahead is enabled: prefetch the remaining bytes + readadhead bytes
+  //        and satisfy the request.
+  //    If readahead is not enabled: return false.
+  if (offset + n > buffer_offset_ + buffer_.CurrentSize()) {
+    if (readahead_size_ > 0) {
+      assert(file_reader_ != nullptr);
+      assert(max_readahead_size_ >= readahead_size_);
+
+      Status s = Prefetch(file_reader_, offset, n + readahead_size_);
+      if (!s.ok()) {
+        return false;
+      }
+      readahead_size_ = std::min(max_readahead_size_, readahead_size_ * 2);
+    } else {
+      return false;
+    }
+  }
+
   uint64_t offset_in_buffer = offset - buffer_offset_;
   *result = Slice(buffer_.BufferStart() + offset_in_buffer, n);
   return true;
@@ -639,11 +820,48 @@ std::unique_ptr<RandomAccessFile> NewReadaheadRandomAccessFile(
 }
 
 Status NewWritableFile(Env* env, const std::string& fname,
-                       unique_ptr<WritableFile>* result,
+                       std::unique_ptr<WritableFile>* result,
                        const EnvOptions& options) {
   Status s = env->NewWritableFile(fname, result, options);
   TEST_KILL_RANDOM("NewWritableFile:0", rocksdb_kill_odds * REDUCE_ODDS2);
   return s;
+}
+
+bool ReadOneLine(std::istringstream* iss, SequentialFile* seq_file,
+                 std::string* output, bool* has_data, Status* result) {
+  const int kBufferSize = 8192;
+  char buffer[kBufferSize + 1];
+  Slice input_slice;
+
+  std::string line;
+  bool has_complete_line = false;
+  while (!has_complete_line) {
+    if (std::getline(*iss, line)) {
+      has_complete_line = !iss->eof();
+    } else {
+      has_complete_line = false;
+    }
+    if (!has_complete_line) {
+      // if we're not sure whether we have a complete line,
+      // further read from the file.
+      if (*has_data) {
+        *result = seq_file->Read(kBufferSize, &input_slice, buffer);
+      }
+      if (input_slice.size() == 0) {
+        // meaning we have read all the data
+        *has_data = false;
+        break;
+      } else {
+        iss->str(line + input_slice.ToString());
+        // reset the internal state of iss so that we can keep reading it.
+        iss->clear();
+        *has_data = (input_slice.size() == kBufferSize);
+        continue;
+      }
+    }
+  }
+  *output = line;
+  return *has_data || has_complete_line;
 }
 
 }  // namespace rocksdb

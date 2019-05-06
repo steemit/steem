@@ -6,6 +6,7 @@ add_library( rc_plugin
              resource_count.cpp
              resource_user.cpp
              rc_curve.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( rc_plugin chain_plugin block_data_export_plugin steem_chain steem_jsonball steem_protocol )

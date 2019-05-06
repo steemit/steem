@@ -115,7 +115,6 @@ namespace fc
         {
           try 
           {
-            boost::system::error_code ec;
             ilog("Attempting to connect to GNTP srvice");
             asio::tcp::connect(*sock, eps[i]);
             endpoint = eps[i];
@@ -251,14 +250,14 @@ namespace fc
       return gntp_guid();
 
     gntp_guid notification_id;
-    rand_pseudo_bytes(notification_id.data(), 20);
+    rand_bytes(notification_id.data(), 20);
 
     std::ostringstream message;
     message << "GNTP/1.0 NOTIFY NONE";
     if (my->password)
     {
       char salt[16];
-      rand_pseudo_bytes(salt, sizeof(salt));
+      rand_bytes(salt, sizeof(salt));
       std::string salted_password = *my->password + std::string(salt, 16);
       sha256 key = sha256::hash(salted_password);
       sha256 keyhash = sha256::hash(key.data(), 32);

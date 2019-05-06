@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
@@ -9,7 +12,6 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
 
@@ -35,7 +37,7 @@ class follow_plugin_impl
       void pre_operation( const operation_notification& op_obj );
       void post_operation( const operation_notification& op_obj );
 
-      chain::database&     _db;
+      chain::database&              _db;
       follow_plugin&                _self;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
@@ -63,7 +65,7 @@ struct pre_operation_visitor
          if( db.calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() ) return;
 
          const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( std::make_tuple( c.id, db.get_account( op.voter ).id ) );
+         auto cv = cv_idx.find( boost::make_tuple( c.id, db.get_account( op.voter ).id ) );
 
          if( cv != cv_idx.end() )
          {
@@ -340,14 +342,14 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       my = std::make_unique< detail::follow_plugin_impl >( *this );
 
       // Each plugin needs its own evaluator registry.
-      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::plugins::follow::follow_plugin_operation > >( my->_db );
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::plugins::follow::follow_plugin_operation > >( my->_db, name() );
 
       // Add each operation evaluator to the registry
       _custom_operation_interpreter->register_evaluator< follow_evaluator >( this );
       _custom_operation_interpreter->register_evaluator< reblog_evaluator >( this );
 
       // Add the registry to the database so the database can delegate custom ops to the plugin
-      my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
+      my->_db.register_custom_operation_interpreter( _custom_operation_interpreter );
 
       my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0 );
       my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->post_operation( note ); }, *this, 0 );
@@ -358,17 +360,22 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       add_plugin_index< follow_count_index      >( my->_db );
       add_plugin_index< blog_author_stats_index >( my->_db );
 
+      fc::mutable_variant_object state_opts;
 
       if( options.count( "follow-max-feed-size" ) )
       {
          uint32_t feed_size = options[ "follow-max-feed-size" ].as< uint32_t >();
          max_feed_size = feed_size;
+         state_opts[ "follow-max-feed-size" ] = feed_size;
       }
 
       if( options.count( "follow-start-feeds" ) )
       {
          start_feeds = fc::time_point_sec( options[ "follow-start-feeds" ].as< uint32_t >() );
+         state_opts[ "follow-start-feeds" ] = start_feeds;
       }
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
    }
    FC_CAPTURE_AND_RETHROW()
 }

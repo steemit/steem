@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/fixed_string.hpp>
 
 #include <steem/protocol/authority.hpp>
@@ -9,8 +11,6 @@
 #include <steem/chain/shared_authority.hpp>
 #include <steem/chain/util/manabar.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 #include <numeric>
 
 namespace steem { namespace chain {
@@ -19,12 +19,10 @@ namespace steem { namespace chain {
 
    class account_object : public object< account_object_type, account_object >
    {
-      account_object() = delete;
+         STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_object )
 
-      public:
          template<typename Constructor, typename Allocator>
          account_object( Constructor&& c, allocator< Allocator > a )
-            :json_metadata( a )
          {
             c(*this);
          };
@@ -33,7 +31,6 @@ namespace steem { namespace chain {
 
          account_name_type name;
          public_key_type   memo_key;
-         shared_string     json_metadata;
          account_name_type proxy;
 
          time_point_sec    last_account_update;
@@ -123,9 +120,25 @@ namespace steem { namespace chain {
          }
    };
 
+   class account_metadata_object : public object< account_metadata_object_type, account_metadata_object >
+   {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_metadata_object )
+
+      template< typename Constructor, typename Allocator >
+      account_metadata_object( Constructor&& c, allocator< Allocator > a )
+         : json_metadata( a )
+      {
+         c( *this );
+      }
+
+      id_type           id;
+      account_id_type   account;
+      shared_string     json_metadata;
+   };
+
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
    {
-      account_authority_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_authority_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -183,7 +196,7 @@ namespace steem { namespace chain {
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
-      owner_authority_history_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( owner_authority_history_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -202,7 +215,7 @@ namespace steem { namespace chain {
 
    class account_recovery_request_object : public object< account_recovery_request_object_type, account_recovery_request_object >
    {
-      account_recovery_request_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_recovery_request_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -221,6 +234,8 @@ namespace steem { namespace chain {
 
    class change_recovery_account_request_object : public object< change_recovery_account_request_object_type, change_recovery_account_request_object >
    {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( change_recovery_account_request_object )
+
       public:
          template< typename Constructor, typename Allocator >
          change_recovery_account_request_object( Constructor&& c, allocator< Allocator > a )
@@ -265,6 +280,17 @@ namespace steem { namespace chain {
    > account_index;
 
    struct by_account;
+
+   typedef multi_index_container <
+      account_metadata_object,
+      indexed_by<
+         ordered_unique< tag< by_id >,
+            member< account_metadata_object, account_metadata_id_type, &account_metadata_object::id > >,
+         ordered_unique< tag< by_account >,
+            member< account_metadata_object, account_id_type, &account_metadata_object::account > >
+      >,
+      allocator< account_metadata_object >
+   > account_metadata_index;
 
    typedef multi_index_container <
       owner_authority_history_object,
@@ -402,8 +428,19 @@ namespace steem { namespace chain {
    > change_recovery_account_request_index;
 } }
 
+#ifdef ENABLE_STD_ALLOCATOR
+namespace mira {
+
+template<> struct is_static_length< steem::chain::account_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::vesting_delegation_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::vesting_delegation_expiration_object > : public boost::true_type {};
+template<> struct is_static_length< steem::chain::change_recovery_account_request_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT( steem::chain::account_object,
-             (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
+             (id)(name)(memo_key)(proxy)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
@@ -422,6 +459,10 @@ FC_REFLECT( steem::chain::account_object,
           )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
+
+FC_REFLECT( steem::chain::account_metadata_object,
+             (id)(account)(json_metadata) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::account_metadata_object, steem::chain::account_metadata_index )
 
 FC_REFLECT( steem::chain::account_authority_object,
              (id)(account)(owner)(active)(posting)(last_owner_update)

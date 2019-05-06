@@ -1,14 +1,21 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/condenser_api/condenser_api_legacy_operations.hpp>
 
 #include <steem/plugins/block_api/block_api_objects.hpp>
 
 namespace steem { namespace plugins { namespace condenser_api {
 
+FC_TODO( "Remove when automated actions are created" )
 typedef static_variant<
          void_t,
          version,
          hardfork_version_vote
+#ifdef IS_TEST_NET
+,
+         required_automated_actions,
+         optional_automated_actions
+#endif
       > legacy_block_header_extensions;
 
 typedef vector< legacy_block_header_extensions > legacy_block_header_extensions_type;

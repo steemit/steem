@@ -10,6 +10,8 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
                        const authority_getter& get_owner,
                        const authority_getter& get_posting,
                        uint32_t max_recursion_depth = STEEM_MAX_SIG_CHECK_DEPTH,
+                       uint32_t max_membership = STEEM_MAX_AUTHORITY_MEMBERSHIP,
+                       uint32_t max_account_auths = STEEM_MAX_SIG_CHECK_ACCOUNTS,
                        bool allow_committe = false,
                        const flat_set< account_name_type >& active_approvals = flat_set< account_name_type >(),
                        const flat_set< account_name_type >& owner_approvals = flat_set< account_name_type >(),
@@ -40,6 +42,8 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
       flat_set< public_key_type > avail;
       sign_state s(sigs,get_posting,avail);
       s.max_recursion = max_recursion_depth;
+      s.max_membership = max_membership;
+      s.max_account_auths = max_account_auths;
       for( auto& id : posting_approvals )
          s.approved_by.insert( id );
       for( const auto& id : required_posting )
@@ -64,6 +68,8 @@ void verify_authority( const vector<AuthContainerType>& auth_containers, const f
    flat_set< public_key_type > avail;
    sign_state s(sigs,get_active,avail);
    s.max_recursion = max_recursion_depth;
+   s.max_membership = max_membership;
+   s.max_account_auths = max_account_auths;
    for( auto& id : active_approvals )
       s.approved_by.insert( id );
    for( auto& id : owner_approvals )

@@ -1,8 +1,9 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
+#include <steem/plugins/witness/block_producer.hpp>
 
 #include <appbase/application.hpp>
 

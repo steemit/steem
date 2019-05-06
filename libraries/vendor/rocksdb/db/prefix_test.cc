@@ -17,7 +17,6 @@ int main() {
 #include <iostream>
 #include <vector>
 
-#include <gflags/gflags.h>
 #include "db/db_impl.h"
 #include "monitoring/histogram.h"
 #include "rocksdb/comparator.h"
@@ -27,14 +26,15 @@ int main() {
 #include "rocksdb/perf_context.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/table.h"
+#include "util/coding.h"
+#include "util/gflags_compat.h"
 #include "util/random.h"
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 #include "util/testharness.h"
 #include "utilities/merge_operators.h"
-#include "util/coding.h"
 
-using GFLAGS::ParseCommandLineFlags;
+using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 
 DEFINE_bool(trigger_deadlock, false,
             "issue delete in range scan to trigger PrefixHashMap deadlock");
@@ -53,7 +53,7 @@ DEFINE_int32(value_size, 40, "");
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 
 // Path to the database on file system
-const std::string kDbName = rocksdb::test::TmpDir() + "/prefix_test";
+const std::string kDbName = rocksdb::test::PerThreadDBPath("prefix_test");
 
 namespace rocksdb {
 
@@ -83,7 +83,7 @@ class TestKeyComparator : public Comparator {
 
   // Compare needs to be aware of the possibility of a and/or b is
   // prefix only
-  virtual int Compare(const Slice& a, const Slice& b) const override {
+  int Compare(const Slice& a, const Slice& b) const override {
     const TestKey kkey_a = SliceToTestKey(a);
     const TestKey kkey_b = SliceToTestKey(b);
     const TestKey *key_a = &kkey_a;
@@ -122,14 +122,12 @@ class TestKeyComparator : public Comparator {
     return Compare(TestKeyToSlice(sa, a), TestKeyToSlice(sb, b)) < 0;
   }
 
-  virtual const char* Name() const override {
-    return "TestKeyComparator";
-  }
+  const char* Name() const override { return "TestKeyComparator"; }
 
-  virtual void FindShortestSeparator(std::string* start,
-                                     const Slice& limit) const override {}
+  void FindShortestSeparator(std::string* /*start*/,
+                             const Slice& /*limit*/) const override {}
 
-  virtual void FindShortSuccessor(std::string* key) const override {}
+  void FindShortSuccessor(std::string* /*key*/) const override {}
 };
 
 namespace {
@@ -195,23 +193,23 @@ class SamePrefixTransform : public SliceTransform {
   explicit SamePrefixTransform(const Slice& prefix)
       : prefix_(prefix), name_("rocksdb.SamePrefix." + prefix.ToString()) {}
 
-  virtual const char* Name() const override { return name_.c_str(); }
+  const char* Name() const override { return name_.c_str(); }
 
-  virtual Slice Transform(const Slice& src) const override {
+  Slice Transform(const Slice& src) const override {
     assert(InDomain(src));
     return prefix_;
   }
 
-  virtual bool InDomain(const Slice& src) const override {
+  bool InDomain(const Slice& src) const override {
     if (src.size() >= prefix_.size()) {
       return Slice(src.data(), prefix_.size()) == prefix_;
     }
     return false;
   }
 
-  virtual bool InRange(const Slice& dst) const override {
-    return dst == prefix_;
-  }
+  bool InRange(const Slice& dst) const override { return dst == prefix_; }
+
+  bool FullLengthEnabled(size_t* /*len*/) const override { return false; }
 };
 
 }  // namespace
@@ -279,9 +277,8 @@ class PrefixTest : public testing::Test {
   PrefixTest() : option_config_(kBegin) {
     options.comparator = new TestKeyComparator();
   }
-  ~PrefixTest() {
-    delete options.comparator;
-  }
+  ~PrefixTest() override { delete options.comparator; }
+
  protected:
   enum OptionConfig {
     kBegin,
@@ -879,8 +876,6 @@ TEST_F(PrefixTest, PrefixSeekModePrev3) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   ParseCommandLineFlags(&argc, &argv, true);
-  std::cout << kDbName << "\n";
-
   return RUN_ALL_TESTS();
 }
 
@@ -889,7 +884,7 @@ int main(int argc, char** argv) {
 #else
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   fprintf(stderr,
           "SKIPPED as HashSkipList and HashLinkList are not supported in "
           "ROCKSDB_LITE\n");

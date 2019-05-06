@@ -1,10 +1,10 @@
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(":defs.bzl", "test_binary")
+
 REPO_PATH = package_name() + "/"
 
-BUCK_BINS = "buck-out/gen/" + REPO_PATH
-
-TEST_RUNNER = REPO_PATH + "buckifier/rocks_test_runner.sh"
-
-rocksdb_compiler_flags = [
+ROCKSDB_COMPILER_FLAGS = [
     "-fno-builtin-memcmp",
     "-DROCKSDB_PLATFORM_POSIX",
     "-DROCKSDB_LIB_IO_POSIX",
@@ -20,14 +20,19 @@ rocksdb_compiler_flags = [
     "-DBZIP2",
     "-DLZ4",
     "-DZSTD",
+    "-DZSTD_STATIC_LINKING_ONLY",
     "-DGFLAGS=gflags",
     "-DNUMA",
     "-DTBB",
     # Needed to compile in fbcode
     "-Wno-expansion-to-defined",
+    # Added missing flags from output of build_detect_platform
+    "-DROCKSDB_PTHREAD_ADAPTIVE_MUTEX",
+    "-DROCKSDB_BACKTRACE",
+    "-Wnarrowing",
 ]
 
-rocksdb_external_deps = [
+ROCKSDB_EXTERNAL_DEPS = [
     ("bzip2", None, "bz2"),
     ("snappy", None, "snappy"),
     ("zlib", None, "z"),
@@ -39,14 +44,17 @@ rocksdb_external_deps = [
     ("googletest", None, "gtest"),
 ]
 
-rocksdb_preprocessor_flags = [
+ROCKSDB_PREPROCESSOR_FLAGS = [
     # Directories with files for #include
     "-I" + REPO_PATH + "include/",
     "-I" + REPO_PATH,
 ]
 
-rocksdb_arch_preprocessor_flags = {
-    "x86_64": ["-DHAVE_SSE42"],
+ROCKSDB_ARCH_PREPROCESSOR_FLAGS = {
+    "x86_64": [
+        "-DHAVE_SSE42",
+        "-DHAVE_PCLMUL",
+    ],
 }
 
 build_mode = read_config("fbcode", "build_mode")
@@ -55,8 +63,15 @@ is_opt_mode = build_mode.startswith("opt")
 
 # -DNDEBUG is added by default in opt mode in fbcode. But adding it twice
 # doesn't harm and avoid forgetting to add it.
-if is_opt_mode:
-    rocksdb_compiler_flags.append("-DNDEBUG")
+ROCKSDB_COMPILER_FLAGS += (["-DNDEBUG"] if is_opt_mode else [])
+
+sanitizer = read_config("fbcode", "sanitizer")
+
+# Do not enable jemalloc if sanitizer presents. RocksDB will further detect
+# whether the binary is linked with jemalloc at runtime.
+ROCKSDB_COMPILER_FLAGS += (["-DROCKSDB_JEMALLOC"] if sanitizer == "" else [])
+
+ROCKSDB_EXTERNAL_DEPS += ([("jemalloc", None, "headers")] if sanitizer == "" else [])
 
 cpp_library(
     name = "rocksdb_lib",
@@ -72,6 +87,7 @@ cpp_library(
         "db/compaction_iterator.cc",
         "db/compaction_job.cc",
         "db/compaction_picker.cc",
+        "db/compaction_picker_fifo.cc",
         "db/compaction_picker_universal.cc",
         "db/convenience.cc",
         "db/db_filesnapshot.cc",
@@ -86,6 +102,7 @@ cpp_library(
         "db/db_info_dumper.cc",
         "db/db_iter.cc",
         "db/dbformat.cc",
+        "db/error_handler.cc",
         "db/event_helpers.cc",
         "db/experimental.cc",
         "db/external_sst_file_ingestion_job.cc",
@@ -93,16 +110,18 @@ cpp_library(
         "db/flush_job.cc",
         "db/flush_scheduler.cc",
         "db/forward_iterator.cc",
+        "db/in_memory_stats_history.cc",
         "db/internal_stats.cc",
         "db/log_reader.cc",
         "db/log_writer.cc",
+        "db/logs_with_prep_tracker.cc",
         "db/malloc_stats.cc",
-        "db/managed_iterator.cc",
         "db/memtable.cc",
         "db/memtable_list.cc",
         "db/merge_helper.cc",
         "db/merge_operator.cc",
         "db/range_del_aggregator.cc",
+        "db/range_tombstone_fragmenter.cc",
         "db/repair.cc",
         "db/snapshot_impl.cc",
         "db/table_cache.cc",
@@ -124,7 +143,6 @@ cpp_library(
         "env/io_posix.cc",
         "env/mock_env.cc",
         "memtable/alloc_tracker.cc",
-        "memtable/hash_cuckoo_rep.cc",
         "memtable/hash_linklist_rep.cc",
         "memtable/hash_skiplist_rep.cc",
         "memtable/skiplistrep.cc",
@@ -157,11 +175,14 @@ cpp_library(
         "table/block_based_table_factory.cc",
         "table/block_based_table_reader.cc",
         "table/block_builder.cc",
+        "table/block_fetcher.cc",
         "table/block_prefix_index.cc",
         "table/bloom_block.cc",
         "table/cuckoo_table_builder.cc",
         "table/cuckoo_table_factory.cc",
         "table/cuckoo_table_reader.cc",
+        "table/data_block_footer.cc",
+        "table/data_block_hash_index.cc",
         "table/flush_block_policy.cc",
         "table/format.cc",
         "table/full_filter_block.cc",
@@ -177,6 +198,7 @@ cpp_library(
         "table/plain_table_index.cc",
         "table/plain_table_key_coding.cc",
         "table/plain_table_reader.cc",
+        "table/sst_file_reader.cc",
         "table/sst_file_writer.cc",
         "table/table_properties.cc",
         "table/two_level_iterator.cc",
@@ -191,7 +213,9 @@ cpp_library(
         "util/coding.cc",
         "util/compaction_job_stats_impl.cc",
         "util/comparator.cc",
+        "util/compression_context_cache.cc",
         "util/concurrent_arena.cc",
+        "util/concurrent_task_limiter_impl.cc",
         "util/crc32c.cc",
         "util/delete_scheduler.cc",
         "util/dynamic_bloom.cc",
@@ -201,6 +225,7 @@ cpp_library(
         "util/filename.cc",
         "util/filter_policy.cc",
         "util/hash.cc",
+        "util/jemalloc_nodump_allocator.cc",
         "util/log_buffer.cc",
         "util/murmurhash.cc",
         "util/random.cc",
@@ -208,39 +233,36 @@ cpp_library(
         "util/slice.cc",
         "util/sst_file_manager_impl.cc",
         "util/status.cc",
-        "util/status_message.cc",
         "util/string_util.cc",
         "util/sync_point.cc",
+        "util/sync_point_impl.cc",
         "util/thread_local.cc",
         "util/threadpool_imp.cc",
+        "util/trace_replay.cc",
         "util/transaction_test_util.cc",
         "util/xxhash.cc",
         "utilities/backupable/backupable_db.cc",
+        "utilities/blob_db/blob_compaction_filter.cc",
         "utilities/blob_db/blob_db.cc",
         "utilities/blob_db/blob_db_impl.cc",
+        "utilities/blob_db/blob_db_impl_filesnapshot.cc",
         "utilities/blob_db/blob_dump_tool.cc",
         "utilities/blob_db/blob_file.cc",
         "utilities/blob_db/blob_log_format.cc",
         "utilities/blob_db/blob_log_reader.cc",
         "utilities/blob_db/blob_log_writer.cc",
-        "utilities/blob_db/ttl_extractor.cc",
         "utilities/cassandra/cassandra_compaction_filter.cc",
         "utilities/cassandra/format.cc",
         "utilities/cassandra/merge_operator.cc",
         "utilities/checkpoint/checkpoint_impl.cc",
         "utilities/compaction_filters/remove_emptyvalue_compactionfilter.cc",
         "utilities/convenience/info_log_finder.cc",
-        "utilities/date_tiered/date_tiered_db_impl.cc",
         "utilities/debug.cc",
-        "utilities/document/document_db.cc",
-        "utilities/document/json_document.cc",
-        "utilities/document/json_document_builder.cc",
         "utilities/env_mirror.cc",
         "utilities/env_timed.cc",
-        "utilities/geodb/geodb_impl.cc",
         "utilities/leveldb_options/leveldb_options.cc",
-        "utilities/lua/rocks_lua_compaction_filter.cc",
         "utilities/memory/memory_util.cc",
+        "utilities/merge_operators/bytesxor.cc",
         "utilities/merge_operators/max.cc",
         "utilities/merge_operators/put.cc",
         "utilities/merge_operators/string_append/stringappend.cc",
@@ -253,10 +275,9 @@ cpp_library(
         "utilities/persistent_cache/block_cache_tier_metadata.cc",
         "utilities/persistent_cache/persistent_cache_tier.cc",
         "utilities/persistent_cache/volatile_tier_impl.cc",
-        "utilities/redis/redis_lists.cc",
         "utilities/simulator_cache/sim_cache.cc",
-        "utilities/spatialdb/spatial_db.cc",
         "utilities/table_properties_collectors/compact_on_deletion_collector.cc",
+        "utilities/trace/file_trace_reader_writer.cc",
         "utilities/transactions/optimistic_transaction.cc",
         "utilities/transactions/optimistic_transaction_db_impl.cc",
         "utilities/transactions/pessimistic_transaction.cc",
@@ -268,16 +289,18 @@ cpp_library(
         "utilities/transactions/transaction_util.cc",
         "utilities/transactions/write_prepared_txn.cc",
         "utilities/transactions/write_prepared_txn_db.cc",
+        "utilities/transactions/write_unprepared_txn.cc",
+        "utilities/transactions/write_unprepared_txn_db.cc",
         "utilities/ttl/db_ttl_impl.cc",
         "utilities/write_batch_with_index/write_batch_with_index.cc",
         "utilities/write_batch_with_index/write_batch_with_index_internal.cc",
     ],
-    headers = AutoHeaders.RECURSIVE_GLOB,
-    arch_preprocessor_flags = rocksdb_arch_preprocessor_flags,
-    compiler_flags = rocksdb_compiler_flags,
-    preprocessor_flags = rocksdb_preprocessor_flags,
+    auto_headers = AutoHeaders.RECURSIVE_GLOB,
+    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+    compiler_flags = ROCKSDB_COMPILER_FLAGS,
+    preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
     deps = [],
-    external_deps = rocksdb_external_deps,
+    external_deps = ROCKSDB_EXTERNAL_DEPS,
 )
 
 cpp_library(
@@ -285,45 +308,44 @@ cpp_library(
     srcs = [
         "db/db_test_util.cc",
         "table/mock_table.cc",
+        "tools/trace_analyzer_tool.cc",
         "util/fault_injection_test_env.cc",
         "util/testharness.cc",
         "util/testutil.cc",
         "utilities/cassandra/test_utils.cc",
-        "utilities/col_buf_decoder.cc",
-        "utilities/col_buf_encoder.cc",
-        "utilities/column_aware_encoding_util.cc",
     ],
-    headers = AutoHeaders.RECURSIVE_GLOB,
-    arch_preprocessor_flags = rocksdb_arch_preprocessor_flags,
-    compiler_flags = rocksdb_compiler_flags,
-    preprocessor_flags = rocksdb_preprocessor_flags,
+    auto_headers = AutoHeaders.RECURSIVE_GLOB,
+    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+    compiler_flags = ROCKSDB_COMPILER_FLAGS,
+    preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
     deps = [":rocksdb_lib"],
-    external_deps = rocksdb_external_deps,
+    external_deps = ROCKSDB_EXTERNAL_DEPS,
 )
 
 cpp_library(
     name = "rocksdb_tools_lib",
     srcs = [
         "tools/db_bench_tool.cc",
+        "tools/trace_analyzer_tool.cc",
         "util/testutil.cc",
     ],
-    headers = AutoHeaders.RECURSIVE_GLOB,
-    arch_preprocessor_flags = rocksdb_arch_preprocessor_flags,
-    compiler_flags = rocksdb_compiler_flags,
-    preprocessor_flags = rocksdb_preprocessor_flags,
+    auto_headers = AutoHeaders.RECURSIVE_GLOB,
+    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+    compiler_flags = ROCKSDB_COMPILER_FLAGS,
+    preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
     deps = [":rocksdb_lib"],
-    external_deps = rocksdb_external_deps,
+    external_deps = ROCKSDB_EXTERNAL_DEPS,
 )
 
 cpp_library(
     name = "env_basic_test_lib",
     srcs = ["env/env_basic_test.cc"],
-    headers = AutoHeaders.RECURSIVE_GLOB,
-    arch_preprocessor_flags = rocksdb_arch_preprocessor_flags,
-    compiler_flags = rocksdb_compiler_flags,
-    preprocessor_flags = rocksdb_preprocessor_flags,
+    auto_headers = AutoHeaders.RECURSIVE_GLOB,
+    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+    compiler_flags = ROCKSDB_COMPILER_FLAGS,
+    preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
     deps = [":rocksdb_test_lib"],
-    external_deps = rocksdb_external_deps,
+    external_deps = ROCKSDB_EXTERNAL_DEPS,
 )
 
 # [test_name, test_src, test_type]
@@ -414,11 +436,6 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
-        "column_aware_encoding_test",
-        "utilities/column_aware_encoding_test.cc",
-        "serial",
-    ],
-    [
         "column_family_test",
         "db/column_family_test.cc",
         "serial",
@@ -484,8 +501,8 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
-        "date_tiered_test",
-        "utilities/date_tiered/date_tiered_test.cc",
+        "data_block_hash_index_test",
+        "table/data_block_hash_index_test.cc",
         "serial",
     ],
     [
@@ -544,6 +561,11 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
+        "db_iter_stress_test",
+        "db/db_iter_stress_test.cc",
+        "serial",
+    ],
+    [
         "db_iter_test",
         "db/db_iter_test.cc",
         "serial",
@@ -566,7 +588,7 @@ ROCKS_TESTS = [
     [
         "db_merge_operator_test",
         "db/db_merge_operator_test.cc",
-        "serial",
+        "parallel",
     ],
     [
         "db_options_test",
@@ -644,11 +666,6 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
-        "document_db_test",
-        "utilities/document/document_db_test.cc",
-        "serial",
-    ],
-    [
         "dynamic_bloom_test",
         "util/dynamic_bloom_test.cc",
         "serial",
@@ -666,6 +683,11 @@ ROCKS_TESTS = [
     [
         "env_timed_test",
         "utilities/env_timed_test.cc",
+        "serial",
+    ],
+    [
+        "error_handler_test",
+        "db/error_handler_test.cc",
         "serial",
     ],
     [
@@ -719,11 +741,6 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
-        "geodb_test",
-        "utilities/geodb/geodb_test.cc",
-        "serial",
-    ],
-    [
         "hash_table_test",
         "utilities/persistent_cache/hash_table_test.cc",
         "serial",
@@ -751,11 +768,6 @@ ROCKS_TESTS = [
     [
         "iostats_context_test",
         "monitoring/iostats_context_test.cc",
-        "serial",
-    ],
-    [
-        "json_document_test",
-        "utilities/document/json_document_test.cc",
         "serial",
     ],
     [
@@ -819,6 +831,11 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
+        "obsolete_files_test",
+        "db/obsolete_files_test.cc",
+        "serial",
+    ],
+    [
         "optimistic_transaction_test",
         "utilities/transactions/optimistic_transaction_test.cc",
         "serial",
@@ -879,6 +896,11 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
+        "range_tombstone_fragmenter_test",
+        "db/range_tombstone_fragmenter_test.cc",
+        "serial",
+    ],
+    [
         "rate_limiter_test",
         "util/rate_limiter_test.cc",
         "serial",
@@ -891,6 +913,11 @@ ROCKS_TESTS = [
     [
         "repair_test",
         "db/repair_test.cc",
+        "serial",
+    ],
+    [
+        "repeatable_thread_test",
+        "util/repeatable_thread_test.cc",
         "serial",
     ],
     [
@@ -909,13 +936,13 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
-        "spatial_db_test",
-        "utilities/spatialdb/spatial_db_test.cc",
+        "sst_dump_test",
+        "tools/sst_dump_test.cc",
         "serial",
     ],
     [
-        "sst_dump_test",
-        "tools/sst_dump_test.cc",
+        "sst_file_reader_test",
+        "table/sst_file_reader_test.cc",
         "serial",
     ],
     [
@@ -951,6 +978,11 @@ ROCKS_TESTS = [
     [
         "timer_queue_test",
         "util/timer_queue_test.cc",
+        "serial",
+    ],
+    [
+        "trace_analyzer_test",
+        "tools/trace_analyzer_test.cc",
         "serial",
     ],
     [
@@ -1016,45 +1048,28 @@ ROCKS_TESTS = [
     [
         "write_prepared_transaction_test",
         "utilities/transactions/write_prepared_transaction_test.cc",
-        "serial",
+        "parallel",
+    ],
+    [
+        "write_unprepared_transaction_test",
+        "utilities/transactions/write_unprepared_transaction_test.cc",
+        "parallel",
     ],
 ]
 
 # Generate a test rule for each entry in ROCKS_TESTS
 # Do not build the tests in opt mode, since SyncPoint and other test code
 # will not be included.
-if not is_opt_mode:
-    for test_cfg in ROCKS_TESTS:
-        test_name = test_cfg[0]
-        test_cc = test_cfg[1]
-        ttype = "gtest" if test_cfg[2] == "parallel" else "simple"
-        test_bin = test_name + "_bin"
-
-        cpp_binary (
-          name = test_bin,
-          srcs = [test_cc],
-          deps = [":rocksdb_test_lib"],
-          preprocessor_flags = rocksdb_preprocessor_flags,
-          arch_preprocessor_flags = rocksdb_arch_preprocessor_flags,
-          compiler_flags = rocksdb_compiler_flags,
-          external_deps = rocksdb_external_deps,
-        )
-
-        custom_unittest(
-          name = test_name,
-          type = ttype,
-          deps = [":" + test_bin],
-          command = [TEST_RUNNER, BUCK_BINS + test_bin]
-        )
-
-custom_unittest(
-    name = "make_rocksdbjavastatic",
-    command = ["internal_repo_rocksdb/make_rocksdbjavastatic.sh"],
-    type = "simple",
-)
-
-custom_unittest(
-    name = "make_rocksdb_lite_release",
-    command = ["internal_repo_rocksdb/make_rocksdb_lite_release.sh"],
-    type = "simple",
-)
+[
+    test_binary(
+        parallelism = parallelism,
+        rocksdb_arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+        rocksdb_compiler_flags = ROCKSDB_COMPILER_FLAGS,
+        rocksdb_external_deps = ROCKSDB_EXTERNAL_DEPS,
+        rocksdb_preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
+        test_cc = test_cc,
+        test_name = test_name,
+    )
+    for test_name, test_cc, parallelism in ROCKS_TESTS
+    if not is_opt_mode
+]

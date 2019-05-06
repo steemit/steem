@@ -23,6 +23,7 @@ namespace steem { namespace chain {
 using protocol::operation;
 using protocol::authority;
 using protocol::account_name_type;
+using protocol::custom_id_type;
 
 class database;
 
@@ -131,7 +132,9 @@ class generic_custom_operation_interpreter
    : public custom_operation_interpreter, public evaluator_registry< CustomOperationType >
 {
    public:
-      generic_custom_operation_interpreter( database& db ) : evaluator_registry< CustomOperationType >(db) {}
+      generic_custom_operation_interpreter( database& db, const custom_id_type& cid )
+         : evaluator_registry< CustomOperationType >(db), custom_id(cid) {}
+      virtual ~generic_custom_operation_interpreter() = default;
 
       void apply_operations( const vector< CustomOperationType >& custom_operations, const operation& outer_o )
       {
@@ -221,6 +224,14 @@ class generic_custom_operation_interpreter
       {
          return steem::schema::get_schema_for_type< CustomOperationType >();
       }
+
+      virtual custom_id_type get_custom_id() override
+      {
+         return custom_id;
+      }
+
+   private:
+      custom_id_type custom_id;
 };
 
 } }

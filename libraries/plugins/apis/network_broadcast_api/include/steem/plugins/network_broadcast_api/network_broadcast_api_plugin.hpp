@@ -1,7 +1,9 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -16,6 +18,7 @@ class network_broadcast_api_plugin : public appbase::plugin< network_broadcast_a
 public:
    APPBASE_PLUGIN_REQUIRES(
       (steem::plugins::json_rpc::json_rpc_plugin)
+      (steem::plugins::rc::rc_plugin)
       (steem::plugins::chain::chain_plugin)
       (steem::plugins::p2p::p2p_plugin)
    )

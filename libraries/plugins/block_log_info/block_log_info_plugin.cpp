@@ -1,3 +1,6 @@
+
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/block_log_info/block_log_info_plugin.hpp>
 #include <steem/plugins/block_log_info/block_log_info_objects.hpp>
 
@@ -5,7 +8,6 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/global_property_object.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/operation_notification.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -164,6 +166,8 @@ void block_log_info_plugin::plugin_initialize( const boost::program_options::var
       {
          wlog( "print_interval_seconds set to value <= 0, if you don't need printing, consider disabling block_log_info_plugin entirely to improve performance" );
       }
+
+      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), fc::variant_object() );
    }
    FC_CAPTURE_AND_RETHROW()
 }

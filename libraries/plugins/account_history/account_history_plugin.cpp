@@ -4,7 +4,6 @@
 
 #include <steem/protocol/config.hpp>
 
-#include <steem/chain/operation_notification.hpp>
 #include <steem/chain/history_object.hpp>
 
 #include <steem/utilities/plugin_utilities.hpp>
@@ -232,6 +231,12 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
       STEEM_LOAD_VALUE_SET( options, "track-account-range", my->_tracked_accounts, pairstring );
    }
 
+   fc::mutable_variant_object state_opts;
+
+   if( my->_tracked_accounts.size() )
+   {
+      state_opts["account-history-track-account-range"] = my->_tracked_accounts;
+   }
 
    if( options.count( "account-history-whitelist-ops" ) || options.count( "history-whitelist-ops" ) )
    {
@@ -268,6 +273,11 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
                   my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
             }
          }
+      }
+
+      if( my->_op_list.size() )
+      {
+         state_opts["account-history-whitelist-ops"] = my->_op_list;
       }
 
       ilog( "Account History: whitelisting ops ${o}", ("o", my->_op_list) );
@@ -309,6 +319,11 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
          }
       }
 
+      if( my->_op_list.size() )
+      {
+         state_opts["account-history-blacklist-ops"] = my->_op_list;
+      }
+
       ilog( "Account History: blacklisting ops ${o}", ("o", my->_op_list) );
    }
 
@@ -316,6 +331,9 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
    {
       my->_prune = !options[ "history-disable-pruning" ].as< bool >();
    }
+   state_opts["history-disable-pruning"] = my->_prune;
+
+   appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
 }
 
 void account_history_plugin::plugin_startup() {}

@@ -19,7 +19,7 @@ struct sign_state
        *  Checks to see if we have signatures of the active authorites of
        *  the accounts specified in authority or the keys specified.
        */
-      bool check_authority( const authority& au, uint32_t depth = 0 );
+      bool check_authority( const authority& au, uint32_t depth = 0, uint32_t account_auth_count = 0 );
 
       bool remove_unused_signatures();
 
@@ -33,6 +33,11 @@ struct sign_state
       flat_map<public_key_type,bool>   provided_signatures;
       flat_set<string>                 approved_by;
       uint32_t                         max_recursion = STEEM_MAX_SIG_CHECK_DEPTH;
+      uint32_t                         max_membership = ~0;
+      uint32_t                         max_account_auths = ~0;
+
+      private:
+         bool check_authority_impl( const authority& au, uint32_t depth, uint32_t* account_auth_count );
 };
 
 } } // steem::protocol

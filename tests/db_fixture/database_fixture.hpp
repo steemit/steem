@@ -200,7 +200,6 @@ struct database_fixture {
 
    optional<fc::temp_directory> data_dir;
    bool skip_key_index_test = false;
-   uint32_t anon_acct_count;
 
    database_fixture() {}
    virtual ~database_fixture() { appbase::reset(); }
@@ -209,7 +208,6 @@ struct database_fixture {
 #ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
 #endif
-   string generate_anon_acct_name();
    void open_database();
    void generate_block(uint32_t skip = 0,
                                const fc::ecc::private_key& key = generate_private_key("init_key"),
@@ -247,7 +245,6 @@ struct database_fixture {
       const string& name,
       const public_key_type& key
    );
-
 
    const witness_object& witness_create(
       const string& owner,
@@ -306,6 +303,8 @@ struct t_smt_database_fixture : public T
 
    asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+   asset_symbol_type create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+      uint32_t nai, uint8_t token_decimal_places );
 
    /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
    std::array<asset_symbol_type, 3> create_smt_3(const char* control_account_name, const fc::ecc::private_key& key);

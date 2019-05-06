@@ -6,6 +6,7 @@
 #include "table/full_filter_block.h"
 
 #include "rocksdb/filter_policy.h"
+#include "table/full_filter_bits_builder.h"
 #include "util/coding.h"
 #include "util/hash.h"
 #include "util/string_util.h"
@@ -19,12 +20,12 @@ class TestFilterBitsBuilder : public FilterBitsBuilder {
   explicit TestFilterBitsBuilder() {}
 
   // Add Key to filter
-  virtual void AddKey(const Slice& key) override {
+  void AddKey(const Slice& key) override {
     hash_entries_.push_back(Hash(key.data(), key.size(), 1));
   }
 
   // Generate the filter using the keys that are added
-  virtual Slice Finish(std::unique_ptr<const char[]>* buf) override {
+  Slice Finish(std::unique_ptr<const char[]>* buf) override {
     uint32_t len = static_cast<uint32_t>(hash_entries_.size()) * 4;
     char* data = new char[len];
     for (size_t i = 0; i < hash_entries_.size(); i++) {
@@ -44,7 +45,7 @@ class TestFilterBitsReader : public FilterBitsReader {
   explicit TestFilterBitsReader(const Slice& contents)
       : data_(contents.data()), len_(static_cast<uint32_t>(contents.size())) {}
 
-  virtual bool MayMatch(const Slice& entry) override {
+  bool MayMatch(const Slice& entry) override {
     uint32_t h = Hash(entry.data(), entry.size(), 1);
     for (size_t i = 0; i + 4 <= len_; i += 4) {
       if (h == DecodeFixed32(data_ + i)) {
@@ -62,18 +63,16 @@ class TestFilterBitsReader : public FilterBitsReader {
 
 class TestHashFilter : public FilterPolicy {
  public:
-  virtual const char* Name() const override { return "TestHashFilter"; }
+  const char* Name() const override { return "TestHashFilter"; }
 
-  virtual void CreateFilter(const Slice* keys, int n,
-                            std::string* dst) const override {
+  void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
     for (int i = 0; i < n; i++) {
       uint32_t h = Hash(keys[i].data(), keys[i].size(), 1);
       PutFixed32(dst, h);
     }
   }
 
-  virtual bool KeyMayMatch(const Slice& key,
-                           const Slice& filter) const override {
+  bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
     uint32_t h = Hash(key.data(), key.size(), 1);
     for (unsigned int i = 0; i + 4 <= filter.size(); i += 4) {
       if (h == DecodeFixed32(filter.data() + i)) {
@@ -83,12 +82,11 @@ class TestHashFilter : public FilterPolicy {
     return false;
   }
 
-  virtual FilterBitsBuilder* GetFilterBitsBuilder() const override {
+  FilterBitsBuilder* GetFilterBitsBuilder() const override {
     return new TestFilterBitsBuilder();
   }
 
-  virtual FilterBitsReader* GetFilterBitsReader(const Slice& contents)
-      const override {
+  FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override {
     return new TestFilterBitsReader(contents);
   }
 };
@@ -112,7 +110,7 @@ TEST_F(PluginFullFilterBlockTest, PluginEmptyBuilder) {
       nullptr, true, block,
       table_options_.filter_policy->GetFilterBitsReader(block), nullptr);
   // Remain same symantic with blockbased filter
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
 }
 
 TEST_F(PluginFullFilterBlockTest, PluginSingleChunk) {
@@ -127,13 +125,13 @@ TEST_F(PluginFullFilterBlockTest, PluginSingleChunk) {
   FullFilterBlockReader reader(
       nullptr, true, block,
       table_options_.filter_policy->GetFilterBitsReader(block), nullptr);
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
-  ASSERT_TRUE(reader.KeyMayMatch("bar"));
-  ASSERT_TRUE(reader.KeyMayMatch("box"));
-  ASSERT_TRUE(reader.KeyMayMatch("hello"));
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
-  ASSERT_TRUE(!reader.KeyMayMatch("missing"));
-  ASSERT_TRUE(!reader.KeyMayMatch("other"));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("bar", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("box", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("hello", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
+  ASSERT_TRUE(!reader.KeyMayMatch("missing", nullptr));
+  ASSERT_TRUE(!reader.KeyMayMatch("other", nullptr));
 }
 
 class FullFilterBlockTest : public testing::Test {
@@ -144,7 +142,7 @@ class FullFilterBlockTest : public testing::Test {
     table_options_.filter_policy.reset(NewBloomFilterPolicy(10, false));
   }
 
-  ~FullFilterBlockTest() {}
+  ~FullFilterBlockTest() override {}
 };
 
 TEST_F(FullFilterBlockTest, EmptyBuilder) {
@@ -157,28 +155,63 @@ TEST_F(FullFilterBlockTest, EmptyBuilder) {
       nullptr, true, block,
       table_options_.filter_policy->GetFilterBitsReader(block), nullptr);
   // Remain same symantic with blockbased filter
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
+}
+
+TEST_F(FullFilterBlockTest, DuplicateEntries) {
+  {  // empty prefixes
+    std::unique_ptr<const SliceTransform> prefix_extractor(
+        NewFixedPrefixTransform(0));
+    auto bits_builder = dynamic_cast<FullFilterBitsBuilder*>(
+        table_options_.filter_policy->GetFilterBitsBuilder());
+    const bool WHOLE_KEY = true;
+    FullFilterBlockBuilder builder(prefix_extractor.get(), WHOLE_KEY,
+                                   bits_builder);
+    ASSERT_EQ(0, builder.NumAdded());
+    builder.Add("key");  // test with empty prefix
+    ASSERT_EQ(2, bits_builder->hash_entries_.size());
+  }
+
+  // mix of empty and non-empty
+  std::unique_ptr<const SliceTransform> prefix_extractor(
+      NewFixedPrefixTransform(7));
+  auto bits_builder = dynamic_cast<FullFilterBitsBuilder*>(
+      table_options_.filter_policy->GetFilterBitsBuilder());
+  const bool WHOLE_KEY = true;
+  FullFilterBlockBuilder builder(prefix_extractor.get(), WHOLE_KEY,
+                                 bits_builder);
+  ASSERT_EQ(0, builder.NumAdded());
+  builder.Add("");  // test with empty key too
+  builder.Add("prefix1key1");
+  builder.Add("prefix1key1");
+  builder.Add("prefix1key2");
+  builder.Add("prefix1key3");
+  builder.Add("prefix2key4");
+  // two prefix adn 4 keys
+  ASSERT_EQ(1 + 2 + 4, bits_builder->hash_entries_.size());
 }
 
 TEST_F(FullFilterBlockTest, SingleChunk) {
   FullFilterBlockBuilder builder(
       nullptr, true, table_options_.filter_policy->GetFilterBitsBuilder());
+  ASSERT_EQ(0, builder.NumAdded());
   builder.Add("foo");
   builder.Add("bar");
   builder.Add("box");
   builder.Add("box");
   builder.Add("hello");
+  ASSERT_EQ(5, builder.NumAdded());
   Slice block = builder.Finish();
   FullFilterBlockReader reader(
       nullptr, true, block,
       table_options_.filter_policy->GetFilterBitsReader(block), nullptr);
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
-  ASSERT_TRUE(reader.KeyMayMatch("bar"));
-  ASSERT_TRUE(reader.KeyMayMatch("box"));
-  ASSERT_TRUE(reader.KeyMayMatch("hello"));
-  ASSERT_TRUE(reader.KeyMayMatch("foo"));
-  ASSERT_TRUE(!reader.KeyMayMatch("missing"));
-  ASSERT_TRUE(!reader.KeyMayMatch("other"));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("bar", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("box", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("hello", nullptr));
+  ASSERT_TRUE(reader.KeyMayMatch("foo", nullptr));
+  ASSERT_TRUE(!reader.KeyMayMatch("missing", nullptr));
+  ASSERT_TRUE(!reader.KeyMayMatch("other", nullptr));
 }
 
 }  // namespace rocksdb

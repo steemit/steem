@@ -39,6 +39,15 @@ namespace rocksdb {
 
 #ifndef ROCKSDB_LITE
 
+Status WalManager::DeleteFile(const std::string& fname, uint64_t number) {
+  auto s = env_->DeleteFile(db_options_.wal_dir + "/" + fname);
+  if (s.ok()) {
+    MutexLock l(&read_first_record_cache_mutex_);
+    read_first_record_cache_.erase(number);
+  }
+  return s;
+}
+
 Status WalManager::GetSortedWalFiles(VectorLogPtr& files) {
   // First get sorted files in db dir, then get sorted files from archived
   // dir, to avoid a race condition where a log file is moved to archived
@@ -115,7 +124,7 @@ Status WalManager::GetUpdatesSince(
   }
   iter->reset(new TransactionLogIteratorImpl(
       db_options_.wal_dir, &db_options_, read_options, env_options_, seq,
-      std::move(wal_files), version_set));
+      std::move(wal_files), version_set, seq_per_batch_));
   return (*iter)->status();
 }
 
@@ -228,7 +237,7 @@ void WalManager::PurgeObsoleteWALFiles() {
   }
 
   size_t const files_keep_num =
-      db_options_.wal_size_limit_mb * 1024 * 1024 / log_file_size;
+      static_cast<size_t>(db_options_.wal_size_limit_mb * 1024 * 1024 / log_file_size);
   if (log_files_num <= files_keep_num) {
     return;
   }
@@ -343,7 +352,7 @@ Status WalManager::RetainProbableWalFiles(VectorLogPtr& all_logs,
   // Binary Search. avoid opening all files.
   while (end >= start) {
     int64_t mid = start + (end - start) / 2;  // Avoid overflow.
-    SequenceNumber current_seq_num = all_logs.at(mid)->StartSequence();
+    SequenceNumber current_seq_num = all_logs.at(static_cast<size_t>(mid))->StartSequence();
     if (current_seq_num == target) {
       end = mid;
       break;
@@ -354,7 +363,7 @@ Status WalManager::RetainProbableWalFiles(VectorLogPtr& all_logs,
     }
   }
   // end could be -ve.
-  size_t start_index = std::max(static_cast<int64_t>(0), end);
+  size_t start_index = static_cast<size_t>(std::max(static_cast<int64_t>(0), end));
   // The last wal file is always included
   all_logs.erase(all_logs.begin(), all_logs.begin() + start_index);
   return Status::OK();
@@ -420,7 +429,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
 
     Status* status;
     bool ignore_error;  // true if db_options_.paranoid_checks==false
-    virtual void Corruption(size_t bytes, const Status& s) override {
+    void Corruption(size_t bytes, const Status& s) override {
       ROCKS_LOG_WARN(info_log, "[WalManager] %s%s: dropping %d bytes; %s",
                      (this->ignore_error ? "(ignoring error) " : ""), fname,
                      static_cast<int>(bytes), s.ToString().c_str());
@@ -434,8 +443,8 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   std::unique_ptr<SequentialFile> file;
   Status status = env_->NewSequentialFile(
       fname, &file, env_->OptimizeForLogRead(env_options_));
-  unique_ptr<SequentialFileReader> file_reader(
-      new SequentialFileReader(std::move(file)));
+  std::unique_ptr<SequentialFileReader> file_reader(
+      new SequentialFileReader(std::move(file), fname));
 
   if (!status.ok()) {
     return status;
@@ -448,7 +457,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   reporter.status = &status;
   reporter.ignore_error = !db_options_.paranoid_checks;
   log::Reader reader(db_options_.info_log, std::move(file_reader), &reporter,
-                     true /*checksum*/, 0 /*initial_offset*/, number);
+                     true /*checksum*/, number, false /* retry_after_eof */);
   std::string scratch;
   Slice record;
 

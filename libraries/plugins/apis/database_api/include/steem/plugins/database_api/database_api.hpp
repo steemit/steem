@@ -29,6 +29,11 @@ class database_api
          (get_config)
 
          /**
+          * @brief Return version information and chain_id of running node
+          */
+         (get_version)
+
+         /**
          * @brief Retrieve the current @ref dynamic_global_property_object
          */
          (get_dynamic_global_properties)
@@ -136,7 +141,13 @@ class database_api
          /**
          * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
          */
-         (get_smt_next_identifier)
+         (get_nai_pool)
+
+         (list_smt_tokens)
+         (find_smt_tokens)
+
+         (list_smt_token_emissions)
+         (find_smt_token_emissions)
 #endif
       )
 

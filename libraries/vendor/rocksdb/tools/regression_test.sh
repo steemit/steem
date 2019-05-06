@@ -376,7 +376,7 @@ function build_db_bench_and_ldb {
   make clean
   exit_on_error $?
 
-  DEBUG_LEVEL=0 make db_bench ldb -j32
+  DEBUG_LEVEL=0 PORTABLE=1 make db_bench ldb -j32
   exit_on_error $?
 }
 
@@ -465,4 +465,5 @@ function cleanup_test_directory {
 
 ############################################################################
 
+# shellcheck disable=SC2068
 main $@

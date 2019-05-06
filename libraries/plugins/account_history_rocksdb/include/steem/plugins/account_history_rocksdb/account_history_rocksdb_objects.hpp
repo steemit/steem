@@ -21,7 +21,7 @@ enum account_history_rocksdb_object_types
 
 class volatile_operation_object : public object< volatile_operation_object_type, volatile_operation_object >
 {
-   volatile_operation_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( volatile_operation_object )
 
    public:
       template< typename Constructor, typename Allocator >

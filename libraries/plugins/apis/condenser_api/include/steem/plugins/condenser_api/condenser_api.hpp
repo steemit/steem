@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/plugins/database_api/database_api.hpp>
 #include <steem/plugins/block_api/block_api.hpp>
@@ -9,7 +10,6 @@
 #include <steem/plugins/follow_api/follow_api.hpp>
 #include <steem/plugins/reputation_api/reputation_api.hpp>
 #include <steem/plugins/market_history_api/market_history_api.hpp>
-#include <steem/plugins/witness_api/witness_api.hpp>
 
 #include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
@@ -145,22 +145,17 @@ struct api_account_object
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
       last_root_post( a.last_root_post ),
-      last_vote_time( a.last_vote_time )
+      last_vote_time( a.last_vote_time ),
+      post_bandwidth( a.post_bandwidth ),
+      pending_claimed_accounts( a.pending_claimed_accounts )
    {
-      if( a.voting_manabar.last_update_time <= STEEM_HARDFORK_0_20_TIME )
-      {
-         voting_power = (uint16_t) a.voting_manabar.current_mana;
-      }
-      else
-      {
-         auto vests = chain::util::get_effective_vesting_shares( a );
-         voting_power = vests <= 0 ? 0 : (uint16_t)( ( STEEM_100_PERCENT * a.voting_manabar.current_mana ) / vests );
-      }
+      voting_power = _compute_voting_power(a);
       proxied_vsf_votes.insert( proxied_vsf_votes.end(), a.proxied_vsf_votes.begin(), a.proxied_vsf_votes.end() );
    }
 
-
    api_account_object(){}
+
+   uint16_t _compute_voting_power( const database_api::api_account_object& a );
 
    account_id_type   id;
 
@@ -222,11 +217,14 @@ struct api_account_object
 
    vector< share_type > proxied_vsf_votes;
 
-   uint16_t          witnesses_voted_for;
+   uint16_t          witnesses_voted_for = 0;
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
    time_point_sec    last_vote_time;
+   uint32_t          post_bandwidth = 0;
+
+   share_type        pending_claimed_accounts = 0;
 };
 
 struct extended_account : public api_account_object
@@ -234,13 +232,6 @@ struct extended_account : public api_account_object
    extended_account(){}
    extended_account( const database_api::api_account_object& a ) :
       api_account_object( a ) {}
-
-   share_type                                               average_bandwidth;
-   share_type                                               lifetime_bandwidth;
-   time_point_sec                                           last_bandwidth_update;
-   share_type                                               average_market_bandwidth;
-   share_type                                               lifetime_market_bandwidth;
-   time_point_sec                                           last_market_bandwidth_update;
 
    legacy_asset                                             vesting_balance;  /// convert vesting_shares to vesting steem
    share_type                                               reputation = 0;
@@ -382,7 +373,11 @@ struct extended_dynamic_global_properties
       recent_slots_filled( o.recent_slots_filled ),
       participation_count( o.participation_count ),
       last_irreversible_block_num( o.last_irreversible_block_num ),
-      vote_power_reserve_rate( o.vote_power_reserve_rate )
+      vote_power_reserve_rate( o.vote_power_reserve_rate ),
+      delegation_return_period( o.delegation_return_period ),
+      reverse_auction_seconds( o.reverse_auction_seconds ),
+      sbd_stop_percent( o.sbd_stop_percent ),
+      sbd_start_percent( o.sbd_start_percent )
    {}
 
    uint32_t          head_block_number = 0;
@@ -417,10 +412,12 @@ struct extended_dynamic_global_properties
    uint32_t          last_irreversible_block_num = 0;
 
    uint32_t          vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
+   uint32_t          delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
-   int32_t           average_block_size = 0;
-   int64_t           current_reserve_ratio = 1;
-   uint128_t         max_virtual_bandwidth = 0;
+   uint64_t          reverse_auction_seconds = 0;
+
+   uint16_t          sbd_stop_percent = 0;
+   uint16_t          sbd_start_percent = 0;
 };
 
 struct api_witness_object
@@ -446,7 +443,8 @@ struct api_witness_object
       last_work( w.last_work ),
       running_version( w.running_version ),
       hardfork_version_vote( w.hardfork_version_vote ),
-      hardfork_time_vote( w.hardfork_time_vote )
+      hardfork_time_vote( w.hardfork_time_vote ),
+      available_witness_account_subsidies( w.available_witness_account_subsidies )
    {}
 
    witness_id_type  id;
@@ -469,6 +467,7 @@ struct api_witness_object
    version                 running_version;
    hardfork_version        hardfork_version_vote;
    time_point_sec          hardfork_time_vote = STEEM_GENESIS_TIME;
+   int64_t                 available_witness_account_subsidies = 0;
 };
 
 struct api_witness_schedule_object
@@ -488,7 +487,10 @@ struct api_witness_schedule_object
       max_voted_witnesses( w.max_voted_witnesses ),
       max_miner_witnesses( w.max_miner_witnesses ),
       max_runner_witnesses( w.max_runner_witnesses ),
-      hardfork_required_witnesses( w.hardfork_required_witnesses )
+      hardfork_required_witnesses( w.hardfork_required_witnesses ),
+      account_subsidy_rd( w.account_subsidy_rd ),
+      account_subsidy_witness_rd( w.account_subsidy_witness_rd ),
+      min_witness_account_subsidy_decay( w.min_witness_account_subsidy_decay )
    {
       current_shuffled_witnesses.insert( current_shuffled_witnesses.begin(), w.current_shuffled_witnesses.begin(), w.current_shuffled_witnesses.end() );
    }
@@ -508,6 +510,10 @@ struct api_witness_schedule_object
    uint8_t                       max_miner_witnesses           = STEEM_MAX_MINER_WITNESSES_HF0;
    uint8_t                       max_runner_witnesses          = STEEM_MAX_RUNNER_WITNESSES_HF0;
    uint8_t                       hardfork_required_witnesses   = STEEM_HARDFORK_REQUIRED_WITNESSES;
+
+   rd_dynamics_params            account_subsidy_rd;
+   rd_dynamics_params            account_subsidy_witness_rd;
+   int64_t                       min_witness_account_subsidy_decay = 0;
 };
 
 struct api_feed_history_object
@@ -952,7 +958,6 @@ DEFINE_API_ARGS( get_owner_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recovery_request,                   vector< variant >,   optional< database_api::api_account_recovery_request_object > )
 DEFINE_API_ARGS( get_escrow,                             vector< variant >,   optional< api_escrow_object > )
 DEFINE_API_ARGS( get_withdraw_routes,                    vector< variant >,   vector< database_api::api_withdraw_vesting_route_object > )
-DEFINE_API_ARGS( get_account_bandwidth,                  vector< variant >,   optional< witness::api_account_bandwidth_object > )
 DEFINE_API_ARGS( get_savings_withdraw_from,              vector< variant >,   vector< api_savings_withdraw_object > )
 DEFINE_API_ARGS( get_savings_withdraw_to,                vector< variant >,   vector< api_savings_withdraw_object > )
 DEFINE_API_ARGS( get_vesting_delegations,                vector< variant >,   vector< api_vesting_delegation_object > )
@@ -1046,7 +1051,6 @@ public:
       (get_recovery_request)
       (get_escrow)
       (get_withdraw_routes)
-      (get_account_bandwidth)
       (get_savings_withdraw_from)
       (get_savings_withdraw_to)
       (get_vesting_delegations)
@@ -1146,10 +1150,10 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)(last_vote_time)
+             (post_bandwidth)(pending_claimed_accounts)
           )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::condenser_api::api_account_object),
-            (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
             (vesting_balance)(reputation)(transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_comment_object,
@@ -1173,7 +1177,7 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)
             (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(vote_power_reserve_rate)
-            (average_block_size)(current_reserve_ratio)(max_virtual_bandwidth) )
+            (delegation_return_period)(reverse_auction_seconds)(sbd_stop_percent)(sbd_start_percent) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
              (id)
@@ -1186,6 +1190,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
              (last_work)
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
+             (available_witness_account_subsidies)
           )
 
 FC_REFLECT( steem::plugins::condenser_api::api_witness_schedule_object,
@@ -1204,6 +1209,9 @@ FC_REFLECT( steem::plugins::condenser_api::api_witness_schedule_object,
              (max_miner_witnesses)
              (max_runner_witnesses)
              (hardfork_required_witnesses)
+             (account_subsidy_rd)
+             (account_subsidy_witness_rd)
+             (min_witness_account_subsidy_decay)
           )
 
 FC_REFLECT( steem::plugins::condenser_api::api_feed_history_object,

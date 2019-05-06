@@ -65,8 +65,10 @@ using fc::ecc::canonical_signature_type;
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH*/,
-         canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH,
+         uint32_t max_membership = STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         uint32_t max_account_auths = STEEM_MAX_SIG_CHECK_ACCOUNTS,
+         canonical_signature_type canon_type = fc::ecc::fc_canonical
          )const;
 
       void verify_authority(
@@ -75,7 +77,9 @@ using fc::ecc::canonical_signature_type;
          const authority_getter& get_owner,
          const authority_getter& get_posting,
          uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH*/,
-         canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/
+         uint32_t max_membership = STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         uint32_t max_account_auths = STEEM_MAX_SIG_CHECK_ACCOUNTS,
+         canonical_signature_type canon_type = fc::ecc::fc_canonical
          )const;
 
       set<public_key_type> minimize_required_signatures(
@@ -84,8 +88,10 @@ using fc::ecc::canonical_signature_type;
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion/* = STEEM_MAX_SIG_CHECK_DEPTH*/,
-         canonical_signature_type canon_type/* = fc::ecc::fc_canonical*/
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH,
+         uint32_t max_membership = STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         uint32_t max_account_auths = STEEM_MAX_SIG_CHECK_ACCOUNTS,
+         canonical_signature_type canon_type = fc::ecc::fc_canonical
          ) const;
 
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id, canonical_signature_type/* = fc::ecc::fc_canonical*/ )const;

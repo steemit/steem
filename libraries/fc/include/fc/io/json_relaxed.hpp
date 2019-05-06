@@ -21,11 +21,12 @@
 namespace fc { namespace json_relaxed
 {
    template<typename T, bool strict>
-   variant variant_from_stream( T& in );
+   variant variant_from_stream( T& in, uint32_t depth );
 
    template<typename T>
-   fc::string tokenFromStream( T& in )
+   fc::string tokenFromStream( T& in, uint32_t depth )
    {
+      depth++;
       fc::stringstream token;
       try
       {
@@ -36,7 +37,7 @@ namespace fc { namespace json_relaxed
             switch( c = in.peek() )
             {
                case '\\':
-                  token << parseEscape( in );
+                  token << parseEscape( in, depth );
                   break;
                case '\t':
                case ' ':
@@ -81,8 +82,9 @@ namespace fc { namespace json_relaxed
    }
 
    template<typename T, bool strict, bool allow_escape>
-   fc::string quoteStringFromStream( T& in )
+   fc::string quoteStringFromStream( T& in, uint32_t depth = 0 )
    {
+       depth++;
        fc::stringstream token;
        try
        {
@@ -140,7 +142,7 @@ namespace fc { namespace json_relaxed
                            FC_THROW_EXCEPTION( parse_error_exception, "unexpected EOF in string '${token}'",
                                       ("token", token.str() ) );
                        else if( allow_escape && (c == '\\') )
-                           token << parseEscape( in );
+                           token << parseEscape( in, depth );
                        else
                        {
                            in.get();
@@ -163,7 +165,7 @@ namespace fc { namespace json_relaxed
                    FC_THROW_EXCEPTION( parse_error_exception, "unexpected EOF in string '${token}'",
                               ("token", token.str() ) );
                else if( allow_escape && (c == '\\') )
-                   token << parseEscape( in );
+                   token << parseEscape( in, depth );
                else if( (c == '\r') | (c == '\n') )
                    FC_THROW_EXCEPTION( parse_error_exception, "unexpected EOL in string '${token}'",
                               ("token", token.str() ) );
@@ -179,10 +181,11 @@ namespace fc { namespace json_relaxed
    }
 
    template<typename T, bool strict>
-   fc::string stringFromStream( T& in )
+   fc::string stringFromStream( T& in, uint32_t depth = 0 )
    {
       try
       {
+         depth++;
          char c = in.peek(), c2;
 
          switch( c )
@@ -192,7 +195,7 @@ namespace fc { namespace json_relaxed
                      FC_THROW_EXCEPTION( parse_error_exception, "expected: '\"' at beginning of string, got '\''" );
                  // falls through
              case '"':
-                 return quoteStringFromStream<T, strict, true>( in );
+                 return quoteStringFromStream<T, strict, true>( in, depth );
              case 'r':
                  if( strict )
                      FC_THROW_EXCEPTION( parse_error_exception, "raw strings not supported in strict mode" );
@@ -205,11 +208,11 @@ namespace fc { namespace json_relaxed
                      case '\'':
                          if( strict )
                              FC_THROW_EXCEPTION( parse_error_exception, "raw strings not supported in strict mode" );
-                         return quoteStringFromStream<T, strict, false>( in );
+                         return quoteStringFromStream<T, strict, false>( in, depth );
                      default:
                          if( strict )
                              FC_THROW_EXCEPTION( parse_error_exception, "unquoted strings not supported in strict mode" );
-                         return c+tokenFromStream( in );
+                         return c+tokenFromStream( in, depth );
                  }
                  break;
              case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h':
@@ -225,7 +228,7 @@ namespace fc { namespace json_relaxed
              case '_': case '-': case '.': case '+': case '/':
                  if( strict )
                      FC_THROW_EXCEPTION( parse_error_exception, "unquoted strings not supported in strict mode" );
-                 return tokenFromStream( in );
+                 return tokenFromStream( in, depth );
              default:
                  FC_THROW_EXCEPTION( parse_error_exception, "expected: string" );
          }
@@ -343,7 +346,7 @@ namespace fc { namespace json_relaxed
    }
 
    template<bool strict>
-   fc::variant parseNumberOrStr( const fc::string& token )
+   fc::variant parseNumberOrStr( const fc::string& token, uint32_t depth = 0 )
    { try {
        //ilog( (token) ); 
        size_t i = 0, n = token.length();
@@ -562,8 +565,10 @@ namespace fc { namespace json_relaxed
    } FC_CAPTURE_AND_RETHROW( (token) ) }
 
    template<typename T, bool strict>
-   variant_object objectFromStream( T& in )
+   variant_object objectFromStream( T& in, uint32_t depth = 0 )
    {
+      depth++;
+      FC_ASSERT( depth <= JSON_MAX_RECURSION_DEPTH );
       mutable_variant_object obj;
       try
       {
@@ -573,7 +578,7 @@ namespace fc { namespace json_relaxed
                                      "Expected '{', but read '${char}'",
                                      ("char",string(&c, &c + 1)) );
          in.get();
-         skip_white_space(in);
+         skip_white_space( in, depth );
          while( in.peek() != '}' )
          {
             if( in.peek() == ',' )
@@ -581,19 +586,19 @@ namespace fc { namespace json_relaxed
                in.get();
                continue;
             }
-            if( skip_white_space(in) ) continue;
-            string key = json_relaxed::stringFromStream<T, strict>( in );
-            skip_white_space(in);
+            if( skip_white_space( in, depth ) ) continue;
+            string key = json_relaxed::stringFromStream<T, strict>( in, depth );
+            skip_white_space( in, depth );
             if( in.peek() != ':' )
             {
                FC_THROW_EXCEPTION( parse_error_exception, "Expected ':' after key \"${key}\"",
                                         ("key", key) );
             }
             in.get();
-            auto val = json_relaxed::variant_from_stream<T, strict>( in );
+            auto val = json_relaxed::variant_from_stream<T, strict>( in, depth );
 
             obj(std::move(key),std::move(val));
-            skip_white_space(in);
+            skip_white_space( in, depth );
          }
          if( in.peek() == '}' )
          {
@@ -613,15 +618,17 @@ namespace fc { namespace json_relaxed
    }
 
    template<typename T, bool strict>
-   variants arrayFromStream( T& in )
+   variants arrayFromStream( T& in, uint32_t depth = 0 )
    {
+      depth++;
+      FC_ASSERT( depth <= JSON_MAX_RECURSION_DEPTH );
       variants ar;
       try
       {
         if( in.peek() != '[' )
            FC_THROW_EXCEPTION( parse_error_exception, "Expected '['" );
         in.get();
-        skip_white_space(in);
+        skip_white_space( in, depth );
 
         while( in.peek() != ']' )
         {
@@ -630,9 +637,9 @@ namespace fc { namespace json_relaxed
               in.get();
               continue;
            }
-           if( skip_white_space(in) ) continue;
-           ar.push_back( json_relaxed::variant_from_stream<T, strict>(in) );
-           skip_white_space(in);
+           if( skip_white_space( in, depth ) ) continue;
+           ar.push_back( json_relaxed::variant_from_stream<T, strict>( in, depth ) );
+           skip_white_space( in, depth );
         }
         if( in.peek() != ']' )
            FC_THROW_EXCEPTION( parse_error_exception, "Expected ']' after parsing ${variant}",
@@ -645,19 +652,21 @@ namespace fc { namespace json_relaxed
    }
 
    template<typename T, bool strict>
-   variant numberFromStream( T& in )
+   variant numberFromStream( T& in, uint32_t depth = 0 )
    { try {
-       fc::string token = tokenFromStream(in);
-       variant result = json_relaxed::parseNumberOrStr<strict>( token );
+       depth++;
+       fc::string token = tokenFromStream( in, depth );
+       variant result = json_relaxed::parseNumberOrStr<strict>( token, depth );
        if( strict && !(result.is_int64() || result.is_uint64() || result.is_double()) )
            FC_THROW_EXCEPTION( parse_error_exception, "expected: number" );
        return result;
    } FC_CAPTURE_AND_RETHROW() }
    
    template<typename T, bool strict>
-   variant wordFromStream( T& in )
+   variant wordFromStream( T& in, uint32_t depth = 0 )
    {
-       fc::string token = tokenFromStream(in);
+       depth++;
+       fc::string token = tokenFromStream( in, depth );
        
        FC_ASSERT( token.length() > 0 );
 
@@ -686,9 +695,11 @@ namespace fc { namespace json_relaxed
    }
    
    template<typename T, bool strict>
-   variant variant_from_stream( T& in )
+   variant variant_from_stream( T& in, uint32_t depth )
    {
-      skip_white_space(in);
+      depth++;
+      FC_ASSERT( depth <= JSON_MAX_RECURSION_DEPTH );
+      skip_white_space( in, depth );
       variant var;
       while( signed char c = in.peek() )
       {
@@ -701,11 +712,11 @@ namespace fc { namespace json_relaxed
               in.get();
               continue;
             case '"':
-              return json_relaxed::stringFromStream<T, strict>( in );
+              return json_relaxed::stringFromStream<T, strict>( in, depth );
             case '{':
-              return json_relaxed::objectFromStream<T, strict>( in );
+              return json_relaxed::objectFromStream<T, strict>( in, depth );
             case '[':
-              return json_relaxed::arrayFromStream<T, strict>( in );
+              return json_relaxed::arrayFromStream<T, strict>( in, depth );
             case '-':
             case '+':
             case '.':
@@ -719,7 +730,7 @@ namespace fc { namespace json_relaxed
             case '7':
             case '8':
             case '9':
-              return json_relaxed::numberFromStream<T, strict>( in );
+              return json_relaxed::numberFromStream<T, strict>( in, depth );
             // null, true, false, or 'warning' / string
             case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h':
             case 'i': case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p':
@@ -730,13 +741,13 @@ namespace fc { namespace json_relaxed
             case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': case 'X':
             case 'Y': case 'Z':
             case '_':                               case '/':
-              return json_relaxed::wordFromStream<T, strict>( in );
+              return json_relaxed::wordFromStream<T, strict>( in, depth );
             case 0x04: // ^D end of transmission
             case EOF:
               FC_THROW_EXCEPTION( eof_exception, "unexpected end of file" );
             default:
               FC_THROW_EXCEPTION( parse_error_exception, "Unexpected char '${c}' in \"${s}\"",
-                                 ("c", c)("s", stringFromToken(in)) );
+                                 ("c", c)("s", stringFromToken( in, depth )) );
          }
       }
 	  return variant();

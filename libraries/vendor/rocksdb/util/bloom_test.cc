@@ -15,17 +15,17 @@ int main() {
 }
 #else
 
-#include <gflags/gflags.h>
 #include <vector>
 
 #include "rocksdb/filter_policy.h"
 #include "table/full_filter_bits_builder.h"
 #include "util/arena.h"
+#include "util/gflags_compat.h"
 #include "util/logging.h"
 #include "util/testharness.h"
 #include "util/testutil.h"
 
-using GFLAGS::ParseCommandLineFlags;
+using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 
 DEFINE_int32(bits_per_key, 10, "");
 
@@ -63,9 +63,7 @@ class BloomTest : public testing::Test {
   BloomTest() : policy_(
       NewBloomFilterPolicy(FLAGS_bits_per_key)) {}
 
-  ~BloomTest() {
-    delete policy_;
-  }
+  ~BloomTest() override { delete policy_; }
 
   void Reset() {
     keys_.clear();
@@ -192,9 +190,7 @@ class FullBloomTest : public testing::Test {
     Reset();
   }
 
-  ~FullBloomTest() {
-    delete policy_;
-  }
+  ~FullBloomTest() override { delete policy_; }
 
   FullFilterBitsBuilder* GetFullFilterBitsBuilder() {
     return dynamic_cast<FullFilterBitsBuilder*>(bits_builder_.get());

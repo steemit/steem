@@ -1,6 +1,8 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <appbase/application.hpp>
 #include <steem/chain/database.hpp>
+#include <steem/plugins/chain/abstract_block_producer.hpp>
 
 #include <boost/signals2.hpp>
 
@@ -33,6 +35,8 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
+   void report_state_options( const string& plugin_name, const fc::variant_object& opts );
+
    bool accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip );
    void accept_transaction( const steem::chain::signed_transaction& trx );
    steem::chain::signed_block generate_block(
@@ -41,6 +45,15 @@ public:
       const fc::ecc::private_key& block_signing_private_key,
       uint32_t skip = database::skip_nothing
       );
+
+   /**
+    * Set a class to be called for block generation.
+    *
+    * This function must be called during abtract_plugin::plugin_initialize().
+    * Calling this during abstract_plugin::plugin_startup() will be too late
+    * and will not take effect.
+    */
+   void register_block_generator( const std::string& plugin_name, std::shared_ptr< abstract_block_producer > block_producer );
 
    /**
     * Sets the time (in ms) that the write thread will hold the lock for.

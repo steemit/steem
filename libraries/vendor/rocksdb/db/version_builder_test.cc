@@ -37,7 +37,7 @@ class VersionBuilderTest : public testing::Test {
     size_being_compacted_.resize(options_.num_levels);
   }
 
-  ~VersionBuilderTest() {
+  ~VersionBuilderTest() override {
     for (int i = 0; i < vstorage_.num_levels(); i++) {
       for (auto* f : vstorage_.LevelFiles(i)) {
         if (--f->refs == 0) {
@@ -63,8 +63,8 @@ class VersionBuilderTest : public testing::Test {
     f->fd = FileDescriptor(file_number, path_id, file_size);
     f->smallest = GetInternalKey(smallest, smallest_seq);
     f->largest = GetInternalKey(largest, largest_seq);
-    f->smallest_seqno = smallest_seqno;
-    f->largest_seqno = largest_seqno;
+    f->fd.smallest_seqno = smallest_seqno;
+    f->fd.largest_seqno = largest_seqno;
     f->compensated_file_size = file_size;
     f->refs = 0;
     f->num_entries = num_entries;

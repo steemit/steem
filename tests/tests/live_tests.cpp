@@ -1,5 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
 
@@ -64,8 +66,8 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       while( com_itr != com_idx.end() )
       {
-         comment_net_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->net_rshares;
-         comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->abs_rshares;
+         comment_net_rshares[ boost::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->net_rshares;
+         comment_abs_rshares[ boost::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->abs_rshares;
          total_vote_weights[ com_itr->id ] = 0;
          orig_vote_weight[ com_itr->id ] = com_itr->total_vote_weight;
 
@@ -122,8 +124,8 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       com_itr = com_idx.begin();
       while( com_itr != com_idx.end() )
       {
-         BOOST_REQUIRE( com_itr->net_rshares == comment_net_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
-         BOOST_REQUIRE( com_itr->abs_rshares == comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
+         BOOST_REQUIRE( com_itr->net_rshares == comment_net_rshares[ boost::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
+         BOOST_REQUIRE( com_itr->abs_rshares == comment_abs_rshares[ boost::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
          BOOST_REQUIRE( com_itr->total_vote_weight == total_vote_weights[ com_itr->id ] );
 
          if( com_itr->net_rshares.value > 0 )

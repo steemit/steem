@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
@@ -346,6 +348,14 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
+
    if( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) )
    {
       verify_authority_accounts_exist( _db, o.owner, o.new_account_name, authority::owner );
@@ -363,10 +373,17 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
    const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#else
+   FC_UNUSED( new_account );
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {
@@ -420,6 +437,14 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
 
+   FC_TODO( "Check and move to validate post HF20" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      validate_auth_size( o.owner );
+      validate_auth_size( o.active );
+      validate_auth_size( o.posting );
+   }
+
    for( const auto& a : o.owner.account_auths )
    {
       _db.get_account( a.first );
@@ -450,11 +475,17 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
       acc.received_vesting_shares = o.delegation;
-
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#else
+   FC_UNUSED( new_account );
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {
@@ -493,6 +524,16 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    const auto& account = _db.get_account( o.account );
    const auto& account_auth = _db.get< account_authority_object, by_account >( o.account );
 
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      if( o.owner )
+         validate_auth_size( *o.owner );
+      if( o.active )
+         validate_auth_size( *o.active );
+      if( o.posting )
+         validate_auth_size( *o.posting );
+   }
+
    if( o.owner )
    {
 #ifndef IS_TEST_NET
@@ -516,12 +557,17 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
             acc.memo_key = o.memo_key;
 
       acc.last_account_update = _db.head_block_time();
-
-      #ifndef IS_LOW_MEM
-        if ( o.json_metadata.size() > 0 )
-            from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+   #ifndef IS_LOW_MEM
+   if( o.json_metadata.size() > 0 )
+   {
+      _db.modify( _db.get< account_metadata_object, by_account >( account.id ), [&]( account_metadata_object& meta )
+      {
+         from_string( meta.json_metadata, o.json_metadata );
+      });
+   }
+   #endif
 
    if( o.active || o.posting )
    {
@@ -1194,7 +1240,7 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    itr = wd_idx.upper_bound( boost::make_tuple( from_account.name, account_name_type() ) );
    uint16_t total_percent = 0;
 
-   while( itr->from_account == from_account.name && itr != wd_idx.end() )
+   while( itr != wd_idx.end() && itr->from_account == from_account.name )
    {
       total_percent += itr->percent;
       ++itr;
@@ -1332,7 +1378,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    {
 #ifndef CLEAR_VOTES
       const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1353,7 +1399,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-   auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
    int64_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
 
@@ -1720,7 +1766,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    {
 #ifndef CLEAR_VOTES
       const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1745,7 +1791,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter >();
-   auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
@@ -1982,6 +2028,11 @@ void custom_evaluator::do_apply( const custom_operation& o )
    database& d = db();
    if( d.is_producing() )
       FC_ASSERT( o.data.size() <= 8192, "custom_operation must be less than 8k" );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      FC_ASSERT( o.required_auths.size() <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", o.required_auths.size()) );
+   }
 }
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
@@ -1990,6 +2041,12 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 
    if( d.is_producing() )
       FC_ASSERT( o.json.length() <= 8192, "custom_json_operation json must be less than 8k" );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      size_t num_auths = o.required_auths.size() + o.required_posting_auths.size();
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+   }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -2020,6 +2077,17 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
       FC_ASSERT( false, "custom_binary_operation is deprecated" );
    }
    FC_ASSERT( d.has_hardfork( STEEM_HARDFORK_0_14__317 ) );
+
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   {
+      size_t num_auths = o.required_owner_auths.size() + o.required_active_auths.size() + o.required_posting_auths.size();
+      for( const auto& auth : o.required_auths )
+      {
+         num_auths += auth.key_auths.size() + auth.account_auths.size();
+      }
+
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+   }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -2061,11 +2129,20 @@ void pow_apply( database& db, Operation o )
    auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end())
    {
-      db.create< account_object >( [&]( account_object& acc )
+      const auto& new_account = db.create< account_object >( [&]( account_object& acc )
       {
          initialize_account_object( acc, o.get_worker_account(), o.work.worker, dgp, true /*mined*/, account_name_type(), db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
+
+#ifndef IS_LOW_MEM
+      db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+      {
+         meta.account = new_account.id;
+      });
+#else
+      FC_UNUSED( new_account );
+#endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
       {
@@ -2174,11 +2251,20 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
    if(itr == accounts_by_name.end())
    {
       FC_ASSERT( o.new_owner_key.valid(), "New owner key is not valid." );
-      db.create< account_object >( [&]( account_object& acc )
+      const auto& new_account = db.create< account_object >( [&]( account_object& acc )
       {
          initialize_account_object( acc, worker_account, *o.new_owner_key, dgp, true /*mined*/, account_name_type(), _db.get_hardfork() );
          // ^ empty recovery account parameter means highest voted witness at time of recovery
       });
+
+#ifndef IS_LOW_MEM
+      db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+      {
+         meta.account = new_account.id;
+      });
+#else
+      FC_UNUSED( new_account );
+#endif
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
       {
@@ -2416,13 +2502,20 @@ void create_claimed_account_evaluator::do_apply( const create_claimed_account_op
       a.pending_claimed_accounts--;
    });
 
-   _db.create< account_object >( [&]( account_object& acc )
+   const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
    {
       initialize_account_object( acc, o.new_account_name, o.memo_key, props, false /*mined*/, o.creator, _db.get_hardfork() );
-      #ifndef IS_LOW_MEM
-         from_string( acc.json_metadata, o.json_metadata );
-      #endif
    });
+
+#ifndef IS_LOW_MEM
+   _db.create< account_metadata_object >( [&]( account_metadata_object& meta )
+   {
+      meta.account = new_account.id;
+      from_string( meta.json_metadata, o.json_metadata );
+   });
+#else
+   FC_UNUSED( new_account );
+#endif
 
    _db.create< account_authority_object >( [&]( account_authority_object& auth )
    {
@@ -2455,6 +2548,11 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
    {
       FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover using an impossible authority." );
       FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover using an open authority." );
+
+      if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+      {
+         validate_auth_size( o.new_owner_authority );
+      }
 
       // Check accounts in the new authority exist
       if( ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) )

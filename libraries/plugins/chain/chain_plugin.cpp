@@ -1,11 +1,15 @@
 #include <steem/chain/database_exceptions.hpp>
 
+#include <steem/plugins/chain/abstract_block_producer.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/string.hpp>
+#include <fc/io/json.hpp>
+#include <fc/io/fstream.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -64,6 +68,7 @@ class chain_plugin_impl
 
       void start_write_processing();
       void stop_write_processing();
+      void write_default_database_config( bfs::path& p );
 
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
@@ -89,7 +94,13 @@ class chain_plugin_impl
       boost::lockfree::queue< write_context* > write_queue;
       int16_t                          write_lock_hold_time = 500;
 
+      vector< string >                 loaded_plugins;
+      fc::mutable_variant_object       plugin_state_opts;
+      bfs::path                        database_cfg;
+
       database  db;
+      std::string block_generator_registrant;
+      std::shared_ptr< abstract_block_producer > block_generator;
 };
 
 struct write_request_visitor
@@ -99,6 +110,7 @@ struct write_request_visitor
    database* db;
    uint32_t  skip = 0;
    fc::optional< fc::exception >* except;
+   std::shared_ptr< abstract_block_producer > block_generator;
 
    typedef bool result_type;
 
@@ -156,8 +168,11 @@ struct write_request_visitor
 
       try
       {
+         if( !block_generator )
+            FC_THROW_EXCEPTION( chain_exception, "Received a generate block request, but no block generator has been registered." );
+
          STATSD_START_TIMER( "chain", "write_time", "generate_block", 1.0f )
-         req->block = db->generate_block(
+         req->block = block_generator->generate_block(
             req->when,
             req->witness_owner,
             req->block_signing_private_key,
@@ -203,6 +218,7 @@ void chain_plugin_impl::start_write_processing()
       fc::time_point_sec start = fc::time_point::now();
       write_request_visitor req_visitor;
       req_visitor.db = &db;
+      req_visitor.block_generator = block_generator;
 
       request_promise_visitor prom_visitor;
 
@@ -277,6 +293,12 @@ void chain_plugin_impl::stop_write_processing()
    write_processor_thread.reset();
 }
 
+void chain_plugin_impl::write_default_database_config( bfs::path &p )
+{
+   ilog( "writing database configuration: ${p}", ("p", p.string()) );
+   fc::json::save_to_file( steem::utilities::default_database_configuration(), p );
+}
+
 } // detail
 
 
@@ -314,6 +336,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+#ifdef ENABLE_STD_ALLOCATOR
+         ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
+#endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -371,6 +396,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
+#ifdef ENABLE_STD_ALLOCATOR
+   my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
+
+   if( my->database_cfg.is_relative() )
+      my->database_cfg = app().data_dir() / my->database_cfg;
+
+   if( !bfs::exists( my->database_cfg ) )
+   {
+      my->write_default_database_config( my->database_cfg );
+   }
+#endif
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
@@ -404,8 +440,6 @@ void chain_plugin::plugin_startup()
 
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
 
-   my->start_write_processing();
-
    if(my->resync)
    {
       wlog("resync requested: deleting block log and shared memory");
@@ -436,6 +470,24 @@ void chain_plugin::plugin_startup()
       }
    };
 
+#ifdef ENABLE_STD_ALLOCATOR
+   fc::variant database_config;
+   try
+   {
+      database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
+   }
+   catch ( const std::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+   catch ( const fc::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+#endif
+
    database::open_args db_open_args;
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
@@ -446,6 +498,7 @@ void chain_plugin::plugin_startup()
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
+   db_open_args.database_cfg = database_config;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
@@ -501,8 +554,7 @@ void chain_plugin::plugin_startup()
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
-         appbase::app().quit();
-         return;
+         exit(EXIT_SUCCESS);
       }
    }
    else
@@ -520,22 +572,15 @@ void chain_plugin::plugin_startup()
       }
       catch( const fc::exception& e )
       {
-         wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
-
-         try
-         {
-            my->db.reindex( db_open_args );
-         }
-         catch( steem::chain::block_log_exception& )
-         {
-            wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( db_open_args );
-         }
+         wlog("Error opening database. If the binary or configuration has changed, replay the blockchain explicitly. Error: ${e}", ("e", e));
+         exit(EXIT_FAILURE);
       }
    }
 
    ilog( "Started on blockchain with ${n} blocks", ("n", my->db.head_block_num()) );
    on_sync();
+
+   my->start_write_processing();
 }
 
 void chain_plugin::plugin_shutdown()
@@ -544,6 +589,12 @@ void chain_plugin::plugin_shutdown()
    my->stop_write_processing();
    my->db.close();
    ilog("database closed successfully");
+}
+
+void chain_plugin::report_state_options( const string& plugin_name, const fc::variant_object& opts )
+{
+   my->loaded_plugins.push_back( plugin_name );
+   my->plugin_state_opts( opts );
 }
 
 bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip )
@@ -638,6 +689,17 @@ void chain_plugin::check_time_in_block( const steem::chain::signed_block& block 
    uint64_t max_accept_time = now.sec_since_epoch();
    max_accept_time += my->allow_future_time;
    FC_ASSERT( block.timestamp.sec_since_epoch() <= max_accept_time );
+}
+
+void chain_plugin::register_block_generator( const std::string& plugin_name, std::shared_ptr< abstract_block_producer > block_producer )
+{
+   FC_ASSERT( get_state() == appbase::abstract_plugin::state::initialized, "Can only register a block generator when the chain_plugin is initialized." );
+
+   if ( my->block_generator )
+      wlog( "Overriding a previously registered block generator by: ${registrant}", ("registrant", my->block_generator_registrant) );
+
+   my->block_generator_registrant = plugin_name;
+   my->block_generator = block_producer;
 }
 
 } } } // namespace steem::plugis::chain::chain_apis

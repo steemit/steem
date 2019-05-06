@@ -1,16 +1,13 @@
 #pragma once
 
-#include <steem/protocol/types.hpp>
+#include <steem/protocol/transaction.hpp>
+#include <steem/protocol/optional_automated_actions.hpp>
 
 #include <fc/int_array.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <vector>
 
 #define STEEM_NUM_RESOURCE_TYPES     5
-
-namespace steem { namespace protocol {
-struct signed_transaction;
-} } // steem::protocol
 
 namespace steem { namespace plugins { namespace rc {
 
@@ -32,6 +29,10 @@ struct count_resources_result
 
 void count_resources(
    const steem::protocol::signed_transaction& tx,
+   count_resources_result& result );
+
+void count_resources(
+   const steem::protocol::optional_automated_action&,
    count_resources_result& result );
 
 } } } // steem::plugins::rc

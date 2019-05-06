@@ -77,7 +77,7 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
             result = rshares_plus_s * rshares_plus_s - content_constant * content_constant;
          }
          break;
-      case protocol::quadratic_curation:
+      case protocol::bounded_curation:
          {
             uint128_t two_alpha = content_constant * 2;
             result = uint128_t( rshares.lo, 0 ) / ( two_alpha + rshares );
