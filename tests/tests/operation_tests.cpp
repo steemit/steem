@@ -1530,7 +1530,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 2 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 2 ) ).value + 1 );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1546,7 +1546,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1563,7 +1563,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
