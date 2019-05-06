@@ -41,11 +41,7 @@ const std::vector< std::string > default_seeds = {
    "seed1.blockbrothers.io:2001",         // blockbrothers
    "steemseed-fin.privex.io:2001",        // privex
    "seed.jamzed.pl:2001",                 // jamzed
-   "seed1.cryptobot.news:2001",           // libertyranger
    "seed.thecryptodrive.com:2001",        // thecryptodrive
-   "seed.brandonfrye.us:2001",            // brandonfrye
-   "seed.firepower.ltd:2001",             // firepower
-   "witness.chitty.tech:2001",            // chitty
    "seed1.cervantes.one:2001",            // cervantes
    "steem-seed.arcange.eu:2001"           // arcange
 };
