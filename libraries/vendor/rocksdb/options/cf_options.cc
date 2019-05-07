@@ -17,6 +17,7 @@
 #include "port/port.h"
 #include "rocksdb/env.h"
 #include "rocksdb/options.h"
+#include "rocksdb/concurrent_task_limiter.h"
 
 namespace rocksdb {
 
@@ -75,7 +76,8 @@ ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
       max_subcompactions(db_options.max_subcompactions),
       memtable_insert_with_hint_prefix_extractor(
           cf_options.memtable_insert_with_hint_prefix_extractor.get()),
-      cf_paths(cf_options.cf_paths) {}
+      cf_paths(cf_options.cf_paths),
+      compaction_thread_limiter(cf_options.compaction_thread_limiter) {}
 
 // Multiple two operands. If they overflow, return op1.
 uint64_t MultiplyCheckOverflow(uint64_t op1, double op2) {
@@ -133,6 +135,8 @@ void MutableCFOptions::Dump(Logger* log) const {
                  arena_block_size);
   ROCKS_LOG_INFO(log, "              memtable_prefix_bloom_ratio: %f",
                  memtable_prefix_bloom_size_ratio);
+  ROCKS_LOG_INFO(log, "              memtable_whole_key_filtering: %d",
+                 memtable_whole_key_filtering);
   ROCKS_LOG_INFO(log,
                  "                  memtable_huge_page_size: %" ROCKSDB_PRIszt,
                  memtable_huge_page_size);
@@ -214,8 +218,6 @@ void MutableCFOptions::Dump(Logger* log) const {
   // FIFO Compaction Options
   ROCKS_LOG_INFO(log, "compaction_options_fifo.max_table_files_size : %" PRIu64,
                  compaction_options_fifo.max_table_files_size);
-  ROCKS_LOG_INFO(log, "compaction_options_fifo.ttl : %" PRIu64,
-                 compaction_options_fifo.ttl);
   ROCKS_LOG_INFO(log, "compaction_options_fifo.allow_compaction : %d",
                  compaction_options_fifo.allow_compaction);
 }

@@ -51,6 +51,7 @@ AdvancedColumnFamilyOptions::AdvancedColumnFamilyOptions(const Options& options)
       inplace_callback(options.inplace_callback),
       memtable_prefix_bloom_size_ratio(
           options.memtable_prefix_bloom_size_ratio),
+      memtable_whole_key_filtering(options.memtable_whole_key_filtering),
       memtable_huge_page_size(options.memtable_huge_page_size),
       memtable_insert_with_hint_prefix_extractor(
           options.memtable_insert_with_hint_prefix_extractor),
@@ -306,8 +307,6 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
     ROCKS_LOG_HEADER(log,
                      "Options.compaction_options_fifo.allow_compaction: %d",
                      compaction_options_fifo.allow_compaction);
-    ROCKS_LOG_HEADER(log, "Options.compaction_options_fifo.ttl: %" PRIu64,
-                     compaction_options_fifo.ttl);
     std::string collector_names;
     for (const auto& collector_factory : table_properties_collector_factories) {
       collector_names.append(collector_factory->Name());
@@ -327,6 +326,9 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
     ROCKS_LOG_HEADER(
         log, "              Options.memtable_prefix_bloom_size_ratio: %f",
         memtable_prefix_bloom_size_ratio);
+    ROCKS_LOG_HEADER(log,
+                     "              Options.memtable_whole_key_filtering: %d",
+                     memtable_whole_key_filtering);
 
     ROCKS_LOG_HEADER(log, "  Options.memtable_huge_page_size: %" ROCKSDB_PRIszt,
                      memtable_huge_page_size);
@@ -439,6 +441,10 @@ DBOptions* DBOptions::OldDefaults(int rocksdb_major_version,
 
 ColumnFamilyOptions* ColumnFamilyOptions::OldDefaults(
     int rocksdb_major_version, int rocksdb_minor_version) {
+  if (rocksdb_major_version < 5 ||
+      (rocksdb_major_version == 5 && rocksdb_minor_version <= 18)) {
+    compaction_pri = CompactionPri::kByCompensatedSize;
+  }
   if (rocksdb_major_version < 4 ||
       (rocksdb_major_version == 4 && rocksdb_minor_version < 7)) {
     write_buffer_size = 4 << 20;
@@ -452,7 +458,6 @@ ColumnFamilyOptions* ColumnFamilyOptions::OldDefaults(
   } else if (rocksdb_major_version == 5 && rocksdb_minor_version < 2) {
     level0_stop_writes_trigger = 30;
   }
-  compaction_pri = CompactionPri::kByCompensatedSize;
 
   return this;
 }

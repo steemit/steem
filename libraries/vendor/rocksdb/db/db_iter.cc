@@ -134,15 +134,14 @@ class DBIter final: public Iterator {
         prefix_same_as_start_(read_options.prefix_same_as_start),
         pin_thru_lifetime_(read_options.pin_data),
         total_order_seek_(read_options.total_order_seek),
-        range_del_agg_(cf_options.internal_comparator, s,
-                       true /* collapse_deletions */),
+        range_del_agg_(&cf_options.internal_comparator, s),
         read_callback_(read_callback),
         db_impl_(db_impl),
         cfd_(cfd),
         allow_blob_(allow_blob),
         is_blob_(false),
         start_seqnum_(read_options.iter_start_seqnum) {
-    RecordTick(statistics_, NO_ITERATORS);
+    RecordTick(statistics_, NO_ITERATOR_CREATED);
     prefix_extractor_ = mutable_cf_options.prefix_extractor.get();
     max_skip_ = max_sequential_skip_in_iterations;
     max_skippable_internal_keys_ = read_options.max_skippable_internal_keys;
@@ -153,14 +152,12 @@ class DBIter final: public Iterator {
       iter_->SetPinnedItersMgr(&pinned_iters_mgr_);
     }
   }
-  virtual ~DBIter() {
+  ~DBIter() override {
     // Release pinned data if any
     if (pinned_iters_mgr_.PinningEnabled()) {
       pinned_iters_mgr_.ReleasePinnedData();
     }
-    // Compiler warning issue filed:
-    // https://github.com/facebook/rocksdb/issues/3013
-    RecordTick(statistics_, NO_ITERATORS, uint64_t(-1));
+    RecordTick(statistics_, NO_ITERATOR_DELETED);
     ResetInternalKeysSkippedCounter();
     local_stats_.BumpGlobalStatistics(statistics_);
     if (!arena_mode_) {
@@ -174,21 +171,20 @@ class DBIter final: public Iterator {
     iter_ = iter;
     iter_->SetPinnedItersMgr(&pinned_iters_mgr_);
   }
-  virtual RangeDelAggregator* GetRangeDelAggregator() {
+  virtual ReadRangeDelAggregator* GetRangeDelAggregator() {
     return &range_del_agg_;
   }
 
-  virtual bool Valid() const override { return valid_; }
-  virtual Slice key() const override {
+  bool Valid() const override { return valid_; }
+  Slice key() const override {
     assert(valid_);
     if(start_seqnum_ > 0) {
       return saved_key_.GetInternalKey();
     } else {
       return saved_key_.GetUserKey();
     }
-
   }
-  virtual Slice value() const override {
+  Slice value() const override {
     assert(valid_);
     if (current_entry_is_merged_) {
       // If pinned_value_ is set then the result of merge operator is one of
@@ -200,7 +196,7 @@ class DBIter final: public Iterator {
       return iter_->value();
     }
   }
-  virtual Status status() const override {
+  Status status() const override {
     if (status_.ok()) {
       return iter_->status();
     } else {
@@ -213,8 +209,7 @@ class DBIter final: public Iterator {
     return is_blob_;
   }
 
-  virtual Status GetProperty(std::string prop_name,
-                             std::string* prop) override {
+  Status GetProperty(std::string prop_name, std::string* prop) override {
     if (prop == nullptr) {
       return Status::InvalidArgument("prop is nullptr");
     }
@@ -232,15 +227,15 @@ class DBIter final: public Iterator {
       *prop = saved_key_.GetUserKey().ToString();
       return Status::OK();
     }
-    return Status::InvalidArgument("Undentified property.");
+    return Status::InvalidArgument("Unidentified property.");
   }
 
-  virtual void Next() override;
-  virtual void Prev() override;
-  virtual void Seek(const Slice& target) override;
-  virtual void SeekForPrev(const Slice& target) override;
-  virtual void SeekToFirst() override;
-  virtual void SeekToLast() override;
+  void Next() override;
+  void Prev() override;
+  void Seek(const Slice& target) override;
+  void SeekForPrev(const Slice& target) override;
+  void SeekToFirst() override;
+  void SeekToLast() override;
   Env* env() { return env_; }
   void set_sequence(uint64_t s) { sequence_ = s; }
   void set_valid(bool v) { valid_ = v; }
@@ -344,7 +339,7 @@ class DBIter final: public Iterator {
   const bool total_order_seek_;
   // List of operands for merge operator.
   MergeContext merge_context_;
-  RangeDelAggregator range_del_agg_;
+  ReadRangeDelAggregator range_del_agg_;
   LocalStatistics local_stats_;
   PinnedIteratorsManager pinned_iters_mgr_;
   ReadCallback* read_callback_;
@@ -1115,7 +1110,7 @@ bool DBIter::FindValueForCurrentKeyUsingSeek() {
 
     if (ikey.type == kTypeDeletion || ikey.type == kTypeSingleDeletion ||
         range_del_agg_.ShouldDelete(
-            ikey, RangeDelPositioningMode::kBackwardTraversal)) {
+            ikey, RangeDelPositioningMode::kForwardTraversal)) {
       break;
     } else if (ikey.type == kTypeValue) {
       const Slice val = iter_->value();
@@ -1482,7 +1477,7 @@ Iterator* NewDBIterator(Env* env, const ReadOptions& read_options,
 
 ArenaWrappedDBIter::~ArenaWrappedDBIter() { db_iter_->~DBIter(); }
 
-RangeDelAggregator* ArenaWrappedDBIter::GetRangeDelAggregator() {
+ReadRangeDelAggregator* ArenaWrappedDBIter::GetRangeDelAggregator() {
   return db_iter_->GetRangeDelAggregator();
 }
 
@@ -1558,7 +1553,8 @@ Status ArenaWrappedDBIter::Refresh() {
          allow_refresh_);
 
     InternalIterator* internal_iter = db_impl_->NewInternalIterator(
-        read_options_, cfd_, sv, &arena_, db_iter_->GetRangeDelAggregator());
+        read_options_, cfd_, sv, &arena_, db_iter_->GetRangeDelAggregator(),
+        latest_seq);
     SetIterUnderDBIter(internal_iter);
   } else {
     db_iter_->set_sequence(latest_seq);

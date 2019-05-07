@@ -5,8 +5,11 @@
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/string.hpp>
+#include <fc/io/json.hpp>
+#include <fc/io/fstream.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -65,6 +68,7 @@ class chain_plugin_impl
 
       void start_write_processing();
       void stop_write_processing();
+      void write_default_database_config( bfs::path& p );
 
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
@@ -92,6 +96,7 @@ class chain_plugin_impl
 
       vector< string >                 loaded_plugins;
       fc::mutable_variant_object       plugin_state_opts;
+      bfs::path                        database_cfg;
 
       database  db;
       std::string block_generator_registrant;
@@ -288,6 +293,12 @@ void chain_plugin_impl::stop_write_processing()
    write_processor_thread.reset();
 }
 
+void chain_plugin_impl::write_default_database_config( bfs::path &p )
+{
+   ilog( "writing database configuration: ${p}", ("p", p.string()) );
+   fc::json::save_to_file( steem::utilities::default_database_configuration(), p );
+}
+
 } // detail
 
 
@@ -325,6 +336,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+#ifdef ENABLE_STD_ALLOCATOR
+         ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
+#endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -382,6 +396,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
+#ifdef ENABLE_STD_ALLOCATOR
+   my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
+
+   if( my->database_cfg.is_relative() )
+      my->database_cfg = app().data_dir() / my->database_cfg;
+
+   if( !bfs::exists( my->database_cfg ) )
+   {
+      my->write_default_database_config( my->database_cfg );
+   }
+#endif
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
@@ -445,6 +470,24 @@ void chain_plugin::plugin_startup()
       }
    };
 
+#ifdef ENABLE_STD_ALLOCATOR
+   fc::variant database_config;
+   try
+   {
+      database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
+   }
+   catch ( const std::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+   catch ( const fc::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+#endif
+
    database::open_args db_open_args;
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
@@ -455,6 +498,7 @@ void chain_plugin::plugin_startup()
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
+   db_open_args.database_cfg = database_config;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

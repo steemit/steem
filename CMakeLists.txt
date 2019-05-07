@@ -42,7 +42,6 @@ LIST(APPEND BOOST_COMPONENTS thread
                              system
                              filesystem
                              program_options
-                             signals
                              serialization
                              chrono
                              unit_test_framework
@@ -154,6 +153,11 @@ IF( WIN32 )
 ENDIF(WIN32)
 
 FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+
+if( Boost_VERSION GREATER_EQUAL 106900 )
+   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
+   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+endif()
 
 if( WIN32 )
 

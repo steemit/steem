@@ -6,9 +6,10 @@
 #pragma once
 #include "rocksdb/statistics.h"
 
-#include <vector>
 #include <atomic>
+#include <map>
 #include <string>
+#include <vector>
 
 #include "monitoring/histogram.h"
 #include "port/likely.h"
@@ -41,8 +42,7 @@ enum HistogramsInternal : uint32_t {
 
 class StatisticsImpl : public Statistics {
  public:
-  StatisticsImpl(std::shared_ptr<Statistics> stats,
-                 bool enable_internal_stats);
+  StatisticsImpl(std::shared_ptr<Statistics> stats);
   virtual ~StatisticsImpl();
 
   virtual uint64_t getTickerCount(uint32_t ticker_type) const override;
@@ -57,13 +57,12 @@ class StatisticsImpl : public Statistics {
 
   virtual Status Reset() override;
   virtual std::string ToString() const override;
+  virtual bool getTickerMap(std::map<std::string, uint64_t>*) const override;
   virtual bool HistEnabledForType(uint32_t type) const override;
 
  private:
   // If non-nullptr, forwards updates to the object pointed to by `stats_`.
   std::shared_ptr<Statistics> stats_;
-  // TODO(ajkr): clean this up since there are no internal stats anymore
-  bool enable_internal_stats_;
   // Synchronizes anything that operates across other cores' local data,
   // such that operations like Reset() can be performed atomically.
   mutable port::Mutex aggregate_lock_;

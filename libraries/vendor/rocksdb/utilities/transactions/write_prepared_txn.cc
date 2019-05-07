@@ -31,8 +31,13 @@ struct WriteOptions;
 WritePreparedTxn::WritePreparedTxn(WritePreparedTxnDB* txn_db,
                                    const WriteOptions& write_options,
                                    const TransactionOptions& txn_options)
-    : PessimisticTransaction(txn_db, write_options, txn_options),
-      wpt_db_(txn_db) {}
+    : PessimisticTransaction(txn_db, write_options, txn_options, false),
+      wpt_db_(txn_db) {
+  // Call Initialize outside PessimisticTransaction constructor otherwise it
+  // would skip overridden functions in WritePreparedTxn since they are not
+  // defined yet in the constructor of PessimisticTransaction
+  Initialize(txn_options);
+}
 
 void WritePreparedTxn::Initialize(const TransactionOptions& txn_options) {
   PessimisticTransaction::Initialize(txn_options);
@@ -180,7 +185,7 @@ Status WritePreparedTxn::CommitInternal() {
    public:
     explicit PublishSeqPreReleaseCallback(DBImpl* db_impl)
         : db_impl_(db_impl) {}
-    virtual Status Callback(SequenceNumber seq, bool is_mem_disabled) override {
+    Status Callback(SequenceNumber seq, bool is_mem_disabled) override {
 #ifdef NDEBUG
       (void)is_mem_disabled;
 #endif
@@ -218,8 +223,7 @@ Status WritePreparedTxn::RollbackInternal() {
   assert(GetId() > 0);
   auto cf_map_shared_ptr = wpt_db_->GetCFHandleMap();
   auto cf_comp_map_shared_ptr = wpt_db_->GetCFComparatorMap();
-  // In WritePrepared, the txn is is the same as prepare seq
-  auto last_visible_txn = GetId() - 1;
+  auto read_at_seq = kMaxSequenceNumber;
   struct RollbackWriteBatchBuilder : public WriteBatch::Handler {
     DBImpl* db_;
     ReadOptions roptions;
@@ -307,8 +311,8 @@ Status WritePreparedTxn::RollbackInternal() {
     }
 
    protected:
-    virtual bool WriteAfterCommit() const override { return false; }
-  } rollback_handler(db_impl_, wpt_db_, last_visible_txn, &rollback_batch,
+    bool WriteAfterCommit() const override { return false; }
+  } rollback_handler(db_impl_, wpt_db_, read_at_seq, &rollback_batch,
                      *cf_comp_map_shared_ptr.get(), *cf_map_shared_ptr.get(),
                      wpt_db_->txn_db_options_.rollback_merge_operands);
   auto s = GetWriteBatch()->GetWriteBatch()->Iterate(&rollback_handler);
@@ -323,7 +327,7 @@ Status WritePreparedTxn::RollbackInternal() {
   const uint64_t NO_REF_LOG = 0;
   uint64_t seq_used = kMaxSequenceNumber;
   const size_t ONE_BATCH = 1;
-  // We commit the rolled back prepared batches. ALthough this is
+  // We commit the rolled back prepared batches. Although this is
   // counter-intuitive, i) it is safe to do so, since the prepared batches are
   // already canceled out by the rollback batch, ii) adding the commit entry to
   // CommitCache will allow us to benefit from the existing mechanism in
@@ -335,7 +339,7 @@ Status WritePreparedTxn::RollbackInternal() {
   // Note: the rollback batch does not need AddPrepared since it is written to
   // DB in one shot. min_uncommitted still works since it requires capturing
   // data that is written to DB but not yet committed, while
-  // the roolback batch commits with PreReleaseCallback.
+  // the rollback batch commits with PreReleaseCallback.
   s = db_impl_->WriteImpl(write_options_, &rollback_batch, nullptr, nullptr,
                           NO_REF_LOG, !DISABLE_MEMTABLE, &seq_used, ONE_BATCH,
                           do_one_write ? &update_commit_map : nullptr);
@@ -353,9 +357,8 @@ Status WritePreparedTxn::RollbackInternal() {
                     prepare_seq);
   // Commit the batch by writing an empty batch to the queue that will release
   // the commit sequence number to readers.
-  const size_t ZERO_COMMITS = 0;
-  WritePreparedCommitEntryPreReleaseCallback update_commit_map_with_prepare(
-      wpt_db_, db_impl_, prepare_seq, ONE_BATCH, ZERO_COMMITS);
+  WritePreparedRollbackPreReleaseCallback update_commit_map_with_prepare(
+      wpt_db_, db_impl_, GetId(), prepare_seq, prepare_batch_cnt_);
   WriteBatch empty_batch;
   empty_batch.PutLogData(Slice());
   // In the absence of Prepare markers, use Noop as a batch separator
@@ -364,18 +367,10 @@ Status WritePreparedTxn::RollbackInternal() {
                           NO_REF_LOG, DISABLE_MEMTABLE, &seq_used, ONE_BATCH,
                           &update_commit_map_with_prepare);
   assert(!s.ok() || seq_used != kMaxSequenceNumber);
-  // Mark the txn as rolled back
-  uint64_t& rollback_seq = seq_used;
+  ROCKS_LOG_DETAILS(db_impl_->immutable_db_options().info_log,
+                    "RollbackInternal (status=%s) commit: %" PRIu64,
+                    s.ToString().c_str(), GetId());
   if (s.ok()) {
-    // Note: it is safe to do it after PreReleaseCallback via WriteImpl since
-    // all the writes by the prpared batch are already blinded by the rollback
-    // batch. The only reason we commit the prepared batch here is to benefit
-    // from the existing mechanism in CommitCache that takes care of the rare
-    // cases that the prepare seq is visible to a snsapshot but max evicted seq
-    // advances that prepare seq.
-    for (size_t i = 0; i < prepare_batch_cnt_; i++) {
-      wpt_db_->AddCommitted(GetId() + i, rollback_seq);
-    }
     wpt_db_->RemovePrepared(GetId(), prepare_batch_cnt_);
   }
 
@@ -410,24 +405,12 @@ Status WritePreparedTxn::ValidateSnapshot(ColumnFamilyHandle* column_family,
   WritePreparedTxnReadCallback snap_checker(wpt_db_, snap_seq, min_uncommitted);
   return TransactionUtil::CheckKeyForConflicts(db_impl_, cfh, key.ToString(),
                                                snap_seq, false /* cache_only */,
-                                               &snap_checker);
+                                               &snap_checker, min_uncommitted);
 }
 
 void WritePreparedTxn::SetSnapshot() {
-  // Note: for this optimization setting the last sequence number and obtaining
-  // the smallest uncommitted seq should be done atomically. However to avoid
-  // the mutex overhead, we call SmallestUnCommittedSeq BEFORE taking the
-  // snapshot. Since we always updated the list of unprepared seq (via
-  // AddPrepared) AFTER the last sequence is updated, this guarantees that the
-  // smallest uncommited seq that we pair with the snapshot is smaller or equal
-  // the value that would be obtained otherwise atomically. That is ok since
-  // this optimization works as long as min_uncommitted is less than or equal
-  // than the smallest uncommitted seq when the snapshot was taken.
-  auto min_uncommitted = wpt_db_->SmallestUnCommittedSeq();
-  const bool FOR_WW_CONFLICT_CHECK = true;
-  SnapshotImpl* snapshot = dbimpl_->GetSnapshotImpl(FOR_WW_CONFLICT_CHECK);
-  assert(snapshot);
-  wpt_db_->EnhanceSnapshot(snapshot, min_uncommitted);
+  const bool kForWWConflictCheck = true;
+  SnapshotImpl* snapshot = wpt_db_->GetSnapshotInternal(kForWWConflictCheck);
   SetSnapshotInternal(snapshot);
 }
 

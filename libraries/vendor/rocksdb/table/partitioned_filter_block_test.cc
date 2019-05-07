@@ -27,24 +27,24 @@ class MockedBlockBasedTable : public BlockBasedTable {
     rep->cache_key_prefix_size = 10;
   }
 
-  virtual CachableEntry<FilterBlockReader> GetFilter(
+  CachableEntry<FilterBlockReader> GetFilter(
       FilePrefetchBuffer*, const BlockHandle& filter_blk_handle,
       const bool /* unused */, bool /* unused */, GetContext* /* unused */,
       const SliceTransform* prefix_extractor) const override {
     Slice slice = slices[filter_blk_handle.offset()];
     auto obj = new FullFilterBlockReader(
-        prefix_extractor, true, BlockContents(slice, false, kNoCompression),
+        prefix_extractor, true, BlockContents(slice),
         rep_->table_options.filter_policy->GetFilterBitsReader(slice), nullptr);
     return {obj, nullptr};
   }
 
-  virtual FilterBlockReader* ReadFilter(
+  FilterBlockReader* ReadFilter(
       FilePrefetchBuffer*, const BlockHandle& filter_blk_handle,
       const bool /* unused */,
       const SliceTransform* prefix_extractor) const override {
     Slice slice = slices[filter_blk_handle.offset()];
     auto obj = new FullFilterBlockReader(
-        prefix_extractor, true, BlockContents(slice, false, kNoCompression),
+        prefix_extractor, true, BlockContents(slice),
         rep_->table_options.filter_policy->GetFilterBitsReader(slice), nullptr);
     return obj;
   }
@@ -67,7 +67,7 @@ class PartitionedFilterBlockTest
   }
 
   std::shared_ptr<Cache> cache_;
-  ~PartitionedFilterBlockTest() {}
+  ~PartitionedFilterBlockTest() override {}
 
   const std::string keys[4] = {"afoo", "bar", "box", "hello"};
   const std::string missing_keys[2] = {"missing", "other"};
@@ -147,10 +147,10 @@ class PartitionedFilterBlockTest
     const bool kImmortal = true;
     table.reset(new MockedBlockBasedTable(
         new BlockBasedTable::Rep(ioptions, env_options, table_options_, icomp,
-                                 !kSkipFilters, !kImmortal)));
+                                 !kSkipFilters, 0, !kImmortal)));
     auto reader = new PartitionedFilterBlockReader(
-        prefix_extractor, true, BlockContents(slice, false, kNoCompression),
-        nullptr, nullptr, icomp, table.get(), pib->seperator_is_key_plus_seq(),
+        prefix_extractor, true, BlockContents(slice), nullptr, nullptr, icomp,
+        table.get(), pib->seperator_is_key_plus_seq(),
         !pib->get_use_value_delta_encoding());
     return reader;
   }

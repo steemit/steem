@@ -114,7 +114,7 @@ void database::open( const open_args& args )
    try
    {
       init_schema();
-      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size, args.database_cfg );
 
       initialize_indexes();
       initialize_evaluators();
@@ -3203,7 +3203,7 @@ void database::_apply_block( const signed_block& next_block )
    // last call of applying a block because it is the only thing that is not
    // reversible.
    migrate_irreversible_state();
-   trim_cache( 4500000 );
+   trim_cache();
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor

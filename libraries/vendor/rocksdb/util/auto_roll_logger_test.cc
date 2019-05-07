@@ -28,13 +28,13 @@ namespace {
 class NoSleepEnv : public EnvWrapper {
  public:
   NoSleepEnv(Env* base) : EnvWrapper(base) {}
-  virtual void SleepForMicroseconds(int micros) override {
+  void SleepForMicroseconds(int micros) override {
     fake_time_ += static_cast<uint64_t>(micros);
   }
 
-  virtual uint64_t NowNanos() override { return fake_time_ * 1000; }
+  uint64_t NowNanos() override { return fake_time_ * 1000; }
 
-  virtual uint64_t NowMicros() override { return fake_time_; }
+  uint64_t NowMicros() override { return fake_time_; }
 
  private:
   uint64_t fake_time_ = 6666666666;
@@ -230,7 +230,7 @@ TEST_F(AutoRollLoggerTest, CompositeRollByTimeAndSizeLogger) {
 TEST_F(AutoRollLoggerTest, CreateLoggerFromOptions) {
   DBOptions options;
   NoSleepEnv nse(Env::Default());
-  shared_ptr<Logger> logger;
+  std::shared_ptr<Logger> logger;
 
   // Normal logger
   ASSERT_OK(CreateLoggerFromOptions(kTestDir, options, &logger));
@@ -273,7 +273,7 @@ TEST_F(AutoRollLoggerTest, CreateLoggerFromOptions) {
 
 TEST_F(AutoRollLoggerTest, LogFlushWhileRolling) {
   DBOptions options;
-  shared_ptr<Logger> logger;
+  std::shared_ptr<Logger> logger;
 
   InitTestDb();
   options.max_log_file_size = 1024 * 5;

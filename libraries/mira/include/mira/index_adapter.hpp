@@ -443,10 +443,10 @@ struct multi_index_adapter
       );
    }
 
-   bool open( const boost::filesystem::path& p )
+   bool open( const boost::filesystem::path& p, const boost::any& o )
    {
       return boost::apply_visitor(
-         [&p]( auto& index ){ return index.open( p ); },
+         [&p, &o]( auto& index ){ return index.open( p, o ); },
          _index
       );
    }
@@ -538,10 +538,10 @@ struct multi_index_adapter
       );
    }
 
-   void trim_cache( size_t cap )
+   void trim_cache()
    {
       boost::apply_visitor(
-         [&cap]( auto& index ){ index.trim_cache( cap ); },
+         []( auto& index ){ index.trim_cache(); },
          _index
       );
    }

@@ -11,6 +11,7 @@
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 
+#include <boost/any.hpp>
 #include <boost/chrono.hpp>
 #include <boost/config.hpp>
 #include <boost/filesystem.hpp>
@@ -281,9 +282,9 @@ namespace chainbase {
          void clear() { _indices.clear(); }
 
 #ifdef ENABLE_STD_ALLOCATOR
-         void open( const bfs::path& p )
+         void open( const bfs::path& p, const boost::any& o )
          {
-            _indices.open( p );
+            _indices.open( p, o );
             _revision = _indices.revision();
             typename value_type::id_type next_id = 0;
             if( _indices.get_metadata( "next_id", next_id ) )
@@ -308,7 +309,7 @@ namespace chainbase {
 
          void dump_lb_call_counts() { _indices.dump_lb_call_counts(); }
 
-         void trim_cache( size_t cap ) { _indices.trim_cache( cap ); }
+         void trim_cache() { _indices.trim_cache(); }
 #endif
 
          class session {
@@ -662,14 +663,14 @@ namespace chainbase {
          virtual size_t size() const = 0;
          virtual void clear() = 0;
 #ifdef ENABLE_STD_ALLOCATOR
-         virtual void open( const bfs::path& ) = 0;
+         virtual void open( const bfs::path&, const boost::any& ) = 0;
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
          virtual void flush() = 0;
          virtual size_t get_cache_usage() const = 0;
          virtual size_t get_cache_size() const = 0;
          virtual void dump_lb_call_counts() = 0;
-         virtual void trim_cache( size_t cap ) = 0;
+         virtual void trim_cache() = 0;
          virtual void print_stats() const = 0;
 #endif
 
@@ -730,9 +731,9 @@ namespace chainbase {
          }
 
 #ifdef ENABLE_STD_ALLOCATOR
-         virtual void open( const bfs::path& p ) override final
+         virtual void open( const bfs::path& p, const boost::any& o ) override final
          {
-            _base.open( p );
+            _base.open( p, o );
          }
 
          virtual void close() override final
@@ -765,9 +766,9 @@ namespace chainbase {
             _base.dump_lb_call_counts();
          }
 
-         virtual void trim_cache( size_t cap ) override final
+         virtual void trim_cache() override final
          {
-            _base.trim_cache( cap );
+            _base.trim_cache();
          }
 
          virtual void print_stats() const override final
@@ -851,13 +852,13 @@ namespace chainbase {
          };
 
       public:
-         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0, const boost::any& database_cfg = nullptr );
          void close();
          void flush();
          size_t get_cache_usage() const;
          size_t get_cache_size() const;
          void dump_lb_call_counts();
-         void trim_cache( size_t cap );
+         void trim_cache();
          void wipe( const bfs::path& dir );
          void resize( size_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
@@ -1235,7 +1236,7 @@ namespace chainbase {
             _index_list.push_back( new_index );
 
 #ifdef ENABLE_STD_ALLOCATOR
-            if( _is_open ) new_index->open( _data_dir );
+            if( _is_open ) new_index->open( _data_dir, _database_cfg );
 #endif
          }
 
@@ -1268,6 +1269,7 @@ namespace chainbase {
 
          int32_t                                                     _undo_session_count = 0;
          size_t                                                      _file_size = 0;
+         boost::any                                                  _database_cfg = nullptr;
    };
 
 }  // namepsace chainbase

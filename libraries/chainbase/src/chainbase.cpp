@@ -1,6 +1,6 @@
 #include <chainbase/chainbase.hpp>
 #include <boost/array.hpp>
-
+#include <boost/any.hpp>
 #include <iostream>
 
 namespace chainbase {
@@ -30,13 +30,14 @@ namespace chainbase {
       bool                    windows = false;
    };
 
-   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size )
+   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size, const boost::any& database_cfg )
    {
       assert( dir.is_absolute() );
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
       _data_dir = dir;
+      _database_cfg = database_cfg;
 
 #ifndef ENABLE_STD_ALLOCATOR
       auto abs_path = bfs::absolute( dir / "shared_memory.bin" );
@@ -74,7 +75,7 @@ namespace chainbase {
 #else
       for( auto& item : _index_list )
       {
-         item->open( _data_dir );
+         item->open( _data_dir, _database_cfg );
       }
 #endif
       _is_open = true;
@@ -132,12 +133,12 @@ namespace chainbase {
 #endif
    }
 
-   void database::trim_cache( size_t cap )
+   void database::trim_cache()
    {
 #ifdef ENABLE_STD_ALLOCATOR
       if( _index_list.size() )
       {
-         (*_index_list.begin())->trim_cache( cap );
+         (*_index_list.begin())->trim_cache();
       }
 #endif
    }

@@ -47,6 +47,7 @@ enum ChecksumType : char {
   kNoChecksum = 0x0,
   kCRC32c = 0x1,
   kxxHash = 0x2,
+  kxxHash64 = 0x3,
 };
 
 // For advanced user only
@@ -60,6 +61,10 @@ struct BlockBasedTableOptions {
 
   // TODO(kailiu) Temporarily disable this feature by making the default value
   // to be false.
+  //
+  // TODO(ajkr) we need to update names of variables controlling meta-block
+  // caching as they should now apply to range tombstone and compression
+  // dictionary meta-blocks, in addition to index and filter meta-blocks.
   //
   // Indicating if we'd put index/filter blocks to the block cache.
   // If not specified, each "table reader" object will pre-load index/filter
@@ -137,6 +142,8 @@ struct BlockBasedTableOptions {
 
   // If non-NULL use the specified cache for compressed blocks.
   // If NULL, rocksdb will not use a compressed block cache.
+  // Note: though it looks similar to `block_cache`, RocksDB doesn't put the
+  //       same type of object there.
   std::shared_ptr<Cache> block_cache_compressed = nullptr;
 
   // Approximate size of user data packed per block.  Note that the
@@ -222,7 +229,7 @@ struct BlockBasedTableOptions {
   // Default: 0 (disabled)
   uint32_t read_amp_bytes_per_bit = 0;
 
-  // We currently have three versions:
+  // We currently have five versions:
   // 0 -- This version is currently written out by all RocksDB's versions by
   // default.  Can be read by really old RocksDB's. Doesn't support changing
   // checksum (default is CRC32).
@@ -449,10 +456,10 @@ class TableFactory {
   // NewTableReader() is called in three places:
   // (1) TableCache::FindTable() calls the function when table cache miss
   //     and cache the table object returned.
-  // (2) SstFileReader (for SST Dump) opens the table and dump the table
+  // (2) SstFileDumper (for SST Dump) opens the table and dump the table
   //     contents using the iterator of the table.
-  // (3) DBImpl::IngestExternalFile() calls this function to read the contents of
-  //     the sst file it's attempting to add
+  // (3) DBImpl::IngestExternalFile() calls this function to read the contents
+  //     of the sst file it's attempting to add
   //
   // table_reader_options is a TableReaderOptions which contain all the
   //    needed parameters and configuration to open the table.
@@ -461,8 +468,8 @@ class TableFactory {
   // table_reader is the output table reader.
   virtual Status NewTableReader(
       const TableReaderOptions& table_reader_options,
-      unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
-      unique_ptr<TableReader>* table_reader,
+      std::unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
+      std::unique_ptr<TableReader>* table_reader,
       bool prefetch_index_and_filter_in_cache = true) const = 0;
 
   // Return a table builder to write to a file for this table type.
