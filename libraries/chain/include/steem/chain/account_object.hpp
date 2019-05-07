@@ -134,6 +134,7 @@ namespace steem { namespace chain {
       id_type           id;
       account_id_type   account;
       shared_string     json_metadata;
+      shared_string     posting_json_metadata;
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >

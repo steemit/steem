@@ -67,6 +67,23 @@ namespace steem { namespace protocol {
       }
    }
 
+   void account_update2_operation::validate() const
+   {
+      validate_account_name( account );
+
+      if ( json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
+      }
+
+      if ( posting_json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(posting_json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(posting_json_metadata), "JSON Metadata not valid JSON" );
+      }
+   }
+
    void comment_operation::validate() const
    {
       FC_ASSERT( title.size() < 256, "Title larger than size limit" );
