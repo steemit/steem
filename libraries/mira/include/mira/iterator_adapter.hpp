@@ -24,6 +24,12 @@ class iterator_adapter :
       iterator_adapter() {}
 
       template< typename T >
+      iterator_adapter( T& rhs )
+      {
+         assignment_impl( rhs, type< typename std::remove_reference< T >::type >() );
+      }
+
+      template< typename T >
       iterator_adapter( const T& rhs )
       {
          assignment_impl( rhs, type< typename std::remove_reference< T >::type >() );
@@ -95,6 +101,14 @@ class iterator_adapter :
       }
 
       template< typename T >
+      iterator_adapter& operator =( T& rhs )
+      {
+         assignment_impl( rhs, type< typename std::remove_reference< T >::type >() );
+
+         return *this;
+      }
+
+      template< typename T >
       iterator_adapter& operator =( const T& rhs )
       {
          assignment_impl( rhs, type< typename std::remove_reference< T >::type >() );
@@ -114,6 +128,17 @@ class iterator_adapter :
       IterType& get() { return boost::get< IterType >( _itr ); }
 
    private:
+      void assignment_impl( iterator_adapter& rhs, type< iterator_adapter > )
+      {
+         _itr = rhs._itr;
+      }
+
+      template< typename T >
+      void assignment_impl( T& rhs, type< T > )
+      {
+         _itr = rhs;
+      }
+
       void assignment_impl( const iterator_adapter& rhs, type< iterator_adapter > )
       {
          _itr = rhs._itr;
