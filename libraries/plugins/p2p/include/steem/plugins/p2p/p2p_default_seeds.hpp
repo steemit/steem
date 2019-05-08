@@ -9,6 +9,8 @@ const std::vector< std::string > default_seeds;
 #else
 const std::vector< std::string > default_seeds = {
    "seed-east.steemit.com:2001",          // steemit
+   "seed-central.steemit.com:2001",       // steemit
+   "seed-west.steemit.com:2001",          // steemit
    "52.74.152.79:2001",                   // smooth.witness
    "anyx.io:2001",                        // anyx
    "seed.liondani.com:2016",              // liondani
