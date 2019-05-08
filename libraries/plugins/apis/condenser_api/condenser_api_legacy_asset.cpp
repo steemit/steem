@@ -159,10 +159,24 @@ legacy_asset legacy_asset::from_string( const string& from )
 
          int64_t prec = precision( result.symbol );
 
+         //Max amount = 9223372036854775.807 STEEM/SBD
+         //`inpart` * `prec` can cause overflow, better is to emulate multiplication using additional zeros
+         auto _prec = std::to_string( prec );
+         if( !_prec.empty() )
+            intpart += _prec.substr( 1 );
+
          result.amount = fc::to_int64( intpart );
-         result.amount.value *= prec;
-         result.amount.value += fc::to_int64( fractpart );
-         result.amount.value -= prec;
+
+         int64_t _new_value = fc::to_int64( fractpart ) - prec;
+
+         //adding `_new_value` can cause overflow, better is to check sum before addition
+         int64_t check = result.amount.value + _new_value;
+         bool overflow_a = result.amount.value > 0 && _new_value > 0 && check < 0;
+         bool overflow_b = result.amount.value < 0 && _new_value < 0 && check > 0;
+         if( overflow_a || overflow_b )
+            FC_THROW_EXCEPTION( fc::parse_error_exception, "Couldn't parse int64_t" );
+         else
+            result.amount.value += _new_value;
       }
       else
       {

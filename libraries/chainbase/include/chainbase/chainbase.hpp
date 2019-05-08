@@ -254,6 +254,13 @@ namespace chainbase {
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
+         template < typename IndexedBy >
+         typename MultiIndexType::template index_iterator<IndexedBy>::type erase(typename MultiIndexType::template index_iterator<IndexedBy>::type objI) {
+            auto& idx = _indices.template get< IndexedBy >();
+            on_remove(*objI);
+            return idx.erase(objI);
+         }
+
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );

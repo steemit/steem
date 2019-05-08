@@ -17,7 +17,8 @@ target_link_libraries( condenser_api_plugin
    market_history_api_plugin
    network_broadcast_api_plugin
    tags_api_plugin
-   steem_utilities )
+   steem_utilities
+   sps_api_plugin )
 target_include_directories( condenser_api_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )

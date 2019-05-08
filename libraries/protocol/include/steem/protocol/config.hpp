@@ -9,7 +9,7 @@
 // This is checked by get_config_check.sh called from Dockerfile
 
 #ifdef IS_TEST_NET
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 22, 0) )
 
 #define STEEM_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEM_INIT_PUBLIC_KEY_STR             (std::string( steem::protocol::public_key_type(STEEM_INIT_PRIVATE_KEY.get_public_key()) ))
@@ -37,13 +37,14 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 
 #define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
+#define STEEM_SBD_INIT_SUPPLY                 (int64_t( 7 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 
 /// Allows to limit number of total produced blocks.
 #define TESTNET_BLOCK_LIMIT                   (3000000)
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 6) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -69,6 +70,7 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
 
 #define STEEM_INIT_SUPPLY                     int64_t(0)
+#define STEEM_SBD_INIT_SUPPLY                 int64_t(0)
 
 #endif
 
@@ -314,7 +316,18 @@
 #define STEEM_PROXY_TO_SELF_ACCOUNT           ""
 /// Represents the canonical root post parent account
 #define STEEM_ROOT_POST_PARENT                (account_name_type())
+/// Represents the account with NO authority which holds resources for payouts according to given proposals
+#define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
+
+/// STEEM PROPOSAL SYSTEM support
+
+#define STEEM_TREASURY_FEE                         (10 * STEEM_BLOCKCHAIN_PRECISION)
+#define STEEM_PROPOSAL_MAINTENANCE_PERIOD          3600
+#define STEEM_PROPOSAL_MAINTENANCE_CLEANUP         (60*60*24*1) /// 1 day
+#define STEEM_PROPOSAL_SUBJECT_MAX_LENGTH          80
+/// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.
+#define STEEM_PROPOSAL_MAX_IDS_NUMBER              5
 
 #ifdef STEEM_ENABLE_SMT
 

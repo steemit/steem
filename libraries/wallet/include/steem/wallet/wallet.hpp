@@ -1,6 +1,8 @@
 #pragma once
 
 #include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/sps_api/sps_api_plugin.hpp>
+#include <steem/plugins/sps_api/sps_api.hpp>
 
 #include <steem/wallet/remote_node_api.hpp>
 
@@ -17,6 +19,7 @@ using namespace std;
 
 using namespace steem::utilities;
 using namespace steem::protocol;
+using namespace steem::plugins::sps;
 
 typedef uint16_t transaction_handle_type;
 
@@ -1066,6 +1069,80 @@ class wallet_api
          condenser_api::legacy_asset reward_sbd,
          condenser_api::legacy_asset reward_vests,
          bool broadcast );
+
+      /**
+       * Create worker proposal
+       * @param _creator    - the account that creates the proposal,
+       * @param _receiver   - the account that will be funded,
+       * @param _start_date - start date of proposal,
+       * @param _end_date   - end date of proposal,
+       * @param _daily_pay  - the amount of SBD that is being requested to be paid out daily,
+       * @param _subject    - briefly description of proposal of its title,
+       * @param _url        - link to page with description of proposal.
+       */
+      condenser_api::legacy_signed_transaction create_proposal(account_name_type _creator,
+                           account_name_type _receiver,
+                           time_point_sec _start_date,
+                           time_point_sec _end_date, 
+                           condenser_api::legacy_asset _daily_pay,
+                           const std::string& _subject, 
+                           const std::string& _url,
+                           bool broadcast );
+      /**
+       * Update existing worker proposal(s)
+       * @param _voter     - the account that votes,
+       * @param _proposals - array with proposal ids,
+       * @param _approve   - set if proposal(s) should be approved or not.
+       */
+      condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type _voter, 
+                                                                     flat_set<int64_t> _proposals, 
+                                                                     bool _approve,
+                                                                     bool broadcast );
+      /**
+       * List proposals
+       * @param _start      - starting value for querying results,
+       * @param _order_by   - name a field for sorting operation,
+       * @param _order_type - set print order asc - ascdending, desc - descending,
+       * @param _limit      - query limit,
+       * @param _status     - list only results with given status (expired, inactive, active, all, votable),
+       * @param _last_id    - (optional) start search from given id.
+       */
+      list_proposals_return list_proposals(fc::variant _start,
+                                           std::string _order_by = "creator",
+                                           std::string _order_type = "desc",
+                                           int _limit = 10,
+                                           std::string _status = "all",
+                                           std::string _last_id = "");
+
+      /**
+       * List proposals of given voter
+       * @param _start      - starting value for querying results,
+       * @param _order_by   - name a field for sorting operation,
+       * @param _order_type - set print order asc - ascdending, desc - descending,
+       * @param _limit      - query limit,
+       * @param _status     - list only results with given status (expired, inactive, active, all, votable),
+       * @param _last_id    - (optional) start search from given id.
+       */
+      list_voter_proposals_return list_voter_proposals(fc::variant _start,
+                                                       std::string _order_by = "creator",
+                                                       std::string _order_type = "desc",
+                                                       int _limit = 10,
+                                                       std::string _status = "all",
+                                                       std::string _last_id = "");
+
+      /**
+       * Find proposal with given id
+       * @param _ids - array with ids of wanted proposals to be founded.
+       */
+      find_proposals_return find_proposals(flat_set<uint64_t> _ids);
+
+      /**
+       * Remove given proposal 
+       * @param _deleter   - authorized account,
+       * @param _ids       - proposal ids to be removed.
+       */
+      condenser_api::legacy_signed_transaction remove_proposal(account_name_type _deleter, 
+                                                               flat_set<int64_t> _ids, bool broadcast );
 };
 
 struct plain_keys {
@@ -1169,6 +1246,14 @@ FC_API( steem::wallet::wallet_api,
 
         (get_active_witnesses)
         (get_transaction)
+
+        ///worker proposal api
+        (create_proposal)
+        (update_proposal_votes)
+        (list_proposals)
+        (list_voter_proposals)
+        (find_proposals)
+        (remove_proposal)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )

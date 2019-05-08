@@ -1,0 +1,101 @@
+# Appender definition json: {"appender", "stream", "file"} Can only specify a file OR a stream
+log-appender = {"appender":"stderr","stream":"std_error"} {"appender":"p2p","file":"logs/p2p/p2p.log"}
+
+# Logger definition json: {"name", "level", "appender"}
+log-logger = {"name":"default","level":"all","appender":"stderr"} {"name":"p2p","level":"all","appender":"p2p"}
+
+# Whether to print backtrace on SIGSEGV
+backtrace = yes
+
+# Plugin(s) to enable, may be specified multiple times
+plugin = witness database_api account_by_key_api network_broadcast_api tags_api follow_api condenser_api block_api sps_api transaction_status_api debug_node_api
+
+# Disables automatic account history trimming
+history-disable-pruning = 0
+
+# The location of the rocksdb database for account history. By default it is $DATA_DIR/blockchain/account-history-rocksdb-storage
+account-history-rocksdb-path = "blockchain/account-history-rocksdb-storage"
+
+# Where to export data (NONE to discard)
+block-data-export-file = NONE
+
+# How often to print out block_log_info (default 1 day)
+block-log-info-print-interval-seconds = 86400
+
+# Whether to defer printing until block is irreversible
+block-log-info-print-irreversible = 1
+
+# Where to print (filename or special sink ILOG, STDOUT, STDERR)
+block-log-info-print-file = ILOG
+
+# the location of the chain shared memory files (absolute path or relative to application data dir)
+shared-file-dir = "blockchain"
+
+# Size of the shared memory file. Default: 54G. If running a full node, increase this value to 200G.
+shared-file-size = 8G
+
+# A 2 precision percentage (0-10000) that defines the threshold for when to autoscale the shared memory file. Setting this to 0 disables autoscaling. Recommended value for consensus node is 9500 (95%). Full node is 9900 (99%)
+shared-file-full-threshold = 0
+
+# A 2 precision percentage (0-10000) that defines how quickly to scale the shared memory file. When autoscaling occurs the file's size will be increased by this percent. Setting this to 0 disables autoscaling. Recommended value is between 1000-2000 (10-20%)
+shared-file-scale-rate = 0
+
+# Set the maximum size of cached feed for an account
+follow-max-feed-size = 500
+
+# Block time (in epoch seconds) when to start calculating feeds
+follow-start-feeds = 0
+
+# Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers
+market-history-bucket-size = [15,60,300,3600,86400]
+
+# How far back in time to track history for each bucket size, measured in the number of buckets (default: 5760)
+market-history-buckets-per-size = 5760
+
+# The IP address and port of a remote peer to sync with.
+p2p-seed-node = 
+
+# Skip rejecting transactions when account has insufficient RCs. This is not recommended.
+rc-skip-reject-not-enough-rc = 0
+
+# Generate historical resource credits
+rc-compute-historical-rc = 0
+
+# Size to batch statsd messages.
+statsd-batchsize = 1
+
+# Block time (in epoch seconds) when to start calculating promoted content. Should be 1 week prior to current time.
+tags-start-promoted = 0
+
+# Skip updating tags on startup. Can safely be skipped when starting a previously running node. Should not be skipped when reindexing.
+tags-skip-startup-update = 0
+
+# Defines the number of blocks from the head block that transaction statuses will be tracked.
+transaction-status-block-depth = 64000
+
+# Defines the block number the transaction status plugin will begin tracking.
+transaction-status-track-after-block = 0
+
+# Local http endpoint for webserver requests.
+webserver-http-endpoint = 127.0.0.1:8090
+
+# Local websocket endpoint for webserver requests.
+webserver-ws-endpoint = 127.0.0.1:8090
+
+# Number of threads used to handle queries. Default: 32.
+webserver-thread-pool-size = 32
+
+# Enable block production, even if the chain is stale.
+enable-stale-production = 0
+
+# Percent of witnesses (0-99) that must be participating in order to produce blocks
+required-participation = 0
+
+# name of witness controlled by this node (e.g. initwitness )
+witness = "initminer"
+
+# WIF PRIVATE KEY to be used by one or more witnesses or miners
+private-key = 
+
+# Skip enforcing bandwidth restrictions. Default is true in favor of rc_plugin.
+witness-skip-enforce-bandwidth = 1

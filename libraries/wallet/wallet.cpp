@@ -5,6 +5,7 @@
 #include <steem/utilities/words.hpp>
 
 #include <steem/protocol/base.hpp>
+#include <steem/protocol/sps_operations.hpp>
 #include <steem/wallet/wallet.hpp>
 #include <steem/wallet/api_documentation.hpp>
 #include <steem/wallet/reflect_util.hpp>
@@ -2403,5 +2404,201 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    return my->sign_transaction( trx, broadcast );
 }
+
+   condenser_api::legacy_signed_transaction  wallet_api::create_proposal(account_name_type _creator,account_name_type _receiver, time_point_sec _start_date,
+                                    time_point_sec _end_date, condenser_api::legacy_asset _daily_pay, const std::string& _subject, const std::string& _permlink, bool broadcast )
+   {
+      auto now = time_point::now();
+
+      FC_ASSERT(_creator.size());
+      FC_ASSERT(_receiver.size());
+      FC_ASSERT(_start_date > now);
+      FC_ASSERT(_end_date > now);
+      FC_ASSERT(_start_date < _end_date );
+      FC_ASSERT(!_subject.empty());
+
+      auto creator  = get_account(_creator);
+      auto receiver = get_account(_receiver);
+
+      create_proposal_operation cp;
+      cp.creator = creator.name;
+      cp.receiver = receiver.name;
+      cp.start_date = _start_date;
+      cp.end_date = _end_date;
+      cp.daily_pay = _daily_pay;
+      cp.subject = _subject;
+      cp.permlink = _permlink;
+
+      ddump((cp.creator));
+      ddump((cp.receiver));
+      ddump((cp.start_date));
+      ddump((cp.end_date));
+      ddump((cp.daily_pay));
+      ddump((cp.subject));
+      ddump((cp.permlink));
+      
+      signed_transaction trx;
+      trx.operations.push_back( cp );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction  wallet_api::update_proposal_votes(account_name_type _voter,
+                                                                               flat_set<int64_t> _proposals,
+                                                                               bool _approve, bool broadcast )
+   {
+      FC_ASSERT(_voter.size());
+      FC_ASSERT(!_proposals.empty() );
+
+      auto voter = get_account(_voter);
+
+      update_proposal_votes_operation upv ;
+
+      upv.voter = voter.name;
+      upv.proposal_ids = _proposals;
+      upv.approve = _approve;
+
+      ddump((upv.voter));
+      ddump((upv.proposal_ids));
+      ddump((upv.approve));
+
+      signed_transaction trx;
+      trx.operations.push_back( upv );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   steem::plugins::sps::list_proposals_return wallet_api::list_proposals(fc::variant _start,
+                                                                         std::string _order_by,
+                                                                         std::string _order_type,
+                                                                         int _limit,
+                                                                         std::string _status,
+                                                                         std::string _last_id)
+   {
+      FC_ASSERT(!_order_by.empty());
+      FC_ASSERT(!_order_type.empty());
+      FC_ASSERT(_limit > 0);
+      FC_ASSERT(!_status.empty());
+
+      steem::plugins::sps::list_proposals_args args;
+      args.start           = _start;
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
+      args.limit           = _limit;
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
+
+      try {
+         if (!_last_id.empty() ) {
+            uint64_t last_id = 0;
+            if( !boost::conversion::try_lexical_convert(_last_id, last_id) ) {
+               elog("The value `${value}` for `_last_id` argument is invalid, it should be integer type.", ("value", _last_id));
+               return steem::plugins::sps::list_proposals_return ();
+            } else {
+               args.last_id = last_id;
+            }
+         }
+         ddump((args.start));
+         ddump((args.order_by));
+         ddump((args.order_direction));
+         ddump((args.limit));
+         ddump((args.status));
+         ddump((args.last_id));
+         return my->_remote_api->list_proposals(args.start, args.order_by,  args.order_direction, args.limit, args.status, args.last_id);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig list_proposals: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig list_proposals: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in list_proposals.");
+      }
+      return steem::plugins::sps::list_proposals_return ();
+   }
+
+   steem::plugins::sps::list_voter_proposals_return wallet_api::list_voter_proposals(fc::variant _start,
+                                                                                     std::string _order_by,
+                                                                                     std::string _order_type,
+                                                                                     int _limit,
+                                                                                     std::string _status,
+                                                                                     std::string _last_id)
+   {
+      FC_ASSERT(!_order_by.empty());
+      FC_ASSERT(!_order_type.empty());
+      FC_ASSERT(_limit > 0);
+      FC_ASSERT(!_status.empty());
+
+      steem::plugins::sps::list_voter_proposals_args args;
+      args.start           = _start;
+      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
+      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
+      args.limit           = _limit;
+      args.status          = steem::plugins::sps::to_proposal_status(_status);
+
+      try {
+         if (!_last_id.empty() ) {
+            uint64_t last_id = 0;
+            if( !boost::conversion::try_lexical_convert(_last_id, last_id) ) {
+               elog("The value `${value}` for `_last_id` argument is invalid, it should be integer type.", ("value", _last_id));
+               return steem::plugins::sps::list_voter_proposals_return();
+            } else {
+               args.last_id = last_id;
+            }
+         }
+         ddump((args.start));
+         ddump((args.order_by));
+         ddump((args.order_direction));
+         ddump((args.limit));
+         ddump((args.status));
+         ddump((args.last_id));
+
+         return my->_remote_api->list_voter_proposals(args.start, args.order_by, args.order_direction, args.limit, args.status, args.last_id);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig list_voter_proposals: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in list_voter_proposals.");
+      }
+      return steem::plugins::sps::list_voter_proposals_return ();
+   }
+
+   steem::plugins::sps::find_proposals_return wallet_api::find_proposals(flat_set<uint64_t> _ids)
+   {
+      FC_ASSERT(!_ids.empty());
+      steem::plugins::sps::find_proposals_args args;
+      args.id_set = _ids;
+
+      ddump((args.id_set));
+
+      try {
+         return my->_remote_api->find_proposals(args.id_set);
+      } catch( fc::exception& _e) {
+         elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e));
+      } catch( std::exception& _e ) {
+         elog("Caught exception while executig find_proposal_return: ${error}",  ("error", _e.what()));
+      } catch( ... ) {
+         elog("Caught unhandled exception in find_proposal_return.");
+      }
+      return steem::plugins::sps::find_proposals_return ();
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::remove_proposal(account_name_type _deleter, 
+                                                                        flat_set<int64_t> _ids, bool broadcast )
+   {
+      FC_ASSERT(_deleter.size());
+      FC_ASSERT(!_ids.empty());
+      auto deleter = get_account(_deleter);
+
+      remove_proposal_operation rp;
+      rp.proposal_owner = deleter.name;
+      rp.proposal_ids   = _ids;
+
+      ddump((rp.proposal_owner));
+      ddump((rp.proposal_ids));
+
+      signed_transaction trx;
+      trx.operations.push_back( rp );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
 
 } } // steem::wallet
