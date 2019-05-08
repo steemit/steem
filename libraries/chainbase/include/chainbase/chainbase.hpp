@@ -62,7 +62,7 @@ namespace helpers
       info->_item_count = index.size();
       info->_item_sizeof = sizeof(typename IndexType::value_type);
       info->_item_additional_allocation = 0;
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       size_t pureNodeSize = sizeof(typename IndexType::node_type) -
          sizeof(typename IndexType::value_type);
       info->_additional_container_allocation = info->_item_count*pureNodeSize;
@@ -96,7 +96,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -207,7 +207,7 @@ namespace chainbase {
          generic_index( allocator<value_type> a, bfs::path p )
          :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _revision = _indices.revision();
 #endif
          }
@@ -215,7 +215,7 @@ namespace chainbase {
          generic_index( allocator<value_type> a )
          :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _revision = _indices.revision();
 #endif
          }
@@ -281,7 +281,7 @@ namespace chainbase {
 
          void clear() { _indices.clear(); }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          void open( const bfs::path& p, const boost::any& o )
          {
             _indices.open( p, o );
@@ -357,7 +357,7 @@ namespace chainbase {
          session start_undo_session()
          {
             ++_revision;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
 #endif
@@ -400,7 +400,7 @@ namespace chainbase {
 
             _stack.pop_back();
             --_revision;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
 #endif
@@ -512,7 +512,7 @@ namespace chainbase {
 
             _stack.pop_back();
             --_revision;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
 #endif
@@ -542,7 +542,7 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
 #endif
@@ -662,7 +662,7 @@ namespace chainbase {
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual size_t size() const = 0;
          virtual void clear() = 0;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          virtual void open( const bfs::path&, const boost::any& ) = 0;
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
@@ -701,7 +701,7 @@ namespace chainbase {
 
          virtual void     set_revision( int64_t revision ) override
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             _base.set_revision( revision );
 #endif
          }
@@ -730,7 +730,7 @@ namespace chainbase {
             _base.clear();
          }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          virtual void open( const bfs::path& p, const boost::any& o ) override final
          {
             _base.open( p, o );
@@ -945,7 +945,7 @@ namespace chainbase {
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          void print_stats()
          {
             for( const auto& i : _index_list )  i->print_stats();
@@ -959,7 +959,7 @@ namespace chainbase {
             _index_types.back()->add_index( *this );
          }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
@@ -977,7 +977,7 @@ namespace chainbase {
 
          size_t get_free_memory()const
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             return get_total_system_memory();
 #else
             return _segment->get_segment_manager()->get_free_memory();
@@ -1136,7 +1136,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
 #else
             read_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
@@ -1220,7 +1220,7 @@ namespace chainbase {
             }
 
             index_type* idx_ptr =  nullptr;
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             idx_ptr = new index_type( index_alloc() );
 #else
             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
@@ -1235,13 +1235,13 @@ namespace chainbase {
             _index_map[ type_id ].reset( new_index );
             _index_list.push_back( new_index );
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             if( _is_open ) new_index->open( _data_dir, _database_cfg );
 #endif
          }
 
          read_write_mutex_manager                                    _rw_manager;
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;

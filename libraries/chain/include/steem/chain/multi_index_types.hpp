@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 #include <mira/index_adapter.hpp>
 #include <mira/multi_index_container.hpp>
 #include <mira/ordered_index.hpp>
@@ -25,7 +25,7 @@
 
 namespace steem { namespace chain {
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 using boost::multi_index::multi_index_container;
 using boost::multi_index::indexed_by;
 using boost::multi_index::ordered_unique;

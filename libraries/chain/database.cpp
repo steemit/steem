@@ -134,7 +134,7 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          undo_all();
 #endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
@@ -182,7 +182,7 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg )
 {
    db.get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( type, p, cfg );
@@ -231,7 +231,7 @@ uint32_t database::reindex( const open_args& args )
    {
 
       ilog( "Reindexing Blockchain" );
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       initialize_indexes();
 #endif
 
@@ -240,7 +240,7 @@ uint32_t database::reindex( const open_args& args )
 
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
 #endif
 
@@ -281,7 +281,7 @@ uint32_t database::reindex( const open_args& args )
             if( cur_block_num % 100000 == 0 )
             {
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
                get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
 #else
                (get_free_memory() >> 20) << "M free"
@@ -321,7 +321,7 @@ uint32_t database::reindex( const open_args& args )
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
 #endif
 
@@ -356,7 +356,7 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       undo_all();
 #endif
 
@@ -585,7 +585,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 { try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
@@ -2997,7 +2997,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 

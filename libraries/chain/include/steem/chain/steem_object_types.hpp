@@ -11,7 +11,7 @@
 
 #include <steem/chain/multi_index_types.hpp>
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 #define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
       object_type () = delete;                           \
    public:
@@ -188,7 +188,7 @@ enum bandwidth_type
 
 } } //steem::chain
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template< typename T > struct is_static_length< chainbase::oid< T > > : public boost::true_type {};
@@ -205,7 +205,7 @@ namespace fc
 {
 class variant;
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 inline void to_variant( const steem::chain::shared_string& s, variant& var )
 {
    var = fc::string( steem::chain::to_string( s ) );
@@ -255,7 +255,7 @@ void unpack( Stream& s, chainbase::oid<T>& id, uint32_t )
    s.read( (char*)&id._id, sizeof(id._id));
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template< typename Stream >
 void pack( Stream& s, const chainbase::shared_string& ss )
 {
@@ -324,7 +324,7 @@ void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value, uint
    }
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template< typename T >
 T unpack_from_vector( const steem::chain::buffer_type& s )
 {
@@ -386,7 +386,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
 #endif
 

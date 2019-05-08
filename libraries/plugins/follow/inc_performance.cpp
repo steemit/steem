@@ -33,8 +33,10 @@ class performance_impl
       performance_impl( database& _db );
       ~performance_impl();
 
-      //template< performance_data::t_creation_type CreationType, typename Index >
-      //uint32_t delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+#ifndef ENABLE_MIRA
+      template< performance_data::t_creation_type CreationType, typename Index >
+      uint32_t delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+#endif
 };
 
 
@@ -160,7 +162,8 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
       db.remove( *actual );
    }
 }
-/*
+
+#ifndef ENABLE_MIRA
 template< performance_data::t_creation_type CreationType, typename Index >
 uint32_t performance_impl::delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
@@ -194,7 +197,7 @@ uint32_t performance_impl::delete_old_objects( Index& old_idx, const account_nam
 
    return next_id;
 }
-*/
+#endif
 
 performance::performance( database& _db )
          : my( new performance_impl( _db ) )
@@ -207,19 +210,20 @@ performance::~performance()
 
 }
 
-/*template< performance_data::t_creation_type CreationType, typename Index >
+#ifndef ENABLE_MIRA
+template< performance_data::t_creation_type CreationType, typename Index >
 uint32_t performance::delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
    FC_ASSERT( my );
    return my->delete_old_objects< CreationType >( old_idx, start_account, max_size, pd );
 }
 
-using t_feed = decltype( ((database*)nullptr)->get_mutable_index< feed_index >().mutable_indices().mutable_get< by_feed >() );
-using t_blog = decltype( ((database*)nullptr)->get_mutable_index< blog_index >().mutable_indices().mutable_get< by_blog >() );
+using t_feed = decltype( ((database*)nullptr)->get_index< feed_index >().indices().get< by_feed >() );
+using t_blog = decltype( ((database*)nullptr)->get_index< blog_index >().indices().get< by_blog >() );
 
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_feed >( t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::part_feed >( t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_blog >( t_blog& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
-*/
+#endif
 
 } } } //steem::follow

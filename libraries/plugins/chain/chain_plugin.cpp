@@ -336,7 +336,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
 #endif
 #ifdef IS_TEST_NET
@@ -396,7 +396,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
    my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
 
    if( my->database_cfg.is_relative() )
@@ -472,7 +472,7 @@ void chain_plugin::plugin_startup()
 
    fc::variant database_config;
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
    try
    {
       database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );

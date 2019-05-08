@@ -287,7 +287,7 @@ namespace steem { namespace chain {
 
 } }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::witness_vote_object > : public boost::true_type {};
