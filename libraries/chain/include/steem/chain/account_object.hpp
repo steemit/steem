@@ -462,7 +462,7 @@ FC_REFLECT( steem::chain::account_object,
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
 
 FC_REFLECT( steem::chain::account_metadata_object,
-             (id)(account)(json_metadata) )
+             (id)(account)(json_metadata)(posting_json_metadata) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_metadata_object, steem::chain::account_metadata_index )
 
 FC_REFLECT( steem::chain::account_authority_object,
