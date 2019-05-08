@@ -11,7 +11,8 @@ namespace steem { namespace protocol {
    void validate_auth_size( const authority& a )
    {
       size_t size = a.account_auths.size() + a.key_auths.size();
-      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         "Authority membership exceeded. Max: ${max} Current: ${n}", ("max", STEEM_MAX_AUTHORITY_MEMBERSHIP)("n", size) );
    }
 
    void account_create_operation::validate() const
@@ -69,7 +70,7 @@ namespace steem { namespace protocol {
 
    void comment_operation::validate() const
    {
-      FC_ASSERT( title.size() < 256, "Title larger than size limit" );
+      FC_ASSERT( title.size() < STEEM_COMMENT_TITLE_LIMIT, "Title larger than size limit" );
       FC_ASSERT( fc::is_utf8( title ), "Title not formatted in UTF8" );
       FC_ASSERT( body.size() > 0, "Body is empty" );
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
@@ -108,7 +109,8 @@ namespace steem { namespace protocol {
       uint32_t sum = 0;
 
       FC_ASSERT( beneficiaries.size(), "Must specify at least one beneficiary" );
-      FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
+      FC_ASSERT( beneficiaries.size() < STEEM_BENEFICIARY_LIMIT,
+         "Cannot specify more than ${max} beneficiaries.", ("max", STEEM_BENEFICIARY_LIMIT - 1) ); // Require size serializtion fits in one byte.
 
       validate_account_name( beneficiaries[0].account );
       FC_ASSERT( beneficiaries[0].weight <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
@@ -327,14 +329,14 @@ namespace steem { namespace protocol {
    void custom_json_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= 32, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH, "id is too long" );
       FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
       FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
    void custom_binary_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= 32, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH, "id is too long" );
       for( const auto& a : required_auths ) a.validate();
    }
 
