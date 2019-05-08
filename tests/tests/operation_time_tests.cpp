@@ -1216,7 +1216,6 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 
       auto next_withdrawal = db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS;
       asset vesting_shares = new_alice.vesting_shares;
-      asset to_withdraw = op.vesting_shares;
       asset original_vesting = vesting_shares;
       asset withdraw_rate = new_alice.vesting_withdraw_rate;
 
