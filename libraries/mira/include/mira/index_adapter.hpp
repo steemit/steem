@@ -257,7 +257,7 @@ struct multi_index_adapter
       );
    }
 
-   void set_index_type( index_type type, const boost::filesystem::path& p )
+   void set_index_type( index_type type, const boost::filesystem::path& p, const boost::any& cfg )
    {
       if( type == _type ) return;
 
@@ -270,7 +270,7 @@ struct multi_index_adapter
          switch( type )
          {
             case mira:
-               new_index = std::move( mira_type( first, last, p ) );
+               new_index = std::move( mira_type( first, last, p, cfg ) );
                break;
             case bmic:
                new_index = std::move( bmic_type( first, last ) );

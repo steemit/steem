@@ -470,8 +470,9 @@ void chain_plugin::plugin_startup()
       }
    };
 
-#ifdef ENABLE_STD_ALLOCATOR
    fc::variant database_config;
+
+#ifdef ENABLE_STD_ALLOCATOR
    try
    {
       database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );

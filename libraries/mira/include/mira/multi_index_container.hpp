@@ -136,7 +136,7 @@ public:
       _name = "rocksdb_" + *(split_v.rbegin());
    }
 
-  explicit multi_index_container( const boost::filesystem::path& p ):
+  explicit multi_index_container( const boost::filesystem::path& p, const boost::any& cfg ):
     super(ctor_args_list()),
     entry_count(0)
    {
@@ -147,13 +147,13 @@ public:
       _name = "rocksdb_" + *(split_v.rbegin());
       _wopts.disableWAL = true;
 
-      open( p );
+      open( p, cfg );
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
 
    template< typename InputIterator >
-   explicit multi_index_container( InputIterator& first, InputIterator& last, const boost::filesystem::path& p ):
+   explicit multi_index_container( InputIterator& first, InputIterator& last, const boost::filesystem::path& p, const boost::any& cfg ):
     super(ctor_args_list()),
     entry_count(0)
    {
@@ -162,10 +162,9 @@ public:
       boost::split( split_v, type, boost::is_any_of( ":" ) );
 
       _name = "rocksdb_" + *(split_v.rbegin());
-      idump( (_name) );
       _wopts.disableWAL = true;
 
-      open( p );
+      open( p, cfg );
 
       while( first != last )
       {

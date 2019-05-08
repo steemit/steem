@@ -182,6 +182,43 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
+#ifdef ENABLE_STD_ALLOCATOR
+void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg )
+{
+   db.get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_authority_index                 >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< transaction_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< block_summary_index                     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_schedule_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_content_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< limit_order_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< feed_history_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< convert_request_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< liquidity_reward_balance_index          >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< operation_index                         >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_history_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< hardfork_property_index                 >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< withdraw_vesting_route_index            >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< owner_authority_history_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_recovery_request_index          >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< change_recovery_account_request_index   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< escrow_index                            >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< savings_withdraw_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< decline_voting_rights_request_index     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< reward_fund_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< vesting_delegation_index                >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( type, p, cfg );
+}
+#endif
+
 uint32_t database::reindex( const open_args& args )
 {
    reindex_notification note( args );
@@ -204,39 +241,7 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
 #ifdef ENABLE_STD_ALLOCATOR
-//*
-      get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< account_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< account_authority_index                 >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< witness_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< transaction_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< block_summary_index                     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< witness_schedule_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< comment_index                           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< comment_content_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< comment_vote_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< witness_vote_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< limit_order_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< feed_history_index                      >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< convert_request_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< liquidity_reward_balance_index          >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< operation_index                         >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< account_history_index                   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< hardfork_property_index                 >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< withdraw_vesting_route_index            >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< owner_authority_history_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< account_recovery_request_index          >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< change_recovery_account_request_index   >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< escrow_index                            >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< savings_withdraw_index                  >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< decline_voting_rights_request_index     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< reward_fund_index                       >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< vesting_delegation_index                >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-      get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( mira::index_type::bmic, args.shared_mem_dir );
-//*/
+      reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
 #endif
 
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
@@ -275,9 +280,13 @@ uint32_t database::reindex( const open_args& args )
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
             {
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() >> 20) << "M free, " <<
-               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
+#ifdef ENABLE_STD_ALLOCATOR
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
+#else
+               (get_free_memory() >> 20) << "M free"
+#endif
+               << ")\n";
 
                //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
                //rocksdb::get_perf_context()->Reset();
@@ -311,6 +320,10 @@ uint32_t database::reindex( const open_args& args )
 
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
+
+#ifdef ENABLE_STD_ALLOCATOR
+      reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
+#endif
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );

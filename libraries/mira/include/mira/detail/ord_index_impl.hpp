@@ -559,7 +559,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          // Key already exists, uniqueness constraint violated
          if( s.ok() )
          {
-            ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
+            //ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
             return false;
          }
 
