@@ -134,6 +134,7 @@ namespace steem { namespace chain {
       id_type           id;
       account_id_type   account;
       shared_string     json_metadata;
+      shared_string     posting_json_metadata;
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
@@ -461,7 +462,7 @@ FC_REFLECT( steem::chain::account_object,
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
 
 FC_REFLECT( steem::chain::account_metadata_object,
-             (id)(account)(json_metadata) )
+             (id)(account)(json_metadata)(posting_json_metadata) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_metadata_object, steem::chain::account_metadata_index )
 
 FC_REFLECT( steem::chain::account_authority_object,

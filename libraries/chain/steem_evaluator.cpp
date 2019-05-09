@@ -426,7 +426,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
    auto current_delegation = asset( o.fee.amount * STEEM_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL ) * props.get_vesting_share_price() + o.delegation;
 
-   FC_ASSERT( current_delegation >= target_delegation, "Inssufficient Delegation ${f} required, ${p} provided.",
+   FC_ASSERT( current_delegation >= target_delegation, "Insufficient Delegation ${f} required, ${p} provided.",
                ("f", target_delegation )
                ( "p", current_delegation )
                ( "account_creation_fee", wso.median_props.account_creation_fee )
@@ -565,6 +565,10 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       _db.modify( _db.get< account_metadata_object, by_account >( account.id ), [&]( account_metadata_object& meta )
       {
          from_string( meta.json_metadata, o.json_metadata );
+         if ( !_db.has_hardfork( STEEM_HARDFORK_0_21__3274 ) )
+         {
+            from_string( meta.posting_json_metadata, o.json_metadata );
+         }
       });
    }
    #endif
@@ -580,6 +584,71 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 }
 
+void account_update2_evaluator::do_apply( const account_update2_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_21__3274 ), "Operation 'account_update2' is not enabled until HF 21" );
+   FC_ASSERT( o.account != STEEM_TEMP_ACCOUNT, "Cannot update temp account." );
+
+   if( o.posting )
+      o.posting->validate();
+
+   const auto& account = _db.get_account( o.account );
+   const auto& account_auth = _db.get< account_authority_object, by_account >( o.account );
+
+   if( o.owner )
+      validate_auth_size( *o.owner );
+   if( o.active )
+      validate_auth_size( *o.active );
+   if( o.posting )
+      validate_auth_size( *o.posting );
+
+   if( o.owner )
+   {
+#ifndef IS_TEST_NET
+      FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEM_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once an hour." );
+#endif
+
+      verify_authority_accounts_exist( _db, *o.owner, o.account, authority::owner );
+
+      _db.update_owner_authority( account, *o.owner );
+   }
+   if( o.active )
+      verify_authority_accounts_exist( _db, *o.active, o.account, authority::active );
+   if( o.posting )
+      verify_authority_accounts_exist( _db, *o.posting, o.account, authority::posting );
+
+   _db.modify( account, [&]( account_object& acc )
+   {
+      if( o.memo_key && *o.memo_key != public_key_type() )
+            acc.memo_key = *o.memo_key;
+
+      acc.last_account_update = _db.head_block_time();
+   });
+
+   #ifndef IS_LOW_MEM
+   if( o.json_metadata.size() > 0 || o.posting_json_metadata.size() > 0 )
+   {
+      _db.modify( _db.get< account_metadata_object, by_account >( account.id ), [&]( account_metadata_object& meta )
+      {
+         if ( o.json_metadata.size() > 0 )
+            from_string( meta.json_metadata, o.json_metadata );
+
+         if ( o.posting_json_metadata.size() > 0 )
+            from_string( meta.posting_json_metadata, o.posting_json_metadata );
+      });
+   }
+   #endif
+
+   if( o.active || o.posting )
+   {
+      _db.modify( account_auth, [&]( account_authority_object& auth)
+      {
+         if( o.active )  auth.active  = *o.active;
+         if( o.posting ) auth.posting = *o.posting;
+      });
+   }
+
+}
 
 /**
  *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
@@ -2040,11 +2109,13 @@ void custom_evaluator::do_apply( const custom_operation& o )
 {
    database& d = db();
    if( d.is_producing() )
-      FC_ASSERT( o.data.size() <= 8192, "custom_operation must be less than 8k" );
+      FC_ASSERT( o.data.size() <= STEEM_CUSTOM_OP_DATA_MAX_LENGTH,
+         "Operation data must be less than ${bytes} bytes.", ("bytes", STEEM_CUSTOM_OP_DATA_MAX_LENGTH) );
 
    if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
    {
-      FC_ASSERT( o.required_auths.size() <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", o.required_auths.size()) );
+      FC_ASSERT( o.required_auths.size() <= STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         "Authority membership exceeded. Max: ${max} Current: ${n}", ("max", STEEM_MAX_AUTHORITY_MEMBERSHIP)("n", o.required_auths.size()) );
    }
 }
 
@@ -2053,12 +2124,14 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    database& d = db();
 
    if( d.is_producing() )
-      FC_ASSERT( o.json.length() <= 8192, "custom_json_operation json must be less than 8k" );
+      FC_ASSERT( o.json.length() <= STEEM_CUSTOM_OP_DATA_MAX_LENGTH,
+         "Operation JSON must be less than ${bytes} bytes.", ("bytes", STEEM_CUSTOM_OP_DATA_MAX_LENGTH) );
 
    if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
    {
       size_t num_auths = o.required_auths.size() + o.required_posting_auths.size();
-      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         "Authority membership exceeded. Max: ${max} Current: ${n}", ("max", STEEM_MAX_AUTHORITY_MEMBERSHIP)("n", num_auths) );
    }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
@@ -2086,7 +2159,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    database& d = db();
    if( d.is_producing() )
    {
-      FC_ASSERT( o.data.size() <= 8192, "custom_binary_operation data must be less than 8k" );
+      FC_ASSERT( o.data.size() <= STEEM_CUSTOM_OP_DATA_MAX_LENGTH,
+         "Operation data must be less than ${bytes} bytes.", ("bytes", STEEM_CUSTOM_OP_DATA_MAX_LENGTH) );
       FC_ASSERT( false, "custom_binary_operation is deprecated" );
    }
    FC_ASSERT( d.has_hardfork( STEEM_HARDFORK_0_14__317 ) );
@@ -2099,7 +2173,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
          num_auths += auth.key_auths.size() + auth.account_auths.size();
       }
 
-      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Too many auths specified. Max: 10, Current: ${n}", ("n", num_auths) );
+      FC_ASSERT( num_auths <= STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         "Authority membership exceeded. Max: ${max} Current: ${n}", ("max", STEEM_MAX_AUTHORITY_MEMBERSHIP)("n", num_auths) );
    }
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
