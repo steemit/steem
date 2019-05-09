@@ -70,7 +70,8 @@ namespace steem { namespace protocol {
 
    void comment_operation::validate() const
    {
-      FC_ASSERT( title.size() < STEEM_COMMENT_TITLE_LIMIT, "Title larger than size limit" );
+      FC_ASSERT( title.size() < STEEM_COMMENT_TITLE_LIMIT,
+         "Title size limit exceeded. Max: ${max} Current: ${n}", ("max", STEEM_COMMENT_TITLE_LIMIT - 1)("n", title.size()) );
       FC_ASSERT( fc::is_utf8( title ), "Title not formatted in UTF8" );
       FC_ASSERT( body.size() > 0, "Body is empty" );
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
@@ -329,14 +330,16 @@ namespace steem { namespace protocol {
    void custom_json_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH,
+         "Operation ID length exceeded. Max: ${max} Current: ${n}", ("max", STEEM_CUSTOM_OP_ID_MAX_LENGTH)("n", id.size()) );
       FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
       FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
    void custom_binary_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH,
+         "Operation ID length exceeded. Max: ${max} Current: ${n}", ("max", STEEM_CUSTOM_OP_ID_MAX_LENGTH)("n", id.size()) );
       for( const auto& a : required_auths ) a.validate();
    }
 
