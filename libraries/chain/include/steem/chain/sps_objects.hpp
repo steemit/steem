@@ -161,7 +161,7 @@ template<> struct is_static_length< steem::chain::proposal_vote_object > : publi
 } // mira
 #endif
 
-FC_REFLECT( steem::chain::proposal_object, (id)(proposal_id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes) )
+FC_REFLECT( steem::chain::proposal_object, (id)(proposal_id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes)(removed) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::proposal_object, steem::chain::proposal_index )
 
 FC_REFLECT( steem::chain::proposal_vote_object, (id)(voter)(proposal_id) )

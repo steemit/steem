@@ -134,13 +134,14 @@ namespace steem { namespace chain {
 
          uint16_t sbd_stop_percent = 0;
          uint16_t sbd_start_percent = 0;
-#ifdef STEEM_ENABLE_SMT
-         asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
-#endif
 
          //settings used to compute payments for every proposal
          time_point_sec next_maintenance_time;
          time_point_sec last_budget_time;
+
+#ifdef STEEM_ENABLE_SMT
+         asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
+#endif
    };
 
    typedef multi_index_container<
@@ -196,6 +197,8 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (available_account_subsidies)
              (sbd_stop_percent)
              (sbd_start_percent)
+             (next_maintenance_time)
+             (last_budget_time)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif

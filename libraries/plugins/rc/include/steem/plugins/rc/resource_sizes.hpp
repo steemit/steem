@@ -235,6 +235,6 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
 
    (create_proposal_operation_exec_time)
    (update_proposal_votes_operation_exec_time)
-   (update_proposal_votes_operation_exec_time)
+   (remove_proposal_operation_exec_time)
 
    )
