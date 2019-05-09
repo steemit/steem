@@ -300,6 +300,11 @@
 #define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
 #define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
+#define STEEM_CUSTOM_OP_ID_MAX_LENGTH        (32)
+#define STEEM_CUSTOM_OP_DATA_MAX_LENGTH      (8192)
+#define STEEM_BENEFICIARY_LIMIT              (128)
+#define STEEM_COMMENT_TITLE_LIMIT            (256)
+
 /**
  *  Reserved Account IDs with special meaning
  */
