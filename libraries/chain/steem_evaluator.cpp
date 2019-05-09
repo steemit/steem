@@ -586,6 +586,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 void account_update2_evaluator::do_apply( const account_update2_operation& o )
 {
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_21__3274 ), "Operation 'account_update2' is not enabled until HF 21" );
    FC_ASSERT( o.account != STEEM_TEMP_ACCOUNT, "Cannot update temp account." );
 
    if( o.posting )
