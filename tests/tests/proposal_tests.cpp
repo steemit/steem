@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE( generating_payments )
          auto before_receiver_sbd_balance = _receiver.sbd_balance;
          auto before_voter_01_sbd_balance = _voter_01.sbd_balance;
          auto before_treasury_sbd_balance = _treasury.sbd_balance;
-      
+
          auto next_block = get_nr_blocks_until_maintenance_block();
          generate_blocks( next_block - 1 );
          generate_blocks( 1 );
@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE( generating_payments )
          auto after_receiver_sbd_balance = _receiver.sbd_balance;
          auto after_voter_01_sbd_balance = _voter_01.sbd_balance;
          auto after_treasury_sbd_balance = _treasury.sbd_balance;
-   
+
          BOOST_REQUIRE( before_creator_sbd_balance == after_creator_sbd_balance );
          BOOST_REQUIRE( before_receiver_sbd_balance == after_receiver_sbd_balance - hourly_pay );
          BOOST_REQUIRE( before_voter_01_sbd_balance == after_voter_01_sbd_balance );
@@ -992,8 +992,8 @@ struct create_proposal_data {
       fc::time_point_sec start_date ;
       fc::time_point_sec end_date   ;
       steem::protocol::asset daily_pay ;
-      std::string subject ;   
-      std::string url     ;   
+      std::string subject ;
+      std::string url     ;
 
       create_proposal_data(fc::time_point_sec _start) {
          creator    = "alice";
@@ -1042,7 +1042,7 @@ BOOST_AUTO_TEST_CASE( create_proposal_001 )
          generate_block();
          FUND( cpd.creator, ASSET( "80.000 TBD" ) );
          STEEM_REQUIRE_THROW( create_proposal( "", cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key ), fc::exception);
-         
+
       }
       validate_database();
    }
@@ -1321,7 +1321,7 @@ BOOST_AUTO_TEST_CASE( update_proposal_votes_005 )
          proposals.push_back(i);
       }
       STEEM_REQUIRE_THROW(vote_proposal("carol", proposals, true, carol_private_key), fc::exception);
-      
+
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1615,7 +1615,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_005 )
 
       auto& proposal_idx      = db->get_index< proposal_index >().indices().get< by_creator >();
       auto found       = proposal_idx.find( cpd.creator );
-      
+
       BOOST_REQUIRE( found != proposal_idx.end() );
       BOOST_REQUIRE( proposal_idx.size() == 1 );
 
@@ -1726,7 +1726,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_008 )
       FUND( cpd.creator, ASSET( "80.000 TBD" ) );
       generate_block();
       flat_set<int64_t> proposals = { 0 };
-      remove_proposal(cpd.creator, proposals, alice_private_key); 
+      remove_proposal(cpd.creator, proposals, alice_private_key);
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1744,7 +1744,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_009 )
       generate_block();
       int64_t proposal_1 = create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key );
       flat_set<int64_t> proposals = { proposal_1 };
-      STEEM_REQUIRE_THROW(remove_proposal(cpd.receiver, proposals, bob_private_key), fc::exception); 
+      STEEM_REQUIRE_THROW(remove_proposal(cpd.receiver, proposals, bob_private_key), fc::exception);
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1761,7 +1761,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_010 )
       FUND( cpd.creator, ASSET( "80.000 TBD" ) );
       generate_block();
       flat_set<int64_t> proposals;
-      STEEM_REQUIRE_THROW(remove_proposal(cpd.creator, proposals, bob_private_key), fc::exception); 
+      STEEM_REQUIRE_THROW(remove_proposal(cpd.creator, proposals, bob_private_key), fc::exception);
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1781,7 +1781,7 @@ BOOST_AUTO_TEST_CASE( remove_proposal_011 )
       for(int i = 0; i <= STEEM_PROPOSAL_MAX_IDS_NUMBER; i++) {
          proposals.insert(create_proposal( cpd.creator, cpd.receiver, cpd.start_date, cpd.end_date, cpd.daily_pay, alice_private_key ));
       }
-      STEEM_REQUIRE_THROW(remove_proposal(cpd.creator, proposals, bob_private_key), fc::exception); 
+      STEEM_REQUIRE_THROW(remove_proposal(cpd.creator, proposals, bob_private_key), fc::exception);
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -2297,7 +2297,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold )
       auto threshold = db->get_sps_remove_threshold();
       BOOST_REQUIRE( threshold == 20 );
 
-      flat_set<long int> _proposals_id( proposals_id.begin(), proposals_id.end() );
+      flat_set< int64_t > _proposals_id( proposals_id.begin(), proposals_id.end() );
 
       {
          remove_proposal( item_creator.account,  _proposals_id, item_creator.key );
