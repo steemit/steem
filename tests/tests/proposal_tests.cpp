@@ -401,12 +401,18 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
 
       auto payment_checker = [&]( const std::vector< asset >& payouts )
       {
+         idump( (inits) );
+         idump( (payouts) );
          uint16_t i = 0;
          for( const auto& item : inits )
          {
             const account_object& account = db->get_account( item.first );
             auto after_tbd = account.sbd_balance;
             auto before_tbd = before_tbds[ item.first ];
+            idump( (before_tbd) );
+            idump( (after_tbd) );
+            idump( (payouts[i]) );
+            //idump( (after_tbd - payouts[i++]) );
             BOOST_REQUIRE( before_tbd == after_tbd - payouts[i++] );
          }
       };
@@ -424,6 +430,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - got payout
          `tester02` - no payout, because of lack of votes
       */
+      ilog("");
       payment_checker( { ASSET( "0.998 TBD" ), ASSET( "0.998 TBD" ), ASSET( "0.000 TBD" ) } );
       //ideally: ASSET( "1.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) but there is lack of rounding
 
@@ -446,6 +453,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because this account set proxy
          `tester02` - no payout, because of lack of votes
       */
+      ilog("");
       payment_checker( { ASSET( "1.996 TBD" ), ASSET( "0.998 TBD" ), ASSET( "0.000 TBD" ) } );
       //ideally: ASSET( "2.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "0.000 TBD" ) but there is lack of rounding
 
@@ -458,7 +466,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because this account set proxy
          `tester02` - got payout, because voted for his proposal
       */
-      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "2079.015 TBD" ) } );
+      ilog("");
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "2082.348 TBD" ) } );
       //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "2082.346 TBD" ) but there is lack of rounding
 
       {
@@ -480,7 +489,8 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester01` - no payout, because is not enough money
          `tester02` - got payout, because voted for his proposal
       */
-      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "4158.162 TBD" ) } );
+      ilog("");
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "4164.826 TBD" ) } );
       //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "4164.824 TBD" ) but there is lack of rounding
 
       validate_database();

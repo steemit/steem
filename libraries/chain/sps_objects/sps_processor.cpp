@@ -55,7 +55,7 @@ void sps_processor::find_active_proposals( const time_point_sec& head_time, t_pr
    std::for_each( pidx.begin(), pidx.upper_bound( head_time ), [&]( auto& proposal )
                                              {
                                                 if( head_time >= proposal.start_date && head_time <= proposal.end_date )
-                                                   proposals.emplace_back( proposal );                                                
+                                                   proposals.emplace_back( proposal );
                                              } );
 }
 
@@ -98,7 +98,7 @@ void sps_processor::calculate_votes( const t_proposals& proposals )
 }
 
 void sps_processor::sort_by_votes( t_proposals& proposals )
-{ 
+{
    std::sort( proposals.begin(), proposals.end(), []( const proposal_object& a, const proposal_object& b )
                                                       {
                                                          if (a.total_votes == b.total_votes)
@@ -124,7 +124,7 @@ asset sps_processor::get_daily_inflation()
 
 asset sps_processor::calculate_maintenance_budget( const time_point_sec& head_time )
 {
-   //Get funds from 'treasury' account ( treasury_fund ) 
+   //Get funds from 'treasury' account ( treasury_fund )
    asset treasury_fund = get_treasury_fund();
 
    //Get daily proposal inflation ( daily_proposal_inflation )
@@ -133,14 +133,12 @@ asset sps_processor::calculate_maintenance_budget( const time_point_sec& head_ti
    FC_ASSERT( treasury_fund.symbol == daily_inflation.symbol, "symbols must be the same" );
 
    //Calculate budget for given maintenance period
-   auto passed_time_seconds = ( head_time - db.get_dynamic_global_properties().last_budget_time ).to_seconds();
+   uint32_t passed_time_seconds = ( head_time - db.get_dynamic_global_properties().last_budget_time ).to_seconds();
 
    //Calculate daily_budget_limit
    int64_t daily_budget_limit = treasury_fund.amount.value / total_amount_divider + daily_inflation.amount.value;
 
-   uint64_t ratio = ( passed_time_seconds * STEEM_100_PERCENT ) / daily_seconds;
-   uint128_t numerator = daily_budget_limit * ratio;
-   daily_budget_limit = ( numerator / STEEM_100_PERCENT ).to_int64();
+   daily_budget_limit = ( ( uint128_t( passed_time_seconds ) * daily_budget_limit ) / daily_seconds ).to_uint64();
 
    //Transfer daily_proposal_inflation to `treasury account`
    transfer_daily_inflation_to_treasury( daily_inflation );
@@ -163,11 +161,14 @@ void sps_processor::transfer_daily_inflation_to_treasury( const asset& daily_inf
          that is then transferred in to the treasury account during maintenance.
    */
    FC_TODO( "to choose how to transfer inflation into STEEM_TREASURY_ACCOUNT" )
+   // Ifdeffing this out so that no inflation is accidentally created on main net.
+#ifdef IS_TEST_NET
    if( daily_inflation.amount.value > 0 )
    {
       const auto& treasury_account = db.get_account( STEEM_TREASURY_ACCOUNT );
       db.adjust_balance( treasury_account, daily_inflation );
    }
+#endif
 }
 
 void sps_processor::transfer_payments( const time_point_sec& head_time, asset& maintenance_budget_limit, const t_proposals& proposals )
@@ -177,8 +178,8 @@ void sps_processor::transfer_payments( const time_point_sec& head_time, asset& m
 
    const auto& treasury_account = db.get_account(STEEM_TREASURY_ACCOUNT);
 
-   auto passed_time_seconds = ( head_time - db.get_dynamic_global_properties().last_budget_time ).to_seconds();
-   uint64_t ratio = ( passed_time_seconds * STEEM_100_PERCENT ) / daily_seconds;
+   uint32_t passed_time_seconds = ( head_time - db.get_dynamic_global_properties().last_budget_time ).to_seconds();
+   uint128_t ratio = ( passed_time_seconds * STEEM_100_PERCENT ) / daily_seconds;
 
    auto processing = [this, &treasury_account]( const proposal_object& _item, const asset& payment )
    {
@@ -200,7 +201,7 @@ void sps_processor::transfer_payments( const time_point_sec& head_time, asset& m
       if( _item.total_votes == 0 )
          break;
 
-      auto period_pay = asset( ( ratio * _item.daily_pay.amount.value ) / STEEM_100_PERCENT, _item.daily_pay.symbol );
+      asset period_pay = asset( ( ratio * _item.daily_pay.amount.value ).to_uint64() / STEEM_100_PERCENT, _item.daily_pay.symbol );
 
       if( period_pay >= maintenance_budget_limit )
       {
@@ -237,7 +238,7 @@ void sps_processor::remove_old_proposals( const block_notification& note )
       db.get_benchmark_dumper().end( sps_processor::removing_name );
 }
 
-void sps_processor::make_payments( const block_notification& note ) 
+void sps_processor::make_payments( const block_notification& note )
 {
    auto head_time = note.block.timestamp;
 
