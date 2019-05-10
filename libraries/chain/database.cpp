@@ -241,7 +241,11 @@ uint32_t database::reindex( const open_args& args )
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
 #ifdef ENABLE_MIRA
-      reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
+      if( args.replay_in_memory )
+      {
+         ilog( "Configuring replay to use memory..." );
+         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
+      }
 #endif
 
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
@@ -322,7 +326,11 @@ uint32_t database::reindex( const open_args& args )
          _fork_db.start_block( *_block_log.head() );
 
 #ifdef ENABLE_MIRA
-      reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
+      if( args.replay_in_memory )
+      {
+         ilog( "Migrating state to disk..." );
+         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
+      }
 #endif
 
       auto end = fc::time_point::now();
