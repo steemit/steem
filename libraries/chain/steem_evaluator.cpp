@@ -938,6 +938,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.active        = com.last_update;
          std::function< bool( const shared_string& a, const string& b ) > equal;
 
+         FC_TODO( "Check if this can be simplified after HF 21" );
          if ( _db.has_hardfork( STEEM_HARDFORK_0_21__2203 ) )
             equal = []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() && std::strcmp( a.c_str(), b.c_str() ) == 0; };
          else
