@@ -48,7 +48,6 @@ void _add_index_impl( database& db )
 template< typename MultiIndexType >
 void add_core_index( database& db )
 {
-   //_add_index_impl< typename mira::adapter_conversion< MultiIndexType >::mira_type >(db);
    _add_index_impl< MultiIndexType >( db );
 }
 
