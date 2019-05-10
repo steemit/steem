@@ -385,18 +385,24 @@ struct block_extensions_count_resources_visitor
 void rc_plugin_impl::on_pre_reindex( const reindex_notification& note )
 {
 #ifdef ENABLE_MIRA
-   _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
-   _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
-   _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
+   if( note.args.replay_in_memory )
+   {
+      _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
+      _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
+      _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
+   }
 #endif
 }
 
 void rc_plugin_impl::on_post_reindex( const reindex_notification& note )
 {
 #ifdef ENABLE_MIRA
-   _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
-   _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
-   _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
+   if( note.args.replay_in_memory )
+   {
+      _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
+      _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
+      _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
+   }
 #endif
 }
 
