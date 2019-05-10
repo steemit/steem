@@ -49,7 +49,7 @@ void unpack( Stream& s, chainbase::oid<T>& id )
 
 #include <steem/protocol/fixed_string.hpp>
 
-#include <mira/multi_index_container.hpp>
+#include <mira/index_adapter.hpp>
 #include <mira/ordered_index.hpp>
 #include <mira/tag.hpp>
 #include <mira/member.hpp>
@@ -89,7 +89,7 @@ struct by_a;
 struct by_b;
 struct by_sum;
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    book,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< by_id >, mira::multi_index::member< book, book::id_type, &book::id > >,
@@ -119,7 +119,7 @@ struct single_index_object : public chainbase::object< single_index_object_type,
    id_type id;
 };
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    single_index_object,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< by_id >, mira::multi_index::member< single_index_object, single_index_object::id_type, &single_index_object::id > >
@@ -151,7 +151,7 @@ struct test_object : public chainbase::object< test_object_type, test_object >
 struct ordered_idx;
 struct composited_ordered_idx;
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    test_object,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx >, mira::multi_index::member< test_object, chainbase::oid< test_object >, &test_object::id > >,
@@ -182,7 +182,7 @@ struct test_object2 : public chainbase::object< test_object2_type, test_object2 
 struct ordered_idx2;
 struct composite_ordered_idx2;
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    test_object2,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx2 >, mira::multi_index::member< test_object2, chainbase::oid< test_object2 >, &test_object2::id > >,
@@ -216,7 +216,7 @@ struct ordered_idx3;
 struct composite_ordered_idx3a;
 struct composite_ordered_idx3b;
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    test_object3,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< ordered_idx3 >, mira::multi_index::member< test_object3, chainbase::oid< test_object3 >, &test_object3::id > >,
@@ -255,7 +255,7 @@ struct account_object : public chainbase::object< account_object_type, account_o
 
 struct by_name;
 
-typedef mira::multi_index_container<
+typedef mira::multi_index_adapter<
    account_object,
    mira::multi_index::indexed_by<
       mira::multi_index::ordered_unique< mira::multi_index::tag< by_id >, mira::multi_index::member< account_object, account_object::id_type, &account_object::id > >,

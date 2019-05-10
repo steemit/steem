@@ -429,7 +429,7 @@ namespace steem { namespace chain {
    > change_recovery_account_request_index;
 } }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::account_object > : public boost::true_type {};

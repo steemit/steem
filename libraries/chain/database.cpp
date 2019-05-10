@@ -134,7 +134,7 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          undo_all();
 #endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
@@ -182,9 +182,46 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
+#ifdef ENABLE_MIRA
+void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg )
+{
+   db.get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_authority_index                 >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< transaction_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< block_summary_index                     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_schedule_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_index                           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_content_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< comment_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< witness_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< limit_order_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< feed_history_index                      >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< convert_request_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< liquidity_reward_balance_index          >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< operation_index                         >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_history_index                   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< hardfork_property_index                 >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< withdraw_vesting_route_index            >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< owner_authority_history_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< account_recovery_request_index          >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< change_recovery_account_request_index   >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< escrow_index                            >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< savings_withdraw_index                  >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< decline_voting_rights_request_index     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< reward_fund_index                       >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< vesting_delegation_index                >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( type, p, cfg );
+   db.get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( type, p, cfg );
+}
+#endif
+
 uint32_t database::reindex( const open_args& args )
 {
-   reindex_notification note;
+   reindex_notification note( args );
 
    BOOST_SCOPE_EXIT(this_,&note) {
       STEEM_TRY_NOTIFY(this_->_post_reindex_signal, note);
@@ -192,15 +229,25 @@ uint32_t database::reindex( const open_args& args )
 
    try
    {
-      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       initialize_indexes();
 #endif
 
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
+
+      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
+
+#ifdef ENABLE_MIRA
+      if( args.replay_in_memory )
+      {
+         ilog( "Configuring replay to use memory..." );
+         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
+      }
+#endif
+
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -237,9 +284,13 @@ uint32_t database::reindex( const open_args& args )
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
             {
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() >> 20) << "M free, " <<
-               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
+#ifdef ENABLE_MIRA
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
+#else
+               (get_free_memory() >> 20) << "M free"
+#endif
+               << ")\n";
 
                //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
                //rocksdb::get_perf_context()->Reset();
@@ -268,11 +319,19 @@ uint32_t database::reindex( const open_args& args )
          set_revision( head_block_num() );
          _block_log.set_locking( true );
 
-         get_index< account_index >().indices().print_stats();
+         //get_index< account_index >().indices().print_stats();
       });
 
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
+
+#ifdef ENABLE_MIRA
+      if( args.replay_in_memory )
+      {
+         ilog( "Migrating state to disk..." );
+         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
+      }
+#endif
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
@@ -305,7 +364,7 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       undo_all();
 #endif
 
@@ -407,7 +466,7 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 
 const signed_transaction database::get_recent_transaction( const transaction_id_type& trx_id ) const
 { try {
-   auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
+   const auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
@@ -534,7 +593,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 { try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
@@ -2947,7 +3006,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
@@ -3499,6 +3558,8 @@ void database::apply_required_action( const required_automated_action& a )
 
 void database::process_optional_actions( const optional_automated_actions& actions )
 {
+   if( !has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    static const action_validate_visitor validate_visitor;
 
    for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
@@ -3510,6 +3571,12 @@ void database::process_optional_actions( const optional_automated_actions& actio
       // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
    }
+
+   // This expiration is based on the timestamp of the last irreversible block. For historical
+   // blocks, generation of optional actions should be disabled and the expiration can be skipped.
+   // For reindexing of the first 2 million blocks, this unnecessary read consumes almost 30%
+   // of runtime.
+   FC_TODO( "Optimize expiration for reindex." );
 
    // Clear out "expired" optional_actions. If the block when an optional action was generated
    // has become irreversible then a super majority of witnesses have chosen to not include it

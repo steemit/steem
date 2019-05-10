@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mira/adapters.hpp>
+#include <mira/index_converter.hpp>
 
 #include <steem/schema/schema.hpp>
 #include <steem/protocol/schema_types.hpp>
@@ -48,7 +48,7 @@ void _add_index_impl( database& db )
 template< typename MultiIndexType >
 void add_core_index( database& db )
 {
-   _add_index_impl< typename mira::adapter_conversion< MultiIndexType >::mira_type >(db);
+   _add_index_impl< MultiIndexType >( db );
 }
 
 template< typename MultiIndexType >
