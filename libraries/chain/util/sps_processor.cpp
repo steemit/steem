@@ -1,4 +1,4 @@
-#include <steem/chain/sps_objects/sps_processor.hpp>
+#include <steem/chain/util/sps_processor.hpp>
 
 namespace steem { namespace chain {
 

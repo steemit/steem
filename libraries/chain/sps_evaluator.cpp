@@ -3,10 +3,10 @@
 #include <steem/protocol/sps_operations.hpp>
 
 #include <steem/chain/database.hpp>
-
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/sps_objects.hpp>
-#include <steem/chain/sps_helper.hpp>
+
+#include <steem/chain/util/sps_helper.hpp>
 
 
 namespace steem { namespace chain {

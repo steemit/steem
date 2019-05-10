@@ -16,7 +16,7 @@
 #include <steem/plugins/rc/resource_count.hpp>
 
 #include <steem/chain/sps_objects.hpp>
-#include <steem/chain/sps_objects/sps_processor.hpp>
+#include <steem/chain/util/sps_processor.hpp>
 
 #include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>

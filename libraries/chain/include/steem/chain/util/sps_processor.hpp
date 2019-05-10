@@ -1,13 +1,14 @@
 #pragma once
 
 #include <steem/chain/sps_objects.hpp>
-#include <steem/chain/sps_helper.hpp>
-#include <steem/protocol/sps_operations.hpp>
-
 #include <steem/chain/notifications.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
 #include <steem/chain/account_object.hpp>
+
+#include <steem/chain/util/sps_helper.hpp>
+
+#include <steem/protocol/sps_operations.hpp>
 
 namespace steem { namespace chain {
 

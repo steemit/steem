@@ -22,8 +22,6 @@
 #include <steem/chain/shared_db_merkle.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
-#include <steem/chain/sps_objects/sps_processor.hpp>
-
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/uint256.hpp>
@@ -31,6 +29,7 @@
 #include <steem/chain/util/manabar.hpp>
 #include <steem/chain/util/rd_setup.hpp>
 #include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/sps_processor.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -2629,7 +2628,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
    _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
    _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
-   
+
 
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();

@@ -8,10 +8,7 @@ add_library( steem_chain
              index.cpp
 
              smt_evaluator.cpp
-
-             sps_objects/sps_processor.cpp
              sps_evaluator.cpp
-             sps_helper.cpp
 
              smt_objects/smt_market_maker.cpp
              smt_objects/nai_pool.cpp
@@ -33,6 +30,8 @@ add_library( steem_chain
              util/impacted.cpp
              util/advanced_benchmark_dumper.cpp
              util/smt_token.cpp
+             util/sps_processor.cpp
+             util/sps_helper.cpp
 
              ${HEADERS}
            )
