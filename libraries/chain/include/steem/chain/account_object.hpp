@@ -126,7 +126,7 @@ namespace steem { namespace chain {
 
       template< typename Constructor, typename Allocator >
       account_metadata_object( Constructor&& c, allocator< Allocator > a )
-         : json_metadata( a )
+         : json_metadata( a ), posting_json_metadata( a )
       {
          c( *this );
       }
