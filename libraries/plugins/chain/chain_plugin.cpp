@@ -86,6 +86,7 @@ class chain_plugin_impl
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       bool                             replay_in_memory = false;
+      std::vector< std::string >       replay_memory_indices{};
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
       uint32_t allow_future_time = 5;
@@ -340,6 +341,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
          ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
+         ("indices-memory-replay", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -410,6 +412,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
+   if ( options.count( "indices-memory-replay" ) )
+      my->replay_memory_indices = options.at( "indices-memory-replay" ).as< vector< string > >();
 #endif
 
 #ifdef IS_TEST_NET
@@ -505,6 +509,7 @@ void chain_plugin::plugin_startup()
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
    db_open_args.database_cfg = database_config;
    db_open_args.replay_in_memory = my->replay_in_memory;
+   db_open_args.replay_memory_indices = my->replay_memory_indices;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

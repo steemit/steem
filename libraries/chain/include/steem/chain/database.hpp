@@ -21,6 +21,7 @@
 
 #include <fc/log/logger.hpp>
 
+#include <functional>
 #include <map>
 
 namespace steem { namespace chain {
@@ -32,6 +33,15 @@ namespace steem { namespace chain {
    using steem::protocol::asset_symbol_type;
    using steem::protocol::price;
    using abstract_plugin = appbase::abstract_plugin;
+
+   class database;
+   using set_index_type_func = std::function< void(database&, mira::index_type, const boost::filesystem::path&, const boost::any&) >;
+
+   struct index_delegate {
+      set_index_type_func set_index_type;
+   };
+
+   using index_delegate_map = std::map< std::string, index_delegate >;
 
    class database_impl;
    class custom_operation_interpreter;
@@ -106,6 +116,7 @@ namespace steem { namespace chain {
             bool benchmark_is_enabled = false;
             fc::variant database_cfg;
             bool replay_in_memory = false;
+            std::vector< std::string > replay_memory_indices{};
 
             // The following fields are only used on reindexing
             uint32_t stop_replay_at = 0;
@@ -478,6 +489,11 @@ namespace steem { namespace chain {
 
          optional< chainbase::database::session >& pending_transaction_session();
 
+         void set_index_delegate( const std::string& n, index_delegate&& d );
+         const index_delegate& get_index_delegate( const std::string& n );
+         bool has_index_delegate( const std::string& n );
+         const index_delegate_map& index_delegates();
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
@@ -587,6 +603,7 @@ namespace steem { namespace chain {
          std::string                   _json_schema;
 
          util::advanced_benchmark_dumper  _benchmark_dumper;
+         index_delegate_map            _index_delegate_map;
 
          fc::signal<void(const required_action_notification&)> _pre_apply_required_action_signal;
          fc::signal<void(const required_action_notification&)> _post_apply_required_action_signal;

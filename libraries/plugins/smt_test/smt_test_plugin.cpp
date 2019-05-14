@@ -278,8 +278,6 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
 
       db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
       db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
-
-      // add_plugin_index< key_lookup_index >(db);
    }
    FC_CAPTURE_AND_RETHROW()
 }
