@@ -100,6 +100,7 @@ struct operation_exec_info
    int64_t account_create_operation_exec_time                  =  57700;
    int64_t account_create_with_delegation_operation_exec_time  =  57700;
    int64_t account_update_operation_exec_time                  =  14000;
+   int64_t account_update2_operation_exec_time                 =  14000;
    int64_t account_witness_proxy_operation_exec_time           = 117000;
    int64_t account_witness_vote_operation_exec_time            =  23000;
    int64_t cancel_transfer_from_savings_operation_exec_time    =  11500;
@@ -187,6 +188,7 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( account_create_operation_exec_time )
    ( account_create_with_delegation_operation_exec_time )
    ( account_update_operation_exec_time )
+   ( account_update2_operation_exec_time )
    ( account_witness_proxy_operation_exec_time )
    ( account_witness_vote_operation_exec_time )
    ( cancel_transfer_from_savings_operation_exec_time )

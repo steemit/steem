@@ -65,6 +65,8 @@ namespace steem { namespace protocol {
             claim_reward_balance_operation,
             delegate_vesting_shares_operation,
             account_create_with_delegation_operation,
+            witness_set_properties_operation,
+            account_update2_operation,
 
 #ifdef STEEM_ENABLE_SMT
             /// SMT operations

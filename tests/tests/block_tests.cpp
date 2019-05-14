@@ -107,14 +107,14 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          db._log_hardforks = false;
          open_test_database( db, data_dir.path() );
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num() );
 #endif
 
          b = cutoff_block;
          for( uint32_t i = 0; i < 200; ++i )
          {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
             BOOST_CHECK( db.head_block_id() == b.id() );
 #else
             BOOST_CHECK( i==0 || ( db.head_block_id() == b.id() ) );
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             //BOOST_CHECK( cur_witness != prev_witness );
             b = bp.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
          }
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num()+200 );
 #endif
       }

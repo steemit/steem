@@ -81,11 +81,12 @@ class chain_plugin_impl
       bool                             check_locks = false;
       bool                             validate_invariants = false;
       bool                             dump_memory_details = false;
-      bool                             benchmark_is_enabled =false;
+      bool                             benchmark_is_enabled = false;
       bool                             statsd_on_replay = false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
+      bool                             replay_in_memory = false;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
       uint32_t allow_future_time = 5;
@@ -339,8 +340,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
+         ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -401,7 +403,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
    my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
 
    if( my->database_cfg.is_relative() )
@@ -411,6 +413,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->write_default_database_config( my->database_cfg );
    }
+
+   my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
 #endif
 
 #ifdef IS_TEST_NET
@@ -475,8 +479,9 @@ void chain_plugin::plugin_startup()
       }
    };
 
-#ifdef ENABLE_STD_ALLOCATOR
    fc::variant database_config;
+
+#ifdef ENABLE_MIRA
    try
    {
       database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
@@ -506,6 +511,7 @@ void chain_plugin::plugin_startup()
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
    db_open_args.database_cfg = database_config;
+   db_open_args.replay_in_memory = my->replay_in_memory;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

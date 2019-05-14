@@ -99,7 +99,7 @@ namespace steem { namespace chain {
    > account_history_index;
 } }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::account_history_object > : public boost::true_type {};

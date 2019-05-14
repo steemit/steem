@@ -14,7 +14,7 @@ using namespace boost::multi_index;
 
 //BOOST_TEST_SUITE( serialization_tests, clean_database_fixture )
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 
 struct book : public chainbase::object<0, book> {
 

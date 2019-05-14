@@ -222,7 +222,10 @@ struct api_account_object
 #ifndef IS_LOW_MEM
       const auto* maybe_meta = db.find< account_metadata_object, by_account >( id );
       if( maybe_meta )
+      {
          json_metadata = to_string( maybe_meta->json_metadata );
+         posting_json_metadata = to_string( maybe_meta->posting_json_metadata );
+      }
 #endif
 
 #ifdef STEEM_ENABLE_SMT
@@ -243,6 +246,7 @@ struct api_account_object
    authority         posting;
    public_key_type   memo_key;
    string            json_metadata;
+   string            posting_json_metadata;
    account_name_type proxy;
 
    time_point_sec    last_owner_update;
@@ -626,7 +630,7 @@ FC_REFLECT( steem::plugins::database_api::api_comment_vote_object,
           )
 
 FC_REFLECT( steem::plugins::database_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)

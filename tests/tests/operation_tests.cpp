@@ -1530,7 +1530,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 2 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 2 ) ).value + 1 );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1546,7 +1546,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1563,7 +1563,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
@@ -7607,5 +7607,353 @@ BOOST_AUTO_TEST_CASE( account_auth_tests )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( account_update2_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: account_update2_validate" );
+
+      BOOST_TEST_MESSAGE( " -- Testing failure when account name is not valid" );
+      account_update2_operation op;
+      op.account = "invalid_account";
+
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Testing failure when json_metadata is not json" );
+      op.account = "alice";
+      op.json_metadata = "not json";
+
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Testing failure when posting_json_metadata is not json" );
+      op.json_metadata.clear();
+      op.posting_json_metadata = "not json";
+
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.posting_json_metadata.clear();
+
+      op.json_metadata = "{\"success\":true}";
+      op.posting_json_metadata = "{\"success\":true}";
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( account_update2_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: account_update2_authorities" );
+
+      BOOST_TEST_MESSAGE( " -- Testing account only case" );
+      account_update2_operation op;
+      op.account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing owner case" );
+      op.account = "alice";
+      op.owner = authority();
+
+      expected.insert( "alice" );
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing active case" );
+      op = account_update2_operation();
+      op.account = "alice";
+      op.active = authority();
+      op.active->weight_threshold = 1;
+      op.active->add_authorities( "alice", 1 );
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing posting case" );
+      op = account_update2_operation();
+      op.account = "alice";
+      op.posting = authority();
+      op.posting->weight_threshold = 1;
+      op.posting->add_authorities( "alice", 1 );
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing memo_key case" );
+      op = account_update2_operation();
+      op.account = "alice";
+      op.memo_key = public_key_type();
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing json_metadata case" );
+      op = account_update2_operation();
+      op.account = "alice";
+      op.json_metadata = "{\"success\":true}";
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing posting_json_metadata case" );
+      op = account_update2_operation();
+      op.account = "alice";
+      op.posting_json_metadata = "{\"success\":true}";
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      expected.clear();
+      auths.clear();
+
+      BOOST_TEST_MESSAGE( " -- Testing full operation cases" );
+
+      op = account_update2_operation();
+      op.account = "alice";
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.posting_json_metadata = "{\"success\":true}";
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.json_metadata = "{\"success\":true}";
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.memo_key = public_key_type();
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.posting = authority();
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.active = authority();
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.owner = authority();
+
+      expected.insert( "alice" );
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+      auths.clear();
+      expected.clear();
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( account_update2_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: account_update2_apply" );
+
+      ACTORS( (alice)(sam) )
+      private_key_type new_private_key = generate_private_key( "new_key" );
+
+      BOOST_TEST_MESSAGE( "--- Test normal update" );
+
+      account_update2_operation op;
+      op.account = "alice";
+      op.owner = authority( 1, new_private_key.get_public_key(), 1 );
+      op.active = authority( 2, new_private_key.get_public_key(), 2 );
+      op.memo_key = new_private_key.get_public_key();
+      op.json_metadata = "{\"bar\":\"foo\"}";
+      op.posting_json_metadata = "{\"success\":true}";
+
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      const account_object& acct = db->get_account( "alice" );
+      const account_authority_object& acct_auth = db->get< account_authority_object, by_account >( "alice" );
+      const account_metadata_object& acct_metadata = db->get< account_metadata_object, by_account >( acct.id );
+
+      BOOST_REQUIRE( acct.name == "alice" );
+      BOOST_REQUIRE( acct_auth.owner == authority( 1, new_private_key.get_public_key(), 1 ) );
+      BOOST_REQUIRE( acct_auth.active == authority( 2, new_private_key.get_public_key(), 2 ) );
+      BOOST_REQUIRE( acct.memo_key == new_private_key.get_public_key() );
+      BOOST_REQUIRE( acct_metadata.json_metadata == "{\"bar\":\"foo\"}" );
+      BOOST_REQUIRE( acct_metadata.posting_json_metadata == "{\"success\":true}" );
+
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test failure when updating a non-existent account" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.account = "bob";
+      tx.operations.push_back( op );
+      sign( tx, new_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception )
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure when account authority does not exist" );
+      tx.clear();
+      op = account_update2_operation();
+      op.account = "alice";
+      op.posting = authority();
+      op.posting->weight_threshold = 1;
+      op.posting->add_authorities( "dave", 1 );
+      tx.operations.push_back( op );
+      sign( tx, new_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
 BOOST_AUTO_TEST_SUITE_END()
 #endif
