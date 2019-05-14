@@ -67,6 +67,9 @@ namespace steem { namespace protocol {
             account_create_with_delegation_operation,
             witness_set_properties_operation,
             account_update2_operation,
+            create_proposal_operation,
+            update_proposal_votes_operation,
+            remove_proposal_operation,
 
 #ifdef STEEM_ENABLE_SMT
             /// SMT operations
@@ -80,9 +83,6 @@ namespace steem { namespace protocol {
             smt_set_runtime_parameters_operation,
             smt_create_operation,
 #endif
-            create_proposal_operation,
-            update_proposal_votes_operation,
-            remove_proposal_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
