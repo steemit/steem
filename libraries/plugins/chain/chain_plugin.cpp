@@ -328,6 +328,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
+#ifdef ENABLE_MIRA
+         ("indices-memory-replay", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
+#endif
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
@@ -341,7 +344,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
          ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
-         ("indices-memory-replay", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -413,7 +415,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
    if ( options.count( "indices-memory-replay" ) )
-      my->replay_memory_indices = options.at( "indices-memory-replay" ).as< vector< string > >();
+   {
+      std::vector<std::string> indices = options.at( "indices-memory-replay" ).as< vector< string > >();
+      for ( auto& element : indices )
+      {
+         std::vector< std::string > tmp;
+         boost::split( tmp, element, boost::is_any_of("\t ") );
+         my->replay_memory_indices.insert( my->replay_memory_indices.end(), tmp.begin(), tmp.end() );
+      }
+   }
 #endif
 
 #ifdef IS_TEST_NET

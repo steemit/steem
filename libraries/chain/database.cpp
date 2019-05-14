@@ -185,20 +185,22 @@ void database::open( const open_args& args )
 #ifdef ENABLE_MIRA
 void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg )
 {
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
    for ( auto const& delegate : db.index_delegates() )
    {
-      ilog( "Setting index '${name}'.", ("name", delegate.first) );
+      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
       delegate.second.set_index_type( db, type, p, cfg );
    }
 }
 
 void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
 {
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
    for ( auto& index_name : indices )
    {
       if ( db.has_index_delegate( index_name ) )
       {
-         ilog( "Setting index '${name}'.", ("name", index_name) );
+         ilog( "Converting index '${name}' to ${type} type.", ("name", index_name)("type", type_str) );
          db.get_index_delegate( index_name ).set_index_type( db, type, p, cfg );
       }
       else
