@@ -23,7 +23,7 @@ else()
 endif()
 
 add_library( steem_wallet wallet.cpp remote_node_api.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS} )
-target_link_libraries( steem_wallet PRIVATE graphene_net steem_chain steem_protocol steem_utilities fc condenser_api_plugin sps_api_plugin ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( steem_wallet PRIVATE graphene_net steem_chain steem_protocol steem_utilities fc condenser_api_plugin ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 target_include_directories( steem_wallet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )

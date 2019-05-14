@@ -14,11 +14,10 @@
 #include <steem/utilities/git_revision.hpp>
 
 #include <fc/git_revision.hpp>
-#include <steem/utilities/iterate_results.hpp>
 
 namespace steem { namespace plugins { namespace database_api {
 
-using steem::utilities::iterate_results;
+
 
 class database_api_impl
 {
@@ -69,6 +68,9 @@ class database_api_impl
          (list_limit_orders)
          (find_limit_orders)
          (get_order_book)
+         (list_proposals)
+         (find_proposals)
+         (list_proposal_votes)
          (get_transaction_hex)
          (get_required_signatures)
          (get_potential_signatures)
@@ -86,6 +88,53 @@ class database_api_impl
 
       template< typename ResultType >
       static ResultType on_push_default( const ResultType& r ) { return r; }
+
+      template< typename ValueType >
+      static bool filter_default( const ValueType& r ) { return true; }
+
+      template< class Iterator >
+      inline boost::reverse_iterator< Iterator > make_reverse_iterator( Iterator iterator )
+      {
+         return boost::reverse_iterator< Iterator >( iterator );
+      }
+
+      template<typename IndexType, typename OrderType, typename StartType, typename ResultType, typename OnPushType, typename FilterType>
+      void iterate_results(
+         StartType start,
+         std::vector<ResultType>& result,
+         uint32_t limit,
+         OnPushType&& on_push,
+         FilterType&& filter,
+         order_direction_type direction = ascending )
+      {
+         const auto& idx = _db.get_index< IndexType, OrderType >();
+         if( direction == ascending )
+         {
+            auto itr = idx.lower_bound( start );
+            auto end = idx.end();
+
+            while( result.size() < limit && itr != end )
+            {
+               if( filter( *itr ) )
+                  result.push_back( on_push( *itr ) );
+
+               ++itr;
+            }
+         }
+         else if( direction == descending )
+         {
+            auto itr = make_reverse_iterator( idx.lower_bound( start ) );
+            auto end = idx.rend();
+
+            while( result.size() < limit && itr != end )
+            {
+               if( filter( *itr ) )
+                  result.push_back( on_push( *itr ) );
+
+               ++itr;
+            }
+         }
+      }
 
       chain::database& _db;
 };
@@ -195,8 +244,8 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
             args.start.as< protocol::account_name_type >(),
             result.witnesses,
             args.limit,
-            _db,
-            [&]( const witness_object& w ){ return api_witness_object( w ); } );
+            [&]( const witness_object& w ){ return api_witness_object( w ); },
+            &database_api_impl::filter_default< witness_object > );
          break;
       }
       case( by_vote_name ):
@@ -206,8 +255,8 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
             boost::make_tuple( key.first, key.second ),
             result.witnesses,
             args.limit,
-            _db,
-            [&]( const witness_object& w ){ return api_witness_object( w ); } );
+            [&]( const witness_object& w ){ return api_witness_object( w ); },
+            &database_api_impl::filter_default< witness_object > );
          break;
       }
       case( by_schedule_time ):
@@ -218,8 +267,8 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
             boost::make_tuple( key.first, wit_id ),
             result.witnesses,
             args.limit,
-            _db,
-            [&]( const witness_object& w ){ return api_witness_object( w ); } );
+            [&]( const witness_object& w ){ return api_witness_object( w ); },
+            &database_api_impl::filter_default< witness_object > );
          break;
       }
       default:
@@ -262,8 +311,8 @@ DEFINE_API_IMPL( database_api_impl, list_witness_votes )
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
-            _db,
-            [&]( const witness_vote_object& v ){ return api_witness_vote_object( v ); } );
+            [&]( const witness_vote_object& v ){ return api_witness_vote_object( v ); },
+            &database_api_impl::filter_default< api_witness_vote_object > );
          break;
       }
       case( by_witness_account ):
@@ -273,8 +322,8 @@ DEFINE_API_IMPL( database_api_impl, list_witness_votes )
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
-            _db,
-            [&]( const witness_vote_object& v ){ return api_witness_vote_object( v ); } );
+            [&]( const witness_vote_object& v ){ return api_witness_vote_object( v ); },
+            &database_api_impl::filter_default< api_witness_vote_object > );
          break;
       }
       default:
@@ -319,8 +368,8 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
             args.start.as< protocol::account_name_type >(),
             result.accounts,
             args.limit,
-            _db,
-            [&]( const account_object& a ){ return api_account_object( a, _db ); } );
+            [&]( const account_object& a ){ return api_account_object( a, _db ); },
+            &database_api_impl::filter_default< account_object > );
          break;
       }
       case( by_proxy ):
@@ -330,8 +379,8 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
-            _db,
-            [&]( const account_object& a ){ return api_account_object( a, _db ); } );
+            [&]( const account_object& a ){ return api_account_object( a, _db ); },
+            &database_api_impl::filter_default< account_object > );
          break;
       }
       case( by_next_vesting_withdrawal ):
@@ -341,8 +390,8 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
-            _db,
-            [&]( const account_object& a ){ return api_account_object( a, _db ); } );
+            [&]( const account_object& a ){ return api_account_object( a, _db ); },
+            &database_api_impl::filter_default< account_object > );
          break;
       }
       default:
@@ -382,8 +431,8 @@ DEFINE_API_IMPL( database_api_impl, list_owner_histories )
       boost::make_tuple( key.first, key.second ),
       result.owner_auths,
       args.limit,
-      _db,
-      [&]( const owner_authority_history_object& o ){ return api_owner_authority_history_object( o ); } );
+      [&]( const owner_authority_history_object& o ){ return api_owner_authority_history_object( o ); },
+      &database_api_impl::filter_default< owner_authority_history_object > );
 
    return result;
 }
@@ -422,8 +471,8 @@ DEFINE_API_IMPL( database_api_impl, list_account_recovery_requests )
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
-            _db,
-            [&]( const account_recovery_request_object& a ){ return api_account_recovery_request_object( a ); } );
+            [&]( const account_recovery_request_object& a ){ return api_account_recovery_request_object( a ); },
+            &database_api_impl::filter_default< api_account_recovery_request_object > );
          break;
       }
       case( by_expiration ):
@@ -433,8 +482,8 @@ DEFINE_API_IMPL( database_api_impl, list_account_recovery_requests )
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
-            _db,
-            [&]( const account_recovery_request_object& a ){ return api_account_recovery_request_object( a ); } );
+            [&]( const account_recovery_request_object& a ){ return api_account_recovery_request_object( a ); },
+            &database_api_impl::filter_default< api_account_recovery_request_object > );
          break;
       }
       default:
@@ -478,8 +527,8 @@ DEFINE_API_IMPL( database_api_impl, list_change_recovery_account_requests )
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< change_recovery_account_request_object > );
+            &database_api_impl::on_push_default< change_recovery_account_request_object >,
+            &database_api_impl::filter_default< change_recovery_account_request_object > );
          break;
       }
       case( by_effective_date ):
@@ -489,8 +538,8 @@ DEFINE_API_IMPL( database_api_impl, list_change_recovery_account_requests )
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< change_recovery_account_request_object > );
+            &database_api_impl::on_push_default< change_recovery_account_request_object >,
+            &database_api_impl::filter_default< change_recovery_account_request_object > );
          break;
       }
       default:
@@ -535,8 +584,8 @@ DEFINE_API_IMPL( database_api_impl, list_escrows )
             boost::make_tuple( key.first, key.second ),
             result.escrows,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< escrow_object > );
+            &database_api_impl::on_push_default< escrow_object >,
+            &database_api_impl::filter_default< escrow_object > );
          break;
       }
       case( by_ratification_deadline ):
@@ -547,8 +596,8 @@ DEFINE_API_IMPL( database_api_impl, list_escrows )
             boost::make_tuple( key[0].as< bool >(), key[1].as< fc::time_point_sec >(), key[2].as< escrow_id_type >() ),
             result.escrows,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< escrow_object > );
+            &database_api_impl::on_push_default< escrow_object >,
+            &database_api_impl::filter_default< escrow_object > );
          break;
       }
       default:
@@ -593,8 +642,8 @@ DEFINE_API_IMPL( database_api_impl, list_withdraw_vesting_routes )
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< withdraw_vesting_route_object > );
+            &database_api_impl::on_push_default< withdraw_vesting_route_object >,
+            &database_api_impl::filter_default< withdraw_vesting_route_object > );
          break;
       }
       case( by_destination ):
@@ -604,8 +653,8 @@ DEFINE_API_IMPL( database_api_impl, list_withdraw_vesting_routes )
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< withdraw_vesting_route_object > );
+            &database_api_impl::on_push_default< withdraw_vesting_route_object >,
+            &database_api_impl::filter_default< withdraw_vesting_route_object > );
          break;
       }
       default:
@@ -673,8 +722,8 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
             boost::make_tuple( key.first, key.second ),
             result.withdrawals,
             args.limit,
-            _db,
-            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); } );
+            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); },
+            &database_api_impl::filter_default< savings_withdraw_object > );
          break;
       }
       case( by_complete_from_id ):
@@ -685,8 +734,8 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
             boost::make_tuple( key[0].as< fc::time_point_sec >(), key[1].as< account_name_type >(), key[2].as< uint32_t >() ),
             result.withdrawals,
             args.limit,
-            _db,
-            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); } );
+            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); },
+            &database_api_impl::filter_default< savings_withdraw_object > );
          break;
       }
       case( by_to_complete ):
@@ -697,8 +746,8 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), key[2].as< savings_withdraw_id_type >() ),
             result.withdrawals,
             args.limit,
-            _db,
-            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); } );
+            [&]( const savings_withdraw_object& w ){ return api_savings_withdraw_object( w ); },
+            &database_api_impl::filter_default< savings_withdraw_object > );
          break;
       }
       default:
@@ -742,8 +791,8 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegations )
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_vesting_delegation_object > );
+            &database_api_impl::on_push_default< api_vesting_delegation_object >,
+            &database_api_impl::filter_default< vesting_delegation_object > );
          break;
       }
       default:
@@ -787,8 +836,8 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegation_expirations )
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_vesting_delegation_expiration_object > );
+            &database_api_impl::on_push_default< api_vesting_delegation_expiration_object >,
+            &database_api_impl::filter_default< vesting_delegation_expiration_object > );
          break;
       }
       case( by_account_expiration ):
@@ -799,8 +848,8 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegation_expirations )
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< time_point_sec >(), key[2].as< vesting_delegation_expiration_id_type >() ),
             result.delegations,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_vesting_delegation_expiration_object > );
+            &database_api_impl::on_push_default< api_vesting_delegation_expiration_object >,
+            &database_api_impl::filter_default< vesting_delegation_expiration_object > );
          break;
       }
       default:
@@ -844,8 +893,8 @@ DEFINE_API_IMPL( database_api_impl, list_sbd_conversion_requests )
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_convert_request_object > );
+            &database_api_impl::on_push_default< api_convert_request_object >,
+            &database_api_impl::filter_default< convert_request_object > );
          break;
       }
       case( by_account ):
@@ -855,8 +904,8 @@ DEFINE_API_IMPL( database_api_impl, list_sbd_conversion_requests )
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_convert_request_object > );
+            &database_api_impl::on_push_default< api_convert_request_object >,
+            &database_api_impl::filter_default< convert_request_object > );
          break;
       }
       default:
@@ -899,8 +948,8 @@ DEFINE_API_IMPL( database_api_impl, list_decline_voting_rights_requests )
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_decline_voting_rights_request_object > );
+            &database_api_impl::on_push_default< api_decline_voting_rights_request_object >,
+            &database_api_impl::filter_default< decline_voting_rights_request_object > );
          break;
       }
       case( by_effective_date ):
@@ -910,8 +959,8 @@ DEFINE_API_IMPL( database_api_impl, list_decline_voting_rights_requests )
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_decline_voting_rights_request_object > );
+            &database_api_impl::on_push_default< api_decline_voting_rights_request_object >,
+            &database_api_impl::filter_default< decline_voting_rights_request_object > );
          break;
       }
       default:
@@ -975,8 +1024,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( key[0].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
       case( by_permlink ):
@@ -986,8 +1035,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( key.first, key.second ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
       case( by_root ):
@@ -1021,8 +1070,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( root_id, child_id ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
       case( by_parent ):
@@ -1045,8 +1094,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< string >(), child_id ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
 #ifndef IS_LOW_MEM
@@ -1070,8 +1119,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), child_id ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
       case( by_author_last_update ):
@@ -1094,8 +1143,8 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
-            _db,
-            [&]( const comment_object& c ){ return api_comment_object( c, _db ); } );
+            [&]( const comment_object& c ){ return api_comment_object( c, _db ); },
+            &database_api_impl::filter_default< comment_object > );
          break;
       }
 #endif
@@ -1173,21 +1222,21 @@ namespace last_votes_misc
 
       if( SORTORDERTYPE == by_comment_voter )
       {
-         iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
+         _impl.iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
          boost::make_tuple( comment_id, voter_id ),
          c,
          limit,
-         _impl._db,
-         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); },
+         &database_api_impl::filter_default< comment_vote_object > );
       }
       else if( SORTORDERTYPE == by_voter_comment )
       {
-         iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
+         _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
          boost::make_tuple( voter_id, comment_id ),
          c,
          limit,
-         _impl._db,
-         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); } );
+         [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _impl._db ); },
+         &database_api_impl::filter_default< comment_vote_object > );
       }
    }
 
@@ -1271,8 +1320,8 @@ DEFINE_API_IMPL( database_api_impl, list_limit_orders )
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_limit_order_object > );
+            &database_api_impl::on_push_default< api_limit_order_object >,
+            &database_api_impl::filter_default< limit_order_object > );
          break;
       }
       case( by_account ):
@@ -1282,8 +1331,8 @@ DEFINE_API_IMPL( database_api_impl, list_limit_orders )
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< api_limit_order_object > );
+            &database_api_impl::on_push_default< api_limit_order_object >,
+            &database_api_impl::filter_default< limit_order_object > );
          break;
       }
       default:
@@ -1349,6 +1398,193 @@ DEFINE_API_IMPL( database_api_impl, get_order_book )
       cur.created = itr->created;
       result.asks.push_back( cur );
       ++buy_itr;
+   }
+
+   return result;
+}
+
+//////////////////////////////////////////////////////////////////////
+//                                                                  //
+// SPS                                                              //
+//                                                                  //
+//////////////////////////////////////////////////////////////////////
+
+/* Proposals */
+
+proposal_status get_proposal_status( const proposal_object& po, const time_point_sec current_time )
+{
+   if( current_time >= po.start_date && current_time <= po.end_date )
+   {
+      return proposal_status::active;
+   }
+
+   if( current_time < po.start_date )
+   {
+      return proposal_status::inactive;
+   }
+
+   if( current_time > po.end_date )
+   {
+      return proposal_status::expired;
+   }
+
+   FC_THROW("Unexpected status of the proposal");
+}
+
+bool filter_proposal_status( const proposal_object& po, proposal_status filter, time_point_sec current_time )
+{
+   if( po.removed )
+      return false;
+
+   if( filter == all )
+      return true;
+
+   auto prop_status = get_proposal_status( po, current_time );
+   return filter == prop_status ||
+      ( filter == votable && ( prop_status == active || prop_status == inactive ) );
+}
+
+DEFINE_API_IMPL( database_api_impl, list_proposals )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   list_proposals_return result;
+   result.proposals.reserve( args.limit );
+
+   const auto current_time = _db.head_block_time();
+
+   switch( args.order )
+   {
+      case by_creator:
+      {
+         auto key = args.start.as< std::pair< account_name_type, api_id_type > >();
+         iterate_results< steem::chain::proposal_index, steem::chain::by_creator >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposals,
+            args.limit,
+            [&]( const proposal_object& po ){ return api_proposal_object( po, current_time ); },
+            [&]( const proposal_object& po ){ return filter_proposal_status( po, args.status, current_time ); },
+            args.order_direction
+         );
+         break;
+      }
+      case by_start_date:
+      {
+         auto key = args.start.as< std::pair< time_point_sec, api_id_type > >();
+         iterate_results< steem::chain::proposal_index, steem::chain::by_start_date >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposals,
+            args.limit,
+            [&]( const proposal_object& po ){ return api_proposal_object( po, current_time ); },
+            [&]( const proposal_object& po ){ return filter_proposal_status( po, args.status, current_time ); },
+            args.order_direction
+         );
+         break;
+      }
+      case by_end_date:
+      {
+         auto key = args.start.as< std::pair< time_point_sec, api_id_type > >();
+         iterate_results< steem::chain::proposal_index, steem::chain::by_end_date >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposals,
+            args.limit,
+            [&]( const proposal_object& po ){ return api_proposal_object( po, current_time ); },
+            [&]( const proposal_object& po ){ return filter_proposal_status( po, args.status, current_time ); },
+            args.order_direction
+         );
+         break;
+      }
+      case by_total_votes:
+      {
+         auto key = args.start.as< std::pair< uint64_t, api_id_type > >();
+         iterate_results< steem::chain::proposal_index, steem::chain::by_total_votes >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposals,
+            args.limit,
+            [&]( const proposal_object& po ){ return api_proposal_object( po, current_time ); },
+            [&]( const proposal_object& po ){ return filter_proposal_status( po, args.status, current_time ); },
+            args.order_direction
+         );
+         break;
+      }
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
+   }
+
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, find_proposals )
+{
+   FC_ASSERT( args.proposal_ids.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   find_proposals_return result;
+   result.proposals.reserve( args.proposal_ids.size() );
+
+   auto currentTime = _db.head_block_time();
+
+   std::for_each( args.proposal_ids.begin(), args.proposal_ids.end(), [&](auto& id)
+   {
+      auto po = _db.find< steem::chain::proposal_object, steem::chain::by_proposal_id >( id );
+      if( po != nullptr && !po->removed )
+      {
+         result.proposals.emplace_back( api_proposal_object( *po, currentTime ) );
+      }
+   });
+
+   return result;
+}
+
+
+/* Proposal Votes */
+
+DEFINE_API_IMPL( database_api_impl, list_proposal_votes )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   list_proposal_votes_return result;
+   result.proposal_votes.reserve( args.limit );
+
+   //auto current_time = _db.head_block_time();
+
+   switch( args.order )
+   {
+      case by_voter_proposal:
+      {
+         auto key = args.start.as< std::pair< account_name_type, api_id_type > >();
+         iterate_results< steem::chain::proposal_vote_index, steem::chain::by_voter_proposal >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposal_votes,
+            args.limit,
+            [&]( const proposal_vote_object& po ){ return api_proposal_vote_object( po, _db ); },
+            [&]( const proposal_vote_object& po )
+            {
+               auto itr = _db.find< steem::chain::proposal_object, steem::chain::by_id >( po.proposal_id );
+               return itr != nullptr && !itr->removed;
+            },
+            args.order_direction
+         );
+         break;
+      }
+      case by_proposal_voter:
+      {
+         auto key = args.start.as< std::pair< api_id_type, account_name_type > >();
+         iterate_results< steem::chain::proposal_vote_index, steem::chain::by_proposal_voter >(
+            boost::make_tuple( key.first, key.second ),
+            result.proposal_votes,
+            args.limit,
+            [&]( const proposal_vote_object& po ){ return api_proposal_vote_object( po, _db ); },
+            [&]( const proposal_vote_object& po )
+            {
+               auto itr = _db.find< steem::chain::proposal_object, steem::chain::by_id >( po.proposal_id );
+               return itr != nullptr && !itr->removed;
+            },
+            args.order_direction
+         );
+         break;
+      }
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
    }
 
    return result;
@@ -1510,8 +1746,8 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< chain::smt_token_object > );
+            &database_api_impl::on_push_default< chain::smt_token_object >,
+            &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
       }
@@ -1535,8 +1771,8 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< chain::smt_token_object > );
+            &database_api_impl::on_push_default< chain::smt_token_object >,
+            &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
       }
@@ -1590,8 +1826,8 @@ DEFINE_API_IMPL( database_api_impl, list_smt_token_emissions )
             start,
             result.token_emissions,
             args.limit,
-            _db,
-            &database_api_impl::on_push_default< chain::smt_token_emissions_object > );
+            &database_api_impl::on_push_default< chain::smt_token_emissions_object >,
+            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
          break;
       }
       default:
@@ -1660,6 +1896,9 @@ DEFINE_READ_APIS( database_api,
    (find_votes)
    (list_limit_orders)
    (find_limit_orders)
+   (list_proposals)
+   (find_proposals)
+   (list_proposal_votes)
    (get_order_book)
    (get_transaction_hex)
    (get_required_signatures)

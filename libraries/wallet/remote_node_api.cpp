@@ -429,17 +429,17 @@ flat_set< uint32_t > remote_node_api::get_market_history_buckets()
    FC_ASSERT( false );
 }
 
-steem::plugins::sps::list_proposals_return remote_node_api::list_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status, fc::optional<uint64_t> _last_id)
+vector< database_api::api_proposal_object > remote_node_api::list_proposals( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status )
 {
    FC_ASSERT( false );
 }
 
-steem::plugins::sps::list_voter_proposals_return remote_node_api::list_voter_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit,  steem::plugins::sps::proposal_status _status, fc::optional<uint64_t> _last_id)
+vector< database_api::api_proposal_object > remote_node_api::find_proposals( vector< int64_t > )
 {
    FC_ASSERT( false );
 }
 
-steem::plugins::sps::find_proposals_return remote_node_api::find_proposals(flat_set<uint64_t> _ids)
+vector< database_api::api_proposal_vote_object > remote_node_api::list_proposal_votes( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status )
 {
    FC_ASSERT( false );
 }

@@ -133,8 +133,8 @@ namespace detail
             (get_market_history)
             (get_market_history_buckets)
             (list_proposals)
-            (list_voter_proposals)
             (find_proposals)
+            (list_proposal_votes)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -157,7 +157,6 @@ namespace detail
          std::shared_ptr< follow::follow_api >                             _follow_api;
          std::shared_ptr< reputation::reputation_api >                     _reputation_api;
          std::shared_ptr< market_history::market_history_api >             _market_history_api;
-         std::shared_ptr< sps::sps_api >                                   _sps_api;
          map< transaction_id_type, confirmation_callback >                 _callbacks;
          map< time_point_sec, vector< transaction_id_type > >              _callback_expirations;
          boost::signals2::connection                                       _on_post_apply_block_conn;
@@ -1910,52 +1909,41 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, list_proposals )
    {
-      FC_ASSERT( args.size() >= 5 && args.size() <= 6, "Expected #s argument(s), was 5 or 6");
-      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
+      FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
 
-      steem::plugins::sps::list_proposals_args list_args;
-      list_args.start           = args[0].as<fc::variant>();
-      list_args.order_by        = args[1].as< steem::plugins::sps::order_by_type >();
-      list_args.order_direction = args[2].as<steem::plugins::sps::order_direction_type>();
-      list_args.limit           = args[3].as<int>();
-      list_args.status          = args[4].as<steem::plugins::sps::proposal_status>();
-      if (args.size() == 6 && args[5].as<std::string>().size() > 0)
-      {
-         list_args.last_id = args[5].as<uint64_t>();
-      }
+      steem::plugins::database_api::list_proposals_args list_args;
+      list_args.start           = args[0];
+      list_args.limit           = args[1].as< uint32_t >();
+      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order_direction = args.size() > 3 ?
+         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+      list_args.status          = args.size() > 4 ?
+         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
 
-      //return _sps_api->list_proposals( {args[0].as<fc::variant>, args[1].as< steem::plugins::sps::order_by_type >, args[2].as<steem::plugins::sps::order_direction_type>, args[3].as<int>, args[4].as<int>} );
-      return _sps_api->list_proposals( list_args );
-   }
-
-   DEFINE_API_IMPL( condenser_api_impl, list_voter_proposals )
-   {
-      FC_ASSERT( args.size() >= 5 && args.size() <= 6, "Expected #s argument(s), was 5 or 6");
-      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
-      steem::plugins::sps::list_voter_proposals_args list_args;
-      list_args.start           = args[0].as<fc::variant>();
-      list_args.order_by        = args[1].as< steem::plugins::sps::order_by_type >();
-      list_args.order_direction = args[2].as<steem::plugins::sps::order_direction_type>();
-      list_args.limit           = args[3].as<int>();
-      list_args.status          = args[4].as<steem::plugins::sps::proposal_status>();
-      if (args.size() == 6 && args[5].as<std::string>().size() > 0)
-      {
-         list_args.last_id = args[5].as<uint64_t>();
-      }
-
-      //return _sps_api->list_voter_proposals( {args[0].as<fc::variant>, args[1].as< steem::plugins::sps::order_by_type >, args[2].as<steem::plugins::sps::order_direction_type>, args[3].as<int>, args[4].as<int>} );
-      return _sps_api->list_voter_proposals( list_args );
+      return _database_api->list_proposals( list_args ).proposals;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, find_proposals )
    {
       CHECK_ARG_SIZE( 1 )
-      FC_ASSERT( _sps_api, "sps_api_plugin not enabled." );
 
-      steem::plugins::sps::find_proposals_args find_args;
-      find_args.id_set = args[0].as<flat_set<uint64_t> >();
+      return _database_api->find_proposals( { args[0].as< vector< steem::plugins::database_api::api_id_type > >() } ).proposals;
+   }
 
-      return _sps_api->find_proposals( find_args  );
+   DEFINE_API_IMPL( condenser_api_impl, list_proposal_votes )
+   {
+      FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
+
+      steem::plugins::database_api::list_proposals_args list_args;
+      list_args.start           = args[0];
+      list_args.limit           = args[1].as< uint32_t >();
+      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order_direction = args.size() > 3 ?
+         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+      list_args.status          = args.size() > 4 ?
+         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
+
+      return _database_api->list_proposal_votes( list_args ).proposal_votes;
    }
 
    /**
@@ -2215,12 +2203,6 @@ void condenser_api::api_startup()
    {
       my->_market_history_api = market_history->api;
    }
-
-   auto sps_api = appbase::app().find_plugin< sps::sps_api_plugin >();
-   if( sps_api != nullptr )
-   {
-      my->_sps_api = sps_api->api;
-   }
 }
 
 DEFINE_LOCKLESS_APIS( condenser_api,
@@ -2312,7 +2294,7 @@ DEFINE_READ_APIS( condenser_api,
    (get_recent_trades)
    (get_market_history)
    (list_proposals)
-   (list_voter_proposals)
+   (list_proposal_votes)
    (find_proposals)
 )
 

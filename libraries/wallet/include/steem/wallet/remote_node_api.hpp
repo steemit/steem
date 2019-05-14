@@ -1,7 +1,5 @@
 #pragma once
 #include <steem/plugins/condenser_api/condenser_api.hpp>
-#include <steem/plugins/sps_api/sps_api_plugin.hpp>
-#include <steem/plugins/sps_api/sps_api.hpp>
 
 namespace steem { namespace wallet {
 
@@ -108,10 +106,9 @@ struct remote_node_api
    vector< condenser_api::market_trade > get_recent_trades( uint32_t );
    vector< market_history::bucket_object > get_market_history( uint32_t, time_point_sec, time_point_sec );
    flat_set< uint32_t > get_market_history_buckets();
-
-   steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit, steem::plugins::sps::proposal_status _status, fc::optional<uint64_t> _last_id);
-   steem::plugins::sps::list_voter_proposals_return list_voter_proposals(fc::variant _start, steem::plugins::sps::order_by_type _order_by, steem::plugins::sps::order_direction_type _order_type, int _limit, steem::plugins::sps::proposal_status _status, fc::optional<uint64_t> _last_id);
-   steem::plugins::sps::find_proposals_return find_proposals(flat_set<uint64_t> _ids);
+   vector< database_api::api_proposal_object > list_proposals( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status );
+   vector< database_api::api_proposal_object > find_proposals( vector< int64_t > );
+   vector< database_api::api_proposal_vote_object > list_proposal_votes( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status );
 };
 
 } }
@@ -203,6 +200,6 @@ FC_API( steem::wallet::remote_node_api,
         (get_market_history)
         (get_market_history_buckets)
         (list_proposals)
-        (list_voter_proposals)
         (find_proposals)
+        (list_proposal_votes)
       )
