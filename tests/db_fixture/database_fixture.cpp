@@ -13,7 +13,6 @@
 #include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/webserver/webserver_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin.hpp>
-#include <steem/plugins/sps_api/sps_api_plugin.hpp>
 
 #include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
@@ -35,7 +34,6 @@ uint32_t STEEM_TESTING_GENESIS_TIMESTAMP = 1431700000;
 using namespace steem::plugins::webserver;
 using namespace steem::plugins::database_api;
 using namespace steem::plugins::block_api;
-using namespace steem::plugins::sps;
 using steem::plugins::condenser_api::condenser_api_plugin;
 
 namespace steem { namespace chain {
@@ -892,8 +890,6 @@ template smt_capped_generation_policy t_smt_database_fixture< clean_database_fix
 
 void sps_proposal_database_fixture::plugin_prepare()
 {
-   using namespace steem::plugins::sps;
-
    int argc = boost::unit_test::framework::master_test_suite().argc;
    char** argv = boost::unit_test::framework::master_test_suite().argv;
    for( int i=1; i<argc; i++ )
@@ -905,13 +901,11 @@ void sps_proposal_database_fixture::plugin_prepare()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
 
-   appbase::app().register_plugin< sps_api_plugin >();
    db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    db_plugin->logging = false;
    appbase::app().initialize<
-      steem::plugins::sps::sps_api_plugin,
       steem::plugins::debug_node::debug_node_plugin
    >( argc, argv );
 
@@ -1000,55 +994,6 @@ const proposal_object* sps_proposal_database_fixture::find_proposal( int64_t id 
       return &(*found);
    else
       return nullptr;
-}
-
-list_proposals_return sps_proposal_database_fixture::list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id)
-{
-      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
-      steem::plugins::sps::list_proposals_args args;
-      args.start           = _start;
-      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
-      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
-      args.limit           = _limit;
-      args.status          = steem::plugins::sps::to_proposal_status(_status);
-      if (_last_id.size() > 0)
-      {
-         args.last_id         = boost::lexical_cast<uint64_t>(_last_id);
-      }
-
-      try {
-         return api->list_proposals(args);
-      } FC_CAPTURE_AND_RETHROW();
-}
-
-list_voter_proposals_return  sps_proposal_database_fixture::list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id)
-{
-      auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
-      steem::plugins::sps::list_voter_proposals_args args;
-      args.start           = _start;
-      args.order_by        = steem::plugins::sps::to_order_by(_order_by);
-      args.order_direction = steem::plugins::sps::to_order_direction(_order_type);
-      args.limit           = _limit;
-      args.status          = steem::plugins::sps::to_proposal_status(_status);
-      if (_last_id.size() > 0)
-      {
-         args.last_id         = boost::lexical_cast<uint64_t>(_last_id);
-      }
-
-      try {
-         return api->list_voter_proposals(args);
-      } FC_CAPTURE_AND_RETHROW();
-}
-
-find_proposals_return sps_proposal_database_fixture::find_proposals(flat_set<uint64_t> _proposal_ids)
-{
-   auto api = appbase::app().get_plugin< steem::plugins::sps::sps_api_plugin >().api;
-   steem::plugins::sps::find_proposals_args args;
-   args.id_set = _proposal_ids;
-
-   try {
-      return api->find_proposals(args);
-   } FC_CAPTURE_AND_RETHROW();
 }
 
 void sps_proposal_database_fixture::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key)

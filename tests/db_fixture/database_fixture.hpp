@@ -12,7 +12,6 @@
 #include <steem/plugins/block_api/block_api_plugin.hpp>
 #include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 #include <steem/plugins/database_api/database_api_plugin.hpp>
-#include <steem/plugins/sps_api/sps_api.hpp>
 
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
@@ -351,9 +350,7 @@ struct sps_proposal_database_fixture : public clean_database_fixture
 
    bool exist_proposal( int64_t id );
    const proposal_object* find_proposal( int64_t id );
-   steem::plugins::sps::list_proposals_return list_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id) ;
-   steem::plugins::sps::list_voter_proposals_return list_voter_proposals(fc::variant _start, std::string _order_by, std::string _order_type, int _limit, std::string _status, std::string _last_id) ;
-   steem::plugins::sps::find_proposals_return find_proposals(flat_set<uint64_t> _proposal_ids);
+
    void remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
 
    bool find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);

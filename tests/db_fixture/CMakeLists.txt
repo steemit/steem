@@ -23,6 +23,5 @@ target_link_libraries(db_fixture
                       witness_plugin
                       debug_node_plugin
                       condenser_api_plugin
-                      sps_api_plugin
                       fc
                       ${PLATFORM_SPECIFIC_LIBS})
