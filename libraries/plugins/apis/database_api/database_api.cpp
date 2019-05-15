@@ -92,12 +92,6 @@ class database_api_impl
       template< typename ValueType >
       static bool filter_default( const ValueType& r ) { return true; }
 
-      template< class Iterator >
-      inline boost::reverse_iterator< Iterator > make_reverse_iterator( Iterator iterator )
-      {
-         return boost::reverse_iterator< Iterator >( iterator );
-      }
-
       template<typename IndexType, typename OrderType, typename StartType, typename ResultType, typename OnPushType, typename FilterType>
       void iterate_results(
          StartType start,
@@ -123,7 +117,7 @@ class database_api_impl
          }
          else if( direction == descending )
          {
-            auto itr = make_reverse_iterator( idx.lower_bound( start ) );
+            auto itr = boost::make_reverse_iterator( idx.lower_bound( start ) );
             auto end = idx.rend();
 
             while( result.size() < limit && itr != end )

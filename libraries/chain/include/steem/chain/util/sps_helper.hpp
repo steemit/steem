@@ -63,7 +63,11 @@ class sps_helper
 
             calc();
 
-            return obj_perf.done ? end() : proposalIndex. template erase< ByProposalType >( proposal );
+            //return obj_perf.done ? end() : proposalIndex. template erase< ByProposalType >( proposal );
+            if( obj_perf.done )
+               return end();
+
+            return proposalIndex. template erase< ByProposalType >( proposal );
          }
       }
 
