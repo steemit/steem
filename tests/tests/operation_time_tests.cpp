@@ -2562,6 +2562,8 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       comment.body = "test2";
 
+      generate_block();
+
       tx.operations.clear();
       tx.signatures.clear();
 

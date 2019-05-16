@@ -603,6 +603,15 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( mod_sam_comment.cashout_time == mod_sam_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test comment edit rate limit" );
+      op.body = "edit";
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, sam_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      generate_block();
+      db->push_transaction( tx, 0 );
+
       BOOST_TEST_MESSAGE( "--- Test failure posting withing 1 minute" );
 
       op.permlink = "sit";

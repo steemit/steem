@@ -102,6 +102,7 @@ namespace steem { namespace chain {
 
          time_point_sec    last_post;
          time_point_sec    last_root_post = fc::time_point_sec::min();
+         time_point_sec    last_post_edit;
          time_point_sec    last_vote_time;
          uint32_t          post_bandwidth = 0;
 
@@ -455,7 +456,7 @@ FC_REFLECT( steem::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(last_vote_time)(post_bandwidth)
+             (last_post)(last_root_post)(last_post_edit)(last_vote_time)(post_bandwidth)
              (pending_claimed_accounts)
           )
 
