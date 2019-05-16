@@ -7,7 +7,9 @@ template< typename Value, typename IndexSpecifierList, typename Allocator >
 class boost_multi_index_adapter : public boost::multi_index_container< Value, IndexSpecifierList, Allocator >
 {
    private:
+      typedef typename Value::id_type id_type;
       int64_t _revision = 0;
+      id_type _next_id = 0;
 
    public:
       using boost::multi_index_container< Value, IndexSpecifierList, Allocator >::multi_index_container;
@@ -23,6 +25,17 @@ class boost_multi_index_adapter : public boost::multi_index_container< Value, In
          _revision = revision;
          return _revision;
       }
+
+      id_type next_id()
+      {
+         return _next_id;
+      }
+
+      void set_next_id( id_type id )
+      {
+         _next_id = id;
+      }
+
       void close() {}
       void wipe( const boost::filesystem::path& p ) {}
       void flush() {}

@@ -160,6 +160,7 @@ struct multi_index_adapter
    typedef typename mira_type::primary_iterator                                                          mira_iter_type;
    typedef typename index_converter< multi_index::multi_index_container< Arg1, Arg2, Arg3 > >::bmic_type bmic_type;
    typedef typename bmic_type::iterator                                                                  bmic_iter_type;
+   typedef typename value_type::id_type id_type;
 
    typedef iterator_adapter<
       value_type,
@@ -263,6 +264,9 @@ struct multi_index_adapter
 
       index_variant new_index;
 
+      auto id = next_id();
+      auto rev = revision();
+
       {
          auto first = begin();
          auto last = end();
@@ -277,9 +281,29 @@ struct multi_index_adapter
                break;
          }
       }
+      wipe( p );
 
       _index = std::move( new_index );
       _type = type;
+
+      set_revision( rev );
+      set_next_id( id );
+   }
+
+   id_type next_id()
+   {
+      return boost::apply_visitor(
+         []( auto& index ){ return index.next_id(); },
+         _index
+      );
+   }
+
+   void set_next_id( id_type id )
+   {
+      return boost::apply_visitor(
+         [=]( auto& index ){ return index.set_next_id( id ); },
+         _index
+      );
    }
 
    int64_t revision()
