@@ -24,7 +24,7 @@ namespace steem { namespace chain {
          return less( a.c_str(), b.c_str() );
       }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       bool operator()( const shared_string& a, const string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -261,7 +261,7 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::comment_vote_object > : public boost::true_type {};

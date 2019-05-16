@@ -112,7 +112,7 @@ void swap(
 
 typedef std::shared_ptr< ::rocksdb::DB >                 db_ptr;
 typedef std::vector< ::rocksdb::ColumnFamilyDescriptor > column_definitions;
-typedef std::vector< ::rocksdb::ColumnFamilyHandle* >    column_handles;
+typedef std::vector< std::shared_ptr< ::rocksdb::ColumnFamilyHandle > >    column_handles;
 
 } /* namespace multi_index */
 

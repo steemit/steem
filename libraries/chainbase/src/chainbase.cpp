@@ -39,7 +39,7 @@ namespace chainbase {
       _data_dir = dir;
       _database_cfg = database_cfg;
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       auto abs_path = bfs::absolute( dir / "shared_memory.bin" );
 
       if( bfs::exists( abs_path ) )
@@ -82,7 +82,7 @@ namespace chainbase {
    }
 
    void database::flush() {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       if( _segment )
          _segment->flush();
       if( _meta )
@@ -97,7 +97,7 @@ namespace chainbase {
 
    size_t database::get_cache_usage() const
    {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       size_t cache_size = 0;
       for( const auto& i : _index_list )
       {
@@ -111,7 +111,7 @@ namespace chainbase {
 
    size_t database::get_cache_size() const
    {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       size_t cache_size = 0;
       for( const auto& i : _index_list )
       {
@@ -125,7 +125,7 @@ namespace chainbase {
 
    void database::dump_lb_call_counts()
    {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       for( const auto& i : _index_list )
       {
          i->dump_lb_call_counts();
@@ -135,7 +135,7 @@ namespace chainbase {
 
    void database::trim_cache()
    {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       if( _index_list.size() )
       {
          (*_index_list.begin())->trim_cache();
@@ -147,7 +147,7 @@ namespace chainbase {
    {
       if( _is_open )
       {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          _segment.reset();
          _meta.reset();
          _data_dir = bfs::path();
@@ -166,7 +166,7 @@ namespace chainbase {
    void database::wipe( const bfs::path& dir )
    {
       assert( !_is_open );
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       _segment.reset();
       _meta.reset();
       bfs::remove_all( dir / "shared_memory.bin" );
@@ -188,7 +188,7 @@ namespace chainbase {
 
    void database::resize( size_t new_shared_file_size )
    {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       if( _undo_session_count )
          BOOST_THROW_EXCEPTION( std::runtime_error( "Cannot resize shared memory file while undo session is active" ) );
 

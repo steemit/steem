@@ -67,14 +67,6 @@ inline void validate_permlink_0_1( const string& permlink )
    }
 }
 
-struct strcmp_equal
-{
-   bool operator()( const shared_string& a, const string& b )
-   {
-      return a.size() == b.size() || std::strcmp( a.c_str(), b.c_str() ) == 0;
-   }
-};
-
 template< bool force_canon >
 void copy_legacy_chain_properties( chain_properties& dest, const legacy_chain_properties& src )
 {
@@ -944,7 +936,13 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          com.last_update   = _db.head_block_time();
          com.active        = com.last_update;
-         strcmp_equal equal;
+         std::function< bool( const shared_string& a, const string& b ) > equal;
+
+         FC_TODO( "Check if this can be simplified after HF 21" );
+         if ( _db.has_hardfork( STEEM_HARDFORK_0_21__2203 ) )
+            equal = []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() && std::strcmp( a.c_str(), b.c_str() ) == 0; };
+         else
+            equal = []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() || std::strcmp( a.c_str(), b.c_str() ) == 0; };
 
          if( !parent )
          {

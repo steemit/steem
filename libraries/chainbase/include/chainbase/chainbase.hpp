@@ -62,8 +62,11 @@ namespace helpers
       info->_item_count = index.size();
       info->_item_sizeof = sizeof(typename IndexType::value_type);
       info->_item_additional_allocation = 0;
-      size_t pureNodeSize = IndexType::node_size - sizeof(typename IndexType::value_type);
+#ifndef ENABLE_MIRA
+      size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+         sizeof(typename IndexType::value_type);
       info->_additional_container_allocation = info->_item_count*pureNodeSize;
+#endif
    }
 
    template <class IndexType>
@@ -93,7 +96,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -204,13 +207,17 @@ namespace chainbase {
          generic_index( allocator<value_type> a, bfs::path p )
          :_stack(a),_indices( a, p ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
+#ifdef ENABLE_MIRA
             _revision = _indices.revision();
+#endif
          }
 
          generic_index( allocator<value_type> a )
          :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::value_type) ),_size_of_this(sizeof(*this))
          {
+#ifdef ENABLE_MIRA
             _revision = _indices.revision();
+#endif
          }
 
          void validate()const {
@@ -268,8 +275,13 @@ namespace chainbase {
             return *ptr;
          }
 
+         index_type& mutable_indices() { return _indices; }
+
          const index_type& indices()const { return _indices; }
 
+         void clear() { _indices.clear(); }
+
+#ifdef ENABLE_MIRA
          void open( const bfs::path& p, const boost::any& o )
          {
             _indices.open( p, o );
@@ -289,8 +301,6 @@ namespace chainbase {
 
          void wipe( const bfs::path& dir ) { _indices.wipe( dir ); }
 
-         void clear() { _indices.clear(); }
-
          void flush() { _indices.flush(); }
 
          size_t get_cache_usage() const { return _indices.get_cache_usage(); }
@@ -300,6 +310,7 @@ namespace chainbase {
          void dump_lb_call_counts() { _indices.dump_lb_call_counts(); }
 
          void trim_cache() { _indices.trim_cache(); }
+#endif
 
          class session {
             public:
@@ -345,8 +356,11 @@ namespace chainbase {
          // TODO: This function needs some work to make it consistent on failure.
          session start_undo_session()
          {
-            _indices.set_revision( ++_revision );
+            ++_revision;
+#ifdef ENABLE_MIRA
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
             _stack.emplace_back( _indices.get_allocator() );
             _stack.back().old_next_id = _next_id;
             _stack.back().revision = _revision;
@@ -385,8 +399,11 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            _indices.set_revision( --_revision );
+            --_revision;
+#ifdef ENABLE_MIRA
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
          /**
@@ -494,8 +511,11 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            _indices.set_revision( --_revision );
+            --_revision;
+#ifdef ENABLE_MIRA
+            _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
          /**
@@ -522,8 +542,10 @@ namespace chainbase {
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
             _revision = revision;
+#ifdef ENABLE_MIRA
             _indices.set_revision( _revision );
             assert( _indices.revision() == _revision );
+#endif
          }
 
       private:
@@ -638,17 +660,19 @@ namespace chainbase {
          virtual uint32_t type_id()const  = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
-         virtual void print_stats() const = 0;
          virtual size_t size() const = 0;
+         virtual void clear() = 0;
+#ifdef ENABLE_MIRA
          virtual void open( const bfs::path&, const boost::any& ) = 0;
          virtual void close() = 0;
          virtual void wipe( const bfs::path& dir ) = 0;
-         virtual void clear() = 0;
          virtual void flush() = 0;
          virtual size_t get_cache_usage() const = 0;
          virtual size_t get_cache_size() const = 0;
          virtual void dump_lb_call_counts() = 0;
          virtual void trim_cache() = 0;
+         virtual void print_stats() const = 0;
+#endif
 
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
@@ -675,7 +699,13 @@ namespace chainbase {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
          }
 
-         virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
+         virtual void     set_revision( int64_t revision ) override
+         {
+#ifdef ENABLE_MIRA
+            _base.set_revision( revision );
+#endif
+         }
+
          virtual int64_t  revision()const  override { return _base.revision(); }
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
@@ -690,16 +720,17 @@ namespace chainbase {
             return provider.gather_statistics(_base.indices(), onlyStaticInfo);
          }
 
-         virtual void print_stats() const override final
-         {
-            _base.indicies().print_stats();
-         }
-
          virtual size_t size() const override final
          {
             return _base.indicies().size();
          }
 
+         virtual void clear() override final
+         {
+            _base.clear();
+         }
+
+#ifdef ENABLE_MIRA
          virtual void open( const bfs::path& p, const boost::any& o ) override final
          {
             _base.open( p, o );
@@ -713,11 +744,6 @@ namespace chainbase {
          virtual void wipe( const bfs::path& dir ) override final
          {
             _base.wipe( dir );
-         }
-
-         virtual void clear() override final
-         {
-            _base.clear();
          }
 
          virtual void flush() override final
@@ -744,6 +770,12 @@ namespace chainbase {
          {
             _base.trim_cache();
          }
+
+         virtual void print_stats() const override final
+         {
+            _base.indicies().print_stats();
+         }
+#endif
 
       private:
          BaseIndex& _base;
@@ -913,10 +945,12 @@ namespace chainbase {
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
+#ifdef ENABLE_MIRA
          void print_stats()
          {
             for( const auto& i : _index_list )  i->print_stats();
          }
+#endif
 
          template<typename MultiIndexType>
          void add_index()
@@ -925,7 +959,7 @@ namespace chainbase {
             _index_types.back()->add_index( *this );
          }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
@@ -943,7 +977,7 @@ namespace chainbase {
 
          size_t get_free_memory()const
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
             return get_total_system_memory();
 #else
             return _segment->get_segment_manager()->get_free_memory();
@@ -1102,7 +1136,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
 #else
             read_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
@@ -1175,40 +1209,39 @@ namespace chainbase {
       private:
          template<typename MultiIndexType>
          void add_index_helper() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
+            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+            typedef generic_index<MultiIndexType>          index_type;
+            typedef typename index_type::allocator_type    index_alloc;
 
-             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+            std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
 
-             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
-                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
-             }
+            if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
+               BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
+            }
 
-             index_type* idx_ptr =  nullptr;
-#ifndef ENABLE_STD_ALLOCATOR
-             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+            index_type* idx_ptr =  nullptr;
+#ifdef ENABLE_MIRA
+            idx_ptr = new index_type( index_alloc() );
 #else
-             idx_ptr = new index_type( index_alloc() );
+            idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
 #endif
-             idx_ptr->validate();
+            idx_ptr->validate();
 
-             if( type_id >= _index_map.size() )
-                _index_map.resize( type_id + 1 );
+            if( type_id >= _index_map.size() )
+               _index_map.resize( type_id + 1 );
 
-#ifdef ENABLE_STD_ALLOCATOR
-             auto new_index = new index<index_type>( *idx_ptr );
-#else
-             auto new_index = new index<index_type>( *idx_ptr, _data_dir );
+            auto new_index = new index<index_type>( *idx_ptr );
+
+            _index_map[ type_id ].reset( new_index );
+            _index_list.push_back( new_index );
+
+#ifdef ENABLE_MIRA
+            if( _is_open ) new_index->open( _data_dir, _database_cfg );
 #endif
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
-
-             if( _is_open ) new_index->open( _data_dir, _database_cfg );
          }
 
          read_write_mutex_manager                                    _rw_manager;
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;

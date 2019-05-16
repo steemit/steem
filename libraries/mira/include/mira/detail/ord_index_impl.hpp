@@ -86,7 +86,7 @@
 #define BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT
 #endif
 
-#define ROCKSDB_ITERATOR_PARAM_PACK super::_handles, COLUMN_INDEX, super::_db, *_cache
+#define ROCKSDB_ITERATOR_PARAM_PACK const_cast< column_handles* >( &_handles ), COLUMN_INDEX, super::_db, *_cache
 
 namespace mira{
 
@@ -255,6 +255,7 @@ protected:
    static const size_t                                COLUMN_INDEX = super::COLUMN_INDEX + 1;
 
    std::shared_ptr< object_cache_type >               _cache;
+   column_handles&                                    _handles;
 
    uint32_t                                           _key_modification_count = 0;
    rocksdb::FlushOptions                              _flush_opts;
@@ -327,7 +328,7 @@ public:
    void flush()
    {
       super::flush();
-      super::_db->Flush( rocksdb::FlushOptions(), super::_handles[ COLUMN_INDEX ] );
+      super::_db->Flush( rocksdb::FlushOptions(), &*super::_handles[ COLUMN_INDEX ] );
    }
 
   /* capacity */
@@ -437,54 +438,87 @@ public:
    }
 
 BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
-  ordered_index_impl(const ctor_args_list& args_list):
-    super(args_list.get_tail()),
-    _cache( object_cache_factory_type::get_shared_cache() ),
-    key(boost::tuples::get<0>(args_list.get_head())),
-    comp_(boost::tuples::get<1>(args_list.get_head()))
-  {
-    empty_initialize();
-    _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
-  }
+   ordered_index_impl(const ctor_args_list& args_list):
+      super(args_list.get_tail()),
+      _cache( object_cache_factory_type::get_shared_cache() ),
+      _handles( super::_handles ),
+      key(boost::tuples::get<0>(args_list.get_head())),
+      comp_(boost::tuples::get<1>(args_list.get_head()))
+   {
+      empty_initialize();
+      _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
+   }
 
-  ordered_index_impl(
-    const ordered_index_impl<
-      KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x):
-    super(x),
+   ordered_index_impl() :
+      super(),
+      _cache( object_cache_factory_type::get_shared_cache() ),
+      _handles( super::_handles )
+   {
+      empty_initialize();
+      _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
+   }
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe_super(),
-#endif
-    key(x.key),
-    _cache( object_cache_factory_type::get_shared_cache() ),
-    comp_(x.comp_)
-  {
-    /* Copy ctor just takes the key and compare objects from x. The rest is
-     * done in a subsequent call to copy_().
-     */
-    _cache = new object_cache_type;
-  }
+   ordered_index_impl( const ordered_index_impl& other ) :
+      super( other ),
+      _cache( other._cache ),
+      _handles( super::_handles ),
+      _key_modification_count( other._key_modification_count ),
+      _flush_opts( other._flush_opts ),
+      _first_key( other._first_key ),
+      _first_key_update( other._first_key_update ),
+      _delete_first_key( other._delete_first_key ),
+      key( other.key ),
+      comp_( other.comp_ ),
+      id( other.id )
+   {}
 
-  ordered_index_impl(
-     const ordered_index_impl<
-       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x,
-     do_not_copy_elements_tag):
-    super(x,do_not_copy_elements_tag()),
+   ordered_index_impl( ordered_index_impl&& other ) :
+      super( std::move( other ) ),
+      _cache( std::move( other._cache ) ),
+      _handles( super::_handles ),
+      _key_modification_count( other._key_modification_count ),
+      _flush_opts( std::move( other._flush_opts ) ),
+      _first_key( std::move( other._first_key ) ),
+      _first_key_update( std::move( other._first_key_update ) ),
+      _delete_first_key( std::move( other._delete_first_key ) ),
+      key( std::move( other.key ) ),
+      comp_( std::move( other.comp_ ) ),
+      id( std::move( other.id ) )
+   {}
 
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe_super(),
-#endif
-    _cache( object_cache_factory_type::get_shared_cache() ),
-    key(x.key),
-    comp_(x.comp_)
-  {
-    empty_initialize();
-  }
+   ordered_index_impl& operator=( const ordered_index_impl& rhs )
+   {
+      super::operator=( rhs );
+      _cache = rhs._cache;
+      _handles = super::_handles;
+      _key_modification_count = rhs._key_modification_count;
+      _flush_opts = rhs._flush_opts;
+      _first_key = rhs._first_key;
+      _first_key_update = rhs._first_key_update;
+      _delete_first_key = rhs._delete_first_key;
+      key = rhs.key;
+      comp_ = rhs.comp_;
+      id = rhs.id;
 
-  ~ordered_index_impl()
-  {
-    /* the container is guaranteed to be empty by now */
-  }
+      return *this;
+   }
+
+   ordered_index_impl& operator=( ordered_index_impl&& rhs )
+   {
+      super::operator=( std::move( rhs ) );
+      _cache = std::move( rhs._cache );
+      _handles = super::_handles;
+      _key_modification_count = rhs._key_modification_count;
+      _flush_opts = std::move( rhs._flush_opts );
+      _first_key = std::move( rhs._first_key );
+      _first_key_update = std::move( rhs._first_key_update );
+      _delete_first_key = std::move( rhs._delete_first_key );
+      key = std::move( rhs.key );
+      comp_ = std::move( rhs.comp_ );
+      id = std::move( rhs.id );
+
+      return *this;
+   }
 
    iterator       make_iterator( const key_type& key )
    {
@@ -518,14 +552,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
          s = super::_db->Get(
             ::rocksdb::ReadOptions(),
-            super::_handles[ COLUMN_INDEX],
+            &*super::_handles[ COLUMN_INDEX ],
             key_slice,
             &read_buffer );
 
          // Key already exists, uniqueness constraint violated
          if( s.ok() )
          {
-            ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
+            //ilog( "Key ${k} already exists. Object: ${o}", ("k",new_key)("o", v) );
             return false;
          }
 
@@ -543,7 +577,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          }
 
          s = super::_write_buffer.Put(
-            super::_handles[ COLUMN_INDEX ],
+            &*super::_handles[ COLUMN_INDEX ],
             key_slice,
             value_slice );
 
@@ -567,7 +601,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       pack_to_slice( old_key_slice, old_key );
 
       super::_write_buffer.Delete(
-         super::_handles[ COLUMN_INDEX ],
+         &*super::_handles[ COLUMN_INDEX ],
          old_key_slice );
 
       if( _first_key.valid() && ( key_comp()( old_key, *_first_key ) == key_comp()( *_first_key, old_key ) ) )
@@ -586,7 +620,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
   void clear_()
   {
-      super::_db->DropColumnFamily( super::_handles[ COLUMN_INDEX ] );
+      super::_db->DropColumnFamily( &*super::_handles[ COLUMN_INDEX ] );
       super::clear_();
       empty_initialize();
    }
@@ -624,7 +658,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
             s = super::_db->Get(
                ::rocksdb::ReadOptions(),
-               super::_handles[ COLUMN_INDEX ],
+               &*super::_handles[ COLUMN_INDEX ],
                new_key_slice,
                &read_buffer );
 
@@ -639,7 +673,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
             pack_to_slice( old_key_slice, old_key );
 
             s = super::_write_buffer.Delete(
-               super::_handles[ COLUMN_INDEX ],
+               &*super::_handles[ COLUMN_INDEX ],
                old_key_slice );
 
             if( !s.ok() ) return false;
@@ -654,7 +688,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          }
 
          s = super::_write_buffer.Put(
-            super::_handles[ COLUMN_INDEX ],
+            &*super::_handles[ COLUMN_INDEX ],
             new_key_slice,
             value_slice );
 
@@ -692,7 +726,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
          if( _key_modification_count > 1500 )
          {
-            super::_db->Flush( _flush_opts, super::_handles[ COLUMN_INDEX ] );
+            super::_db->Flush( _flush_opts, &*super::_handles[ COLUMN_INDEX ] );
             _key_modification_count = 0;
          }
 
@@ -822,18 +856,16 @@ public:
   typedef typename super::allocator_type          allocator_type;
   typedef typename super::iterator                iterator;
 
-  /* construct/copy/destroy
-   * Default and copy ctors are in the protected section as indices are
-   * not supposed to be created on their own. No range ctor either.
-   */
-
+   ordered_index()                                   = default;
+   ordered_index( const ordered_index& )             = default;
+   ordered_index( ordered_index&& )                  = default;
+   ordered_index& operator =( const ordered_index& ) = default;
+   ordered_index& operator =( ordered_index&& )      = default;
 
 protected:
   ordered_index(
     const ctor_args_list& args_list):
     super(args_list){}
-
-  ordered_index(const ordered_index& x):super(x){};
 
   ordered_index(const ordered_index& x,do_not_copy_elements_tag):
     super(x,do_not_copy_elements_tag()){};
