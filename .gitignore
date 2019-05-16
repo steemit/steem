@@ -1,24 +1,85 @@
+# Binary and library file types
 *.a
-*.sw*
+*.dylib
+*.so
+*.pyc
+*.pyo
 
+# Xcode project files
+*.xcodeproj/
+*.build/
+Debug/
+Release/
+
+# Visual Studio Code files
 .vscode
-*.cmake
+
+# CMake files
+cmake_install.cmake
 CMakeCache.txt
 CMakeFiles
+CMakeDoxyfile.in
+CMakeDoxygenDefaults.cmake
+CMakeScripts/
+
+# Unix Makefiles
 Makefile
+
+# Misc files
+\#*\#
+*~
 compile_commands.json
-moc_*
-*.moc
-hardfork.hpp
-
 lcov
+doxygen
 
+# Project generated files/directories
+
+build_version.cc
+
+libraries/appbase/examples/appbase_example
+libraries/chainbase/test/chainbase_test
+libraries/protocol/include/steem/protocol/hardfork.hpp
+libraries/fc/git_revision.cpp
+libraries/fc/tests/all_tests
+libraries/fc/tests/api
+libraries/fc/tests/bip_lock
+libraries/fc/tests/blind
+libraries/fc/tests/bloom_test
+libraries/fc/tests/ecc_test
+libraries/fc/tests/ecdsa_canon_test
+libraries/fc/tests/hmac_test
+libraries/fc/tests/log_test
+libraries/fc/tests/ntp_test
+libraries/fc/tests/real128_test
+libraries/fc/tests/saturation_test
+libraries/fc/tests/sha_test
+libraries/fc/tests/task_cancel_test
+libraries/fc/tests/thread_test
+libraries/fc/vendor/secp256k1-zkp/src/project_secp256k1-build/
+libraries/fc/vendor/secp256k1-zkp/src/project_secp256k1-stamp/
+libraries/fc/vendor/secp256k1-zkp/tmp/
+libraries/jsonball/gensrc/
+libraries/jsonball/template_context/
+libraries/manifest/gensrc/
+libraries/manifest/template_context/
+libraries/mira/test/mira_test
 libraries/utilities/git_revision.cpp
-
+libraries/vendor/rocksdb/RocksDBConfig.cmake
+libraries/vendor/rocksdb/RocksDBConfigVersion.cmake
 libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
 libraries/wallet/doxygen
 
+programs/build_helpers/steem_build_helpers/__pycache__/
+programs/util/dump_steem_schema
+programs/util/schema_test
+programs/util/serialize_set_properties
+programs/util/sign_digest
+programs/util/sign_transaction
+programs/util/test_block_log
+programs/util/test_fixed_string
+programs/util/test_shared_mem
+programs/util/test_sqrt
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
 programs/steemd/steemd
@@ -36,18 +97,7 @@ tests/plugin_test
 tests/intense_test
 tests/performance_test
 
-doxygen
-
-build
-build.debug
-build.release
-
-wallet.json
-witness_node_data_dir
-
-*.wallet
-
-*.pyc
-*.pyo
-*.egg-info/
-*.log
+# Build directories
+build/
+build.*/
+build-*/
