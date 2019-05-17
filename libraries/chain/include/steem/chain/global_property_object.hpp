@@ -54,6 +54,7 @@ namespace steem { namespace chain {
          asset       virtual_supply             = asset( 0, STEEM_SYMBOL );
          asset       current_supply             = asset( 0, STEEM_SYMBOL );
          asset       confidential_supply        = asset( 0, STEEM_SYMBOL ); ///< total asset held in confidential balances
+         asset       init_sbd_supply            = asset( 0, SBD_SYMBOL );
          asset       current_sbd_supply         = asset( 0, SBD_SYMBOL );
          asset       confidential_sbd_supply    = asset( 0, SBD_SYMBOL ); ///< total asset held in confidential balances
          asset       total_vesting_fund_steem   = asset( 0, STEEM_SYMBOL );
@@ -134,6 +135,11 @@ namespace steem { namespace chain {
          uint16_t sbd_stop_percent = 0;
          uint16_t sbd_start_percent = 0;
          uint16_t sbd_stop_adjust = 0;
+
+         //settings used to compute payments for every proposal
+         time_point_sec next_maintenance_time;
+         time_point_sec last_budget_time;
+
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
 #endif
@@ -150,7 +156,7 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::dynamic_global_property_object > : public boost::true_type {};
@@ -169,6 +175,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (virtual_supply)
              (current_supply)
              (confidential_supply)
+             (init_sbd_supply)
              (current_sbd_supply)
              (confidential_sbd_supply)
              (total_vesting_fund_steem)
@@ -192,6 +199,8 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (sbd_stop_percent)
              (sbd_start_percent)
              (sbd_stop_adjust)
+             (next_maintenance_time)
+             (last_budget_time)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif

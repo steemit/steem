@@ -73,6 +73,7 @@ class chain_plugin_impl
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
       uint16_t                         shared_file_scale_rate = 0;
+      int16_t                          sps_remove_threshold = -1;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;
@@ -80,11 +81,12 @@ class chain_plugin_impl
       bool                             check_locks = false;
       bool                             validate_invariants = false;
       bool                             dump_memory_details = false;
-      bool                             benchmark_is_enabled =false;
+      bool                             benchmark_is_enabled = false;
       bool                             statsd_on_replay = false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
+      bool                             replay_in_memory = false;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
       uint32_t allow_future_time = 5;
@@ -316,6 +318,7 @@ bfs::path chain_plugin::state_storage_dir() const
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
+         ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
          ("shared-file-dir", bpo::value<bfs::path>()->default_value("blockchain"),
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
          ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G. If running a full node, increase this value to 200G.")
@@ -328,6 +331,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             "flush shared memory changes to disk every N blocks")
          ;
    cli.add_options()
+         ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
@@ -336,8 +340,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
+         ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -364,6 +369,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if( options.count( "shared-file-scale-rate" ) )
       my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
+
+   my->sps_remove_threshold = options.at( "sps-remove-threshold" ).as< uint16_t >();
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
@@ -396,7 +403,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
    my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
 
    if( my->database_cfg.is_relative() )
@@ -406,6 +413,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       my->write_default_database_config( my->database_cfg );
    }
+
+   my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
 #endif
 
 #ifdef IS_TEST_NET
@@ -470,8 +479,9 @@ void chain_plugin::plugin_startup()
       }
    };
 
-#ifdef ENABLE_STD_ALLOCATOR
    fc::variant database_config;
+
+#ifdef ENABLE_MIRA
    try
    {
       database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
@@ -492,13 +502,16 @@ void chain_plugin::plugin_startup()
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
    db_open_args.initial_supply = STEEM_INIT_SUPPLY;
+   db_open_args.sbd_initial_supply = STEEM_SBD_INIT_SUPPLY;
    db_open_args.shared_file_size = my->shared_memory_size;
    db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
    db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
+   db_open_args.sps_remove_threshold = my->sps_remove_threshold;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
    db_open_args.database_cfg = database_config;
+   db_open_args.replay_in_memory = my->replay_in_memory;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

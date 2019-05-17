@@ -64,6 +64,29 @@ namespace steem { namespace protocol {
       { if( !owner ) a.insert( account ); }
    };
 
+   struct account_update2_operation : public base_operation
+   {
+      account_name_type             account;
+      optional< authority >         owner;
+      optional< authority >         active;
+      optional< authority >         posting;
+      optional< public_key_type >   memo_key;
+      string                        json_metadata;
+      string                        posting_json_metadata;
+
+      extensions_type               extensions;
+
+      void validate()const;
+
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const
+      { if( owner ) a.insert( account ); }
+
+      void get_required_active_authorities( flat_set<account_name_type>& a )const
+      { if( !owner && ( active || posting || memo_key || json_metadata.size() > 0 ) ) a.insert( account ); }
+
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const
+      { if( !( owner || active || posting || memo_key || json_metadata.size() > 0 ) ) a.insert( account ); }
+   };
 
    struct comment_operation : public base_operation
    {
@@ -1108,6 +1131,16 @@ FC_REFLECT( steem::protocol::account_update_operation,
             (posting)
             (memo_key)
             (json_metadata) )
+
+FC_REFLECT( steem::protocol::account_update2_operation,
+            (account)
+            (owner)
+            (active)
+            (posting)
+            (memo_key)
+            (json_metadata)
+            (posting_json_metadata)
+            (extensions) )
 
 FC_REFLECT( steem::protocol::transfer_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steem::protocol::transfer_to_vesting_operation, (from)(to)(amount) )

@@ -6,6 +6,7 @@
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/database.hpp>
@@ -221,7 +222,10 @@ struct api_account_object
 #ifndef IS_LOW_MEM
       const auto* maybe_meta = db.find< account_metadata_object, by_account >( id );
       if( maybe_meta )
+      {
          json_metadata = to_string( maybe_meta->json_metadata );
+         posting_json_metadata = to_string( maybe_meta->posting_json_metadata );
+      }
 #endif
 
 #ifdef STEEM_ENABLE_SMT
@@ -242,6 +246,7 @@ struct api_account_object
    authority         posting;
    public_key_type   memo_key;
    string            json_metadata;
+   string            posting_json_metadata;
    account_name_type proxy;
 
    time_point_sec    last_owner_update;
@@ -531,7 +536,64 @@ struct api_hardfork_property_object
    fc::time_point_sec            next_hardfork_time;
 };
 
+enum proposal_status
+{
+   all,
+   inactive,
+   active,
+   expired,
+   votable
+};
 
+proposal_status get_proposal_status( const proposal_object& po, const time_point_sec current_time );
+
+typedef uint64_t api_id_type;
+
+struct api_proposal_object
+{
+   api_proposal_object() = default;
+
+   api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
+      id(po.proposal_id),
+      creator(po.creator),
+      receiver(po.receiver),
+      start_date(po.start_date),
+      end_date(po.end_date),
+      daily_pay(po.daily_pay),
+      subject(to_string(po.subject)),
+      permlink(to_string(po.permlink)),
+      total_votes(po.total_votes),
+      status(get_proposal_status(po,current_time))
+   {}
+
+   api_id_type       id;
+
+   api_id_type       proposal_id;
+   account_name_type creator;
+   account_name_type receiver;
+   time_point_sec    start_date;
+   time_point_sec    end_date;
+   asset             daily_pay;
+   string            subject;
+   string            permlink;
+   uint64_t          total_votes = 0;
+   proposal_status   status = proposal_status::all;
+};
+
+struct api_proposal_vote_object
+{
+   api_proposal_vote_object() = default;
+
+   api_proposal_vote_object( const proposal_vote_object& pvo, const database& db ) :
+      id( pvo.id ),
+      voter( pvo.voter ),
+      proposal( db.get< proposal_object, by_id >( pvo.proposal_id ), db.head_block_time() )
+   {}
+
+   proposal_vote_id_type   id;
+   account_name_type       voter;
+   api_proposal_object     proposal;
+};
 
 struct order
 {
@@ -568,7 +630,7 @@ FC_REFLECT( steem::plugins::database_api::api_comment_vote_object,
           )
 
 FC_REFLECT( steem::plugins::database_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
@@ -664,6 +726,34 @@ FC_REFLECT( steem::plugins::database_api::api_hardfork_property_object,
             (current_hardfork_version)
             (next_hardfork)
             (next_hardfork_time)
+          )
+
+FC_REFLECT_ENUM( steem::plugins::database_api::proposal_status,
+                  (all)
+                  (inactive)
+                  (active)
+                  (expired)
+                  (votable)
+               )
+
+FC_REFLECT( steem::plugins::database_api::api_proposal_object,
+            (id)
+            (proposal_id)
+            (creator)
+            (receiver)
+            (start_date)
+            (end_date)
+            (daily_pay)
+            (subject)
+            (permlink)
+            (total_votes)
+            (status)
+          )
+
+FC_REFLECT( steem::plugins::database_api::api_proposal_vote_object,
+            (id)
+            (voter)
+            (proposal)
           )
 
 FC_REFLECT( steem::plugins::database_api::order, (order_price)(real_price)(steem)(sbd)(created) );

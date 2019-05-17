@@ -11,7 +11,7 @@
 
 #include <steem/chain/multi_index_types.hpp>
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 #define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
       object_type () = delete;                           \
    public:
@@ -84,6 +84,8 @@ enum object_type
    vesting_delegation_expiration_object_type,
    pending_required_action_object_type,
    pending_optional_action_object_type,
+   proposal_object_type,
+   proposal_vote_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
@@ -137,6 +139,9 @@ class nai_pool_object;
 class smt_token_emissions_object;
 #endif
 
+class proposal_object;
+class proposal_vote_object;
+
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
 typedef oid< account_metadata_object                > account_metadata_id_type;
@@ -179,6 +184,9 @@ typedef oid< nai_pool_object                        > nai_pool_id_type;
 typedef oid< smt_token_emissions_object             > smt_token_emissions_object_id_type;
 #endif
 
+typedef oid< proposal_object > proposal_id_type;
+typedef oid< proposal_vote_object > proposal_vote_id_type;
+
 enum bandwidth_type
 {
    post,    ///< Rate limiting posting reward eligibility over time
@@ -188,7 +196,7 @@ enum bandwidth_type
 
 } } //steem::chain
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template< typename T > struct is_static_length< chainbase::oid< T > > : public boost::true_type {};
@@ -205,7 +213,7 @@ namespace fc
 {
 class variant;
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 inline void to_variant( const steem::chain::shared_string& s, variant& var )
 {
    var = fc::string( steem::chain::to_string( s ) );
@@ -255,7 +263,7 @@ void unpack( Stream& s, chainbase::oid<T>& id, uint32_t )
    s.read( (char*)&id._id, sizeof(id._id));
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template< typename Stream >
 void pack( Stream& s, const chainbase::shared_string& ss )
 {
@@ -324,7 +332,7 @@ void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value, uint
    }
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template< typename T >
 T unpack_from_vector( const steem::chain::buffer_type& s )
 {
@@ -375,6 +383,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (vesting_delegation_expiration_object_type)
                  (pending_required_action_object_type)
                  (pending_optional_action_object_type)
+                 (proposal_object_type)
+                 (proposal_vote_object_type)
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
@@ -386,7 +396,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
 #endif
 

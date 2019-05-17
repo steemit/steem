@@ -465,7 +465,7 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::convert_request_object > : public boost::true_type {};
