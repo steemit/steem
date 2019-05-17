@@ -5184,7 +5184,7 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
          });
-         
+
          auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
          if( account_auth == nullptr )
             create< account_authority_object >( [&]( account_authority_object& auth )
@@ -5207,21 +5207,20 @@ void database::apply_hardfork( uint32_t hardfork )
                auth.posting.clear();
             });
 
-            modify( get_account( STEEM_TREASURY_ACCOUNT ), [&]( account_object& a )
-            {
-               a.recovery_account = STEEM_TREASURY_ACCOUNT;
-            });
+         modify( get_account( STEEM_TREASURY_ACCOUNT ), [&]( account_object& a )
+         {
+            a.recovery_account = STEEM_TREASURY_ACCOUNT;
+         });
 
-            auto rec_req = find< account_recovery_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
-            if( rec_req )
-               remove( *rec_req );
+         auto rec_req = find< account_recovery_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( rec_req )
+            remove( *rec_req );
 
-            auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
-            if( change_request )
-               remove( *change_request );
-         }
-         break;
+         auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( change_request )
+            remove( *change_request );
       }
+      break;
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
