@@ -2886,6 +2886,7 @@ void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.sbd_stop_adjust = 0;
          p.next_maintenance_time = STEEM_GENESIS_TIME;
          p.last_budget_time = STEEM_GENESIS_TIME;
       } );
@@ -3920,7 +3921,7 @@ void database::update_virtual_supply()
 
          if( percent_sbd <= dgp.sbd_start_percent )
             dgp.sbd_print_rate = STEEM_100_PERCENT;
-         else if( percent_sbd >= dgp.sbd_stop_percent )
+         else if( percent_sbd >= dgp.sbd_stop_percent - dgp.sbd_stop_adjust )
             dgp.sbd_print_rate = 0;
          else
             dgp.sbd_print_rate = ( ( dgp.sbd_stop_percent - percent_sbd ) * STEEM_100_PERCENT ) / ( dgp.sbd_stop_percent - dgp.sbd_start_percent );
@@ -5177,31 +5178,37 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
-      case STEEM_PROPOSALS_HARDFORK:
+      case STEEM_HARDFORK_0_21:
+      {
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
-            if( account_auth == nullptr )
-               create< account_authority_object >( [&]( account_authority_object& auth )
-               {
-                  auth.account = STEEM_TREASURY_ACCOUNT;
-                  auth.owner.weight_threshold = 1;
-                  auth.active.weight_threshold = 1;
-                  auth.posting.weight_threshold = 1;
-               });
-            else
-               modify( *account_auth, [&]( account_authority_object& auth )
-               {
-                  auth.owner.weight_threshold = 1;
-                  auth.owner.clear();
+            gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+         });
+         
+         auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( account_auth == nullptr )
+            create< account_authority_object >( [&]( account_authority_object& auth )
+            {
+               auth.account = STEEM_TREASURY_ACCOUNT;
+               auth.owner.weight_threshold = 1;
+               auth.active.weight_threshold = 1;
+               auth.posting.weight_threshold = 1;
+            });
+         else
+            modify( *account_auth, [&]( account_authority_object& auth )
+            {
+               auth.owner.weight_threshold = 1;
+               auth.owner.clear();
 
-                  auth.active.weight_threshold = 1;
-                  auth.active.clear();
+               auth.active.weight_threshold = 1;
+               auth.active.clear();
 
-                  auth.posting.weight_threshold = 1;
-                  auth.posting.clear();
-               });
-         }
+               auth.posting.weight_threshold = 1;
+               auth.posting.clear();
+            }); 
+ 
          break;
+      }
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
