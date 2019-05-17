@@ -842,6 +842,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             a.post_bandwidth = uint32_t( post_bandwidth );
          }
          a.last_post = now;
+         a.last_post_edit = now;
          a.post_count++;
       });
 
@@ -925,6 +926,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
+      if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3313 ) )
+      {
+         FC_ASSERT( now - auth.last_post_edit >= STEEM_MIN_COMMENT_EDIT_INTERVAL, "Can only perform one comment edit per block." );
+      }
+
       if( !_db.has_hardfork( STEEM_HARDFORK_0_17__772 ) )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_14__306 ) )
@@ -954,6 +960,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( com.parent_author == o.parent_author, "The parent of a comment cannot change." );
             FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
          }
+      });
+
+      _db.modify( auth, [&]( account_object& a )
+      {
+         a.last_post_edit = now;
       });
    #ifndef IS_LOW_MEM
       _db.modify( _db.get< comment_content_object, by_comment >( comment.id ), [&]( comment_content_object& con )

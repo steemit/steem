@@ -205,6 +205,7 @@ struct api_account_object
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
       last_root_post( a.last_root_post ),
+      last_post_edit( a.last_post_edit ),
       last_vote_time( a.last_vote_time ),
       post_bandwidth( a.post_bandwidth ),
       pending_claimed_accounts( a.pending_claimed_accounts )
@@ -302,6 +303,7 @@ struct api_account_object
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+   time_point_sec    last_post_edit;
    time_point_sec    last_vote_time;
    uint32_t          post_bandwidth = 0;
 
@@ -643,7 +645,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(last_vote_time)
+             (last_post)(last_root_post)(last_post_edit)(last_vote_time)
              (post_bandwidth)(pending_claimed_accounts)
              (is_smt)
           )
