@@ -281,6 +281,7 @@ struct multi_index_adapter
                break;
          }
       }
+      close();
       wipe( p );
 
       _index = std::move( new_index );

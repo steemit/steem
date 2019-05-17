@@ -8,7 +8,7 @@ class boost_multi_index_adapter : public boost::multi_index_container< Value, In
 {
    private:
       typedef typename Value::id_type id_type;
-      int64_t _revision = 0;
+      int64_t _revision = -1;
       id_type _next_id = 0;
 
    public:
