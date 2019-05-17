@@ -5200,6 +5200,19 @@ void database::apply_hardfork( uint32_t hardfork )
                   auth.posting.weight_threshold = 1;
                   auth.posting.clear();
                });
+
+            modify( get_account( STEEM_TREASURY_ACCOUNT ), [&]( account_object& a )
+            {
+               a.recovery_account = STEEM_TREASURY_ACCOUNT;
+            });
+
+            auto rec_req = find< account_recovery_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+            if( rec_req )
+               remove( *rec_req );
+
+            auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+            if( change_request )
+               remove( *change_request );
          }
          break;
       case STEEM_SMT_HARDFORK:
