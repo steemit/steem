@@ -34,6 +34,13 @@ using boost::multi_index::member;
 using boost::multi_index::composite_key;
 using boost::multi_index::composite_key_compare;
 using boost::multi_index::const_mem_fun;
+
+template< class Iterator >
+inline boost::reverse_iterator< Iterator > make_reverse_iterator( Iterator iterator )
+{
+   return boost::reverse_iterator< Iterator >( iterator );
+}
+
 #else
 template< typename... Args >
 using multi_index_container = mira::multi_index_adapter< Args... >;
@@ -58,6 +65,12 @@ class mira_type : public ::mira::multi_index_container< T1, T2, T3 >
 public:
    using mira::multi_index_container< T1, T2, T3 >::multi_index_container;
 };
+
+template< class Iterator >
+inline Iterator make_reverse_iterator( Iterator iterator )
+{
+   return iterator.reverse();
+}
 
 #endif
 

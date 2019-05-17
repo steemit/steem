@@ -98,9 +98,11 @@ namespace steem { namespace chain {
             fc::path data_dir;
             fc::path shared_mem_dir;
             uint64_t initial_supply = STEEM_INIT_SUPPLY;
+            uint64_t sbd_initial_supply = STEEM_SBD_INIT_SUPPLY;
             uint64_t shared_file_size = 0;
             uint16_t shared_file_full_threshold = 0;
             uint16_t shared_file_scale_rate = 0;
+            int16_t  sps_remove_threshold = -1;
             uint32_t chainbase_flags = 0;
             bool do_validate_invariants = false;
             bool benchmark_is_enabled = false;
@@ -429,7 +431,7 @@ namespace steem { namespace chain {
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_schema();
-         void init_genesis(uint64_t initial_supply = STEEM_INIT_SUPPLY );
+         void init_genesis(uint64_t initial_supply = STEEM_INIT_SUPPLY, uint64_t sbd_initial_supply = STEEM_SBD_INIT_SUPPLY );
 
          /**
           *  This method validates transactions without adding it to the pending state.
@@ -516,6 +518,8 @@ namespace steem { namespace chain {
 
          void clear_null_account_balance();
 
+         void process_proposals( const block_notification& note );
+
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
@@ -551,6 +555,34 @@ namespace steem { namespace chain {
             return note;
          }
 
+      public:
+
+         const transaction_id_type& get_current_trx() const
+         {
+            return _current_trx_id;
+         }
+         uint16_t get_current_op_in_trx() const
+         {
+            return _current_op_in_trx;
+         }
+
+         int16_t get_sps_remove_threshold() const
+         {
+            return _sps_remove_threshold;
+         }
+
+         void set_sps_remove_threshold( int16_t val )
+         {
+            _sps_remove_threshold = val;
+         }
+
+         util::advanced_benchmark_dumper& get_benchmark_dumper()
+         {
+            return _benchmark_dumper;
+         }
+
+      private:
+
          std::unique_ptr< database_impl > _my;
 
          fork_database                 _fork_db;
@@ -582,6 +614,7 @@ namespace steem { namespace chain {
 
          uint16_t                      _shared_file_full_threshold = 0;
          uint16_t                      _shared_file_scale_rate = 0;
+         int16_t                       _sps_remove_threshold = -1;
 
          flat_map< custom_id_type, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                   _json_schema;

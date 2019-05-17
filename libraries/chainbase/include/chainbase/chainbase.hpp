@@ -261,6 +261,22 @@ namespace chainbase {
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
+#ifdef ENABLE_MIRA
+//((bip::managed_mapped_file*)nullptr)
+         template< typename ByIndex, typename IterType >
+         IterType erase( IterType objI ) {
+            on_remove( *objI );
+            return _indices.template mutable_get< ByIndex >().erase( objI );
+         }
+#else
+         template< typename ByIndex >
+         typename MultiIndexType::template index_iterator<ByIndex>::type erase(typename MultiIndexType::template index_iterator<ByIndex>::type objI) {
+            auto& idx = _indices.template get< ByIndex >();
+            on_remove(*objI);
+            return idx.erase(objI);
+         }
+#endif
+
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );

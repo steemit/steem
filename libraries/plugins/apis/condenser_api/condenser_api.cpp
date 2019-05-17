@@ -11,6 +11,7 @@
 #include <steem/plugins/reputation_api/reputation_api_plugin.hpp>
 #include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
 
+
 #include <steem/utilities/git_revision.hpp>
 
 #include <steem/chain/util/reward.hpp>
@@ -131,6 +132,9 @@ namespace detail
             (get_recent_trades)
             (get_market_history)
             (get_market_history_buckets)
+            (list_proposals)
+            (find_proposals)
+            (list_proposal_votes)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -153,7 +157,6 @@ namespace detail
          std::shared_ptr< follow::follow_api >                             _follow_api;
          std::shared_ptr< reputation::reputation_api >                     _reputation_api;
          std::shared_ptr< market_history::market_history_api >             _market_history_api;
-
          map< transaction_id_type, confirmation_callback >                 _callbacks;
          map< time_point_sec, vector< transaction_id_type > >              _callback_expirations;
          boost::signals2::connection                                       _on_post_apply_block_conn;
@@ -1905,6 +1908,45 @@ namespace detail
       return _market_history_api->get_market_history_buckets( {} ).bucket_sizes;
    }
 
+   DEFINE_API_IMPL( condenser_api_impl, list_proposals )
+   {
+      FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
+
+      steem::plugins::database_api::list_proposals_args list_args;
+      list_args.start           = args[0];
+      list_args.limit           = args[1].as< uint32_t >();
+      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order_direction = args.size() > 3 ?
+         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+      list_args.status          = args.size() > 4 ?
+         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
+
+      return _database_api->list_proposals( list_args ).proposals;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, find_proposals )
+   {
+      CHECK_ARG_SIZE( 1 )
+
+      return _database_api->find_proposals( { args[0].as< vector< steem::plugins::database_api::api_id_type > >() } ).proposals;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, list_proposal_votes )
+   {
+      FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
+
+      steem::plugins::database_api::list_proposals_args list_args;
+      list_args.start           = args[0];
+      list_args.limit           = args[1].as< uint32_t >();
+      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order_direction = args.size() > 3 ?
+         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+      list_args.status          = args.size() > 4 ?
+         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
+
+      return _database_api->list_proposal_votes( list_args ).proposal_votes;
+   }
+
    /**
     *  This call assumes root already stored as part of state, it will
     *  modify root.replies to contain links to the reply posts and then
@@ -2252,6 +2294,9 @@ DEFINE_READ_APIS( condenser_api,
    (get_trade_history)
    (get_recent_trades)
    (get_market_history)
+   (list_proposals)
+   (list_proposal_votes)
+   (find_proposals)
 )
 
 } } } // steem::plugins::condenser_api

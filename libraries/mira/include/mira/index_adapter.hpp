@@ -18,18 +18,37 @@ struct index_adapter
       (((typename MultiIndexAdapterType::mira_type*)nullptr)->template get<IndexedBy>()) ) >::type mira_type;
    typedef typename std::remove_reference< decltype(
       (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
+
+   typedef decltype( (((mira_type*)nullptr)->begin()) )     mira_iter_type;
+   typedef decltype( (((bmic_type*)nullptr)->begin()) )     bmic_iter_type;
+
    typedef iterator_adapter<
       value_type,
-      decltype( (((mira_type*)nullptr)->begin()) ),
-      decltype( (((mira_type*)nullptr)->rbegin()) ),
-      decltype( (((bmic_type*)nullptr)->begin()) ),
-      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                              iter_type;
-   typedef iter_type                                                                               rev_iter_type;
+      mira_iter_type,
+      bmic_iter_type >                                                                            iter_type;
+   typedef boost::reverse_iterator< iter_type >                                                   rev_iter_type;
 
    typedef boost::variant< mira_type*, bmic_type* > index_variant;
 
    private:
       index_adapter() {}
+
+      struct erase_visitor : public boost::static_visitor< iter_type >
+      {
+         iter_type& _pos;
+
+         erase_visitor( iter_type& pos ) : _pos( pos ) {}
+
+         iter_type operator()( mira_type* idx_ptr ) const
+         {
+            return iter_type( idx_ptr->erase( _pos.template get< mira_iter_type >() ) );
+         }
+
+         iter_type operator()( bmic_type* idx_ptr ) const
+         {
+            return iter_type( idx_ptr->erase( _pos.template get< bmic_iter_type >() ) );
+         }
+      };
 
    public:
       index_adapter( const mira_type& mira_index )
@@ -50,12 +69,17 @@ struct index_adapter
          _index( std::move( other._index ) )
       {}
 
+      iter_type erase( iter_type position )
+      {
+         return boost::apply_visitor( erase_visitor( position ), _index );
+      }
+
       iter_type iterator_to( const value_type& v )const
       {
          return boost::apply_visitor(
-         [&]( auto* index ){ return iter_type( index->iterator_to( v ) ); },
-         _index
-      );
+            [&]( auto* index ){ return iter_type( index->iterator_to( v ) ); },
+            _index
+         );
       }
 
       template< typename CompatibleKey >
@@ -118,18 +142,12 @@ struct index_adapter
 
       rev_iter_type rbegin()const
       {
-         return boost::apply_visitor(
-            []( auto* index ){ return rev_iter_type( index->rbegin() ); },
-            _index
-         );
+         return boost::make_reverse_iterator( end() );
       }
 
       rev_iter_type rend()const
       {
-         return boost::apply_visitor(
-            []( auto* index ){ return rev_iter_type( index->rend() ); },
-            _index
-         );
+         return boost::make_reverse_iterator( begin() );
       }
 
       bool empty()const
@@ -163,11 +181,9 @@ struct multi_index_adapter
 
    typedef iterator_adapter<
       value_type,
-      decltype( (((mira_type*)nullptr)->begin()) ),
-      decltype( (((mira_type*)nullptr)->rbegin()) ),
-      decltype( (((bmic_type*)nullptr)->begin()) ),
-      decltype( (((bmic_type*)nullptr)->rbegin()) ) >                                                    iter_type;
-   typedef iter_type                                                                                     rev_iter_type;
+      mira_iter_type,
+      bmic_iter_type >                                                                                   iter_type;
+   typedef boost::reverse_iterator< iter_type >                                                          rev_iter_type;
 
    typedef typename bmic_type::allocator_type                                                         allocator_type;
 
@@ -429,18 +445,12 @@ struct multi_index_adapter
 
    rev_iter_type rbegin()const
    {
-      return boost::apply_visitor(
-         []( auto& index ){ return rev_iter_type( index.rbegin() ); },
-         _index
-      );
+      return boost::make_reverse_iterator( end() );
    }
 
    rev_iter_type rend()const
    {
-      return boost::apply_visitor(
-         []( auto& index ){ return rev_iter_type( index.rend() ); },
-         _index
-      );
+      return boost::make_reverse_iterator( begin() );
    }
 
    bool open( const boost::filesystem::path& p, const boost::any& o )

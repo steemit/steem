@@ -29,6 +29,7 @@
 #include <steem/chain/util/manabar.hpp>
 #include <steem/chain/util/rd_setup.hpp>
 #include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/sps_processor.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -122,7 +123,7 @@ void database::open( const open_args& args )
       if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            init_genesis( args.initial_supply );
+            init_genesis( args.initial_supply, args.sbd_initial_supply );
          });
 
       _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
@@ -166,6 +167,7 @@ void database::open( const open_args& args )
 
       _shared_file_full_threshold = args.shared_file_full_threshold;
       _shared_file_scale_rate = args.shared_file_scale_rate;
+      _sps_remove_threshold = args.sps_remove_threshold;
 
       auto account = find< account_object, by_name >( "nijeah" );
       if( account != nullptr && account->to_withdraw < 0 )
@@ -1595,6 +1597,15 @@ void database::clear_null_account_balance()
    post_push_virtual_operation( vop_op );
 }
 
+void database::process_proposals( const block_notification& note )
+{
+   if( has_hardfork( STEEM_PROPOSALS_HARDFORK ) )
+   {
+      sps_processor sps( *this );
+      sps.run( note );
+   }
+}
+
 /**
  * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
  * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
@@ -2674,6 +2685,11 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
 
+   _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
+   _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
+
+
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
 
@@ -2772,7 +2788,7 @@ void database::init_schema()
    return;*/
 }
 
-void database::init_genesis( uint64_t init_supply )
+void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
 {
    try
    {
@@ -2812,6 +2828,13 @@ void database::init_genesis( uint64_t init_supply )
          auth.active.weight_threshold = 1;
       });
 
+#ifdef IS_TEST_NET
+      create< account_object >( [&]( account_object& a )
+      {
+         a.name = STEEM_TREASURY_ACCOUNT;
+      } );
+#endif
+
       create< account_object >( [&]( account_object& a )
       {
          a.name = STEEM_TEMP_ACCOUNT;
@@ -2830,6 +2853,7 @@ void database::init_genesis( uint64_t init_supply )
             a.name = STEEM_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
             a.memo_key = init_public_key;
             a.balance  = asset( i ? 0 : init_supply, STEEM_SYMBOL );
+            a.sbd_balance = asset( i ? 0 : sbd_init_supply, SBD_SYMBOL );
          } );
 
          create< account_authority_object >( [&]( account_authority_object& auth )
@@ -2856,15 +2880,26 @@ void database::init_genesis( uint64_t init_supply )
          p.recent_slots_filled = fc::uint128::max_value();
          p.participation_count = 128;
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
+         p.init_sbd_supply = asset( sbd_init_supply, SBD_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEM_MAX_BLOCK_SIZE;
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.next_maintenance_time = STEEM_GENESIS_TIME;
+         p.last_budget_time = STEEM_GENESIS_TIME;
       } );
 
+#ifdef IS_TEST_NET
+      create< feed_history_object >( [&]( feed_history_object& o )
+      {
+         o.current_median_history = price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
+      });
+#else
       // Nothing to do
       create< feed_history_object >( [&]( feed_history_object& o ) {});
+#endif
+
       for( int i = 0; i < 0x10000; i++ )
          create< block_summary_object >( [&]( block_summary_object& ) {});
       create< hardfork_property_object >( [&](hardfork_property_object& hpo )
@@ -3206,6 +3241,7 @@ void database::_apply_block( const signed_block& next_block )
    account_recovery_processing();
    expire_escrow_ratification();
    process_decline_voting_rights();
+   process_proposals( note );
 
    generate_required_actions();
    generate_optional_actions();
@@ -3226,6 +3262,7 @@ void database::_apply_block( const signed_block& next_block )
    // reversible.
    migrate_irreversible_state();
    trim_cache();
+
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
@@ -4782,10 +4819,13 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
+   _hardfork_versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
 #endif
 
 
@@ -5137,6 +5177,31 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
+      case STEEM_PROPOSALS_HARDFORK:
+         {
+            auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
+            if( account_auth == nullptr )
+               create< account_authority_object >( [&]( account_authority_object& auth )
+               {
+                  auth.account = STEEM_TREASURY_ACCOUNT;
+                  auth.owner.weight_threshold = 1;
+                  auth.active.weight_threshold = 1;
+                  auth.posting.weight_threshold = 1;
+               });
+            else
+               modify( *account_auth, [&]( account_authority_object& auth )
+               {
+                  auth.owner.weight_threshold = 1;
+                  auth.owner.clear();
+
+                  auth.active.weight_threshold = 1;
+                  auth.active.clear();
+
+                  auth.posting.weight_threshold = 1;
+                  auth.posting.clear();
+               });
+         }
+         break;
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
@@ -5277,7 +5342,7 @@ void database::validate_invariants()const
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
-      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.current_sbd_supply + gpo.init_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
       FC_ASSERT( gpo.total_vesting_shares + gpo.pending_rewarded_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
       FC_ASSERT( gpo.pending_rewarded_vesting_steem == pending_vesting_steem, "", ("pending_rewarded_vesting_steem",gpo.pending_rewarded_vesting_steem)("pending_vesting_steem", pending_vesting_steem));

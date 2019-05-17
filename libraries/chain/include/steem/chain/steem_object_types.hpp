@@ -84,6 +84,8 @@ enum object_type
    vesting_delegation_expiration_object_type,
    pending_required_action_object_type,
    pending_optional_action_object_type,
+   proposal_object_type,
+   proposal_vote_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
@@ -137,6 +139,9 @@ class nai_pool_object;
 class smt_token_emissions_object;
 #endif
 
+class proposal_object;
+class proposal_vote_object;
+
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
 typedef oid< account_metadata_object                > account_metadata_id_type;
@@ -178,6 +183,9 @@ typedef oid< account_rewards_balance_object         > account_rewards_balance_id
 typedef oid< nai_pool_object                        > nai_pool_id_type;
 typedef oid< smt_token_emissions_object             > smt_token_emissions_object_id_type;
 #endif
+
+typedef oid< proposal_object > proposal_id_type;
+typedef oid< proposal_vote_object > proposal_vote_id_type;
 
 enum bandwidth_type
 {
@@ -375,6 +383,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (vesting_delegation_expiration_object_type)
                  (pending_required_action_object_type)
                  (pending_optional_action_object_type)
+                 (proposal_object_type)
+                 (proposal_vote_object_type)
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)

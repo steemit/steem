@@ -18,9 +18,9 @@ class iterator_adapter :
 
    template< typename t > struct type {};
 
-   iter_variant _itr;
-
    public:
+      iter_variant _itr;
+
       iterator_adapter() {}
 
       template< typename T >
@@ -90,16 +90,6 @@ class iterator_adapter :
          );
       }
 
-      bool operator ==( const iterator_adapter& other )
-      {
-         return _itr == other._itr;
-      }
-
-      bool operator !=( const iterator_adapter& other )
-      {
-         return _itr != other._itr;
-      }
-
       template< typename T >
       iterator_adapter& operator =( T& rhs )
       {
@@ -161,5 +151,17 @@ class iterator_adapter :
          _itr = std::move( rhs );
       }
 };
+
+template< typename ValueType, typename... Iters >
+bool operator ==( const iterator_adapter< ValueType, Iters... >& lhs, const iterator_adapter< ValueType, Iters... >& rhs )
+{
+   return lhs._itr == rhs._itr;
+}
+
+template< typename ValueType, typename... Iters >
+bool operator !=( const iterator_adapter< ValueType, Iters... >& lhs, const iterator_adapter< ValueType, Iters... >& rhs )
+{
+   return !( lhs == rhs );
+}
 
 } // mira
