@@ -390,7 +390,7 @@ public:
   /* observers */
 
   key_from_value key_extractor()const{return key;}
-  key_compare    key_comp()const{return comp_;}
+  key_compare&   key_comp()const{return *comp_;}
 
   /* set operations */
 
@@ -443,7 +443,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       _cache( object_cache_factory_type::get_shared_cache() ),
       _handles( super::_handles ),
       key(boost::tuples::get<0>(args_list.get_head())),
-      comp_(boost::tuples::get<1>(args_list.get_head()))
+      comp_(std::make_shared<key_compare>(boost::tuples::get<1>(args_list.get_head())))
    {
       empty_initialize();
       _cache->set_index_cache( COLUMN_INDEX, std::make_unique< index_cache< value_type, key_type, key_from_value > >() );
@@ -747,7 +747,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
          tags,
          ::rocksdb::ColumnFamilyOptions()
       );
-      defs.back().options.comparator = &comp_;
+      defs.back().options.comparator = &(*comp_);
    }
 
    void cache_first_key()
@@ -824,7 +824,7 @@ private:
 
 protected: /* for the benefit of AugmentPolicy::augmented_interface */
   key_from_value key;
-  key_compare    comp_;
+  std::shared_ptr< key_compare >    comp_;
    id_from_value id;
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
