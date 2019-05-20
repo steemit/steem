@@ -389,10 +389,7 @@ namespace steem { namespace chain {
          ordered_unique< tag< by_id >,
             member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id > >,
          ordered_unique< tag< by_account >,
-            composite_key< account_recovery_request_object,
-               member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >
-            >,
-            composite_key_compare< std::less< account_name_type > >
+            member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >
          >,
          ordered_unique< tag< by_expiration >,
             composite_key< account_recovery_request_object,
@@ -413,10 +410,7 @@ namespace steem { namespace chain {
          ordered_unique< tag< by_id >,
             member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id > >,
          ordered_unique< tag< by_account >,
-            composite_key< change_recovery_account_request_object,
-               member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >
-            >,
-            composite_key_compare< std::less< account_name_type > >
+            member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >
          >,
          ordered_unique< tag< by_effective_date >,
             composite_key< change_recovery_account_request_object,
