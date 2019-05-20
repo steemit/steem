@@ -329,7 +329,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
 #ifdef ENABLE_MIRA
-         ("indices-memory-replay", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
+         ("memory-replay-indices", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
 #endif
          ;
    cli.add_options()
@@ -343,7 +343,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
-         ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
+         ("memory-replay,m", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -414,9 +414,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
-   if ( options.count( "indices-memory-replay" ) )
+   if ( options.count( "memory-replay-indices" ) )
    {
-      std::vector<std::string> indices = options.at( "indices-memory-replay" ).as< vector< string > >();
+      std::vector<std::string> indices = options.at( "memory-replay-indices" ).as< vector< string > >();
       for ( auto& element : indices )
       {
          std::vector< std::string > tmp;
