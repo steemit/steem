@@ -1,6 +1,6 @@
 # Basic MIRA configuration
 
-MIRA has many options that allow the user to improve performance. For most use cases the default options will be sufficient. However, one consideration when configuring MIRA is resource limiting.
+MIRA has many options that allow the user to improve performance. For most use cases, the default options will be sufficient. However, one consideration when configuring MIRA is resource limiting.
 
 MIRA uses a multi-tiered architecture for retrieving and storing data from its databases. Each blockchain index is considered its own distinct database. At a very high level, the tiers can be thought of as follows:
 
@@ -48,7 +48,7 @@ Lets break down the most important options with regards to limiting main memory 
 
 ## Object cache
 
-The object cache determines how many database objects MIRA has direct access to. When the application logic accesses the database for reading or writing it does so through an object within the object cache. Having objects in the object cache circumvents the need to make database accesses to the underlying tiers, this is the most performant layer in the MIRA architecture. Since it is not possible to set the object cache limitations by memory, you must configure this layer according to its heaviest possibly usage. The object cache is shared amongst all blockchain index databases. The largest object can be 64KiB, which correlates to the maximum size of one block in the chain. Calculate the heaviest possibly usage with the formula `object_count * 64KiB`. Using the default configuration as an example, `62500 * 64 * 1024 = 4096000000` or simply `62500 * 64KiB = 4GiB`.
+The object cache determines how many database objects MIRA has direct access to. When the application logic accesses the database for reading or writing, it does so through an object within the object cache. Having objects in the object cache circumvents the need to make database accesses to the underlying tiers; this is the most performant layer in the MIRA architecture. Since it is not possible to set the object cache limitations by memory, this layer must be configured according to its heaviest possible usage. The object cache is shared amongst all blockchain index databases. The largest object can be 64KiB, which correlates to the maximum size of one block in the chain. Calculate the heaviest possible usage with the formula `object_count * 64KiB`. Using the default configuration as an example, `62500 * 64 * 1024 = 4096000000` or simply `62500 * 64KiB = 4GiB`.
 
 ```
 ...
@@ -84,7 +84,7 @@ The global shared cache is a section of main memory that will contain data block
 
 ## Global write buffer
 
-The global write buffer is used for performant writes to the database. It lives in main memory and also contains the latest changes to a particular database object. Not only is it used for writing, but also reading. It is important to ensure there is enough capacity allocated to keep up with live chain. The global write buffer is contained *within* the global shared cache. Using the default configuration as an example, `1073741824 = 1GiB`.
+The global write buffer is used for performant writes to the database. It lives in main memory and also contains the latest changes to a particular database object. Not only is it used for writing, but also for reading. It is important to ensure there is enough capacity allocated to keep up with the live chain. The global write buffer is contained *within* the global shared cache. Using the default configuration as an example, `1073741824 = 1GiB`.
 
 ```
 ...
@@ -100,7 +100,7 @@ The global write buffer is used for performant writes to the database. It lives 
 
 ## Application memory
 
-When configuration MIRA it is important to consider the normal memory usage of `steemd`. Regardless of the MIRA configuration, `steemd` will tend to use roughly 5.5GiB of memory.
+When configuring MIRA it is important to consider the normal memory usage of `steemd`. Regardless of the MIRA configuration, `steemd` will tend to use roughly 5.5GiB of memory.
 
 ---
 
