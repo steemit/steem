@@ -185,39 +185,31 @@ void database::open( const open_args& args )
 }
 
 #ifdef ENABLE_MIRA
-void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg )
+void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
 {
-   db.get_mutable_index< dynamic_global_property_index           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< account_index                           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< account_metadata_index                  >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< account_authority_index                 >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< witness_index                           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< transaction_index                       >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< block_summary_index                     >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< witness_schedule_index                  >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< comment_index                           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< comment_content_index                   >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< comment_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< witness_vote_index                      >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< limit_order_index                       >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< feed_history_index                      >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< convert_request_index                   >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< liquidity_reward_balance_index          >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< operation_index                         >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< account_history_index                   >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< hardfork_property_index                 >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< withdraw_vesting_route_index            >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< owner_authority_history_index           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< account_recovery_request_index          >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< change_recovery_account_request_index   >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< escrow_index                            >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< savings_withdraw_index                  >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< decline_voting_rights_request_index     >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< reward_fund_index                       >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< vesting_delegation_index                >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< vesting_delegation_expiration_index     >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< pending_required_action_index           >().mutable_indices().set_index_type( type, p, cfg );
-   db.get_mutable_index< pending_optional_action_index           >().mutable_indices().set_index_type( type, p, cfg );
+   index_delegate_map delegates;
+
+   if ( indices.size() > 0 )
+   {
+      for ( auto& index_name : indices )
+      {
+         if ( db.has_index_delegate( index_name ) )
+            delegates[ index_name ] = db.get_index_delegate( index_name );
+         else
+            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
+      }
+   }
+   else
+   {
+      delegates = db.index_delegates();
+   }
+
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
+   for ( auto const& delegate : delegates )
+   {
+      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
+      delegate.second.set_index_type( db, type, p, cfg );
+   }
 }
 #endif
 
@@ -246,7 +238,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Configuring replay to use memory..." );
-         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg );
+         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 
@@ -331,7 +323,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Migrating state to disk..." );
-         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg );
+         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 
@@ -4462,6 +4454,26 @@ void database::modify_reward_balance( const account_object& a, const asset& valu
             FC_ASSERT( false, "invalid symbol" );
       }
    });
+}
+
+void database::set_index_delegate( const std::string& n, index_delegate&& d )
+{
+   _index_delegate_map[ n ] = std::move( d );
+}
+
+const index_delegate& database::get_index_delegate( const std::string& n )
+{
+   return _index_delegate_map.at( n );
+}
+
+bool database::has_index_delegate( const std::string& n )
+{
+   return _index_delegate_map.find( n ) != _index_delegate_map.end();
+}
+
+const index_delegate_map& database::index_delegates()
+{
+   return _index_delegate_map;
 }
 
 #ifdef STEEM_ENABLE_SMT

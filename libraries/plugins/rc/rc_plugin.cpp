@@ -382,30 +382,6 @@ struct block_extensions_count_resources_visitor
    void operator()( const T& ) {}
 };
 
-void rc_plugin_impl::on_pre_reindex( const reindex_notification& note )
-{
-#ifdef ENABLE_MIRA
-   if( note.args.replay_in_memory )
-   {
-      _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
-      _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
-      _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::bmic, note.args.shared_mem_dir, note.args.database_cfg );
-   }
-#endif
-}
-
-void rc_plugin_impl::on_post_reindex( const reindex_notification& note )
-{
-#ifdef ENABLE_MIRA
-   if( note.args.replay_in_memory )
-   {
-      _db.get_mutable_index< rc_resource_param_index >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
-      _db.get_mutable_index< rc_pool_index           >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
-      _db.get_mutable_index< rc_account_index        >().mutable_indices().set_index_type( mira::index_type::mira, note.args.shared_mem_dir, note.args.database_cfg );
-   }
-#endif
-}
-
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
@@ -1184,11 +1160,6 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      my->_pre_reindex_conn = db.add_pre_reindex_handler( [&]( const reindex_notification& note )
-         { try { my->on_pre_reindex( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
-      my->_post_reindex_conn = db.add_post_reindex_handler( [&]( const reindex_notification& note )
-         { try { my->on_post_reindex( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
-
       my->_post_apply_block_conn = db.add_post_apply_block_handler( [&]( const block_notification& note )
          { try { my->on_post_apply_block( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       //my->_pre_apply_transaction_conn = db.add_pre_apply_transaction_handler( [&]( const transaction_notification& note )
@@ -1204,9 +1175,9 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )
          { try { my->on_post_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
 
-      add_plugin_index< rc_resource_param_index >(db);
-      add_plugin_index< rc_pool_index >(db);
-      add_plugin_index< rc_account_index >(db);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_resource_param_index);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_pool_index);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_account_index);
 
       fc::mutable_variant_object state_opts;
 

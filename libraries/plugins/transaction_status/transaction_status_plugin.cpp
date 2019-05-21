@@ -299,7 +299,7 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
          my->tracking = true;
       }
 
-      chain::add_plugin_index< transaction_status_index >( my->_db );
+      STEEM_ADD_PLUGIN_INDEX(my->_db, transaction_status_index);
 
       appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
 

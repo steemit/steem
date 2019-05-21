@@ -87,6 +87,7 @@ class chain_plugin_impl
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       bool                             replay_in_memory = false;
+      std::vector< std::string >       replay_memory_indices{};
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
       uint32_t allow_future_time = 5;
@@ -329,6 +330,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
+#ifdef ENABLE_MIRA
+         ("memory-replay-indices", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
+#endif
          ;
    cli.add_options()
          ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
@@ -342,7 +346,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
-         ("memory-replay", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
+         ("memory-replay,m", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
 #endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
@@ -415,6 +419,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
+   if ( options.count( "memory-replay-indices" ) )
+   {
+      std::vector<std::string> indices = options.at( "memory-replay-indices" ).as< vector< string > >();
+      for ( auto& element : indices )
+      {
+         std::vector< std::string > tmp;
+         boost::split( tmp, element, boost::is_any_of("\t ") );
+         my->replay_memory_indices.insert( my->replay_memory_indices.end(), tmp.begin(), tmp.end() );
+      }
+   }
 #endif
 
 #ifdef IS_TEST_NET
@@ -512,6 +526,7 @@ void chain_plugin::plugin_startup()
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
    db_open_args.database_cfg = database_config;
    db_open_args.replay_in_memory = my->replay_in_memory;
+   db_open_args.replay_memory_indices = my->replay_memory_indices;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )

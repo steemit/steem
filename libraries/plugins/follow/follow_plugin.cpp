@@ -366,12 +366,12 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 
       my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0 );
       my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->post_operation( note ); }, *this, 0 );
-      add_plugin_index< follow_index            >( my->_db );
-      add_plugin_index< feed_index              >( my->_db );
-      add_plugin_index< blog_index              >( my->_db );
-      add_plugin_index< reputation_index        >( my->_db );
-      add_plugin_index< follow_count_index      >( my->_db );
-      add_plugin_index< blog_author_stats_index >( my->_db );
+      STEEM_ADD_PLUGIN_INDEX(my->_db, follow_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, feed_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, blog_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, reputation_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, follow_count_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, blog_author_stats_index);
 
       fc::mutable_variant_object state_opts;
 
