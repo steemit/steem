@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <memory>
 #include <boost/core/addressof.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/detail/no_exceptions_support.hpp>
 #include <boost/detail/workaround.hpp>
 #include <boost/filesystem.hpp>
@@ -106,6 +107,7 @@ public:
   typedef typename super::iterator_type_list       iterator_type_list;
   typedef typename super::const_iterator_type_list const_iterator_type_list;
   typedef typename super::value_type               value_type;
+  typedef typename value_type::id_type             id_type;
   typedef typename super::final_allocator_type     allocator_type;
   typedef typename super::iterator                 iterator;
   typedef typename super::const_iterator           const_iterator;
@@ -271,7 +273,7 @@ public:
 
          s = super::_db->Get(
             read_opts,
-            &*super::_handles[0],
+            &*super::_handles[ DEFAULT_COLUMN ],
             ::rocksdb::Slice( ser_count_key.data(), ser_count_key.size() ),
             &value_slice );
 
@@ -285,7 +287,7 @@ public:
 
          s = super::_db->Get(
             read_opts,
-            &*super::_handles[0],
+            &*super::_handles[ DEFAULT_COLUMN ],
             ::rocksdb::Slice( ser_rev_key.data(), ser_rev_key.size() ),
             &value_slice );
 
@@ -461,6 +463,21 @@ int64_t set_revision( int64_t rev )
    if( s.ok() ) _revision = rev;
 
    return _revision;
+}
+
+id_type next_id()
+{
+   id_type id;
+   if ( !get_metadata( "next_id", id ) )
+      id = 0;
+   return id;
+}
+
+void set_next_id( id_type id )
+{
+   bool success = put_metadata( "next_id", id );
+   boost::ignore_unused( success );
+   assert( success );
 }
 
 void print_stats() const

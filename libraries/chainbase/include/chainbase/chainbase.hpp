@@ -245,6 +245,9 @@ namespace chainbase {
             }
 
             ++_next_id;
+#ifdef ENABLE_MIRA
+            _indices.set_next_id( _next_id );
+#endif
             on_create( *insert_result.first );
             return *insert_result.first;
          }
@@ -408,6 +411,9 @@ namespace chainbase {
                _indices.erase( _indices.find( id ) );
             }
             _next_id = head.old_next_id;
+#ifdef ENABLE_MIRA
+            _indices.set_next_id( _next_id );
+#endif
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( std::move( item.second ) ).second;
