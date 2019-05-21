@@ -3397,10 +3397,14 @@ try {
                // so the combined market cap is $900 + $100 = $1000.
 
                const auto& gpo = get_dynamic_global_properties();
-               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
 
-               if( min_price > fho.current_median_history )
-                  fho.current_median_history = min_price;
+               if( gpo.current_sbd_supply.amount > 0 )
+               {
+                  price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
+
+                  if( min_price > fho.current_median_history )
+                     fho.current_median_history = min_price;
+               }
             }
          }
       });
