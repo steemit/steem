@@ -317,7 +317,10 @@ void transaction_status_plugin::plugin_startup()
       ilog( "transaction_status: plugin_startup() begin" );
       if ( my->rebuild_state_flag )
       {
-         my->rebuild_state();
+         my->_db.with_write_lock( [&]()
+         {
+            my->rebuild_state();
+         });
       }
       else if ( !my->state_is_valid() )
       {
