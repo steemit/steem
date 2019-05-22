@@ -35,10 +35,15 @@ namespace steem { namespace chain {
    using abstract_plugin = appbase::abstract_plugin;
 
    class database;
+
+#ifdef ENABLE_MIRA
    using set_index_type_func = std::function< void(database&, mira::index_type, const boost::filesystem::path&, const boost::any&) >;
+#endif
 
    struct index_delegate {
+#ifdef ENABLE_MIRA
       set_index_type_func set_index_type;
+#endif
    };
 
    using index_delegate_map = std::map< std::string, index_delegate >;

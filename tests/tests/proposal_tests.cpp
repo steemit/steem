@@ -2847,6 +2847,7 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_03 )
       BOOST_REQUIRE( calc_votes( proposal_vote_idx, proposals_id ) == 0 );
 
       int32_t benchmark_time = get_time( *db, sps_processor::get_removing_name() );
+      idump( (benchmark_time) );
       BOOST_REQUIRE( benchmark_time == -1 || benchmark_time < 100 );
 
       /*

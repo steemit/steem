@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 }
 
 /*
-BOOST_AUTO_TEST_CASE( reward_funds )
+OOST_AUTO_TEST_CASE( reward_funds )
 {
    try
    {
@@ -391,7 +391,8 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
    FC_LOG_AND_RETHROW()
 }
 
-/*BOOST_AUTO_TEST_CASE( comment_payout )
+/*
+OOST_AUTO_TEST_CASE( comment_payout )
 {
    try
    {
@@ -559,7 +560,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
 }*/
 
 /*
-BOOST_AUTO_TEST_CASE( comment_payout )
+OOST_AUTO_TEST_CASE( comment_payout )
 {
    try
    {
@@ -872,7 +873,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( nested_comments )
+OOST_AUTO_TEST_CASE( nested_comments )
 {
    try
    {
@@ -2752,7 +2753,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_account( "sam" ), [&]( account_object& a )
          {
-            a.sbd_balance = asset( ( ( gpo.sbd_start_percent - 6 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
+            a.sbd_balance = asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2760,7 +2761,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 6 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2778,7 +2779,8 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
          db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
-         validate_database();
+         if( db->head_block_num() % 1000 == 0 )
+            validate_database();
       }
 
       validate_database();

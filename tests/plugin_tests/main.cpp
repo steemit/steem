@@ -21,10 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#define BOOST_TEST_MODULE plugin_test
+#include <BoostTestTargetConfig.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <boost/test/included/unit_test.hpp>
 
+/*
 extern uint32_t STEEM_TESTING_GENESIS_TIMESTAMP;
 
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
@@ -38,3 +42,4 @@ boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
    std::cout << "STEEM_TESTING_GENESIS_TIMESTAMP is " << STEEM_TESTING_GENESIS_TIMESTAMP << std::endl;
    return nullptr;
 }
+*/
