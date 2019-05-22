@@ -2,7 +2,6 @@
 
 #include <fc/string.hpp>
 #include <fc/time.hpp>
-#include <sys/sysmacros.h>
 
 namespace steem { namespace protocol {
 

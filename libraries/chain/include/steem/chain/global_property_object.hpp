@@ -140,6 +140,10 @@ namespace steem { namespace chain {
          time_point_sec next_maintenance_time;
          time_point_sec last_budget_time;
 
+         uint16_t content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF16;
+         uint16_t vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
+         uint16_t sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
+
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
 #endif
@@ -201,6 +205,9 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (sbd_stop_adjust)
              (next_maintenance_time)
              (last_budget_time)
+             (content_reward_percent)
+             (vesting_reward_percent)
+             (sps_fund_percent)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif

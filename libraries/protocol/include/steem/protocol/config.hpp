@@ -133,8 +133,9 @@
 #define STEEM_INFLATION_RATE_START_PERCENT    (978) // Fixes block 7,000,000 to 9.5%
 #define STEEM_INFLATION_RATE_STOP_PERCENT     (95) // 0.95%
 #define STEEM_INFLATION_NARROWING_PERIOD      (250000) // Narrow 0.01% every 250k blocks
-#define STEEM_CONTENT_REWARD_PERCENT          (75*STEEM_1_PERCENT) //75% of inflation, 7.125% inflation
-#define STEEM_VESTING_FUND_PERCENT            (15*STEEM_1_PERCENT) //15% of inflation, 1.425% inflation
+#define STEEM_CONTENT_REWARD_PERCENT_HF16     (75*STEEM_1_PERCENT) //75% of inflation, 7.125% inflation
+#define STEEM_VESTING_FUND_PERCENT_HF16       (15*STEEM_1_PERCENT) //15% of inflation, 1.425% inflation
+#define STEEM_PROPOSAL_FUND_PERCENT_HF0       (0)
 
 #define STEEM_MINER_PAY_PERCENT               (STEEM_1_PERCENT) // 1%
 #define STEEM_MAX_RATION_DECAY_RATE           (1000000)
