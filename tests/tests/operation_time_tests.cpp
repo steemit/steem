@@ -2651,9 +2651,9 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 }
 
 // This test is too intensive without optimizations. Disable it when we build in debug
-#ifndef DEBUG
 BOOST_AUTO_TEST_CASE( sbd_stability )
 {
+   #ifndef DEBUG
    try
    {
       resize_shared_mem( 1024 * 1024 * 512 ); // Due to number of blocks in the test, it requires a large file. (64 MB)
@@ -2788,8 +2788,8 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db->get_dynamic_global_properties().sbd_print_rate == STEEM_100_PERCENT );
    }
    FC_LOG_AND_RETHROW()
+   #endif
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 {

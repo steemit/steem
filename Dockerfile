@@ -81,7 +81,7 @@ RUN \
         cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
-    ctest -j8 --output-on-failure && \
+    ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
@@ -117,7 +117,7 @@ RUN \
         cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
-    ctest -j8 --output-on-failure && \
+    ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
@@ -154,7 +154,7 @@ RUN \
         cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
-    ctest -j8 --output-on-failure && \
+    ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --gcov-exclude=".*vendor*" --output="/var/cobertura/coverage.xml" && \
