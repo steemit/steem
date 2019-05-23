@@ -65,7 +65,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve_id& curve, const uint128_t& content_constant )
+uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve_id& curve, const uint128_t& var1, const uint128_t& var2 )
 {
    uint128_t result = 0;
 
@@ -73,12 +73,14 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
    {
       case protocol::quadratic:
          {
+            const uint128_t& content_constant = var1;
             uint128_t rshares_plus_s = rshares + content_constant;
             result = rshares_plus_s * rshares_plus_s - content_constant * content_constant;
          }
          break;
       case protocol::bounded_curation:
          {
+            const uint128_t& content_constant = var1;
             uint128_t two_alpha = content_constant * 2;
             result = uint128_t( rshares.lo, 0 ) / ( two_alpha + rshares );
          }
@@ -88,6 +90,13 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
          break;
       case protocol::square_root:
          result = approx_sqrt( rshares );
+         break;
+      case protocol::convergent_linear:
+         {
+            const uint128_t& c = var1;
+            const uint128_t& k = var2;
+            result = ( rshares * rshares ) / ( rshares / c + k );
+         }
          break;
    }
 

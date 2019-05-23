@@ -7,7 +7,8 @@ enum curve_id
    quadratic,
    bounded_curation,
    linear,
-   square_root
+   square_root,
+   convergent_linear
 };
 
 } } // steem::utilities
@@ -19,4 +20,5 @@ FC_REFLECT_ENUM(
    (bounded_curation)
    (linear)
    (square_root)
+   (convergent_linear)
 )
