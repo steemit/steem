@@ -165,6 +165,7 @@ namespace chainbase {
 
    void database::wipe( const bfs::path& dir )
    {
+      std::cout << "WIPE!!!" << std::endl;
       assert( !_is_open );
 #ifndef ENABLE_MIRA
       _segment.reset();
