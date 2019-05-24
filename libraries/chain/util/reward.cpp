@@ -94,7 +94,7 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
       case protocol::convergent_linear:
          {
             const uint128_t& s = var1;
-            result = ( rshares + s ) * ( rshares + s ) - s * s / ( rshares + 4 * s );
+            result = ( ( rshares + s ) * ( rshares + s ) - s * s ) / ( rshares + 4 * s );
          }
          break;
       case protocol::convergent_square_root:
