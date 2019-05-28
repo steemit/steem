@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 }
 
 /*
-OOST_AUTO_TEST_CASE( reward_funds )
+BOOST_AUTO_TEST_CASE( reward_funds )
 {
    try
    {
@@ -392,7 +392,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
 }
 
 /*
-OOST_AUTO_TEST_CASE( comment_payout )
+BOOST_AUTO_TEST_CASE( comment_payout )
 {
    try
    {
@@ -560,7 +560,7 @@ OOST_AUTO_TEST_CASE( comment_payout )
 }*/
 
 /*
-OOST_AUTO_TEST_CASE( comment_payout )
+BOOST_AUTO_TEST_CASE( comment_payout )
 {
    try
    {
