@@ -1216,7 +1216,6 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 
       auto next_withdrawal = db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS;
       asset vesting_shares = new_alice.vesting_shares;
-      asset to_withdraw = op.vesting_shares;
       asset original_vesting = vesting_shares;
       asset withdraw_rate = new_alice.vesting_withdraw_rate;
 
@@ -1273,45 +1272,13 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          old_next_vesting = alice.next_vesting_withdrawal;
       }
 
-      if (  to_withdraw.amount.value % withdraw_rate.amount.value != 0 )
-      {
-         BOOST_TEST_MESSAGE( "Generating one more block to take care of remainder" );
-         generate_blocks( db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
-         fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
-         gpo = db->get_dynamic_global_properties();
+      BOOST_TEST_MESSAGE( "Generating one more block to finish vesting withdrawal" );
+      generate_blocks( db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
 
-         BOOST_REQUIRE( db->get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == ( old_next_vesting + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
-         BOOST_REQUIRE( fill_op.from_account == "alice" );
-         BOOST_REQUIRE( fill_op.to_account == "alice" );
-         BOOST_REQUIRE( fill_op.withdrawn.amount.value == withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
-
-         generate_blocks( db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
-         gpo = db->get_dynamic_global_properties();
-         fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
-
-         BOOST_REQUIRE( db->get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == fc::time_point_sec::maximum().sec_since_epoch() );
-         BOOST_REQUIRE( fill_op.to_account == "alice" );
-         BOOST_REQUIRE( fill_op.from_account == "alice" );
-         BOOST_REQUIRE( fill_op.withdrawn.amount.value == to_withdraw.amount.value % withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
-
-         validate_database();
-      }
-      else
-      {
-         generate_blocks( db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
-
-         BOOST_REQUIRE( db->get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == fc::time_point_sec::maximum().sec_since_epoch() );
-
-         fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
-         BOOST_REQUIRE( fill_op.from_account == "alice" );
-         BOOST_REQUIRE( fill_op.to_account == "alice" );
-         BOOST_REQUIRE( fill_op.withdrawn.amount.value == withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
-      }
-
+      BOOST_REQUIRE( db->get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == fc::time_point_sec::maximum().sec_since_epoch() );
       BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == ( original_vesting - op.vesting_shares ).amount.value );
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2594,6 +2561,8 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       db->push_transaction( tx, 0 );
 
       comment.body = "test2";
+
+      generate_block();
 
       tx.operations.clear();
       tx.signatures.clear();

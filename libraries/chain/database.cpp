@@ -29,6 +29,7 @@
 #include <steem/chain/util/manabar.hpp>
 #include <steem/chain/util/rd_setup.hpp>
 #include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/sps_processor.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -122,7 +123,7 @@ void database::open( const open_args& args )
       if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            init_genesis( args.initial_supply );
+            init_genesis( args.initial_supply, args.sbd_initial_supply );
          });
 
       _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
@@ -134,7 +135,7 @@ void database::open( const open_args& args )
       // Rewind all undo state. This should return us to the state at the last irreversible block.
       with_write_lock( [&]()
       {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          undo_all();
 #endif
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
@@ -166,6 +167,7 @@ void database::open( const open_args& args )
 
       _shared_file_full_threshold = args.shared_file_full_threshold;
       _shared_file_scale_rate = args.shared_file_scale_rate;
+      _sps_remove_threshold = args.sps_remove_threshold;
 
       auto account = find< account_object, by_name >( "nijeah" );
       if( account != nullptr && account->to_withdraw < 0 )
@@ -182,9 +184,38 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
+#ifdef ENABLE_MIRA
+void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
+{
+   index_delegate_map delegates;
+
+   if ( indices.size() > 0 )
+   {
+      for ( auto& index_name : indices )
+      {
+         if ( db.has_index_delegate( index_name ) )
+            delegates[ index_name ] = db.get_index_delegate( index_name );
+         else
+            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
+      }
+   }
+   else
+   {
+      delegates = db.index_delegates();
+   }
+
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
+   for ( auto const& delegate : delegates )
+   {
+      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
+      delegate.second.set_index_type( db, type, p, cfg );
+   }
+}
+#endif
+
 uint32_t database::reindex( const open_args& args )
 {
-   reindex_notification note;
+   reindex_notification note( args );
 
    BOOST_SCOPE_EXIT(this_,&note) {
       STEEM_TRY_NOTIFY(this_->_post_reindex_signal, note);
@@ -192,15 +223,25 @@ uint32_t database::reindex( const open_args& args )
 
    try
    {
-      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
 
       ilog( "Reindexing Blockchain" );
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       initialize_indexes();
 #endif
 
       wipe( args.data_dir, args.shared_mem_dir, false );
       open( args );
+
+      STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
+
+#ifdef ENABLE_MIRA
+      if( args.replay_in_memory )
+      {
+         ilog( "Configuring replay to use memory..." );
+         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+      }
+#endif
+
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -237,9 +278,13 @@ uint32_t database::reindex( const open_args& args )
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
             {
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
-               "   (" << (get_free_memory() >> 20) << "M free, " <<
-               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M)\n";
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
+#ifdef ENABLE_MIRA
+               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
+#else
+               (get_free_memory() >> 20) << "M free"
+#endif
+               << ")\n";
 
                //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
                //rocksdb::get_perf_context()->Reset();
@@ -268,11 +313,19 @@ uint32_t database::reindex( const open_args& args )
          set_revision( head_block_num() );
          _block_log.set_locking( true );
 
-         get_index< account_index >().indices().print_stats();
+         //get_index< account_index >().indices().print_stats();
       });
 
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
+
+#ifdef ENABLE_MIRA
+      if( args.replay_in_memory )
+      {
+         ilog( "Migrating state to disk..." );
+         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+      }
+#endif
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
@@ -305,7 +358,7 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
       undo_all();
 #endif
 
@@ -407,7 +460,7 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 
 const signed_transaction database::get_recent_transaction( const transaction_id_type& trx_id ) const
 { try {
-   auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
+   const auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
@@ -534,7 +587,7 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 { try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
@@ -1534,6 +1587,15 @@ void database::clear_null_account_balance()
       adjust_supply( -total_sbd );
 
    post_push_virtual_operation( vop_op );
+}
+
+void database::process_proposals( const block_notification& note )
+{
+   if( has_hardfork( STEEM_PROPOSALS_HARDFORK ) )
+   {
+      sps_processor sps( *this );
+      sps.run( note );
+   }
 }
 
 /**
@@ -2567,6 +2629,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< set_withdraw_vesting_route_evaluator     >();
    _my->_evaluator_registry.register_evaluator< account_create_evaluator                 >();
    _my->_evaluator_registry.register_evaluator< account_update_evaluator                 >();
+   _my->_evaluator_registry.register_evaluator< account_update2_evaluator                >();
    _my->_evaluator_registry.register_evaluator< witness_update_evaluator                 >();
    _my->_evaluator_registry.register_evaluator< account_witness_vote_evaluator           >();
    _my->_evaluator_registry.register_evaluator< account_witness_proxy_evaluator          >();
@@ -2613,6 +2676,11 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
+
+   _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
+   _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
+
 
 #ifdef IS_TEST_NET
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
@@ -2712,7 +2780,7 @@ void database::init_schema()
    return;*/
 }
 
-void database::init_genesis( uint64_t init_supply )
+void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
 {
    try
    {
@@ -2752,6 +2820,13 @@ void database::init_genesis( uint64_t init_supply )
          auth.active.weight_threshold = 1;
       });
 
+#ifdef IS_TEST_NET
+      create< account_object >( [&]( account_object& a )
+      {
+         a.name = STEEM_TREASURY_ACCOUNT;
+      } );
+#endif
+
       create< account_object >( [&]( account_object& a )
       {
          a.name = STEEM_TEMP_ACCOUNT;
@@ -2770,6 +2845,7 @@ void database::init_genesis( uint64_t init_supply )
             a.name = STEEM_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
             a.memo_key = init_public_key;
             a.balance  = asset( i ? 0 : init_supply, STEEM_SYMBOL );
+            a.sbd_balance = asset( i ? 0 : sbd_init_supply, SBD_SYMBOL );
          } );
 
          create< account_authority_object >( [&]( account_authority_object& auth )
@@ -2796,15 +2872,27 @@ void database::init_genesis( uint64_t init_supply )
          p.recent_slots_filled = fc::uint128::max_value();
          p.participation_count = 128;
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
+         p.init_sbd_supply = asset( sbd_init_supply, SBD_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEM_MAX_BLOCK_SIZE;
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
+         p.sbd_stop_adjust = 0;
+         p.next_maintenance_time = STEEM_GENESIS_TIME;
+         p.last_budget_time = STEEM_GENESIS_TIME;
       } );
 
+#ifdef IS_TEST_NET
+      create< feed_history_object >( [&]( feed_history_object& o )
+      {
+         o.current_median_history = price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
+      });
+#else
       // Nothing to do
       create< feed_history_object >( [&]( feed_history_object& o ) {});
+#endif
+
       for( int i = 0; i < 0x10000; i++ )
          create< block_summary_object >( [&]( block_summary_object& ) {});
       create< hardfork_property_object >( [&](hardfork_property_object& hpo )
@@ -2946,7 +3034,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
@@ -3146,6 +3234,7 @@ void database::_apply_block( const signed_block& next_block )
    account_recovery_processing();
    expire_escrow_ratification();
    process_decline_voting_rights();
+   process_proposals( note );
 
    generate_required_actions();
    generate_optional_actions();
@@ -3166,6 +3255,7 @@ void database::_apply_block( const signed_block& next_block )
    // reversible.
    migrate_irreversible_state();
    trim_cache();
+
 } FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) ) }
 
 struct process_header_visitor
@@ -3307,10 +3397,14 @@ try {
                // so the combined market cap is $900 + $100 = $1000.
 
                const auto& gpo = get_dynamic_global_properties();
-               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
 
-               if( min_price > fho.current_median_history )
-                  fho.current_median_history = min_price;
+               if( gpo.current_sbd_supply.amount > 0 )
+               {
+                  price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply );
+
+                  if( min_price > fho.current_median_history )
+                     fho.current_median_history = min_price;
+               }
             }
          }
       });
@@ -3498,6 +3592,8 @@ void database::apply_required_action( const required_automated_action& a )
 
 void database::process_optional_actions( const optional_automated_actions& actions )
 {
+   if( !has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    static const action_validate_visitor validate_visitor;
 
    for( auto actions_itr = actions.begin(); actions_itr != actions.end(); ++actions_itr )
@@ -3509,6 +3605,12 @@ void database::process_optional_actions( const optional_automated_actions& actio
       // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
    }
+
+   // This expiration is based on the timestamp of the last irreversible block. For historical
+   // blocks, generation of optional actions should be disabled and the expiration can be skipped.
+   // For reindexing of the first 2 million blocks, this unnecessary read consumes almost 30%
+   // of runtime.
+   FC_TODO( "Optimize expiration for reindex." );
 
    // Clear out "expired" optional_actions. If the block when an optional action was generated
    // has become irreversible then a super majority of witnesses have chosen to not include it
@@ -3815,7 +3917,7 @@ void database::update_virtual_supply()
 
          if( percent_sbd <= dgp.sbd_start_percent )
             dgp.sbd_print_rate = STEEM_100_PERCENT;
-         else if( percent_sbd >= dgp.sbd_stop_percent )
+         else if( percent_sbd >= dgp.sbd_stop_percent - dgp.sbd_stop_adjust )
             dgp.sbd_print_rate = 0;
          else
             dgp.sbd_print_rate = ( ( dgp.sbd_stop_percent - percent_sbd ) * STEEM_100_PERCENT ) / ( dgp.sbd_stop_percent - dgp.sbd_start_percent );
@@ -4358,6 +4460,26 @@ void database::modify_reward_balance( const account_object& a, const asset& valu
    });
 }
 
+void database::set_index_delegate( const std::string& n, index_delegate&& d )
+{
+   _index_delegate_map[ n ] = std::move( d );
+}
+
+const index_delegate& database::get_index_delegate( const std::string& n )
+{
+   return _index_delegate_map.at( n );
+}
+
+bool database::has_index_delegate( const std::string& n )
+{
+   return _index_delegate_map.find( n ) != _index_delegate_map.end();
+}
+
+const index_delegate_map& database::index_delegates()
+{
+   return _index_delegate_map;
+}
+
 #ifdef STEEM_ENABLE_SMT
 struct smt_regular_balance_operator
 {
@@ -4714,10 +4836,13 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
+   _hardfork_versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
 #endif
 
 
@@ -5069,6 +5194,49 @@ void database::apply_hardfork( uint32_t hardfork )
             });
          }
          break;
+      case STEEM_HARDFORK_0_21:
+      {
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+         });
+
+         auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( account_auth == nullptr )
+            create< account_authority_object >( [&]( account_authority_object& auth )
+            {
+               auth.account = STEEM_TREASURY_ACCOUNT;
+               auth.owner.weight_threshold = 1;
+               auth.active.weight_threshold = 1;
+               auth.posting.weight_threshold = 1;
+            });
+         else
+            modify( *account_auth, [&]( account_authority_object& auth )
+            {
+               auth.owner.weight_threshold = 1;
+               auth.owner.clear();
+
+               auth.active.weight_threshold = 1;
+               auth.active.clear();
+
+               auth.posting.weight_threshold = 1;
+               auth.posting.clear();
+            });
+
+         modify( get_account( STEEM_TREASURY_ACCOUNT ), [&]( account_object& a )
+         {
+            a.recovery_account = STEEM_TREASURY_ACCOUNT;
+         });
+
+         auto rec_req = find< account_recovery_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( rec_req )
+            remove( *rec_req );
+
+         auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
+         if( change_request )
+            remove( *change_request );
+      }
+      break;
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
@@ -5209,7 +5377,7 @@ void database::validate_invariants()const
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
-      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.current_sbd_supply + gpo.init_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
       FC_ASSERT( gpo.total_vesting_shares + gpo.pending_rewarded_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
       FC_ASSERT( gpo.pending_rewarded_vesting_steem == pending_vesting_steem, "", ("pending_rewarded_vesting_steem",gpo.pending_rewarded_vesting_steem)("pending_vesting_steem", pending_vesting_steem));

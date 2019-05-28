@@ -506,7 +506,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    if( my->_witnesses.size() && my->_private_keys.size() )
       my->_chain_plugin.set_write_lock_hold_time( -1 );
 
-   add_plugin_index< witness_custom_op_index >( my->_db );
+   STEEM_ADD_PLUGIN_INDEX(my->_db, witness_custom_op_index);
 
 } FC_LOG_AND_RETHROW() }
 

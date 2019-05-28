@@ -84,66 +84,72 @@ void WriteUnpreparedTxn::Initialize(const TransactionOptions& txn_options) {
 }
 
 Status WriteUnpreparedTxn::Put(ColumnFamilyHandle* column_family,
-                               const Slice& key, const Slice& value) {
+                               const Slice& key, const Slice& value,
+                               const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::Put(column_family, key, value);
+  return TransactionBaseImpl::Put(column_family, key, value, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::Put(ColumnFamilyHandle* column_family,
-                               const SliceParts& key, const SliceParts& value) {
+                               const SliceParts& key, const SliceParts& value,
+                               const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::Put(column_family, key, value);
+  return TransactionBaseImpl::Put(column_family, key, value, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::Merge(ColumnFamilyHandle* column_family,
-                                 const Slice& key, const Slice& value) {
+                                 const Slice& key, const Slice& value,
+                                 const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::Merge(column_family, key, value);
+  return TransactionBaseImpl::Merge(column_family, key, value, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::Delete(ColumnFamilyHandle* column_family,
-                                  const Slice& key) {
+                                  const Slice& key, const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::Delete(column_family, key);
+  return TransactionBaseImpl::Delete(column_family, key, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::Delete(ColumnFamilyHandle* column_family,
-                                  const SliceParts& key) {
+                                  const SliceParts& key,
+                                  const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::Delete(column_family, key);
+  return TransactionBaseImpl::Delete(column_family, key, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::SingleDelete(ColumnFamilyHandle* column_family,
-                                        const Slice& key) {
+                                        const Slice& key,
+                                        const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::SingleDelete(column_family, key);
+  return TransactionBaseImpl::SingleDelete(column_family, key, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::SingleDelete(ColumnFamilyHandle* column_family,
-                                        const SliceParts& key) {
+                                        const SliceParts& key,
+                                        const bool assume_tracked) {
   Status s = MaybeFlushWriteBatchToDB();
   if (!s.ok()) {
     return s;
   }
-  return TransactionBaseImpl::SingleDelete(column_family, key);
+  return TransactionBaseImpl::SingleDelete(column_family, key, assume_tracked);
 }
 
 Status WriteUnpreparedTxn::MaybeFlushWriteBatchToDB() {
@@ -327,8 +333,8 @@ Status WriteUnpreparedTxn::CommitInternal() {
    public:
     explicit PublishSeqPreReleaseCallback(DBImpl* db_impl)
         : db_impl_(db_impl) {}
-    virtual Status Callback(SequenceNumber seq, bool is_mem_disabled
-                            __attribute__((__unused__))) override {
+    Status Callback(SequenceNumber seq,
+                    bool is_mem_disabled __attribute__((__unused__))) override {
       assert(is_mem_disabled);
       assert(db_impl_->immutable_db_options().two_write_queues);
       db_impl_->SetLastPublishedSequence(seq);
@@ -366,15 +372,14 @@ Status WriteUnpreparedTxn::RollbackInternal() {
   assert(GetId() != kMaxSequenceNumber);
   assert(GetId() > 0);
   const auto& cf_map = *wupt_db_->GetCFHandleMap();
-  // In WritePrepared, the txn is is the same as prepare seq
-  auto last_visible_txn = GetId() - 1;
+  auto read_at_seq = kMaxSequenceNumber;
   Status s;
 
   ReadOptions roptions;
   // Note that we do not use WriteUnpreparedTxnReadCallback because we do not
   // need to read our own writes when reading prior versions of the key for
   // rollback.
-  WritePreparedTxnReadCallback callback(wpt_db_, last_visible_txn, 0);
+  WritePreparedTxnReadCallback callback(wpt_db_, read_at_seq, 0);
   for (const auto& cfkey : write_set_keys_) {
     const auto cfid = cfkey.first;
     const auto& keys = cfkey.second;
@@ -442,9 +447,8 @@ Status WriteUnpreparedTxn::RollbackInternal() {
                     prepare_seq);
   // Commit the batch by writing an empty batch to the queue that will release
   // the commit sequence number to readers.
-  const size_t ZERO_COMMITS = 0;
-  WritePreparedCommitEntryPreReleaseCallback update_commit_map_with_prepare(
-      wpt_db_, db_impl_, prepare_seq, ONE_BATCH, ZERO_COMMITS);
+  WriteUnpreparedRollbackPreReleaseCallback update_commit_map_with_prepare(
+      wpt_db_, db_impl_, unprep_seqs_, prepare_seq);
   WriteBatch empty_batch;
   empty_batch.PutLogData(Slice());
   // In the absence of Prepare markers, use Noop as a batch separator
@@ -454,19 +458,7 @@ Status WriteUnpreparedTxn::RollbackInternal() {
                           &update_commit_map_with_prepare);
   assert(!s.ok() || seq_used != kMaxSequenceNumber);
   // Mark the txn as rolled back
-  uint64_t& rollback_seq = seq_used;
   if (s.ok()) {
-    // Note: it is safe to do it after PreReleaseCallback via WriteImpl since
-    // all the writes by the prpared batch are already blinded by the rollback
-    // batch. The only reason we commit the prepared batch here is to benefit
-    // from the existing mechanism in CommitCache that takes care of the rare
-    // cases that the prepare seq is visible to a snsapshot but max evicted seq
-    // advances that prepare seq.
-    for (const auto& seq : unprep_seqs_) {
-      for (size_t i = 0; i < seq.second; i++) {
-        wpt_db_->AddCommitted(seq.first + i, rollback_seq);
-      }
-    }
     for (const auto& seq : unprep_seqs_) {
       wpt_db_->RemovePrepared(seq.first, seq.second);
     }

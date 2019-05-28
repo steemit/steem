@@ -167,7 +167,6 @@ Status ExternalSstFileIngestionJob::Run() {
   assert(status.ok() && need_flush == false);
 #endif
 
-  bool consumed_seqno = false;
   bool force_global_seqno = false;
 
   if (ingestion_options_.snapshot_consistency && !db_snapshots_->empty()) {
@@ -197,7 +196,7 @@ Status ExternalSstFileIngestionJob::Run() {
     TEST_SYNC_POINT_CALLBACK("ExternalSstFileIngestionJob::Run",
                              &assigned_seqno);
     if (assigned_seqno == last_seqno + 1) {
-      consumed_seqno = true;
+      consumed_seqno_ = true;
     }
     if (!status.ok()) {
       return status;
@@ -207,13 +206,6 @@ Status ExternalSstFileIngestionJob::Run() {
                   f.largest_internal_key(), f.assigned_seqno, f.assigned_seqno,
                   false);
   }
-
-  if (consumed_seqno) {
-    versions_->SetLastAllocatedSequence(last_seqno + 1);
-    versions_->SetLastPublishedSequence(last_seqno + 1);
-    versions_->SetLastSequence(last_seqno + 1);
-  }
-
   return status;
 }
 
@@ -225,7 +217,7 @@ void ExternalSstFileIngestionJob::UpdateStats() {
   for (IngestedFileInfo& f : files_to_ingest_) {
     InternalStats::CompactionStats stats(CompactionReason::kExternalSstIngestion, 1);
     stats.micros = total_time;
-    // If actual copy occured for this file, then we need to count the file
+    // If actual copy occurred for this file, then we need to count the file
     // size as the actual bytes written. If the file was linked, then we ignore
     // the bytes written for file metadata.
     // TODO (yanqin) maybe account for file metadata bytes for exact accuracy?
@@ -269,6 +261,7 @@ void ExternalSstFileIngestionJob::Cleanup(const Status& status) {
                        f.internal_file_path.c_str(), s.ToString().c_str());
       }
     }
+    consumed_seqno_ = false;
   } else if (status.ok() && ingestion_options_.move_files) {
     // The files were moved and added successfully, remove original file links
     for (IngestedFileInfo& f : files_to_ingest_) {
@@ -312,6 +305,13 @@ Status ExternalSstFileIngestionJob::GetIngestedFileInfo(
                          sv->mutable_cf_options.prefix_extractor.get(),
                          env_options_, cfd_->internal_comparator()),
       std::move(sst_file_reader), file_to_ingest->file_size, &table_reader);
+  if (!status.ok()) {
+    return status;
+  }
+
+  if (ingestion_options_.verify_checksums_before_ingest) {
+    status = table_reader->VerifyChecksum();
+  }
   if (!status.ok()) {
     return status;
   }

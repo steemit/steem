@@ -79,6 +79,10 @@ DBOptions BuildDBOptions(const ImmutableDBOptions& immutable_db_options,
   options.allow_fallocate = immutable_db_options.allow_fallocate;
   options.is_fd_close_on_exec = immutable_db_options.is_fd_close_on_exec;
   options.stats_dump_period_sec = mutable_db_options.stats_dump_period_sec;
+  options.stats_persist_period_sec =
+      mutable_db_options.stats_persist_period_sec;
+  options.stats_history_buffer_size =
+      mutable_db_options.stats_history_buffer_size;
   options.advise_random_on_open = immutable_db_options.advise_random_on_open;
   options.db_write_buffer_size = immutable_db_options.db_write_buffer_size;
   options.write_buffer_manager = immutable_db_options.write_buffer_manager;
@@ -126,6 +130,7 @@ DBOptions BuildDBOptions(const ImmutableDBOptions& immutable_db_options,
       immutable_db_options.preserve_deletes;
   options.two_write_queues = immutable_db_options.two_write_queues;
   options.manual_wal_flush = immutable_db_options.manual_wal_flush;
+  options.atomic_flush = immutable_db_options.atomic_flush;
 
   return options;
 }
@@ -141,6 +146,8 @@ ColumnFamilyOptions BuildColumnFamilyOptions(
   cf_opts.arena_block_size = mutable_cf_options.arena_block_size;
   cf_opts.memtable_prefix_bloom_size_ratio =
       mutable_cf_options.memtable_prefix_bloom_size_ratio;
+  cf_opts.memtable_whole_key_filtering =
+      mutable_cf_options.memtable_whole_key_filtering;
   cf_opts.memtable_huge_page_size = mutable_cf_options.memtable_huge_page_size;
   cf_opts.max_successive_merges = mutable_cf_options.max_successive_merges;
   cf_opts.inplace_update_num_locks =
@@ -215,7 +222,8 @@ std::map<CompactionStopStyle, std::string>
 std::unordered_map<std::string, ChecksumType>
     OptionsHelper::checksum_type_string_map = {{"kNoChecksum", kNoChecksum},
                                                {"kCRC32c", kCRC32c},
-                                               {"kxxHash", kxxHash}};
+                                               {"kxxHash", kxxHash},
+                                               {"kxxHash64", kxxHash64}};
 
 std::unordered_map<std::string, CompressionType>
     OptionsHelper::compression_type_string_map = {
@@ -1491,6 +1499,14 @@ std::unordered_map<std::string, OptionTypeInfo>
          {offsetof(struct DBOptions, stats_dump_period_sec), OptionType::kUInt,
           OptionVerificationType::kNormal, true,
           offsetof(struct MutableDBOptions, stats_dump_period_sec)}},
+        {"stats_persist_period_sec",
+         {offsetof(struct DBOptions, stats_persist_period_sec),
+          OptionType::kUInt, OptionVerificationType::kNormal, true,
+          offsetof(struct MutableDBOptions, stats_persist_period_sec)}},
+        {"stats_history_buffer_size",
+         {offsetof(struct DBOptions, stats_history_buffer_size),
+          OptionType::kSizeT, OptionVerificationType::kNormal, true,
+          offsetof(struct MutableDBOptions, stats_history_buffer_size)}},
         {"fail_if_options_file_error",
          {offsetof(struct DBOptions, fail_if_options_file_error),
           OptionType::kBoolean, OptionVerificationType::kNormal, false, 0}},
@@ -1554,7 +1570,11 @@ std::unordered_map<std::string, OptionTypeInfo>
           offsetof(struct ImmutableDBOptions, manual_wal_flush)}},
         {"seq_per_batch",
          {0, OptionType::kBoolean, OptionVerificationType::kDeprecated, false,
-          0}}};
+          0}},
+        {"atomic_flush",
+         {offsetof(struct DBOptions, atomic_flush), OptionType::kBoolean,
+          OptionVerificationType::kNormal, false,
+          offsetof(struct ImmutableDBOptions, atomic_flush)}}};
 
 std::unordered_map<std::string, BlockBasedTableOptions::IndexType>
     OptionsHelper::block_base_table_index_type_string_map = {
@@ -1795,6 +1815,10 @@ std::unordered_map<std::string, OptionTypeInfo>
         {"memtable_prefix_bloom_probes",
          {0, OptionType::kUInt32T, OptionVerificationType::kDeprecated, true,
           0}},
+        {"memtable_whole_key_filtering",
+         {offset_of(&ColumnFamilyOptions::memtable_whole_key_filtering),
+          OptionType::kBoolean, OptionVerificationType::kNormal, true,
+          offsetof(struct MutableCFOptions, memtable_whole_key_filtering)}},
         {"min_partial_merge_operands",
          {0, OptionType::kUInt32T, OptionVerificationType::kDeprecated, true,
           0}},
@@ -1896,9 +1920,9 @@ std::unordered_map<std::string, OptionTypeInfo>
           OptionType::kUInt64T, OptionVerificationType::kNormal, true,
           offsetof(struct CompactionOptionsFIFO, max_table_files_size)}},
         {"ttl",
-         {offset_of(&CompactionOptionsFIFO::ttl), OptionType::kUInt64T,
-          OptionVerificationType::kNormal, true,
-          offsetof(struct CompactionOptionsFIFO, ttl)}},
+         {0, OptionType::kUInt64T,
+          OptionVerificationType::kDeprecated, false,
+          0}},
         {"allow_compaction",
          {offset_of(&CompactionOptionsFIFO::allow_compaction),
           OptionType::kBoolean, OptionVerificationType::kNormal, true,

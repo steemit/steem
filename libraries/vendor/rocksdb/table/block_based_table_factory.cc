@@ -194,8 +194,8 @@ BlockBasedTableFactory::BlockBasedTableFactory(
 
 Status BlockBasedTableFactory::NewTableReader(
     const TableReaderOptions& table_reader_options,
-    unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
-    unique_ptr<TableReader>* table_reader,
+    std::unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
+    std::unique_ptr<TableReader>* table_reader,
     bool prefetch_index_and_filter_in_cache) const {
   return BlockBasedTable::Open(
       table_reader_options.ioptions, table_reader_options.env_options,
@@ -215,11 +215,11 @@ TableBuilder* BlockBasedTableFactory::NewTableBuilder(
       table_builder_options.int_tbl_prop_collector_factories, column_family_id,
       file, table_builder_options.compression_type,
       table_builder_options.compression_opts,
-      table_builder_options.compression_dict,
       table_builder_options.skip_filters,
       table_builder_options.column_family_name,
       table_builder_options.creation_time,
-      table_builder_options.oldest_key_time);
+      table_builder_options.oldest_key_time,
+      table_builder_options.target_file_size);
 
   return table_builder;
 }

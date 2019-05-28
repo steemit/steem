@@ -191,8 +191,12 @@ struct post_operation_visitor
 
          const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
-         const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
          auto itr = idx.find( op.author );
+
+#ifndef ENABLE_MIRA
+         const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
+#endif
+
 
          performance_data pd;
 
@@ -206,7 +210,10 @@ struct post_operation_visitor
                   bool is_empty = feed_itr == comment_idx.end();
 
                   pd.init( c.id, is_empty );
-                  uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
+                  uint32_t next_id = 0;
+#ifndef ENABLE_MIRA
+                  next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
+#endif
 
                   if( pd.s.creation && is_empty )
                   {
@@ -225,11 +232,17 @@ struct post_operation_visitor
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
          auto blog_itr = comment_blog_idx.find( boost::make_tuple( c.id, op.author ) );
-         const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          bool is_empty = blog_itr == comment_blog_idx.end();
 
+#ifndef ENABLE_MIRA
+         const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
+#endif
+
          pd.init( c.id, is_empty );
-         uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_blog >( old_blog_idx, op.author, _plugin._self.max_feed_size, pd );
+         uint32_t next_id = 0;
+#ifndef ENABLE_MIRA
+         next_id = perf.delete_old_objects< performance_data::t_creation_type::full_blog >( old_blog_idx, op.author, _plugin._self.max_feed_size, pd );
+#endif
 
          if( pd.s.creation && is_empty )
          {
@@ -353,12 +366,12 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 
       my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0 );
       my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->post_operation( note ); }, *this, 0 );
-      add_plugin_index< follow_index            >( my->_db );
-      add_plugin_index< feed_index              >( my->_db );
-      add_plugin_index< blog_index              >( my->_db );
-      add_plugin_index< reputation_index        >( my->_db );
-      add_plugin_index< follow_count_index      >( my->_db );
-      add_plugin_index< blog_author_stats_index >( my->_db );
+      STEEM_ADD_PLUGIN_INDEX(my->_db, follow_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, feed_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, blog_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, reputation_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, follow_count_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, blog_author_stats_index);
 
       fc::mutable_variant_object state_opts;
 

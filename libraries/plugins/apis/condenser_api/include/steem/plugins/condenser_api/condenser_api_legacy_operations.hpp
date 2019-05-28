@@ -2,6 +2,7 @@
 #include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/operations.hpp>
+#include <steem/protocol/sps_operations.hpp>
 
 #include <steem/chain/witness_objects.hpp>
 
@@ -69,6 +70,8 @@ namespace steem { namespace plugins { namespace condenser_api {
    typedef shutdown_witness_operation             legacy_shutdown_witness_operation;
    typedef hardfork_operation                     legacy_hardfork_operation;
    typedef comment_payout_update_operation        legacy_comment_payout_update_operation;
+   typedef update_proposal_votes_operation        legacy_update_proposal_votes_operation;
+   typedef remove_proposal_operation              legacy_remove_proposal_operation;
 
    struct legacy_price
    {
@@ -398,6 +401,41 @@ namespace steem { namespace plugins { namespace condenser_api {
       account_name_type from;
       account_name_type to;
       legacy_asset      amount;
+   };
+
+   struct legacy_create_proposal_operation
+   {
+      legacy_create_proposal_operation() {}
+      legacy_create_proposal_operation( const create_proposal_operation& op ) :
+         creator( op.creator ),
+         receiver( op.receiver ),
+         start_date( op.start_date ),
+         end_date( op.end_date ),
+         daily_pay( legacy_asset::from_asset( op.daily_pay ) ),
+         subject( op.subject ),
+         permlink( op.permlink)
+      {}
+
+      operator create_proposal_operation()const
+      {
+         create_proposal_operation op;
+         op.creator = creator;
+         op.receiver = receiver;
+         op.start_date = start_date;
+         op.end_date = end_date;
+         op.daily_pay = daily_pay;
+         op.subject = subject;
+         op.permlink = permlink;
+         return op;
+      }
+
+      account_name_type creator;
+      account_name_type receiver;
+      time_point_sec start_date;
+      time_point_sec end_date;
+      legacy_asset daily_pay;
+      string subject;
+      string permlink;
    };
 
    struct legacy_withdraw_vesting_operation
@@ -1050,7 +1088,10 @@ namespace steem { namespace plugins { namespace condenser_api {
             legacy_comment_payout_update_operation,
             legacy_return_vesting_delegation_operation,
             legacy_comment_benefactor_reward_operation,
-            legacy_producer_reward_operation
+            legacy_producer_reward_operation,
+            legacy_create_proposal_operation,
+            legacy_update_proposal_votes_operation,
+            legacy_remove_proposal_operation
          > legacy_operation;
 
    struct legacy_operation_conversion_visitor
@@ -1088,6 +1129,8 @@ namespace steem { namespace plugins { namespace condenser_api {
       bool operator()( const shutdown_witness_operation& op )const               { l_op = op; return true; }
       bool operator()( const hardfork_operation& op )const                       { l_op = op; return true; }
       bool operator()( const comment_payout_update_operation& op )const          { l_op = op; return true; }
+      bool operator()( const update_proposal_votes_operation& op )const          { l_op = op; return true; }
+      bool operator()( const remove_proposal_operation& op )const                { l_op = op; return true; }
 
       bool operator()( const transfer_operation& op )const
       {
@@ -1275,6 +1318,11 @@ namespace steem { namespace plugins { namespace condenser_api {
          return true;
       }
 
+      bool operator()( const create_proposal_operation& op )const
+      {
+         l_op = legacy_create_proposal_operation( op );
+         return true;
+      }
 
       // Should only be SMT ops
       template< typename T >
@@ -1442,6 +1490,11 @@ struct convert_from_legacy_operation_visitor
       return operation( claim_account_operation( op ) );
    }
 
+   operation operator()( const legacy_create_proposal_operation& op )const
+   {
+      return operation( create_proposal_operation( op ) );
+   }
+
    template< typename T >
    operation operator()( const T& t )const
    {
@@ -1564,5 +1617,6 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_return_vesting_delegation_oper
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink) )
 
 FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )

@@ -93,6 +93,16 @@ struct TransactionDBOptions {
   // logic in myrocks. This hack of simply not rolling back merge operands works
   // for the special way that myrocks uses this operands.
   bool rollback_merge_operands = false;
+
+ private:
+  // 128 entries
+  size_t wp_snapshot_cache_bits = static_cast<size_t>(7);
+  // 8m entry, 64MB size
+  size_t wp_commit_cache_bits = static_cast<size_t>(23);
+
+  friend class WritePreparedTxnDB;
+  friend class WritePreparedTransactionTestBase;
+  friend class MySQLStyleTransactionTest;
 };
 
 struct TransactionOptions {
@@ -171,8 +181,8 @@ struct KeyLockInfo {
 struct DeadlockInfo {
   TransactionID m_txn_id;
   uint32_t m_cf_id;
-  std::string m_waiting_key;
   bool m_exclusive;
+  std::string m_waiting_key;
 };
 
 struct DeadlockPath {

@@ -52,6 +52,8 @@ class rc_plugin_impl
          _skip.skip_reject_unknown_delta_vests = 1;
       }
 
+      void on_pre_reindex( const reindex_notification& node );
+      void on_post_reindex( const reindex_notification& note );
       void on_post_apply_block( const block_notification& note );
       //void on_pre_apply_transaction( const transaction_notification& note );
       void on_post_apply_transaction( const transaction_notification& note );
@@ -79,6 +81,8 @@ class rc_plugin_impl
       std::set< account_name_type > _whitelist;
 #endif
 
+      boost::signals2::connection   _pre_reindex_conn;
+      boost::signals2::connection   _post_reindex_conn;
       boost::signals2::connection   _post_apply_block_conn;
       boost::signals2::connection   _pre_apply_transaction_conn;
       boost::signals2::connection   _post_apply_transaction_conn;
@@ -759,6 +763,22 @@ struct pre_apply_operation_visitor
       regenerate< false >( _current_witness );
    }
 
+   void operator()( const create_proposal_operation& op )const
+   {
+      regenerate( op.creator );
+      regenerate( op.receiver );
+   }
+
+   void operator()( const update_proposal_votes_operation& op )const
+   {
+      regenerate( op.voter );
+   }
+
+   void operator()( const remove_proposal_operation& op )const
+   {
+      regenerate( op.proposal_owner );
+   }
+
    template< typename Op >
    void operator()( const Op& op )const {}
 };
@@ -921,6 +941,22 @@ struct post_apply_operation_visitor
    void operator()( const clear_null_account_balance_operation& op )const
    {
       _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
+   }
+
+   void operator()( const create_proposal_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.creator );
+      _mod_accounts.emplace_back( op.receiver );
+   }
+
+   void operator()( const update_proposal_votes_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.voter );
+   }
+
+   void operator()( const remove_proposal_operation& op )const
+   {
+      _mod_accounts.emplace_back( op.proposal_owner );
    }
 
    template< typename Op >
@@ -1139,9 +1175,9 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
       my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )
          { try { my->on_post_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
 
-      add_plugin_index< rc_resource_param_index >(db);
-      add_plugin_index< rc_pool_index >(db);
-      add_plugin_index< rc_account_index >(db);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_resource_param_index);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_pool_index);
+      STEEM_ADD_PLUGIN_INDEX(db, rc_account_index);
 
       fc::mutable_variant_object state_opts;
 
@@ -1185,6 +1221,8 @@ void rc_plugin::plugin_startup() {}
 
 void rc_plugin::plugin_shutdown()
 {
+   chain::util::disconnect_signal( my->_pre_reindex_conn );
+   chain::util::disconnect_signal( my->_post_reindex_conn );
    chain::util::disconnect_signal( my->_post_apply_block_conn );
    // chain::util::disconnect_signal( my->_pre_apply_transaction_conn );
    chain::util::disconnect_signal( my->_post_apply_transaction_conn );

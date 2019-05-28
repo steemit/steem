@@ -205,6 +205,11 @@ struct count_operation_visitor
       execution_time_count += _e.account_update_operation_exec_time;
    }
 
+   void operator()( const account_update2_operation& )const
+   {
+      execution_time_count += _e.account_update2_operation_exec_time;
+   }
+
    void operator()( const account_witness_proxy_operation& )const
    {
       execution_time_count += _e.account_witness_proxy_operation_exec_time;
@@ -349,6 +354,26 @@ struct count_operation_visitor
    }
 #endif
 
+   void operator()( const create_proposal_operation& op ) const
+   {
+      state_bytes_count += _w.proposal_object_base_size;
+      state_bytes_count += sizeof( op.subject );
+      state_bytes_count += sizeof( op.permlink );
+      execution_time_count += _e.create_proposal_operation_exec_time;
+   }
+
+   void operator()( const update_proposal_votes_operation& op ) const
+   {
+      state_bytes_count += _w.proposal_vote_object_base_size;
+      state_bytes_count += _w.proposal_vote_object_member_size * op.proposal_ids.size();
+      execution_time_count += _e.update_proposal_votes_operation_exec_time;
+   }
+
+   void operator()(const remove_proposal_operation&) const
+   {
+      execution_time_count += _e.remove_proposal_operation_exec_time;
+   }
+
    void operator()( const recover_account_operation& ) const {}
    void operator()( const pow_operation& ) const {}
    void operator()( const pow2_operation& ) const {}
@@ -373,6 +398,7 @@ struct count_operation_visitor
    void operator()( const comment_benefactor_reward_operation& ) const {}
    void operator()( const producer_reward_operation& ) const {}
    void operator()( const clear_null_account_balance_operation& ) const {}
+   void operator()(const proposal_pay_operation&) const {}
 
    // Optional Actions
 #ifdef IS_TEST_NET

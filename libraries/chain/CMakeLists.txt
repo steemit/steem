@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/chain/*.hpp" "include/steem/chain/util/*.hpp" "include/steem/chain/smt_objects/*.hpp")
+file(GLOB HEADERS "include/steem/chain/*.hpp" "include/steem/chain/util/*.hpp" "include/steem/chain/smt_objects/*.hpp" "include/steem/chain/sps_objects/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( steem_chain
@@ -8,6 +8,8 @@ add_library( steem_chain
              index.cpp
 
              smt_evaluator.cpp
+             sps_evaluator.cpp
+
              smt_objects/smt_market_maker.cpp
              smt_objects/nai_pool.cpp
              steem_evaluator.cpp
@@ -28,6 +30,8 @@ add_library( steem_chain
              util/impacted.cpp
              util/advanced_benchmark_dumper.cpp
              util/smt_token.cpp
+             util/sps_processor.cpp
+             util/sps_helper.cpp
 
              ${HEADERS}
            )

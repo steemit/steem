@@ -20,6 +20,7 @@
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
+#define SBD_INITIAL_TEST_SUPPLY (300000000ll)
 
 extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 
@@ -208,7 +209,7 @@ struct database_fixture {
 #ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
 #endif
-   void open_database();
+   void open_database( uint16_t shared_file_size_in_mb = 8 );
    void generate_block(uint32_t skip = 0,
                                const fc::ecc::private_key& key = generate_private_key("init_key"),
                                int miss_blocks = 0);
@@ -273,7 +274,7 @@ struct database_fixture {
 
 struct clean_database_fixture : public database_fixture
 {
-   clean_database_fixture();
+   clean_database_fixture( uint16_t shared_file_size_in_mb = 8 );
    virtual ~clean_database_fixture();
 
    void resize_shared_mem( uint64_t size );
@@ -332,6 +333,42 @@ using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;
 using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture >;
 
 #endif
+
+struct sps_proposal_database_fixture : public clean_database_fixture
+{
+   sps_proposal_database_fixture( uint16_t shared_file_size_in_mb = 8 )
+                           : clean_database_fixture( shared_file_size_in_mb ){}
+   virtual ~sps_proposal_database_fixture(){}
+
+   void plugin_prepare();
+
+   int64_t create_proposal(   std::string creator, std::string receiver,
+                              time_point_sec start_date, time_point_sec end_date,
+                              asset daily_pay, const fc::ecc::private_key& key );
+
+   void vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key );
+
+   bool exist_proposal( int64_t id );
+   const proposal_object* find_proposal( int64_t id );
+
+   void remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key);
+
+   bool find_vote_for_proposal(const std::string& _user, int64_t _proposal_id);
+
+   uint64_t get_nr_blocks_until_maintenance_block();
+
+   void post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key);
+};
+
+struct sps_proposal_database_fixture_performance : public sps_proposal_database_fixture
+{
+   sps_proposal_database_fixture_performance( uint16_t shared_file_size_in_mb = 512 )
+                           : sps_proposal_database_fixture( shared_file_size_in_mb )
+   {
+      db->get_benchmark_dumper().set_enabled( true );
+      db->set_sps_remove_threshold( -1 );
+   }
+};
 
 struct json_rpc_database_fixture : public database_fixture
 {

@@ -102,6 +102,7 @@ namespace steem { namespace chain {
 
          time_point_sec    last_post;
          time_point_sec    last_root_post = fc::time_point_sec::min();
+         time_point_sec    last_post_edit;
          time_point_sec    last_vote_time;
          uint32_t          post_bandwidth = 0;
 
@@ -126,7 +127,7 @@ namespace steem { namespace chain {
 
       template< typename Constructor, typename Allocator >
       account_metadata_object( Constructor&& c, allocator< Allocator > a )
-         : json_metadata( a )
+         : json_metadata( a ), posting_json_metadata( a )
       {
          c( *this );
       }
@@ -134,6 +135,7 @@ namespace steem { namespace chain {
       id_type           id;
       account_id_type   account;
       shared_string     json_metadata;
+      shared_string     posting_json_metadata;
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
@@ -387,10 +389,7 @@ namespace steem { namespace chain {
          ordered_unique< tag< by_id >,
             member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id > >,
          ordered_unique< tag< by_account >,
-            composite_key< account_recovery_request_object,
-               member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >
-            >,
-            composite_key_compare< std::less< account_name_type > >
+            member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >
          >,
          ordered_unique< tag< by_expiration >,
             composite_key< account_recovery_request_object,
@@ -411,10 +410,7 @@ namespace steem { namespace chain {
          ordered_unique< tag< by_id >,
             member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id > >,
          ordered_unique< tag< by_account >,
-            composite_key< change_recovery_account_request_object,
-               member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >
-            >,
-            composite_key_compare< std::less< account_name_type > >
+            member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >
          >,
          ordered_unique< tag< by_effective_date >,
             composite_key< change_recovery_account_request_object,
@@ -428,7 +424,7 @@ namespace steem { namespace chain {
    > change_recovery_account_request_index;
 } }
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 namespace mira {
 
 template<> struct is_static_length< steem::chain::account_object > : public boost::true_type {};
@@ -454,14 +450,14 @@ FC_REFLECT( steem::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(last_vote_time)(post_bandwidth)
+             (last_post)(last_root_post)(last_post_edit)(last_vote_time)(post_bandwidth)
              (pending_claimed_accounts)
           )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_object, steem::chain::account_index )
 
 FC_REFLECT( steem::chain::account_metadata_object,
-             (id)(account)(json_metadata) )
+             (id)(account)(json_metadata)(posting_json_metadata) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_metadata_object, steem::chain::account_metadata_index )
 
 FC_REFLECT( steem::chain::account_authority_object,

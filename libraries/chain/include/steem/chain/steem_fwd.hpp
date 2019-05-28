@@ -6,7 +6,7 @@
 #include <chainbase/allocators.hpp>
 #include <chainbase/util/object_id.hpp>
 
-#ifdef ENABLE_STD_ALLOCATOR
+#ifdef ENABLE_MIRA
 #include <mira/multi_index_container_fwd.hpp>
 #endif
 
@@ -19,7 +19,7 @@ inline void pack( Stream& s, const chainbase::oid<T>& id );
 template<typename Stream, typename T>
 inline void unpack( Stream& s, chainbase::oid<T>& id, uint32_t depth = 0 );
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template<typename Stream>
 inline void pack( Stream& s, const chainbase::shared_string& ss );
 template<typename Stream>
