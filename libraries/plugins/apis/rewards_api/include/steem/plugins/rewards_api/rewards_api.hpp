@@ -13,7 +13,9 @@ public:
    rewards_api();
    ~rewards_api();
 
-   DECLARE_API( (simulate_curve_payout) )
+   DECLARE_API(
+      (simulate_curve_payouts)
+   );
 private:
    std::unique_ptr< detail::rewards_api_impl > my;
 };
