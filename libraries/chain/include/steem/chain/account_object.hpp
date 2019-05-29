@@ -46,6 +46,7 @@ namespace steem { namespace chain {
 
          bool              can_vote = true;
          util::manabar     voting_manabar;
+         util::manabar     downvote_manabar;
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
