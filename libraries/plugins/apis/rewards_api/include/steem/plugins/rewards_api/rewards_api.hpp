@@ -20,4 +20,4 @@ private:
    std::unique_ptr< detail::rewards_api_impl > my;
 };
 
-} } } //steem::plugins::transaction_status_api
+} } } //steem::plugins::rewards_api

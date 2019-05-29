@@ -25,7 +25,7 @@ struct simulate_curve_payouts_return
 };
 
 
-} } } // steem::rewards_api
+} } } // steem::plugins::rewards_api
 
 FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_element, (author)(permlink)(payout) )
 FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_args, (curve)(var1) )

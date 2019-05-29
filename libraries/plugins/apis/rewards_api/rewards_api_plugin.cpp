@@ -17,5 +17,5 @@ void rewards_api_plugin::plugin_startup() {}
 
 void rewards_api_plugin::plugin_shutdown() {}
 
-} } } // steem::plugins::transaction_status_api
+} } } // steem::plugins::rewards_api
 
