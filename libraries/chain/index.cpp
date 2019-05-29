@@ -56,8 +56,8 @@ void initialize_core_indexes( database& db )
    STEEM_ADD_CORE_INDEX(db, nai_pool_index);
    STEEM_ADD_CORE_INDEX(db, smt_token_emissions_index);
 #endif
-   add_core_index< proposal_index                          >( db );
-   add_core_index< proposal_vote_index                     >( db );
+   STEEM_ADD_CORE_INDEX(db, proposal_index);
+   STEEM_ADD_CORE_INDEX(db, proposal_vote_index);
 }
 
 index_info::index_info() {}

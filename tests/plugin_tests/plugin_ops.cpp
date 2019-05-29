@@ -87,25 +87,5 @@ FC_REFLECT_TYPENAME( steem::plugin_tests::test_op );
 STEEM_DEFINE_OPERATION_TYPE( steem::plugin_tests::test_op );
 */
 
-BOOST_FIXTURE_TEST_SUITE( plugin_ops, clean_database_fixture );
-/*
-BOOST_AUTO_TEST_CASE( custom_json )
-{
-   try
-   {
 
-   }
-   FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE( custom_binary )
-{
-   try
-   {
-
-   }
-   FC_LOG_AND_RETHROW()
-}
-*/
-BOOST_AUTO_TEST_SUITE_END()
 #endif
