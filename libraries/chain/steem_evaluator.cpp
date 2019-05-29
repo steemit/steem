@@ -284,6 +284,7 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.memo_key = key;
    acc.created = props.time;
    acc.voting_manabar.last_update_time = props.time.sec_since_epoch();
+   acc.downvote_manabar.last_update_time = props.time.sec_since_epoch();
    acc.mined = mined;
 
    if( hardfork < STEEM_HARDFORK_0_20__2539 )
@@ -1840,6 +1841,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 {
    const auto& comment = _db.get_comment( o.author, o.permlink );
    const auto& voter   = _db.get_account( o.voter );
+   const auto& dgpo    = _db.get_dynamic_global_properties();
 
    FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
 
@@ -1904,9 +1906,18 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 
    int16_t abs_weight = abs( o.weight );
-   uint128_t used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+   uint128_t used_mana = 0;
 
-   const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+   {
+      used_mana = ( std::min( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
+                                uint128_t( voter.voting_manabar.current_mana ) )
+                  * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+   }
+   else
+   {
+      used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+   }
 
    int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
@@ -1935,7 +1946,15 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.voting_manabar.use_mana( used_mana.to_uint64() );
+         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+         {
+            a.downvote_manabar.use_mana( used_mana.to_uint64() );
+         }
+         else
+         {
+            a.voting_manabar.use_mana( used_mana.to_uint64() );
+         }
+
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -2045,7 +2064,15 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         a.voting_manabar.use_mana( used_mana.to_uint64() );
+         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+         {
+            a.downvote_manabar.use_mana( used_mana.to_uint64() );
+         }
+         else
+         {
+            a.voting_manabar.use_mana( used_mana.to_uint64() );
+         }
+
          a.last_vote_time = _db.head_block_time();
       });
 
@@ -3073,6 +3100,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             a.voting_manabar.use_mana( op.vesting_shares.amount.value );
+
+            if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
+            {
+               a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+            }
          }
       });
 
@@ -3105,6 +3137,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
             a.voting_manabar.use_mana( delta.amount.value );
+
+            if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
+            {
+               a.downvote_manabar.use_mana( delta.amount.value );
+            }
          }
       });
 
@@ -3156,6 +3193,16 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
             if( a.voting_manabar.current_mana < 0 )
             {
                a.voting_manabar.current_mana = 0;
+            }
+
+            if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
+            {
+               a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+
+               if( a.downvote_manabar.current_mana < 0 )
+               {
+                  a.downvote_manabar.current_mana = 0;
+               }
             }
          }
       });
