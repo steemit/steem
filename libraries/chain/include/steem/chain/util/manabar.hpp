@@ -124,6 +124,8 @@ void update_manabar( const PropType& gpo, AccountType& account, bool downvote_ma
    account.voting_manabar.regenerate_mana( params, gpo.time );
    account.voting_manabar.use_mana( -new_mana );
 
+   FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
+   // This is used as a hardfork check. Can be replaced with if( gpo.downvote_pool_percent ). Leaving as a hard check to be safe until after HF 21
    if( downvote_mana )
    {
       util::manabar_params params( ( effective_vests * gpo.downvote_pool_percent ) / STEEM_100_PERCENT, STEEM_VOTING_MANA_REGENERATION_SECONDS );

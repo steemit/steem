@@ -1908,7 +1908,8 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    int16_t abs_weight = abs( o.weight );
    uint128_t used_mana = 0;
 
-   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+   FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
    {
       used_mana = ( std::min( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
                                 uint128_t( voter.voting_manabar.current_mana ) )
@@ -3028,9 +3029,16 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
-      available_downvote_shares = asset(
-         ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
-         + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+      if( gpo.downvote_pool_percent )
+      {
+         available_downvote_shares = asset(
+            ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
+            + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+      }
+      else
+      {
+         available_downvote_shares = available_shares;
+      }
 
       // Assume delegated VESTS are used first when consuming mana. You cannot delegate received vesting shares
       available_shares.amount = std::min( available_shares.amount, max_mana - delegator.received_vesting_shares.amount );
@@ -3080,6 +3088,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    {
       FC_ASSERT( available_shares >= op.vesting_shares, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
          ("acc", op.delegator)("r", op.vesting_shares)("a", available_shares) );
+      FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
          FC_ASSERT( available_downvote_shares >= op.vesting_shares, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
          ("acc", op.delegator)("r", op.vesting_shares)("a", available_downvote_shares) );
@@ -3126,6 +3135,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a difference. min_update: ${min}", ("min", min_update) );
       FC_ASSERT( available_shares >= delta, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
          ("acc", op.delegator)("r", delta)("a", available_shares) );
+      FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
          FC_ASSERT( available_shares >= delta, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
          ("acc", op.delegator)("r", delta)("a", available_downvote_shares) );
