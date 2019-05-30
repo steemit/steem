@@ -32,7 +32,6 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
    fc::uint128_t sum_current_curve_vshares = 0;
    fc::uint128_t sum_simulated_vshares = 0;
 
-   std::vector< simulate_curve_payouts_element > elements;
    std::vector< fc::uint128_t >                  element_vshares;
 
    auto reward_fund_object = _db.get< chain::reward_fund_object, chain::by_name >( STEEM_POST_REWARD_FUND_NAME );
@@ -44,23 +43,21 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
       e.permlink = current->permlink;
 
       auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, args.var1 );
-      sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares.to_uint64();
+      sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares;
 
       auto current_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, reward_fund_object.author_reward_curve, reward_fund_object.content_constant );
-      sum_current_curve_vshares = sum_current_curve_vshares + current_curve_vshares.to_uint64();
+      sum_current_curve_vshares = sum_current_curve_vshares + current_curve_vshares;
 
-      elements.push_back( std::move( e ) );
+      ret.payouts.push_back( std::move( e ) );
       element_vshares.push_back( new_curve_vshares );
    }
 
    auto current_estimated_recent_claims = reward_fund_object.recent_claims + sum_current_curve_vshares;
 
-   auto simulated_recent_claims = ( current_estimated_recent_claims / sum_current_curve_vshares ) * sum_simulated_vshares;
+   auto simulated_recent_claims = current_estimated_recent_claims * sum_simulated_vshares / sum_current_curve_vshares;
 
-   for ( std::size_t i = 0; i < elements.size(); ++i )
-      elements[ i ].payout = protocol::asset( ( element_vshares[ i ] / simulated_recent_claims ).to_uint64(), STEEM_SYMBOL ) * reward_fund_object.reward_balance;
-
-   ret.payouts = std::move( elements );
+   for ( std::size_t i = 0; i < ret.payouts.size(); ++i )
+      ret.payouts[ i ].payout = protocol::asset( ( ( element_vshares[ i ] * reward_fund_object.reward_balance.amount.value ) / simulated_recent_claims ).to_uint64(), STEEM_SYMBOL );
 
    return ret;
 }
