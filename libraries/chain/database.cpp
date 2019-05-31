@@ -5235,6 +5235,12 @@ void database::apply_hardfork( uint32_t hardfork )
          auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
          if( change_request )
             remove( *change_request );
+
+         modify( get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo )
+         {
+            rfo.percent_content_rewards = 50;
+            rfo.percent_curation_rewards = 50;
+         });
       }
       break;
       case STEEM_SMT_HARDFORK:
