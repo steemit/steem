@@ -5238,8 +5238,8 @@ void database::apply_hardfork( uint32_t hardfork )
 
          modify( get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo )
          {
-            rfo.percent_content_rewards = 50;
-            rfo.percent_curation_rewards = 50;
+            rfo.percent_content_rewards = 50 * STEEM_1_PERCENT;
+            rfo.percent_curation_rewards = 50 * STEEM_1_PERCENT;
          });
       }
       break;
