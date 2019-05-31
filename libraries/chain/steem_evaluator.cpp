@@ -1926,9 +1926,9 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
    if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
    {
-      FC_ASSERT( voter.voting_manabar.current_mana + voter.downvote_manabar.current_mana > used_mana.to_uint64(),
+      FC_ASSERT( voter.voting_manabar.current_mana + voter.downvote_manabar.current_mana > used_mana.to_int64(),
          "Account does not have enough mana to downvote. voting_mana: ${v} downvote_mana: ${d} required_mana: ${r}",
-         ("v", voter.voting_manabar.current_mana)("d", voter.downvote_manabar.current_mana)("r", used_mana.to_uint64()) );
+         ("v", voter.voting_manabar.current_mana)("d", voter.downvote_manabar.current_mana)("r", used_mana.to_int64()) );
    }
    else
    {
