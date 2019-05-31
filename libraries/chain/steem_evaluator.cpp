@@ -1911,7 +1911,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
    if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
    {
-      used_mana = ( std::min( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
+      used_mana = ( std::max( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
                                 uint128_t( voter.voting_manabar.current_mana ) )
                   * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
    }
@@ -1924,7 +1924,16 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_ASSERT( max_vote_denom > 0 );
 
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
-   FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough mana to vote." );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
+   {
+      FC_ASSERT( voter.voting_manabar.current_mana + voter.downvote_manabar.current_mana > used_mana.to_uint64(),
+         "Account does not have enough mana to downvote. voting_mana: ${v} downvote_mana: ${d} required_mana: ${r}",
+         ("v", voter.voting_manabar.current_mana)("d", voter.downvote_manabar.current_mana)("r", used_mana.to_uint64()) );
+   }
+   else
+   {
+      FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough mana to vote." );
+   }
 
    int64_t abs_rshares = used_mana.to_uint64();
 
@@ -1947,9 +1956,24 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent > 0 && o.weight < 0 )
          {
-            a.downvote_manabar.use_mana( used_mana.to_uint64() );
+            if( used_mana.to_uint64() > a.downvote_manabar.current_mana )
+            {
+               /* used mana is always less than downvote_mana + voting_mana because the amount used
+                * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
+                * there is downvote_mana, then it is because voting_mana is greater, and used_mana
+                * is strictly smaller than voting_mana. This is the same reason why a check is not
+                * required when using voting mana on its own as an upvote.
+                */
+               auto remainder = used_mana.to_uint64() - a.downvote_manabar.current_mana;
+               a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
+               a.voting_manabar.use_mana( remainder );
+            }
+            else
+            {
+               a.downvote_manabar.use_mana( used_mana.to_uint64() );
+            }
          }
          else
          {
@@ -2065,9 +2089,24 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
       _db.modify( voter, [&]( account_object& a )
       {
-         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && o.weight < 0 )
+         if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent > 0 && o.weight < 0 )
          {
-            a.downvote_manabar.use_mana( used_mana.to_uint64() );
+            if( used_mana.to_uint64() > a.downvote_manabar.current_mana )
+            {
+               /* used mana is always less than downvote_mana + voting_mana because the amount used
+                * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
+                * there is downvote_mana, then it is because voting_mana is greater, and used_mana
+                * is strictly smaller than voting_mana. This is the same reason why a check is not
+                * required when using voting mana on its own as an upvote.
+                */
+               auto remainder = used_mana.to_uint64() - a.downvote_manabar.current_mana;
+               a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
+               a.voting_manabar.use_mana( remainder );
+            }
+            else
+            {
+               a.downvote_manabar.use_mana( used_mana.to_uint64() );
+            }
          }
          else
          {

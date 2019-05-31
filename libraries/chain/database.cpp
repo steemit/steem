@@ -5203,6 +5203,7 @@ void database::apply_hardfork( uint32_t hardfork )
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+            gpo.downvote_pool_percent = STEEM_DOWNVOTE_POOL_PERCENT_HF21;
          });
 
          auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
