@@ -114,7 +114,7 @@ public:
 
 class smt_ico_object : public object< smt_ico_object_type, smt_ico_object >
 {
-   smt_ico_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_object );
 
 public:
    template< typename Constructor, typename Allocator >
