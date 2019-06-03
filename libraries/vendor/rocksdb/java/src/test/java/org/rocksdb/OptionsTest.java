@@ -6,13 +6,11 @@
 package org.rocksdb;
 
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.rocksdb.test.RemoveEmptyValueCompactionFilterFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,6 +23,18 @@ public class OptionsTest {
 
   public static final Random rand = PlatformRandomHelper.
       getPlatformSpecificRandomFactory();
+
+  @Test
+  public void copyConstructor() {
+    Options origOpts = new Options();
+    origOpts.setNumLevels(rand.nextInt(8));
+    origOpts.setTargetFileSizeMultiplier(rand.nextInt(100));
+    origOpts.setLevel0StopWritesTrigger(rand.nextInt(50));
+    Options copyOpts = new Options(origOpts);
+    assertThat(origOpts.numLevels()).isEqualTo(copyOpts.numLevels());
+    assertThat(origOpts.targetFileSizeMultiplier()).isEqualTo(copyOpts.targetFileSizeMultiplier());
+    assertThat(origOpts.level0StopWritesTrigger()).isEqualTo(copyOpts.level0StopWritesTrigger());
+  }
 
   @Test
   public void setIncreaseParallelism() {
@@ -634,6 +644,26 @@ public class OptionsTest {
   }
 
   @Test
+  public void setWriteBufferManager() throws RocksDBException {
+    try (final Options opt = new Options();
+         final Cache cache = new LRUCache(1 * 1024 * 1024);
+         final WriteBufferManager writeBufferManager = new WriteBufferManager(2000l, cache)) {
+      opt.setWriteBufferManager(writeBufferManager);
+      assertThat(opt.writeBufferManager()).isEqualTo(writeBufferManager);
+    }
+  }
+
+  @Test
+  public void setWriteBufferManagerWithZeroBufferSize() throws RocksDBException {
+    try (final Options opt = new Options();
+         final Cache cache = new LRUCache(1 * 1024 * 1024);
+         final WriteBufferManager writeBufferManager = new WriteBufferManager(0l, cache)) {
+      opt.setWriteBufferManager(writeBufferManager);
+      assertThat(opt.writeBufferManager()).isEqualTo(writeBufferManager);
+    }
+  }
+
+  @Test
   public void accessHintOnCompactionStart() {
     try (final Options opt = new Options()) {
       final AccessHint accessHint = AccessHint.SEQUENTIAL;
@@ -724,6 +754,15 @@ public class OptionsTest {
   }
 
   @Test
+  public void enablePipelinedWrite() {
+    try(final Options opt = new Options()) {
+      assertThat(opt.enablePipelinedWrite()).isFalse();
+      opt.setEnablePipelinedWrite(true);
+      assertThat(opt.enablePipelinedWrite()).isTrue();
+    }
+  }
+
+  @Test
   public void allowConcurrentMemtableWrite() {
     try (final Options opt = new Options()) {
       final boolean boolValue = rand.nextBoolean();
@@ -805,6 +844,38 @@ public class OptionsTest {
   }
 
   @Test
+  public void walFilter() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.walFilter()).isNull();
+
+      try (final AbstractWalFilter walFilter = new AbstractWalFilter() {
+        @Override
+        public void columnFamilyLogNumberMap(
+            final Map<Integer, Long> cfLognumber,
+            final Map<String, Integer> cfNameId) {
+          // no-op
+        }
+
+        @Override
+        public LogRecordFoundResult logRecordFound(final long logNumber,
+            final String logFileName, final WriteBatch batch,
+            final WriteBatch newBatch) {
+          return new LogRecordFoundResult(
+              WalProcessingOption.CONTINUE_PROCESSING, false);
+        }
+
+        @Override
+        public String name() {
+          return "test-wal-filter";
+        }
+      }) {
+        opt.setWalFilter(walFilter);
+        assertThat(opt.walFilter()).isEqualTo(walFilter);
+      }
+    }
+  }
+
+  @Test
   public void failIfOptionsFileError() {
     try (final Options opt = new Options()) {
       final boolean boolValue = rand.nextBoolean();
@@ -837,6 +908,52 @@ public class OptionsTest {
       final boolean boolValue = rand.nextBoolean();
       opt.setAvoidFlushDuringShutdown(boolValue);
       assertThat(opt.avoidFlushDuringShutdown()).isEqualTo(boolValue);
+    }
+  }
+
+
+  @Test
+  public void allowIngestBehind() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.allowIngestBehind()).isFalse();
+      opt.setAllowIngestBehind(true);
+      assertThat(opt.allowIngestBehind()).isTrue();
+    }
+  }
+
+  @Test
+  public void preserveDeletes() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.preserveDeletes()).isFalse();
+      opt.setPreserveDeletes(true);
+      assertThat(opt.preserveDeletes()).isTrue();
+    }
+  }
+
+  @Test
+  public void twoWriteQueues() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.twoWriteQueues()).isFalse();
+      opt.setTwoWriteQueues(true);
+      assertThat(opt.twoWriteQueues()).isTrue();
+    }
+  }
+
+  @Test
+  public void manualWalFlush() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.manualWalFlush()).isFalse();
+      opt.setManualWalFlush(true);
+      assertThat(opt.manualWalFlush()).isTrue();
+    }
+  }
+
+  @Test
+  public void atomicFlush() {
+    try (final Options opt = new Options()) {
+      assertThat(opt.atomicFlush()).isFalse();
+      opt.setAtomicFlush(true);
+      assertThat(opt.atomicFlush()).isTrue();
     }
   }
 
@@ -934,6 +1051,20 @@ public class OptionsTest {
   }
 
   @Test
+  public void bottommostCompressionOptions() {
+    try (final Options options = new Options();
+         final CompressionOptions bottommostCompressionOptions = new CompressionOptions()
+             .setMaxDictBytes(123)) {
+
+      options.setBottommostCompressionOptions(bottommostCompressionOptions);
+      assertThat(options.bottommostCompressionOptions())
+          .isEqualTo(bottommostCompressionOptions);
+      assertThat(options.bottommostCompressionOptions().maxDictBytes())
+          .isEqualTo(123);
+    }
+  }
+
+  @Test
   public void compressionOptions() {
     try (final Options options = new Options();
          final CompressionOptions compressionOptions = new CompressionOptions()
@@ -984,6 +1115,15 @@ public class OptionsTest {
       // Test with parameter initialization
       anotherOptions.setRateLimiter(
           new RateLimiter(1000));
+    }
+  }
+
+  @Test
+  public void sstFileManager() throws RocksDBException {
+    try (final Options options = new Options();
+         final SstFileManager sstFileManager =
+             new SstFileManager(Env.getDefault())) {
+      options.setSstFileManager(sstFileManager);
     }
   }
 
@@ -1067,6 +1207,15 @@ public class OptionsTest {
   }
 
   @Test
+  public void ttl() {
+    try (final Options options = new Options()) {
+      options.setTtl(1000 * 60);
+      assertThat(options.ttl()).
+          isEqualTo(1000 * 60);
+    }
+  }
+
+  @Test
   public void compactionOptionsUniversal() {
     try (final Options options = new Options();
          final CompactionOptionsUniversal optUni = new CompactionOptionsUniversal()
@@ -1101,4 +1250,23 @@ public class OptionsTest {
           isEqualTo(booleanValue);
     }
   }
+
+  @Test
+  public void compactionFilter() {
+    try(final Options options = new Options();
+        final RemoveEmptyValueCompactionFilter cf = new RemoveEmptyValueCompactionFilter()) {
+      options.setCompactionFilter(cf);
+      assertThat(options.compactionFilter()).isEqualTo(cf);
+    }
+  }
+
+  @Test
+  public void compactionFilterFactory() {
+    try(final Options options = new Options();
+        final RemoveEmptyValueCompactionFilterFactory cff = new RemoveEmptyValueCompactionFilterFactory()) {
+      options.setCompactionFilterFactory(cff);
+      assertThat(options.compactionFilterFactory()).isEqualTo(cff);
+    }
+  }
+
 }

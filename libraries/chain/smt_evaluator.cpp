@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/database.hpp>

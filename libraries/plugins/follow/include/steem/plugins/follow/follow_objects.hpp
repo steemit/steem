@@ -54,10 +54,10 @@ typedef oid< follow_object > follow_id_type;
 
 class feed_object : public object< feed_object_type, feed_object >
 {
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( feed_object );
+
    public:
       typedef t_vector<account_name_type> t_reblogged_by_container;
-
-      feed_object() = delete;
 
       template< typename Constructor, typename Allocator >
       feed_object( Constructor&& c, allocator< Allocator > a )
@@ -116,6 +116,8 @@ class blog_author_stats_object : public object< blog_author_stats_object_type, b
          c( *this );
       }
 
+      blog_author_stats_object() {}
+
       id_type           id;
       account_name_type blogger;
       account_name_type guest;
@@ -170,8 +172,6 @@ typedef oid< follow_count_object > follow_count_id_type;
 struct by_following_follower;
 struct by_follower_following;
 
-using namespace boost::multi_index;
-
 typedef multi_index_container<
    follow_object,
    indexed_by<
@@ -195,7 +195,7 @@ typedef multi_index_container<
 > follow_index;
 
 struct by_blogger_guest_count;
-typedef chainbase::shared_multi_index_container<
+typedef multi_index_container<
    blog_author_stats_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< blog_author_stats_object, blog_author_stats_id_type, &blog_author_stats_object::id > >,
@@ -207,7 +207,8 @@ typedef chainbase::shared_multi_index_container<
          >,
          composite_key_compare< std::less< account_name_type >, std::less< account_name_type >, greater<uint32_t> >
       >
-   >
+   >,
+   allocator< blog_author_stats_object >
 > blog_author_stats_index;
 
 struct by_feed;

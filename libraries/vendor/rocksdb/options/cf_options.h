@@ -18,7 +18,7 @@ namespace rocksdb {
 // ImmutableCFOptions is a data struct used by RocksDB internal. It contains a
 // subset of Options that should not be changed during the entire lifetime
 // of DB. Raw pointers defined in this struct do not have ownership to the data
-// they point to. Options contains shared_ptr to these data.
+// they point to. Options contains std::shared_ptr to these data.
 struct ImmutableCFOptions {
   ImmutableCFOptions();
   explicit ImmutableCFOptions(const Options& options);
@@ -29,10 +29,6 @@ struct ImmutableCFOptions {
   CompactionStyle compaction_style;
 
   CompactionPri compaction_pri;
-
-  CompactionOptionsUniversal compaction_options_universal;
-
-  const SliceTransform* prefix_extractor;
 
   const Comparator* user_comparator;
   InternalKeyComparator internal_comparator;
@@ -93,6 +89,8 @@ struct ImmutableCFOptions {
 
   CompressionType bottommost_compression;
 
+  CompressionOptions bottommost_compression_opts;
+
   CompressionOptions compression_opts;
 
   bool level_compaction_dynamic_level_bytes;
@@ -100,8 +98,6 @@ struct ImmutableCFOptions {
   Options::AccessHint access_hint_on_compaction_start;
 
   bool new_table_reader_for_compaction_inputs;
-
-  size_t compaction_readahead_size;
 
   int num_levels;
 
@@ -113,7 +109,7 @@ struct ImmutableCFOptions {
 
   bool preserve_deletes;
 
-  // A vector of EventListeners which call-back functions will be called
+  // A vector of EventListeners which callback functions will be called
   // when specific RocksDB event happens.
   std::vector<std::shared_ptr<EventListener>> listeners;
 
@@ -122,6 +118,10 @@ struct ImmutableCFOptions {
   uint32_t max_subcompactions;
 
   const SliceTransform* memtable_insert_with_hint_prefix_extractor;
+
+  std::vector<DbPath> cf_paths;
+
+  std::shared_ptr<ConcurrentTaskLimiter> compaction_thread_limiter;
 };
 
 struct MutableCFOptions {
@@ -131,9 +131,11 @@ struct MutableCFOptions {
         arena_block_size(options.arena_block_size),
         memtable_prefix_bloom_size_ratio(
             options.memtable_prefix_bloom_size_ratio),
+        memtable_whole_key_filtering(options.memtable_whole_key_filtering),
         memtable_huge_page_size(options.memtable_huge_page_size),
         max_successive_merges(options.max_successive_merges),
         inplace_update_num_locks(options.inplace_update_num_locks),
+        prefix_extractor(options.prefix_extractor),
         disable_auto_compactions(options.disable_auto_compactions),
         soft_pending_compaction_bytes_limit(
             options.soft_pending_compaction_bytes_limit),
@@ -148,9 +150,11 @@ struct MutableCFOptions {
         target_file_size_multiplier(options.target_file_size_multiplier),
         max_bytes_for_level_base(options.max_bytes_for_level_base),
         max_bytes_for_level_multiplier(options.max_bytes_for_level_multiplier),
+        ttl(options.ttl),
         max_bytes_for_level_multiplier_additional(
             options.max_bytes_for_level_multiplier_additional),
         compaction_options_fifo(options.compaction_options_fifo),
+        compaction_options_universal(options.compaction_options_universal),
         max_sequential_skip_in_iterations(
             options.max_sequential_skip_in_iterations),
         paranoid_file_checks(options.paranoid_file_checks),
@@ -164,9 +168,11 @@ struct MutableCFOptions {
         max_write_buffer_number(0),
         arena_block_size(0),
         memtable_prefix_bloom_size_ratio(0),
+        memtable_whole_key_filtering(false),
         memtable_huge_page_size(0),
         max_successive_merges(0),
         inplace_update_num_locks(0),
+        prefix_extractor(nullptr),
         disable_auto_compactions(false),
         soft_pending_compaction_bytes_limit(0),
         hard_pending_compaction_bytes_limit(0),
@@ -178,11 +184,14 @@ struct MutableCFOptions {
         target_file_size_multiplier(0),
         max_bytes_for_level_base(0),
         max_bytes_for_level_multiplier(0),
+        ttl(0),
         compaction_options_fifo(),
         max_sequential_skip_in_iterations(0),
         paranoid_file_checks(false),
         report_bg_io_stats(false),
         compression(Snappy_Supported() ? kSnappyCompression : kNoCompression) {}
+
+  explicit MutableCFOptions(const Options& options);
 
   // Must be called after any change to MutableCFOptions
   void RefreshDerivedOptions(int num_levels, CompactionStyle compaction_style);
@@ -191,8 +200,6 @@ struct MutableCFOptions {
     RefreshDerivedOptions(ioptions.num_levels, ioptions.compaction_style);
   }
 
-  // Get the max file size in a given level.
-  uint64_t MaxFileSizeForLevel(int level) const;
   int MaxBytesMultiplerAdditional(int level) const {
     if (level >=
         static_cast<int>(max_bytes_for_level_multiplier_additional.size())) {
@@ -208,9 +215,11 @@ struct MutableCFOptions {
   int max_write_buffer_number;
   size_t arena_block_size;
   double memtable_prefix_bloom_size_ratio;
+  bool memtable_whole_key_filtering;
   size_t memtable_huge_page_size;
   size_t max_successive_merges;
   size_t inplace_update_num_locks;
+  std::shared_ptr<const SliceTransform> prefix_extractor;
 
   // Compaction related options
   bool disable_auto_compactions;
@@ -224,8 +233,10 @@ struct MutableCFOptions {
   int target_file_size_multiplier;
   uint64_t max_bytes_for_level_base;
   double max_bytes_for_level_multiplier;
+  uint64_t ttl;
   std::vector<int> max_bytes_for_level_multiplier_additional;
   CompactionOptionsFIFO compaction_options_fifo;
+  CompactionOptionsUniversal compaction_options_universal;
 
   // Misc options
   uint64_t max_sequential_skip_in_iterations;
@@ -240,4 +251,8 @@ struct MutableCFOptions {
 
 uint64_t MultiplyCheckOverflow(uint64_t op1, double op2);
 
+// Get the max file size in a given level.
+uint64_t MaxFileSizeForLevel(const MutableCFOptions& cf_options,
+    int level, CompactionStyle compaction_style, int base_level = 1,
+    bool level_compaction_dynamic_level_bytes = false);
 }  // namespace rocksdb

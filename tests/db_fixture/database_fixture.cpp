@@ -2,9 +2,11 @@
 #include <boost/program_options.hpp>
 
 #include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 
 #include <steem/plugins/account_history/account_history_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
@@ -39,7 +41,7 @@ namespace steem { namespace chain {
 using std::cout;
 using std::cerr;
 
-clean_database_fixture::clean_database_fixture()
+clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb )
 {
    try {
    int argc = boost::unit_test::framework::master_test_suite().argc;
@@ -78,7 +80,7 @@ clean_database_fixture::clean_database_fixture()
 
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   open_database();
+   open_database( shared_file_size_in_mb );
 
    generate_block();
    db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
@@ -146,7 +148,9 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
       args.shared_file_size = size;
+      args.database_cfg = steem::utilities::default_database_configuration();
       db->open( args );
    }
 
@@ -193,6 +197,7 @@ live_database_fixture::live_database_fixture()
          database::open_args args;
          args.data_dir = _chain_dir;
          args.shared_mem_dir = args.data_dir;
+         args.database_cfg = steem::utilities::default_database_configuration();
          db->open( args );
       }
 
@@ -244,19 +249,28 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
 }
 #endif
 
-void database_fixture::open_database()
+void database_fixture::open_database( uint16_t shared_file_size_in_mb )
 {
    if( !data_dir )
    {
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
 
+      idump( (data_dir->path()) );
+
       database::open_args args;
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
-      args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
+      args.shared_file_size = 1024 * 1024 * shared_file_size_in_mb; // 8MB(default) or more:  file for testing
+      args.database_cfg = steem::utilities::default_database_configuration();
+      args.sps_remove_threshold = 20;
       db->open(args);
+   }
+   else
+   {
+      idump( (data_dir->path()) );
    }
 }
 
@@ -873,6 +887,168 @@ template smt_capped_generation_policy t_smt_database_fixture< clean_database_fix
 );
 
 #endif
+
+void sps_proposal_database_fixture::plugin_prepare()
+{
+   int argc = boost::unit_test::framework::master_test_suite().argc;
+   char** argv = boost::unit_test::framework::master_test_suite().argv;
+   for( int i=1; i<argc; i++ )
+   {
+      const std::string arg = argv[i];
+      if( arg == "--record-assert-trip" )
+         fc::enable_record_assert_trip = true;
+      if( arg == "--show-test-names" )
+         std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+   }
+
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   init_account_pub_key = init_account_priv_key.get_public_key();
+
+   db_plugin->logging = false;
+   appbase::app().initialize<
+      steem::plugins::debug_node::debug_node_plugin
+   >( argc, argv );
+
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
+   BOOST_REQUIRE( db );
+
+   open_database();
+
+   generate_block();
+   db->set_hardfork( STEEM_NUM_HARDFORKS );
+   generate_block();
+
+
+   validate_database();
+}
+
+int64_t sps_proposal_database_fixture::create_proposal( std::string creator, std::string receiver,
+                           time_point_sec start_date, time_point_sec end_date,
+                           asset daily_pay, const fc::ecc::private_key& key )
+{
+   signed_transaction tx;
+   create_proposal_operation op;
+
+   op.creator = creator;
+   op.receiver = receiver;
+
+   op.start_date = start_date;
+   op.end_date = end_date;
+
+   op.daily_pay = daily_pay;
+
+   static uint32_t cnt = 0;
+   op.subject = std::to_string( cnt );
+
+   const std::string permlink = "permlink" + std::to_string( cnt );
+   post_comment(creator, permlink, "title", "body", "test", key);
+
+   op.permlink = permlink;
+
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, key );
+   db->push_transaction( tx, 0 );
+   tx.signatures.clear();
+   tx.operations.clear();
+
+   const auto& proposal_idx = db-> template get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   auto itr = proposal_idx.end();
+   BOOST_REQUIRE( proposal_idx.begin() != itr );
+   --itr;
+   BOOST_REQUIRE( creator == itr->creator );
+
+   //An unique subject is generated by cnt
+   ++cnt;
+
+   return itr->proposal_id;
+}
+
+void sps_proposal_database_fixture::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key )
+{
+   update_proposal_votes_operation op;
+
+   op.voter = voter;
+   op.proposal_ids.insert(id_proposals.cbegin(), id_proposals.cend());
+   op.approve = approve;
+
+   signed_transaction tx;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, key );
+   db->push_transaction( tx, 0 );
+}
+
+bool sps_proposal_database_fixture::exist_proposal( int64_t id )
+{
+   const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   return proposal_idx.find( id ) != proposal_idx.end();
+}
+
+const proposal_object* sps_proposal_database_fixture::find_proposal( int64_t id )
+{
+   const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   auto found = proposal_idx.find( id );
+
+   if( found != proposal_idx.end() )
+      return &(*found);
+   else
+      return nullptr;
+}
+
+void sps_proposal_database_fixture::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key)
+{
+   remove_proposal_operation rp;
+   rp.proposal_owner = _deleter;
+   rp.proposal_ids   = _proposal_id;
+
+   signed_transaction trx;
+   trx.operations.push_back( rp );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( trx, _key );
+   db->push_transaction( trx, 0 );
+   trx.signatures.clear();
+   trx.operations.clear();
+}
+
+bool sps_proposal_database_fixture::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id)
+{
+      const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices(). template get< by_voter_proposal >();
+      auto found_vote = proposal_vote_idx.find( boost::make_tuple(_user, _proposal_id) );
+      return found_vote != proposal_vote_idx.end() ;
+}
+
+uint64_t sps_proposal_database_fixture::get_nr_blocks_until_maintenance_block()
+{
+   auto block_time = db->head_block_time();
+
+   auto next_maintenance_time = db->get_dynamic_global_properties().next_maintenance_time;
+   auto ret = ( next_maintenance_time - block_time ).to_seconds() / STEEM_BLOCK_INTERVAL;
+
+   FC_ASSERT( next_maintenance_time >= block_time );
+
+   return ret;
+}
+
+void sps_proposal_database_fixture::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key)
+{
+   generate_blocks( db->head_block_time() + STEEM_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEM_BLOCK_INTERVAL ), true );
+   comment_operation comment;
+
+   comment.author = _authro;
+   comment.permlink = _permlink;
+   comment.title = _title;
+   comment.body = _body;
+   comment.parent_permlink = _parent_permlink;
+
+   signed_transaction trx;
+   trx.operations.push_back( comment );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( trx, _key );
+   db->push_transaction( trx, 0 );
+   trx.signatures.clear();
+   trx.operations.clear();
+}
 
 json_rpc_database_fixture::json_rpc_database_fixture()
 {

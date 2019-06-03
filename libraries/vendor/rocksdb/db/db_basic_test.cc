@@ -6,9 +6,11 @@
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
+// #include <iostream>
 #include "db/db_test_util.h"
 #include "port/stack_trace.h"
 #include "rocksdb/perf_context.h"
+#include "util/fault_injection_test_env.h"
 #if !defined(ROCKSDB_LITE)
 #include "util/sync_point.h"
 #endif
@@ -213,11 +215,11 @@ TEST_F(DBBasicTest, PutSingleDeleteGet) {
     ASSERT_EQ("v2", Get(1, "foo2"));
     ASSERT_OK(SingleDelete(1, "foo"));
     ASSERT_EQ("NOT_FOUND", Get(1, "foo"));
-    // Skip HashCuckooRep as it does not support single delete. FIFO and
-    // universal compaction do not apply to the test case. Skip MergePut
-    // because single delete does not get removed when it encounters a merge.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Ski FIFO and universal compaction because they do not apply to the test
+    // case. Skip MergePut because single delete does not get removed when it
+    // encounters a merge.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
 }
 
 TEST_F(DBBasicTest, EmptyFlush) {
@@ -235,11 +237,11 @@ TEST_F(DBBasicTest, EmptyFlush) {
     ASSERT_OK(Flush(1));
 
     ASSERT_EQ("[ ]", AllEntriesFor("a", 1));
-    // Skip HashCuckooRep as it does not support single delete. FIFO and
-    // universal compaction do not apply to the test case. Skip MergePut
-    // because merges cannot be combined with single deletions.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Skip FIFO and  universal compaction as they do not apply to the test
+    // case. Skip MergePut because merges cannot be combined with single
+    // deletions.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
 }
 
 TEST_F(DBBasicTest, GetFromVersions) {
@@ -263,11 +265,6 @@ TEST_F(DBBasicTest, GetSnapshot) {
       std::string key = (i == 0) ? std::string("foo") : std::string(200, 'x');
       ASSERT_OK(Put(1, key, "v1"));
       const Snapshot* s1 = db_->GetSnapshot();
-      if (option_config_ == kHashCuckoo) {
-        // Unsupported case.
-        ASSERT_TRUE(s1 == nullptr);
-        break;
-      }
       ASSERT_OK(Put(1, key, "v2"));
       ASSERT_EQ("v2", Get(1, key));
       ASSERT_EQ("v1", Get(1, key, s1));
@@ -508,7 +505,7 @@ TEST_F(DBBasicTest, Snapshot) {
     ASSERT_EQ(0U, GetNumSnapshots());
     ASSERT_EQ("0v4", Get(0, "foo"));
     ASSERT_EQ("1v4", Get(1, "foo"));
-  } while (ChangeOptions(kSkipHashCuckoo));
+  } while (ChangeOptions());
 }
 
 #endif  // ROCKSDB_LITE
@@ -564,25 +561,24 @@ TEST_F(DBBasicTest, CompactBetweenSnapshots) {
                            nullptr);
     ASSERT_EQ("sixth", Get(1, "foo"));
     ASSERT_EQ(AllEntriesFor("foo", 1), "[ sixth ]");
-    // skip HashCuckooRep as it does not support snapshot
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction));
+  } while (ChangeOptions(kSkipFIFOCompaction));
 }
 
 TEST_F(DBBasicTest, DBOpen_Options) {
   Options options = CurrentOptions();
-  std::string dbname = test::TmpDir(env_) + "/db_options_test";
-  ASSERT_OK(DestroyDB(dbname, options));
+  Close();
+  Destroy(options);
 
   // Does not exist, and create_if_missing == false: error
   DB* db = nullptr;
   options.create_if_missing = false;
-  Status s = DB::Open(options, dbname, &db);
+  Status s = DB::Open(options, dbname_, &db);
   ASSERT_TRUE(strstr(s.ToString().c_str(), "does not exist") != nullptr);
   ASSERT_TRUE(db == nullptr);
 
   // Does not exist, and create_if_missing == true: OK
   options.create_if_missing = true;
-  s = DB::Open(options, dbname, &db);
+  s = DB::Open(options, dbname_, &db);
   ASSERT_OK(s);
   ASSERT_TRUE(db != nullptr);
 
@@ -592,14 +588,14 @@ TEST_F(DBBasicTest, DBOpen_Options) {
   // Does exist, and error_if_exists == true: error
   options.create_if_missing = false;
   options.error_if_exists = true;
-  s = DB::Open(options, dbname, &db);
+  s = DB::Open(options, dbname_, &db);
   ASSERT_TRUE(strstr(s.ToString().c_str(), "exists") != nullptr);
   ASSERT_TRUE(db == nullptr);
 
   // Does exist, and error_if_exists == false: OK
   options.create_if_missing = true;
   options.error_if_exists = false;
-  s = DB::Open(options, dbname, &db);
+  s = DB::Open(options, dbname_, &db);
   ASSERT_OK(s);
   ASSERT_TRUE(db != nullptr);
 
@@ -793,7 +789,7 @@ TEST_F(DBBasicTest, ChecksumTest) {
   BlockBasedTableOptions table_options;
   Options options = CurrentOptions();
   // change when new checksum type added
-  int max_checksum = static_cast<int>(kxxHash);
+  int max_checksum = static_cast<int>(kxxHash64);
   const int kNumPerFile = 2;
 
   // generate one table with each type of checksum
@@ -808,7 +804,7 @@ TEST_F(DBBasicTest, ChecksumTest) {
   }
 
   // verify data with each type of checksum
-  for (int i = 0; i <= kxxHash; ++i) {
+  for (int i = 0; i <= kxxHash64; ++i) {
     table_options.checksum = static_cast<ChecksumType>(i);
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     Reopen(options);
@@ -846,6 +842,291 @@ TEST_F(DBBasicTest, MmapAndBufferOptions) {
   ASSERT_OK(TryReopen(options));
 }
 #endif
+
+class TestEnv : public EnvWrapper {
+  public:
+    explicit TestEnv() : EnvWrapper(Env::Default()),
+                close_count(0) { }
+
+    class TestLogger : public Logger {
+      public:
+        using Logger::Logv;
+        TestLogger(TestEnv *env_ptr) : Logger() { env = env_ptr; }
+        ~TestLogger() override {
+          if (!closed_) {
+            CloseHelper();
+          }
+        }
+        void Logv(const char* /*format*/, va_list /*ap*/) override{};
+
+       protected:
+        Status CloseImpl() override { return CloseHelper(); }
+
+       private:
+        Status CloseHelper() {
+          env->CloseCountInc();;
+          return Status::IOError();
+        }
+        TestEnv *env;
+    };
+
+    void CloseCountInc() { close_count++; }
+
+    int GetCloseCount() { return close_count; }
+
+    Status NewLogger(const std::string& /*fname*/,
+                     std::shared_ptr<Logger>* result) override {
+      result->reset(new TestLogger(this));
+      return Status::OK();
+    }
+
+   private:
+    int close_count;
+};
+
+TEST_F(DBBasicTest, DBClose) {
+  Options options = GetDefaultOptions();
+  std::string dbname = test::PerThreadDBPath("db_close_test");
+  ASSERT_OK(DestroyDB(dbname, options));
+
+  DB* db = nullptr;
+  TestEnv* env = new TestEnv();
+  options.create_if_missing = true;
+  options.env = env;
+  Status s = DB::Open(options, dbname, &db);
+  ASSERT_OK(s);
+  ASSERT_TRUE(db != nullptr);
+
+  s = db->Close();
+  ASSERT_EQ(env->GetCloseCount(), 1);
+  ASSERT_EQ(s, Status::IOError());
+
+  delete db;
+  ASSERT_EQ(env->GetCloseCount(), 1);
+
+  // Do not call DB::Close() and ensure our logger Close() still gets called
+  s = DB::Open(options, dbname, &db);
+  ASSERT_OK(s);
+  ASSERT_TRUE(db != nullptr);
+  delete db;
+  ASSERT_EQ(env->GetCloseCount(), 2);
+
+  // Provide our own logger and ensure DB::Close() does not close it
+  options.info_log.reset(new TestEnv::TestLogger(env));
+  options.create_if_missing = false;
+  s = DB::Open(options, dbname, &db);
+  ASSERT_OK(s);
+  ASSERT_TRUE(db != nullptr);
+
+  s = db->Close();
+  ASSERT_EQ(s, Status::OK());
+  delete db;
+  ASSERT_EQ(env->GetCloseCount(), 2);
+  options.info_log.reset();
+  ASSERT_EQ(env->GetCloseCount(), 3);
+
+  delete options.env;
+}
+
+TEST_F(DBBasicTest, DBCloseFlushError) {
+  std::unique_ptr<FaultInjectionTestEnv> fault_injection_env(
+      new FaultInjectionTestEnv(Env::Default()));
+  Options options = GetDefaultOptions();
+  options.create_if_missing = true;
+  options.manual_wal_flush = true;
+  options.write_buffer_size=100;
+  options.env = fault_injection_env.get();
+
+  Reopen(options);
+  ASSERT_OK(Put("key1", "value1"));
+  ASSERT_OK(Put("key2", "value2"));
+  ASSERT_OK(dbfull()->TEST_SwitchMemtable());
+  ASSERT_OK(Put("key3", "value3"));
+  fault_injection_env->SetFilesystemActive(false);
+  Status s = dbfull()->Close();
+  fault_injection_env->SetFilesystemActive(true);
+  ASSERT_NE(s, Status::OK());
+
+  Destroy(options);
+}
+
+TEST_F(DBBasicTest, MultiGetMultiCF) {
+  Options options = CurrentOptions();
+  CreateAndReopenWithCF({"pikachu", "ilya", "muromec", "dobrynia", "nikitich",
+                         "alyosha", "popovich"},
+                        options);
+
+  for (int i = 0; i < 8; ++i) {
+    ASSERT_OK(Put(i, "cf" + std::to_string(i) + "_key",
+                  "cf" + std::to_string(i) + "_val"));
+  }
+
+  int get_sv_count = 0;
+  rocksdb::DBImpl* db = reinterpret_cast<DBImpl*>(db_);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::MultiGet::AfterRefSV", [&](void* /*arg*/) {
+        if (++get_sv_count == 2) {
+          // After MultiGet refs a couple of CFs, flush all CFs so MultiGet
+          // is forced to repeat the process
+          for (int i = 0; i < 8; ++i) {
+            ASSERT_OK(Flush(i));
+            ASSERT_OK(Put(i, "cf" + std::to_string(i) + "_key",
+                          "cf" + std::to_string(i) + "_val2"));
+          }
+        }
+        if (get_sv_count == 11) {
+          for (int i = 0; i < 8; ++i) {
+            auto* cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(
+                            db->GetColumnFamilyHandle(i))
+                            ->cfd();
+            ASSERT_EQ(cfd->TEST_GetLocalSV()->Get(), SuperVersion::kSVInUse);
+          }
+        }
+      });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  std::vector<int> cfs;
+  std::vector<std::string> keys;
+  std::vector<std::string> values;
+
+  for (int i = 0; i < 8; ++i) {
+    cfs.push_back(i);
+    keys.push_back("cf" + std::to_string(i) + "_key");
+  }
+
+  values = MultiGet(cfs, keys);
+  ASSERT_EQ(values.size(), 8);
+  for (unsigned int j = 0; j < values.size(); ++j) {
+    ASSERT_EQ(values[j], "cf" + std::to_string(j) + "_val2");
+  }
+  for (int i = 0; i < 8; ++i) {
+    auto* cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(
+                    reinterpret_cast<DBImpl*>(db_)->GetColumnFamilyHandle(i))
+                    ->cfd();
+    ASSERT_NE(cfd->TEST_GetLocalSV()->Get(), SuperVersion::kSVInUse);
+    ASSERT_NE(cfd->TEST_GetLocalSV()->Get(), SuperVersion::kSVObsolete);
+  }
+}
+
+TEST_F(DBBasicTest, MultiGetMultiCFMutex) {
+  Options options = CurrentOptions();
+  CreateAndReopenWithCF({"pikachu", "ilya", "muromec", "dobrynia", "nikitich",
+                         "alyosha", "popovich"},
+                        options);
+
+  for (int i = 0; i < 8; ++i) {
+    ASSERT_OK(Put(i, "cf" + std::to_string(i) + "_key",
+                  "cf" + std::to_string(i) + "_val"));
+  }
+
+  int get_sv_count = 0;
+  int retries = 0;
+  bool last_try = false;
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::MultiGet::LastTry", [&](void* /*arg*/) {
+        last_try = true;
+        rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+      });
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::MultiGet::AfterRefSV", [&](void* /*arg*/) {
+        if (last_try) {
+          return;
+        }
+        if (++get_sv_count == 2) {
+          ++retries;
+          get_sv_count = 0;
+          for (int i = 0; i < 8; ++i) {
+            ASSERT_OK(Flush(i));
+            ASSERT_OK(Put(
+                i, "cf" + std::to_string(i) + "_key",
+                "cf" + std::to_string(i) + "_val" + std::to_string(retries)));
+          }
+        }
+      });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  std::vector<int> cfs;
+  std::vector<std::string> keys;
+  std::vector<std::string> values;
+
+  for (int i = 0; i < 8; ++i) {
+    cfs.push_back(i);
+    keys.push_back("cf" + std::to_string(i) + "_key");
+  }
+
+  values = MultiGet(cfs, keys);
+  ASSERT_TRUE(last_try);
+  ASSERT_EQ(values.size(), 8);
+  for (unsigned int j = 0; j < values.size(); ++j) {
+    ASSERT_EQ(values[j],
+              "cf" + std::to_string(j) + "_val" + std::to_string(retries));
+  }
+  for (int i = 0; i < 8; ++i) {
+    auto* cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(
+                    reinterpret_cast<DBImpl*>(db_)->GetColumnFamilyHandle(i))
+                    ->cfd();
+    ASSERT_NE(cfd->TEST_GetLocalSV()->Get(), SuperVersion::kSVInUse);
+  }
+}
+
+TEST_F(DBBasicTest, MultiGetMultiCFSnapshot) {
+  Options options = CurrentOptions();
+  CreateAndReopenWithCF({"pikachu", "ilya", "muromec", "dobrynia", "nikitich",
+                         "alyosha", "popovich"},
+                        options);
+
+  for (int i = 0; i < 8; ++i) {
+    ASSERT_OK(Put(i, "cf" + std::to_string(i) + "_key",
+                  "cf" + std::to_string(i) + "_val"));
+  }
+
+  int get_sv_count = 0;
+  rocksdb::DBImpl* db = reinterpret_cast<DBImpl*>(db_);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::MultiGet::AfterRefSV", [&](void* /*arg*/) {
+        if (++get_sv_count == 2) {
+          for (int i = 0; i < 8; ++i) {
+            ASSERT_OK(Flush(i));
+            ASSERT_OK(Put(i, "cf" + std::to_string(i) + "_key",
+                          "cf" + std::to_string(i) + "_val2"));
+          }
+        }
+        if (get_sv_count == 8) {
+          for (int i = 0; i < 8; ++i) {
+            auto* cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(
+                            db->GetColumnFamilyHandle(i))
+                            ->cfd();
+            ASSERT_TRUE(
+                (cfd->TEST_GetLocalSV()->Get() == SuperVersion::kSVInUse) ||
+                (cfd->TEST_GetLocalSV()->Get() == SuperVersion::kSVObsolete));
+          }
+        }
+      });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  std::vector<int> cfs;
+  std::vector<std::string> keys;
+  std::vector<std::string> values;
+
+  for (int i = 0; i < 8; ++i) {
+    cfs.push_back(i);
+    keys.push_back("cf" + std::to_string(i) + "_key");
+  }
+
+  const Snapshot* snapshot = db_->GetSnapshot();
+  values = MultiGet(cfs, keys, snapshot);
+  db_->ReleaseSnapshot(snapshot);
+  ASSERT_EQ(values.size(), 8);
+  for (unsigned int j = 0; j < values.size(); ++j) {
+    ASSERT_EQ(values[j], "cf" + std::to_string(j) + "_val");
+  }
+  for (int i = 0; i < 8; ++i) {
+    auto* cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(
+                    reinterpret_cast<DBImpl*>(db_)->GetColumnFamilyHandle(i))
+                    ->cfd();
+    ASSERT_NE(cfd->TEST_GetLocalSV()->Get(), SuperVersion::kSVInUse);
+  }
+}
 
 }  // namespace rocksdb
 

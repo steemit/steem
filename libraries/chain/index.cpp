@@ -1,5 +1,5 @@
 
-#include <steem/chain/steem_fwd.hpp>
+#include <steem/chain/steem_object_types.hpp>
 
 #include <steem/chain/index.hpp>
 
@@ -9,6 +9,7 @@
 #include <steem/chain/pending_optional_action_object.hpp>
 #include <steem/chain/smt_objects.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
@@ -16,45 +17,48 @@ namespace steem { namespace chain {
 
 void initialize_core_indexes( database& db )
 {
-   add_core_index< dynamic_global_property_index           >( db );
-   add_core_index< account_index                           >( db );
-   add_core_index< account_authority_index                 >( db );
-   add_core_index< witness_index                           >( db );
-   add_core_index< transaction_index                       >( db );
-   add_core_index< block_summary_index                     >( db );
-   add_core_index< witness_schedule_index                  >( db );
-   add_core_index< comment_index                           >( db );
-   add_core_index< comment_content_index                   >( db );
-   add_core_index< comment_vote_index                      >( db );
-   add_core_index< witness_vote_index                      >( db );
-   add_core_index< limit_order_index                       >( db );
-   add_core_index< feed_history_index                      >( db );
-   add_core_index< convert_request_index                   >( db );
-   add_core_index< liquidity_reward_balance_index          >( db );
-   add_core_index< operation_index                         >( db );
-   add_core_index< account_history_index                   >( db );
-   add_core_index< hardfork_property_index                 >( db );
-   add_core_index< withdraw_vesting_route_index            >( db );
-   add_core_index< owner_authority_history_index           >( db );
-   add_core_index< account_recovery_request_index          >( db );
-   add_core_index< change_recovery_account_request_index   >( db );
-   add_core_index< escrow_index                            >( db );
-   add_core_index< savings_withdraw_index                  >( db );
-   add_core_index< decline_voting_rights_request_index     >( db );
-   add_core_index< reward_fund_index                       >( db );
-   add_core_index< vesting_delegation_index                >( db );
-   add_core_index< vesting_delegation_expiration_index     >( db );
-   add_core_index< pending_required_action_index           >( db );
-   add_core_index< pending_optional_action_index           >( db );
+   STEEM_ADD_CORE_INDEX(db, dynamic_global_property_index);
+   STEEM_ADD_CORE_INDEX(db, account_index);
+   STEEM_ADD_CORE_INDEX(db, account_metadata_index);
+   STEEM_ADD_CORE_INDEX(db, account_authority_index);
+   STEEM_ADD_CORE_INDEX(db, witness_index);
+   STEEM_ADD_CORE_INDEX(db, transaction_index);
+   STEEM_ADD_CORE_INDEX(db, block_summary_index);
+   STEEM_ADD_CORE_INDEX(db, witness_schedule_index);
+   STEEM_ADD_CORE_INDEX(db, comment_index);
+   STEEM_ADD_CORE_INDEX(db, comment_content_index);
+   STEEM_ADD_CORE_INDEX(db, comment_vote_index);
+   STEEM_ADD_CORE_INDEX(db, witness_vote_index);
+   STEEM_ADD_CORE_INDEX(db, limit_order_index);
+   STEEM_ADD_CORE_INDEX(db, feed_history_index);
+   STEEM_ADD_CORE_INDEX(db, convert_request_index);
+   STEEM_ADD_CORE_INDEX(db, liquidity_reward_balance_index);
+   STEEM_ADD_CORE_INDEX(db, operation_index);
+   STEEM_ADD_CORE_INDEX(db, account_history_index);
+   STEEM_ADD_CORE_INDEX(db, hardfork_property_index);
+   STEEM_ADD_CORE_INDEX(db, withdraw_vesting_route_index);
+   STEEM_ADD_CORE_INDEX(db, owner_authority_history_index);
+   STEEM_ADD_CORE_INDEX(db, account_recovery_request_index);
+   STEEM_ADD_CORE_INDEX(db, change_recovery_account_request_index);
+   STEEM_ADD_CORE_INDEX(db, escrow_index);
+   STEEM_ADD_CORE_INDEX(db, savings_withdraw_index);
+   STEEM_ADD_CORE_INDEX(db, decline_voting_rights_request_index);
+   STEEM_ADD_CORE_INDEX(db, reward_fund_index);
+   STEEM_ADD_CORE_INDEX(db, vesting_delegation_index);
+   STEEM_ADD_CORE_INDEX(db, vesting_delegation_expiration_index);
+   STEEM_ADD_CORE_INDEX(db, pending_required_action_index);
+   STEEM_ADD_CORE_INDEX(db, pending_optional_action_index);
 #ifdef STEEM_ENABLE_SMT
-   add_core_index< smt_token_index                         >( db );
-   add_core_index< smt_event_token_index                   >( db );
-   add_core_index< account_regular_balance_index           >( db );
-   add_core_index< account_rewards_balance_index           >( db );
-   add_core_index< nai_pool_index                          >( db );
-   add_core_index< smt_token_emissions_index               >( db );
-   add_core_index< smt_contribution_index                  >( db );
+   STEEM_ADD_CORE_INDEX(db, smt_token_index);
+   STEEM_ADD_CORE_INDEX(db, smt_event_token_index);
+   STEEM_ADD_CORE_INDEX(db, account_regular_balance_index);
+   STEEM_ADD_CORE_INDEX(db, account_rewards_balance_index);
+   STEEM_ADD_CORE_INDEX(db, nai_pool_index);
+   STEEM_ADD_CORE_INDEX(db, smt_token_emissions_index);
+   STEEM_ADD_CORE_INDEX(db, smt_contribution_index);
 #endif
+   STEEM_ADD_CORE_INDEX(db, proposal_index);
+   STEEM_ADD_CORE_INDEX(db, proposal_vote_index);
 }
 
 index_info::index_info() {}

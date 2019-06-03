@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/protocol/asset_symbol.hpp>
 #include <steem/chain/smt_objects.hpp>

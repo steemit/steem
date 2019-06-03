@@ -46,22 +46,20 @@ class EventListenerTest : public DBTestBase {
 };
 
 struct TestPropertiesCollector : public rocksdb::TablePropertiesCollector {
-  virtual rocksdb::Status AddUserKey(const rocksdb::Slice& key,
-                                     const rocksdb::Slice& value,
-                                     rocksdb::EntryType type,
-                                     rocksdb::SequenceNumber seq,
-                                     uint64_t file_size) override {
+  rocksdb::Status AddUserKey(const rocksdb::Slice& /*key*/,
+                             const rocksdb::Slice& /*value*/,
+                             rocksdb::EntryType /*type*/,
+                             rocksdb::SequenceNumber /*seq*/,
+                             uint64_t /*file_size*/) override {
     return Status::OK();
   }
-  virtual rocksdb::Status Finish(
+  rocksdb::Status Finish(
       rocksdb::UserCollectedProperties* properties) override {
     properties->insert({"0", "1"});
     return Status::OK();
   }
 
-  virtual const char* Name() const override {
-    return "TestTablePropertiesCollector";
-  }
+  const char* Name() const override { return "TestTablePropertiesCollector"; }
 
   rocksdb::UserCollectedProperties GetReadableProperties() const override {
     rocksdb::UserCollectedProperties ret;
@@ -72,8 +70,8 @@ struct TestPropertiesCollector : public rocksdb::TablePropertiesCollector {
 
 class TestPropertiesCollectorFactory : public TablePropertiesCollectorFactory {
  public:
-  virtual TablePropertiesCollector* CreateTablePropertiesCollector(
-      TablePropertiesCollectorFactory::Context context) override {
+  TablePropertiesCollector* CreateTablePropertiesCollector(
+      TablePropertiesCollectorFactory::Context /*context*/) override {
     return new TestPropertiesCollector;
   }
   const char* Name() const override { return "TestTablePropertiesCollector"; }
@@ -260,7 +258,7 @@ TEST_F(EventListenerTest, OnSingleDBFlushTest) {
     ASSERT_EQ(listener->flushed_column_family_names_.size(), i);
   }
 
-  // make sure call-back functions are called in the right order
+  // make sure callback functions are called in the right order
   for (size_t i = 0; i < cf_names.size(); ++i) {
     ASSERT_EQ(listener->flushed_dbs_[i], db_);
     ASSERT_EQ(listener->flushed_column_family_names_[i], cf_names[i]);
@@ -296,7 +294,7 @@ TEST_F(EventListenerTest, MultiCF) {
     ASSERT_EQ(listener->flushed_column_family_names_.size(), i);
   }
 
-  // make sure call-back functions are called in the right order
+  // make sure callback functions are called in the right order
   for (size_t i = 0; i < cf_names.size(); i++) {
     ASSERT_EQ(listener->flushed_dbs_[i], db_);
     ASSERT_EQ(listener->flushed_column_family_names_[i], cf_names[i]);
@@ -417,7 +415,9 @@ TEST_F(EventListenerTest, DisableBGCompaction) {
   for (int i = 0; static_cast<int>(cf_meta.file_count) < kSlowdownTrigger * 10;
        ++i) {
     Put(1, ToString(i), std::string(10000, 'x'), WriteOptions());
-    db_->Flush(FlushOptions(), handles_[1]);
+    FlushOptions fo;
+    fo.allow_write_stall = true;
+    db_->Flush(fo, handles_[1]);
     db_->GetColumnFamilyMetaData(handles_[1], &cf_meta);
   }
   ASSERT_GE(listener->slowdown_count, kSlowdownTrigger * 9);
@@ -425,7 +425,7 @@ TEST_F(EventListenerTest, DisableBGCompaction) {
 
 class TestCompactionReasonListener : public EventListener {
  public:
-  void OnCompactionCompleted(DB* db, const CompactionJobInfo& ci) override {
+  void OnCompactionCompleted(DB* /*db*/, const CompactionJobInfo& ci) override {
     std::lock_guard<std::mutex> lock(mutex_);
     compaction_reasons_.push_back(ci.compaction_reason);
   }
@@ -528,7 +528,7 @@ TEST_F(EventListenerTest, CompactionReasonUniversal) {
 
   ASSERT_GT(listener->compaction_reasons_.size(), 0);
   for (auto compaction_reason : listener->compaction_reasons_) {
-    ASSERT_EQ(compaction_reason, CompactionReason::kUniversalSortedRunNum);
+    ASSERT_EQ(compaction_reason, CompactionReason::kUniversalSizeRatio);
   }
 
   options.level0_file_num_compaction_trigger = 8;
@@ -601,7 +601,7 @@ class TableFileCreationListener : public EventListener {
 
     Status NewWritableFile(const std::string& fname,
                            std::unique_ptr<WritableFile>* result,
-                           const EnvOptions& options) {
+                           const EnvOptions& options) override {
       if (fname.size() > 4 && fname.substr(fname.size() - 4) == ".sst") {
         if (!status_.ok()) {
           return status_;
@@ -807,7 +807,8 @@ class BackgroundErrorListener : public EventListener {
  public:
   BackgroundErrorListener(SpecialEnv* env) : env_(env), counter_(0) {}
 
-  void OnBackgroundError(BackgroundErrorReason reason, Status* bg_error) override {
+  void OnBackgroundError(BackgroundErrorReason /*reason*/,
+                         Status* bg_error) override {
     if (counter_ == 0) {
       // suppress the first error and disable write-dropping such that a retry
       // can succeed.
@@ -879,10 +880,75 @@ TEST_F(EventListenerTest, BackgroundErrorListenerFailedCompactionTest) {
   ASSERT_EQ(1, listener->counter());
 
   // trigger flush so compaction is triggered again; this time it succeeds
+  // The previous failed compaction may get retried automatically, so we may
+  // be left with 0 or 1 files in level 1, depending on when the retry gets
+  // scheduled
   ASSERT_OK(Put("key0", "val"));
   ASSERT_OK(dbfull()->TEST_WaitForFlushMemTable());
   ASSERT_OK(dbfull()->TEST_WaitForCompact());
-  ASSERT_EQ(0, NumTableFilesAtLevel(0));
+  ASSERT_LE(1, NumTableFilesAtLevel(0));
+}
+
+class TestFileOperationListener : public EventListener {
+ public:
+  TestFileOperationListener() {
+    file_reads_.store(0);
+    file_reads_success_.store(0);
+    file_writes_.store(0);
+    file_writes_success_.store(0);
+  }
+
+  void OnFileReadFinish(const FileOperationInfo& info) override {
+    ++file_reads_;
+    if (info.status.ok()) {
+      ++file_reads_success_;
+    }
+    ReportDuration(info);
+  }
+
+  void OnFileWriteFinish(const FileOperationInfo& info) override {
+    ++file_writes_;
+    if (info.status.ok()) {
+      ++file_writes_success_;
+    }
+    ReportDuration(info);
+  }
+
+  bool ShouldBeNotifiedOnFileIO() override { return true; }
+
+  std::atomic<size_t> file_reads_;
+  std::atomic<size_t> file_reads_success_;
+  std::atomic<size_t> file_writes_;
+  std::atomic<size_t> file_writes_success_;
+
+ private:
+  void ReportDuration(const FileOperationInfo& info) const {
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        info.finish_timestamp - info.start_timestamp);
+    ASSERT_GT(duration.count(), 0);
+  }
+};
+
+TEST_F(EventListenerTest, OnFileOperationTest) {
+  Options options;
+  options.env = CurrentOptions().env;
+  options.create_if_missing = true;
+
+  TestFileOperationListener* listener = new TestFileOperationListener();
+  options.listeners.emplace_back(listener);
+
+  DestroyAndReopen(options);
+  ASSERT_OK(Put("foo", "aaa"));
+  dbfull()->Flush(FlushOptions());
+  dbfull()->TEST_WaitForFlushMemTable();
+  ASSERT_GE(listener->file_writes_.load(),
+            listener->file_writes_success_.load());
+  ASSERT_GT(listener->file_writes_.load(), 0);
+  Close();
+
+  Reopen(options);
+  ASSERT_GE(listener->file_reads_.load(), listener->file_reads_success_.load());
+  ASSERT_GT(listener->file_reads_.load(), 0);
 }
 
 }  // namespace rocksdb

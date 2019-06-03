@@ -1,8 +1,8 @@
 #pragma once
 
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
-#include <boost/multi_index/composite_key.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -26,7 +26,7 @@ enum class smt_phase : uint8_t
  */
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
-   smt_token_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_object );
 
 public:
 
@@ -38,6 +38,7 @@ public:
    };
 
 public:
+
    template< typename Constructor, typename Allocator >
    smt_token_object( Constructor&& c, allocator< Allocator > a )
    {
@@ -138,7 +139,7 @@ public:
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
 {
-   smt_token_emissions_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_emissions_object );
 
 public:
    template< typename Constructor, typename Allocator >
@@ -164,7 +165,7 @@ public:
 
 class smt_event_token_object : public object< smt_event_token_object_type, smt_event_token_object >
 {
-   smt_event_token_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_event_token_object );
 
 public:
    template< typename Constructor, typename Allocator >
@@ -280,28 +281,32 @@ typedef multi_index_container <
       ordered_unique< tag< by_id >,
          member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id > >,
 
-      ordered_non_unique< tag< by_interval_gen_begin >,
+      ordered_unique< tag< by_interval_gen_begin >,
          composite_key< smt_event_token_object,
             member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_begin_time >
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_begin_time >,
+            member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id >
          >
       >,
-      ordered_non_unique< tag< by_interval_gen_end >,
+      ordered_unique< tag< by_interval_gen_end >,
          composite_key< smt_event_token_object,
             member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_end_time >
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_end_time >,
+            member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id >
          >
       >,
-      ordered_non_unique< tag< by_interval_launch >,
+      ordered_unique< tag< by_interval_launch >,
          composite_key< smt_event_token_object,
             member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::announced_launch_time >
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::announced_launch_time >,
+            member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id >
          >
       >,
-      ordered_non_unique< tag< by_interval_launch_exp >,
+      ordered_unique< tag< by_interval_launch_exp >,
          composite_key< smt_event_token_object,
             member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::launch_expiration_time >
+            member< smt_event_token_object, time_point_sec, &smt_event_token_object::launch_expiration_time >,
+            member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id >
          >
       >
    >,

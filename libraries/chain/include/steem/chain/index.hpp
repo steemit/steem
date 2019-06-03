@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mira/index_converter.hpp>
+
 #include <steem/schema/schema.hpp>
 #include <steem/protocol/schema_types.hpp>
 #include <steem/chain/schema_types.hpp>
@@ -46,7 +48,7 @@ void _add_index_impl( database& db )
 template< typename MultiIndexType >
 void add_core_index( database& db )
 {
-   _add_index_impl< MultiIndexType >(db);
+   _add_index_impl< MultiIndexType >( db );
 }
 
 template< typename MultiIndexType >
@@ -56,3 +58,43 @@ void add_plugin_index( database& db )
 }
 
 } }
+
+#ifdef ENABLE_MIRA
+
+#define STEEM_ADD_CORE_INDEX(db, index_name)                                                                 \
+   do {                                                                                                      \
+      steem::chain::add_core_index< index_name >( db );                                                      \
+      steem::chain::index_delegate delegate;                                                                 \
+      delegate.set_index_type =                                                                              \
+         []( database& _db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg ) \
+            { _db.get_mutable_index< index_name >().mutable_indices().set_index_type( type, p, cfg ); };     \
+      db.set_index_delegate( #index_name, std::move( delegate ) );                                           \
+   } while( false )
+
+#define STEEM_ADD_PLUGIN_INDEX(db, index_name)                                                               \
+   do {                                                                                                      \
+      steem::chain::add_plugin_index< index_name >( db );                                                    \
+      steem::chain::index_delegate delegate;                                                                 \
+      delegate.set_index_type =                                                                              \
+         []( database& _db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg ) \
+            { _db.get_mutable_index< index_name >().mutable_indices().set_index_type( type, p, cfg ); };     \
+      db.set_index_delegate( #index_name, std::move( delegate ) );                                           \
+   } while( false )
+
+#else
+
+#define STEEM_ADD_CORE_INDEX(db, index_name)                                                                 \
+   do {                                                                                                      \
+      steem::chain::add_core_index< index_name >( db );                                                      \
+      steem::chain::index_delegate delegate;                                                                 \
+      db.set_index_delegate( #index_name, std::move( delegate ) );                                           \
+   } while( false )
+
+#define STEEM_ADD_PLUGIN_INDEX(db, index_name)                                                               \
+   do {                                                                                                      \
+      steem::chain::add_plugin_index< index_name >( db );                                                    \
+      steem::chain::index_delegate delegate;                                                                 \
+      db.set_index_delegate( #index_name, std::move( delegate ) );                                           \
+   } while( false )
+
+#endif

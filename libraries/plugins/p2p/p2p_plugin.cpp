@@ -227,7 +227,12 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
                ("e", e.to_detail_string())
                ("head", head_block_num));
          elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-         throw;
+         if (e.code() == 4080000) {
+           elog("Rethrowing as graphene::net exception");
+           FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+         } else {
+           throw;
+         }
       }
    }
    else

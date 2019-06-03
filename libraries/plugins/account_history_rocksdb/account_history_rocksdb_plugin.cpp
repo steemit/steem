@@ -377,7 +377,7 @@ public:
             on_post_reindex( note );
          }, _self, 0);
 
-      add_plugin_index< volatile_operation_index >( _mainDb );
+      STEEM_ADD_PLUGIN_INDEX(_mainDb, volatile_operation_index);
       }
 
    ~impl()

@@ -11,6 +11,7 @@ using namespace steem::protocol;
 STEEM_DEFINE_EVALUATOR( account_create )
 STEEM_DEFINE_EVALUATOR( account_create_with_delegation )
 STEEM_DEFINE_EVALUATOR( account_update )
+STEEM_DEFINE_EVALUATOR( account_update2 )
 STEEM_DEFINE_EVALUATOR( transfer )
 STEEM_DEFINE_EVALUATOR( transfer_to_vesting )
 STEEM_DEFINE_EVALUATOR( witness_update )
@@ -64,5 +65,8 @@ STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_create )
 STEEM_DEFINE_EVALUATOR( smt_contribute )
 #endif
+STEEM_DEFINE_EVALUATOR( create_proposal )
+STEEM_DEFINE_EVALUATOR( update_proposal_votes )
+STEEM_DEFINE_EVALUATOR( remove_proposal )
 
 } } // steem::chain

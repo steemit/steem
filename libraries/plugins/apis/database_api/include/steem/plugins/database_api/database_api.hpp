@@ -101,6 +101,14 @@ class database_api
          (find_limit_orders)
          (get_order_book)
 
+         /////////
+         // SPS //
+         /////////
+
+         (list_proposals)
+         (find_proposals)
+         (list_proposal_votes)
+
          ////////////////////////////
          // Authority / validation //
          ////////////////////////////

@@ -14,6 +14,8 @@ using namespace boost::multi_index;
 
 //BOOST_TEST_SUITE( serialization_tests, clean_database_fixture )
 
+#ifndef ENABLE_MIRA
+
 struct book : public chainbase::object<0, book> {
 
    template<typename Constructor, typename Allocator>
@@ -137,3 +139,4 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
 }
 
 // BOOST_AUTO_TEST_SUITE_END()
+#endif

@@ -429,4 +429,19 @@ flat_set< uint32_t > remote_node_api::get_market_history_buckets()
    FC_ASSERT( false );
 }
 
+vector< database_api::api_proposal_object > remote_node_api::list_proposals( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status )
+{
+   FC_ASSERT( false );
+}
+
+vector< database_api::api_proposal_object > remote_node_api::find_proposals( vector< int64_t > )
+{
+   FC_ASSERT( false );
+}
+
+vector< database_api::api_proposal_vote_object > remote_node_api::list_proposal_votes( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status )
+{
+   FC_ASSERT( false );
+}
+
 } }

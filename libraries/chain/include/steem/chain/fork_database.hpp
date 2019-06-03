@@ -7,10 +7,7 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-
 namespace steem { namespace chain {
-   using boost::multi_index_container;
-   using namespace boost::multi_index;
 
    using steem::protocol::signed_block;
    using steem::protocol::block_id_type;
@@ -84,12 +81,12 @@ namespace steem { namespace chain {
          struct block_id;
          struct block_num;
          struct by_previous;
-         typedef multi_index_container<
+         typedef boost::multi_index_container<
             item_ptr,
-            indexed_by<
-               hashed_unique<tag<block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<fc::ripemd160>>,
-               hashed_non_unique<tag<by_previous>, const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<fc::ripemd160>>,
-               ordered_non_unique<tag<block_num>, member<fork_item,uint32_t,&fork_item::num>>
+            boost::multi_index::indexed_by<
+               boost::multi_index::hashed_unique<boost::multi_index::tag<block_id>, boost::multi_index::member<fork_item, block_id_type, &fork_item::id>, std::hash<fc::ripemd160>>,
+               boost::multi_index::hashed_non_unique<boost::multi_index::tag<by_previous>, boost::multi_index::const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<fc::ripemd160>>,
+               boost::multi_index::ordered_non_unique<boost::multi_index::tag<block_num>, boost::multi_index::member<fork_item,uint32_t,&fork_item::num>>
             >
          > fork_multi_index_type;
 

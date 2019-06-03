@@ -1412,7 +1412,6 @@ namespace graphene { namespace net {
               wlog("Disconnecting peer ${peer} because they haven't made any progress on my remaining ${count} sync item requests",
                    ("peer", active_peer->get_remote_endpoint())("count", active_peer->sync_items_requested_from_peer.size()));
               disconnect_due_to_request_timeout = true;
-              break;
             }
             if (!disconnect_due_to_request_timeout &&
                 active_peer->item_ids_requested_from_peer &&

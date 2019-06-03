@@ -24,6 +24,8 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/exceptions.hpp>
 
 #include <steem/chain/database.hpp>
@@ -34,6 +36,7 @@
 #include <steem/plugins/witness/block_producer.hpp>
 
 #include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -54,7 +57,9 @@ void open_test_database( database& db, const fc::path& dir )
    args.data_dir = dir;
    args.shared_mem_dir = dir;
    args.initial_supply = INITIAL_TEST_SUPPLY;
+   args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
    args.shared_file_size = TEST_SHARED_MEM_SIZE;
+   args.database_cfg = steem::utilities::default_database_configuration();
    db.open( args );
 }
 
@@ -102,14 +107,14 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          db._log_hardforks = false;
          open_test_database( db, data_dir.path() );
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num() );
 #endif
 
          b = cutoff_block;
          for( uint32_t i = 0; i < 200; ++i )
          {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
             BOOST_CHECK( db.head_block_id() == b.id() );
 #else
             BOOST_CHECK( i==0 || ( db.head_block_id() == b.id() ) );
@@ -119,7 +124,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             //BOOST_CHECK( cur_witness != prev_witness );
             b = bp.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
          }
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num()+200 );
 #endif
       }
@@ -545,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
       // Sam is the creator of accounts
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       private_key_type sam_key = generate_private_key( "sam" );
-      account_object sam_account_object = account_create( "sam", sam_key.get_public_key() );
+      account_create( "sam", sam_key.get_public_key() );
 
       //Get a sane head block time
       generate_block( skip_flags );
@@ -816,9 +821,19 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( get_last_operations( 1 )[0] == hardfork_vop );
       BOOST_REQUIRE( db->get(itr->op).timestamp == db->head_block_time() - STEEM_BLOCK_INTERVAL );
 
-      db->wipe( data_dir->path(), data_dir->path(), true );
    }
-   FC_LOG_AND_RETHROW()
+   catch( fc::exception& e )
+   {
+      db->wipe( data_dir->path(), data_dir->path(), true );
+      throw e;
+   }
+   catch( std::exception& e )
+   {
+      db->wipe( data_dir->path(), data_dir->path(), true );
+      throw e;
+   }
+
+   db->wipe( data_dir->path(), data_dir->path(), true );
 }
 
 BOOST_FIXTURE_TEST_CASE( generate_block_size, clean_database_fixture )

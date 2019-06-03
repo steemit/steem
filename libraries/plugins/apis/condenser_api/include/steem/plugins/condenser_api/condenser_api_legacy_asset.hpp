@@ -1,5 +1,5 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/protocol/asset.hpp>
 
 namespace steem { namespace plugins { namespace condenser_api {

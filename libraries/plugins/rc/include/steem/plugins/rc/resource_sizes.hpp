@@ -87,6 +87,12 @@ struct state_object_size_info
 
    // witness_vote_object
    int64_t witness_vote_object_base_size      = 40     *STATE_BYTES_SCALE;
+
+   // proposal_object
+   int64_t proposal_object_base_size            = 68  *STATE_BYTES_SCALE;
+   // proposal_vote_object
+   int64_t proposal_vote_object_base_size       = 24  *STATE_BYTES_SCALE;
+   int64_t proposal_vote_object_member_size     = 8   *STATE_BYTES_SCALE;
 };
 
 struct operation_exec_info
@@ -94,6 +100,7 @@ struct operation_exec_info
    int64_t account_create_operation_exec_time                  =  57700;
    int64_t account_create_with_delegation_operation_exec_time  =  57700;
    int64_t account_update_operation_exec_time                  =  14000;
+   int64_t account_update2_operation_exec_time                 =  14000;
    int64_t account_witness_proxy_operation_exec_time           = 117000;
    int64_t account_witness_vote_operation_exec_time            =  23000;
    int64_t cancel_transfer_from_savings_operation_exec_time    =  11500;
@@ -140,6 +147,10 @@ struct operation_exec_info
    int64_t smt_create_operation_exec_time                      = 0;
    int64_t smt_contribute_operation_exec_time                  = 0;
 #endif
+
+   int64_t create_proposal_operation_exec_time                  =   31700;
+   int64_t update_proposal_votes_operation_exec_time            =   12000;
+   int64_t remove_proposal_operation_exec_time                  =   12000;
 };
 
 } } }
@@ -169,12 +180,16 @@ FC_REFLECT( steem::plugins::rc::state_object_size_info,
    ( witness_object_base_size )
    ( witness_object_url_char_size )
    ( witness_vote_object_base_size )
+   ( proposal_object_base_size )
+   ( proposal_vote_object_base_size )
+   ( proposal_vote_object_member_size )
    )
 
 FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( account_create_operation_exec_time )
    ( account_create_with_delegation_operation_exec_time )
    ( account_update_operation_exec_time )
+   ( account_update2_operation_exec_time )
    ( account_witness_proxy_operation_exec_time )
    ( account_witness_vote_operation_exec_time )
    ( cancel_transfer_from_savings_operation_exec_time )
@@ -221,4 +236,9 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( smt_create_operation_exec_time )
    ( smt_contribute_operation_exec_time )
 #endif
+
+   (create_proposal_operation_exec_time)
+   (update_proposal_votes_operation_exec_time)
+   (remove_proposal_operation_exec_time)
+
    )

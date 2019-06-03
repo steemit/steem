@@ -6,6 +6,8 @@ FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 
 #include <boost/test/unit_test.hpp>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 

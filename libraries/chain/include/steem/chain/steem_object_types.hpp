@@ -1,8 +1,6 @@
 #pragma once
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
+
+#include <steem/chain/steem_fwd.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -11,11 +9,28 @@
 
 #include <steem/chain/buffer_type.hpp>
 
-namespace steem { namespace chain {
+#include <steem/chain/multi_index_types.hpp>
 
-using namespace boost::multi_index;
+#ifndef ENABLE_MIRA
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+      object_type () = delete;                           \
+   public:
+#else
+#define STEEM_STD_ALLOCATOR_CONSTRUCTOR( object_type )   \
+   public:                                               \
+      object_type () {}
+#endif
 
-using boost::multi_index_container;
+namespace steem {
+
+namespace protocol {
+
+struct asset;
+struct price;
+
+}
+
+namespace chain {
 
 using chainbase::object;
 using chainbase::oid;
@@ -39,6 +54,7 @@ enum object_type
 {
    dynamic_global_property_object_type,
    account_object_type,
+   account_metadata_object_type,
    account_authority_object_type,
    witness_object_type,
    transaction_object_type,
@@ -68,6 +84,8 @@ enum object_type
    vesting_delegation_expiration_object_type,
    pending_required_action_object_type,
    pending_optional_action_object_type,
+   proposal_object_type,
+   proposal_vote_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
@@ -83,6 +101,7 @@ enum object_type
 
 class dynamic_global_property_object;
 class account_object;
+class account_metadata_object;
 class account_authority_object;
 class witness_object;
 class transaction_object;
@@ -124,8 +143,12 @@ class smt_contribution_object;
 class smt_ico_object;
 #endif
 
+class proposal_object;
+class proposal_vote_object;
+
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
+typedef oid< account_metadata_object                > account_metadata_id_type;
 typedef oid< account_authority_object               > account_authority_id_type;
 typedef oid< witness_object                         > witness_id_type;
 typedef oid< transaction_object                     > transaction_object_id_type;
@@ -167,6 +190,9 @@ typedef oid< smt_contribution_object                > smt_contribution_object_id
 typedef oid< smt_ico_object                         > smt_ico_object_id_type;
 #endif
 
+typedef oid< proposal_object > proposal_id_type;
+typedef oid< proposal_vote_object > proposal_vote_id_type;
+
 enum bandwidth_type
 {
    post,    ///< Rate limiting posting reward eligibility over time
@@ -176,10 +202,24 @@ enum bandwidth_type
 
 } } //steem::chain
 
+#ifdef ENABLE_MIRA
+namespace mira {
+
+template< typename T > struct is_static_length< chainbase::oid< T > > : public boost::true_type {};
+template< typename T > struct is_static_length< fc::fixed_string< T > > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::account_name_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset_symbol_type > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::asset > : public boost::true_type {};
+template<> struct is_static_length< steem::protocol::price > : public boost::true_type {};
+
+} // mira
+#endif
+
 namespace fc
 {
 class variant;
 
+#ifndef ENABLE_MIRA
 inline void to_variant( const steem::chain::shared_string& s, variant& var )
 {
    var = fc::string( steem::chain::to_string( s ) );
@@ -190,6 +230,7 @@ inline void from_variant( const variant& var, steem::chain::shared_string& s )
    auto str = var.as_string();
    s.assign( str.begin(), str.end() );
 }
+#endif
 
 template<typename T>
 void to_variant( const chainbase::oid<T>& var,  variant& vo )
@@ -203,6 +244,16 @@ void from_variant( const variant& vo, chainbase::oid<T>& var )
    var._id = vo.as_int64();
 }
 
+template< typename T >
+struct get_typename< chainbase::oid< T > >
+{
+   static const char* name()
+   {
+      static std::string n = std::string( "chainbase::oid<" ) + get_typename< T >::name() + ">";
+      return n.c_str();
+   }
+};
+
 namespace raw
 {
 
@@ -213,11 +264,12 @@ void pack( Stream& s, const chainbase::oid<T>& id )
 }
 
 template<typename Stream, typename T>
-void unpack( Stream& s, chainbase::oid<T>& id )
+void unpack( Stream& s, chainbase::oid<T>& id, uint32_t )
 {
    s.read( (char*)&id._id, sizeof(id._id));
 }
 
+#ifndef ENABLE_MIRA
 template< typename Stream >
 void pack( Stream& s, const chainbase::shared_string& ss )
 {
@@ -226,12 +278,14 @@ void pack( Stream& s, const chainbase::shared_string& ss )
 }
 
 template< typename Stream >
-void unpack( Stream& s, chainbase::shared_string& ss )
+void unpack( Stream& s, chainbase::shared_string& ss, uint32_t depth )
 {
+   depth++;
    std::string str;
-   fc::raw::unpack( s, str );
+   fc::raw::unpack( s, str, depth );
    steem::chain::from_string( ss, str );
 }
+#endif
 
 template< typename Stream, typename E, typename A >
 void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
@@ -243,11 +297,14 @@ void pack( Stream& s, const boost::interprocess::deque<E, A>& dq )
 }
 
 template< typename Stream, typename E, typename A >
-void unpack( Stream& s, boost::interprocess::deque<E, A>& dq )
+void unpack( Stream& s, boost::interprocess::deque<E, A>& dq, uint32_t depth )
 {
+   depth++;
+   FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
    // This could be optimized
    std::vector<E> temp;
-   unpack( s, temp );
+   unpack( s, temp, depth );
+   dq.clear();
    std::copy( temp.begin(), temp.end(), std::back_inserter(dq) );
 }
 
@@ -265,22 +322,23 @@ void pack( Stream& s, const boost::interprocess::flat_map< K, V, C, A >& value )
 }
 
 template< typename Stream, typename K, typename V, typename C, typename A >
-void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value )
+void unpack( Stream& s, boost::interprocess::flat_map< K, V, C, A >& value, uint32_t depth )
 {
+   depth++;
+   FC_ASSERT( depth <= MAX_RECURSION_DEPTH );
    unsigned_int size;
-   unpack( s, size );
+   unpack( s, size, depth );
    value.clear();
    FC_ASSERT( size.value*(sizeof(K)+sizeof(V)) < MAX_ARRAY_ALLOC_SIZE );
-   value.reserve(size.value);
    for( uint32_t i = 0; i < size.value; ++i )
    {
       std::pair<K,V> tmp;
-      fc::raw::unpack( s, tmp );
+      fc::raw::unpack( s, tmp, depth );
       value.insert( std::move(tmp) );
    }
 }
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 template< typename T >
 T unpack_from_vector( const steem::chain::buffer_type& s )
 {
@@ -301,6 +359,7 @@ T unpack_from_vector( const steem::chain::buffer_type& s )
 FC_REFLECT_ENUM( steem::chain::object_type,
                  (dynamic_global_property_object_type)
                  (account_object_type)
+                 (account_metadata_object_type)
                  (account_authority_object_type)
                  (witness_object_type)
                  (transaction_object_type)
@@ -330,6 +389,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (vesting_delegation_expiration_object_type)
                  (pending_required_action_object_type)
                  (pending_optional_action_object_type)
+                 (proposal_object_type)
+                 (proposal_vote_object_type)
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
@@ -343,7 +404,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
 FC_REFLECT_TYPENAME( steem::chain::shared_string )
 #endif
 

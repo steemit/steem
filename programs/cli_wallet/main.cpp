@@ -27,6 +27,8 @@
 #include <iostream>
 #include <iterator>
 
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
 #include <fc/network/http/server.hpp>

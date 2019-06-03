@@ -141,6 +141,9 @@ void block_producer::apply_pending_transactions(
       // Only include transactions that have not expired yet for currently generating block,
       // this should clear problem transactions and allow block production to continue
 
+      if( postponed_tx_count > STEEM_BLOCK_GENERATION_POSTPONED_TX_LIMIT )
+         break;
+
       if( tx.expiration < when )
          continue;
 
@@ -171,7 +174,7 @@ void block_producer::apply_pending_transactions(
    }
    if( postponed_tx_count > 0 )
    {
-      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+      wlog( "Postponed ${n} transactions due to block size limit", ("n", _db._pending_tx.size() - pending_block.transactions.size()) );
    }
 
    const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_execution >();

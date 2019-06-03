@@ -93,7 +93,7 @@ class DBTestWithParam
 };
 
 TEST_F(DBTest, MockEnvTest) {
-  unique_ptr<MockEnv> env{new MockEnv(Env::Default())};
+  std::unique_ptr<MockEnv> env{new MockEnv(Env::Default())};
   Options options;
   options.create_if_missing = true;
   options.env = env.get();
@@ -143,7 +143,7 @@ TEST_F(DBTest, MockEnvTest) {
 // defined.
 #ifndef ROCKSDB_LITE
 TEST_F(DBTest, MemEnvTest) {
-  unique_ptr<Env> env{NewMemEnv(Env::Default())};
+  std::unique_ptr<Env> env{NewMemEnv(Env::Default())};
   Options options;
   options.create_if_missing = true;
   options.env = env.get();
@@ -234,11 +234,11 @@ TEST_F(DBTest, SkipDelay) {
       std::atomic<int> sleep_count(0);
       rocksdb::SyncPoint::GetInstance()->SetCallBack(
           "DBImpl::DelayWrite:Sleep",
-          [&](void* arg) { sleep_count.fetch_add(1); });
+          [&](void* /*arg*/) { sleep_count.fetch_add(1); });
       std::atomic<int> wait_count(0);
       rocksdb::SyncPoint::GetInstance()->SetCallBack(
           "DBImpl::DelayWrite:Wait",
-          [&](void* arg) { wait_count.fetch_add(1); });
+          [&](void* /*arg*/) { wait_count.fetch_add(1); });
       rocksdb::SyncPoint::GetInstance()->EnableProcessing();
 
       WriteOptions wo;
@@ -262,6 +262,196 @@ TEST_F(DBTest, SkipDelay) {
   }
 }
 
+TEST_F(DBTest, MixedSlowdownOptions) {
+  Options options = CurrentOptions();
+  options.env = env_;
+  options.write_buffer_size = 100000;
+  CreateAndReopenWithCF({"pikachu"}, options);
+  std::vector<port::Thread> threads;
+  std::atomic<int> thread_num(0);
+
+  std::function<void()> write_slowdown_func = [&]() {
+    int a = thread_num.fetch_add(1);
+    std::string key = "foo" + std::to_string(a);
+    WriteOptions wo;
+    wo.no_slowdown = false;
+    ASSERT_OK(dbfull()->Put(wo, key, "bar"));
+  };
+  std::function<void()> write_no_slowdown_func = [&]() {
+    int a = thread_num.fetch_add(1);
+    std::string key = "foo" + std::to_string(a);
+    WriteOptions wo;
+    wo.no_slowdown = true;
+    ASSERT_NOK(dbfull()->Put(wo, key, "bar"));
+  };
+  // Use a small number to ensure a large delay that is still effective
+  // when we do Put
+  // TODO(myabandeh): this is time dependent and could potentially make
+  // the test flaky
+  auto token = dbfull()->TEST_write_controler().GetDelayToken(1);
+  std::atomic<int> sleep_count(0);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::DelayWrite:BeginWriteStallDone",
+      [&](void* /*arg*/) {
+        sleep_count.fetch_add(1);
+        if (threads.empty()) {
+          for (int i = 0; i < 2; ++i) {
+            threads.emplace_back(write_slowdown_func);
+          }
+          for (int i = 0; i < 2; ++i) {
+            threads.emplace_back(write_no_slowdown_func);
+          }
+        }
+      });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  WriteOptions wo;
+  wo.sync = false;
+  wo.disableWAL = false;
+  wo.no_slowdown = false;
+  dbfull()->Put(wo, "foo", "bar");
+  // We need the 2nd write to trigger delay. This is because delay is
+  // estimated based on the last write size which is 0 for the first write.
+  ASSERT_OK(dbfull()->Put(wo, "foo2", "bar2"));
+          token.reset();
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  ASSERT_GE(sleep_count.load(), 1);
+
+  wo.no_slowdown = true;
+  ASSERT_OK(dbfull()->Put(wo, "foo3", "bar"));
+}
+
+TEST_F(DBTest, MixedSlowdownOptionsInQueue) {
+  Options options = CurrentOptions();
+  options.env = env_;
+  options.write_buffer_size = 100000;
+  CreateAndReopenWithCF({"pikachu"}, options);
+  std::vector<port::Thread> threads;
+  std::atomic<int> thread_num(0);
+
+  std::function<void()> write_no_slowdown_func = [&]() {
+    int a = thread_num.fetch_add(1);
+    std::string key = "foo" + std::to_string(a);
+    WriteOptions wo;
+    wo.no_slowdown = true;
+    ASSERT_NOK(dbfull()->Put(wo, key, "bar"));
+  };
+  // Use a small number to ensure a large delay that is still effective
+  // when we do Put
+  // TODO(myabandeh): this is time dependent and could potentially make
+  // the test flaky
+  auto token = dbfull()->TEST_write_controler().GetDelayToken(1);
+  std::atomic<int> sleep_count(0);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::DelayWrite:Sleep",
+      [&](void* /*arg*/) {
+        sleep_count.fetch_add(1);
+        if (threads.empty()) {
+          for (int i = 0; i < 2; ++i) {
+            threads.emplace_back(write_no_slowdown_func);
+          }
+          // Sleep for 2s to allow the threads to insert themselves into the
+          // write queue
+          env_->SleepForMicroseconds(3000000ULL);
+        }
+      });
+  std::atomic<int> wait_count(0);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::DelayWrite:Wait",
+      [&](void* /*arg*/) { wait_count.fetch_add(1); });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  WriteOptions wo;
+  wo.sync = false;
+  wo.disableWAL = false;
+  wo.no_slowdown = false;
+  dbfull()->Put(wo, "foo", "bar");
+  // We need the 2nd write to trigger delay. This is because delay is
+  // estimated based on the last write size which is 0 for the first write.
+  ASSERT_OK(dbfull()->Put(wo, "foo2", "bar2"));
+          token.reset();
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  ASSERT_EQ(sleep_count.load(), 1);
+  ASSERT_GE(wait_count.load(), 0);
+}
+
+TEST_F(DBTest, MixedSlowdownOptionsStop) {
+  Options options = CurrentOptions();
+  options.env = env_;
+  options.write_buffer_size = 100000;
+  CreateAndReopenWithCF({"pikachu"}, options);
+  std::vector<port::Thread> threads;
+  std::atomic<int> thread_num(0);
+
+  std::function<void()> write_slowdown_func = [&]() {
+    int a = thread_num.fetch_add(1);
+    std::string key = "foo" + std::to_string(a);
+    WriteOptions wo;
+    wo.no_slowdown = false;
+    ASSERT_OK(dbfull()->Put(wo, key, "bar"));
+  };
+  std::function<void()> write_no_slowdown_func = [&]() {
+    int a = thread_num.fetch_add(1);
+    std::string key = "foo" + std::to_string(a);
+    WriteOptions wo;
+    wo.no_slowdown = true;
+    ASSERT_NOK(dbfull()->Put(wo, key, "bar"));
+  };
+  std::function<void()> wakeup_writer = [&]() {
+    dbfull()->mutex_.Lock();
+    dbfull()->bg_cv_.SignalAll();
+    dbfull()->mutex_.Unlock();
+  };
+  // Use a small number to ensure a large delay that is still effective
+  // when we do Put
+  // TODO(myabandeh): this is time dependent and could potentially make
+  // the test flaky
+  auto token = dbfull()->TEST_write_controler().GetStopToken();
+  std::atomic<int> wait_count(0);
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DBImpl::DelayWrite:Wait",
+      [&](void* /*arg*/) {
+        wait_count.fetch_add(1);
+        if (threads.empty()) {
+          for (int i = 0; i < 2; ++i) {
+            threads.emplace_back(write_slowdown_func);
+          }
+          for (int i = 0; i < 2; ++i) {
+            threads.emplace_back(write_no_slowdown_func);
+          }
+          // Sleep for 2s to allow the threads to insert themselves into the
+          // write queue
+          env_->SleepForMicroseconds(3000000ULL);
+        }
+        token.reset();
+        threads.emplace_back(wakeup_writer);
+      });
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  WriteOptions wo;
+  wo.sync = false;
+  wo.disableWAL = false;
+  wo.no_slowdown = false;
+  dbfull()->Put(wo, "foo", "bar");
+  // We need the 2nd write to trigger delay. This is because delay is
+  // estimated based on the last write size which is 0 for the first write.
+  ASSERT_OK(dbfull()->Put(wo, "foo2", "bar2"));
+          token.reset();
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  ASSERT_GE(wait_count.load(), 1);
+
+  wo.no_slowdown = true;
+  ASSERT_OK(dbfull()->Put(wo, "foo3", "bar"));
+}
 #ifndef ROCKSDB_LITE
 
 TEST_F(DBTest, LevelLimitReopen) {
@@ -297,11 +487,11 @@ TEST_F(DBTest, PutSingleDeleteGet) {
     ASSERT_EQ("v2", Get(1, "foo2"));
     ASSERT_OK(SingleDelete(1, "foo"));
     ASSERT_EQ("NOT_FOUND", Get(1, "foo"));
-    // Skip HashCuckooRep as it does not support single delete. FIFO and
-    // universal compaction do not apply to the test case. Skip MergePut
-    // because single delete does not get removed when it encounters a merge.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Skip FIFO and universal compaction beccause they do not apply to the test
+    // case. Skip MergePut because single delete does not get removed when it
+    // encounters a merge.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
 }
 
 TEST_F(DBTest, ReadFromPersistedTier) {
@@ -414,7 +604,7 @@ TEST_F(DBTest, ReadFromPersistedTier) {
         DestroyAndReopen(options);
       }
     }
-  } while (ChangeOptions(kSkipHashCuckoo));
+  } while (ChangeOptions());
 }
 
 TEST_F(DBTest, SingleDeleteFlush) {
@@ -450,11 +640,11 @@ TEST_F(DBTest, SingleDeleteFlush) {
 
     ASSERT_EQ("NOT_FOUND", Get(1, "bar"));
     ASSERT_EQ("NOT_FOUND", Get(1, "foo"));
-    // Skip HashCuckooRep as it does not support single delete. FIFO and
-    // universal compaction do not apply to the test case. Skip MergePut
-    // because merges cannot be combined with single deletions.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Skip FIFO and universal compaction beccause they do not apply to the test
+    // case. Skip MergePut because single delete does not get removed when it
+    // encounters a merge.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
 }
 
 TEST_F(DBTest, SingleDeletePutFlush) {
@@ -473,11 +663,41 @@ TEST_F(DBTest, SingleDeletePutFlush) {
     ASSERT_OK(Flush(1));
 
     ASSERT_EQ("[ ]", AllEntriesFor("a", 1));
-    // Skip HashCuckooRep as it does not support single delete. FIFO and
-    // universal compaction do not apply to the test case. Skip MergePut
-    // because merges cannot be combined with single deletions.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Skip FIFO and universal compaction beccause they do not apply to the test
+    // case. Skip MergePut because single delete does not get removed when it
+    // encounters a merge.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
+}
+
+// Disable because not all platform can run it.
+// It requires more than 9GB memory to run it, With single allocation
+// of more than 3GB.
+TEST_F(DBTest, DISABLED_SanitizeVeryVeryLargeValue) {
+  const size_t kValueSize = 4 * size_t{1024 * 1024 * 1024};  // 4GB value
+  std::string raw(kValueSize, 'v');
+  Options options = CurrentOptions();
+  options.env = env_;
+  options.merge_operator = MergeOperators::CreatePutOperator();
+  options.write_buffer_size = 100000;  // Small write buffer
+  options.paranoid_checks = true;
+  DestroyAndReopen(options);
+
+  ASSERT_OK(Put("boo", "v1"));
+  ASSERT_TRUE(Put("foo", raw).IsInvalidArgument());
+  ASSERT_TRUE(Merge("foo", raw).IsInvalidArgument());
+
+  WriteBatch wb;
+  ASSERT_TRUE(wb.Put("foo", raw).IsInvalidArgument());
+  ASSERT_TRUE(wb.Merge("foo", raw).IsInvalidArgument());
+
+  Slice value_slice = raw;
+  Slice key_slice = "foo";
+  SliceParts sp_key(&key_slice, 1);
+  SliceParts sp_value(&value_slice, 1);
+
+  ASSERT_TRUE(wb.Put(sp_key, sp_value).IsInvalidArgument());
+  ASSERT_TRUE(wb.Merge(sp_key, sp_value).IsInvalidArgument());
 }
 
 // Disable because not all platform can run it.
@@ -503,7 +723,9 @@ TEST_F(DBTest, DISABLED_VeryLargeValue) {
   ASSERT_OK(Put(key2, raw));
   dbfull()->TEST_WaitForFlushMemTable();
 
+#ifndef ROCKSDB_LITE
   ASSERT_EQ(1, NumTableFilesAtLevel(0));
+#endif  // !ROCKSDB_LITE
 
   std::string value;
   Status s = db_->Get(ReadOptions(), key1, &value);
@@ -718,13 +940,13 @@ TEST_F(DBTest, FlushSchedule) {
 namespace {
 class KeepFilter : public CompactionFilter {
  public:
-  virtual bool Filter(int level, const Slice& key, const Slice& value,
-                      std::string* new_value,
-                      bool* value_changed) const override {
+  bool Filter(int /*level*/, const Slice& /*key*/, const Slice& /*value*/,
+              std::string* /*new_value*/,
+              bool* /*value_changed*/) const override {
     return false;
   }
 
-  virtual const char* Name() const override { return "KeepFilter"; }
+  const char* Name() const override { return "KeepFilter"; }
 };
 
 class KeepFilterFactory : public CompactionFilterFactory {
@@ -732,7 +954,7 @@ class KeepFilterFactory : public CompactionFilterFactory {
   explicit KeepFilterFactory(bool check_context = false)
       : check_context_(check_context) {}
 
-  virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
+  std::unique_ptr<CompactionFilter> CreateCompactionFilter(
       const CompactionFilter::Context& context) override {
     if (check_context_) {
       EXPECT_EQ(expect_full_compaction_.load(), context.is_full_compaction);
@@ -741,7 +963,7 @@ class KeepFilterFactory : public CompactionFilterFactory {
     return std::unique_ptr<CompactionFilter>(new KeepFilter());
   }
 
-  virtual const char* Name() const override { return "KeepFilterFactory"; }
+  const char* Name() const override { return "KeepFilterFactory"; }
   bool check_context_;
   std::atomic_bool expect_full_compaction_;
   std::atomic_bool expect_manual_compaction_;
@@ -750,14 +972,14 @@ class KeepFilterFactory : public CompactionFilterFactory {
 class DelayFilter : public CompactionFilter {
  public:
   explicit DelayFilter(DBTestBase* d) : db_test(d) {}
-  virtual bool Filter(int level, const Slice& key, const Slice& value,
-                      std::string* new_value,
-                      bool* value_changed) const override {
+  bool Filter(int /*level*/, const Slice& /*key*/, const Slice& /*value*/,
+              std::string* /*new_value*/,
+              bool* /*value_changed*/) const override {
     db_test->env_->addon_time_.fetch_add(1000);
     return true;
   }
 
-  virtual const char* Name() const override { return "DelayFilter"; }
+  const char* Name() const override { return "DelayFilter"; }
 
  private:
   DBTestBase* db_test;
@@ -766,12 +988,12 @@ class DelayFilter : public CompactionFilter {
 class DelayFilterFactory : public CompactionFilterFactory {
  public:
   explicit DelayFilterFactory(DBTestBase* d) : db_test(d) {}
-  virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
-      const CompactionFilter::Context& context) override {
+  std::unique_ptr<CompactionFilter> CreateCompactionFilter(
+      const CompactionFilter::Context& /*context*/) override {
     return std::unique_ptr<CompactionFilter>(new DelayFilter(db_test));
   }
 
-  virtual const char* Name() const override { return "DelayFilterFactory"; }
+  const char* Name() const override { return "DelayFilterFactory"; }
 
  private:
   DBTestBase* db_test;
@@ -1347,7 +1569,7 @@ TEST_F(DBTest, Snapshot) {
     ASSERT_EQ(0U, GetNumSnapshots());
     ASSERT_EQ("0v4", Get(0, "foo"));
     ASSERT_EQ("1v4", Get(1, "foo"));
-  } while (ChangeOptions(kSkipHashCuckoo));
+  } while (ChangeOptions());
 }
 
 TEST_F(DBTest, HiddenValuesAreRemoved) {
@@ -1384,9 +1606,8 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
     ASSERT_TRUE(Between(Size("", "pastfoo", 1), 0, 1000));
     // ApproximateOffsetOf() is not yet implemented in plain table format,
     // which is used by Size().
-    // skip HashCuckooRep as it does not support snapshot
   } while (ChangeOptions(kSkipUniversalCompaction | kSkipFIFOCompaction |
-                         kSkipPlainTable | kSkipHashCuckoo));
+                         kSkipPlainTable));
 }
 #endif  // ROCKSDB_LITE
 
@@ -1432,11 +1653,11 @@ TEST_F(DBTest, UnremovableSingleDelete) {
     ASSERT_EQ("first", Get(1, "foo", snapshot));
     ASSERT_EQ("NOT_FOUND", Get(1, "foo"));
     db_->ReleaseSnapshot(snapshot);
-    // Skip HashCuckooRep as it does not support single delete.  FIFO and
-    // universal compaction do not apply to the test case.  Skip MergePut
-    // because single delete does not get removed when it encounters a merge.
-  } while (ChangeOptions(kSkipHashCuckoo | kSkipFIFOCompaction |
-                         kSkipUniversalCompaction | kSkipMergePut));
+    // Skip FIFO and universal compaction beccause they do not apply to the test
+    // case. Skip MergePut because single delete does not get removed when it
+    // encounters a merge.
+  } while (ChangeOptions(kSkipFIFOCompaction | kSkipUniversalCompaction |
+                         kSkipMergePut));
 }
 
 #ifndef ROCKSDB_LITE
@@ -1554,17 +1775,14 @@ TEST_F(DBTest, OverlapInLevel0) {
 TEST_F(DBTest, ComparatorCheck) {
   class NewComparator : public Comparator {
    public:
-    virtual const char* Name() const override {
-      return "rocksdb.NewComparator";
-    }
-    virtual int Compare(const Slice& a, const Slice& b) const override {
+    const char* Name() const override { return "rocksdb.NewComparator"; }
+    int Compare(const Slice& a, const Slice& b) const override {
       return BytewiseComparator()->Compare(a, b);
     }
-    virtual void FindShortestSeparator(std::string* s,
-                                       const Slice& l) const override {
+    void FindShortestSeparator(std::string* s, const Slice& l) const override {
       BytewiseComparator()->FindShortestSeparator(s, l);
     }
-    virtual void FindShortSuccessor(std::string* key) const override {
+    void FindShortSuccessor(std::string* key) const override {
       BytewiseComparator()->FindShortSuccessor(key);
     }
   };
@@ -1587,18 +1805,15 @@ TEST_F(DBTest, ComparatorCheck) {
 TEST_F(DBTest, CustomComparator) {
   class NumberComparator : public Comparator {
    public:
-    virtual const char* Name() const override {
-      return "test.NumberComparator";
-    }
-    virtual int Compare(const Slice& a, const Slice& b) const override {
+    const char* Name() const override { return "test.NumberComparator"; }
+    int Compare(const Slice& a, const Slice& b) const override {
       return ToNumber(a) - ToNumber(b);
     }
-    virtual void FindShortestSeparator(std::string* s,
-                                       const Slice& l) const override {
+    void FindShortestSeparator(std::string* s, const Slice& l) const override {
       ToNumber(*s);  // Check format
       ToNumber(l);   // Check format
     }
-    virtual void FindShortSuccessor(std::string* key) const override {
+    void FindShortSuccessor(std::string* key) const override {
       ToNumber(*key);  // Check format
     }
 
@@ -1650,7 +1865,7 @@ TEST_F(DBTest, CustomComparator) {
 
 TEST_F(DBTest, DBOpen_Options) {
   Options options = CurrentOptions();
-  std::string dbname = test::TmpDir(env_) + "/db_options_test";
+  std::string dbname = test::PerThreadDBPath("db_options_test");
   ASSERT_OK(DestroyDB(dbname, options));
 
   // Does not exist, and create_if_missing == false: error
@@ -1708,7 +1923,7 @@ TEST_F(DBTest, DBOpen_Change_NumLevels) {
 }
 
 TEST_F(DBTest, DestroyDBMetaDatabase) {
-  std::string dbname = test::TmpDir(env_) + "/db_meta";
+  std::string dbname = test::PerThreadDBPath("db_meta");
   ASSERT_OK(env_->CreateDirIfMissing(dbname));
   std::string metadbname = MetaDatabaseName(dbname, 0);
   ASSERT_OK(env_->CreateDirIfMissing(metadbname));
@@ -2032,15 +2247,12 @@ static void MTThreadBody(void* arg) {
 class MultiThreadedDBTest : public DBTest,
                             public ::testing::WithParamInterface<int> {
  public:
-  virtual void SetUp() override { option_config_ = GetParam(); }
+  void SetUp() override { option_config_ = GetParam(); }
 
   static std::vector<int> GenerateOptionConfigs() {
     std::vector<int> optionConfigs;
     for (int optionConfig = kDefault; optionConfig < kEnd; ++optionConfig) {
-      // skip as HashCuckooRep does not support snapshot
-      if (optionConfig != kHashCuckoo) {
-        optionConfigs.push_back(optionConfig);
-      }
+      optionConfigs.push_back(optionConfig);
     }
     return optionConfigs;
   }
@@ -2091,6 +2303,9 @@ INSTANTIATE_TEST_CASE_P(
 #endif  // ROCKSDB_LITE
 
 // Group commit test:
+#if !defined(TRAVIS) && !defined(OS_WIN)
+// Disable this test temporarily on Travis and appveyor as it fails
+// intermittently. Github issue: #4151
 namespace {
 
 static const int kGCNumThreads = 4;
@@ -2121,9 +2336,15 @@ TEST_F(DBTest, GroupCommitTest) {
   do {
     Options options = CurrentOptions();
     options.env = env_;
-    env_->log_write_slowdown_.store(100);
     options.statistics = rocksdb::CreateDBStatistics();
     Reopen(options);
+
+    rocksdb::SyncPoint::GetInstance()->LoadDependency(
+        {{"WriteThread::JoinBatchGroup:BeganWaiting",
+          "DBImpl::WriteImpl:BeforeLeaderEnters"},
+          {"WriteThread::AwaitState:BlockingWaiting",
+          "WriteThread::EnterAsBatchGroupLeader:End"}});
+    rocksdb::SyncPoint::GetInstance()->EnableProcessing();
 
     // Start threads
     GCThread thread[kGCNumThreads];
@@ -2133,13 +2354,7 @@ TEST_F(DBTest, GroupCommitTest) {
       thread[id].done = false;
       env_->StartThread(GCThreadBody, &thread[id]);
     }
-
-    for (int id = 0; id < kGCNumThreads; id++) {
-      while (thread[id].done == false) {
-        env_->SleepForMicroseconds(100000);
-      }
-    }
-    env_->log_write_slowdown_.store(0);
+    env_->WaitForJoin();
 
     ASSERT_GT(TestGetTickerCount(options, WRITE_DONE_BY_OTHER), 0);
 
@@ -2165,6 +2380,7 @@ TEST_F(DBTest, GroupCommitTest) {
     ASSERT_GT(hist_data.average, 0.0);
   } while (ChangeOptions(kSkipNoSeekToLast));
 }
+#endif  // TRAVIS
 
 namespace {
 typedef std::map<std::string, std::string> KVMap;
@@ -2176,7 +2392,7 @@ class ModelDB : public DB {
    public:
     KVMap map_;
 
-    virtual SequenceNumber GetSequenceNumber() const override {
+    SequenceNumber GetSequenceNumber() const override {
       // no need to call this
       assert(false);
       return 0;
@@ -2185,45 +2401,47 @@ class ModelDB : public DB {
 
   explicit ModelDB(const Options& options) : options_(options) {}
   using DB::Put;
-  virtual Status Put(const WriteOptions& o, ColumnFamilyHandle* cf,
-                     const Slice& k, const Slice& v) override {
+  Status Put(const WriteOptions& o, ColumnFamilyHandle* cf, const Slice& k,
+             const Slice& v) override {
     WriteBatch batch;
     batch.Put(cf, k, v);
     return Write(o, &batch);
   }
+  using DB::Close;
+  Status Close() override { return Status::OK(); }
   using DB::Delete;
-  virtual Status Delete(const WriteOptions& o, ColumnFamilyHandle* cf,
-                        const Slice& key) override {
+  Status Delete(const WriteOptions& o, ColumnFamilyHandle* cf,
+                const Slice& key) override {
     WriteBatch batch;
     batch.Delete(cf, key);
     return Write(o, &batch);
   }
   using DB::SingleDelete;
-  virtual Status SingleDelete(const WriteOptions& o, ColumnFamilyHandle* cf,
-                              const Slice& key) override {
+  Status SingleDelete(const WriteOptions& o, ColumnFamilyHandle* cf,
+                      const Slice& key) override {
     WriteBatch batch;
     batch.SingleDelete(cf, key);
     return Write(o, &batch);
   }
   using DB::Merge;
-  virtual Status Merge(const WriteOptions& o, ColumnFamilyHandle* cf,
-                       const Slice& k, const Slice& v) override {
+  Status Merge(const WriteOptions& o, ColumnFamilyHandle* cf, const Slice& k,
+               const Slice& v) override {
     WriteBatch batch;
     batch.Merge(cf, k, v);
     return Write(o, &batch);
   }
   using DB::Get;
-  virtual Status Get(const ReadOptions& options, ColumnFamilyHandle* cf,
-                     const Slice& key, PinnableSlice* value) override {
+  Status Get(const ReadOptions& /*options*/, ColumnFamilyHandle* /*cf*/,
+             const Slice& key, PinnableSlice* /*value*/) override {
     return Status::NotSupported(key);
   }
 
   using DB::MultiGet;
-  virtual std::vector<Status> MultiGet(
-      const ReadOptions& options,
-      const std::vector<ColumnFamilyHandle*>& column_family,
+  std::vector<Status> MultiGet(
+      const ReadOptions& /*options*/,
+      const std::vector<ColumnFamilyHandle*>& /*column_family*/,
       const std::vector<Slice>& keys,
-      std::vector<std::string>* values) override {
+      std::vector<std::string>* /*values*/) override {
     std::vector<Status> s(keys.size(),
                           Status::NotSupported("Not implemented."));
     return s;
@@ -2231,44 +2449,50 @@ class ModelDB : public DB {
 
 #ifndef ROCKSDB_LITE
   using DB::IngestExternalFile;
-  virtual Status IngestExternalFile(
-      ColumnFamilyHandle* column_family,
-      const std::vector<std::string>& external_files,
-      const IngestExternalFileOptions& options) override {
+  Status IngestExternalFile(
+      ColumnFamilyHandle* /*column_family*/,
+      const std::vector<std::string>& /*external_files*/,
+      const IngestExternalFileOptions& /*options*/) override {
     return Status::NotSupported("Not implemented.");
   }
 
-  virtual Status VerifyChecksum() override {
+  using DB::IngestExternalFiles;
+  Status IngestExternalFiles(
+      const std::vector<IngestExternalFileArg>& /*args*/) override {
+    return Status::NotSupported("Not implemented");
+  }
+
+  Status VerifyChecksum() override {
     return Status::NotSupported("Not implemented.");
   }
 
   using DB::GetPropertiesOfAllTables;
-  virtual Status GetPropertiesOfAllTables(
-      ColumnFamilyHandle* column_family,
-      TablePropertiesCollection* props) override {
+  Status GetPropertiesOfAllTables(
+      ColumnFamilyHandle* /*column_family*/,
+      TablePropertiesCollection* /*props*/) override {
     return Status();
   }
 
-  virtual Status GetPropertiesOfTablesInRange(
-      ColumnFamilyHandle* column_family, const Range* range, std::size_t n,
-      TablePropertiesCollection* props) override {
+  Status GetPropertiesOfTablesInRange(
+      ColumnFamilyHandle* /*column_family*/, const Range* /*range*/,
+      std::size_t /*n*/, TablePropertiesCollection* /*props*/) override {
     return Status();
   }
 #endif  // ROCKSDB_LITE
 
   using DB::KeyMayExist;
-  virtual bool KeyMayExist(const ReadOptions& options,
-                           ColumnFamilyHandle* column_family, const Slice& key,
-                           std::string* value,
-                           bool* value_found = nullptr) override {
+  bool KeyMayExist(const ReadOptions& /*options*/,
+                   ColumnFamilyHandle* /*column_family*/, const Slice& /*key*/,
+                   std::string* /*value*/,
+                   bool* value_found = nullptr) override {
     if (value_found != nullptr) {
       *value_found = false;
     }
     return true;  // Not Supported directly
   }
   using DB::NewIterator;
-  virtual Iterator* NewIterator(const ReadOptions& options,
-                                ColumnFamilyHandle* column_family) override {
+  Iterator* NewIterator(const ReadOptions& options,
+                        ColumnFamilyHandle* /*column_family*/) override {
     if (options.snapshot == nullptr) {
       KVMap* saved = new KVMap;
       *saved = map_;
@@ -2279,37 +2503,33 @@ class ModelDB : public DB {
       return new ModelIter(snapshot_state, false);
     }
   }
-  virtual Status NewIterators(
-      const ReadOptions& options,
-      const std::vector<ColumnFamilyHandle*>& column_family,
-      std::vector<Iterator*>* iterators) override {
+  Status NewIterators(const ReadOptions& /*options*/,
+                      const std::vector<ColumnFamilyHandle*>& /*column_family*/,
+                      std::vector<Iterator*>* /*iterators*/) override {
     return Status::NotSupported("Not supported yet");
   }
-  virtual const Snapshot* GetSnapshot() override {
+  const Snapshot* GetSnapshot() override {
     ModelSnapshot* snapshot = new ModelSnapshot;
     snapshot->map_ = map_;
     return snapshot;
   }
 
-  virtual void ReleaseSnapshot(const Snapshot* snapshot) override {
+  void ReleaseSnapshot(const Snapshot* snapshot) override {
     delete reinterpret_cast<const ModelSnapshot*>(snapshot);
   }
 
-  virtual Status Write(const WriteOptions& options,
-                       WriteBatch* batch) override {
+  Status Write(const WriteOptions& /*options*/, WriteBatch* batch) override {
     class Handler : public WriteBatch::Handler {
      public:
       KVMap* map_;
-      virtual void Put(const Slice& key, const Slice& value) override {
+      void Put(const Slice& key, const Slice& value) override {
         (*map_)[key.ToString()] = value.ToString();
       }
-      virtual void Merge(const Slice& key, const Slice& value) override {
+      void Merge(const Slice& /*key*/, const Slice& /*value*/) override {
         // ignore merge for now
         // (*map_)[key.ToString()] = value.ToString();
       }
-      virtual void Delete(const Slice& key) override {
-        map_->erase(key.ToString());
-      }
+      void Delete(const Slice& key) override { map_->erase(key.ToString()); }
     };
     Handler handler;
     handler.map_ = &map_;
@@ -2317,62 +2537,64 @@ class ModelDB : public DB {
   }
 
   using DB::GetProperty;
-  virtual bool GetProperty(ColumnFamilyHandle* column_family,
-                           const Slice& property, std::string* value) override {
+  bool GetProperty(ColumnFamilyHandle* /*column_family*/,
+                   const Slice& /*property*/, std::string* /*value*/) override {
     return false;
   }
   using DB::GetIntProperty;
-  virtual bool GetIntProperty(ColumnFamilyHandle* column_family,
-                              const Slice& property, uint64_t* value) override {
+  bool GetIntProperty(ColumnFamilyHandle* /*column_family*/,
+                      const Slice& /*property*/, uint64_t* /*value*/) override {
     return false;
   }
   using DB::GetMapProperty;
-  virtual bool GetMapProperty(
-      ColumnFamilyHandle* column_family, const Slice& property,
-      std::map<std::string, std::string>* value) override {
+  bool GetMapProperty(ColumnFamilyHandle* /*column_family*/,
+                      const Slice& /*property*/,
+                      std::map<std::string, std::string>* /*value*/) override {
     return false;
   }
   using DB::GetAggregatedIntProperty;
-  virtual bool GetAggregatedIntProperty(const Slice& property,
-                                        uint64_t* value) override {
+  bool GetAggregatedIntProperty(const Slice& /*property*/,
+                                uint64_t* /*value*/) override {
     return false;
   }
   using DB::GetApproximateSizes;
-  virtual void GetApproximateSizes(ColumnFamilyHandle* column_family,
-                                   const Range* range, int n, uint64_t* sizes,
-                                   uint8_t include_flags
-                                   = INCLUDE_FILES) override {
+  void GetApproximateSizes(ColumnFamilyHandle* /*column_family*/,
+                           const Range* /*range*/, int n, uint64_t* sizes,
+                           uint8_t /*include_flags*/
+                           = INCLUDE_FILES) override {
     for (int i = 0; i < n; i++) {
       sizes[i] = 0;
     }
   }
   using DB::GetApproximateMemTableStats;
-  virtual void GetApproximateMemTableStats(ColumnFamilyHandle* column_family,
-                                           const Range& range,
-                                           uint64_t* const count,
-                                           uint64_t* const size) override {
+  void GetApproximateMemTableStats(ColumnFamilyHandle* /*column_family*/,
+                                   const Range& /*range*/,
+                                   uint64_t* const count,
+                                   uint64_t* const size) override {
     *count = 0;
     *size = 0;
   }
   using DB::CompactRange;
-  virtual Status CompactRange(const CompactRangeOptions& options,
-                              ColumnFamilyHandle* column_family,
-                              const Slice* start, const Slice* end) override {
+  Status CompactRange(const CompactRangeOptions& /*options*/,
+                      ColumnFamilyHandle* /*column_family*/,
+                      const Slice* /*start*/, const Slice* /*end*/) override {
     return Status::NotSupported("Not supported operation.");
   }
 
-  virtual Status SetDBOptions(
-      const std::unordered_map<std::string, std::string>& new_options)
+  Status SetDBOptions(
+      const std::unordered_map<std::string, std::string>& /*new_options*/)
       override {
     return Status::NotSupported("Not supported operation.");
   }
 
   using DB::CompactFiles;
-  virtual Status CompactFiles(const CompactionOptions& compact_options,
-                              ColumnFamilyHandle* column_family,
-                              const std::vector<std::string>& input_file_names,
-                              const int output_level,
-                              const int output_path_id = -1) override {
+  Status CompactFiles(
+      const CompactionOptions& /*compact_options*/,
+      ColumnFamilyHandle* /*column_family*/,
+      const std::vector<std::string>& /*input_file_names*/,
+      const int /*output_level*/, const int /*output_path_id*/ = -1,
+      std::vector<std::string>* const /*output_file_names*/ = nullptr,
+      CompactionJobInfo* /*compaction_job_info*/ = nullptr) override {
     return Status::NotSupported("Not supported operation.");
   }
 
@@ -2385,117 +2607,115 @@ class ModelDB : public DB {
   }
 
   Status EnableAutoCompaction(
-      const std::vector<ColumnFamilyHandle*>& column_family_handles) override {
+      const std::vector<ColumnFamilyHandle*>& /*column_family_handles*/)
+      override {
     return Status::NotSupported("Not supported operation.");
   }
 
   using DB::NumberLevels;
-  virtual int NumberLevels(ColumnFamilyHandle* column_family) override {
-    return 1;
-  }
+  int NumberLevels(ColumnFamilyHandle* /*column_family*/) override { return 1; }
 
   using DB::MaxMemCompactionLevel;
-  virtual int MaxMemCompactionLevel(
-      ColumnFamilyHandle* column_family) override {
+  int MaxMemCompactionLevel(ColumnFamilyHandle* /*column_family*/) override {
     return 1;
   }
 
   using DB::Level0StopWriteTrigger;
-  virtual int Level0StopWriteTrigger(
-      ColumnFamilyHandle* column_family) override {
+  int Level0StopWriteTrigger(ColumnFamilyHandle* /*column_family*/) override {
     return -1;
   }
 
-  virtual const std::string& GetName() const override { return name_; }
+  const std::string& GetName() const override { return name_; }
 
-  virtual Env* GetEnv() const override { return nullptr; }
+  Env* GetEnv() const override { return nullptr; }
 
   using DB::GetOptions;
-  virtual Options GetOptions(ColumnFamilyHandle* column_family) const override {
+  Options GetOptions(ColumnFamilyHandle* /*column_family*/) const override {
     return options_;
   }
 
   using DB::GetDBOptions;
-  virtual DBOptions GetDBOptions() const override { return options_; }
+  DBOptions GetDBOptions() const override { return options_; }
 
   using DB::Flush;
-  virtual Status Flush(const rocksdb::FlushOptions& options,
-                       ColumnFamilyHandle* column_family) override {
+  Status Flush(const rocksdb::FlushOptions& /*options*/,
+               ColumnFamilyHandle* /*column_family*/) override {
     Status ret;
     return ret;
   }
+  Status Flush(
+      const rocksdb::FlushOptions& /*options*/,
+      const std::vector<ColumnFamilyHandle*>& /*column_families*/) override {
+    return Status::OK();
+  }
 
-  virtual Status SyncWAL() override { return Status::OK(); }
+  Status SyncWAL() override { return Status::OK(); }
 
 #ifndef ROCKSDB_LITE
-  virtual Status DisableFileDeletions() override { return Status::OK(); }
+  Status DisableFileDeletions() override { return Status::OK(); }
 
-  virtual Status EnableFileDeletions(bool force) override {
-    return Status::OK();
-  }
-  virtual Status GetLiveFiles(std::vector<std::string>&, uint64_t* size,
-                              bool flush_memtable = true) override {
-    return Status::OK();
-  }
-
-  virtual Status GetSortedWalFiles(VectorLogPtr& files) override {
+  Status EnableFileDeletions(bool /*force*/) override { return Status::OK(); }
+  Status GetLiveFiles(std::vector<std::string>&, uint64_t* /*size*/,
+                      bool /*flush_memtable*/ = true) override {
     return Status::OK();
   }
 
-  virtual Status DeleteFile(std::string name) override { return Status::OK(); }
+  Status GetSortedWalFiles(VectorLogPtr& /*files*/) override {
+    return Status::OK();
+  }
 
-  virtual Status GetUpdatesSince(
-      rocksdb::SequenceNumber, unique_ptr<rocksdb::TransactionLogIterator>*,
-      const TransactionLogIterator::ReadOptions& read_options =
+  Status DeleteFile(std::string /*name*/) override { return Status::OK(); }
+
+  Status GetUpdatesSince(
+      rocksdb::SequenceNumber,
+      std::unique_ptr<rocksdb::TransactionLogIterator>*,
+      const TransactionLogIterator::ReadOptions& /*read_options*/ =
           TransactionLogIterator::ReadOptions()) override {
     return Status::NotSupported("Not supported in Model DB");
   }
 
-  virtual void GetColumnFamilyMetaData(
-      ColumnFamilyHandle* column_family,
-      ColumnFamilyMetaData* metadata) override {}
+  void GetColumnFamilyMetaData(ColumnFamilyHandle* /*column_family*/,
+                               ColumnFamilyMetaData* /*metadata*/) override {}
 #endif  // ROCKSDB_LITE
 
-  virtual Status GetDbIdentity(std::string& identity) const override {
+  Status GetDbIdentity(std::string& /*identity*/) const override {
     return Status::OK();
   }
 
-  virtual SequenceNumber GetLatestSequenceNumber() const override { return 0; }
+  SequenceNumber GetLatestSequenceNumber() const override { return 0; }
 
-  virtual bool SetPreserveDeletesSequenceNumber(SequenceNumber seqnum) override {
+  bool SetPreserveDeletesSequenceNumber(SequenceNumber /*seqnum*/) override {
     return true;
   }
 
-  virtual ColumnFamilyHandle* DefaultColumnFamily() const override {
-    return nullptr;
-  }
+  ColumnFamilyHandle* DefaultColumnFamily() const override { return nullptr; }
 
  private:
   class ModelIter : public Iterator {
    public:
     ModelIter(const KVMap* map, bool owned)
         : map_(map), owned_(owned), iter_(map_->end()) {}
-    ~ModelIter() {
+    ~ModelIter() override {
       if (owned_) delete map_;
     }
-    virtual bool Valid() const override { return iter_ != map_->end(); }
-    virtual void SeekToFirst() override { iter_ = map_->begin(); }
-    virtual void SeekToLast() override {
+    bool Valid() const override { return iter_ != map_->end(); }
+    void SeekToFirst() override { iter_ = map_->begin(); }
+    void SeekToLast() override {
       if (map_->empty()) {
         iter_ = map_->end();
       } else {
         iter_ = map_->find(map_->rbegin()->first);
       }
     }
-    virtual void Seek(const Slice& k) override {
+    void Seek(const Slice& k) override {
       iter_ = map_->lower_bound(k.ToString());
     }
-    virtual void SeekForPrev(const Slice& k) override {
+    void SeekForPrev(const Slice& k) override {
       iter_ = map_->upper_bound(k.ToString());
       Prev();
     }
-    virtual void Next() override { ++iter_; }
-    virtual void Prev() override {
+    void Next() override { ++iter_; }
+    void Prev() override {
       if (iter_ == map_->begin()) {
         iter_ = map_->end();
         return;
@@ -2503,9 +2723,9 @@ class ModelDB : public DB {
       --iter_;
     }
 
-    virtual Slice key() const override { return iter_->first; }
-    virtual Slice value() const override { return iter_->second; }
-    virtual Status status() const override { return Status::OK(); }
+    Slice key() const override { return iter_->first; }
+    Slice value() const override { return iter_->second; }
+    Status status() const override { return Status::OK(); }
 
    private:
     const KVMap* const map_;
@@ -2517,6 +2737,7 @@ class ModelDB : public DB {
   std::string name_ = "";
 };
 
+#ifndef ROCKSDB_VALGRIND_RUN
 static std::string RandomKey(Random* rnd, int minimum = 0) {
   int len;
   do {
@@ -2572,15 +2793,14 @@ static bool CompareIterators(int step, DB* model, DB* db,
 class DBTestRandomized : public DBTest,
                          public ::testing::WithParamInterface<int> {
  public:
-  virtual void SetUp() override { option_config_ = GetParam(); }
+  void SetUp() override { option_config_ = GetParam(); }
 
   static std::vector<int> GenerateOptionConfigs() {
     std::vector<int> option_configs;
     // skip cuckoo hash as it does not support snapshot.
     for (int option_config = kDefault; option_config < kEnd; ++option_config) {
-      if (!ShouldSkipOptions(option_config, kSkipDeletesFilterFirst |
-                                                kSkipNoSeekToLast |
-                                                kSkipHashCuckoo)) {
+      if (!ShouldSkipOptions(option_config,
+                             kSkipDeletesFilterFirst | kSkipNoSeekToLast)) {
         option_configs.push_back(option_config);
       }
     }
@@ -2610,7 +2830,6 @@ TEST_P(DBTestRandomized, Randomized) {
     int p = rnd.Uniform(100);
     int minimum = 0;
     if (option_config_ == kHashSkipList || option_config_ == kHashLinkList ||
-        option_config_ == kHashCuckoo ||
         option_config_ == kPlainTableFirstBytePrefix ||
         option_config_ == kBlockBasedTableWithWholeKeyHashIndex ||
         option_config_ == kBlockBasedTableWithPrefixHashIndex) {
@@ -2673,6 +2892,7 @@ TEST_P(DBTestRandomized, Randomized) {
   if (model_snap != nullptr) model.ReleaseSnapshot(model_snap);
   if (db_snap != nullptr) db_->ReleaseSnapshot(db_snap);
 }
+#endif  // ROCKSDB_VALGRIND_RUN
 
 TEST_F(DBTest, BlockBasedTablePrefixIndexTest) {
   // create a DB with block prefix index
@@ -2863,7 +3083,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLAndMaxOpenFilesTest) {
   Options options;
   options.compaction_style = kCompactionStyleFIFO;
   options.create_if_missing = true;
-  options.compaction_options_fifo.ttl = 600;  // seconds
+  options.ttl = 600;  // seconds
 
   // Check that it is not supported with max_open_files != -1.
   options.max_open_files = 100;
@@ -2879,7 +3099,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLAndVariousTableFormatsTest) {
   Options options;
   options.compaction_style = kCompactionStyleFIFO;
   options.create_if_missing = true;
-  options.compaction_options_fifo.ttl = 600;  // seconds
+  options.ttl = 600;  // seconds
 
   options = CurrentOptions(options);
   options.table_factory.reset(NewBlockBasedTableFactory());
@@ -2887,10 +3107,6 @@ TEST_F(DBTest, FIFOCompactionWithTTLAndVariousTableFormatsTest) {
 
   Destroy(options);
   options.table_factory.reset(NewPlainTableFactory());
-  ASSERT_TRUE(TryReopen(options).IsNotSupported());
-
-  Destroy(options);
-  options.table_factory.reset(NewCuckooTableFactory());
   ASSERT_TRUE(TryReopen(options).IsNotSupported());
 
   Destroy(options);
@@ -2914,7 +3130,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLTest) {
     env_->addon_time_.store(0);
     options.compaction_options_fifo.max_table_files_size = 150 << 10;  // 150KB
     options.compaction_options_fifo.allow_compaction = false;
-    options.compaction_options_fifo.ttl = 1 * 60 * 60 ;  // 1 hour
+    options.ttl = 1 * 60 * 60 ;  // 1 hour
     options = CurrentOptions(options);
     DestroyAndReopen(options);
 
@@ -2949,7 +3165,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLTest) {
   {
     options.compaction_options_fifo.max_table_files_size = 150 << 10;  // 150KB
     options.compaction_options_fifo.allow_compaction = false;
-    options.compaction_options_fifo.ttl = 1 * 60 * 60;  // 1 hour
+    options.ttl = 1 * 60 * 60;  // 1 hour
     options = CurrentOptions(options);
     DestroyAndReopen(options);
 
@@ -2991,7 +3207,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLTest) {
     options.write_buffer_size = 10 << 10;                              // 10KB
     options.compaction_options_fifo.max_table_files_size = 150 << 10;  // 150KB
     options.compaction_options_fifo.allow_compaction = false;
-    options.compaction_options_fifo.ttl =  1 * 60 * 60;  // 1 hour
+    options.ttl =  1 * 60 * 60;  // 1 hour
     options = CurrentOptions(options);
     DestroyAndReopen(options);
 
@@ -3028,7 +3244,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLTest) {
   {
     options.compaction_options_fifo.max_table_files_size = 150 << 10;  // 150KB
     options.compaction_options_fifo.allow_compaction = true;
-    options.compaction_options_fifo.ttl = 1 * 60 * 60;  // 1 hour
+    options.ttl = 1 * 60 * 60;  // 1 hour
     options.level0_file_num_compaction_trigger = 6;
     options = CurrentOptions(options);
     DestroyAndReopen(options);
@@ -3072,7 +3288,7 @@ TEST_F(DBTest, FIFOCompactionWithTTLTest) {
     options.write_buffer_size = 20 << 10;                               // 20K
     options.compaction_options_fifo.max_table_files_size = 1500 << 10;  // 1.5MB
     options.compaction_options_fifo.allow_compaction = true;
-    options.compaction_options_fifo.ttl = 1 * 60 * 60;  // 1 hour
+    options.ttl = 1 * 60 * 60;  // 1 hour
     options.level0_file_num_compaction_trigger = 6;
     options = CurrentOptions(options);
     DestroyAndReopen(options);
@@ -3264,8 +3480,14 @@ TEST_F(DBTest, SanitizeNumThreads) {
                      (i < 4) ? Env::Priority::LOW : Env::Priority::HIGH);
     }
 
-    // Wait 100 milliseconds for they are scheduled.
-    env_->SleepForMicroseconds(100000);
+    // Wait until 10s for they are scheduled.
+    for (int i = 0; i < 10000; i++) {
+      if (options.env->GetThreadPoolQueueLen(Env::Priority::LOW) <= 1 &&
+          options.env->GetThreadPoolQueueLen(Env::Priority::HIGH) <= 2) {
+        break;
+      }
+      env_->SleepForMicroseconds(1000);
+    }
 
     // pool size 3, total task 4. Queue size should be 1.
     ASSERT_EQ(1U, options.env->GetThreadPoolQueueLen(Env::Priority::LOW));
@@ -3299,6 +3521,56 @@ TEST_F(DBTest, WriteSingleThreadEntry) {
 
   for (auto& t : threads) {
     t.join();
+  }
+}
+
+TEST_F(DBTest, ConcurrentFlushWAL) {
+  const size_t cnt = 100;
+  Options options;
+  WriteOptions wopt;
+  ReadOptions ropt;
+  for (bool two_write_queues : {false, true}) {
+    for (bool manual_wal_flush : {false, true}) {
+      options.two_write_queues = two_write_queues;
+      options.manual_wal_flush = manual_wal_flush;
+      options.create_if_missing = true;
+      DestroyAndReopen(options);
+      std::vector<port::Thread> threads;
+      threads.emplace_back([&] {
+        for (size_t i = 0; i < cnt; i++) {
+          auto istr = ToString(i);
+          db_->Put(wopt, db_->DefaultColumnFamily(), "a" + istr, "b" + istr);
+        }
+      });
+      if (two_write_queues) {
+        threads.emplace_back([&] {
+          for (size_t i = cnt; i < 2 * cnt; i++) {
+            auto istr = ToString(i);
+            WriteBatch batch;
+            batch.Put("a" + istr, "b" + istr);
+            dbfull()->WriteImpl(wopt, &batch, nullptr, nullptr, 0, true);
+          }
+        });
+      }
+      threads.emplace_back([&] {
+        for (size_t i = 0; i < cnt * 100; i++) {  // FlushWAL is faster than Put
+          db_->FlushWAL(false);
+        }
+      });
+      for (auto& t : threads) {
+        t.join();
+      }
+      options.create_if_missing = false;
+      // Recover from the wal and make sure that it is not corrupted
+      Reopen(options);
+      for (size_t i = 0; i < cnt; i++) {
+        PinnableSlice pval;
+        auto istr = ToString(i);
+        ASSERT_OK(
+            db_->Get(ropt, db_->DefaultColumnFamily(), "a" + istr, &pval));
+        ASSERT_TRUE(pval == ("b" + istr));
+      }
+    }
   }
 }
 
@@ -3395,7 +3667,7 @@ TEST_F(DBTest, DynamicMemtableOptions) {
 
   rocksdb::SyncPoint::GetInstance()->SetCallBack(
       "DBImpl::DelayWrite:Wait",
-      [&](void* arg) { sleeping_task_low.WakeUp(); });
+      [&](void* /*arg*/) { sleeping_task_low.WakeUp(); });
   rocksdb::SyncPoint::GetInstance()->EnableProcessing();
 
   while (!sleeping_task_low.WokenUp() && count < 256) {
@@ -3488,12 +3760,16 @@ TEST_F(DBTest, GetThreadStatus) {
     const int kTestCount = 3;
     const unsigned int kHighPriCounts[kTestCount] = {3, 2, 5};
     const unsigned int kLowPriCounts[kTestCount] = {10, 15, 3};
+    const unsigned int kBottomPriCounts[kTestCount] = {2, 1, 4};
     for (int test = 0; test < kTestCount; ++test) {
       // Change the number of threads in high / low priority pool.
       env_->SetBackgroundThreads(kHighPriCounts[test], Env::HIGH);
       env_->SetBackgroundThreads(kLowPriCounts[test], Env::LOW);
+      env_->SetBackgroundThreads(kBottomPriCounts[test], Env::BOTTOM);
       // Wait to ensure the all threads has been registered
       unsigned int thread_type_counts[ThreadStatus::NUM_THREAD_TYPES];
+      // TODO(ajkr): it'd be better if SetBackgroundThreads returned only after
+      // all threads have been registered.
       // Try up to 60 seconds.
       for (int num_try = 0; num_try < 60000; num_try++) {
         env_->SleepForMicroseconds(1000);
@@ -3508,20 +3784,21 @@ TEST_F(DBTest, GetThreadStatus) {
         if (thread_type_counts[ThreadStatus::HIGH_PRIORITY] ==
                 kHighPriCounts[test] &&
             thread_type_counts[ThreadStatus::LOW_PRIORITY] ==
-                kLowPriCounts[test]) {
+                kLowPriCounts[test] &&
+            thread_type_counts[ThreadStatus::BOTTOM_PRIORITY] ==
+                kBottomPriCounts[test]) {
           break;
         }
       }
-      // Verify the total number of threades
-      ASSERT_EQ(thread_type_counts[ThreadStatus::HIGH_PRIORITY] +
-                    thread_type_counts[ThreadStatus::LOW_PRIORITY],
-                kHighPriCounts[test] + kLowPriCounts[test]);
       // Verify the number of high-priority threads
       ASSERT_EQ(thread_type_counts[ThreadStatus::HIGH_PRIORITY],
                 kHighPriCounts[test]);
       // Verify the number of low-priority threads
       ASSERT_EQ(thread_type_counts[ThreadStatus::LOW_PRIORITY],
                 kLowPriCounts[test]);
+      // Verify the number of bottom-priority threads
+      ASSERT_EQ(thread_type_counts[ThreadStatus::BOTTOM_PRIORITY],
+                kBottomPriCounts[test]);
     }
     if (i == 0) {
       // repeat the test with multiple column families
@@ -4226,7 +4503,7 @@ TEST_F(DBTest, DynamicCompactionOptions) {
   // Clean up memtable and L0. Block compaction threads. If continue to write
   // and flush memtables. We should see put stop after 8 memtable flushes
   // since level0_stop_writes_trigger = 8
-  dbfull()->TEST_FlushMemTable(true);
+  dbfull()->TEST_FlushMemTable(true, true);
   dbfull()->CompactRange(CompactRangeOptions(), nullptr, nullptr);
   // Block compaction
   test::SleepingBackgroundTask sleeping_task_low;
@@ -4239,7 +4516,7 @@ TEST_F(DBTest, DynamicCompactionOptions) {
   WriteOptions wo;
   while (count < 64) {
     ASSERT_OK(Put(Key(count), RandomString(&rnd, 1024), wo));
-    dbfull()->TEST_FlushMemTable(true);
+    dbfull()->TEST_FlushMemTable(true, true);
     count++;
     if (dbfull()->TEST_write_controler().IsStopped()) {
       sleeping_task_low.WakeUp();
@@ -4267,7 +4544,7 @@ TEST_F(DBTest, DynamicCompactionOptions) {
   count = 0;
   while (count < 64) {
     ASSERT_OK(Put(Key(count), RandomString(&rnd, 1024), wo));
-    dbfull()->TEST_FlushMemTable(true);
+    dbfull()->TEST_FlushMemTable(true, true);
     count++;
     if (dbfull()->TEST_write_controler().IsStopped()) {
       sleeping_task_low.WakeUp();
@@ -4310,7 +4587,7 @@ TEST_F(DBTest, DynamicCompactionOptions) {
   ASSERT_LT(NumTableFilesAtLevel(0), 4);
 }
 
-// Test dynamic FIFO copmaction options.
+// Test dynamic FIFO compaction options.
 // This test covers just option parsing and makes sure that the options are
 // correctly assigned. Also look at DBOptionsTest.SetFIFOCompactionOptions
 // test which makes sure that the FIFO compaction funcionality is working
@@ -4324,7 +4601,7 @@ TEST_F(DBTest, DynamicFIFOCompactionOptions) {
   // Initial defaults
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             1024 * 1024 * 1024);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 0);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 0);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             false);
 
@@ -4332,21 +4609,21 @@ TEST_F(DBTest, DynamicFIFOCompactionOptions) {
       {{"compaction_options_fifo", "{max_table_files_size=23;}"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             23);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 0);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 0);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             false);
 
-  ASSERT_OK(dbfull()->SetOptions({{"compaction_options_fifo", "{ttl=97}"}}));
+  ASSERT_OK(dbfull()->SetOptions({{"ttl", "97"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             23);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 97);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 97);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             false);
 
-  ASSERT_OK(dbfull()->SetOptions({{"compaction_options_fifo", "{ttl=203;}"}}));
+  ASSERT_OK(dbfull()->SetOptions({{"ttl", "203"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             23);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 203);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 203);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             false);
 
@@ -4354,26 +4631,95 @@ TEST_F(DBTest, DynamicFIFOCompactionOptions) {
       {{"compaction_options_fifo", "{allow_compaction=true;}"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             23);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 203);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 203);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             true);
 
   ASSERT_OK(dbfull()->SetOptions(
-      {{"compaction_options_fifo", "{max_table_files_size=31;ttl=19;}"}}));
+      {{"compaction_options_fifo", "{max_table_files_size=31;}"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             31);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 19);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 203);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             true);
 
   ASSERT_OK(dbfull()->SetOptions(
       {{"compaction_options_fifo",
-        "{max_table_files_size=51;ttl=49;allow_compaction=true;}"}}));
+        "{max_table_files_size=51;allow_compaction=true;}"}}));
+  ASSERT_OK(dbfull()->SetOptions({{"ttl", "49"}}));
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.max_table_files_size,
             51);
-  ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.ttl, 49);
+  ASSERT_EQ(dbfull()->GetOptions().ttl, 49);
   ASSERT_EQ(dbfull()->GetOptions().compaction_options_fifo.allow_compaction,
             true);
+}
+
+TEST_F(DBTest, DynamicUniversalCompactionOptions) {
+  Options options;
+  options.create_if_missing = true;
+  DestroyAndReopen(options);
+
+  // Initial defaults
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.size_ratio, 1);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.min_merge_width,
+            2);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.max_merge_width,
+            UINT_MAX);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.max_size_amplification_percent,
+            200);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.compression_size_percent,
+            -1);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.stop_style,
+            kCompactionStopStyleTotalSize);
+  ASSERT_EQ(
+      dbfull()->GetOptions().compaction_options_universal.allow_trivial_move,
+      false);
+
+  ASSERT_OK(dbfull()->SetOptions(
+      {{"compaction_options_universal", "{size_ratio=7;}"}}));
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.size_ratio, 7);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.min_merge_width,
+            2);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.max_merge_width,
+            UINT_MAX);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.max_size_amplification_percent,
+            200);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.compression_size_percent,
+            -1);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.stop_style,
+            kCompactionStopStyleTotalSize);
+  ASSERT_EQ(
+      dbfull()->GetOptions().compaction_options_universal.allow_trivial_move,
+      false);
+
+  ASSERT_OK(dbfull()->SetOptions(
+      {{"compaction_options_universal", "{min_merge_width=11;}"}}));
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.size_ratio, 7);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.min_merge_width,
+            11);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.max_merge_width,
+            UINT_MAX);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.max_size_amplification_percent,
+            200);
+  ASSERT_EQ(dbfull()
+                ->GetOptions()
+                .compaction_options_universal.compression_size_percent,
+            -1);
+  ASSERT_EQ(dbfull()->GetOptions().compaction_options_universal.stop_style,
+            kCompactionStopStyleTotalSize);
+  ASSERT_EQ(
+      dbfull()->GetOptions().compaction_options_universal.allow_trivial_move,
+      false);
 }
 #endif  // ROCKSDB_LITE
 
@@ -4438,6 +4784,7 @@ TEST_F(DBTest, FileCreationRandomFailure) {
 }
 
 #ifndef ROCKSDB_LITE
+
 TEST_F(DBTest, DynamicMiscOptions) {
   // Test max_sequential_skip_in_iterations
   Options options;
@@ -4669,14 +5016,14 @@ class DelayedMergeOperator : public MergeOperator {
  public:
   explicit DelayedMergeOperator(DBTest* d) : db_test_(d) {}
 
-  virtual bool FullMergeV2(const MergeOperationInput& merge_in,
-                           MergeOperationOutput* merge_out) const override {
+  bool FullMergeV2(const MergeOperationInput& /*merge_in*/,
+                   MergeOperationOutput* merge_out) const override {
     db_test_->env_->addon_time_.fetch_add(1000);
     merge_out->new_value = "";
     return true;
   }
 
-  virtual const char* Name() const override { return "DelayedMergeOperator"; }
+  const char* Name() const override { return "DelayedMergeOperator"; }
 };
 
 TEST_F(DBTest, MergeTestTime) {
@@ -4755,6 +5102,7 @@ TEST_P(DBTestWithParam, FilterCompactionTimeTest) {
   options.disable_auto_compactions = true;
   options.create_if_missing = true;
   options.statistics = rocksdb::CreateDBStatistics();
+  options.statistics->stats_level_ = kExceptTimeForMutex;
   options.max_subcompactions = max_subcompactions_;
   DestroyAndReopen(options);
 
@@ -4811,7 +5159,7 @@ TEST_F(DBTest, EmptyCompactedDB) {
 TEST_F(DBTest, SuggestCompactRangeTest) {
   class CompactionFilterFactoryGetContext : public CompactionFilterFactory {
    public:
-    virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
+    std::unique_ptr<CompactionFilter> CreateCompactionFilter(
         const CompactionFilter::Context& context) override {
       saved_context = context;
       std::unique_ptr<CompactionFilter> empty_filter;
@@ -4981,56 +5329,148 @@ TEST_F(DBTest, PromoteL0Failure) {
   status = experimental::PromoteL0(db_, db_->DefaultColumnFamily());
   ASSERT_TRUE(status.IsInvalidArgument());
 }
-#endif  // ROCKSDB_LITE
 
 // Github issue #596
-TEST_F(DBTest, HugeNumberOfLevels) {
+TEST_F(DBTest, CompactRangeWithEmptyBottomLevel) {
+  const int kNumLevels = 2;
+  const int kNumL0Files = 2;
   Options options = CurrentOptions();
-  options.write_buffer_size = 2 * 1024 * 1024;         // 2MB
-  options.max_bytes_for_level_base = 2 * 1024 * 1024;  // 2MB
-  options.num_levels = 12;
-  options.max_background_compactions = 10;
-  options.max_bytes_for_level_multiplier = 2;
-  options.level_compaction_dynamic_level_bytes = true;
+  options.disable_auto_compactions = true;
+  options.num_levels = kNumLevels;
   DestroyAndReopen(options);
 
   Random rnd(301);
-  for (int i = 0; i < 300000; ++i) {
-    ASSERT_OK(Put(Key(i), RandomString(&rnd, 1024)));
+  for (int i = 0; i < kNumL0Files; ++i) {
+    ASSERT_OK(Put(Key(0), RandomString(&rnd, 1024)));
+    Flush();
   }
+  ASSERT_EQ(NumTableFilesAtLevel(0), kNumL0Files);
+  ASSERT_EQ(NumTableFilesAtLevel(1), 0);
 
   ASSERT_OK(db_->CompactRange(CompactRangeOptions(), nullptr, nullptr));
+  ASSERT_EQ(NumTableFilesAtLevel(0), 0);
+  ASSERT_EQ(NumTableFilesAtLevel(1), kNumL0Files);
 }
+#endif  // ROCKSDB_LITE
 
 TEST_F(DBTest, AutomaticConflictsWithManualCompaction) {
+  const int kNumL0Files = 50;
   Options options = CurrentOptions();
-  options.write_buffer_size = 2 * 1024 * 1024;         // 2MB
-  options.max_bytes_for_level_base = 2 * 1024 * 1024;  // 2MB
-  options.num_levels = 12;
+  options.level0_file_num_compaction_trigger = 4;
+  // never slowdown / stop
+  options.level0_slowdown_writes_trigger = 999999;
+  options.level0_stop_writes_trigger = 999999;
   options.max_background_compactions = 10;
-  options.max_bytes_for_level_multiplier = 2;
-  options.level_compaction_dynamic_level_bytes = true;
   DestroyAndReopen(options);
 
-  Random rnd(301);
-  for (int i = 0; i < 300000; ++i) {
-    ASSERT_OK(Put(Key(i), RandomString(&rnd, 1024)));
-  }
-
+  // schedule automatic compactions after the manual one starts, but before it
+  // finishes to ensure conflict.
+  rocksdb::SyncPoint::GetInstance()->LoadDependency(
+      {{"DBImpl::BackgroundCompaction:Start",
+        "DBTest::AutomaticConflictsWithManualCompaction:PrePuts"},
+       {"DBTest::AutomaticConflictsWithManualCompaction:PostPuts",
+        "DBImpl::BackgroundCompaction:NonTrivial:AfterRun"}});
   std::atomic<int> callback_count(0);
   rocksdb::SyncPoint::GetInstance()->SetCallBack(
-      "DBImpl::BackgroundCompaction()::Conflict",
-      [&](void* arg) { callback_count.fetch_add(1); });
+      "DBImpl::MaybeScheduleFlushOrCompaction:Conflict",
+      [&](void* /*arg*/) { callback_count.fetch_add(1); });
   rocksdb::SyncPoint::GetInstance()->EnableProcessing();
-  CompactRangeOptions croptions;
-  croptions.exclusive_manual_compaction = false;
-  ASSERT_OK(db_->CompactRange(croptions, nullptr, nullptr));
+
+  Random rnd(301);
+  for (int i = 0; i < 2; ++i) {
+    // put two keys to ensure no trivial move
+    for (int j = 0; j < 2; ++j) {
+      ASSERT_OK(Put(Key(j), RandomString(&rnd, 1024)));
+    }
+    ASSERT_OK(Flush());
+  }
+  port::Thread manual_compaction_thread([this]() {
+    CompactRangeOptions croptions;
+    croptions.exclusive_manual_compaction = true;
+    ASSERT_OK(db_->CompactRange(croptions, nullptr, nullptr));
+  });
+
+  TEST_SYNC_POINT("DBTest::AutomaticConflictsWithManualCompaction:PrePuts");
+  for (int i = 0; i < kNumL0Files; ++i) {
+    // put two keys to ensure no trivial move
+    for (int j = 0; j < 2; ++j) {
+      ASSERT_OK(Put(Key(j), RandomString(&rnd, 1024)));
+    }
+    ASSERT_OK(Flush());
+  }
+  TEST_SYNC_POINT("DBTest::AutomaticConflictsWithManualCompaction:PostPuts");
+
   ASSERT_GE(callback_count.load(), 1);
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
-  for (int i = 0; i < 300000; ++i) {
+  for (int i = 0; i < 2; ++i) {
     ASSERT_NE("NOT_FOUND", Get(Key(i)));
   }
+  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  manual_compaction_thread.join();
+  dbfull()->TEST_WaitForCompact();
 }
+
+#ifndef ROCKSDB_LITE
+TEST_F(DBTest, CompactFilesShouldTriggerAutoCompaction) {
+  Options options = CurrentOptions();
+  options.max_background_compactions = 1;
+  options.level0_file_num_compaction_trigger = 4;
+  options.level0_slowdown_writes_trigger = 36;
+  options.level0_stop_writes_trigger = 36;
+  DestroyAndReopen(options);
+
+  // generate files for manual compaction
+  Random rnd(301);
+  for (int i = 0; i < 2; ++i) {
+    // put two keys to ensure no trivial move
+    for (int j = 0; j < 2; ++j) {
+      ASSERT_OK(Put(Key(j), RandomString(&rnd, 1024)));
+    }
+    ASSERT_OK(Flush());
+  }
+
+  rocksdb::ColumnFamilyMetaData cf_meta_data;
+  db_->GetColumnFamilyMetaData(db_->DefaultColumnFamily(), &cf_meta_data);
+
+  std::vector<std::string> input_files;
+  input_files.push_back(cf_meta_data.levels[0].files[0].name);
+
+  SyncPoint::GetInstance()->LoadDependency({
+      {"CompactFilesImpl:0",
+       "DBTest::CompactFilesShouldTriggerAutoCompaction:Begin"},
+      {"DBTest::CompactFilesShouldTriggerAutoCompaction:End",
+       "CompactFilesImpl:1"},
+  });
+
+  SyncPoint::GetInstance()->EnableProcessing();
+
+  port::Thread manual_compaction_thread([&]() {
+      auto s = db_->CompactFiles(CompactionOptions(),
+          db_->DefaultColumnFamily(), input_files, 0);
+  });
+
+  TEST_SYNC_POINT(
+          "DBTest::CompactFilesShouldTriggerAutoCompaction:Begin");
+  // generate enough files to trigger compaction
+  for (int i = 0; i < 20; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      ASSERT_OK(Put(Key(j), RandomString(&rnd, 1024)));
+    }
+    ASSERT_OK(Flush());
+  }
+  db_->GetColumnFamilyMetaData(db_->DefaultColumnFamily(), &cf_meta_data);
+  ASSERT_GT(cf_meta_data.levels[0].files.size(),
+      options.level0_file_num_compaction_trigger);
+  TEST_SYNC_POINT(
+          "DBTest::CompactFilesShouldTriggerAutoCompaction:End");
+
+  manual_compaction_thread.join();
+  dbfull()->TEST_WaitForCompact();
+
+  db_->GetColumnFamilyMetaData(db_->DefaultColumnFamily(), &cf_meta_data);
+  ASSERT_LE(cf_meta_data.levels[0].files.size(),
+      options.level0_file_num_compaction_trigger);
+}
+#endif  // ROCKSDB_LITE
 
 // Github issue #595
 // Large write batch with column families
@@ -5219,7 +5659,7 @@ TEST_F(DBTest, HardLimit) {
 
   std::atomic<int> callback_count(0);
   rocksdb::SyncPoint::GetInstance()->SetCallBack("DBImpl::DelayWrite:Wait",
-                                                 [&](void* arg) {
+                                                 [&](void* /*arg*/) {
                                                    callback_count.fetch_add(1);
                                                    sleeping_task_low.WakeUp();
                                                  });
@@ -5244,17 +5684,20 @@ TEST_F(DBTest, HardLimit) {
   sleeping_task_low.WaitUntilDone();
 }
 
-#ifndef ROCKSDB_LITE
+#if !defined(ROCKSDB_LITE) && !defined(ROCKSDB_DISABLE_STALL_NOTIFICATION)
 class WriteStallListener : public EventListener {
  public:
   WriteStallListener() : condition_(WriteStallCondition::kNormal) {}
   void OnStallConditionsChanged(const WriteStallInfo& info) override {
+    MutexLock l(&mutex_);
     condition_ = info.condition.cur;
   }
   bool CheckCondition(WriteStallCondition expected) {
+    MutexLock l(&mutex_);
     return expected == condition_;
   }
  private:
+  port::Mutex   mutex_;
   WriteStallCondition condition_;
 };
 
@@ -5276,13 +5719,48 @@ TEST_F(DBTest, SoftLimit) {
   WriteStallListener* listener = new WriteStallListener();
   options.listeners.emplace_back(listener);
 
+  // FlushMemtable with opt.wait=true does not wait for
+  // `OnStallConditionsChanged` being called. The event listener is triggered
+  // on `JobContext::Clean`, which happens after flush result is installed.
+  // We use sync point to create a custom WaitForFlush that waits for
+  // context cleanup.
+  port::Mutex flush_mutex;
+  port::CondVar flush_cv(&flush_mutex);
+  bool flush_finished = false;
+  auto InstallFlushCallback = [&]() {
+    {
+      MutexLock l(&flush_mutex);
+      flush_finished = false;
+    }
+    SyncPoint::GetInstance()->SetCallBack(
+        "DBImpl::BackgroundCallFlush:ContextCleanedUp", [&](void*) {
+          {
+            MutexLock l(&flush_mutex);
+            flush_finished = true;
+          }
+          flush_cv.SignalAll();
+        });
+  };
+  auto WaitForFlush = [&]() {
+    {
+      MutexLock l(&flush_mutex);
+      while (!flush_finished) {
+        flush_cv.Wait();
+      }
+    }
+    SyncPoint::GetInstance()->ClearCallBack(
+        "DBImpl::BackgroundCallFlush:ContextCleanedUp");
+  };
+
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
   Reopen(options);
 
   // Generating 360KB in Level 3
   for (int i = 0; i < 72; i++) {
     Put(Key(i), std::string(5000, 'x'));
     if (i % 10 == 0) {
-      Flush();
+      dbfull()->TEST_FlushMemTable(true, true);
     }
   }
   dbfull()->TEST_WaitForCompact();
@@ -5292,7 +5770,7 @@ TEST_F(DBTest, SoftLimit) {
   for (int i = 0; i < 72; i++) {
     Put(Key(i), std::string(5000, 'x'));
     if (i % 10 == 0) {
-      Flush();
+      dbfull()->TEST_FlushMemTable(true, true);
     }
   }
   dbfull()->TEST_WaitForCompact();
@@ -5311,7 +5789,9 @@ TEST_F(DBTest, SoftLimit) {
     Put(Key(i), std::string(5000, 'x'));
     Put(Key(100 - i), std::string(5000, 'x'));
     // Flush the file. File size is around 30KB.
-    Flush();
+    InstallFlushCallback();
+    dbfull()->TEST_FlushMemTable(true, true);
+    WaitForFlush();
   }
   ASSERT_TRUE(dbfull()->TEST_write_controler().NeedsDelay());
   ASSERT_TRUE(listener->CheckCondition(WriteStallCondition::kDelayed));
@@ -5329,14 +5809,12 @@ TEST_F(DBTest, SoftLimit) {
 
   // Only allow one compactin going through.
   rocksdb::SyncPoint::GetInstance()->SetCallBack(
-      "BackgroundCallCompaction:0", [&](void* arg) {
+      "BackgroundCallCompaction:0", [&](void* /*arg*/) {
         // Schedule a sleeping task.
         sleeping_task_low.Reset();
         env_->Schedule(&test::SleepingBackgroundTask::DoSleepTask,
                        &sleeping_task_low, Env::Priority::LOW);
       });
-
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
 
   env_->Schedule(&test::SleepingBackgroundTask::DoSleepTask, &sleeping_task_low,
                  Env::Priority::LOW);
@@ -5346,7 +5824,9 @@ TEST_F(DBTest, SoftLimit) {
     Put(Key(10 + i), std::string(5000, 'x'));
     Put(Key(90 - i), std::string(5000, 'x'));
     // Flush the file. File size is around 30KB.
-    Flush();
+    InstallFlushCallback();
+    dbfull()->TEST_FlushMemTable(true, true);
+    WaitForFlush();
   }
 
   // Wake up sleep task to enable compaction to run and waits
@@ -5367,7 +5847,9 @@ TEST_F(DBTest, SoftLimit) {
     Put(Key(20 + i), std::string(5000, 'x'));
     Put(Key(80 - i), std::string(5000, 'x'));
     // Flush the file. File size is around 30KB.
-    Flush();
+    InstallFlushCallback();
+    dbfull()->TEST_FlushMemTable(true, true);
+    WaitForFlush();
   }
   // Wake up sleep task to enable compaction to run and waits
   // for it to go to sleep state again to make sure one compaction
@@ -5439,7 +5921,7 @@ TEST_F(DBTest, LastWriteBufferDelay) {
   sleeping_task.WakeUp();
   sleeping_task.WaitUntilDone();
 }
-#endif  // ROCKSDB_LITE
+#endif  // !defined(ROCKSDB_LITE) && !defined(ROCKSDB_DISABLE_STALL_NOTIFICATION)
 
 TEST_F(DBTest, FailWhenCompressionNotSupportedTest) {
   CompressionType compressions[] = {kZlibCompression, kBZip2Compression,
@@ -5582,6 +6064,50 @@ TEST_F(DBTest, PauseBackgroundWorkTest) {
   }
   // now it's done
   ASSERT_TRUE(done.load());
+}
+
+// Keep spawning short-living threads that create an iterator and quit.
+// Meanwhile in another thread keep flushing memtables.
+// This used to cause a deadlock.
+TEST_F(DBTest, ThreadLocalPtrDeadlock) {
+  std::atomic<int> flushes_done{0};
+  std::atomic<int> threads_destroyed{0};
+  auto done = [&] {
+    return flushes_done.load() > 10;
+  };
+
+  port::Thread flushing_thread([&] {
+    for (int i = 0; !done(); ++i) {
+      ASSERT_OK(db_->Put(WriteOptions(), Slice("hi"),
+                         Slice(std::to_string(i).c_str())));
+      ASSERT_OK(db_->Flush(FlushOptions()));
+      int cnt = ++flushes_done;
+      fprintf(stderr, "Flushed %d times\n", cnt);
+    }
+  });
+
+  std::vector<port::Thread> thread_spawning_threads(10);
+  for (auto& t: thread_spawning_threads) {
+    t = port::Thread([&] {
+      while (!done()) {
+        {
+          port::Thread tmp_thread([&] {
+            auto it = db_->NewIterator(ReadOptions());
+            delete it;
+          });
+          tmp_thread.join();
+        }
+        ++threads_destroyed;
+      }
+    });
+  }
+
+  for (auto& t: thread_spawning_threads) {
+    t.join();
+  }
+  flushing_thread.join();
+  fprintf(stderr, "Done. Flushed %d times, destroyed %d threads\n",
+          flushes_done.load(), threads_destroyed.load());
 }
 }  // namespace rocksdb
 

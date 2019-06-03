@@ -25,13 +25,13 @@ class CuckooTableDBTest : public testing::Test {
 
  public:
   CuckooTableDBTest() : env_(Env::Default()) {
-    dbname_ = test::TmpDir() + "/cuckoo_table_db_test";
+    dbname_ = test::PerThreadDBPath("cuckoo_table_db_test");
     EXPECT_OK(DestroyDB(dbname_, Options()));
     db_ = nullptr;
     Reopen();
   }
 
-  ~CuckooTableDBTest() {
+  ~CuckooTableDBTest() override {
     delete db_;
     EXPECT_OK(DestroyDB(dbname_, Options()));
   }
@@ -333,7 +333,7 @@ int main(int argc, char** argv) {
 #else
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   fprintf(stderr, "SKIPPED as Cuckoo table is not supported in ROCKSDB_LITE\n");
   return 0;
 }
