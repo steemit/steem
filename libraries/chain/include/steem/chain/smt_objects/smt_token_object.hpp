@@ -189,7 +189,7 @@ public:
 
 class smt_contribution_object : public object< smt_contribution_object_type, smt_contribution_object >
 {
-   smt_contribution_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_contribution_object );
 
 public:
    template< typename Constructor, typename Allocator >
