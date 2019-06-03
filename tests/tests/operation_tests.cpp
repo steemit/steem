@@ -6741,11 +6741,18 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       generate_block();
 
+      ilog("alice sbd balance:   ${b}", ("b", db->get_account( "alice" ).reward_sbd_balance) );
+      ilog("alice vesting steem: ${b}", ("b", db->get_account( "alice" ).reward_vesting_steem) );
+      ilog("bob sbd balance:     ${b}", ("b", db->get_account( "bob" ).reward_sbd_balance) );
+      ilog("bob vesting steem:   ${b}", ("b", db->get_account( "bob" ).reward_vesting_steem) );
+      ilog("sam sbd balance:     ${b}", ("b", db->get_account( "sam" ).reward_sbd_balance) );
+      ilog("sam vesting steem:   ${b}", ("b", db->get_account( "sam" ).reward_vesting_steem) );
+
       BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount == db->get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 2 );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount + 3 );
-      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount );
-      BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount + 1 );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == ( db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount ) / 2 + 1 );
+      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
+      BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount );
    }
    FC_LOG_AND_RETHROW()
 }
