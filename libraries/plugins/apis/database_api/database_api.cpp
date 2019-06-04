@@ -1738,13 +1738,14 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
          if ( key.size() == 0 )
             start = boost::make_tuple( asset_symbol_type(), account_name_type(), 0 );
          else
-            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< account_name_type >(), key[ 3 ].as< uint32_t >() );
+            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< account_name_type >(), key[ 2 ].as< uint32_t >() );
 
          iterate_results< chain::smt_contribution_index, chain::by_symbol_contributor >(
             start,
             result.contributions,
             args.limit,
-            &database_api_impl::on_push_default< chain::smt_contribution_object > );
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
          break;
       }
       default:
@@ -1795,7 +1796,8 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); } );
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
+            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
 
          break;
       }
@@ -1819,7 +1821,8 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); } );
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
+            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
 
          break;
       }
