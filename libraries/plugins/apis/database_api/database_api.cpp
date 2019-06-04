@@ -1745,7 +1745,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             result.contributions,
             args.limit,
             &database_api_impl::on_push_default< chain::smt_contribution_object >,
-            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
          break;
       }
       default:
@@ -1797,7 +1797,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             result.tokens,
             args.limit,
             [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
-            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
+            &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
       }
@@ -1822,7 +1822,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             result.tokens,
             args.limit,
             [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
-            &database_api_impl::filter_default< chain::smt_token_emissions_object > );
+            &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
       }
