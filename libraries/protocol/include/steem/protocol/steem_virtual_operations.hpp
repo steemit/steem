@@ -183,6 +183,14 @@ namespace steem { namespace protocol {
       vector< asset >   total_cleared;
    };
 
+   struct sps_fund_operation : public virtual_operation
+   {
+      sps_fund_operation() {}
+      sps_fund_operation( const asset& v ) : additional_funds( v ) {}
+
+      asset additional_funds;
+   };
+
 } } //steem::protocol
 
 FC_REFLECT( steem::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
@@ -201,3 +209,4 @@ FC_REFLECT( steem::protocol::return_vesting_delegation_operation, (account)(vest
 FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::protocol::producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::protocol::clear_null_account_balance_operation, (total_cleared) )
+FC_REFLECT( steem::protocol::sps_fund_operation, (additional_funds) )

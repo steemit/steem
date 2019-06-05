@@ -101,7 +101,8 @@ namespace steem { namespace protocol {
             comment_benefactor_reward_operation,
             producer_reward_operation,
             clear_null_account_balance_operation,
-            proposal_pay_operation
+            proposal_pay_operation,
+            sps_fund_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,
