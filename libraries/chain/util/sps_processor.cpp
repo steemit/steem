@@ -167,6 +167,8 @@ void sps_processor::transfer_daily_inflation_to_treasury( const asset& daily_inf
    {
       const auto& treasury_account = db.get_account( STEEM_TREASURY_ACCOUNT );
       db.adjust_balance( treasury_account, daily_inflation );
+      operation vop = sps_fund_operation( daily_inflation );
+      db.push_virtual_operation( vop );
    }
 #endif
 }
