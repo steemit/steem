@@ -6752,7 +6752,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
       BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == ( db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount ) / 2 + 1 );
       BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
-      BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount );
+      BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount + 1 );
    }
    FC_LOG_AND_RETHROW()
 }

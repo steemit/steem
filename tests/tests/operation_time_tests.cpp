@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       ilog( "dave sbd balance:  ${b}", ("b", dave_account.reward_sbd_balance) );
 
 
-      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "7147.000 TBD" ) );
+      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "6236.000 TBD" ) );
       BOOST_CHECK( bob_account.reward_sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_CHECK( dave_account.reward_sbd_balance == alice_account.reward_sbd_balance );
    }
