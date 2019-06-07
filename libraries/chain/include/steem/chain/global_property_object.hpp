@@ -63,7 +63,6 @@ namespace steem { namespace chain {
          fc::uint128 total_reward_shares2; ///< the running total of REWARD^2
          asset       pending_rewarded_vesting_shares = asset( 0, VESTS_SYMBOL );
          asset       pending_rewarded_vesting_steem  = asset( 0, STEEM_SYMBOL );
-         asset       sps_interval_ledger             = asset( 0, SBD_SYMBOL );
 
          price       get_vesting_share_price() const
          {
@@ -145,6 +144,8 @@ namespace steem { namespace chain {
          uint16_t vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
          uint16_t sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
 
+         asset sps_interval_ledger = asset( 0, SBD_SYMBOL );
+
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
 #endif
@@ -209,6 +210,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (content_reward_percent)
              (vesting_reward_percent)
              (sps_fund_percent)
+             (sps_interval_ledger)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif
