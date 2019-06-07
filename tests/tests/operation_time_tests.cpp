@@ -2666,7 +2666,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.sps_fund_percent = 0;
-            gpo.content_reward_fund_percent = 75 * STEEM_1_PERCENT;
+            gpo.content_reward_percent = 75 * STEEM_1_PERCENT;
          });
       }, database::skip_witness_signature );
 
@@ -2734,7 +2734,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = sbd_balance;
+            gpo.current_sbd_supply = sbd_balance + db.get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
             gpo.virtual_supply = gpo.virtual_supply + sbd_balance * exchange_rate;
          });
       }, database::skip_witness_signature );
@@ -2775,7 +2775,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL ) + db.get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
          });
       }, database::skip_witness_signature );
 
