@@ -2176,7 +2176,7 @@ void database::process_funds()
          content_reward = pay_reward_funds( content_reward );
       auto vesting_reward = ( new_steem * props.vesting_reward_percent ) / STEEM_100_PERCENT;
       auto sps_fund = ( new_steem * props.sps_fund_percent ) / STEEM_100_PERCENT;
-      auto witness_reward = new_steem - content_reward - vesting_reward;
+      auto witness_reward = new_steem - content_reward - vesting_reward - sps_fund;
 
       const auto& cwit = get_witness( props.current_witness );
       witness_reward *= STEEM_MAX_WITNESSES;
