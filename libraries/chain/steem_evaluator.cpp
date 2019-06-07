@@ -1932,10 +1932,10 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
    else
    {
-      FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_uint64() ), "Account does not have enough mana to vote." );
+      FC_ASSERT( voter.voting_manabar.has_mana( used_mana.to_int64() ), "Account does not have enough mana to vote." );
    }
 
-   int64_t abs_rshares = used_mana.to_uint64();
+   int64_t abs_rshares = used_mana.to_int64();
 
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
@@ -1958,7 +1958,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent > 0 && o.weight < 0 )
          {
-            if( used_mana.to_uint64() > a.downvote_manabar.current_mana )
+            if( used_mana.to_int64() > a.downvote_manabar.current_mana )
             {
                /* used mana is always less than downvote_mana + voting_mana because the amount used
                 * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
@@ -1966,18 +1966,18 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
                 * is strictly smaller than voting_mana. This is the same reason why a check is not
                 * required when using voting mana on its own as an upvote.
                 */
-               auto remainder = used_mana.to_uint64() - a.downvote_manabar.current_mana;
+               auto remainder = used_mana.to_int64() - a.downvote_manabar.current_mana;
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
             else
             {
-               a.downvote_manabar.use_mana( used_mana.to_uint64() );
+               a.downvote_manabar.use_mana( used_mana.to_int64() );
             }
          }
          else
          {
-            a.voting_manabar.use_mana( used_mana.to_uint64() );
+            a.voting_manabar.use_mana( used_mana.to_int64() );
          }
 
          a.last_vote_time = _db.head_block_time();
@@ -2091,26 +2091,27 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent > 0 && o.weight < 0 )
          {
-            if( used_mana.to_uint64() > a.downvote_manabar.current_mana )
+            if( used_mana.to_int64() > a.downvote_manabar.current_mana )
             {
+               idump( (used_mana)(a.downvote_manabar)(a.voting_manabar) );
                /* used mana is always less than downvote_mana + voting_mana because the amount used
                 * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
                 * there is downvote_mana, then it is because voting_mana is greater, and used_mana
                 * is strictly smaller than voting_mana. This is the same reason why a check is not
                 * required when using voting mana on its own as an upvote.
                 */
-               auto remainder = used_mana.to_uint64() - a.downvote_manabar.current_mana;
+               auto remainder = used_mana.to_int64() - a.downvote_manabar.current_mana;
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
             else
             {
-               a.downvote_manabar.use_mana( used_mana.to_uint64() );
+               a.downvote_manabar.use_mana( used_mana.to_int64() );
             }
          }
          else
          {
-            a.voting_manabar.use_mana( used_mana.to_uint64() );
+            a.voting_manabar.use_mana( used_mana.to_int64() );
          }
 
          a.last_vote_time = _db.head_block_time();
