@@ -62,7 +62,8 @@ namespace steem { namespace chain {
          asset       total_reward_fund_steem    = asset( 0, STEEM_SYMBOL );
          fc::uint128 total_reward_shares2; ///< the running total of REWARD^2
          asset       pending_rewarded_vesting_shares = asset( 0, VESTS_SYMBOL );
-         asset       pending_rewarded_vesting_steem = asset( 0, STEEM_SYMBOL );
+         asset       pending_rewarded_vesting_steem  = asset( 0, STEEM_SYMBOL );
+         asset       sps_interval_ledger             = asset( 0, SBD_SYMBOL );
 
          price       get_vesting_share_price() const
          {

@@ -167,8 +167,6 @@ void sps_processor::transfer_daily_inflation_to_treasury( const asset& daily_inf
    {
       const auto& treasury_account = db.get_account( STEEM_TREASURY_ACCOUNT );
       db.adjust_balance( treasury_account, daily_inflation );
-      operation vop = sps_fund_operation( daily_inflation );
-      db.push_virtual_operation( vop );
    }
 #endif
 }
@@ -298,6 +296,23 @@ void sps_processor::run( const block_notification& note )
 {
    remove_old_proposals( note );
    make_payments( note );
+   record_funding( note );
+}
+
+void sps_processor::record_funding( const block_notification& note )
+{
+   if( !is_maintenance_period( note.block.timestamp ) )
+      return;
+
+   const auto& props = db.get_dynamic_global_properties();
+
+   operation vop = sps_fund_operation( props.sps_interval_ledger );
+   db.push_virtual_operation( vop );
+
+   db.modify( props, []( dynamic_global_property_object& dgpo )
+   {
+      dgpo.sps_interval_ledger = asset( 0, SBD_SYMBOL );
+   });
 }
 
 } } // namespace steem::chain

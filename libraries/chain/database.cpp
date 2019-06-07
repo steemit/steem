@@ -2207,9 +2207,10 @@ void database::process_funds()
          p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
          if( !has_hardfork( STEEM_HARDFORK_0_17__774 ) )
             p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
-         p.current_supply           += asset( new_steem, STEEM_SYMBOL );
-         p.current_sbd_supply       += new_sbd;
-         p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
+         p.current_supply      += asset( new_steem, STEEM_SYMBOL );
+         p.current_sbd_supply  += new_sbd;
+         p.virtual_supply      += asset( new_steem, STEEM_SYMBOL );
+         p.sps_interval_ledger += new_sbd;
       });
 
       operation vop = producer_reward_operation( cwit.owner, asset( 0, VESTS_SYMBOL ) );
