@@ -2093,7 +2093,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
          {
             if( used_mana.to_int64() > a.downvote_manabar.current_mana )
             {
-               idump( (used_mana)(a.downvote_manabar)(a.voting_manabar) );
                /* used mana is always less than downvote_mana + voting_mana because the amount used
                 * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
                 * there is downvote_mana, then it is because voting_mana is greater, and used_mana
