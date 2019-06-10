@@ -1271,10 +1271,11 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
          {
             db.modify( to_account, [&]( account_object& a )
             {
-               util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
-               a.voting_manabar.regenerate_mana( params, db.head_block_time() );
-               a.voting_manabar.use_mana( -new_vesting.amount.value );
+               util::update_manabar(
+                  cprops,
+                  a,
+                  db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+                  new_vesting.amount.value );
             });
          }
 
@@ -4286,6 +4287,8 @@ void database::clear_expired_delegations()
    auto now = head_block_time();
    const auto& delegations_by_exp = get_index< vesting_delegation_expiration_index, by_expiration >();
    auto itr = delegations_by_exp.begin();
+   const auto& gpo = get_dynamic_global_properties();
+
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
@@ -4295,10 +4298,11 @@ void database::clear_expired_delegations()
       {
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
-            a.voting_manabar.regenerate_mana( params, head_block_time() );
-            a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
+            util::update_manabar(
+               gpo,
+               a,
+               has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+               itr->vesting_shares.amount.value );
          }
 
          a.delegated_vesting_shares -= itr->vesting_shares;
@@ -5199,6 +5203,7 @@ void database::apply_hardfork( uint32_t hardfork )
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+            gpo.downvote_pool_percent = STEEM_DOWNVOTE_POOL_PERCENT_HF21;
          });
 
          auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
