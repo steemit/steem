@@ -295,8 +295,8 @@ const std::string& sps_processor::get_calculating_name()
 void sps_processor::run( const block_notification& note )
 {
    remove_old_proposals( note );
-   make_payments( note );
    record_funding( note );
+   make_payments( note );
 }
 
 void sps_processor::record_funding( const block_notification& note )

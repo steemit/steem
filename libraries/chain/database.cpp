@@ -2209,7 +2209,7 @@ void database::process_funds()
             p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
          p.current_supply      += asset( new_steem, STEEM_SYMBOL );
          p.current_sbd_supply  += new_sbd;
-         p.virtual_supply      += asset( new_steem, STEEM_SYMBOL );
+         p.virtual_supply      += asset( new_steem + sps_fund, STEEM_SYMBOL );
          p.sps_interval_ledger += new_sbd;
       });
 
