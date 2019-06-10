@@ -306,6 +306,9 @@ void sps_processor::record_funding( const block_notification& note )
 
    const auto& props = db.get_dynamic_global_properties();
 
+   if ( props.sps_interval_ledger.amount.value <= 0 )
+      return;
+
    operation vop = sps_fund_operation( props.sps_interval_ledger );
    db.push_virtual_operation( vop );
 
