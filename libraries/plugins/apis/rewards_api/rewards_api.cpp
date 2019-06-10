@@ -32,7 +32,7 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
    fc::uint128_t sum_current_curve_vshares = 0;
    fc::uint128_t sum_simulated_vshares = 0;
 
-   std::vector< fc::uint128_t >                  element_vshares;
+   std::vector< fc::uint128_t > element_vshares;
 
    auto reward_fund_object = _db.get< chain::reward_fund_object, chain::by_name >( STEEM_POST_REWARD_FUND_NAME );
 
@@ -50,6 +50,8 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
       ret.payouts.push_back( std::move( e ) );
       element_vshares.push_back( new_curve_vshares );
+
+      ++current;
    }
 
    auto current_estimated_recent_claims = reward_fund_object.recent_claims + sum_current_curve_vshares;
