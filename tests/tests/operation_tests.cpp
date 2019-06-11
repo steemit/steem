@@ -1113,7 +1113,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             auto max_vote_denom = db->get_dynamic_global_properties().vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
             alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom;
 
-            const auto& bob_comment = db->get_comment( "bob", "foo" );
+            const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
             old_net_rshares = bob_comment.net_rshares.value;
             old_abs_rshares = bob_comment.abs_rshares.value;
          }
@@ -1127,7 +1127,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id ) );
 
          {
-            const auto& bob_comment = db->get_comment( "bob", "foo" );
+            const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
             const auto& alice = db->get_account( "alice" );
             BOOST_REQUIRE( bob_comment.net_rshares == old_net_rshares - alice_weight + STEEM_VOTE_DUST_THRESHOLD );
             BOOST_REQUIRE( bob_comment.abs_rshares == old_abs_rshares + alice_weight - STEEM_VOTE_DUST_THRESHOLD );
