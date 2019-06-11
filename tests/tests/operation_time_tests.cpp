@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       const account_object& bob_account   = db->get_account("bob");
       const account_object& dave_account  = db->get_account("dave");
 
-      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "10720.000 TBD" ) );
+      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "6236.000 TBD" ) );
       BOOST_CHECK( bob_account.reward_sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_CHECK( dave_account.reward_sbd_balance == alice_account.reward_sbd_balance );
    }
@@ -2656,6 +2656,15 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
    #ifndef DEBUG
    try
    {
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.sps_fund_percent = 0;
+            gpo.content_reward_percent = 75 * STEEM_1_PERCENT;
+         });
+      }, database::skip_witness_signature );
+
       resize_shared_mem( 1024 * 1024 * 512 ); // Due to number of blocks in the test, it requires a large file. (64 MB)
 
       auto debug_key = "5JdouSvkK75TKWrJixYufQgePT21V7BAVWbNUWt3ktqhPmy8Z78"; //get_dev_key debug node
@@ -2720,7 +2729,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = sbd_balance;
+            gpo.current_sbd_supply = sbd_balance + db.get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
             gpo.virtual_supply = gpo.virtual_supply + sbd_balance * exchange_rate;
          });
       }, database::skip_witness_signature );
@@ -2761,7 +2770,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL ) + db.get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
          });
       }, database::skip_witness_signature );
 
