@@ -58,7 +58,9 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
    auto current_estimated_recent_claims = reward_fund_object.recent_claims + sum_current_curve_vshares;
 
-   auto simulated_recent_claims = current_estimated_recent_claims * sum_simulated_vshares / sum_current_curve_vshares;
+   auto simulated_recent_claims_u256 = ( chain::util::to256( current_estimated_recent_claims ) * chain::util::to256( sum_simulated_vshares ) ) / chain::util::to256( sum_current_curve_vshares );
+   FC_ASSERT( ( simulated_recent_claims_u256 >> 64 ) <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
+   fc::uint128_t simulated_recent_claims( static_cast< int64_t >( simulated_recent_claims_u256 >> 64 ), static_cast< uint64_t >( simulated_recent_claims_u256 ) );
 
    for ( std::size_t i = 0; i < ret.payouts.size(); ++i )
       ret.payouts[ i ].payout = protocol::asset( ( ( element_vshares[ i ] * reward_fund_object.reward_balance.amount.value ) / simulated_recent_claims ).to_uint64(), STEEM_SYMBOL );
