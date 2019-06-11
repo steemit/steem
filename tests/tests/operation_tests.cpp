@@ -1385,6 +1385,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test transfering SBD to steem.dao" );
+      auto treasury_sbd_balance = db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
       op.amount = ASSET( "1.000 TBD" );
       tx.signatures.clear();
       tx.operations.clear();
@@ -1393,7 +1394,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       db->push_transaction( tx );
 
       BOOST_REQUIRE( db->get_account( "bob" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance == ASSET( "1.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance == treasury_sbd_balance + ASSET( "1.000 TBD" ) );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -6887,9 +6888,9 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       generate_block();
 
-      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount == db->get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == ( db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount ) / 2 + 1 );
+      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount == db->get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount ) == ( db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount ) / 2 + 1 );
       BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
       BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount + 1 );
    }
