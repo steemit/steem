@@ -36,13 +36,15 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
    auto reward_fund_object = _db.get< chain::reward_fund_object, chain::by_name >( STEEM_POST_REWARD_FUND_NAME );
 
+   fc::uint128_t var1{ args.var1 };
+
    while( current != cidx.end() && current->cashout_time < fc::time_point_sec::maximum() )
    {
       simulate_curve_payouts_element e;
       e.author = current->author;
       e.permlink = current->permlink;
 
-      auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, args.var1 );
+      auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, var1 );
       sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares;
 
       auto current_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, reward_fund_object.author_reward_curve, reward_fund_object.content_constant );

@@ -16,7 +16,7 @@ struct simulate_curve_payouts_element {
 struct simulate_curve_payouts_args
 {
    protocol::curve_id curve;
-   fc::uint128_t      var1;
+   std::string        var1;
 };
 
 struct simulate_curve_payouts_return
