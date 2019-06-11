@@ -712,10 +712,12 @@ namespace chainbase {
 
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
 
+#ifdef ENABLE_MIRA
          ~index_impl()
          {
             delete (BaseIndex*) abstract_index::_idx_ptr;
          }
+#endif
 
          virtual unique_ptr<abstract_session> start_undo_session() override {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );

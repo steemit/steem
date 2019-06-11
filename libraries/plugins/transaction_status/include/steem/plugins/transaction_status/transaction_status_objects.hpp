@@ -1,13 +1,10 @@
 #pragma once
-#include <steem/protocol/transaction.hpp>
 #include <steem/chain/steem_object_types.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/hashed_index.hpp>
+#include <steem/protocol/transaction.hpp>
 
 namespace steem { namespace plugins { namespace transaction_status {
 
 using namespace steem::chain;
-using namespace boost::multi_index;
 
 #ifndef STEEM_TRANSACTION_STATUS_SPACE_ID
 #define STEEM_TRANSACTION_STATUS_SPACE_ID 18
