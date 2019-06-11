@@ -116,6 +116,24 @@ int64_t get_effective_vesting_shares( const T& account )
    return effective_vesting_shares;
 }
 
+template< typename PropType, typename AccountType >
+void update_manabar( const PropType& gpo, AccountType& account, bool downvote_mana = false, int64_t new_mana = 0 )
+{
+   auto effective_vests = util::get_effective_vesting_shares( account );
+   manabar_params params( effective_vests, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+   account.voting_manabar.regenerate_mana( params, gpo.time );
+   account.voting_manabar.use_mana( -new_mana );
+
+   FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
+   // This is used as a hardfork check. Can be replaced with if( gpo.downvote_pool_percent ). Leaving as a hard check to be safe until after HF 21
+   if( downvote_mana )
+   {
+      util::manabar_params params( ( effective_vests * gpo.downvote_pool_percent ) / STEEM_100_PERCENT, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      account.downvote_manabar.regenerate_mana( params, gpo.time );
+      account.downvote_manabar.use_mana( ( -new_mana * gpo.downvote_pool_percent ) / STEEM_100_PERCENT );
+   }
+}
+
 } } } // steem::chain::util
 
 FC_REFLECT( steem::chain::util::manabar,

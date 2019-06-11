@@ -1271,10 +1271,11 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
          {
             db.modify( to_account, [&]( account_object& a )
             {
-               util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
-               a.voting_manabar.regenerate_mana( params, db.head_block_time() );
-               a.voting_manabar.use_mana( -new_vesting.amount.value );
+               util::update_manabar(
+                  cprops,
+                  a,
+                  db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+                  new_vesting.amount.value );
             });
          }
 
@@ -2155,6 +2156,7 @@ void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
    const auto& wso = get_witness_schedule_object();
+   const auto& feed = get_feed_history();
 
    if( has_hardfork( STEEM_HARDFORK_0_16__551) )
    {
@@ -2170,11 +2172,12 @@ void database::process_funds()
       int64_t current_inflation_rate = std::max( start_inflation_rate - inflation_rate_adjustment, inflation_rate_floor );
 
       auto new_steem = ( props.virtual_supply.amount * current_inflation_rate ) / ( int64_t( STEEM_100_PERCENT ) * int64_t( STEEM_BLOCKS_PER_YEAR ) );
-      auto content_reward = ( new_steem * STEEM_CONTENT_REWARD_PERCENT ) / STEEM_100_PERCENT;
+      auto content_reward = ( new_steem * props.content_reward_percent ) / STEEM_100_PERCENT;
       if( has_hardfork( STEEM_HARDFORK_0_17__774 ) )
-         content_reward = pay_reward_funds( content_reward ); /// 75% to content creator
-      auto vesting_reward = ( new_steem * STEEM_VESTING_FUND_PERCENT ) / STEEM_100_PERCENT; /// 15% to vesting fund
-      auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
+         content_reward = pay_reward_funds( content_reward );
+      auto vesting_reward = ( new_steem * props.vesting_reward_percent ) / STEEM_100_PERCENT;
+      auto sps_fund = ( new_steem * props.sps_fund_percent ) / STEEM_100_PERCENT;
+      auto witness_reward = new_steem - content_reward - vesting_reward - sps_fund;
 
       const auto& cwit = get_witness( props.current_witness );
       witness_reward *= STEEM_MAX_WITNESSES;
@@ -2190,6 +2193,14 @@ void database::process_funds()
 
       witness_reward /= wso.witness_pay_normalization_factor;
 
+      auto new_sbd = asset( 0, SBD_SYMBOL );
+
+      if( sps_fund.value )
+      {
+         new_sbd = asset( sps_fund, STEEM_SYMBOL ) * feed.current_median_history;
+         adjust_balance( STEEM_TREASURY_ACCOUNT, new_sbd );
+      }
+
       new_steem = content_reward + vesting_reward + witness_reward;
 
       modify( props, [&]( dynamic_global_property_object& p )
@@ -2197,8 +2208,10 @@ void database::process_funds()
          p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
          if( !has_hardfork( STEEM_HARDFORK_0_17__774 ) )
             p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
-         p.current_supply           += asset( new_steem, STEEM_SYMBOL );
-         p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
+         p.current_supply      += asset( new_steem, STEEM_SYMBOL );
+         p.current_sbd_supply  += new_sbd;
+         p.virtual_supply      += asset( new_steem + sps_fund, STEEM_SYMBOL );
+         p.sps_interval_ledger += new_sbd;
       });
 
       operation vop = producer_reward_operation( cwit.owner, asset( 0, VESTS_SYMBOL ) );
@@ -4286,6 +4299,8 @@ void database::clear_expired_delegations()
    auto now = head_block_time();
    const auto& delegations_by_exp = get_index< vesting_delegation_expiration_index, by_expiration >();
    auto itr = delegations_by_exp.begin();
+   const auto& gpo = get_dynamic_global_properties();
+
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
@@ -4295,10 +4310,11 @@ void database::clear_expired_delegations()
       {
          if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-FC_TODO( "Set skip_cap_regen=true without breaking consensus" );
-            a.voting_manabar.regenerate_mana( params, head_block_time() );
-            a.voting_manabar.use_mana( -itr->vesting_shares.amount.value );
+            util::update_manabar(
+               gpo,
+               a,
+               has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+               itr->vesting_shares.amount.value );
          }
 
          a.delegated_vesting_shares -= itr->vesting_shares;
@@ -5199,6 +5215,9 @@ void database::apply_hardfork( uint32_t hardfork )
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
+            gpo.sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF21;
+            gpo.content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF21;
+            gpo.downvote_pool_percent = STEEM_DOWNVOTE_POOL_PERCENT_HF21;
          });
 
          auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
@@ -5235,6 +5254,11 @@ void database::apply_hardfork( uint32_t hardfork )
          auto change_request = find< change_recovery_account_request_object, by_account >( STEEM_TREASURY_ACCOUNT );
          if( change_request )
             remove( *change_request );
+
+         modify( get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo )
+         {
+            rfo.percent_curation_rewards = 50 * STEEM_1_PERCENT;
+         });
       }
       break;
       case STEEM_SMT_HARDFORK:
