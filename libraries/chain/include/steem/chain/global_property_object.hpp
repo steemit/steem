@@ -146,6 +146,8 @@ namespace steem { namespace chain {
 
          asset sps_interval_ledger = asset( 0, SBD_SYMBOL );
 
+         uint16_t downvote_pool_percent = 0;
+
 #ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
 #endif
@@ -211,6 +213,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (vesting_reward_percent)
              (sps_fund_percent)
              (sps_interval_ledger)
+             (downvote_pool_percent)
 #ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
 #endif

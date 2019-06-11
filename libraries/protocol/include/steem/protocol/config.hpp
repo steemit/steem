@@ -80,6 +80,9 @@
 
 #define STEEM_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEM_BLOCKCHAIN_VERSION ) )
 
+#define STEEM_100_PERCENT                     10000
+#define STEEM_1_PERCENT                       (STEEM_100_PERCENT/100)
+
 #define STEEM_BLOCK_INTERVAL                  3
 #define STEEM_BLOCKS_PER_YEAR                 (365*24*60*60/STEEM_BLOCK_INTERVAL)
 #define STEEM_BLOCKS_PER_DAY                  (24*60*60/STEEM_BLOCK_INTERVAL)
@@ -116,6 +119,7 @@
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 (60*15) /// 15 minutes
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
+#define STEEM_DOWNVOTE_POOL_PERCENT_HF21      (25*STEEM_1_PERCENT)
 
 #define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -126,8 +130,6 @@
 
 #define STEEM_MAX_ACCOUNT_WITNESS_VOTES       30
 
-#define STEEM_100_PERCENT                     10000
-#define STEEM_1_PERCENT                       (STEEM_100_PERCENT/100)
 #define STEEM_DEFAULT_SBD_INTEREST_RATE       (10*STEEM_1_PERCENT) ///< 10% APR
 
 #define STEEM_INFLATION_RATE_START_PERCENT    (978) // Fixes block 7,000,000 to 9.5%
