@@ -1897,7 +1897,15 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                auto benefactor_vesting_steem = benefactor_tokens;
                auto vop = comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), asset( 0, VESTS_SYMBOL ) );
 
-               if( has_hardfork( STEEM_HARDFORK_0_20__2022 ) )
+               if( has_hardfork( STEEM_HARDFORK_0_21__3343 ) && b.account == STEEM_TREASURY_ACCOUNT )
+               {
+                  benefactor_vesting_steem = 0;
+                  vop.sbd_payout = asset( benefactor_tokens, STEEM_SYMBOL ) * get_feed_history().current_median_history;
+                  adjust_balance( get_account( STEEM_TREASURY_ACCOUNT ), vop.sbd_payout );
+                  adjust_supply( asset( -benefactor_tokens, STEEM_SYMBOL ) );
+                  adjust_supply( vop.sbd_payout );
+               }
+               else if( has_hardfork( STEEM_HARDFORK_0_20__2022 ) )
                {
                   auto benefactor_sbd_steem = ( benefactor_tokens * comment.percent_steem_dollars ) / ( 2 * STEEM_100_PERCENT ) ;
                   benefactor_vesting_steem  = benefactor_tokens - benefactor_sbd_steem;

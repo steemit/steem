@@ -1180,6 +1180,14 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
    FC_ASSERT( _db.get_balance( o.from, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
+
+   FC_TODO( "Remove is producing after HF 21" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   {
+      FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
+         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+   }
+
    _db.adjust_balance( o.from, -o.amount );
    _db.adjust_balance( o.to, o.amount );
 }
@@ -1191,6 +1199,14 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
 
    FC_ASSERT( _db.get_balance( from_account, o.amount.symbol) >= o.amount,
               "Account does not have sufficient liquid amount for transfer." );
+
+   FC_TODO( "Remove is producing after HF 21" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   {
+      FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
+         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+   }
+
    _db.adjust_balance( from_account, -o.amount );
    _db.create_vesting( to_account, o.amount );
 }
@@ -1282,6 +1298,13 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    const auto& to_account = _db.get_account( o.to_account );
    const auto& wd_idx = _db.get_index< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
    auto itr = wd_idx.find( boost::make_tuple( from_account.name, to_account.name ) );
+
+   FC_TODO( "Remove is producing after HF 21" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   {
+      FC_ASSERT( o.to_account != STEEM_TREASURY_ACCOUNT,
+         "Cannot withdraw vesting to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+   }
 
    if( itr == wd_idx.end() )
    {
@@ -2829,6 +2852,13 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
    const auto& to   = _db.get_account(op.to);
    FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
 
+   FC_TODO( "Remove is producing after HF 21" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   {
+      FC_ASSERT( op.to != STEEM_TREASURY_ACCOUNT,
+         "Cannot transfer savings to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+   }
+
    _db.adjust_balance( from, -op.amount );
    _db.adjust_savings_balance( to, op.amount );
 }
@@ -2839,6 +2869,13 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    _db.get_account(op.to); // Verify to account exists
 
    FC_ASSERT( from.savings_withdraw_requests < STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT, "Account has reached limit for pending withdraw requests." );
+
+   FC_TODO( "Remove is producing after HF 21" );
+   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   {
+      FC_ASSERT( op.amount.symbol == SBD_SYMBOL || op.to != STEEM_TREASURY_ACCOUNT,
+         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+   }
 
    FC_ASSERT( _db.get_savings_balance( from, op.amount.symbol ) >= op.amount );
    _db.adjust_savings_balance( from, -op.amount );
