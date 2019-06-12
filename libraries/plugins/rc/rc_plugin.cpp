@@ -266,7 +266,7 @@ void use_account_rcs(
    {
       rca.rc_manabar.regenerate_mana< true >( mbparams, gpo.time.sec_since_epoch() );
 
-      bool has_mana = rc_account.rc_manabar.has_mana( rc );
+      bool has_mana = rca.rc_manabar.has_mana( rc );
 
       if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
