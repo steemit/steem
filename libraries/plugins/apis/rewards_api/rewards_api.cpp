@@ -48,7 +48,10 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
       while( current != cidx.end() && current->cashout_time < fc::time_point_sec::maximum() )
       {
          if ( current->net_rshares.value <= 0)
+         {
+            ++current;
             continue;
+         }
 
          simulate_curve_payouts_element e;
          e.author = current->author;
