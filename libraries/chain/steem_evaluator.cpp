@@ -3213,7 +3213,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          ("acc", op.delegator)("r", delta)("a", available_shares) );
       FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
-         FC_ASSERT( available_shares >= delta, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
+         FC_ASSERT( available_downvote_shares >= delta, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
          ("acc", op.delegator)("r", delta)("a", available_downvote_shares) );
 
       _db.modify( delegator, [&]( account_object& a )
