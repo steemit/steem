@@ -21,6 +21,7 @@ struct simulate_curve_payouts_args
 
 struct simulate_curve_payouts_return
 {
+   fc::uint128_t                                 recent_claims;
    std::vector< simulate_curve_payouts_element > payouts;
 };
 
