@@ -1893,8 +1893,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    _db.modify( voter, [&]( account_object& a )
    {
-      util::manabar_params params( util::get_effective_vesting_shares( a ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
-      a.voting_manabar.regenerate_mana( params, now );
+      util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
    });
 
    if ( _db.has_hardfork( STEEM_HARDFORK_0_21__3004 ) )
