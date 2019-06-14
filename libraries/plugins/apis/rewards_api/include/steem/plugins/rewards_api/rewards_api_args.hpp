@@ -30,4 +30,4 @@ struct simulate_curve_payouts_return
 
 FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_element, (author)(permlink)(payout) )
 FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_args, (curve)(var1) )
-FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_return, (payouts) )
+FC_REFLECT( steem::plugins::rewards_api::simulate_curve_payouts_return, (recent_claims)(payouts) )
