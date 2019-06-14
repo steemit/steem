@@ -25,8 +25,6 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 {
    simulate_curve_payouts_return ret;
 
-   ilog( "(simulate_curve_payouts) arguments: ${o}", ("o", args) );
-
    const auto& cidx = _db.get_index< chain::comment_index, chain::by_cashout_time >();
 
    auto current = cidx.begin();
@@ -40,61 +38,49 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
    fc::uint128_t var1{ args.var1 };
 
-   ilog( "(simulate_curve_payouts) var1: ${v}", ("o", var1) );
-
-   std::size_t loop_num = 0;
-   try
+   while( current != cidx.end() && current->cashout_time < fc::time_point_sec::maximum() )
    {
-      while( current != cidx.end() && current->cashout_time < fc::time_point_sec::maximum() )
+      if ( current->net_rshares.value <= 0)
       {
-         simulate_curve_payouts_element e;
-         e.author = current->author;
-         e.permlink = current->permlink;
-
-         auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, var1 );
-         sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares;
-
-         auto current_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, reward_fund_object.author_reward_curve, reward_fund_object.content_constant );
-         sum_current_curve_vshares = sum_current_curve_vshares + current_curve_vshares;
-
-         ret.payouts.push_back( std::move( e ) );
-         element_vshares.push_back( new_curve_vshares );
-
          ++current;
-         loop_num++;
+         continue;
       }
-   }
-   catch (...)
-   {
-      ilog( "(simulate_curve_payouts) exception while accumulating comment vshares: ${n}", ("n", loop_num) );
-      throw;
+
+      simulate_curve_payouts_element e;
+      e.author = current->author;
+      e.permlink = current->permlink;
+
+      auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, var1 );
+      sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares;
+
+      auto current_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, reward_fund_object.author_reward_curve, reward_fund_object.content_constant );
+      sum_current_curve_vshares = sum_current_curve_vshares + current_curve_vshares;
+
+
+      ret.payouts.push_back( std::move( e ) );
+      element_vshares.push_back( new_curve_vshares );
+
+      ++current;
    }
 
    auto current_estimated_recent_claims = reward_fund_object.recent_claims + sum_current_curve_vshares;
 
    u256 simulated_recent_claims_u256;
    fc::uint128_t simulated_recent_claims;
-   try
-   {
-      simulated_recent_claims_u256 = ( chain::util::to256( current_estimated_recent_claims ) * chain::util::to256( sum_simulated_vshares ) ) / chain::util::to256( sum_current_curve_vshares );
-      FC_ASSERT( ( simulated_recent_claims_u256 >> 64 ) <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
-      simulated_recent_claims = fc::uint128_t( static_cast< int64_t >( simulated_recent_claims_u256 >> 64 ), static_cast< uint64_t >( simulated_recent_claims_u256 ) );
-   }
-   catch (...)
-   {
-      ilog( "(simulate_curve_payouts) exception during 256 bit math" );
-      throw;
-   }
 
-   try
+   simulated_recent_claims_u256 = ( chain::util::to256( current_estimated_recent_claims ) * chain::util::to256( sum_simulated_vshares ) ) / chain::util::to256( sum_current_curve_vshares );
+   FC_ASSERT( ( simulated_recent_claims_u256 >> 64 ) <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
+   simulated_recent_claims = fc::uint128_t( static_cast< int64_t >( simulated_recent_claims_u256 >> 64 ), static_cast< uint64_t >( simulated_recent_claims_u256 ) );
+
+
+   auto rf = chain::util::to256( reward_fund_object.reward_balance.amount.value );
+   auto total_claims = chain::util::to256( simulated_recent_claims );
+
+   for ( std::size_t i = 0; i < ret.payouts.size(); ++i )
    {
-      for ( std::size_t i = 0; i < ret.payouts.size(); ++i )
-         ret.payouts[ i ].payout = protocol::asset( ( ( element_vshares[ i ] * reward_fund_object.reward_balance.amount.value ) / simulated_recent_claims ).to_uint64(), STEEM_SYMBOL );
-   }
-   catch (...)
-   {
-      ilog( "(simulate_curve_payouts) exception while calculating payouts" );
-      throw;
+      auto payout_u256 = ( rf * chain::util::to256( element_vshares[ i ] ) ) / total_claims;
+      FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
+      ret.payouts[ i ].payout = protocol::asset( static_cast< uint64_t >( payout_u256 ), STEEM_SYMBOL );
    }
 
    return ret;
