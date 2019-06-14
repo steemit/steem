@@ -13,7 +13,10 @@ void rewards_api_plugin::plugin_initialize( const boost::program_options::variab
    api = std::make_unique< rewards_api >();
 }
 
-void rewards_api_plugin::plugin_startup() {}
+void rewards_api_plugin::plugin_startup()
+{
+   elog( "NOTIFYALERT! ${name} is for testing purposes only, do not run in production", ("name", name()) );
+}
 
 void rewards_api_plugin::plugin_shutdown() {}
 
