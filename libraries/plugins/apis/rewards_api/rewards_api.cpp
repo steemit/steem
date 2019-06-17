@@ -83,7 +83,7 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
       ret.payouts[ i ].payout = protocol::asset( static_cast< uint64_t >( payout_u256 ), STEEM_SYMBOL );
    }
 
-   ret.recent_claims = simulated_recent_claims - sum_simulated_vshares;
+   ret.recent_claims = std::string{ simulated_recent_claims - sum_simulated_vshares };
 
    return ret;
 }
