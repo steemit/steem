@@ -1699,6 +1699,172 @@ BOOST_AUTO_TEST_CASE( smt_creation_fee_test )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_create_reset )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing smt_create_operation reset" );
+
+      ACTORS( (alice) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      fund( "alice", ASSET( "100.000 TESTS" ) );
+
+       SMT_SYMBOL( alice, 3, db )
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.create< smt_token_object >( [&]( smt_token_object& o )
+         {
+            o.control_account = "alice";
+            o.liquid_symbol = alice_symbol;
+         });
+      });
+
+      generate_block();
+
+      signed_transaction tx;
+      smt_setup_emissions_operation op1;
+      op1.control_account = "alice";
+      op1.symbol = alice_symbol;
+      op1.emissions_unit.token_unit[ "alice" ] = 10;
+      op1.schedule_time = db->head_block_time() + fc::days(30);
+      op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op1.interval_count = 1;
+      op1.lep_abs_amount = asset( 0, alice_symbol );
+      op1.rep_abs_amount = asset( 0, alice_symbol );
+      op1.lep_rel_amount_numerator = 1;
+      op1.rep_rel_amount_numerator = 0;
+
+      smt_setup_emissions_operation op2;
+      op2.control_account = "alice";
+      op2.symbol = alice_symbol;
+      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.schedule_time = op1.schedule_time + fc::days( 365 );
+      op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op2.interval_count = 10;
+      op2.lep_abs_amount = asset( 0, alice_symbol );
+      op2.rep_abs_amount = asset( 0, alice_symbol );
+      op2.lep_rel_amount_numerator = 1;
+      op2.rep_rel_amount_numerator = 0;
+
+      smt_set_runtime_parameters_operation op3;
+      smt_param_windows_v1 windows;
+      windows.cashout_window_seconds = 86400 * 4;
+      windows.reverse_auction_window_seconds = 60 * 5;
+      smt_param_vote_regeneration_period_seconds_v1 vote_regen;
+      vote_regen.vote_regeneration_period_seconds = 86400 * 6;
+      vote_regen.votes_per_regeneration_period = 600;
+      smt_param_rewards_v1 rewards;
+      rewards.content_constant = uint128_t( uint64_t( 1000000000000ull ) );
+      rewards.percent_curation_rewards = 15 * STEEM_1_PERCENT;
+      rewards.author_reward_curve = curve_id::quadratic;
+      rewards.curation_reward_curve = curve_id::linear;
+      smt_param_allow_downvotes downvotes;
+      downvotes.value = false;
+      op3.runtime_parameters.insert( windows );
+      op3.runtime_parameters.insert( vote_regen );
+      op3.runtime_parameters.insert( rewards );
+      op3.runtime_parameters.insert( downvotes );
+      op3.control_account = "alice";
+      op3.symbol = alice_symbol;
+
+      smt_set_setup_parameters_operation op4;
+      smt_param_allow_voting voting;
+      voting.value = false;
+      op4.setup_parameters.insert( voting );
+      op4.control_account = "alice";
+      op4.symbol = alice_symbol;
+
+      tx.operations.push_back( op1 );
+      tx.operations.push_back( op2 );
+      tx.operations.push_back( op3 );
+      tx.operations.push_back( op4 );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Failure when specifying fee" );
+      auto alice_prec_4 = asset_symbol_type::from_nai( alice_symbol.to_nai(), 4 );
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.symbol = alice_prec_4;
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.precision = 4;
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure resetting SMT with token emissions" );
+      op.smt_creation_fee = ASSET( "0.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Failure deleting token emissions in wrong order" );
+      op1.remove = true;
+      op2.remove = true;
+      tx.clear();
+      tx.operations.push_back( op1 );
+      tx.operations.push_back( op2 );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success deleting token emissions" );
+      tx.clear();
+      tx.operations.push_back( op2 );
+      tx.operations.push_back( op1 );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Success resetting SMT" );
+      op.smt_creation_fee = ASSET( "0.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      auto token = db->get< smt_token_object, by_symbol >( alice_prec_4 );
+
+      BOOST_REQUIRE( token.liquid_symbol == op.symbol );
+      BOOST_REQUIRE( token.control_account == "alice" );
+      BOOST_REQUIRE( token.allow_voting == true );
+      BOOST_REQUIRE( token.cashout_window_seconds == STEEM_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( token.reverse_auction_window_seconds == STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 );
+      BOOST_REQUIRE( token.vote_regeneration_period_seconds == STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      BOOST_REQUIRE( token.votes_per_regeneration_period == SMT_DEFAULT_VOTES_PER_REGEN_PERIOD );
+      BOOST_REQUIRE( token.content_constant == STEEM_CONTENT_CONSTANT_HF0 );
+      BOOST_REQUIRE( token.percent_curation_rewards == SMT_DEFAULT_PERCENT_CURATION_REWARDS );
+      BOOST_REQUIRE( token.author_reward_curve == curve_id::linear );
+      BOOST_REQUIRE( token.curation_reward_curve == curve_id::square_root );
+      BOOST_REQUIRE( token.allow_downvotes == true );
+
+      const auto& emissions_idx = db->get_index< smt_token_emissions_index, by_id >();
+      BOOST_REQUIRE( emissions_idx.begin() == emissions_idx.end() );
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- Failure resetting a token that has completed setup" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_prec_4 ), [&]( smt_token_object& o )
+         {
+            o.phase = smt_phase::setup_completed;
+         });
+      });
+
+      tx.set_expiration( db->head_block_time() + STEEM_BLOCK_INTERVAL * 10 );
+      tx.signatures.clear();
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_nai_pool_removal )
 {
    try
