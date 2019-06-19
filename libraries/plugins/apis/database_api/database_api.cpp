@@ -1748,6 +1748,27 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             &database_api_impl::filter_default< chain::smt_contribution_object > );
          break;
       }
+#ifndef IS_LOW_MEM
+      case ( by_contributor ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 3, "The parameter 'start' must be an empty array or consist of contributor, asset_symbol_type and contribution_id" );
+
+         boost::tuple< account_name_type, asset_symbol_type, uint32_t > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( account_name_type(), asset_symbol_type(), 0 );
+         else
+            start = boost::make_tuple( key[ 0 ].as< account_name_type >(), key[ 1 ].as< asset_symbol_type >(), key[ 2 ].as< uint32_t >() );
+
+         iterate_results< chain::smt_contribution_index, chain::by_contributor >(
+            start,
+            result.contributions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
+         break;
+      }
+#endif
       default:
          FC_ASSERT( false, "Unknown or unsupported sort order" );
    }
