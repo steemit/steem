@@ -680,7 +680,6 @@ BOOST_AUTO_TEST_CASE( setup_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-#if 0
 BOOST_AUTO_TEST_CASE( setup_apply )
 {
    try
@@ -742,7 +741,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
    }
    FC_LOG_AND_RETHROW()
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( smt_cap_reveal_validate )
 {
@@ -859,7 +857,6 @@ void setup_smt_and_reveal_caps( const account_name_type& control_account, const 
    FAIL_WITH_OP( op, private_key, fc::assert_exception );
 }
 
-#if 0
 BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
 {
    try
@@ -876,7 +873,6 @@ BOOST_AUTO_TEST_CASE( smt_cap_reveal_apply )
    }
    FC_LOG_AND_RETHROW()
 }
-#endif
 
 /*
  * SMT legacy tests
