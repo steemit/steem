@@ -5373,6 +5373,15 @@ void database::validate_invariants()const
          total_supply += itr->reward_balance;
       }
 
+#ifdef STEEM_ENABLE_SMT
+      const auto& smt_contribution_idx = get_index< smt_contribution_index, by_id >();
+
+      for ( auto itr = smt_contribution_idx.begin(); itr != smt_contribution_idx.end(); ++itr )
+      {
+         total_supply += itr->contribution;
+      }
+#endif
+
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );

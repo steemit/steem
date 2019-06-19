@@ -2718,6 +2718,8 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       PUSH_OP( sam_op, sam_private_key );
       sam_asset_accumulator += sam_op.contribution;
 
+      validate_database();
+
       for ( int i = 0; i < 15; i++ )
       {
          BOOST_TEST_MESSAGE( " -- Successful contribution (alice)" );
@@ -2735,6 +2737,8 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          PUSH_OP( sam_op, sam_private_key );
          sam_asset_accumulator += sam_op.contribution;
       }
+
+      validate_database();
 
       generate_block();
 
@@ -2805,6 +2809,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - bob_asset_accumulator );
       BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - sam_asset_accumulator );
 
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
