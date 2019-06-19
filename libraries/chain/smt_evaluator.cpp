@@ -314,11 +314,15 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
       const smt_token_object* token = util::smt::find_token( _db, o.symbol );
-
       FC_ASSERT( token != nullptr, "Cannot contribute to an unknown SMT" );
       FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
       FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
+
       FC_ASSERT( _db.get_balance( o.contributor, o.contribution.symbol ) >= o.contribution, "Account does not have sufficient funds for contribution" );
+
+      auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
+      auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );
+      FC_ASSERT( contrib_ptr == nullptr, "The provided contribution ID must be unique. Current: ${id}", ("id", o.contribution_id) );
 
       _db.adjust_balance( o.contributor, -o.contribution );
 
