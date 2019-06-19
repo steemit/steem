@@ -151,16 +151,6 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    smt_setup_evaluator_visitor visitor( token_ico, _db );
    o.initial_generation_policy.visit( visitor );
-
-   _db.create< smt_event_token_object >( [&]( smt_event_token_object& event_token )
-   {
-      event_token.parent = _token->id;
-
-      event_token.generation_begin_time = token_ico.generation_begin_time;
-      event_token.generation_end_time = token_ico.generation_end_time;
-      event_token.announced_launch_time = token_ico.announced_launch_time;
-      event_token.launch_expiration_time = token_ico.launch_expiration_time;
-   });
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )

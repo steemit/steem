@@ -50,7 +50,6 @@ void initialize_core_indexes( database& db )
    STEEM_ADD_CORE_INDEX(db, pending_optional_action_index);
 #ifdef STEEM_ENABLE_SMT
    STEEM_ADD_CORE_INDEX(db, smt_token_index);
-   STEEM_ADD_CORE_INDEX(db, smt_event_token_index);
    STEEM_ADD_CORE_INDEX(db, account_regular_balance_index);
    STEEM_ADD_CORE_INDEX(db, account_rewards_balance_index);
    STEEM_ADD_CORE_INDEX(db, nai_pool_index);
