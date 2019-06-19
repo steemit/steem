@@ -943,7 +943,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
 
          itr = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_sam.id ) );
-         int64_t sam_weight = old_manabar.current_mana - db->get_account( "sam" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
+
+         util::manabar old_downvote_manabar;
+         util::manabar_params downvote_params( util::get_effective_vesting_shares( db->get_account( "alice" ) ) / 4, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+         old_downvote_manabar.regenerate_mana( downvote_params, db->head_block_time() );
+         int64_t sam_weight = old_downvote_manabar.current_mana - db->get_account( "sam" ).downvote_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares.value == old_abs_rshares - sam_weight );
          BOOST_REQUIRE( new_bob_comment.abs_rshares.value == old_abs_rshares + sam_weight );
@@ -1037,6 +1041,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
          old_manabar.regenerate_mana( params, db->head_block_time() );
 
+         old_downvote_manabar = db->get_account( "alice" ).downvote_manabar;
+         downvote_params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) ) / 4;
+         old_downvote_manabar.regenerate_mana( downvote_params, db->head_block_time() );
+
          op.weight = STEEM_1_PERCENT * -75;
          tx.operations.clear();
          tx.signatures.clear();
@@ -1045,7 +1053,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = old_manabar.current_mana - db->get_account( "alice" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
+         new_rshares = old_downvote_manabar.current_mana - db->get_account( "alice" ).downvote_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -1079,6 +1087,58 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          validate_database();
 
+         BOOST_TEST_MESSAGE( "--- Test downvote overlap when downvote mana is low" );
+
+         generate_block();
+         db_plugin->debug_update( [=]( database& db )
+         {
+            db.modify( db.get_account( "alice" ), [&]( account_object& a )
+            {
+               a.downvote_manabar.current_mana /= 30;
+               a.downvote_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            });
+         });
+
+         int64_t alice_weight = 0;
+
+         {
+            const auto& alice = db->get_account( "alice" );
+            old_downvote_manabar.current_mana = alice.downvote_manabar.current_mana;
+            old_downvote_manabar.last_update_time = alice.downvote_manabar.last_update_time;
+            old_manabar.current_mana = alice.voting_manabar.current_mana;
+            old_manabar.last_update_time = alice.voting_manabar.last_update_time;
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+            alice_weight = old_manabar.current_mana * 60 * 60 * 24;
+            auto max_vote_denom = db->get_dynamic_global_properties().vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+            alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom;
+
+            const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
+            old_net_rshares = bob_comment.net_rshares.value;
+            old_abs_rshares = bob_comment.abs_rshares.value;
+         }
+
+         op.weight = -1 * STEEM_100_PERCENT;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         sign( tx, alice_private_key );
+         db->push_transaction( tx, 0 );
+         alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id ) );
+
+         {
+            const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
+            const auto& alice = db->get_account( "alice" );
+            BOOST_REQUIRE( bob_comment.net_rshares == old_net_rshares - alice_weight + STEEM_VOTE_DUST_THRESHOLD );
+            BOOST_REQUIRE( bob_comment.abs_rshares == old_abs_rshares + alice_weight - STEEM_VOTE_DUST_THRESHOLD );
+            BOOST_REQUIRE( alice_bob_vote->rshares == -1 * ( alice_weight - STEEM_VOTE_DUST_THRESHOLD ) );
+            BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
+            BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
+            BOOST_REQUIRE( alice.downvote_manabar.current_mana == 0 );
+            BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana - alice_weight + old_downvote_manabar.current_mana );
+            validate_database();
+         }
+
          BOOST_TEST_MESSAGE( "--- Test reduced effectiveness when increasing rshares within lockout period" );
 
          generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEM_UPVOTE_LOCKOUT_HF17 ).sec_since_epoch() + STEEM_BLOCK_INTERVAL ), true );
@@ -1106,7 +1166,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          }
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Test rediced effectiveness when reducing rshares within lockout period" );
+         BOOST_TEST_MESSAGE( "--- Test reduced effectiveness when reducing rshares within lockout period" );
 
          generate_block();
          old_manabar = db->get_account( "dave" ).voting_manabar;
@@ -1252,10 +1312,12 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       BOOST_TEST_MESSAGE( "Testing: transfer_apply" );
 
       ACTORS( (alice)(bob) )
+      generate_block();
       fund( "alice", 10000 );
+      fund( "bob", ASSET( "1.000 TBD" ) );
 
-      BOOST_REQUIRE( alice.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.balance.amount.value == ASSET(" 0.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( db->get_account( "bob" ).balance.amount.value == ASSET(" 0.000 TESTS" ).amount.value );
 
       signed_transaction tx;
       transfer_operation op;
@@ -1270,8 +1332,8 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( alice.balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( db->get_account( "alice" ).balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( db->get_account( "bob" ).balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Generating a block" );
@@ -1308,6 +1370,32 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure transfering STEEM to steem.dao" );
+      op.from = "bob";
+      op.to = STEEM_TREASURY_ACCOUNT;
+      op.amount = ASSET( "1.000 TESTS" );
+      tx.signatures.clear();
+      tx.operations.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::exception );
+
+      BOOST_REQUIRE( db->get_account( "bob" ).balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_TREASURY_ACCOUNT ).balance == ASSET( "0.000 TESTS" ) );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test transfering SBD to steem.dao" );
+      auto treasury_sbd_balance = db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
+      op.amount = ASSET( "1.000 TBD" );
+      tx.signatures.clear();
+      tx.operations.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx );
+
+      BOOST_REQUIRE( db->get_account( "bob" ).sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance == treasury_sbd_balance + ASSET( "1.000 TBD" ) );
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1390,12 +1478,18 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
 
       transfer_to_vesting_operation op;
       op.from = "alice";
-      op.to = "";
+      op.to = STEEM_TREASURY_ACCOUNT;
       op.amount = ASSET( "7.500 TESTS" );
 
       signed_transaction tx;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+      op.to = "";
+      tx.clear();
+      tx.operations.push_back( op );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
@@ -5344,9 +5438,26 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Failure when transferring to steem.dao" );
+
+      op.to = STEEM_TREASURY_ACCOUNT;
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+      op.amount = ASSET( "1.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
 
       BOOST_TEST_MESSAGE( "--- success transferring STEEM to self" );
       op.to = "alice";
+      op.amount = ASSET( "1.000 TESTS" );
 
       tx.clear();
       tx.operations.push_back( op );
@@ -5533,9 +5644,31 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
+      BOOST_TEST_MESSAGE( "--- Failure withdrawing TESTS to steem.dao" );
+
+      op.to = STEEM_TREASURY_ACCOUNT;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Success withdrawing TBD to steem.dao" );
+
+      op.amount = ASSET( "1.000 TBD" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "9.000 TBD" ) );
+      validate_database();
 
       BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to self" );
       op.to = "alice";
+      op.amount = ASSET( "1.000 TESTS" );
+      op.request_id++;
 
       tx.clear();
       tx.operations.push_back( op );
@@ -5544,7 +5677,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( "alice" ).savings_balance == ASSET( "9.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == 1 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == op.request_id + 1 );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db->get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
@@ -5556,7 +5689,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       BOOST_TEST_MESSAGE( "--- success withdrawing SBD to self" );
       op.amount = ASSET( "1.000 TBD" );
-      op.request_id = 1;
+      op.request_id++;
 
       tx.clear();
       tx.operations.push_back( op );
@@ -5564,8 +5697,8 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "9.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == 2 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "8.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == op.request_id + 1 );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db->get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
@@ -5596,7 +5729,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( "alice" ).savings_balance == ASSET( "8.000 TESTS" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == 3 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == op.request_id + 1 );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db->get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
@@ -5616,8 +5749,8 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "8.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == 4 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "7.000 TBD" ) );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == op.request_id + 1 );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db->get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db->get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
@@ -5634,7 +5767,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_REQUIRE( db->get_account( "bob" ).balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( "bob" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == 4 );
+      BOOST_REQUIRE( db->get_account( "alice" ).savings_withdraw_requests == op.request_id + 1 );
       validate_database();
 
       generate_block();
@@ -6637,6 +6770,19 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
+         {
+            gpo.sps_fund_percent = 0;
+         });
+
+         db.modify( db.get_account( STEEM_TREASURY_ACCOUNT ), [=]( account_object& a )
+         {
+            a.sbd_balance.amount.value = 0;
+         });
+      });
+
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       comment_operation comment;
@@ -6694,6 +6840,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       b.beneficiaries.clear();
       b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), 25 * STEEM_1_PERCENT ) );
       b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 50 * STEEM_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( STEEM_TREASURY_ACCOUNT ), 10 * STEEM_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
 
@@ -6741,10 +6888,10 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       generate_block();
 
-      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount == db->get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 2 );
-      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount + 3 );
-      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount );
+      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount == db->get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount ) == db->get_account( "bob" ).reward_vesting_steem.amount + db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
+      BOOST_REQUIRE( ( db->get_account( "alice" ).reward_sbd_balance.amount + db->get_account( "alice" ).reward_vesting_steem.amount + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance.amount ) == ( db->get_account( "sam" ).reward_vesting_steem.amount + db->get_account( "sam" ).reward_sbd_balance.amount ) / 2 + 1 );
+      BOOST_REQUIRE( db->get_account( "bob" ).reward_vesting_steem.amount == db->get_account( "bob" ).reward_sbd_balance.amount + 1 );
       BOOST_REQUIRE( db->get_account( "sam" ).reward_vesting_steem.amount == db->get_account( "sam" ).reward_sbd_balance.amount + 1 );
    }
    FC_LOG_AND_RETHROW()

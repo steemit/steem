@@ -110,6 +110,10 @@ BOOST_AUTO_TEST_CASE( generating_payments )
       transfer( STEEM_INIT_MINER_NAME, STEEM_TREASURY_ACCOUNT, ASSET( "0.001 TBD" ) );
       generate_block( 5 );
 
+      const auto& dgpo = db->get_dynamic_global_properties();
+      auto old_sbd_supply = dgpo.current_sbd_supply;
+
+
       const account_object& _creator = db->get_account( creator );
       const account_object& _receiver = db->get_account( receiver );
       const account_object& _voter_01 = db->get_account( voter_01 );
@@ -127,6 +131,7 @@ BOOST_AUTO_TEST_CASE( generating_payments )
          generate_blocks( next_block - 1 );
          generate_blocks( 1 );
 
+         auto treasury_sbd_inflation = dgpo.current_sbd_supply - old_sbd_supply;
          auto after_creator_sbd_balance = _creator.sbd_balance;
          auto after_receiver_sbd_balance = _receiver.sbd_balance;
          auto after_voter_01_sbd_balance = _voter_01.sbd_balance;
@@ -135,7 +140,7 @@ BOOST_AUTO_TEST_CASE( generating_payments )
          BOOST_REQUIRE( before_creator_sbd_balance == after_creator_sbd_balance );
          BOOST_REQUIRE( before_receiver_sbd_balance == after_receiver_sbd_balance - hourly_pay );
          BOOST_REQUIRE( before_voter_01_sbd_balance == after_voter_01_sbd_balance );
-         BOOST_REQUIRE( before_treasury_sbd_balance == after_treasury_sbd_balance + hourly_pay );
+         BOOST_REQUIRE( before_treasury_sbd_balance == after_treasury_sbd_balance - treasury_sbd_inflation + hourly_pay );
       }
 
       validate_database();
@@ -467,7 +472,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester02` - got payout, because voted for his proposal
       */
       ilog("");
-      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "2082.348 TBD" ) } );
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "2082.368 TBD" ) } );
       //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "2082.346 TBD" ) but there is lack of rounding
 
       {
@@ -490,7 +495,7 @@ BOOST_AUTO_TEST_CASE( generating_payments_03 )
          `tester02` - got payout, because voted for his proposal
       */
       ilog("");
-      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "4164.826 TBD" ) } );
+      payment_checker( { ASSET( "2.994 TBD" ), ASSET( "0.998 TBD" ), ASSET( "4164.873 TBD" ) } );
       //ideally: ASSET( "3.000 TBD" ), ASSET( "1.000 TBD" ), ASSET( "4164.824 TBD" ) but there is lack of rounding
 
       validate_database();

@@ -404,7 +404,8 @@ struct count_operation_visitor
    void operator()( const comment_benefactor_reward_operation& ) const {}
    void operator()( const producer_reward_operation& ) const {}
    void operator()( const clear_null_account_balance_operation& ) const {}
-   void operator()(const proposal_pay_operation&) const {}
+   void operator()( const proposal_pay_operation& ) const {}
+   void operator()( const sps_fund_operation& ) const {}
 
    // Optional Actions
 #ifdef IS_TEST_NET
