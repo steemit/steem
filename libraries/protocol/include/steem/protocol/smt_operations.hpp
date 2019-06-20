@@ -205,6 +205,7 @@ struct smt_setup_emissions_operation : public smt_base_operation
    uint32_t            rep_rel_amount_numerator = 0;
 
    uint8_t             rel_amount_denom_bits = 0;
+   bool                remove = false;
 
    extensions_type     extensions;
 
@@ -381,6 +382,7 @@ FC_REFLECT_DERIVED(
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
+   (remove)
    (extensions)
    )
 

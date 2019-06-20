@@ -64,34 +64,48 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   FC_ASSERT( util::smt::find_token( _db, o.symbol, true ) == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
-   FC_ASSERT(  _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
+   auto token_ptr = util::smt::find_token( _db, o.symbol, true );
 
-   asset creation_fee;
-
-   if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
+   if ( o.smt_creation_fee.amount > 0 ) // Creation case
    {
-      creation_fee = o.smt_creation_fee;
-   }
-   else
-   {
-      const auto& fhistory = _db.get_feed_history();
-      FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
+      FC_ASSERT( token_ptr == nullptr, "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai() ) );
+      FC_ASSERT( _db.get< nai_pool_object >().contains( o.symbol ), "Cannot create an SMT that didn't come from the NAI pool." );
 
-      if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
-         creation_fee = _db.to_steem( o.smt_creation_fee );
+      asset creation_fee;
+
+      if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
+      {
+         creation_fee = o.smt_creation_fee;
+      }
       else
-         creation_fee = _db.to_sbd( o.smt_creation_fee );
+      {
+         const auto& fhistory = _db.get_feed_history();
+         FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using different asset symbol because there is no price feed." );
+
+         if( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL )
+            creation_fee = _db.to_steem( o.smt_creation_fee );
+         else
+            creation_fee = _db.to_sbd( o.smt_creation_fee );
+      }
+
+      FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
+         "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
+
+      FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
+         "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
+
+      _db.adjust_balance( o.control_account , -o.smt_creation_fee );
+      _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
    }
+   else // Reset case
+   {
+      FC_ASSERT( token_ptr != nullptr, "Cannot reset a non-existent SMT. Did you forget to specify the creation fee?" );
+      FC_ASSERT( token_ptr->control_account == o.control_account, "You do not control this SMT. Control Account: ${a}", ("a", token_ptr->control_account) );
+      FC_ASSERT( token_ptr->phase == smt_phase::account_elevated, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
+      FC_ASSERT( !util::smt::last_emission_time( _db, token_ptr->liquid_symbol ), "Cannot reset an SMT that has existing token emissions." );
 
-   FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
-      "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
-
-   FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
-      "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
-
-   _db.adjust_balance( o.control_account , -o.smt_creation_fee );
-   _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
+      _db.remove( *token_ptr );
+   }
 
    // Create SMT object common to both liquid and vesting variants of SMT.
    _db.create< smt_token_object >( [&]( smt_token_object& token )
@@ -205,32 +219,58 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
    const smt_token_object& smt = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
-   FC_ASSERT( o.schedule_time > _db.head_block_time(), "Emissions schedule time must be in the future" );
-
-   auto end_time = util::smt::last_emission_time( _db, smt.liquid_symbol );
-
-   if ( end_time.valid() )
+   if ( o.remove )
    {
-      FC_ASSERT( o.schedule_time > *end_time,
-         "SMT emissions cannot overlap with existing ranges and must be in chronological order, last emission time: ${end}",
-         ("end", *end_time) );
+      auto last_emission = util::smt::last_emission( _db, o.symbol );
+      FC_ASSERT( last_emission != nullptr, "Could not find token emission for the given SMT: ${smt}", ("smt", o.symbol) );
+
+      FC_ASSERT(
+         last_emission->symbol == o.symbol &&
+         last_emission->schedule_time == o.schedule_time &&
+         last_emission->emissions_unit.token_unit == o.emissions_unit.token_unit &&
+         last_emission->interval_seconds == o.interval_seconds &&
+         last_emission->interval_count == o.interval_count &&
+         last_emission->lep_time == o.lep_time &&
+         last_emission->rep_time == o.rep_time &&
+         last_emission->lep_abs_amount == o.lep_abs_amount &&
+         last_emission->rep_abs_amount == o.rep_abs_amount &&
+         last_emission->lep_rel_amount_numerator == o.lep_rel_amount_numerator &&
+         last_emission->rep_rel_amount_numerator == o.rep_rel_amount_numerator &&
+         last_emission->rel_amount_denom_bits == o.rel_amount_denom_bits,
+         "SMT emissions must be removed from latest to earliest, last emission: ${le}. Current: ${c}", ("le", *last_emission)("c", o)
+      );
+
+      _db.remove( *last_emission );
    }
-
-   _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )
+   else
    {
-      eo.symbol = smt.liquid_symbol;
-      eo.schedule_time = o.schedule_time;
-      eo.emissions_unit = o.emissions_unit;
-      eo.interval_seconds = o.interval_seconds;
-      eo.interval_count = o.interval_count;
-      eo.lep_time = o.lep_time;
-      eo.rep_time = o.rep_time;
-      eo.lep_abs_amount = o.lep_abs_amount;
-      eo.rep_abs_amount = o.rep_abs_amount;
-      eo.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
-      eo.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
-      eo.rel_amount_denom_bits = o.rel_amount_denom_bits;
-   });
+      FC_ASSERT( o.schedule_time > _db.head_block_time(), "Emissions schedule time must be in the future" );
+
+      auto end_time = util::smt::last_emission_time( _db, smt.liquid_symbol );
+
+      if ( end_time.valid() )
+      {
+         FC_ASSERT( o.schedule_time > *end_time,
+            "SMT emissions cannot overlap with existing ranges and must be in chronological order, last emission time: ${end}",
+            ("end", *end_time) );
+      }
+
+      _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )
+      {
+         eo.symbol = smt.liquid_symbol;
+         eo.schedule_time = o.schedule_time;
+         eo.emissions_unit = o.emissions_unit;
+         eo.interval_seconds = o.interval_seconds;
+         eo.interval_count = o.interval_count;
+         eo.lep_time = o.lep_time;
+         eo.rep_time = o.rep_time;
+         eo.lep_abs_amount = o.lep_abs_amount;
+         eo.rep_abs_amount = o.rep_abs_amount;
+         eo.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
+         eo.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
+         eo.rel_amount_denom_bits = o.rel_amount_denom_bits;
+      });
+   }
 }
 
 void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameters_operation& o )
