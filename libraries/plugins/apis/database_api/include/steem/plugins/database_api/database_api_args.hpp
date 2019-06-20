@@ -55,7 +55,8 @@ enum sort_order_type
    by_total_votes,
    by_voter_proposal,
    by_proposal_voter,
-   by_contributor
+   by_contributor,
+   by_symbol_id
 };
 
 enum order_direction_type
@@ -664,7 +665,8 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_total_votes)
    (by_voter_proposal)
    (by_proposal_voter)
-   (by_contributor) )
+   (by_contributor)
+   (by_symbol_id) )
 
 FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
   (ascending)

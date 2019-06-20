@@ -1748,6 +1748,25 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             &database_api_impl::filter_default< chain::smt_contribution_object > );
          break;
       }
+      case( by_symbol_id ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 2, "The parameter 'start' must be an empty array or consist of asset_symbol_type and id" );
+
+         boost::tuple< asset_symbol_type, smt_contribution_object_id_type > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( asset_symbol_type(), 0 );
+         else
+            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< smt_contribution_object_id_type >() );
+
+         iterate_results< chain::smt_contribution_index, chain::by_symbol_id >(
+            start,
+            result.contributions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
+         break;
+      }
 #ifndef IS_LOW_MEM
       case ( by_contributor ):
       {
