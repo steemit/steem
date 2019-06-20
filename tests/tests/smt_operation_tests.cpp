@@ -2543,5 +2543,276 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_contribute_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_contribute_validate" );
+
+      auto new_symbol = get_new_smt_symbol( 3, db );
+
+      smt_contribute_operation op;
+      op.contributor = "alice";
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+      op.contribution_id = 1;
+      op.symbol = new_symbol;
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " -- Failure on invalid account name" );
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contributor = "alice";
+
+      BOOST_TEST_MESSAGE( " -- Failure on negative contribution" );
+      op.contribution = asset( -1, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on no contribution" );
+      op.contribution = asset( 0, STEEM_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on VESTS contribution" );
+      op.contribution = asset( 1000, VESTS_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SBD contribution" );
+      op.contribution = asset( 1000, SBD_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SMT contribution" );
+      op.contribution = asset( 1000, new_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.contribution = asset( 1000, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to STEEM" );
+      op.symbol = STEEM_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to VESTS" );
+      op.symbol = VESTS_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to SBD" );
+      op.symbol = SBD_SYMBOL;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = new_symbol;
+
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_contribute_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_contribute_evaluate" );
+
+      ACTORS( (alice)(bob)(sam) );
+      SMT_SYMBOL( alice, 3, db );
+
+      generate_block();
+
+      auto alice_asset_accumulator = asset( 0, STEEM_SYMBOL );
+      auto bob_asset_accumulator = asset( 0, STEEM_SYMBOL );
+      auto sam_asset_accumulator = asset( 0, STEEM_SYMBOL );
+
+      auto alice_contribution_counter = 0;
+      auto bob_contribution_counter = 0;
+      auto sam_contribution_counter = 0;
+
+      FUND( "sam", ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      db_plugin->debug_update( [=] ( database& db )
+      {
+         db.create< smt_token_object >( [&]( smt_token_object& o )
+         {
+            o.control_account = "alice";
+            o.liquid_symbol = alice_symbol;
+         } );
+      } );
+
+      smt_contribute_operation bob_op;
+      bob_op.contributor = "bob";
+      bob_op.contribution = asset( 1000, STEEM_SYMBOL );
+      bob_op.contribution_id = bob_contribution_counter;
+      bob_op.symbol = alice_symbol;
+
+      smt_contribute_operation alice_op;
+      alice_op.contributor = "alice";
+      alice_op.contribution = asset( 2000, STEEM_SYMBOL );
+      alice_op.contribution_id = alice_contribution_counter;
+      alice_op.symbol = alice_symbol;
+
+      smt_contribute_operation sam_op;
+      sam_op.contributor = "sam";
+      sam_op.contribution = asset( 3000, STEEM_SYMBOL );
+      sam_op.contribution_id = sam_contribution_counter;
+      sam_op.symbol = alice_symbol;
+
+      BOOST_TEST_MESSAGE( " -- Failure on SMT not in contribution phase" );
+      FAIL_WITH_OP( bob_op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SMT not in contribution phase" );
+      FAIL_WITH_OP( alice_op, alice_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure on SMT not in contribution phase" );
+      FAIL_WITH_OP( sam_op, sam_private_key, fc::assert_exception );
+
+      db_plugin->debug_update( [=] ( database& db )
+      {
+         const smt_token_object *token = util::smt::find_token( db, alice_symbol );
+         db.modify( *token, [&]( smt_token_object& o )
+         {
+            o.phase = smt_phase::contribution_begin_time_completed;
+         } );
+      } );
+
+      BOOST_TEST_MESSAGE( " -- Failure on insufficient funds" );
+      FAIL_WITH_OP( bob_op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure on insufficient funds" );
+      FAIL_WITH_OP( alice_op, alice_private_key, fc::assert_exception );
+
+      FUND( "alice", ASSET( "1000.000 TESTS" ) );
+      FUND( "bob",   ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( " -- Succeed on sufficient funds" );
+      bob_op.contribution_id = bob_contribution_counter++;
+      PUSH_OP( bob_op, bob_private_key );
+      bob_asset_accumulator += bob_op.contribution;
+
+      BOOST_TEST_MESSAGE( " -- Failure on duplicate contribution ID" );
+      FAIL_WITH_OP( bob_op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Succeed with new contribution ID" );
+      bob_op.contribution_id = bob_contribution_counter++;
+      PUSH_OP( bob_op, bob_private_key );
+      bob_asset_accumulator += bob_op.contribution;
+
+      BOOST_TEST_MESSAGE( " -- Succeed on sufficient funds" );
+      alice_op.contribution_id = alice_contribution_counter++;
+      PUSH_OP( alice_op, alice_private_key );
+      alice_asset_accumulator += alice_op.contribution;
+
+      BOOST_TEST_MESSAGE( " -- Failure on duplicate contribution ID" );
+      FAIL_WITH_OP( alice_op, alice_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Succeed with new contribution ID" );
+      alice_op.contribution_id = alice_contribution_counter++;
+      PUSH_OP( alice_op, alice_private_key );
+      alice_asset_accumulator += alice_op.contribution;
+
+      BOOST_TEST_MESSAGE( " -- Succeed with sufficient funds" );
+      sam_op.contribution_id = sam_contribution_counter++;
+      PUSH_OP( sam_op, sam_private_key );
+      sam_asset_accumulator += sam_op.contribution;
+
+      validate_database();
+
+      for ( int i = 0; i < 15; i++ )
+      {
+         BOOST_TEST_MESSAGE( " -- Successful contribution (alice)" );
+         alice_op.contribution_id = alice_contribution_counter++;
+         PUSH_OP( alice_op, alice_private_key );
+         alice_asset_accumulator += alice_op.contribution;
+
+         BOOST_TEST_MESSAGE( " -- Successful contribution (bob)" );
+         bob_op.contribution_id = bob_contribution_counter++;
+         PUSH_OP( bob_op, bob_private_key );
+         bob_asset_accumulator += bob_op.contribution;
+
+         BOOST_TEST_MESSAGE( " -- Successful contribution (sam)" );
+         sam_op.contribution_id = sam_contribution_counter++;
+         PUSH_OP( sam_op, sam_private_key );
+         sam_asset_accumulator += sam_op.contribution;
+      }
+
+      validate_database();
+
+      generate_block();
+
+      db_plugin->debug_update( [=] ( database& db )
+      {
+         const smt_token_object *token = util::smt::find_token( db, alice_symbol );
+         db.modify( *token, [&]( smt_token_object& o )
+         {
+            o.phase = smt_phase::contribution_end_time_completed;
+         } );
+      } );
+
+      BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
+      alice_op.contribution_id = alice_contribution_counter;
+      FAIL_WITH_OP( alice_op, alice_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
+      bob_op.contribution_id = bob_contribution_counter;
+      FAIL_WITH_OP( bob_op, bob_private_key, fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( " -- Failure SMT contribution phase has ended" );
+      sam_op.contribution_id = sam_contribution_counter;
+      FAIL_WITH_OP( sam_op, sam_private_key, fc::assert_exception );
+
+      auto alices_contributions = asset( 0, STEEM_SYMBOL );
+      auto bobs_contributions = asset( 0, STEEM_SYMBOL );
+      auto sams_contributions = asset( 0, STEEM_SYMBOL );
+
+      auto alices_num_contributions = 0;
+      auto bobs_num_contributions = 0;
+      auto sams_num_contributions = 0;
+
+      const auto& idx = db->get_index< smt_contribution_index, by_symbol_contributor >();
+
+      auto itr = idx.lower_bound( boost::make_tuple( alice_symbol, account_name_type( "alice" ), 0 ) );
+      while( itr != idx.end() && itr->contributor == account_name_type( "alice" ) )
+      {
+         alices_contributions += itr->contribution;
+         alices_num_contributions++;
+         ++itr;
+      }
+
+      itr = idx.lower_bound( boost::make_tuple( alice_symbol, account_name_type( "bob" ), 0 ) );
+      while( itr != idx.end() && itr->contributor == account_name_type( "bob" ) )
+      {
+         bobs_contributions += itr->contribution;
+         bobs_num_contributions++;
+         ++itr;
+      }
+
+      itr = idx.lower_bound( boost::make_tuple( alice_symbol, account_name_type( "sam" ), 0 ) );
+      while( itr != idx.end() && itr->contributor == account_name_type( "sam" ) )
+      {
+         sams_contributions += itr->contribution;
+         sams_num_contributions++;
+         ++itr;
+      }
+
+      BOOST_REQUIRE( alices_contributions == alice_asset_accumulator );
+      BOOST_REQUIRE( bobs_contributions == bob_asset_accumulator );
+      BOOST_REQUIRE( sams_contributions == sam_asset_accumulator );
+
+      BOOST_REQUIRE( alices_num_contributions == alice_contribution_counter );
+      BOOST_REQUIRE( bobs_num_contributions == bob_contribution_counter );
+      BOOST_REQUIRE( sams_num_contributions == sam_contribution_counter );
+
+      BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - alice_asset_accumulator );
+      BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - bob_asset_accumulator );
+      BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - sam_asset_accumulator );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

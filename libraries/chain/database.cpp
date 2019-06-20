@@ -2298,40 +2298,6 @@ void database::process_subsidized_accounts()
    }
 }
 
-#ifdef STEEM_ENABLE_SMT
-
-template< typename T, bool ALLOW_REMOVE >
-void process_smt_objects_internal( database* db, steem::chain::smt_phase phase )
-{
-   FC_ASSERT( db != nullptr );
-   const auto& idx = db->get_index< smt_event_token_index >().indices().get< T >();
-   auto itr = idx.lower_bound( boost::make_tuple( phase, db->head_block_time() ) );
-
-   while( itr != idx.end() && itr->phase == phase )
-   {
-      #pragma message( "TODO: Add virtual_operation." )
-
-      if( ALLOW_REMOVE )
-      {
-         const auto& old_itr = *itr;
-         ++itr;
-         db->remove( old_itr );
-      }
-      if( !ALLOW_REMOVE )
-         ++itr;
-   }
-}
-
-void database::process_smt_objects()
-{
-   process_smt_objects_internal< by_interval_gen_begin, false >( this, smt_phase::setup_completed );
-   process_smt_objects_internal< by_interval_gen_end, false >( this, smt_phase::contribution_begin_time_completed );
-   process_smt_objects_internal< by_interval_launch, false >( this, smt_phase::contribution_end_time_completed );
-   process_smt_objects_internal< by_interval_launch_exp, true >( this, smt_phase::launch_time_completed );
-}
-
-#endif
-
 asset database::get_liquidity_reward()const
 {
    if( has_hardfork( STEEM_HARDFORK_0_12__178 ) )
@@ -2696,6 +2662,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
+   _my->_evaluator_registry.register_evaluator< smt_contribute_evaluator                 >();
 #endif
 
    _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
@@ -5405,6 +5372,15 @@ void database::validate_invariants()const
       {
          total_supply += itr->reward_balance;
       }
+
+#ifdef STEEM_ENABLE_SMT
+      const auto& smt_contribution_idx = get_index< smt_contribution_index, by_id >();
+
+      for ( auto itr = smt_contribution_idx.begin(); itr != smt_contribution_idx.end(); ++itr )
+      {
+         total_supply += itr->contribution;
+      }
+#endif
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 

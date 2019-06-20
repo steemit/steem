@@ -45,6 +45,7 @@ enum sort_order_type
    by_comment_voter,
    by_voter_comment,
    by_price,
+   by_symbol_contributor,
    by_symbol,
    by_control_account,
    by_symbol_time,
@@ -53,7 +54,9 @@ enum sort_order_type
    by_end_date,
    by_total_votes,
    by_voter_proposal,
-   by_proposal_voter
+   by_proposal_voter,
+   by_contributor,
+   by_symbol_id
 };
 
 enum order_direction_type
@@ -570,12 +573,27 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
+typedef list_object_args_type list_smt_contributions_args;
+
+struct list_smt_contributions_return
+{
+   vector< smt_contribution_object > contributions;
+};
+
+struct find_smt_contributions_args
+{
+   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributors;
+};
+
+typedef list_smt_contributions_return find_smt_contributions_return;
+
+typedef list_object_args_type list_smt_token_emissions_args;
 
 typedef list_object_args_type list_smt_tokens_args;
 
 struct list_smt_tokens_return
 {
-   vector< smt_token_object > tokens;
+   vector< api_smt_token_object > tokens;
 };
 
 struct find_smt_tokens_args
@@ -637,6 +655,7 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter)
    (by_voter_comment)
    (by_price)
+   (by_symbol_contributor)
    (by_symbol)
    (by_control_account)
    (by_symbol_time)
@@ -645,7 +664,9 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_end_date)
    (by_total_votes)
    (by_voter_proposal)
-   (by_proposal_voter) )
+   (by_proposal_voter)
+   (by_contributor)
+   (by_symbol_id) )
 
 FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
   (ascending)
@@ -813,6 +834,12 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
+
+FC_REFLECT( steem::plugins::database_api::list_smt_contributions_return,
+   (contributions) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_contributions_args,
+   (symbol_contributors) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )
