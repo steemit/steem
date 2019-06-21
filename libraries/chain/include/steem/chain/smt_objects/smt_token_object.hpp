@@ -202,9 +202,7 @@ typedef multi_index_container <
             member< smt_contribution_object, asset_symbol_type, &smt_contribution_object::symbol >,
             member< smt_contribution_object, smt_contribution_object_id_type, &smt_contribution_object::id >
          >
-      >
-#ifndef IS_LOW_MEM
-      ,
+      >,
       ordered_unique< tag< by_contributor >,
          composite_key< smt_contribution_object,
             member< smt_contribution_object, account_name_type, &smt_contribution_object::contributor >,
@@ -212,7 +210,6 @@ typedef multi_index_container <
             member< smt_contribution_object, uint32_t, &smt_contribution_object::contribution_id >
          >
       >
-#endif
    >,
    allocator< smt_contribution_object >
 > smt_contribution_index;

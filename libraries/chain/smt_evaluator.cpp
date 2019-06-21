@@ -210,7 +210,29 @@ void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )
 void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   // TODO: Check whether some impostor tries to hijack SMT operation.
+
+   const auto* token = _db.find< smt_token_object, by_symbol >( o.symbol );
+
+   FC_ASSERT( token != nullptr, "Could not find specified SMT" );
+   FC_ASSERT( token->phase <= smt_phase::launch_failed, "Cannot issue a refund after the successful launch of an SMT" );
+
+   const auto& contrib_idx = _db.get_index< smt_contribution_index, by_contributor >();
+
+   auto contrib_obj = contrib_idx.find( boost::make_tuple( o.contributor, o.symbol, o.contribution_id ) );
+
+   FC_ASSERT( contrib_obj != contrib_idx.end(), "Could not find the SMT contribution provided. Current: ${o}", ("o", o) );
+
+   FC_ASSERT(
+      contrib_obj->symbol == o.symbol &&
+      contrib_obj->contribution_id == o.contribution_id &&
+      contrib_obj->contributor == o.contributor &&
+      contrib_obj->contribution == o.contribution,
+      "SMT contribution mismatch. Found: ${f}, Current: ${c}", ("f", *contrib_obj)("c", o)
+   );
+
+   _db.adjust_balance( contrib_obj->contributor, contrib_obj->contribution );
+
+   _db.remove( *contrib_obj );
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )

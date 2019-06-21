@@ -173,14 +173,18 @@ struct smt_cap_reveal_operation : public smt_base_operation
    void validate()const;
 };
 
-struct smt_refund_operation : public smt_executor_base_operation
+struct smt_refund_operation : public base_operation
 {
    account_name_type       contributor;
    contribution_id_type    contribution_id;
-   asset                   amount;
+   asset                   contribution;
+   asset_symbol_type       symbol;
    extensions_type         extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( contributor ); }
 };
 
 struct smt_emissions_unit
@@ -354,12 +358,11 @@ FC_REFLECT(
    (extensions)
    )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_refund_operation,
-   (steem::protocol::smt_executor_base_operation),
    (contributor)
    (contribution_id)
-   (amount)
+   (contribution)
    (extensions)
    )
 

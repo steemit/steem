@@ -366,9 +366,10 @@ void smt_set_runtime_parameters_operation::validate()const
 
 void smt_refund_operation::validate()const
 {
-   smt_executor_base_operation::validate();
-   FC_ASSERT( is_valid_account_name( contributor ) );
-   FC_ASSERT( amount.symbol == STEEM_SYMBOL );
+   validate_account_name( contributor );
+   common_symbol_validation( symbol );
+   FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contribution refunds are made in STEEM" );
+   FC_ASSERT( contribution.amount > 0, "Contribution refund amount must be greater than 0" );
 }
 
 void smt_cap_reveal_operation::validate()const

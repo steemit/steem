@@ -2980,5 +2980,242 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_refund_validate )
+{
+   try
+   {
+      ACTORS( (creator) )
+      generate_block();
+      asset_symbol_type creator_symbol = create_smt("creator", creator_private_key, 0);
+
+      smt_refund_operation op;
+      op.contributor = "contributor";
+      op.contribution_id = 0;
+      op.symbol = creator_symbol;
+      op.contribution = ASSET( "1.000 TESTS" );
+      op.validate();
+
+      op.contributor = "@@@@@";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.contributor = "contributor";
+
+      op.symbol = op.contribution.symbol;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.symbol = creator_symbol;
+
+      op.contribution = asset( 1, creator_symbol );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.contribution = ASSET( "1.000 TESTS" );
+
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_refund_authorities )
+{
+   try
+   {
+      smt_refund_operation op;
+      op.contributor = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_refund_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_refund_evaluate" );
+
+      ACTORS( (alice)(bob)(sam) );
+
+      generate_block();
+
+      SMT_SYMBOL( alice, 3, db );
+      SMT_SYMBOL( bob, 3, db );
+
+      generate_block();
+
+      FUND( "alice", ASSET( "10000.000 TESTS" ) );
+      FUND( "bob",   ASSET( "10000.000 TESTS" ) );
+      FUND( "sam",   ASSET( "10000.000 TESTS" ) );
+
+      generate_block();
+
+      db_plugin->debug_update( [=] ( database& db )
+      {
+         db.create< smt_token_object >( [&]( smt_token_object& o )
+         {
+            o.control_account = "alice";
+            o.liquid_symbol = alice_symbol;
+            o.phase = smt_phase::contribution_begin_time_completed;
+         } );
+      } );
+
+      smt_contribute_operation bob_op;
+      bob_op.contributor = "bob";
+      bob_op.contribution = asset( 1000, STEEM_SYMBOL );
+      bob_op.contribution_id = 1;
+      bob_op.symbol = alice_symbol;
+
+      smt_contribute_operation alice_op;
+      alice_op.contributor = "alice";
+      alice_op.contribution = asset( 2000, STEEM_SYMBOL );
+      alice_op.contribution_id = 1;
+      alice_op.symbol = alice_symbol;
+
+      smt_contribute_operation sam_op;
+      sam_op.contributor = "sam";
+      sam_op.contribution = asset( 3000, STEEM_SYMBOL );
+      sam_op.contribution_id = 1;
+      sam_op.symbol = alice_symbol;
+
+      smt_contribute_operation bob_op2;
+      bob_op2.contributor = "bob";
+      bob_op2.contribution = asset( 2000, STEEM_SYMBOL );
+      bob_op2.contribution_id = 2;
+      bob_op2.symbol = alice_symbol;
+
+      smt_contribute_operation alice_op2;
+      alice_op2.contributor = "alice";
+      alice_op2.contribution = asset( 4000, STEEM_SYMBOL );
+      alice_op2.contribution_id = 2;
+      alice_op2.symbol = alice_symbol;
+
+      smt_contribute_operation sam_op2;
+      sam_op2.contributor = "sam";
+      sam_op2.contribution = asset( 6000, STEEM_SYMBOL );
+      sam_op2.contribution_id = 2;
+      sam_op2.symbol = alice_symbol;
+
+      PUSH_OP( bob_op, bob_private_key );
+      PUSH_OP( bob_op2, bob_private_key );
+
+      PUSH_OP( alice_op, alice_private_key );
+      PUSH_OP( alice_op2, alice_private_key );
+
+      PUSH_OP( sam_op, sam_private_key );
+      PUSH_OP( sam_op2, sam_private_key );
+
+      generate_block();
+
+      validate_database();
+
+      const auto& bob_acct = db->get_account( "bob" );
+      const auto& alice_acct = db->get_account( "alice" );
+      const auto& sam_acct = db->get_account( "sam" );
+
+      FC_ASSERT( bob_acct.balance == asset( 10000000, STEEM_SYMBOL ) - bob_op.contribution - bob_op2.contribution );
+      FC_ASSERT( alice_acct.balance == asset( 10000000, STEEM_SYMBOL ) - alice_op.contribution - alice_op2.contribution );
+      FC_ASSERT( sam_acct.balance == asset( 10000000, STEEM_SYMBOL ) - sam_op.contribution - sam_op2.contribution );
+
+      smt_refund_operation alice_refund;
+      alice_refund.contributor = alice_op.contributor;
+      alice_refund.contribution = alice_op.contribution;
+      alice_refund.contribution_id = alice_op.contribution_id;
+      alice_refund.symbol = alice_op.symbol;
+
+      smt_refund_operation alice_refund2;
+      alice_refund2.contributor = alice_op2.contributor;
+      alice_refund2.contribution = alice_op2.contribution;
+      alice_refund2.contribution_id = alice_op2.contribution_id;
+      alice_refund2.symbol = alice_op2.symbol;
+
+      smt_refund_operation bob_refund;
+      bob_refund.contributor = bob_op.contributor;
+      bob_refund.contribution = bob_op.contribution;
+      bob_refund.contribution_id = bob_op.contribution_id;
+      bob_refund.symbol = bob_op.symbol;
+
+      smt_refund_operation bob_refund2;
+      bob_refund2.contributor = bob_op2.contributor;
+      bob_refund2.contribution = bob_op2.contribution;
+      bob_refund2.contribution_id = bob_op2.contribution_id;
+      bob_refund2.symbol = bob_op2.symbol;
+
+      smt_refund_operation sam_refund;
+      sam_refund.contributor = sam_op.contributor;
+      sam_refund.contribution = sam_op.contribution;
+      sam_refund.contribution_id = sam_op.contribution_id;
+      sam_refund.symbol = sam_op.symbol;
+
+      smt_refund_operation sam_refund2;
+      sam_refund2.contributor = sam_op2.contributor;
+      sam_refund2.contribution = sam_op2.contribution;
+      sam_refund2.contribution_id = sam_op2.contribution_id;
+      sam_refund2.symbol = sam_op2.symbol;
+
+      BOOST_TEST_MESSAGE( "--- Testing mismatching contribution refund failure" );
+      alice_refund.contribution = asset( 500, STEEM_SYMBOL );
+      FAIL_WITH_OP( alice_refund, alice_private_key, fc::assert_exception );
+      alice_refund.contribution = alice_op.contribution;
+
+      BOOST_TEST_MESSAGE( "--- Testing mismatching contribution ID refund failure" );
+      alice_refund.contribution_id = 3;
+      FAIL_WITH_OP( alice_refund, alice_private_key, fc::assert_exception );
+      alice_refund.contribution_id = alice_op.contribution_id;
+
+      BOOST_TEST_MESSAGE( "--- Testing mismatching symbol refund failure" );
+      alice_refund.symbol = bob_symbol;
+      FAIL_WITH_OP( alice_refund, alice_private_key, fc::assert_exception );
+      alice_refund.symbol = alice_op.symbol;
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& o )
+         {
+            o.phase = smt_phase::launch_success;
+         });
+      });
+
+      BOOST_TEST_MESSAGE( "--- Testing post launch success refund failure" );
+      FAIL_WITH_OP( alice_refund, alice_private_key, fc::assert_exception );
+
+      validate_database();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& o )
+         {
+            o.phase = smt_phase::contribution_begin_time_completed;
+         });
+      });
+
+      BOOST_TEST_MESSAGE( "--- Testing successful refunds" );
+      PUSH_OP( alice_refund, alice_private_key );
+      PUSH_OP( alice_refund2, alice_private_key );
+
+      PUSH_OP( bob_refund, bob_private_key );
+      PUSH_OP( bob_refund2, bob_private_key );
+
+      PUSH_OP( sam_refund, sam_private_key );
+      PUSH_OP( sam_refund2, sam_private_key );
+
+      FC_ASSERT( bob_acct.balance == asset( 10000000, STEEM_SYMBOL ) );
+      FC_ASSERT( alice_acct.balance == asset( 10000000, STEEM_SYMBOL ) );
+      FC_ASSERT( sam_acct.balance == asset( 10000000, STEEM_SYMBOL ) );
+
+      generate_block();
+
+      validate_database();
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
