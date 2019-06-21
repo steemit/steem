@@ -205,6 +205,7 @@ struct smt_setup_emissions_operation : public smt_base_operation
    uint32_t            rep_rel_amount_numerator = 0;
 
    uint8_t             rel_amount_denom_bits = 0;
+   bool                remove = false;
 
    extensions_type     extensions;
 
@@ -266,6 +267,19 @@ struct smt_set_runtime_parameters_operation : public smt_base_operation
    extensions_type                     extensions;
 
    void validate()const;
+};
+
+struct smt_contribute_operation : public base_operation
+{
+   account_name_type  contributor;
+   asset_symbol_type  symbol;
+   uint32_t           contribution_id;
+   asset              contribution;
+   extensions_type    extensions;
+
+   void validate() const;
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( contributor ); }
 };
 
 } }
@@ -368,6 +382,7 @@ FC_REFLECT_DERIVED(
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
+   (remove)
    (extensions)
    )
 
@@ -420,4 +435,14 @@ FC_REFLECT_DERIVED(
    (runtime_parameters)
    (extensions)
    )
+
+FC_REFLECT(
+   steem::protocol::smt_contribute_operation,
+   (contributor)
+   (symbol)
+   (contribution_id)
+   (contribution)
+   (extensions)
+   )
+
 #endif

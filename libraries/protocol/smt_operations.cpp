@@ -382,5 +382,13 @@ void smt_set_setup_parameters_operation::validate() const
    FC_ASSERT( setup_parameters.empty() == false );
 }
 
+void smt_contribute_operation::validate() const
+{
+   validate_account_name( contributor );
+   common_symbol_validation( symbol );
+   FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contributions must be made in STEEM" );
+   FC_ASSERT( contribution.amount > 0, "Contribution amount must be greater than 0" );
+}
+
 } }
 #endif
