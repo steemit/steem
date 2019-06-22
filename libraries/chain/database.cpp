@@ -5236,7 +5236,9 @@ void database::apply_hardfork( uint32_t hardfork )
             rfo.author_reward_curve = convergent_linear;
             rfo.curation_reward_curve = convergent_square_root;
             rfo.content_constant = STEEM_CONTENT_CONSTANT_HF21;
+#ifndef  IS_TEST_NET
             rfo.recent_claims = STEEM_HF21_CONVERGENT_LINEAR_RECENT_CLAIMS;
+#endif
          });
       }
       break;
