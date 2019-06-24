@@ -48,7 +48,7 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
       simulate_curve_payouts_element e;
       e.author = current->author;
-      e.permlink = current->permlink;
+      e.permlink = chain::to_string( current->permlink );
 
       auto new_curve_vshares = chain::util::evaluate_reward_curve( current->net_rshares.value, args.curve, var1 );
       sum_simulated_vshares = sum_simulated_vshares + new_curve_vshares;
