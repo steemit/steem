@@ -9,7 +9,7 @@ namespace steem { namespace plugins { namespace rewards_api {
 
 struct simulate_curve_payouts_element {
    protocol::account_name_type  author;
-   chainbase::shared_string     permlink;
+   fc::string                   permlink;
    protocol::asset              payout;
 };
 
