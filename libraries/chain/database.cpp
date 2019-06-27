@@ -5193,6 +5193,7 @@ void database::apply_hardfork( uint32_t hardfork )
             gpo.sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF21;
             gpo.content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF21;
             gpo.downvote_pool_percent = STEEM_DOWNVOTE_POOL_PERCENT_HF21;
+            gpo.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21;
          });
 
          auto account_auth = find< account_authority_object, by_account >( STEEM_TREASURY_ACCOUNT );
