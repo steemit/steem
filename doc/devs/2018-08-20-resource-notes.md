@@ -26,7 +26,7 @@ number of resources in the pool:
 
 Usage and budget are pretty straightforward and easy to think about.  Decay is a little less intuitive.
 
-One way to think about decay is "resources expire."  Steem had relatively little activity over its
+One way to think about decay is "resources expire."  Dpn had relatively little activity over its
 first X months, does that mean users should now be able to burst to 30X times the current limit for
 the next day?  That sounds pretty wrong.
 
@@ -54,7 +54,7 @@ respond appropriately."  This is a slightly fuzzy concept, because the "detectio
 
 Every user has a "manabar" called *resource credits* (RC).
 
-- The maximum RC an account can have is equal to its Steem Power (technically, VESTS).
+- The maximum RC an account can have is equal to its Dpn Power (technically, VESTS).
 - It takes 5 days for RC to regenerate from 0% to 100%.  (So more SP means more RC's per hour.)
 - Users automatically spend RC whenever they transact. RCs are charged based on various resources a transaction can consume. Resources are things like execution time, state size, transaction size. The sum of costs of all resources are charges to the user's RCs. The one RC pool pays for _all_ resources.
 - A user who doesn't have enough RC is unable to transact.
@@ -84,7 +84,7 @@ You can look at this system like a market:
 
 - Q: What is a good decay value to use?
 - A: "Good" is subjective.  There are daily variations (because more users are concentrated in certain timezones and awake during certain times
-of the day), and weekly variations (people use Steem more/less on weekends/holidays).  The default decay rate (347321) corresponds to a half-life of
+of the day), and weekly variations (people use Dpn more/less on weekends/holidays).  The default decay rate (347321) corresponds to a half-life of
 5 days, which should fully absorb daily variations and partially absorb weekly variations.  Since the RC pricing is determined based on the pool level,
 the half-life is also roughly approximately the timescale at which RC prices become hard to predict -- there is some value in having a longer timescale
 for varying of transaction costs.
@@ -94,14 +94,14 @@ for varying of transaction costs.
 
 - Q: Why 2x?
 - A: The RC plugin makes usage anywhere close to the actual budget value require a huge RC spending level.  How huge is "huge"?  Basically, if
-100% of the Steem Power stake is constantly using all of its RC to do transactions that only require a single resource, the usage will be
+100% of the Dpn Power stake is constantly using all of its RC to do transactions that only require a single resource, the usage will be
 equal to the budget.  The price curve of RC's is designed with a very rough empirical model which implies the "natural" level of RC usage will
 result in about `50%` of the budget is actually used.  Like all user behavior, this model might not fit the data, in which case "2x" might be
 wrong, and it should actually be "1.5x" or "3x".  But it will probably not be as small as "1x," and it will probably not be as large as "100x".
 
 - Q: Why not have the budget be the desired usage level of the resource?
 - A: If you say "users should use this much," how would you even enforce that?  The amount of activity that users do is nothing more, and nothing
-less, than the sum of each individual user's decisions.  The budget creates market forces that influence these decisions:  You need X Steem Power
+less, than the sum of each individual user's decisions.  The budget creates market forces that influence these decisions:  You need X Dpn Power
 to transact at R rate (today, and tomorrow the numbers will probably be similar, but over time they might become very different).  The code sets
 the numbers so that the budget is an upper bound on user activity.  How far below that upper bound will the actual user activity be?  That
 depends very much on the sum of users' individual decisions about how many resources to consume and how much SP heavy consumers are willing
@@ -116,8 +116,8 @@ How much users actually transact is something that is impossible to predict, but
 Currently, the only witness configurable resource is subsidized accounts.  Two parameters are set:
 
 - `account_subsidy_budget` is the per-block budget.
-- A value of 10,000 (`STEEM_ACCOUNT_SUBSIDY_PRECISION`) represents a budget of one subsidized account per block.
-- `account_subsidy_decay` is the per-block decay rate.  A value of `2^36` (`STEEM_RD_DECAY_DENOM_SHIFT`) represents 100% decay rate.
+- A value of 10,000 (`DPN_ACCOUNT_SUBSIDY_PRECISION`) represents a budget of one subsidized account per block.
+- `account_subsidy_decay` is the per-block decay rate.  A value of `2^36` (`DPN_RD_DECAY_DENOM_SHIFT`) represents 100% decay rate.
 
 Here is a Python script to convert from half-life, measured in days, to an appropriately scaled per-block decay rate:
 
@@ -126,12 +126,12 @@ Here is a Python script to convert from half-life, measured in days, to an appro
 
 import math
 
-STEEM_BLOCKS_PER_DAY = 20*60*24
-STEEM_RD_DECAY_DENOM_SHIFT = 36
-STEEM_MAX_WITNESSES = 21
-STEEM_MAX_VOTED_WITNESSES_HF17 = 20
+DPN_BLOCKS_PER_DAY = 20*60*24
+DPN_RD_DECAY_DENOM_SHIFT = 36
+DPN_MAX_WITNESSES = 21
+DPN_MAX_VOTED_WITNESSES_HF17 = 20
 
-f = lambda d : int(0.5 + (1 << STEEM_RD_DECAY_DENOM_SHIFT) * (-math.expm1(-math.log(2.0) / (STEEM_BLOCKS_PER_DAY * d * STEEM_MAX_VOTED_WITNESSES_HF17 / STEEM_MAX_WITNESSES))))
+f = lambda d : int(0.5 + (1 << DPN_RD_DECAY_DENOM_SHIFT) * (-math.expm1(-math.log(2.0) / (DPN_BLOCKS_PER_DAY * d * DPN_MAX_VOTED_WITNESSES_HF17 / DPN_MAX_WITNESSES))))
 print("A 5-day half-life corresponds to a decay constant of", f(5))
 ```
 
@@ -168,21 +168,21 @@ It may sound like consensus limits are better, because they're enforced more str
 checking makes upgrades painful:
 
 - Upgrading non-consensus limits is a witness-only upgrade.
-- Upgrading consensus limits is a hardfork, all `steemd` nodes must upgrade.
+- Upgrading consensus limits is a hardfork, all `dpnd` nodes must upgrade.
 
 The subsidized account resource limit is consensus.  Other resource limits are non-consensus.  Why were things
 divided that way?  It has to do with the consequences of violating the limits:
 
-- If a witness ignores the subsidized account limit, people will get new accounts for free, that normally cost STEEM to create.  This is a medium-sized economic problem.
+- If a witness ignores the subsidized account limit, people will get new accounts for free, that normally cost DPN to create.  This is a medium-sized economic problem.
 - If a witness ignores the other resource limits, their blocks might take a little longer [1] to process or use more memory.  This is a tiny IT problem.
 
-For resource limits, having witness-only upgrades outweighs the problem.  Witnesses who have been around a long time know that, in the ancient past, Steem's bandwidth
+For resource limits, having witness-only upgrades outweighs the problem.  Witnesses who have been around a long time know that, in the ancient past, Dpn's bandwidth
 algorithm was consensus.  It was then changed to non-consensus when the current bandwidth algorithm was implemented.  The new resource-based limits are non-consensus
 for the most part, just like the current bandwidth algorithm.
 
 [1] Could they take a lot longer?  No, the rogue witness would be limited by block size.  Transactions have some variation in how much CPU / memory they use relative
 to their size.  But operations that allow users to take a huge amount of CPU / memory for a tiny number of bytes are attack vectors.  As good blockchain architects,
-we should never implement such operations in the Steem source code!  Even the worst-case CPU cycles / memory bytes consumed by an attacker spamming the most
+we should never implement such operations in the Dpn source code!  Even the worst-case CPU cycles / memory bytes consumed by an attacker spamming the most
 "efficient" attack (in terms of CPU cycles / memory bytes consumed per byte of transaction size) should still be limited by the max block size.
 
 # Setting consensus parameters

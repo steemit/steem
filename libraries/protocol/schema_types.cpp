@@ -1,16 +1,16 @@
 
-#include <steem/schema/abstract_schema.hpp>
-#include <steem/schema/schema_impl.hpp>
+#include <dpn/schema/abstract_schema.hpp>
+#include <dpn/schema/schema_impl.hpp>
 
-#include <steem/protocol/schema_types.hpp>
+#include <dpn/protocol/schema_types.hpp>
 
-namespace steem { namespace schema { namespace detail {
+namespace dpn { namespace schema { namespace detail {
 
 //////////////////////////////////////////////
 // account_name_type                        //
 //////////////////////////////////////////////
 
-STEEM_SCHEMA_DEFINE_CLASS_METHODS( schema_account_name_type_impl )
+DPN_SCHEMA_DEFINE_CLASS_METHODS( schema_account_name_type_impl )
 
 void schema_account_name_type_impl::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
 {
@@ -43,7 +43,7 @@ void schema_account_name_type_impl::get_str_schema( std::string& s )
 // asset_symbol_type                        //
 //////////////////////////////////////////////
 
-STEEM_SCHEMA_DEFINE_CLASS_METHODS( schema_asset_symbol_type_impl )
+DPN_SCHEMA_DEFINE_CLASS_METHODS( schema_asset_symbol_type_impl )
 
 void schema_asset_symbol_type_impl::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
 {

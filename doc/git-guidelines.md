@@ -1,4 +1,4 @@
-The git guidelines for SteemIt are influenced by the
+The git guidelines for DpnIt are influenced by the
 [Graphene](https://github.com/cryptonomex/graphene/wiki/How-we-use-version-control)
 git guidelines as well as [Git
 Flow](http://nvie.com/posts/a-successful-git-branching-model/) and [this
@@ -8,7 +8,7 @@ post](http://www.draconianoverlord.com/2013/09/07/no-cherry-picking.html).
 ## Branches
 - `stable`: Points to the latest version of code that is production-ready, and has been tested in production.
  Witnesses, exchanges, seed nodes, and RPC nodes should be running this branch. 
-- `master`: Points to the current release of Steem. Each release commit will be tagged
+- `master`: Points to the current release of Dpn. Each release commit will be tagged
   `vMajor.Hardfork.Release`. When we get ready to release we will merge
   feature branches into `develop` and then do a single merge into `master`
   via a Pull Request. All PRs to `master` must pass automated testing to be

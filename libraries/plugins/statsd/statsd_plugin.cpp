@@ -1,4 +1,4 @@
-#include <steem/plugins/statsd/statsd_plugin.hpp>
+#include <dpn/plugins/statsd/statsd_plugin.hpp>
 
 #include <fc/network/resolve.hpp>
 
@@ -8,7 +8,7 @@
 
 #include "StatsdClient.hpp"
 
-namespace steem { namespace plugins { namespace statsd {
+namespace dpn { namespace plugins { namespace statsd {
 
 using namespace Statsd;
 
@@ -68,7 +68,7 @@ namespace detail
          port = _statsd_endpoint->port();
       }
 
-      _statsd.reset( new StatsdClient( host, port, "steemd.", _statsd_batchsize ) );
+      _statsd.reset( new StatsdClient( host, port, "dpnd.", _statsd_batchsize ) );
       _started = true;
    }
 
@@ -260,4 +260,4 @@ void statsd_plugin::timing( const std::string& ns, const std::string& stat, cons
    my->timing( ns, stat, key, ms, frequency );
 }
 
-} } } // steem::plugins::statsd
+} } } // dpn::plugins::statsd

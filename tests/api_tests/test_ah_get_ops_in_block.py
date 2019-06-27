@@ -11,7 +11,7 @@ import json
 import os
 import shutil
 from jsonsocket import JSONSocket
-from jsonsocket import steemd_call
+from jsonsocket import dpnd_call
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import Future
@@ -125,7 +125,7 @@ def get_last_block(url, max_tries=10, timeout=0.1):
     "params": {}
     } ), "utf-8" ) + b"\r\n"
     
-  status, response = steemd_call(url, data=request, max_tries=max_tries, timeout=timeout)
+  status, response = dpnd_call(url, data=request, max_tries=max_tries, timeout=timeout)
   
   if status == False:
     return 0
@@ -150,14 +150,14 @@ def compare_results(f_block, l_block, url1, url2, max_tries=10, timeout=0.1):
 
     with ThreadPoolExecutor(max_workers=2) as executor:
     #with ProcessPoolExecutor(max_workers=2) as executor:
-      future1 = executor.submit(steemd_call, url1, data=request, max_tries=max_tries, timeout=timeout)
-      future2 = executor.submit(steemd_call, url2, data=request, max_tries=max_tries, timeout=timeout)
+      future1 = executor.submit(dpnd_call, url1, data=request, max_tries=max_tries, timeout=timeout)
+      future2 = executor.submit(dpnd_call, url2, data=request, max_tries=max_tries, timeout=timeout)
 
     status1, json1 = future1.result()
     status2, json2 = future2.result()
     
-    #status1, json1 = steemd_call(url1, data=request, max_tries=max_tries, timeout=timeout)
-    #status2, json2 = steemd_call(url2, data=request, max_tries=max_tries, timeout=timeout)
+    #status1, json1 = dpnd_call(url1, data=request, max_tries=max_tries, timeout=timeout)
+    #status2, json2 = dpnd_call(url2, data=request, max_tries=max_tries, timeout=timeout)
       
     if status1 == False or status2 == False or json1 != json2:
       print("Difference @block: {}\n".format(i))

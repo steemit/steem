@@ -1,6 +1,6 @@
-#include <steem/plugins/statsd/utility.hpp>
+#include <dpn/plugins/statsd/utility.hpp>
 
-namespace steem { namespace plugins{ namespace statsd { namespace util {
+namespace dpn { namespace plugins{ namespace statsd { namespace util {
 
 bool statsd_enabled()
 {
@@ -14,4 +14,4 @@ const statsd_plugin& get_statsd()
    return statsd;
 }
 
-} } } } // steem::plugins::statsd::util
+} } } } // dpn::plugins::statsd::util

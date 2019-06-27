@@ -27,18 +27,18 @@ RUN \
         libbz2-dev \
         liblz4-dev \
         libzstd-dev && \
-    rm -rf /usr/local/src/steem
+    rm -rf /usr/local/src/dpn
 
-ADD . /usr/local/src/steem
+ADD . /usr/local/src/dpn
 
 RUN \
-    cd /usr/local/src/steem && \
+    cd /usr/local/src/dpn && \
     mkdir build && \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DENABLE_STD_ALLOCATOR_SUPPORT=ON \
-        -DBUILD_STEEM_TESTNET=ON \
+        -DBUILD_DPN_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \

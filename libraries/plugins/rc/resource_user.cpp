@@ -1,11 +1,11 @@
 
-#include <steem/plugins/rc/resource_user.hpp>
+#include <dpn/plugins/rc/resource_user.hpp>
 
-#include <steem/protocol/transaction.hpp>
+#include <dpn/protocol/transaction.hpp>
 
-namespace steem { namespace plugins { namespace rc {
+namespace dpn { namespace plugins { namespace rc {
 
-using namespace steem::protocol;
+using namespace dpn::protocol;
 
 account_name_type get_resource_user( const signed_transaction& tx )
 {
@@ -27,4 +27,4 @@ account_name_type get_resource_user( const signed_transaction& tx )
    return account_name_type();
 }
 
-} } } // steem::plugins::rc
+} } } // dpn::plugins::rc

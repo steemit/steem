@@ -100,7 +100,7 @@ The global write buffer is used for performant writes to the database. It lives 
 
 ## Application memory
 
-When configuring MIRA it is important to consider the normal memory usage of `steemd`. Regardless of the MIRA configuration, `steemd` will tend to use roughly 5.5GiB of memory.
+When configuring MIRA it is important to consider the normal memory usage of `dpnd`. Regardless of the MIRA configuration, `dpnd` will tend to use roughly 5.5GiB of memory.
 
 ---
 

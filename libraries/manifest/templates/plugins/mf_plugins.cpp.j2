@@ -1,18 +1,18 @@
 #include <appbase/application.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 
-#include <steem/manifest/plugins.hpp>
+#include <dpn/manifest/plugins.hpp>
 
 {% for plugin in plugins %}
-#include <steem/plugins/{{ plugin["plugin_name"] }}/{{ plugin["plugin_name"] }}_plugin.hpp>
+#include <dpn/plugins/{{ plugin["plugin_name"] }}/{{ plugin["plugin_name"] }}_plugin.hpp>
 {% endfor %}
 
-namespace steem { namespace plugins {
+namespace dpn { namespace plugins {
 
 void register_plugins()
 {
    {% for plugin in plugins %}
-   appbase::app().register_plugin< steem::plugins::{{ plugin["plugin_namespace"] }}::{{ plugin["plugin_name" ] }}_plugin >();
+   appbase::app().register_plugin< dpn::plugins::{{ plugin["plugin_namespace"] }}::{{ plugin["plugin_name" ] }}_plugin >();
    {% endfor %}
 }
 

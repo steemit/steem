@@ -21,11 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steem/utilities/key_conversion.hpp>
+#include <dpn/utilities/key_conversion.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/variant.hpp>
 
-namespace steem { namespace utilities {
+namespace dpn { namespace utilities {
 
 std::string key_to_wif(const fc::sha256& secret )
 {
@@ -69,4 +69,4 @@ fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key )
   return fc::optional<fc::ecc::private_key>();
 }
 
-} } // end namespace steem::utilities
+} } // end namespace dpn::utilities

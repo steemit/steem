@@ -16,8 +16,8 @@ builtin_type_sizes = {
    "bool" : 1,
 
    "fc::time_point_sec" : 4,
-   "steem::protocol::asset_symbol_type" : 8,
-   "steem::protocol::account_name_type" : 16,
+   "dpn::protocol::asset_symbol_type" : 8,
+   "dpn::protocol::account_name_type" : 16,
 }
 
 class TermSum(object):
@@ -79,7 +79,7 @@ class Sizer(object):
         return term(1, name)
 
 def main():
-    with open("steem.schema", "r") as f:
+    with open("dpn.schema", "r") as f:
         schema = json.load(f)
 
     schema_map = schema["schema_map"]

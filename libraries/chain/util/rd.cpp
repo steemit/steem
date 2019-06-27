@@ -1,6 +1,6 @@
 
-#include <steem/chain/util/rd_setup.hpp>
-#include <steem/chain/util/rd_dynamics.hpp>
+#include <dpn/chain/util/rd_setup.hpp>
+#include <dpn/chain/util/rd_dynamics.hpp>
 
 #include <fc/uint128.hpp>
 #include <fc/exception/exception.hpp>
@@ -9,15 +9,15 @@
 
 // max_decay = (uint64_t(1) << (MAX_POOL_BITS + MIN_DECAY_BITS - DECAY_DENOM_SHIFT))-1;
 
-namespace steem { namespace chain { namespace util {
+namespace dpn { namespace chain { namespace util {
 
 void rd_validate_user_params(
    const rd_user_params& user_params )
 {
-   FC_ASSERT( user_params.budget_per_time_unit >= STEEM_RD_MIN_BUDGET );
-   FC_ASSERT( user_params.budget_per_time_unit <= STEEM_RD_MAX_BUDGET );
-   FC_ASSERT( user_params.decay_per_time_unit >= STEEM_RD_MIN_DECAY );
-   FC_ASSERT( user_params.decay_per_time_unit <= STEEM_RD_MAX_DECAY );
+   FC_ASSERT( user_params.budget_per_time_unit >= DPN_RD_MIN_BUDGET );
+   FC_ASSERT( user_params.budget_per_time_unit <= DPN_RD_MAX_BUDGET );
+   FC_ASSERT( user_params.decay_per_time_unit >= DPN_RD_MIN_DECAY );
+   FC_ASSERT( user_params.decay_per_time_unit <= DPN_RD_MAX_DECAY );
 }
 
 int64_t rd_compute_pool_decay(
@@ -66,16 +66,16 @@ void rd_setup_dynamics_params(
    //
    // Following assert should never trigger, as decay_per_time_unit_denom_shift is a system param and should
    //   not be user settable.  System code which sets it should just set it to
-   //   STEEM_RD_DECAY_DENOM_SHIFT.  The interface is designed to support other values of this
+   //   DPN_RD_DECAY_DENOM_SHIFT.  The interface is designed to support other values of this
    //   parameter, but this implementation is not.  So for now, code that uses the interface just needs
    //   to accept there's currently exactly one acceptable integer value for this field.
    //
    // TLDR, if you trigger this FC_ASSERT(), you've created a bug.  You need to either re-write the caller
-   //   code so that it sets decay_per_time_unit_denom_shift = STEEM_RD_DECAY_DENOM_SHIFT,
+   //   code so that it sets decay_per_time_unit_denom_shift = DPN_RD_DECAY_DENOM_SHIFT,
    //   or re-write this implementation so that the functionality here (including bounds checks) correctly
    //   handles the values you want to feed it.
    //
-   FC_ASSERT( system_params.decay_per_time_unit_denom_shift == STEEM_RD_DECAY_DENOM_SHIFT );
+   FC_ASSERT( system_params.decay_per_time_unit_denom_shift == DPN_RD_DECAY_DENOM_SHIFT );
 
    // Initialize pool_eq to the smallest integer where budget/decay are in balance
    // Let b=budget, d=decay_per_time_unit, s=decay_per_time_unit_shift
@@ -88,8 +88,8 @@ void rd_setup_dynamics_params(
    // So we can set x = ceil((b << s) / d) = ((b << s) + (d-1)) / d.
 
    // Worst-case assert for the following is d=1, in which case b << s must be less than 2^64
-   static_assert( STEEM_RD_MAX_BUDGET < (uint64_t(1) << (64-STEEM_RD_DECAY_DENOM_SHIFT)),
-      "Computation of temp could overflow here, set smaller STEEM_RD_MAX_BUDGET" );
+   static_assert( DPN_RD_MAX_BUDGET < (uint64_t(1) << (64-DPN_RD_DECAY_DENOM_SHIFT)),
+      "Computation of temp could overflow here, set smaller DPN_RD_MAX_BUDGET" );
 
    fc::uint128_t temp = user_params.budget_per_time_unit;
    temp <<= system_params.decay_per_time_unit_denom_shift;

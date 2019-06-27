@@ -1,0 +1,1 @@
+cmd='/home/freedomex/dappnet-steem/libraries/fc/vendor/secp256k1-zkp/configure;--prefix=/home/freedomex/dappnet-steem/cmake-build-debug/libraries/fc/vendor/secp256k1-zkp;--with-bignum=no'

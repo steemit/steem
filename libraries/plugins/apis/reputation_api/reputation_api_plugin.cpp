@@ -1,8 +1,8 @@
-#include <steem/plugins/reputation_api/reputation_api_plugin.hpp>
-#include <steem/plugins/reputation_api/reputation_api.hpp>
+#include <dpn/plugins/reputation_api/reputation_api_plugin.hpp>
+#include <dpn/plugins/reputation_api/reputation_api.hpp>
 
 
-namespace steem { namespace plugins { namespace reputation {
+namespace dpn { namespace plugins { namespace reputation {
 
 reputation_api_plugin::reputation_api_plugin() {}
 reputation_api_plugin::~reputation_api_plugin() {}
@@ -17,4 +17,4 @@ void reputation_api_plugin::plugin_initialize( const variables_map& options )
 void reputation_api_plugin::plugin_startup() {}
 void reputation_api_plugin::plugin_shutdown() {}
 
-} } } // steem::plugins::reputation
+} } } // dpn::plugins::reputation

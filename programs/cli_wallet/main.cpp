@@ -27,7 +27,7 @@
 #include <iostream>
 #include <iterator>
 
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
@@ -38,11 +38,11 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <steem/utilities/key_conversion.hpp>
+#include <dpn/utilities/key_conversion.hpp>
 
-#include <steem/protocol/protocol.hpp>
-#include <steem/wallet/remote_node_api.hpp>
-#include <steem/wallet/wallet.hpp>
+#include <dpn/protocol/protocol.hpp>
+#include <dpn/wallet/remote_node_api.hpp>
+#include <dpn/wallet/wallet.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <boost/program_options.hpp>
@@ -60,9 +60,9 @@
 #endif
 
 
-using namespace steem::utilities;
-using namespace steem::chain;
-using namespace steem::wallet;
+using namespace dpn::utilities;
+using namespace dpn::chain;
+using namespace dpn::wallet;
 using namespace std;
 namespace bpo = boost::program_options;
 
@@ -83,7 +83,7 @@ int main( int argc, char** argv )
          ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
 #ifdef IS_TEST_NET
-         ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
+         ("chain-id", bpo::value< std::string >()->default_value( DPN_CHAIN_ID ), "chain ID to connect to")
 #endif
          ;
       vector<string> allowed_ips;
@@ -102,7 +102,7 @@ int main( int argc, char** argv )
          wdump((allowed_ips));
       }
 
-      steem::protocol::chain_id_type _steem_chain_id;
+      dpn::protocol::chain_id_type _dpn_chain_id;
 
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
@@ -111,7 +111,7 @@ int main( int argc, char** argv )
 
          try
          {
-            _steem_chain_id = chain_id_type( chain_id_str);
+            _dpn_chain_id = chain_id_type( chain_id_str);
          }
          catch( fc::exception& )
          {
@@ -170,9 +170,9 @@ int main( int argc, char** argv )
       auto con  = client.connect( wdata.ws_server );
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
 
-      auto remote_api = apic->get_remote_api< steem::wallet::remote_node_api >( 0, "condenser_api" );
+      auto remote_api = apic->get_remote_api< dpn::wallet::remote_node_api >( 0, "condenser_api" );
 
-      auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api );
+      auto wapiptr = std::make_shared<wallet_api>( wdata, _dpn_chain_id, remote_api );
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
 

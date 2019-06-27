@@ -1,18 +1,18 @@
-#include <steem/plugins/debug_node_api/debug_node_api_plugin.hpp>
-#include <steem/plugins/debug_node_api/debug_node_api.hpp>
+#include <dpn/plugins/debug_node_api/debug_node_api_plugin.hpp>
+#include <dpn/plugins/debug_node_api/debug_node_api.hpp>
 
 #include <fc/filesystem.hpp>
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steem/chain/block_log.hpp>
-#include <steem/chain/account_object.hpp>
-#include <steem/chain/database.hpp>
-#include <steem/chain/witness_objects.hpp>
+#include <dpn/chain/block_log.hpp>
+#include <dpn/chain/account_object.hpp>
+#include <dpn/chain/database.hpp>
+#include <dpn/chain/witness_objects.hpp>
 
-#include <steem/utilities/key_conversion.hpp>
+#include <dpn/utilities/key_conversion.hpp>
 
-namespace steem { namespace plugins { namespace debug_node {
+namespace dpn { namespace plugins { namespace debug_node {
 
 namespace detail {
 
@@ -129,7 +129,7 @@ DEFINE_API_IMPL( debug_node_api_impl, debug_get_hardfork_property_object )
 
 DEFINE_API_IMPL( debug_node_api_impl, debug_set_hardfork )
 {
-   if( args.hardfork_id > STEEM_NUM_HARDFORKS )
+   if( args.hardfork_id > DPN_NUM_HARDFORKS )
       return {};
 
    _debug_node.debug_update( [=]( chain::database& db )
@@ -154,7 +154,7 @@ DEFINE_API_IMPL( debug_node_api_impl, debug_get_json_schema )
 
 debug_node_api::debug_node_api(): my( new detail::debug_node_api_impl() )
 {
-   JSON_RPC_REGISTER_API( STEEM_DEBUG_NODE_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_DEBUG_NODE_API_PLUGIN_NAME );
 }
 
 debug_node_api::~debug_node_api() {}
@@ -171,4 +171,4 @@ DEFINE_LOCKLESS_APIS( debug_node_api,
    (debug_get_json_schema)
 )
 
-} } } // steem::plugins::debug_node
+} } } // dpn::plugins::debug_node

@@ -1,21 +1,21 @@
-#include <steem/plugins/condenser_api/condenser_api.hpp>
-#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <dpn/plugins/condenser_api/condenser_api.hpp>
+#include <dpn/plugins/condenser_api/condenser_api_plugin.hpp>
 
-#include <steem/plugins/database_api/database_api_plugin.hpp>
-#include <steem/plugins/block_api/block_api_plugin.hpp>
-#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steem/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <steem/plugins/tags_api/tags_api_plugin.hpp>
-#include <steem/plugins/follow_api/follow_api_plugin.hpp>
-#include <steem/plugins/reputation_api/reputation_api_plugin.hpp>
-#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <dpn/plugins/database_api/database_api_plugin.hpp>
+#include <dpn/plugins/block_api/block_api_plugin.hpp>
+#include <dpn/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <dpn/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <dpn/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <dpn/plugins/tags_api/tags_api_plugin.hpp>
+#include <dpn/plugins/follow_api/follow_api_plugin.hpp>
+#include <dpn/plugins/reputation_api/reputation_api_plugin.hpp>
+#include <dpn/plugins/market_history_api/market_history_api_plugin.hpp>
 
 
-#include <steem/utilities/git_revision.hpp>
+#include <dpn/utilities/git_revision.hpp>
 
-#include <steem/chain/util/reward.hpp>
-#include <steem/chain/util/uint256.hpp>
+#include <dpn/chain/util/reward.hpp>
+#include <dpn/chain/util/uint256.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -28,7 +28,7 @@
 #define CHECK_ARG_SIZE( s ) \
    FC_ASSERT( args.size() == s, "Expected #s argument(s), was ${n}", ("n", args.size()) );
 
-namespace steem { namespace plugins { namespace condenser_api {
+namespace dpn { namespace plugins { namespace condenser_api {
 
 namespace detail
 {
@@ -38,12 +38,12 @@ namespace detail
    {
       public:
          condenser_api_impl() :
-            _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() ),
+            _chain( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >() ),
             _db( _chain.db() )
          {
             _on_post_apply_block_conn = _db.add_post_apply_block_handler(
                [&]( const block_notification& note ){ on_post_apply_block( note.block ); },
-               appbase::app().get_plugin< steem::plugins::condenser_api::condenser_api_plugin >(),
+               appbase::app().get_plugin< dpn::plugins::condenser_api::condenser_api_plugin >(),
                0 );
          }
 
@@ -143,7 +143,7 @@ namespace detail
 
          void on_post_apply_block( const signed_block& b );
 
-         steem::plugins::chain::chain_plugin&                              _chain;
+         dpn::plugins::chain::chain_plugin&                              _chain;
 
          chain::database&                                                  _db;
 
@@ -169,8 +169,8 @@ namespace detail
       CHECK_ARG_SIZE( 0 )
       return get_version_return
       (
-         fc::string( STEEM_BLOCKCHAIN_VERSION ),
-         fc::string( steem::utilities::git_revision_sha ),
+         fc::string( DPN_BLOCKCHAIN_VERSION ),
+         fc::string( dpn::utilities::git_revision_sha ),
          fc::string( fc::git_revision_sha )
       );
    }
@@ -888,7 +888,7 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, get_account_references )
    {
-      FC_ASSERT( false, "condenser_api::get_account_references --- Needs to be refactored for Steem." );
+      FC_ASSERT( false, "condenser_api::get_account_references --- Needs to be refactored for Dpn." );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, lookup_account_names )
@@ -1106,7 +1106,7 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_conversion_requests )
    {
       CHECK_ARG_SIZE( 1 )
-      auto requests = _database_api->find_sbd_conversion_requests(
+      auto requests = _database_api->find_dbd_conversion_requests(
          {
             args[0].as< account_name_type >()
          }).requests;
@@ -1207,7 +1207,7 @@ namespace detail
       {
          result.push_back( *itr );
 
-         // if( itr->sell_price.base.symbol == STEEM_SYMBOL )
+         // if( itr->sell_price.base.symbol == DPN_SYMBOL )
          //    result.back().real_price = (~result.back().sell_price).to_real();
          // else
          //    result.back().real_price = (result.back().sell_price).to_real();
@@ -1912,14 +1912,14 @@ namespace detail
    {
       FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
 
-      steem::plugins::database_api::list_proposals_args list_args;
+      dpn::plugins::database_api::list_proposals_args list_args;
       list_args.start           = args[0];
       list_args.limit           = args[1].as< uint32_t >();
-      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order           = args[2].as< dpn::plugins::database_api::sort_order_type >();
       list_args.order_direction = args.size() > 3 ?
-         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+         args[3].as< dpn::plugins::database_api::order_direction_type >() : database_api::ascending;
       list_args.status          = args.size() > 4 ?
-         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
+         args[4].as< dpn::plugins::database_api::proposal_status >() : database_api::all;
 
       return _database_api->list_proposals( list_args ).proposals;
    }
@@ -1928,21 +1928,21 @@ namespace detail
    {
       CHECK_ARG_SIZE( 1 )
 
-      return _database_api->find_proposals( { args[0].as< vector< steem::plugins::database_api::api_id_type > >() } ).proposals;
+      return _database_api->find_proposals( { args[0].as< vector< dpn::plugins::database_api::api_id_type > >() } ).proposals;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, list_proposal_votes )
    {
       FC_ASSERT( args.size() >= 3 && args.size() <= 5, "Expected 3-5 argument, was ${n}", ("n", args.size()) );
 
-      steem::plugins::database_api::list_proposals_args list_args;
+      dpn::plugins::database_api::list_proposals_args list_args;
       list_args.start           = args[0];
       list_args.limit           = args[1].as< uint32_t >();
-      list_args.order           = args[2].as< steem::plugins::database_api::sort_order_type >();
+      list_args.order           = args[2].as< dpn::plugins::database_api::sort_order_type >();
       list_args.order_direction = args.size() > 3 ?
-         args[3].as< steem::plugins::database_api::order_direction_type >() : database_api::ascending;
+         args[3].as< dpn::plugins::database_api::order_direction_type >() : database_api::ascending;
       list_args.status          = args.size() > 4 ?
-         args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
+         args[4].as< dpn::plugins::database_api::proposal_status >() : database_api::all;
 
       return _database_api->list_proposal_votes( list_args ).proposal_votes;
    }
@@ -1993,7 +1993,7 @@ namespace detail
          auto itr = cidx.lower_bound( d.id );
          if( itr != cidx.end() && itr->comment == d.id )
          {
-            d.promoted = legacy_asset::from_asset( asset( itr->promoted_balance, SBD_SYMBOL ) );
+            d.promoted = legacy_asset::from_asset( asset( itr->promoted_balance, DBD_SYMBOL ) );
          }
       }
 
@@ -2001,15 +2001,15 @@ namespace detail
       const auto& hist  = _db.get_feed_history();
 
       asset pot;
-      if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+      if( _db.has_hardfork( DPN_HARDFORK_0_17__774 ) )
          pot = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).reward_balance;
       else
-         pot = props.total_reward_fund_steem;
+         pot = props.total_reward_fund_dpn;
 
       if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
       u256 total_r2 = 0;
-      if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+      if( _db.has_hardfork( DPN_HARDFORK_0_17__774 ) )
          total_r2 = chain::util::to256( _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).recent_claims );
       else
          total_r2 = chain::util::to256( props.total_reward_shares2 );
@@ -2017,7 +2017,7 @@ namespace detail
       if( total_r2 > 0 )
       {
          uint128_t vshares;
-         if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
+         if( _db.has_hardfork( DPN_HARDFORK_0_17__774 ) )
          {
             const auto& rf = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) );
             vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
@@ -2041,7 +2041,7 @@ namespace detail
          }
       }
 
-      if( d.parent_author != STEEM_ROOT_POST_PARENT )
+      if( d.parent_author != DPN_ROOT_POST_PARENT )
          d.cashout_time = _db.calculate_discussion_payout_time( _db.get< chain::comment_object >( d.id ) );
 
       if( d.body.size() > 1024*128 )
@@ -2102,7 +2102,7 @@ namespace detail
 
 uint16_t api_account_object::_compute_voting_power( const database_api::api_account_object& a )
 {
-   if( a.voting_manabar.last_update_time < STEEM_HARDFORK_0_20_TIME )
+   if( a.voting_manabar.last_update_time < DPN_HARDFORK_0_20_TIME )
       return (uint16_t) a.voting_manabar.current_mana;
 
    auto vests = chain::util::get_effective_vesting_shares( a );
@@ -2111,24 +2111,24 @@ uint16_t api_account_object::_compute_voting_power( const database_api::api_acco
 
    //
    // Let t1 = last_vote_time, t2 = last_update_time
-   // vp_t2 = STEEM_100_PERCENT * current_mana / vests
-   // vp_t1 = vp_t2 - STEEM_100_PERCENT * (t2 - t1) / STEEM_VOTING_MANA_REGENERATION_SECONDS
+   // vp_t2 = DPN_100_PERCENT * current_mana / vests
+   // vp_t1 = vp_t2 - DPN_100_PERCENT * (t2 - t1) / DPN_VOTING_MANA_REGENERATION_SECONDS
    //
 
    uint32_t t1 = a.last_vote_time.sec_since_epoch();
    uint32_t t2 = a.voting_manabar.last_update_time;
    uint64_t dt = (t2 > t1) ? (t2 - t1) : 0;
-   uint64_t vp_dt = STEEM_100_PERCENT * dt / STEEM_VOTING_MANA_REGENERATION_SECONDS;
+   uint64_t vp_dt = DPN_100_PERCENT * dt / DPN_VOTING_MANA_REGENERATION_SECONDS;
 
-   uint128_t vp_t2 = STEEM_100_PERCENT;
+   uint128_t vp_t2 = DPN_100_PERCENT;
    vp_t2 *= a.voting_manabar.current_mana;
    vp_t2 /= vests;
 
    uint64_t vp_t2u = vp_t2.to_uint64();
-   if( vp_t2u >= STEEM_100_PERCENT )
+   if( vp_t2u >= DPN_100_PERCENT )
    {
-      wlog( "Truncated vp_t2u to STEEM_100_PERCENT for account ${a}", ("a", a.name) );
-      vp_t2u = STEEM_100_PERCENT;
+      wlog( "Truncated vp_t2u to DPN_100_PERCENT for account ${a}", ("a", a.name) );
+      vp_t2u = DPN_100_PERCENT;
    }
    uint16_t vp_t1 = uint16_t( vp_t2u ) - uint16_t( std::min( vp_t2u, vp_dt ) );
 
@@ -2138,7 +2138,7 @@ uint16_t api_account_object::_compute_voting_power( const database_api::api_acco
 condenser_api::condenser_api()
    : my( new detail::condenser_api_impl() )
 {
-   JSON_RPC_REGISTER_API( STEEM_CONDENSER_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_CONDENSER_API_PLUGIN_NAME );
 }
 
 condenser_api::~condenser_api() {}
@@ -2299,4 +2299,4 @@ DEFINE_READ_APIS( condenser_api,
    (find_proposals)
 )
 
-} } } // steem::plugins::condenser_api
+} } } // dpn::plugins::condenser_api

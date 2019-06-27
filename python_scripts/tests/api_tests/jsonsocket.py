@@ -87,7 +87,7 @@ class JSONSocket(object):
       self.__sock.close()
 
       
-def steemd_call(host, data=None, json=None, max_tries=10, timeout=0.1):
+def dpnd_call(host, data=None, json=None, max_tries=10, timeout=0.1):
   """
   host - [http[s]://<ip_address>:<port>
   data - binary form of request body, if missing json object should be provided (as python dict/array)

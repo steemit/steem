@@ -2,16 +2,16 @@ timeout: "1800s"
 steps:
 
 - name: gcr.io/cloud-builders/git
-  args: ['clone', '-b', '$BRANCH_NAME', '--recurse-submodules', '-v', 'https://github.com/blocktradesdevs/steem.git']
+  args: ['clone', '-b', '$BRANCH_NAME', '--recurse-submodules', '-v', 'https://github.com/blocktradesdevs/dpn.git']
   id: "Git clone"
 
 - name: gcr.io/cloud-builders/git
-  dir: "steem"
+  dir: "dpn"
   args: ['status']
   id: "Git status"
 
 - name: 'gcr.io/cloud-builders/docker'
-  dir: "steem"
+  dir: "dpn"
   args: [
       'build',
       '-f', '../Builder.DockerFile',

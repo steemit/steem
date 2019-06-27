@@ -22,22 +22,22 @@
  * THE SOFTWARE.
  */
 
-#include <steem/private_message/private_message_evaluators.hpp>
-#include <steem/private_message/private_message_operations.hpp>
-#include <steem/private_message/private_message_plugin.hpp>
+#include <dpn/private_message/private_message_evaluators.hpp>
+#include <dpn/private_message/private_message_operations.hpp>
+#include <dpn/private_message/private_message_plugin.hpp>
 
-#include <steem/app/impacted.hpp>
+#include <dpn/app/impacted.hpp>
 
-#include <steem/protocol/config.hpp>
+#include <dpn/protocol/config.hpp>
 
-#include <steem/chain/database.hpp>
-#include <steem/chain/index.hpp>
-#include <steem/chain/generic_custom_operation_interpreter.hpp>
+#include <dpn/chain/database.hpp>
+#include <dpn/chain/index.hpp>
+#include <dpn/chain/generic_custom_operation_interpreter.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
-namespace steem { namespace private_message {
+namespace dpn { namespace private_message {
 
 namespace detail
 {
@@ -48,20 +48,20 @@ class private_message_plugin_impl
       private_message_plugin_impl(private_message_plugin& _plugin);
       virtual ~private_message_plugin_impl();
 
-      steem::chain::database& database()
+      dpn::chain::database& database()
       {
          return _self.database();
       }
 
       private_message_plugin&                                                             _self;
-      std::shared_ptr< generic_custom_operation_interpreter< steem::private_message::private_message_plugin_operation > >   _custom_operation_interpreter;
+      std::shared_ptr< generic_custom_operation_interpreter< dpn::private_message::private_message_plugin_operation > >   _custom_operation_interpreter;
       flat_map<string,string>                                                             _tracked_accounts;
 };
 
 private_message_plugin_impl::private_message_plugin_impl( private_message_plugin& _plugin )
    : _self( _plugin )
 {
-   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::private_message::private_message_plugin_operation > >( database() );
+   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< dpn::private_message::private_message_plugin_operation > >( database() );
 
    _custom_operation_interpreter->register_evaluator< private_message_evaluator >( &_self );
 
@@ -143,7 +143,7 @@ void private_message_plugin::plugin_initialize(const boost::program_options::var
    app().register_api_factory<private_message_api>("private_message_api");
 
    typedef pair<string,string> pairstring;
-   STEEM_LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
+   DPN_LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
 }
 
 vector< message_api_obj > private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
@@ -185,6 +185,6 @@ flat_map<string,string> private_message_plugin::tracked_accounts() const
 
 } }
 
-STEEM_DEFINE_PLUGIN( private_message, steem::private_message::private_message_plugin )
+DPN_DEFINE_PLUGIN( private_message, dpn::private_message::private_message_plugin )
 
-STEEM_DEFINE_OPERATION_TYPE( steem::private_message::private_message_plugin_operation )
+DPN_DEFINE_OPERATION_TYPE( dpn::private_message::private_message_plugin_operation )

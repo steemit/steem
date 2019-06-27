@@ -2,7 +2,7 @@
 How plugins work
 ----------------
 
-All plugins in the `libraries/plugins` directory are iterated over by `CMakeLists.txt`. The manifest directory iterates through all plugins, adding them to the `steem_plugins` build target. Any other build target wanting to access all plugins
+All plugins in the `libraries/plugins` directory are iterated over by `CMakeLists.txt`. The manifest directory iterates through all plugins, adding them to the `dpn_plugins` build target. Any other build target wanting to access all plugins
 available at build time should link to this target.
 
 There is a plugin in `example_plugins` called `example_api_plugin` which is a working example of adding a custom API call.
@@ -11,7 +11,7 @@ Registering plugins
 -------------------
 
 - Plugins are enabled with the `plugins` config file option.
-- By default, steemd runs the `chain`, `p2p`, and `webserver` plugins.
+- By default, dpnd runs the `chain`, `p2p`, and `webserver` plugins.
 - Some plugins may keep records in the database (such as `account_history`).  If you change whether such a plugin is disabled/enabled, you should also replay the chain. Detecting this situation and automatically replaying when needed will be implemented in a future release.
 - To make an API visible, include the associated plugin in the `plugins` config file option. Only APIs explicitly made available through the config will be registered.
 
