@@ -282,6 +282,7 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
 ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
 ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
+ADD contrib/fullnode-reindex-config.cfg /etc/steemd/fullnode-reindex-config.cfg
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
