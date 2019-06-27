@@ -24,12 +24,12 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
-#include <steem/chain/database.hpp>
-#include <steem/protocol/protocol.hpp>
+#include <dpn/chain/database.hpp>
+#include <dpn/protocol/protocol.hpp>
 
-#include <steem/protocol/steem_operations.hpp>
+#include <dpn/protocol/dpn_operations.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>
@@ -38,9 +38,9 @@
 #include <algorithm>
 #include <random>
 
-using namespace steem;
-using namespace steem::chain;
-using namespace steem::protocol;
+using namespace dpn;
+using namespace dpn::chain;
+using namespace dpn::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( basic_tests, clean_database_fixture )
 

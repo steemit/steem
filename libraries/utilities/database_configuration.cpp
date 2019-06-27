@@ -1,13 +1,13 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <fc/reflect/variant.hpp>
-#include <steem/utilities/database_configuration.hpp>
+#include <dpn/utilities/database_configuration.hpp>
 
 #define KB(x)   ((size_t) (x) << 10)
 #define MB(x)   ((size_t) (x) << 20)
 #define GB(x)   ((size_t) (x) << 30)
 
-namespace steem { namespace utilities {
+namespace dpn { namespace utilities {
 
 namespace database { namespace configuration {
 
@@ -81,42 +81,42 @@ fc::variant default_database_configuration()
    return config_obj;
 }
 
-} } // steem::utilities
+} } // dpn::utilities
 
 
-FC_REFLECT( steem::utilities::database::configuration::shared_cache,
+FC_REFLECT( dpn::utilities::database::configuration::shared_cache,
    (capacity)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::write_buffer_manager,
+FC_REFLECT( dpn::utilities::database::configuration::write_buffer_manager,
    (write_buffer_size)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::global,
+FC_REFLECT( dpn::utilities::database::configuration::global,
    (shared_cache)
    (write_buffer_manager)
    (object_count)
    (statistics)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::bloom_filter_policy,
+FC_REFLECT( dpn::utilities::database::configuration::bloom_filter_policy,
    (bits_per_key)
    (use_block_based_builder)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::block_based_table_options,
+FC_REFLECT( dpn::utilities::database::configuration::block_based_table_options,
    (block_size)
    (cache_index_and_filter_blocks)
    (bloom_filter_policy)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::base_index,
+FC_REFLECT( dpn::utilities::database::configuration::base_index,
    (optimize_level_style_compaction)
    (increase_parallelism)
    (block_based_table_options)
 );
 
-FC_REFLECT( steem::utilities::database::configuration::configuration,
+FC_REFLECT( dpn::utilities::database::configuration::configuration,
    (global)
    (base)
 );

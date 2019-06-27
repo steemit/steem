@@ -1,17 +1,17 @@
 #if defined IS_TEST_NET
 #include <boost/test/unit_test.hpp>
-#include <steem/chain/account_object.hpp>
-#include <steem/protocol/steem_operations.hpp>
-#include <steem/protocol/config.hpp>
-#include <steem/plugins/transaction_status/transaction_status_plugin.hpp>
-#include <steem/plugins/transaction_status/transaction_status_objects.hpp>
-#include <steem/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
-#include <steem/plugins/transaction_status_api/transaction_status_api.hpp>
+#include <dpn/chain/account_object.hpp>
+#include <dpn/protocol/dpn_operations.hpp>
+#include <dpn/protocol/config.hpp>
+#include <dpn/plugins/transaction_status/transaction_status_plugin.hpp>
+#include <dpn/plugins/transaction_status/transaction_status_objects.hpp>
+#include <dpn/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
+#include <dpn/plugins/transaction_status_api/transaction_status_api.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace steem::chain;
-using namespace steem::protocol;
+using namespace dpn::chain;
+using namespace dpn::protocol;
 
 #define TRANSCATION_STATUS_TRACK_AFTER_BLOCK 1300
 #define TRANSCATION_STATUS_TRACK_AFTER_BLOCK_STR BOOST_PP_STRINGIZE( TRANSCATION_STATUS_TRACK_AFTER_BLOCK )
@@ -22,7 +22,7 @@ BOOST_FIXTURE_TEST_SUITE( transaction_status, database_fixture );
 
 BOOST_AUTO_TEST_CASE( transaction_status_test )
 {
-   using namespace steem::plugins::transaction_status;
+   using namespace dpn::plugins::transaction_status;
 
    try
    {
@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       }
 
       appbase::app().register_plugin< transaction_status_plugin >();
-      appbase::app().register_plugin< steem::plugins::transaction_status_api::transaction_status_api_plugin >();
-      db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+      appbase::app().register_plugin< dpn::plugins::transaction_status_api::transaction_status_api_plugin >();
+      db_plugin = &appbase::app().register_plugin< dpn::plugins::debug_node::debug_node_plugin >();
       init_account_pub_key = init_account_priv_key.get_public_key();
 
       // We create an argc/argv so that the transaction_status plugin can be initialized with a reasonable block depth
@@ -53,16 +53,16 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       db_plugin->logging = false;
       appbase::app().initialize<
-         steem::plugins::transaction_status_api::transaction_status_api_plugin,
-         steem::plugins::debug_node::debug_node_plugin >( test_argc, (char**)test_argv );
+         dpn::plugins::transaction_status_api::transaction_status_api_plugin,
+         dpn::plugins::debug_node::debug_node_plugin >( test_argc, (char**)test_argv );
 
-      db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
+      db = &appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
-      auto tx_status_api = &appbase::app().get_plugin< steem::plugins::transaction_status_api::transaction_status_api_plugin >();
+      auto tx_status_api = &appbase::app().get_plugin< dpn::plugins::transaction_status_api::transaction_status_api_plugin >();
       BOOST_REQUIRE( tx_status_api );
 
-      auto tx_status = &appbase::app().get_plugin< steem::plugins::transaction_status::transaction_status_plugin >();
+      auto tx_status = &appbase::app().get_plugin< dpn::plugins::transaction_status::transaction_status_plugin >();
       BOOST_REQUIRE( tx_status );
 
       open_database();
@@ -74,17 +74,17 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       BOOST_REQUIRE( tx_status->state_is_valid() );
 
       generate_block();
-      db->set_hardfork( STEEM_NUM_HARDFORKS );
+      db->set_hardfork( DPN_NUM_HARDFORKS );
       generate_block();
 
       vest( "initminer", 10000 );
 
       // Fill up the rest of the required miners
-      for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
+      for( int i = DPN_NUM_INIT_MINERS; i < DPN_MAX_WITNESSES; i++ )
       {
-         account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-         fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
-         witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
+         account_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+         fund( DPN_INIT_MINER_NAME + fc::to_string( i ), DPN_MIN_PRODUCER_REWARD.amount.value );
+         witness_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, DPN_MIN_PRODUCER_REWARD.amount );
       }
 
       validate_database();
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       signed_transaction tx0;
       transfer_operation op0;
-      auto tx0_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx0_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op0.from = "alice";
       op0.to = "bob";
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       sign( tx0, alice_private_key );
       db->push_transaction( tx0, 0 );
 
-      // Tracking should not be enabled until we have reached TRANSCATION_STATUS_TRACK_AFTER_BLOCK - ( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL ) blocks
+      // Tracking should not be enabled until we have reached TRANSCATION_STATUS_TRACK_AFTER_BLOCK - ( DPN_MAX_TIME_UNTIL_EXPIRATION / DPN_BLOCK_INTERVAL ) blocks
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_trx_id >().empty() );
       BOOST_REQUIRE( db->get_index< transaction_status_index >().indices().get< by_block_num >().empty() );
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       signed_transaction tx1;
       transfer_operation op1;
-      auto tx1_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx1_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op1.from = "alice";
       op1.to = "bob";
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       // Create transaction 2
       signed_transaction tx2;
       transfer_operation op2;
-      auto tx2_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx2_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op2.from = "alice";
       op2.to = "bob";
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       // Create transaction 3
       signed_transaction tx3;
       transfer_operation op3;
-      auto tx3_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx3_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op3.from = "bob";
       op3.to = "alice";
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
 
       BOOST_REQUIRE( tx_status->state_is_valid() );
 
-      generate_blocks( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL );
+      generate_blocks( DPN_MAX_TIME_UNTIL_EXPIRATION / DPN_BLOCK_INTERVAL );
 
       // Transaction 1 is no longer tracked
       tso = db->find< transaction_status_object, by_trx_id >( tx1.id() );
@@ -416,7 +416,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       // Create transaction 4
       signed_transaction tx4;
       transfer_operation op4;
-      auto tx4_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx4_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op4.from = "alice";
       op4.to = "bob";
@@ -444,7 +444,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       // Create transaction 5
       signed_transaction tx5;
       transfer_operation op5;
-      auto tx5_expiration = db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION;
+      auto tx5_expiration = db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION;
 
       op5.from = "alice";
       op5.to = "bob";
@@ -455,7 +455,7 @@ BOOST_AUTO_TEST_CASE( transaction_status_test )
       sign( tx5, alice_private_key );
       db->push_transaction( tx5, 0 );
 
-      generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH + ( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL ) - 1 );
+      generate_blocks( TRANSACTION_STATUS_TEST_BLOCK_DEPTH + ( DPN_MAX_TIME_UNTIL_EXPIRATION / DPN_BLOCK_INTERVAL ) - 1 );
 
       const auto& tx_status_obj2 = db->get< transaction_status_object, by_trx_id >( tx5.id() );
       db->remove( tx_status_obj2 );

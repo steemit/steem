@@ -1,9 +1,9 @@
 #pragma once
 
-#include <steem/chain/database.hpp>
+#include <dpn/chain/database.hpp>
 #include <fstream>
 
-namespace steem { namespace chain {
+namespace dpn { namespace chain {
 
    namespace u_types
    {

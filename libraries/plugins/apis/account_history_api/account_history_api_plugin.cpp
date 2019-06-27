@@ -1,8 +1,8 @@
-#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steem/plugins/account_history_api/account_history_api.hpp>
+#include <dpn/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <dpn/plugins/account_history_api/account_history_api.hpp>
 
 
-namespace steem { namespace plugins { namespace account_history {
+namespace dpn { namespace plugins { namespace account_history {
 
 account_history_api_plugin::account_history_api_plugin() {}
 account_history_api_plugin::~account_history_api_plugin() {}
@@ -17,4 +17,4 @@ void account_history_api_plugin::plugin_initialize( const variables_map& options
 void account_history_api_plugin::plugin_startup() {}
 void account_history_api_plugin::plugin_shutdown() {}
 
-} } } // steem::plugins::account_history
+} } } // dpn::plugins::account_history

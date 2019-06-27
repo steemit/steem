@@ -21,10 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steem/utilities/string_escape.hpp>
+#include <dpn/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace steem { namespace utilities {
+namespace dpn { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {
@@ -69,5 +69,5 @@ namespace steem { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace steem::utilities
+} } // end namespace dpn::utilities
 

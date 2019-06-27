@@ -1,5 +1,5 @@
 - config:
-  - testset: "Basic steemd API Smoke Test"
+  - testset: "Basic dpnd API Smoke Test"
 
 - test:
   - name: "Test ip address"

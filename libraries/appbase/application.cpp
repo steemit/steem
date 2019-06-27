@@ -146,7 +146,7 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
 
          data_dir = data_dir / app_dir.str();
 
-         #pragma message( "TODO: Remove this check for Steem release 0.20.1+" )
+         #pragma message( "TODO: Remove this check for Dpn release 0.20.1+" )
          bfs::path old_dir = bfs::current_path() / "witness_node_data_dir";
          if( bfs::exists( old_dir ) )
          {
@@ -218,7 +218,7 @@ void application::quit() {
 
 void application::exec() {
    /** To avoid killing process by broken pipe and continue regular app shutdown.
-    *  Useful for usecase: `steemd | tee steemd.log` and pressing Ctrl+C
+    *  Useful for usecase: `dpnd | tee dpnd.log` and pressing Ctrl+C
     **/
    signal(SIGPIPE, SIG_IGN);
 

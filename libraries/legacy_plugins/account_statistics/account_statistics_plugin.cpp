@@ -1,11 +1,11 @@
-#include <steem/account_statistics/account_statistics_api.hpp>
+#include <dpn/account_statistics/account_statistics_api.hpp>
 
-#include <steem/chain/account_object.hpp>
-#include <steem/chain/comment_object.hpp>
+#include <dpn/chain/account_object.hpp>
+#include <dpn/chain/comment_object.hpp>
 
-#include <steem/chain/database.hpp>
+#include <dpn/chain/database.hpp>
 
-namespace steem { namespace account_statistics {
+namespace dpn { namespace account_statistics {
 
 namespace detail
 {
@@ -105,6 +105,6 @@ const flat_set< std::string >& account_statistics_plugin::get_tracked_accounts()
    return _my->_tracked_accounts;
 }
 
-} } // steem::account_statistics
+} } // dpn::account_statistics
 
-STEEM_DEFINE_PLUGIN( account_statistics, steem::account_statistics::account_statistics_plugin );
+DPN_DEFINE_PLUGIN( account_statistics, dpn::account_statistics::account_statistics_plugin );

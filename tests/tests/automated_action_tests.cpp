@@ -1,20 +1,20 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
-#include <steem/protocol/exceptions.hpp>
+#include <dpn/protocol/exceptions.hpp>
 
-#include <steem/chain/pending_required_action_object.hpp>
-#include <steem/chain/pending_optional_action_object.hpp>
+#include <dpn/chain/pending_required_action_object.hpp>
+#include <dpn/chain/pending_optional_action_object.hpp>
 
-#include <steem/plugins/witness/block_producer.hpp>
+#include <dpn/plugins/witness/block_producer.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace steem;
-using namespace steem::chain;
-using namespace steem::protocol;
+using namespace dpn;
+using namespace dpn::chain;
+using namespace dpn::protocol;
 using fc::string;
 
 BOOST_FIXTURE_TEST_SUITE( automated_action_tests, clean_database_fixture )
@@ -32,19 +32,19 @@ BOOST_AUTO_TEST_CASE( push_pending_required_actions )
    BOOST_REQUIRE_THROW( db->push_required_action( req_action ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( "--- Success pushing future action" );
-   req_action.account = STEEM_INIT_MINER_NAME;
+   req_action.account = DPN_INIT_MINER_NAME;
    req_action.validate();
-   db->push_required_action( req_action, db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   db->push_required_action( req_action, db->head_block_time() + DPN_BLOCK_INTERVAL );
    auto pending_req_action = db->get_index< pending_required_action_index, by_execution >().begin()->action.get< example_required_action >();
    auto pending_execution = db->get_index< pending_required_action_index, by_execution> ().begin()->execution_time;
    BOOST_REQUIRE( pending_req_action == req_action );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   BOOST_REQUIRE( pending_execution == db->head_block_time() + DPN_BLOCK_INTERVAL );
 
    BOOST_TEST_MESSAGE( "--- Failure pushing past action" );
-   BOOST_REQUIRE_THROW( db->push_required_action( req_action, db->head_block_time() - STEEM_BLOCK_INTERVAL ), fc::assert_exception );
+   BOOST_REQUIRE_THROW( db->push_required_action( req_action, db->head_block_time() - DPN_BLOCK_INTERVAL ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( "--- Success pushing action now" );
-   req_action.account = STEEM_TEMP_ACCOUNT;
+   req_action.account = DPN_TEMP_ACCOUNT;
    db->push_required_action( req_action );
    pending_req_action = db->get_index< pending_required_action_index, by_execution >().begin()->action.get< example_required_action >();
    pending_execution = db->get_index< pending_required_action_index, by_execution> ().begin()->execution_time;
@@ -65,19 +65,19 @@ BOOST_AUTO_TEST_CASE( push_pending_optional_actions )
    BOOST_REQUIRE_THROW( db->push_optional_action( opt_action ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( "--- Success pushing future action" );
-   opt_action.account = STEEM_INIT_MINER_NAME;
+   opt_action.account = DPN_INIT_MINER_NAME;
    opt_action.validate();
-   db->push_optional_action( opt_action, db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   db->push_optional_action( opt_action, db->head_block_time() + DPN_BLOCK_INTERVAL );
    auto pending_opt_action = db->get_index< pending_optional_action_index, by_execution >().begin()->action.get< example_optional_action >();
    auto pending_execution = db->get_index< pending_optional_action_index, by_execution> ().begin()->execution_time;
    BOOST_REQUIRE( pending_opt_action.account == opt_action.account );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   BOOST_REQUIRE( pending_execution == db->head_block_time() + DPN_BLOCK_INTERVAL );
 
    BOOST_TEST_MESSAGE( "--- Failure pushing past action" );
-   BOOST_REQUIRE_THROW( db->push_optional_action( opt_action, db->head_block_time() - STEEM_BLOCK_INTERVAL ), fc::assert_exception );
+   BOOST_REQUIRE_THROW( db->push_optional_action( opt_action, db->head_block_time() - DPN_BLOCK_INTERVAL ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( "--- Success pushing action now" );
-   opt_action.account = STEEM_TEMP_ACCOUNT;
+   opt_action.account = DPN_TEMP_ACCOUNT;
    db->push_optional_action( opt_action );
    pending_opt_action = db->get_index< pending_optional_action_index, by_execution >().begin()->action.get< example_optional_action >();
    pending_execution = db->get_index< pending_optional_action_index, by_execution> ().begin()->execution_time;
@@ -102,17 +102,17 @@ BOOST_AUTO_TEST_CASE( full_block )
    db_plugin->debug_update( [&num_actions, &req_action, &opt_action](database& db)
    {
       uint64_t block_size = 0;
-      uint64_t action_partition_size = ( db.get_dynamic_global_properties().maximum_block_size * db.get_dynamic_global_properties().required_actions_partition_percent ) / STEEM_100_PERCENT;
+      uint64_t action_partition_size = ( db.get_dynamic_global_properties().maximum_block_size * db.get_dynamic_global_properties().required_actions_partition_percent ) / DPN_100_PERCENT;
 
       while( block_size < action_partition_size )
       {
-         req_action.account = STEEM_INIT_MINER_NAME + fc::to_string( num_actions );
+         req_action.account = DPN_INIT_MINER_NAME + fc::to_string( num_actions );
          db.push_required_action( req_action );
          block_size += fc::raw::pack_size( required_automated_action( req_action ) );
          num_actions++;
       }
 
-      opt_action.account = STEEM_TEMP_ACCOUNT;
+      opt_action.account = DPN_TEMP_ACCOUNT;
       db.push_optional_action( opt_action );
    });
 
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE( full_block )
    // Clear optional actions and the last required action and resign.
    block.extensions.erase( *block.extensions.end() );
    block.extensions.begin()->get< required_automated_actions >().pop_back();
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    db->push_block( block );
 
@@ -138,10 +138,10 @@ BOOST_AUTO_TEST_CASE( full_block )
 
       BOOST_REQUIRE( pending_req_action != pending_req_index.end() );
       BOOST_REQUIRE( pending_req_action->action.get< example_required_action >() == req_action );
-      BOOST_REQUIRE( pending_req_action->execution_time == db->head_block_time() - STEEM_BLOCK_INTERVAL );
+      BOOST_REQUIRE( pending_req_action->execution_time == db->head_block_time() - DPN_BLOCK_INTERVAL );
       BOOST_REQUIRE( pending_opt_action != pending_opt_index.end() );
       BOOST_REQUIRE( pending_opt_action->action.get< example_optional_action >().account == opt_action.account );
-      BOOST_REQUIRE( pending_opt_action->execution_time == db->head_block_time() - STEEM_BLOCK_INTERVAL );
+      BOOST_REQUIRE( pending_opt_action->execution_time == db->head_block_time() - DPN_BLOCK_INTERVAL );
    }
 
    BOOST_TEST_MESSAGE( "--- Testing inclusion of delayed action" );
@@ -173,11 +173,11 @@ BOOST_AUTO_TEST_CASE( pending_required_execution )
 
    db_plugin->debug_update( [&req_action](database& db)
    {
-      req_action.account = STEEM_INIT_MINER_NAME;
+      req_action.account = DPN_INIT_MINER_NAME;
       db.push_required_action( req_action );
 
-      req_action.account = STEEM_NULL_ACCOUNT;
-      db.push_required_action( req_action, db.head_block_time() + (2 * STEEM_BLOCK_INTERVAL ) );
+      req_action.account = DPN_NULL_ACCOUNT;
+      db.push_required_action( req_action, db.head_block_time() + (2 * DPN_BLOCK_INTERVAL ) );
    });
 
    auto pending_itr = db->get_index< pending_required_action_index, by_execution >().begin();
@@ -206,11 +206,11 @@ BOOST_AUTO_TEST_CASE( unexpected_required_action )
    db->pop_block();
 
    example_required_action req_action;
-   req_action.account = STEEM_TEMP_ACCOUNT;
+   req_action.account = DPN_TEMP_ACCOUNT;
    required_automated_actions req_actions;
    req_actions.push_back( req_action );
    block.extensions.insert( req_actions );
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    BOOST_REQUIRE_THROW( db->push_block( block ), fc::assert_exception );
 
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE( missing_required_action )
 
    db_plugin->debug_update( [&req_action](database& db)
    {
-      req_action.account = STEEM_INIT_MINER_NAME;
+      req_action.account = DPN_INIT_MINER_NAME;
       db.push_required_action( req_action );
    });
 
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE( missing_required_action )
    db->pop_block();
 
    block.extensions.clear();
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    BOOST_REQUIRE_THROW( db->push_block( block ), fc::assert_exception );
 
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE( optional_action_expiration )
 { try {
    BOOST_TEST_MESSAGE( "Testing local expiration of an optional action" );
 
-   for( uint32_t i = 0; i < STEEM_MAX_WITNESSES; i++ )
+   for( uint32_t i = 0; i < DPN_MAX_WITNESSES; i++ )
    {
       generate_block();
    }
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE( optional_action_expiration )
       db.create< pending_optional_action_object >( [&]( pending_optional_action_object& o )
       {
          example_optional_action opt_action;
-         opt_action.account = STEEM_NULL_ACCOUNT;
+         opt_action.account = DPN_NULL_ACCOUNT;
          o.action = opt_action;
          o.execution_time = next_lib_time;
       });
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( optional_action_expiration )
    db->pop_block();
 
    block.extensions.erase( *block.extensions.rbegin() );
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    db->push_block( block );
 
@@ -300,10 +300,10 @@ BOOST_AUTO_TEST_CASE( unexpected_optional_action )
    db->pop_block();
 
    example_optional_action opt_action;
-   opt_action.account = STEEM_NULL_ACCOUNT;
+   opt_action.account = DPN_NULL_ACCOUNT;
    optional_automated_actions opt_actions = { opt_action };
    block.extensions.insert( opt_actions );
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    db->push_block( block );
 
@@ -329,7 +329,7 @@ BOOST_AUTO_TEST_CASE( reject_optional_action )
    opt_action.account = "_foobar";
    optional_automated_actions opt_actions = { opt_action };
    block.extensions.insert( opt_actions );
-   block.sign( STEEM_INIT_PRIVATE_KEY );
+   block.sign( DPN_INIT_PRIVATE_KEY );
 
    BOOST_REQUIRE_THROW( db->push_block( block ), fc::assert_exception );
 

@@ -29,17 +29,17 @@
 #include <boost/test/included/unit_test.hpp>
 
 /*
-extern uint32_t STEEM_TESTING_GENESIS_TIMESTAMP;
+extern uint32_t DPN_TESTING_GENESIS_TIMESTAMP;
 
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
    std::srand(time(NULL));
    std::cout << "Random number generator seeded to " << time(NULL) << std::endl;
-   const char* genesis_timestamp_str = getenv("STEEM_TESTING_GENESIS_TIMESTAMP");
+   const char* genesis_timestamp_str = getenv("DPN_TESTING_GENESIS_TIMESTAMP");
    if( genesis_timestamp_str != nullptr )
    {
-      STEEM_TESTING_GENESIS_TIMESTAMP = std::stoul( genesis_timestamp_str );
+      DPN_TESTING_GENESIS_TIMESTAMP = std::stoul( genesis_timestamp_str );
    }
-   std::cout << "STEEM_TESTING_GENESIS_TIMESTAMP is " << STEEM_TESTING_GENESIS_TIMESTAMP << std::endl;
+   std::cout << "DPN_TESTING_GENESIS_TIMESTAMP is " << DPN_TESTING_GENESIS_TIMESTAMP << std::endl;
    return nullptr;
 }
 */

@@ -32,7 +32,7 @@
     "median_props": {
         "account_creation_fee": "0.000 TESTS",
         "maximum_block_size": 131072,
-        "sbd_interest_rate": 1000
+        "dbd_interest_rate": 1000
     },
     "miner_weight": 1,
     "next_shuffle_block_num": 1,

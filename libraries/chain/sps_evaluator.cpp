@@ -1,23 +1,23 @@
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
-#include <steem/protocol/sps_operations.hpp>
+#include <dpn/protocol/sps_operations.hpp>
 
-#include <steem/chain/database.hpp>
-#include <steem/chain/steem_evaluator.hpp>
-#include <steem/chain/sps_objects.hpp>
+#include <dpn/chain/database.hpp>
+#include <dpn/chain/dpn_evaluator.hpp>
+#include <dpn/chain/sps_objects.hpp>
 
-#include <steem/chain/util/sps_helper.hpp>
+#include <dpn/chain/util/sps_helper.hpp>
 
 
-namespace steem { namespace chain {
+namespace dpn { namespace chain {
 
-using steem::chain::create_proposal_evaluator;
+using dpn::chain::create_proposal_evaluator;
 
 void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 {
    try
    {
-      FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
+      FC_ASSERT( _db.has_hardfork( DPN_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", DPN_PROPOSALS_HARDFORK) );
 
       /** start date can be earlier than head_block_time - otherwise creating a proposal can be difficult,
           since passed date should be adjusted by potential transaction execution delay (i.e. 3 sec
@@ -25,13 +25,13 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
       */
       FC_ASSERT(o.end_date > _db.head_block_time(), "Can't create inactive proposals...");
 
-      asset fee_sbd( STEEM_TREASURY_FEE, SBD_SYMBOL );
+      asset fee_dbd( DPN_TREASURY_FEE, DBD_SYMBOL );
 
-      FC_ASSERT( _db.get_balance( o.creator, SBD_SYMBOL ) >= fee_sbd,
-         "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_sbd) );
+      FC_ASSERT( _db.get_balance( o.creator, DBD_SYMBOL ) >= fee_dbd,
+         "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_dbd) );
 
       //treasury account must exist, also we need it later to change its balance
-      const auto& treasury_account =_db.get_account( STEEM_TREASURY_ACCOUNT );
+      const auto& treasury_account =_db.get_account( DPN_TREASURY_ACCOUNT );
 
       const auto& owner_account = _db.get_account( o.creator );
       const auto* receiver_account = _db.find_account( o.receiver );
@@ -64,9 +64,9 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
          proposal.permlink = o.permlink.c_str();
       });
 
-      _db.adjust_balance( owner_account, -fee_sbd );
+      _db.adjust_balance( owner_account, -fee_dbd );
       /// Fee shall be paid to the treasury
-      _db.adjust_balance(treasury_account, fee_sbd );
+      _db.adjust_balance(treasury_account, fee_dbd );
    }
    FC_CAPTURE_AND_RETHROW( (o) )
 }
@@ -75,7 +75,7 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
 {
    try
    {
-      FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
+      FC_ASSERT( _db.has_hardfork( DPN_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", DPN_PROPOSALS_HARDFORK) );
 
       const auto& pidx = _db.get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& pvidx = _db.get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
@@ -112,13 +112,13 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
 {
    try
    {
-      FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
+      FC_ASSERT( _db.has_hardfork( DPN_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", DPN_PROPOSALS_HARDFORK) );
 
       sps_helper::remove_proposals( _db, op.proposal_ids, op.proposal_owner );
 
       /*
          Because of performance removing proposals are restricted due to the `sps_remove_threshold` threshold.
-         Therefore all proposals are marked with flag `removed` and `end_date` is moved beyond 'head_time + STEEM_PROPOSAL_MAINTENANCE_CLEANUP`
+         Therefore all proposals are marked with flag `removed` and `end_date` is moved beyond 'head_time + DPN_PROPOSAL_MAINTENANCE_CLEANUP`
          flag `removed` - it's information for 'sps_api' plugin
          moving `end_date` - triggers the algorithm in `sps_processor::remove_proposals`
 
@@ -137,7 +137,7 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
             proposal.removed = true;
 
             auto head_date = _db.head_block_time();
-            auto new_end_date = head_date - fc::seconds( STEEM_PROPOSAL_MAINTENANCE_CLEANUP );
+            auto new_end_date = head_date - fc::seconds( DPN_PROPOSAL_MAINTENANCE_CLEANUP );
 
             proposal.end_date = new_end_date;
          } );
@@ -147,4 +147,4 @@ void remove_proposal_evaluator::do_apply(const remove_proposal_operation& op)
    FC_CAPTURE_AND_RETHROW( (op) )
 }
 
-} } // steem::chain
+} } // dpn::chain

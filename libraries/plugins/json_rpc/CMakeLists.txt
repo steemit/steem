@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/plugins/json_rpc/*.hpp")
+file(GLOB HEADERS "include/dpn/plugins/json_rpc/*.hpp")
 
 add_library( json_rpc_plugin
              json_rpc_plugin.cpp

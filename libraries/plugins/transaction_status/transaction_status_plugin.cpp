@@ -1,11 +1,11 @@
 
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
-#include <steem/plugins/transaction_status/transaction_status_plugin.hpp>
-#include <steem/plugins/transaction_status/transaction_status_objects.hpp>
-#include <steem/chain/database.hpp>
-#include <steem/chain/index.hpp>
-#include <steem/protocol/config.hpp>
+#include <dpn/plugins/transaction_status/transaction_status_plugin.hpp>
+#include <dpn/plugins/transaction_status/transaction_status_objects.hpp>
+#include <dpn/chain/database.hpp>
+#include <dpn/chain/index.hpp>
+#include <dpn/protocol/config.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -37,14 +37,14 @@
  *      see `plugin_initialize`
  */
 
-namespace steem { namespace plugins { namespace transaction_status {
+namespace dpn { namespace plugins { namespace transaction_status {
 
 namespace detail {
 
 class transaction_status_impl
 {
 public:
-   transaction_status_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+   transaction_status_impl() : _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
    virtual ~transaction_status_impl() {}
 
    void on_post_apply_transaction( const transaction_notification& note );
@@ -282,10 +282,10 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
 
       // We need to begin tracking 1 hour of blocks prior to the user provided track after block
       // A value of 0 indicates we should start tracking immediately
-      my->actual_track_after_block = std::max< int64_t >( 0, int64_t( my->nominal_track_after_block ) - int64_t( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL ) );
+      my->actual_track_after_block = std::max< int64_t >( 0, int64_t( my->nominal_track_after_block ) - int64_t( DPN_MAX_TIME_UNTIL_EXPIRATION / DPN_BLOCK_INTERVAL ) );
 
       // We need to track 1 hour of blocks in addition to the depth the user would like us to track
-      my->actual_block_depth = my->nominal_block_depth + ( STEEM_MAX_TIME_UNTIL_EXPIRATION / STEEM_BLOCK_INTERVAL );
+      my->actual_block_depth = my->nominal_block_depth + ( DPN_MAX_TIME_UNTIL_EXPIRATION / DPN_BLOCK_INTERVAL );
 
       dlog( "transaction status initializing" );
       dlog( "  -> nominal block depth: ${block_depth}", ("block_depth", my->nominal_block_depth) );
@@ -299,7 +299,7 @@ void transaction_status_plugin::plugin_initialize( const boost::program_options:
          my->tracking = true;
       }
 
-      STEEM_ADD_PLUGIN_INDEX(my->_db, transaction_status_index);
+      DPN_ADD_PLUGIN_INDEX(my->_db, transaction_status_index);
 
       appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), state_opts );
 
@@ -357,4 +357,4 @@ void transaction_status_plugin::rebuild_state()
 
 #endif
 
-} } } // steem::plugins::transaction_status
+} } } // dpn::plugins::transaction_status

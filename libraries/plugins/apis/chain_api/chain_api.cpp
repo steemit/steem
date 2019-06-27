@@ -1,7 +1,7 @@
-#include <steem/plugins/chain_api/chain_api_plugin.hpp>
-#include <steem/plugins/chain_api/chain_api.hpp>
+#include <dpn/plugins/chain_api/chain_api_plugin.hpp>
+#include <dpn/plugins/chain_api/chain_api.hpp>
 
-namespace steem { namespace plugins { namespace chain {
+namespace dpn { namespace plugins { namespace chain {
 
 namespace detail {
 
@@ -76,7 +76,7 @@ DEFINE_API_IMPL( chain_api_impl, push_transaction )
 
 chain_api::chain_api(): my( new detail::chain_api_impl() )
 {
-   JSON_RPC_REGISTER_API( STEEM_CHAIN_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_CHAIN_API_PLUGIN_NAME );
 }
 
 chain_api::~chain_api() {}
@@ -86,4 +86,4 @@ DEFINE_LOCKLESS_APIS( chain_api,
    (push_transaction)
 )
 
-} } } //steem::plugins::chain
+} } } //dpn::plugins::chain

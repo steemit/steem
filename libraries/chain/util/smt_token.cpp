@@ -1,9 +1,9 @@
-#include <steem/chain/steem_fwd.hpp>
-#include <steem/chain/util/smt_token.hpp>
-#include <steem/chain/steem_object_types.hpp>
-#ifdef STEEM_ENABLE_SMT
+#include <dpn/chain/dpn_fwd.hpp>
+#include <dpn/chain/util/smt_token.hpp>
+#include <dpn/chain/dpn_object_types.hpp>
+#ifdef DPN_ENABLE_SMT
 
-namespace steem { namespace chain { namespace util { namespace smt {
+namespace dpn { namespace chain { namespace util { namespace smt {
 
 const smt_token_object* find_token( const database& db, uint32_t nai )
 {
@@ -68,6 +68,6 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    return {};
 }
 
-} } } } // steem::chain::util::smt
+} } } } // dpn::chain::util::smt
 
 #endif
