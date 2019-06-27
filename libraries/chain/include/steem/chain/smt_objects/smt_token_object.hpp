@@ -16,7 +16,6 @@ enum class smt_phase : uint8_t
    setup_completed,
    contribution_begin_time_completed,
    contribution_end_time_completed,
-   launch_time_completed,              /// launch window opened
    launch_failed,                      /// launch window closed with either not enough contributions or some cap not revealed
    launch_success                      /// enough contributions were declared and caps revealed before launch windows closed
 };
@@ -129,8 +128,7 @@ public:
    smt_capped_generation_policy  capped_generation_policy;
    time_point_sec                generation_begin_time;
    time_point_sec                generation_end_time;
-   time_point_sec                announced_launch_time;
-   time_point_sec                launch_expiration_time;
+   time_point_sec                launch_time;
 
    // smt_cap_reveal
    share_type  steem_units_min_cap = -1;
@@ -272,7 +270,6 @@ FC_REFLECT_ENUM( steem::chain::smt_phase,
                   (setup_completed)
                   (contribution_begin_time_completed)
                   (contribution_end_time_completed)
-                  (launch_time_completed)
                   (launch_failed)
                   (launch_success)
 )
@@ -313,8 +310,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (capped_generation_policy)
    (generation_begin_time)
    (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
+   (launch_time)
    (steem_units_min_cap)
    (steem_units_hard_cap)
 )

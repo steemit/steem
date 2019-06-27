@@ -2656,8 +2656,6 @@ void database::initialize_evaluators()
 
 #ifdef STEEM_ENABLE_SMT
    _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
-   _my->_evaluator_registry.register_evaluator< smt_cap_reveal_evaluator                 >();
-   _my->_evaluator_registry.register_evaluator< smt_refund_evaluator                     >();
    _my->_evaluator_registry.register_evaluator< smt_setup_emissions_evaluator            >();
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();

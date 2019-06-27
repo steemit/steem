@@ -96,41 +96,6 @@ void smt_generation_unit::validate()const
    }
 }
 
-void smt_cap_commitment::fillin_nonhidden_value_hash( fc::sha256& result, share_type amount )
-{
-   smt_revealed_cap rc;
-   rc.fillin_nonhidden_value( amount );
-   result = fc::sha256::hash(rc);
-}
-
-void smt_cap_commitment::fillin_nonhidden_value( share_type value )
-{
-   lower_bound = value;
-   upper_bound = value;
-   fillin_nonhidden_value_hash( hash, value );
-}
-
-void smt_cap_commitment::validate()const
-{
-   FC_ASSERT( lower_bound > 0 );
-   FC_ASSERT( upper_bound <= STEEM_MAX_SHARE_SUPPLY );
-   FC_ASSERT( lower_bound <= upper_bound );
-   if( lower_bound == upper_bound )
-   {
-      fc::sha256 h;
-      fillin_nonhidden_value_hash( h, lower_bound );
-      FC_ASSERT( hash == h );
-   }
-}
-
-void smt_revealed_cap::validate( const smt_cap_commitment& commitment )const
-{
-   FC_ASSERT( amount >= commitment.lower_bound );
-   FC_ASSERT( amount <= commitment.upper_bound );
-   fc::sha256 reveal_hash( fc::sha256::hash(*this) );
-   FC_ASSERT( reveal_hash == commitment.hash );
-}
-
 void smt_capped_generation_policy::validate()const
 {
    pre_soft_cap_unit.validate();
@@ -158,7 +123,7 @@ void smt_capped_generation_policy::validate()const
    {
       FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
    }
-
+/*
    min_steem_units_commitment.validate();
    hard_cap_steem_units_commitment.validate();
 
@@ -198,6 +163,7 @@ void smt_capped_generation_policy::validate()const
 
    uint128_t max_steem_accepted = (pre_soft_cap_unit.steem_unit_sum() * sc + post_soft_cap_unit.steem_unit_sum() * hc_sc);
    FC_ASSERT( max_steem_accepted <= max_share_supply_u128 );
+*/
 }
 
 struct validate_visitor
@@ -270,8 +236,11 @@ void smt_setup_operation::validate()const
    initial_generation_policy.visit( vtor );
    FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
    FC_ASSERT( generation_end_time > generation_begin_time );
-   FC_ASSERT( announced_launch_time >= generation_end_time );
-   FC_ASSERT( launch_expiration_time >= announced_launch_time );
+   FC_ASSERT( launch_time >= generation_end_time );
+   FC_ASSERT( steem_units_min_cap <= steem_units_hard_cap );
+   FC_ASSERT( steem_units_min_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
+   FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS );
+   FC_ASSERT( steem_units_hard_cap <= STEEM_MAX_SHARE_SUPPLY );
 }
 
 struct smt_set_runtime_parameters_operation_visitor
@@ -362,18 +331,6 @@ void smt_set_runtime_parameters_operation::validate()const
    smt_set_runtime_parameters_operation_visitor visitor;
    for( auto& param: runtime_parameters )
       param.visit( visitor );
-}
-
-void smt_refund_operation::validate()const
-{
-   smt_executor_base_operation::validate();
-   FC_ASSERT( is_valid_account_name( contributor ) );
-   FC_ASSERT( amount.symbol == STEEM_SYMBOL );
-}
-
-void smt_cap_reveal_operation::validate()const
-{
-   smt_base_operation::validate();
 }
 
 void smt_set_setup_parameters_operation::validate() const

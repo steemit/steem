@@ -818,32 +818,10 @@ smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const unit
 }
 
 template< typename T >
-smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type amount, uint128_t nonce )
-{
-   smt_cap_commitment ret;
-   if( nonce == 0)
-      ret.fillin_nonhidden_value( amount );
-   else
-   {
-      smt_revealed_cap reveal;
-      reveal.amount = amount;
-      reveal.nonce = nonce;
-
-      ret.hash = fc::sha256::hash( reveal );
-      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy::validate
-      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
-   }
-
-   return ret;
-}
-
-template< typename T >
 smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_steem_units_commitment,
-   const smt_cap_commitment& hard_cap_steem_units_commitment,
    uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
@@ -853,9 +831,6 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
 
    ret.pre_soft_cap_unit = pre_soft_cap_unit;
    ret.post_soft_cap_unit = post_soft_cap_unit;
-
-   ret.min_steem_units_commitment = min_steem_units_commitment;
-   ret.hard_cap_steem_units_commitment = hard_cap_steem_units_commitment;
 
    ret.soft_cap_percent = soft_cap_percent;
 
@@ -874,13 +849,10 @@ template void t_smt_database_fixture< clean_database_fixture >::create_conflicti
 template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
 
 template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
-template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount, uint128_t nonce );
 template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_steem_units_commitment,
-   const smt_cap_commitment& hard_cap_steem_units_commitment,
    uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio

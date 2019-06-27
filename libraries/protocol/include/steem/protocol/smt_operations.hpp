@@ -73,42 +73,10 @@ struct smt_generation_unit
    void validate()const;
 };
 
-struct smt_cap_commitment
-{
-   share_type            lower_bound;
-   share_type            upper_bound;
-   digest_type           hash;
-
-   void validate()const;
-
-   // helper to get what the hash should be when lower_bound == upper_bound and nonce == 0
-   static void fillin_nonhidden_value_hash( fc::sha256& result, share_type amount );
-   // like fillin_nonhidden_value_hash, but returns a new object instead of modify-in-place
-   static fc::sha256 get_nonhidden_value_hash( share_type amount )
-   {
-      fc::sha256 h;
-      fillin_nonhidden_value_hash( h, amount );
-      return h;
-   }
-
-   // helper to fill in the fields so that lower_bound == upper_bound and nonce == 0
-   void fillin_nonhidden_value( share_type amount );
-   // like fillin_nonhidden_value, but returns a new object instead of modify-in-place
-   static smt_cap_commitment get_nonhidden_value( share_type amount )
-   {
-      smt_cap_commitment c;
-      c.fillin_nonhidden_value( amount );
-      return c;
-   }
-};
-
 struct smt_capped_generation_policy
 {
    smt_generation_unit pre_soft_cap_unit;
    smt_generation_unit post_soft_cap_unit;
-
-   smt_cap_commitment  min_steem_units_commitment;
-   smt_cap_commitment  hard_cap_steem_units_commitment;
 
    uint16_t            soft_cap_percent = 0;
 
@@ -133,51 +101,11 @@ struct smt_setup_operation : public smt_base_operation
 
    time_point_sec          generation_begin_time;
    time_point_sec          generation_end_time;
-   time_point_sec          announced_launch_time;
-   time_point_sec          launch_expiration_time;
+   time_point_sec          launch_time;
 
-   extensions_type         extensions;
+   share_type              steem_units_min_cap;
+   share_type              steem_units_hard_cap;
 
-   void validate()const;
-};
-
-struct smt_revealed_cap
-{
-   share_type            amount;
-   uint128_t             nonce;
-
-   void validate( const smt_cap_commitment& commitment )const;
-
-   // helper to fill in share_type to the given value and nonce = 0
-   void fillin_nonhidden_value( share_type amnt )
-   {
-      amount = amnt;
-      nonce = 0;
-   }
-
-   // like fillin_nonhidden_value, but returns a new object instead of modify-in-place
-   static smt_revealed_cap get_nonhidden_value( share_type amnt )
-   {
-      smt_revealed_cap rc;
-      rc.fillin_nonhidden_value( amnt );
-      return rc;
-   }
-};
-
-struct smt_cap_reveal_operation : public smt_base_operation
-{
-   smt_revealed_cap  cap;
-
-   extensions_type   extensions;
-
-   void validate()const;
-};
-
-struct smt_refund_operation : public smt_executor_base_operation
-{
-   account_name_type       contributor;
-   contribution_id_type    contribution_id;
-   asset                   amount;
    extensions_type         extensions;
 
    void validate()const;
@@ -311,8 +239,9 @@ FC_REFLECT_DERIVED(
    (initial_generation_policy)
    (generation_begin_time)
    (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
+   (launch_time)
+   (steem_units_min_cap)
+   (steem_units_hard_cap)
    (extensions)
    )
 
@@ -322,44 +251,14 @@ FC_REFLECT(
    (token_unit)
    )
 
-FC_REFLECT(
-   steem::protocol::smt_cap_commitment,
-   (lower_bound)
-   (upper_bound)
-   (hash)
-   )
-
-FC_REFLECT(
-   steem::protocol::smt_revealed_cap,
-   (amount)
-   (nonce)
-   )
-
-FC_REFLECT_DERIVED(
-   steem::protocol::smt_cap_reveal_operation,
-   (steem::protocol::smt_base_operation),
-   (cap)
-   (extensions)
-   )
 
 FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
-   (min_steem_units_commitment)
-   (hard_cap_steem_units_commitment)
    (soft_cap_percent)
    (min_unit_ratio)
    (max_unit_ratio)
-   (extensions)
-   )
-
-FC_REFLECT_DERIVED(
-   steem::protocol::smt_refund_operation,
-   (steem::protocol::smt_executor_base_operation),
-   (contributor)
-   (contribution_id)
-   (amount)
    (extensions)
    )
 
