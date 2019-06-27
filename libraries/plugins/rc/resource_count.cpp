@@ -1,12 +1,12 @@
 
-#include <dpn/plugins/rc/resource_count.hpp>
-#include <dpn/plugins/rc/resource_sizes.hpp>
+#include <steem/plugins/rc/resource_count.hpp>
+#include <steem/plugins/rc/resource_sizes.hpp>
 
-#include <dpn/protocol/operations.hpp>
+#include <steem/protocol/operations.hpp>
 
-namespace dpn { namespace plugins { namespace rc {
+namespace steem { namespace plugins { namespace rc {
 
-using namespace dpn::protocol;
+using namespace steem::protocol;
 
 struct count_operation_visitor
 {
@@ -299,7 +299,7 @@ struct count_operation_visitor
       execution_time_count += _e.witness_set_properties_operation_exec_time;
    }
 
-#ifdef DPN_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
@@ -473,4 +473,4 @@ void count_resources(
    result.resource_count[ resource_execution_time ] += vtor.execution_time_count;
 }
 
-} } } // dpn::plugins::rc
+} } } // steem::plugins::rc

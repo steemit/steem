@@ -9,8 +9,8 @@ from pathlib import Path
 from time import sleep
 
 # local imports
-from dpndebugnode import DebugNode
-from dpnapi.dpnnoderpc import DpnNodeRPC
+from steemdebugnode import DebugNode
+from steemapi.steemnoderpc import SteemNodeRPC
 
 WAITING = True
 
@@ -20,9 +20,9 @@ def main( ):
       print( "This script only works on POSIX systems" )
       return
 
-   parser = ArgumentParser( description='Run a dpnd debug node on an existing chain, trigger a hardfork' \
+   parser = ArgumentParser( description='Run a steemd debug node on an existing chain, trigger a hardfork' \
                               ' and verify hardfork does not break invariants or block production' )
-   parser.add_argument( '--dpnd', '-s', type=str, required=True, help='The location of a dpnd binary to run the debug node' )
+   parser.add_argument( '--steemd', '-s', type=str, required=True, help='The location of a steemd binary to run the debug node' )
    parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
                         'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
                         'will not be changed.' )
@@ -31,19 +31,19 @@ def main( ):
 
    args = parser.parse_args()
 
-   dpnd = Path( args.dpnd )
-   if( not dpnd.exists() ):
-      print( 'Error: dpnd does not exist.' )
+   steemd = Path( args.steemd )
+   if( not steemd.exists() ):
+      print( 'Error: steemd does not exist.' )
       return
 
-   dpnd = dpnd.resolve()
-   if( not dpnd.is_file() ):
-      print( 'Error: dpnd is not a file.' )
+   steemd = steemd.resolve()
+   if( not steemd.is_file() ):
+      print( 'Error: steemd is not a file.' )
       return
 
    data_dir = Path( args.data_dir )
    if( not data_dir.exists() ):
-      print( 'Error: data_dir does not exist or is not a properly constructed dpnd data directory' )
+      print( 'Error: data_dir does not exist or is not a properly constructed steemd data directory' )
 
    data_dir = data_dir.resolve()
    if( not data_dir.is_dir() ):
@@ -51,11 +51,11 @@ def main( ):
 
    signal.signal( signal.SIGINT, sigint_handler )
 
-   debug_node = DebugNode( str( dpnd ), str( data_dir ), dpnd_err=sys.stderr )
+   debug_node = DebugNode( str( steemd ), str( data_dir ), steemd_err=sys.stderr )
 
    with debug_node :
 
-      run_dpnd_tests( debug_node )
+      run_steemd_tests( debug_node )
 
       if( args.pause_node ):
          print( "Letting the node hang for manual inspection..." )
@@ -66,8 +66,8 @@ def main( ):
          sleep( 1 )
 
 
-def run_dpnd_tests( debug_node ):
-   from dpnapi.dpnnoderpc import DpnNodeRPC
+def run_steemd_tests( debug_node ):
+   from steemapi.steemnoderpc import SteemNodeRPC
 
    try:
       print( 'Replaying blocks...', )
@@ -81,7 +81,7 @@ def run_dpnd_tests( debug_node ):
       print( "Triggering payouts" )
       sys.stdout.flush()
       debug_node.debug_generate_blocks_until( 1467590400 - 3 )
-      rpc = DpnNodeRPC( 'ws://127.0.0.1:8095', '', '' )
+      rpc = SteemNodeRPC( 'ws://127.0.0.1:8095', '', '' )
       ret = rpc.lookup_accounts( '', str( 0xFFFFFFFF ) )
 
       debug_node.debug_generate_blocks( 1 )
@@ -114,7 +114,7 @@ def run_dpnd_tests( debug_node ):
       '''
       print( "Printing account reward dump:" )
       sorted_rewards = sorted( account_rewards.items(), key=operator.itemgetter(1) )
-      print( "account, curation_dpn" )
+      print( "account, curation_steem" )
       for rew in sorted_rewards:
          print( rew[0] + ', ' + str( rew[1] ) + ', ' + str( vote_count[ rew[0] ] ) )
 

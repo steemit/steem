@@ -9,11 +9,11 @@
 
 #pragma once
 
-#include <dpn/protocol/version.hpp>
+#include <steem/protocol/version.hpp>
 #include <set>
 
 #ifdef IS_TEST_NET
-#define DPN_NUM_HARDFORKS 22
+#define STEEM_NUM_HARDFORKS 22
 #else
-#define DPN_NUM_HARDFORKS 20
+#define STEEM_NUM_HARDFORKS 20
 #endif

@@ -1,11 +1,11 @@
 #pragma once
 #include <appbase/application.hpp>
 
-#include <dpn/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 
-#define DPN_EXAMPLE_API_PLUGIN_NAME "example_api"
+#define STEEM_EXAMPLE_API_PLUGIN_NAME "example_api"
 
-namespace dpn { namespace example_api_plugin {
+namespace steem { namespace example_api_plugin {
 
    using namespace appbase;
 
@@ -42,7 +42,7 @@ namespace dpn { namespace example_api_plugin {
          APPBASE_PLUGIN_REQUIRES( (plugins::json_rpc::json_rpc_plugin) );
 
          // This static method is a required by the appbase::plugin template
-         static const std::string& name() { static std::string name = DPN_EXAMPLE_API_PLUGIN_NAME; return name; }
+         static const std::string& name() { static std::string name = STEEM_EXAMPLE_API_PLUGIN_NAME; return name; }
 
          // Specify any config options here
          virtual void set_program_options( options_description&, options_description& ) override {}
@@ -82,9 +82,9 @@ namespace dpn { namespace example_api_plugin {
       return echo_return{ args.call };
    }
 
-} } // dpn::example_api_plugin
+} } // steem::example_api_plugin
 
 // Args and return types need to be reflected. hello_world_args does not because it is a typedef of a reflected type
-FC_REFLECT( dpn::example_api_plugin::hello_world_return, (message) )
-FC_REFLECT( dpn::example_api_plugin::echo_args, (call) )
-FC_REFLECT( dpn::example_api_plugin::echo_return, (response) )
+FC_REFLECT( steem::example_api_plugin::hello_world_return, (message) )
+FC_REFLECT( steem::example_api_plugin::echo_args, (call) )
+FC_REFLECT( steem::example_api_plugin::echo_return, (response) )

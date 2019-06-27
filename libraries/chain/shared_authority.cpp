@@ -1,6 +1,6 @@
-#include <dpn/chain/shared_authority.hpp>
+#include <steem/chain/shared_authority.hpp>
 
-namespace dpn { namespace chain {
+namespace steem { namespace chain {
 
 shared_authority::operator authority()const
 {
@@ -90,4 +90,4 @@ bool operator == ( const shared_authority& a, const authority& b )
    return authority( a ) == b;
 }
 
-} } // dpn::chain
+} } // steem::chain

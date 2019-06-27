@@ -1,4 +1,4 @@
-#include <dpn/utilities/logging_config.hpp>
+#include <steem/utilities/logging_config.hpp>
 
 #include <fc/exception/exception.hpp>
 
@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace dpn { namespace utilities {
+namespace steem { namespace utilities {
 
 using std::string;
 using std::vector;

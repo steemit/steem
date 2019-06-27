@@ -1,19 +1,19 @@
 
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
-#include <dpn/plugins/block_log_info/block_log_info_plugin.hpp>
-#include <dpn/plugins/block_log_info/block_log_info_objects.hpp>
+#include <steem/plugins/block_log_info/block_log_info_plugin.hpp>
+#include <steem/plugins/block_log_info/block_log_info_objects.hpp>
 
-#include <dpn/chain/account_object.hpp>
-#include <dpn/chain/database.hpp>
-#include <dpn/chain/global_property_object.hpp>
-#include <dpn/chain/index.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/global_property_object.hpp>
+#include <steem/chain/index.hpp>
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-namespace dpn { namespace plugins { namespace block_log_info {
+namespace steem { namespace plugins { namespace block_log_info {
 
 namespace detail {
 
@@ -21,7 +21,7 @@ class block_log_info_plugin_impl
 {
    public:
       block_log_info_plugin_impl( block_log_info_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
       void on_post_apply_block( const block_notification& note );
@@ -150,13 +150,13 @@ void block_log_info_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "Initializing block_log_info plugin" );
-      chain::database& db = appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
       my->_post_apply_block_conn = db.add_post_apply_block_handler(
          [&]( const block_notification& note ){ my->on_post_apply_block( note ); }, *this );
 
-      DPN_ADD_PLUGIN_INDEX(db, block_log_hash_state_index);
-      DPN_ADD_PLUGIN_INDEX(db, block_log_pending_message_index);
+      STEEM_ADD_PLUGIN_INDEX(db, block_log_hash_state_index);
+      STEEM_ADD_PLUGIN_INDEX(db, block_log_pending_message_index);
 
       my->print_interval_seconds = options.at( "block-log-info-print-interval-seconds" ).as< int32_t >();
       my->print_irreversible = options.at( "block-log-info-print-irreversible" ).as< bool >();
@@ -179,4 +179,4 @@ void block_log_info_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->_post_apply_block_conn );
 }
 
-} } } // dpn::plugins::block_log_info
+} } } // steem::plugins::block_log_info

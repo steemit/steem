@@ -2,7 +2,7 @@ import argparse
 
 args = None
 
-parser = argparse.ArgumentParser(description='Dpnd cli wallet test args.')
+parser = argparse.ArgumentParser(description='Steemd cli wallet test args.')
 parser.add_argument('--path-to-cli'        , dest='path'               , help ='Path to cli_wallet executable')
 parser.add_argument('--creator'            , dest='creator'            , help ='Account to create proposals with')
 parser.add_argument('--wif'                , dest='wif'                , help ='Private key for creator account')

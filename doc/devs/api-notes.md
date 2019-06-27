@@ -62,7 +62,7 @@ There are three methods to secure the API:
 - Limit access to the API socket to a trusted LAN by firewall configuration
 - Limit access to particular API's with username/password authentication
 
-The Dpn developers recommend using the first of these methods to secure the API by binding to localhost, as follows:
+The Steem developers recommend using the first of these methods to secure the API by binding to localhost, as follows:
 
     rpc-endpoint = 127.0.0.1:8090
 
@@ -70,7 +70,7 @@ Securing specific API's
 -----------------------
 
 The problem with securing API's at the network level is that there are deployment scenarios where a node may want to have some API's public, but other API's private.
-The `dpnd` process includes username/password based authentication to individual API's.
+The `steemd` process includes username/password based authentication to individual API's.
 
 Since the username/password is sent directly over the wire, you should use a TLS connection when authenticating with username and password.  TLS connection can be achieved by one of two methods:
 

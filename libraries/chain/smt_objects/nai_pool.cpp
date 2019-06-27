@@ -1,15 +1,15 @@
-#include <dpn/chain/dpn_fwd.hpp>
-#include <dpn/chain/database.hpp>
-#include <dpn/protocol/asset_symbol.hpp>
-#include <dpn/chain/smt_objects.hpp>
-#include <dpn/chain/util/nai_generator.hpp>
-#include <dpn/chain/util/smt_token.hpp>
+#include <steem/chain/steem_fwd.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/protocol/asset_symbol.hpp>
+#include <steem/chain/smt_objects.hpp>
+#include <steem/chain/util/nai_generator.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
-#ifdef DPN_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
 
 #define NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX 4
 
-namespace dpn { namespace chain {
+namespace steem { namespace chain {
 
 /**
  * Refill the NAI pool with newly generated values
@@ -97,6 +97,6 @@ void remove_from_nai_pool( database &db, const asset_symbol_type& a )
    }
 }
 
-} } // dpn::chain
+} } // steem::chain
 
 #endif

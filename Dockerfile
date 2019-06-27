@@ -1,9 +1,9 @@
 FROM phusion/baseimage:0.11
 
-#ARG DPND_BLOCKCHAIN=https://example.com/dpnd-blockchain.tbz2
+#ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
-ARG DPN_STATIC_BUILD=ON
-ENV DPN_STATIC_BUILD ${DPN_STATIC_BUILD}
+ARG STEEM_STATIC_BUILD=ON
+ENV STEEM_STATIC_BUILD ${STEEM_STATIC_BUILD}
 ARG BUILD_STEP
 ENV BUILD_STEP ${BUILD_STEP}
 ARG CI_BUILD
@@ -53,23 +53,23 @@ RUN \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     pip3 install gcovr
 
-ADD . /usr/local/src/dpn
+ADD . /usr/local/src/steem
 
 RUN \
     if [ "$CI_BUILD" ] ; then \
         pip3 install awscli --user && \
-        aws s3 cp s3://dpnit-dev-ci/dpnd-CTestCostData.txt /usr/local/src/dpn/CTestCostData.txt ; \
+        aws s3 cp s3://steemit-dev-ci/steemd-CTestCostData.txt /usr/local/src/steem/CTestCostData.txt ; \
     fi
 
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_DPN_TESTNET=ON \
+        -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
@@ -78,70 +78,70 @@ RUN \
     make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
     if [ "$CI_BUILD" ] ; then \
         mkdir -p build/tests/Testing/Temporary && \
-        cp /usr/local/src/dpn/CTestCostData.txt build/tests/Testing/Temporary ; \
+        cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     doxygen && \
     PYTHONPATH=programs/build_helpers \
-    python3 -m dpn_build_helpers.check_reflect && \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
-    rm -rf /usr/local/src/dpn/build ; \
+    rm -rf /usr/local/src/steem/build ; \
     fi
 
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/dpnd-testnet \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-testnet \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_DPN_TESTNET=ON \
+        -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_MIRA=ON \
         -DENABLE_SMT_SUPPORT=ON \
-        -DDPN_STATIC_BUILD=${DPN_STATIC_BUILD} \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
     make -j$(nproc) chain_test test_fixed_string plugin_test && \
     make install && \
     if [ "$CI_BUILD" ] ; then \
         mkdir -p build/tests/Testing/Temporary && \
-        cp /usr/local/src/dpn/CTestCostData.txt build/tests/Testing/Temporary ; \
+        cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     ./programs/util/test_fixed_string && \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     doxygen && \
     PYTHONPATH=programs/build_helpers \
-    python3 -m dpn_build_helpers.check_reflect && \
+    python3 -m steem_build_helpers.check_reflect && \
     programs/build_helpers/get_config_check.sh && \
     if [ "$CI_BUILD" ] ; then \
-        aws s3 cp s3://dpnit-dev-ci/dpnd-CTestCostData.txt s3://dpnit-dev-ci/dpnd-CTestCostData.txt.bk && \
-        aws s3 cp build/tests/Testing/Temporary/CTestCostData.txt s3://dpnit-dev-ci/dpnd-CTestCostData.txt; \
+        aws s3 cp s3://steemit-dev-ci/steemd-CTestCostData.txt s3://steemit-dev-ci/steemd-CTestCostData.txt.bk && \
+        aws s3 cp build/tests/Testing/Temporary/CTestCostData.txt s3://steemit-dev-ci/steemd-CTestCostData.txt; \
     fi && \
-    rm -rf /usr/local/src/dpn/build ; \
+    rm -rf /usr/local/src/steem/build ; \
     fi
 
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_DPN_TESTNET=ON \
+        -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
@@ -151,61 +151,61 @@ RUN \
     make -j$(nproc) chain_test plugin_test && \
     if [ "$CI_BUILD" ] ; then \
         mkdir -p build/tests/Testing/Temporary && \
-        cp /usr/local/src/dpn/CTestCostData.txt build/tests/Testing/Temporary ; \
+        cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
     fi && \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
     cd .. && \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --gcov-exclude=".*vendor*" --output="/var/cobertura/coverage.xml" && \
-    cd /usr/local/src/dpn && \
-    rm -rf /usr/local/src/dpn/build ; \
+    cd /usr/local/src/steem && \
+    rm -rf /usr/local/src/steem/build ; \
     fi
 
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
-    cd /usr/local/src/dpn && \
+    cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/dpnd-default \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=OFF \
-        -DBUILD_DPN_TESTNET=OFF \
+        -DBUILD_STEEM_TESTNET=OFF \
         -DENABLE_MIRA=ON \
-        -DDPN_STATIC_BUILD=${DPN_STATIC_BUILD} \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
     make -j$(nproc) && \
     make install && \
     cd .. && \
-    ( /usr/local/dpnd-default/bin/dpnd --version \
+    ( /usr/local/steemd-default/bin/steemd --version \
       | grep -o '[0-9]*\.[0-9]*\.[0-9]*' \
       && echo '_' \
       && git rev-parse --short HEAD ) \
       | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' \
-      > /etc/dpndversion && \
-    cat /etc/dpndversion && \
+      > /etc/steemdversion && \
+    cat /etc/steemdversion && \
     rm -rfv build && \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/dpnd-full \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=OFF \
         -DSKIP_BY_TX_ID=ON \
-        -DBUILD_DPN_TESTNET=OFF \
+        -DBUILD_STEEM_TESTNET=OFF \
         -DENABLE_MIRA=ON \
-        -DDPN_STATIC_BUILD=${DPN_STATIC_BUILD} \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. \
     && \
     make -j$(nproc) && \
     make install && \
-    rm -rf /usr/local/src/dpn ; \
+    rm -rf /usr/local/src/steem ; \
     fi
 
 RUN \
@@ -255,18 +255,18 @@ RUN \
         /usr/include \
         /usr/local/include
 
-RUN useradd -s /bin/bash -m -d /var/lib/dpnd dpnd
+RUN useradd -s /bin/bash -m -d /var/lib/steemd steemd
 
-RUN mkdir /var/cache/dpnd && \
-    chown dpnd:dpnd -R /var/cache/dpnd
+RUN mkdir /var/cache/steemd && \
+    chown steemd:steemd -R /var/cache/steemd
 
 # add blockchain cache to image
-#ADD $DPND_BLOCKCHAIN /var/cache/dpnd/blocks.tbz2
+#ADD $STEEMD_BLOCKCHAIN /var/cache/steemd/blocks.tbz2
 
-ENV HOME /var/lib/dpnd
-RUN chown dpnd:dpnd -R /var/lib/dpnd
+ENV HOME /var/lib/steemd
+RUN chown steemd:steemd -R /var/lib/steemd
 
-VOLUME ["/var/lib/dpnd"]
+VOLUME ["/var/lib/steemd"]
 
 # rpc service:
 EXPOSE 8090
@@ -274,30 +274,30 @@ EXPOSE 8090
 EXPOSE 2001
 
 # add seednodes from documentation to image
-ADD doc/seednodes.txt /etc/dpnd/seednodes.txt
+ADD doc/seednodes.txt /etc/steemd/seednodes.txt
 
 # the following adds lots of logging info to stdout
-ADD contrib/config-for-docker.ini /etc/dpnd/config.ini
-ADD contrib/fullnode.config.ini /etc/dpnd/fullnode.config.ini
-ADD contrib/fullnode.opswhitelist.config.ini /etc/dpnd/fullnode.opswhitelist.config.ini
-ADD contrib/config-for-broadcaster.ini /etc/dpnd/config-for-broadcaster.ini
-ADD contrib/config-for-ahnode.ini /etc/dpnd/config-for-ahnode.ini
+ADD contrib/config-for-docker.ini /etc/steemd/config.ini
+ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
+ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
+ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
+ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
 
 # add normal startup script that starts via sv
-ADD contrib/dpnd.run /usr/local/bin/dpn-sv-run.sh
-RUN chmod +x /usr/local/bin/dpn-sv-run.sh
+ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
+RUN chmod +x /usr/local/bin/steem-sv-run.sh
 
 # add nginx templates
-ADD contrib/dpnd.nginx.conf /etc/nginx/dpnd.nginx.conf
+ADD contrib/steemd.nginx.conf /etc/nginx/steemd.nginx.conf
 ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
 
 # add PaaS startup script and service script
-ADD contrib/startpaasdpnd.sh /usr/local/bin/startpaasdpnd.sh
+ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
 ADD contrib/pulltestnetscripts.sh /usr/local/bin/pulltestnetscripts.sh
 ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
 ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
 ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
-RUN chmod +x /usr/local/bin/startpaasdpnd.sh
+RUN chmod +x /usr/local/bin/startpaassteemd.sh
 RUN chmod +x /usr/local/bin/pulltestnetscripts.sh
 RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
@@ -307,6 +307,6 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 # this enables exitting of the container when the writer node dies
 # for PaaS mode (elasticbeanstalk, etc)
 # AWS EB Docker requires a non-daemonized entrypoint
-ADD contrib/dpndentrypoint.sh /usr/local/bin/dpndentrypoint.sh
-RUN chmod +x /usr/local/bin/dpndentrypoint.sh
-CMD /usr/local/bin/dpndentrypoint.sh
+ADD contrib/steemdentrypoint.sh /usr/local/bin/steemdentrypoint.sh
+RUN chmod +x /usr/local/bin/steemdentrypoint.sh
+CMD /usr/local/bin/steemdentrypoint.sh

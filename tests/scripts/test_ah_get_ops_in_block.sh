@@ -4,7 +4,7 @@ if [[ $# -lt 5 || $# -gt 7 ]]
 then
    echo Usage: jobs 1st_address 1st_port 2nd_address 2nd_port [last_block [first_block]]
    echo        if jobs == 0 script detect processor count and use it
-   echo        if last_block not passed or 0 will be read from dpnd
+   echo        if last_block not passed or 0 will be read from steemd
    echo        if first_block not passed will be 0
    echo Example: 127.0.0.1 8090 ec2-34-235-166-184.compute-1.amazonaws.com 8090
    exit -1

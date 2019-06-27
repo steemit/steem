@@ -12,8 +12,8 @@ add_library(db_fixture
             ${HEADERS})
 
 target_link_libraries(db_fixture
-                      dpn_chain
-                      dpn_protocol
+                      steem_chain
+                      steem_protocol
                       account_history_plugin
                       market_history_plugin
                       block_api_plugin

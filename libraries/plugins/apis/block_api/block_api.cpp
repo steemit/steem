@@ -1,12 +1,12 @@
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 #include <appbase/application.hpp>
 
-#include <dpn/plugins/block_api/block_api.hpp>
-#include <dpn/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
 
-#include <dpn/protocol/get_config.hpp>
+#include <steem/protocol/get_config.hpp>
 
-namespace dpn { namespace plugins { namespace block_api {
+namespace steem { namespace plugins { namespace block_api {
 
 class block_api_impl
 {
@@ -31,13 +31,13 @@ class block_api_impl
 block_api::block_api()
    : my( new block_api_impl() )
 {
-   JSON_RPC_REGISTER_API( DPN_BLOCK_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( STEEM_BLOCK_API_PLUGIN_NAME );
 }
 
 block_api::~block_api() {}
 
 block_api_impl::block_api_impl()
-   : _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
+   : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 block_api_impl::~block_api_impl() {}
 
@@ -74,4 +74,4 @@ DEFINE_READ_APIS( block_api,
    (get_block)
 )
 
-} } } // dpn::plugins::block_api
+} } } // steem::plugins::block_api

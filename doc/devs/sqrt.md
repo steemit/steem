@@ -1,8 +1,8 @@
 
 # Introduction
 
-In this document we derive the approximate integer square root function used by Dpn for the curation curve
-[here](https://github.com/dpnit/dpn/issues/1052).
+In this document we derive the approximate integer square root function used by Steem for the curation curve
+[here](https://github.com/steemit/steem/issues/1052).
 
 # MSB function
 

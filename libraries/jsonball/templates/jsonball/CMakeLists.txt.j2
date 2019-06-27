@@ -1,16 +1,16 @@
 
-add_library( dpn_jsonball
+add_library( steem_jsonball
    mm_ticks.cpp
    rc_params.cpp
-   ${CMAKE_CURRENT_SOURCE_DIR}/include/dpn/jsonball/jsonball.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/jsonball/jsonball.hpp
 )
 
-target_link_libraries( dpn_jsonball fc )
+target_link_libraries( steem_jsonball fc )
 
-target_include_directories( dpn_jsonball PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+target_include_directories( steem_jsonball PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 INSTALL( TARGETS
-   dpn_jsonball
+   steem_jsonball
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

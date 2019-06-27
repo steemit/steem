@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/dpn/condenser_api_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/condenser_api_plugin/*.hpp")
 add_library( condenser_api_plugin
              condenser_api.cpp
              condenser_api_plugin.cpp
@@ -17,7 +17,7 @@ target_link_libraries( condenser_api_plugin
    market_history_api_plugin
    network_broadcast_api_plugin
    tags_api_plugin
-   dpn_utilities )
+   steem_utilities )
 target_include_directories( condenser_api_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
@@ -34,4 +34,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/dpn/condenser_api_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/steem/condenser_api_plugin" )

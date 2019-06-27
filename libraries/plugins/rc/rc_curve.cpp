@@ -1,6 +1,6 @@
 
-#include <dpn/plugins/rc/rc_curve.hpp>
-#include <dpn/protocol/config.hpp>
+#include <steem/plugins/rc/rc_curve.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace dpn { namespace plugins { namespace rc {
+namespace steem { namespace plugins { namespace rc {
 
 void rc_curve_gen_params::validate()const
 {

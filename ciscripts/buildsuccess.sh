@@ -1,9 +1,9 @@
 #/bin/bash
-curl --silent -XPOST -H "Authorization: token $GITHUB_SECRET" https://api.github.com/repos/dpnit/dpn/statuses/$(git rev-parse HEAD) -d "{
+curl --silent -XPOST -H "Authorization: token $GITHUB_SECRET" https://api.github.com/repos/steemit/steem/statuses/$(git rev-parse HEAD) -d "{
   \"state\": \"success\",
   \"target_url\": \"${BUILD_URL}\",
   \"description\": \"Jenkins-CI reports build succeeded!!\",
-  \"context\": \"jenkins-ci-dpnit\"
+  \"context\": \"jenkins-ci-steemit\"
 }"
 rm -rf $WORKSPACE/*
 # make docker cleanup after itself and delete all exited containers

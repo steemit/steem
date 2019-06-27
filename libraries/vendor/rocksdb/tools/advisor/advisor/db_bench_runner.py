@@ -213,7 +213,7 @@ class DBBenchRunner(BenchmarkRunner):
         logs_file_prefix, stats_freq_sec = self.get_log_options(
             db_options, parsed_output[self.DB_PATH]
         )
-        # create the Rockdbd LOGS object
+        # create the Rocksbd LOGS object
         db_logs = DatabaseLogs(
             logs_file_prefix, db_options.get_column_families()
         )

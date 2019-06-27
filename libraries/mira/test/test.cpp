@@ -4,7 +4,7 @@
 #include "test_templates.hpp"
 
 #include <boost/test/unit_test.hpp>
-#include <dpn/utilities/database_configuration.hpp>
+#include <steem/utilities/database_configuration.hpp>
 #include <iostream>
 
 using namespace mira;
@@ -24,7 +24,7 @@ struct mira_fixture {
    mira_fixture()
    {
       tmp = boost::filesystem::current_path() / boost::filesystem::unique_path();
-      db.open( tmp, 0, 1024*1024*8, dpn::utilities::default_database_configuration() );
+      db.open( tmp, 0, 1024*1024*8, steem::utilities::default_database_configuration() );
    }
 
    ~mira_fixture()

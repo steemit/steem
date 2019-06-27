@@ -1,18 +1,18 @@
 #ifdef IS_TEST_NET
-#include <dpn/chain/generic_custom_operation_interpreter.hpp>
-#include <dpn/chain/account_object.hpp>
+#include <steem/chain/generic_custom_operation_interpreter.hpp>
+#include <steem/chain/account_object.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace dpn::chain;
-using namespace dpn::chain::test;
+using namespace steem::chain;
+using namespace steem::chain::test;
 /*
-namespace dpn { namespace plugin_tests {
+namespace steem { namespace plugin_tests {
 
-using namespace dpn::app;
-using namespace dpn::chain;
+using namespace steem::app;
+using namespace steem::chain;
 
 struct test_a_operation : base_operation
 {
@@ -42,8 +42,8 @@ class test_plugin : public plugin
       std::shared_ptr< generic_custom_operation_interpreter< test_op > > _evaluator_registry;
 };
 
-DPN_DEFINE_PLUGIN_EVALUATOR( test_plugin, test_a_operation, test_a );
-DPN_DEFINE_PLUGIN_EVALUATOR( test_plugin, test_b_operation, test_b );
+STEEM_DEFINE_PLUGIN_EVALUATOR( test_plugin, test_a_operation, test_a );
+STEEM_DEFINE_PLUGIN_EVALUATOR( test_plugin, test_b_operation, test_b );
 
 void test_a_evaluator::do_apply( const test_a_operation& o )
 {
@@ -75,16 +75,16 @@ test_plugin::test_plugin( application* app ) : plugin( app )
    database().set_custom_operation_interpreter( plugin_name(), _evaluator_registry );
 }
 
-} } // dpn::plugin_tests
+} } // steem::plugin_tests
 
-DPN_DEFINE_PLUGIN( test, dpn::plugin_tests::test_plugin )
+STEEM_DEFINE_PLUGIN( test, steem::plugin_tests::test_plugin )
 
-FC_REFLECT( dpn::plugin_tests::test_a_operation, (account) )
-FC_REFLECT( dpn::plugin_tests::test_b_operation, (account) )
+FC_REFLECT( steem::plugin_tests::test_a_operation, (account) )
+FC_REFLECT( steem::plugin_tests::test_b_operation, (account) )
 
-DPN_DECLARE_OPERATION_TYPE( dpn::plugin_tests::test_op );
-FC_REFLECT_TYPENAME( dpn::plugin_tests::test_op );
-DPN_DEFINE_OPERATION_TYPE( dpn::plugin_tests::test_op );
+STEEM_DECLARE_OPERATION_TYPE( steem::plugin_tests::test_op );
+FC_REFLECT_TYPENAME( steem::plugin_tests::test_op );
+STEEM_DEFINE_OPERATION_TYPE( steem::plugin_tests::test_op );
 */
 
 

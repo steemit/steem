@@ -1,14 +1,14 @@
 
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
-#include <dpn/plugins/tags/tags_plugin.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
 
-#include <dpn/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <dpn/chain/database.hpp>
-#include <dpn/chain/index.hpp>
-#include <dpn/chain/account_object.hpp>
-#include <dpn/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -18,7 +18,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace dpn { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 /**
  * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
@@ -50,7 +50,7 @@ inline double calculate_trending( const share_type& score, const time_point_sec&
 
 namespace detail {
 
-using namespace dpn::protocol;
+using namespace steem::protocol;
 
 class tags_plugin_impl
 {
@@ -79,7 +79,7 @@ class tags_plugin_impl
 };
 
 tags_plugin_impl::tags_plugin_impl() :
-   _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
+   _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 tags_plugin_impl::~tags_plugin_impl() {}
 
@@ -384,7 +384,7 @@ struct operation_visitor
 
    void operator()( const transfer_operation& op )const
    {
-      if( _my._db.head_block_time() >= _my._promoted_start_time && op.to == DPN_NULL_ACCOUNT && op.amount.symbol == DBD_SYMBOL )
+      if( _my._db.head_block_time() >= _my._promoted_start_time && op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
@@ -531,9 +531,9 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
       });
    }
 
-   DPN_ADD_PLUGIN_INDEX(my->_db, tag_index);
-   DPN_ADD_PLUGIN_INDEX(my->_db, tag_stats_index);
-   DPN_ADD_PLUGIN_INDEX(my->_db, author_tag_stats_index);
+   STEEM_ADD_PLUGIN_INDEX(my->_db, tag_index);
+   STEEM_ADD_PLUGIN_INDEX(my->_db, tag_stats_index);
+   STEEM_ADD_PLUGIN_INDEX(my->_db, author_tag_stats_index);
 
    fc::mutable_variant_object state_opts;
 
@@ -559,4 +559,4 @@ void tags_plugin::plugin_startup()
    chain::util::disconnect_signal( my->_post_apply_operation_conn );
 }
 
-} } } /// dpn::plugins::tags
+} } } /// steem::plugins::tags

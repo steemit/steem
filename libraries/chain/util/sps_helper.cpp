@@ -1,8 +1,8 @@
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
-#include <dpn/chain/util/sps_helper.hpp>
+#include <steem/chain/util/sps_helper.hpp>
 
-namespace dpn { namespace chain {
+namespace steem { namespace chain {
 
 void sps_helper::remove_proposals( database& db, const flat_set<int64_t>& proposal_ids, const account_name_type& proposal_owner )
 {
@@ -33,4 +33,4 @@ void sps_helper::remove_proposals( database& db, const flat_set<int64_t>& propos
 
 }
 
-} } // dpn::chain
+} } // steem::chain

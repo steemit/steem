@@ -1,16 +1,16 @@
-#include <dpn/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <dpn/plugins/account_history_api/account_history_api.hpp>
+#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <steem/plugins/account_history_api/account_history_api.hpp>
 
-#include <dpn/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
+#include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
-namespace dpn { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
 namespace detail {
 
 class abstract_account_history_api_impl
 {
    public:
-      abstract_account_history_api_impl() : _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
+      abstract_account_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
       virtual ~abstract_account_history_api_impl() {}
 
       virtual get_ops_in_block_return get_ops_in_block( const get_ops_in_block_args& ) = 0;
@@ -123,7 +123,7 @@ class account_history_api_rocksdb_impl : public abstract_account_history_api_imp
 {
    public:
       account_history_api_rocksdb_impl() :
-         abstract_account_history_api_impl(), _dataSource( appbase::app().get_plugin< dpn::plugins::account_history_rocksdb::account_history_rocksdb_plugin >() ) {}
+         abstract_account_history_api_impl(), _dataSource( appbase::app().get_plugin< steem::plugins::account_history_rocksdb::account_history_rocksdb_plugin >() ) {}
       ~account_history_api_rocksdb_impl() {}
 
       get_ops_in_block_return get_ops_in_block( const get_ops_in_block_args& ) override;
@@ -188,8 +188,8 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, enum_virtual_ops)
 
 account_history_api::account_history_api()
 {
-   auto ah_cb = appbase::app().find_plugin< dpn::plugins::account_history::account_history_plugin >();
-   auto ah_rocks = appbase::app().find_plugin< dpn::plugins::account_history_rocksdb::account_history_rocksdb_plugin >();
+   auto ah_cb = appbase::app().find_plugin< steem::plugins::account_history::account_history_plugin >();
+   auto ah_rocks = appbase::app().find_plugin< steem::plugins::account_history_rocksdb::account_history_rocksdb_plugin >();
 
    if( ah_rocks != nullptr )
    {
@@ -207,7 +207,7 @@ account_history_api::account_history_api()
       FC_ASSERT( false, "Account History API only works if account_history or account_history_rocksdb plugins are enabled" );
    }
 
-   JSON_RPC_REGISTER_API( DPN_ACCOUNT_HISTORY_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME );
 }
 
 account_history_api::~account_history_api() {}
@@ -219,4 +219,4 @@ DEFINE_LOCKLESS_APIS( account_history_api ,
    (enum_virtual_ops)
 )
 
-} } } // dpn::plugins::account_history
+} } } // steem::plugins::account_history

@@ -1,7 +1,7 @@
-#include <dpn/plugins/json_rpc/json_rpc_plugin.hpp>
-#include <dpn/plugins/json_rpc/utility.hpp>
+#include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/utility.hpp>
 
-#include <dpn/plugins/statsd/utility.hpp>
+#include <steem/plugins/statsd/utility.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -14,7 +14,7 @@
 
 #define ENABLE_JSON_RPC_LOG
 
-namespace dpn { namespace plugins { namespace json_rpc {
+namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
 {
@@ -492,9 +492,9 @@ string json_rpc_plugin::call( const string& message )
 
 }
 
-} } } // dpn::plugins::json_rpc
+} } } // steem::plugins::json_rpc
 
-FC_REFLECT( dpn::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
-FC_REFLECT( dpn::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
 
-FC_REFLECT( dpn::plugins::json_rpc::detail::get_signature_args, (method) )
+FC_REFLECT( steem::plugins::json_rpc::detail::get_signature_args, (method) )

@@ -1,8 +1,8 @@
-#include <dpn/plugins/condenser_api/condenser_api_plugin.hpp>
-#include <dpn/plugins/condenser_api/condenser_api.hpp>
-#include <dpn/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
-namespace dpn { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 condenser_api_plugin::condenser_api_plugin() {}
 condenser_api_plugin::~condenser_api_plugin() {}
@@ -26,4 +26,4 @@ void condenser_api_plugin::plugin_startup()
 
 void condenser_api_plugin::plugin_shutdown() {}
 
-} } } // dpn::plugins::condenser_api
+} } } // steem::plugins::condenser_api

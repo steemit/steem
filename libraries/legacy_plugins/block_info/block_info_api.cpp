@@ -1,31 +1,31 @@
 
-#include <dpn/app/api_context.hpp>
-#include <dpn/app/application.hpp>
+#include <steem/app/api_context.hpp>
+#include <steem/app/application.hpp>
 
-#include <dpn/plugins/block_info/block_info_api.hpp>
-#include <dpn/plugins/block_info/block_info_plugin.hpp>
+#include <steem/plugins/block_info/block_info_api.hpp>
+#include <steem/plugins/block_info/block_info_plugin.hpp>
 
-namespace dpn { namespace plugin { namespace block_info {
+namespace steem { namespace plugin { namespace block_info {
 
 namespace detail {
 
 class block_info_api_impl
 {
    public:
-      block_info_api_impl( dpn::app::application& _app );
+      block_info_api_impl( steem::app::application& _app );
 
-      std::shared_ptr< dpn::plugin::block_info::block_info_plugin > get_plugin();
+      std::shared_ptr< steem::plugin::block_info::block_info_plugin > get_plugin();
 
       void get_block_info( const get_block_info_args& args, std::vector< block_info >& result );
       void get_blocks_with_info( const get_block_info_args& args, std::vector< block_with_info >& result );
 
-      dpn::app::application& app;
+      steem::app::application& app;
 };
 
-block_info_api_impl::block_info_api_impl( dpn::app::application& _app ) : app( _app )
+block_info_api_impl::block_info_api_impl( steem::app::application& _app ) : app( _app )
 {}
 
-std::shared_ptr< dpn::plugin::block_info::block_info_plugin > block_info_api_impl::get_plugin()
+std::shared_ptr< steem::plugin::block_info::block_info_plugin > block_info_api_impl::get_plugin()
 {
    return app.get_plugin< block_info_plugin >( "block_info" );
 }
@@ -66,7 +66,7 @@ void block_info_api_impl::get_blocks_with_info( const get_block_info_args& args,
 
 } // detail
 
-block_info_api::block_info_api( const dpn::app::api_context& ctx )
+block_info_api::block_info_api( const steem::app::api_context& ctx )
 {
    my = std::make_shared< detail::block_info_api_impl >(ctx.app);
 }
@@ -87,4 +87,4 @@ std::vector< block_with_info > block_info_api::get_blocks_with_info( get_block_i
 
 void block_info_api::on_api_startup() { }
 
-} } } // dpn::plugin::block_info
+} } } // steem::plugin::block_info

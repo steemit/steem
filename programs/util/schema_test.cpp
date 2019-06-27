@@ -1,28 +1,28 @@
 
-namespace dpn { namespace protocol {
+namespace steem { namespace protocol {
 struct votable_asset_info_v1;
 } }
 
-#include <dpn/protocol/types_fwd.hpp>
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/protocol/types_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
-#include <dpn/schema/schema.hpp>
-#include <dpn/schema/schema_impl.hpp>
-#include <dpn/schema/schema_types.hpp>
+#include <steem/schema/schema.hpp>
+#include <steem/schema/schema_impl.hpp>
+#include <steem/schema/schema_types.hpp>
 
-#include <dpn/chain/schema_types/oid.hpp>
-#include <dpn/protocol/schema_types/account_name_type.hpp>
-#include <dpn/protocol/schema_types/asset_symbol_type.hpp>
+#include <steem/chain/schema_types/oid.hpp>
+#include <steem/protocol/schema_types/account_name_type.hpp>
+#include <steem/protocol/schema_types/asset_symbol_type.hpp>
 
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <dpn/chain/account_object.hpp>
-#include <dpn/chain/dpn_objects.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/steem_objects.hpp>
 
-using namespace dpn::schema;
+using namespace steem::schema;
 
 struct mystruct
 {
@@ -61,8 +61,8 @@ int main( int argc, char** argv, char** envp )
    std::vector< std::shared_ptr< abstract_schema > > schemas;
 
    schemas.push_back( get_schema_for_type< mystruct >() );
-   schemas.push_back( get_schema_for_type< dpn::chain::account_object >() );
-   schemas.push_back( get_schema_for_type< dpn::chain::comment_object >() );
+   schemas.push_back( get_schema_for_type< steem::chain::account_object >() );
+   schemas.push_back( get_schema_for_type< steem::chain::comment_object >() );
    add_dependent_schemas( schemas );
 
    for( const std::shared_ptr< abstract_schema >& s : schemas )
