@@ -229,7 +229,6 @@ void smt_setup_emissions_operation::validate()const
 void smt_setup_operation::validate()const
 {
    smt_base_operation::validate();
-   FC_ASSERT( decimal_places <= SMT_MAX_DECIMAL_PLACES );
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
    validate_visitor vtor;

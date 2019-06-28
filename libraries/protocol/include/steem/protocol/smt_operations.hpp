@@ -94,7 +94,6 @@ typedef static_variant<
 
 struct smt_setup_operation : public smt_base_operation
 {
-   uint8_t                 decimal_places = 0;
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
    smt_generation_policy   initial_generation_policy;
@@ -234,7 +233,6 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
    steem::protocol::smt_setup_operation,
    (steem::protocol::smt_base_operation),
-   (decimal_places)
    (max_supply)
    (initial_generation_policy)
    (contribution_begin_time)

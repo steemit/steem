@@ -302,12 +302,6 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      //FC_ASSERT(decimal_places <= SMT_MAX_DECIMAL_PLACES)
-      op.decimal_places = SMT_MAX_DECIMAL_PLACES + 1;
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-
-      op.decimal_places = 3;
-
       units to_many_units;
       for( uint32_t i = 0; i < SMT_MAX_UNIT_ROUTES + 1; ++i )
          to_many_units.emplace( "alice" + std::to_string( i ), 1 );
@@ -545,7 +539,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
 
       //Make transaction again. Everything is correct.
       op.symbol = alice_symbol;
-      op.decimal_places = 3;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
