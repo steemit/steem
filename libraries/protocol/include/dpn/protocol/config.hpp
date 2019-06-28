@@ -83,7 +83,7 @@
 #define DPN_100_PERCENT                     10000
 #define DPN_1_PERCENT                       (DPN_100_PERCENT/100)
 
-#define DPN_BLOCK_INTERVAL                  3
+#define DPN_BLOCK_INTERVAL                  0.5
 #define DPN_BLOCKS_PER_YEAR                 (365*24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_BLOCKS_PER_DAY                  (24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_START_VESTING_BLOCK             (DPN_BLOCKS_PER_DAY * 7)
@@ -128,7 +128,7 @@
 #define DPN_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
 #define DPN_POST_WEIGHT_CONSTANT            (uint64_t(4*DPN_100_PERCENT) * (4*DPN_100_PERCENT))// (4*DPN_100_PERCENT) -> 2 posts per 1 days, average 1 every 12 hours
 
-#define DPN_MAX_ACCOUNT_WITNESS_VOTES       30
+#define DPN_MAX_ACCOUNT_WITNESS_VOTES       15
 
 #define DPN_DEFAULT_DBD_INTEREST_RATE       (10*DPN_1_PERCENT) ///< 10% APR
 
