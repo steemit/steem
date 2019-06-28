@@ -2312,7 +2312,7 @@ asset database::get_liquidity_reward()const
 asset database::get_content_reward()const
 {
    const auto& props = get_dynamic_global_properties();
-   static_assert( DPN_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
+   static_assert( DPN_BLOCK_INTERVAL == 0.5, "this code assumes a 3-second time interval" );
    asset percent( protocol::calc_percent_reward_per_block< DPN_CONTENT_APR_PERCENT >( props.virtual_supply.amount ), DPN_SYMBOL );
    return std::max( percent, DPN_MIN_CONTENT_REWARD );
 }
@@ -2320,7 +2320,7 @@ asset database::get_content_reward()const
 asset database::get_curation_reward()const
 {
    const auto& props = get_dynamic_global_properties();
-   static_assert( DPN_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
+   static_assert( DPN_BLOCK_INTERVAL == 0.5, "this code assumes a 3-second time interval" );
    asset percent( protocol::calc_percent_reward_per_block< DPN_CURATE_APR_PERCENT >( props.virtual_supply.amount ), DPN_SYMBOL);
    return std::max( percent, DPN_MIN_CURATE_REWARD );
 }
@@ -2328,7 +2328,7 @@ asset database::get_curation_reward()const
 asset database::get_producer_reward()
 {
    const auto& props = get_dynamic_global_properties();
-   static_assert( DPN_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
+   static_assert( DPN_BLOCK_INTERVAL == 0.5, "this code assumes a 3-second time interval" );
    asset percent( protocol::calc_percent_reward_per_block< DPN_PRODUCER_APR_PERCENT >( props.virtual_supply.amount ), DPN_SYMBOL);
    auto pay = std::max( percent, DPN_MIN_PRODUCER_REWARD );
    const auto& witness_account = get_account( props.current_witness );
@@ -2367,7 +2367,7 @@ asset database::get_pow_reward()const
       return asset( 0, DPN_SYMBOL );
 #endif
 
-   static_assert( DPN_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
+   static_assert( DPN_BLOCK_INTERVAL == 0.5, "this code assumes a 3-second time interval" );
    static_assert( DPN_MAX_WITNESSES == 21, "this code assumes 21 per round" );
    asset percent( calc_percent_reward_per_round< DPN_POW_APR_PERCENT >( props.virtual_supply.amount ), DPN_SYMBOL);
    return std::max( percent, DPN_MIN_POW_REWARD );
