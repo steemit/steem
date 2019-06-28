@@ -160,7 +160,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
-      token_ico_obj.steem_units_min_cap = o.steem_units_min_cap;
+      token_ico_obj.steem_units_soft_cap = o.steem_units_soft_cap;
       token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
    } );
 

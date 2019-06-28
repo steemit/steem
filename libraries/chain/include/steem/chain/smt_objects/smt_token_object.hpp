@@ -129,7 +129,7 @@ public:
    time_point_sec                contribution_begin_time;
    time_point_sec                contribution_end_time;
    time_point_sec                launch_time;
-   share_type                    steem_units_min_cap = -1;
+   share_type                    steem_units_soft_cap = -1;
    share_type                    steem_units_hard_cap = -1;
 };
 
@@ -309,7 +309,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
-   (steem_units_min_cap)
+   (steem_units_soft_cap)
    (steem_units_hard_cap)
 )
 

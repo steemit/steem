@@ -420,7 +420,7 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.steem_units_min_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+      op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
       op.validate();
 
@@ -503,7 +503,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
 
       smt_setup_operation op;
       op.control_account = "alice";
-      op.steem_units_min_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+      op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
 
       smt_capped_generation_policy gp = get_capped_generation_policy
