@@ -40,8 +40,8 @@
 #else
 
 #define VESTS_SYMBOL_U64  (uint64_t('V') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
-#define DPN_SYMBOL_U64  (uint64_t('D') | (uint64_t('P') << 8) | (uint64_t('N') << 16))
-#define DBD_SYMBOL_U64    (uint64_t('D') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
+#define DPN_SYMBOL_U64  (uint64_t('S') | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('E') << 24) | (uint64_t('M') << 32))
+#define DBD_SYMBOL_U64    (uint64_t('S') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
 
 #endif
 
