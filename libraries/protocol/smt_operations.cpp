@@ -18,21 +18,16 @@ void common_symbol_validation( const asset_symbol_type& symbol )
    FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
 }
 
-void smt_base_operation::validate()const
+template < class Operation >
+void smt_admin_operation_validate( const Operation& o )
 {
-   validate_account_name( control_account );
-   common_symbol_validation( symbol );
-}
-
-void smt_executor_base_operation::validate()const
-{
-   validate_account_name( executor );
-   common_symbol_validation( symbol );
+   validate_account_name( o.control_account );
+   common_symbol_validation( o.symbol );
 }
 
 void smt_create_operation::validate()const
 {
-   smt_base_operation::validate();
+   smt_admin_operation_validate( *this );
    FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
    FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
    FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
@@ -123,47 +118,6 @@ void smt_capped_generation_policy::validate()const
    {
       FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
    }
-/*
-   min_steem_units_commitment.validate();
-   hard_cap_steem_units_commitment.validate();
-
-   FC_ASSERT( min_steem_units_commitment.lower_bound <= hard_cap_steem_units_commitment.lower_bound );
-   FC_ASSERT( min_steem_units_commitment.upper_bound <= hard_cap_steem_units_commitment.upper_bound );
-
-   // Following are non-trivial numerical bounds
-   // TODO:  Discuss these restrictions in the whitepaper
-
-   // we want hard cap to be large enough we don't see quantization effects
-   FC_ASSERT( hard_cap_steem_units_commitment.lower_bound >= SMT_MIN_HARD_CAP_STEEM_UNITS );
-
-   // we want saturation point to be large enough we don't see quantization effects
-   FC_ASSERT( hard_cap_steem_units_commitment.lower_bound >= SMT_MIN_SATURATION_STEEM_UNITS * uint64_t( max_unit_ratio ) );
-
-   // this static_assert checks to be sure min_soft_cap / max_soft_cap computation can't overflow uint64_t
-   static_assert( uint64_t( STEEM_MAX_SHARE_SUPPLY ) < (std::numeric_limits< uint64_t >::max() / STEEM_100_PERCENT), "Overflow check failed" );
-   uint64_t min_soft_cap = (uint64_t( hard_cap_steem_units_commitment.lower_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
-   uint64_t max_soft_cap = (uint64_t( hard_cap_steem_units_commitment.upper_bound.value ) * soft_cap_percent) / STEEM_100_PERCENT;
-
-   // we want soft cap to be large enough we don't see quantization effects
-   FC_ASSERT( min_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
-
-   // We want to prevent the following from overflowing STEEM_MAX_SHARE_SUPPLY:
-   // max_tokens_created = (u1.tt * sc + u2.tt * (hc-sc)) * min_unit_ratio
-   // max_steem_accepted =  u1.st * sc + u2.st * (hc-sc)
-
-   // hc / max_unit_ratio is the saturation point
-
-   uint128_t sc = max_soft_cap;
-   uint128_t hc_sc = hard_cap_steem_units_commitment.upper_bound.value - max_soft_cap;
-
-   uint128_t max_tokens_created = (pre_soft_cap_unit.token_unit_sum() * sc + post_soft_cap_unit.token_unit_sum() * hc_sc) * min_unit_ratio;
-   uint128_t max_share_supply_u128 = uint128_t( STEEM_MAX_SHARE_SUPPLY );
-
-   FC_ASSERT( max_tokens_created <= max_share_supply_u128 );
-
-   uint128_t max_steem_accepted = (pre_soft_cap_unit.steem_unit_sum() * sc + post_soft_cap_unit.steem_unit_sum() * hc_sc);
-   FC_ASSERT( max_steem_accepted <= max_share_supply_u128 );
-*/
 }
 
 struct validate_visitor
@@ -179,7 +133,7 @@ struct validate_visitor
 
 void smt_setup_emissions_operation::validate()const
 {
-   smt_base_operation::validate();
+   smt_admin_operation_validate( *this );
 
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
    FC_ASSERT( emissions_unit.token_unit.empty() == false, "Emissions token unit cannot be empty" );
@@ -228,11 +182,10 @@ void smt_setup_emissions_operation::validate()const
 
 void smt_setup_operation::validate()const
 {
-   smt_base_operation::validate();
+   smt_admin_operation_validate( *this );
+
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
-   validate_visitor vtor;
-   initial_generation_policy.visit( vtor );
    FC_ASSERT( contribution_begin_time > STEEM_GENESIS_TIME );
    FC_ASSERT( contribution_end_time > contribution_begin_time );
    FC_ASSERT( launch_time >= contribution_end_time );
@@ -240,6 +193,9 @@ void smt_setup_operation::validate()const
    FC_ASSERT( steem_units_min_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
    FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS );
    FC_ASSERT( steem_units_hard_cap <= STEEM_MAX_SHARE_SUPPLY );
+
+   validate_visitor vtor;
+   initial_generation_policy.visit( vtor );
 }
 
 struct smt_set_runtime_parameters_operation_visitor
@@ -324,7 +280,7 @@ struct smt_set_runtime_parameters_operation_visitor
 
 void smt_set_runtime_parameters_operation::validate()const
 {
-   smt_base_operation::validate();
+   smt_admin_operation_validate( *this );
    FC_ASSERT( !runtime_parameters.empty() );
 
    smt_set_runtime_parameters_operation_visitor visitor;
@@ -334,7 +290,7 @@ void smt_set_runtime_parameters_operation::validate()const
 
 void smt_set_setup_parameters_operation::validate() const
 {
-   smt_base_operation::validate();
+   smt_admin_operation_validate( *this );
    FC_ASSERT( setup_parameters.empty() == false );
 }
 
