@@ -48,7 +48,7 @@
 
 #define DPN_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define DPN_CHAIN_ID fc::sha256()
-#define DPN_ADDRESS_PREFIX                  "STM"
+#define DPN_ADDRESS_PREFIX                  "DPN"
 
 #define DPN_GENESIS_TIME                    (fc::time_point_sec(1458835200))
 #define DPN_MINING_TIME                     (fc::time_point_sec(1458838800))
@@ -93,7 +93,7 @@
 #define DPN_NUM_INIT_MINERS                 1
 #define DPN_INIT_TIME                       (fc::time_point_sec());
 
-#define DPN_MAX_WITNESSES                   21
+#define DPN_MAX_WITNESSES                   63
 
 #define DPN_MAX_VOTED_WITNESSES_HF0         19
 #define DPN_MAX_MINER_WITNESSES_HF0         1
@@ -103,7 +103,7 @@
 #define DPN_MAX_MINER_WITNESSES_HF17        0
 #define DPN_MAX_RUNNER_WITNESSES_HF17       1
 
-#define DPN_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
+#define DPN_HARDFORK_REQUIRED_WITNESSES     1 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define DPN_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define DPN_MAX_MEMO_SIZE                   2048
 #define DPN_MAX_PROXY_RECURSION_DEPTH       4
@@ -139,8 +139,8 @@
 #define DPN_VESTING_FUND_PERCENT_HF16       (15*DPN_1_PERCENT) //15% of inflation, 1.425% inflation
 #define DPN_PROPOSAL_FUND_PERCENT_HF0       (0)
 
-#define DPN_CONTENT_REWARD_PERCENT_HF21     (65*DPN_1_PERCENT)
-#define DPN_PROPOSAL_FUND_PERCENT_HF21      (10*DPN_1_PERCENT)
+#define DPN_CONTENT_REWARD_PERCENT_HF21     (0*DPN_1_PERCENT)
+#define DPN_PROPOSAL_FUND_PERCENT_HF21      (75*DPN_1_PERCENT)
 
 #define DPN_HF21_CONVERGENT_LINEAR_RECENT_CLAIMS (fc::uint128_t(0,503600561838938636ull))
 #define DPN_CONTENT_CONSTANT_HF21           (fc::uint128_t(0,2000000000000ull))
