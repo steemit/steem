@@ -1,8 +1,8 @@
-#include <dpn/plugins/rc_api/rc_api_plugin.hpp>
-#include <dpn/plugins/rc_api/rc_api.hpp>
+#include <steem/plugins/rc_api/rc_api_plugin.hpp>
+#include <steem/plugins/rc_api/rc_api.hpp>
 
 
-namespace dpn { namespace plugins { namespace rc {
+namespace steem { namespace plugins { namespace rc {
 
 rc_api_plugin::rc_api_plugin() {}
 rc_api_plugin::~rc_api_plugin() {}
@@ -17,4 +17,4 @@ void rc_api_plugin::plugin_initialize( const variables_map& options )
 void rc_api_plugin::plugin_startup() {}
 void rc_api_plugin::plugin_shutdown() {}
 
-} } } // dpn::plugins::rc
+} } } // steem::plugins::rc

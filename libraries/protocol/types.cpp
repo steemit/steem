@@ -1,12 +1,12 @@
-#include <dpn/protocol/config.hpp>
-#include <dpn/protocol/types.hpp>
+#include <steem/protocol/config.hpp>
+#include <steem/protocol/types.hpp>
 
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/io/raw.hpp>
 
-namespace dpn { namespace protocol {
+namespace steem { namespace protocol {
 
     public_key_type::public_key_type():key_data(){};
 
@@ -20,7 +20,7 @@ namespace dpn { namespace protocol {
     {
       // TODO:  Refactor syntactic checks into static is_valid()
       //        to make public_key_type API more similar to address API
-       std::string prefix( DPN_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -48,7 +48,7 @@ namespace dpn { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack_to_vector( k );
-       return DPN_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const public_key_type& p1, const fc::ecc::public_key& p2)
@@ -80,7 +80,7 @@ namespace dpn { namespace protocol {
 
     extended_public_key_type::extended_public_key_type( const std::string& base58str )
     {
-       std::string prefix( DPN_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -102,7 +102,7 @@ namespace dpn { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack_to_vector( k );
-       return DPN_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const extended_public_key_type& p1, const fc::ecc::extended_public_key& p2)
@@ -134,7 +134,7 @@ namespace dpn { namespace protocol {
 
     extended_private_key_type::extended_private_key_type( const std::string& base58str )
     {
-       std::string prefix( DPN_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -156,7 +156,7 @@ namespace dpn { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack_to_vector( k );
-       return DPN_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const extended_private_key_type& p1, const fc::ecc::extended_public_key& p2)
@@ -182,38 +182,38 @@ namespace dpn { namespace protocol {
          return fc::sha256();
    }
 
-} } // dpn::protocol
+} } // steem::protocol
 
 namespace fc
 {
     using namespace std;
-    void to_variant( const dpn::protocol::public_key_type& var,  fc::variant& vo )
+    void to_variant( const steem::protocol::public_key_type& var,  fc::variant& vo )
     {
         vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var,  dpn::protocol::public_key_type& vo )
+    void from_variant( const fc::variant& var,  steem::protocol::public_key_type& vo )
     {
-        vo = dpn::protocol::public_key_type( var.as_string() );
+        vo = steem::protocol::public_key_type( var.as_string() );
     }
 
-    void to_variant( const dpn::protocol::extended_public_key_type& var, fc::variant& vo )
+    void to_variant( const steem::protocol::extended_public_key_type& var, fc::variant& vo )
     {
        vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var, dpn::protocol::extended_public_key_type& vo )
+    void from_variant( const fc::variant& var, steem::protocol::extended_public_key_type& vo )
     {
-       vo = dpn::protocol::extended_public_key_type( var.as_string() );
+       vo = steem::protocol::extended_public_key_type( var.as_string() );
     }
 
-    void to_variant( const dpn::protocol::extended_private_key_type& var, fc::variant& vo )
+    void to_variant( const steem::protocol::extended_private_key_type& var, fc::variant& vo )
     {
        vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var, dpn::protocol::extended_private_key_type& vo )
+    void from_variant( const fc::variant& var, steem::protocol::extended_private_key_type& vo )
     {
-       vo = dpn::protocol::extended_private_key_type( var.as_string() );
+       vo = steem::protocol::extended_private_key_type( var.as_string() );
     }
 } // fc

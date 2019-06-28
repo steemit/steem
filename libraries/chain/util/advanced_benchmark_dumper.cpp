@@ -1,8 +1,8 @@
 
-#include <dpn/chain/util/advanced_benchmark_dumper.hpp>
+#include <steem/chain/util/advanced_benchmark_dumper.hpp>
 #include <chrono>
 
-namespace dpn { namespace chain { namespace util {
+namespace steem { namespace chain { namespace util {
 
    uint32_t advanced_benchmark_dumper::cnt = 0;
    std::string advanced_benchmark_dumper::virtual_operation_name = "virtual_operation";
@@ -79,4 +79,4 @@ namespace dpn { namespace chain { namespace util {
       dump_impl( rinfo, "r_" + file_name );
    }
 
-} } } // dpn::chain::util
+} } } // steem::chain::util

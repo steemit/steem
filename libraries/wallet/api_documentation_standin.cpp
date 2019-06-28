@@ -23,10 +23,10 @@
  */
 #include <iomanip>
 #include <boost/algorithm/string/join.hpp>
-#include <dpn/wallet/wallet.hpp>
-#include <dpn/wallet/api_documentation.hpp>
+#include <steem/wallet/wallet.hpp>
+#include <steem/wallet/api_documentation.hpp>
 
-namespace dpn { namespace wallet {
+namespace steem { namespace wallet {
    namespace detail {
       namespace
       {
@@ -88,4 +88,4 @@ namespace dpn { namespace wallet {
                 std::inserter(method_descriptions, method_descriptions.end()));
    }
 
-} } // end namespace dpn::wallet
+} } // end namespace steem::wallet

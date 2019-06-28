@@ -1,32 +1,32 @@
 
-#include <dpn/plugins/block_data_export/block_data_export_plugin.hpp>
-#include <dpn/plugins/block_data_export/exportable_block_data.hpp>
+#include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
+#include <steem/plugins/block_data_export/exportable_block_data.hpp>
 
-#include <dpn/plugins/stats_export/stats_export_plugin.hpp>
+#include <steem/plugins/stats_export/stats_export_plugin.hpp>
 
-#include <dpn/chain/account_object.hpp>
-#include <dpn/chain/database.hpp>
-#include <dpn/chain/global_property_object.hpp>
-#include <dpn/chain/index.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/global_property_object.hpp>
+#include <steem/chain/index.hpp>
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-namespace dpn { namespace plugins { namespace stats_export {
+namespace steem { namespace plugins { namespace stats_export {
 
-using dpn::chain::block_notification;
-using dpn::chain::database;
-using dpn::chain::dynamic_global_property_object;
+using steem::chain::block_notification;
+using steem::chain::database;
+using steem::chain::dynamic_global_property_object;
 
-using dpn::protocol::account_name_type;
-using dpn::protocol::authority;
-using dpn::protocol::signed_transaction;
+using steem::protocol::account_name_type;
+using steem::protocol::authority;
+using steem::protocol::signed_transaction;
 
-using dpn::plugins::block_data_export::block_data_export_plugin;
-using dpn::plugins::block_data_export::exportable_block_data;
+using steem::plugins::block_data_export::block_data_export_plugin;
+using steem::plugins::block_data_export::exportable_block_data;
 
-using dpn::plugins::chain::chain_plugin;
+using steem::plugins::chain::chain_plugin;
 
 namespace detail {
 
@@ -55,10 +55,10 @@ class api_stats_export_data_object
 
 } } } }
 
-FC_REFLECT( dpn::plugins::stats_export::detail::api_stats_transaction_data_object, (user)(size) )
-FC_REFLECT( dpn::plugins::stats_export::detail::api_stats_export_data_object, (global_properties)(transaction_stats)(free_memory) )
+FC_REFLECT( steem::plugins::stats_export::detail::api_stats_transaction_data_object, (user)(size) )
+FC_REFLECT( steem::plugins::stats_export::detail::api_stats_export_data_object, (global_properties)(transaction_stats)(free_memory) )
 
-namespace dpn { namespace plugins { namespace stats_export { namespace detail {
+namespace steem { namespace plugins { namespace stats_export { namespace detail {
 
 class stats_export_plugin_impl
 {
@@ -98,7 +98,7 @@ account_name_type get_transaction_user( const signed_transaction& tx )
 
 void stats_export_plugin_impl::on_post_apply_block( const block_notification& note )
 {
-   std::shared_ptr< api_stats_export_data_object > stats = _export_plugin.find_export_data< api_stats_export_data_object >( DPN_STATS_EXPORT_PLUGIN_NAME );
+   std::shared_ptr< api_stats_export_data_object > stats = _export_plugin.find_export_data< api_stats_export_data_object >( STEEM_STATS_EXPORT_PLUGIN_NAME );
    if( !stats )
       return;
 
@@ -139,7 +139,7 @@ void stats_export_plugin::plugin_initialize( const boost::program_options::varia
       ilog( "Initializing stats_export plugin" );
       my->_post_apply_block_conn = my->_db.add_post_apply_block_handler(
          [&]( const block_notification& note ){ my->on_post_apply_block( note ); }, *this );
-      my->_export_plugin.register_export_data_factory( DPN_STATS_EXPORT_PLUGIN_NAME,
+      my->_export_plugin.register_export_data_factory( STEEM_STATS_EXPORT_PLUGIN_NAME,
          []() -> std::shared_ptr< exportable_block_data > { return std::make_shared< detail::api_stats_export_data_object >(); } );
    }
    FC_CAPTURE_AND_RETHROW()
@@ -152,4 +152,4 @@ void stats_export_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->_post_apply_block_conn );
 }
 
-} } } // dpn::plugins::stats_export
+} } } // steem::plugins::stats_export

@@ -1,7 +1,7 @@
-#include <dpn/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
-#include <dpn/plugins/transaction_status_api/transaction_status_api.hpp>
+#include <steem/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
+#include <steem/plugins/transaction_status_api/transaction_status_api.hpp>
 
-namespace dpn { namespace plugins { namespace transaction_status_api {
+namespace steem { namespace plugins { namespace transaction_status_api {
 
 transaction_status_api_plugin::transaction_status_api_plugin() {}
 transaction_status_api_plugin::~transaction_status_api_plugin() {}
@@ -17,4 +17,4 @@ void transaction_status_api_plugin::plugin_startup() {}
 
 void transaction_status_api_plugin::plugin_shutdown() {}
 
-} } } // dpn::plugins::transaction_status_api
+} } } // steem::plugins::transaction_status_api

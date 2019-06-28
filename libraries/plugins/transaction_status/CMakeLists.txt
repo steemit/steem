@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/dpn/plugins/transaction_status/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/transaction_status/*.hpp")
 
 add_library( transaction_status_plugin
              transaction_status_plugin.cpp

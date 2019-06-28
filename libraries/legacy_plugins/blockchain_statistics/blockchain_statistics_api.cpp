@@ -1,20 +1,20 @@
-#include <dpn/blockchain_statistics/blockchain_statistics_api.hpp>
+#include <steem/blockchain_statistics/blockchain_statistics_api.hpp>
 
-namespace dpn { namespace blockchain_statistics {
+namespace steem { namespace blockchain_statistics {
 
 namespace detail
 {
    class blockchain_statistics_api_impl
    {
       public:
-         blockchain_statistics_api_impl( dpn::app::application& app )
+         blockchain_statistics_api_impl( steem::app::application& app )
             :_app( app ) {}
 
          statistics get_stats_for_time( fc::time_point_sec open, uint32_t interval )const;
          statistics get_stats_for_interval( fc::time_point_sec start, fc::time_point_sec end )const;
          statistics get_lifetime_stats()const;
 
-         dpn::app::application& _app;
+         steem::app::application& _app;
    };
 
    statistics blockchain_statistics_api_impl::get_stats_for_time( fc::time_point_sec open, uint32_t interval )const
@@ -33,7 +33,7 @@ namespace detail
    {
       statistics result;
       const auto& bucket_itr = _app.chain_database()->get_index< bucket_index >().indices().get< by_bucket >();
-      const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( DPN_BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
+      const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
       auto size_itr = sizes.rbegin();
       auto time = start;
 
@@ -66,7 +66,7 @@ namespace detail
    }
 } // detail
 
-blockchain_statistics_api::blockchain_statistics_api( const dpn::app::api_context& ctx )
+blockchain_statistics_api::blockchain_statistics_api( const steem::app::api_context& ctx )
 {
    my = std::make_shared< detail::blockchain_statistics_api_impl >( ctx.app );
 }
@@ -104,9 +104,9 @@ statistics& statistics::operator +=( const bucket_object& b )
    this->operations                             += b.operations;
    this->transactions                           += b.transactions;
    this->transfers                              += b.transfers;
-   this->dpn_transferred                      += b.dpn_transferred;
-   this->dbd_transferred                        += b.dbd_transferred;
-   this->dbd_paid_as_interest                   += b.dbd_paid_as_interest;
+   this->steem_transferred                      += b.steem_transferred;
+   this->sbd_transferred                        += b.sbd_transferred;
+   this->sbd_paid_as_interest                   += b.sbd_paid_as_interest;
    this->accounts_created                       += b.paid_accounts_created + b.mined_accounts_created;
    this->paid_accounts_created                  += b.paid_accounts_created;
    this->mined_accounts_created                 += b.mined_accounts_created;
@@ -129,12 +129,12 @@ statistics& statistics::operator +=( const bucket_object& b )
    this->new_reply_votes                        += b.new_reply_votes;
    this->changed_reply_votes                    += b.changed_reply_votes;
    this->payouts                                += b.payouts;
-   this->dbd_paid_to_authors                    += b.dbd_paid_to_authors;
+   this->sbd_paid_to_authors                    += b.sbd_paid_to_authors;
    this->vests_paid_to_authors                  += b.vests_paid_to_authors;
    this->vests_paid_to_curators                 += b.vests_paid_to_curators;
    this->liquidity_rewards_paid                 += b.liquidity_rewards_paid;
    this->transfers_to_vesting                   += b.transfers_to_vesting;
-   this->dpn_vested                           += b.dpn_vested;
+   this->steem_vested                           += b.steem_vested;
    this->new_vesting_withdrawal_requests        += b.new_vesting_withdrawal_requests;
    this->vesting_withdraw_rate_delta            += b.vesting_withdraw_rate_delta;
    this->modified_vesting_withdrawal_requests   += b.modified_vesting_withdrawal_requests;
@@ -142,10 +142,10 @@ statistics& statistics::operator +=( const bucket_object& b )
    this->finished_vesting_withdrawals           += b.finished_vesting_withdrawals;
    this->vests_withdrawn                        += b.vests_withdrawn;
    this->vests_transferred                      += b.vests_transferred;
-   this->dbd_conversion_requests_created        += b.dbd_conversion_requests_created;
-   this->dbd_to_be_converted                    += b.dbd_to_be_converted;
-   this->dbd_conversion_requests_filled         += b.dbd_conversion_requests_filled;
-   this->dpn_converted                        += b.dpn_converted;
+   this->sbd_conversion_requests_created        += b.sbd_conversion_requests_created;
+   this->sbd_to_be_converted                    += b.sbd_to_be_converted;
+   this->sbd_conversion_requests_filled         += b.sbd_conversion_requests_filled;
+   this->steem_converted                        += b.steem_converted;
    this->limit_orders_created                   += b.limit_orders_created;
    this->limit_orders_filled                    += b.limit_orders_filled;
    this->limit_orders_cancelled                 += b.limit_orders_cancelled;
@@ -155,4 +155,4 @@ statistics& statistics::operator +=( const bucket_object& b )
    return ( *this );
 }
 
-} } // dpn::blockchain_statistics
+} } // steem::blockchain_statistics

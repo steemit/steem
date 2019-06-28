@@ -121,8 +121,8 @@ if __name__ == '__main__':
   logger.info("Performing SPS RPC API plugin tests")
   import argparse
   parser = argparse.ArgumentParser()
-  parser.add_argument("--node-ip", help = "IP address of dpn node", default = "http://127.0.0.1", dest = "node_ip")
-  parser.add_argument("--node-port", help = "Dpn node port", default = 8751, dest = "node_port")
+  parser.add_argument("--node-ip", help = "IP address of steem node", default = "http://127.0.0.1", dest = "node_ip")
+  parser.add_argument("--node-port", help = "Steem node port", default = 8751, dest = "node_port")
 
   args = parser.parse_args()
 

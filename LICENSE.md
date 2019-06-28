@@ -1,7 +1,7 @@
-Copyright (c) 2019 Dpnit, Inc., and contributors.
+Copyright (c) 2019 Steemit, Inc., and contributors.
 
 The following license applies to code contained within this repository that
-is created by Dpnit, Inc. Other copy right holders have licensed dependencies such
+is created by Steemit, Inc. Other copy right holders have licensed dependencies such
 as Graphene, FC, and Boost under their own individual licenses.
 
 The MIT License

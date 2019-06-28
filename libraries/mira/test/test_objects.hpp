@@ -47,7 +47,7 @@ void unpack( Stream& s, chainbase::oid<T>& id )
 
 } }
 
-#include <dpn/protocol/fixed_string.hpp>
+#include <steem/protocol/fixed_string.hpp>
 
 #include <mira/index_adapter.hpp>
 #include <mira/ordered_index.hpp>
@@ -237,7 +237,7 @@ typedef mira::multi_index_adapter<
 > test_object3_index;
 
 
-typedef dpn::protocol::fixed_string<16> account_name_type;
+typedef steem::protocol::fixed_string<16> account_name_type;
 
 struct account_object : public chainbase::object< account_object_type, account_object >
 {

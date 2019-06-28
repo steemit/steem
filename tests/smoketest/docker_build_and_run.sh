@@ -1,7 +1,7 @@
 #!/bin/bash
 #params:
-# - ref dpnd location
-# - tested dpnd location
+# - ref steemd location
+# - tested steemd location
 # - ref blockchain folder location
 # - tested blockchain folder location
 # - path to directory, where non-empty logs should be generated
@@ -11,14 +11,14 @@
 #
 # WARNING: use absolute paths instead of relative!
 #
-# sudo ./docker_build_and_run.sh ~/dpnit/dpn/build/Release/programs/dpnd ~/dpnit/dpn/build/Release/programs/dpnd ~/dpnit/dpnd_data/dpnnet ~/dpnit/dpnd_data/dpnnet ~/dpnit/logs 5000000 12
+# sudo ./docker_build_and_run.sh ~/steemit/steem/build/Release/programs/steemd ~/steemit/steem/build/Release/programs/steemd ~/steemit/steemd_data/steemnet ~/steemit/steemd_data/steemnet ~/steemit/logs 5000000 12
 
 if [ $# -lt 6 -o $# -gt 8 ]
 then
-   echo "Usage: reference_dpnd_location tested_dpnd_location ref_blockchain_folder_location tested_blockchain_folder_location"
+   echo "Usage: reference_steemd_location tested_steemd_location ref_blockchain_folder_location tested_blockchain_folder_location"
    echo "       logs_dir stop_replay_at_block [jobs [--dont-copy-config]"
-   echo "Example: ~/dpnit/ref_dpnd ~/dpnit/dpn/build/Release/programs/dpnd ~/dpnit/dpnnet ~/dpnit/testnet"
-   echo "         ~/dpnit/logs 5000000 12"
+   echo "Example: ~/steemit/ref_steemd ~/steemit/steem/build/Release/programs/steemd ~/steemit/steemnet ~/steemit/testnet"
+   echo "         ~/steemit/logs 5000000 12"
    echo "         if <jobs> not passed, <nproc> will be used."
    exit -1
 fi

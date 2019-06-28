@@ -1,17 +1,17 @@
 
-#include <dpn/chain/dpn_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
-#include <dpn/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
+#include <steem/plugins/account_history_rocksdb/account_history_rocksdb_plugin.hpp>
 
-#include <dpn/chain/database.hpp>
-#include <dpn/chain/history_object.hpp>
-#include <dpn/chain/index.hpp>
-#include <dpn/chain/util/impacted.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/history_object.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <dpn/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
-#include <dpn/utilities/benchmark_dumper.hpp>
-#include <dpn/utilities/plugin_utilities.hpp>
+#include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <appbase/application.hpp>
 
@@ -31,7 +31,7 @@
 
 namespace bpo = boost::program_options;
 
-#define DPN_NAMESPACE_PREFIX "dpn::protocol::"
+#define STEEM_NAMESPACE_PREFIX "steem::protocol::"
 #define OPEN_FILE_LIMIT 750
 
 #define DIAGNOSTIC(s)
@@ -56,19 +56,19 @@ namespace bpo = boost::program_options;
 #define STORE_MAJOR_VERSION          1
 #define STORE_MINOR_VERSION          0
 
-namespace dpn { namespace plugins { namespace account_history_rocksdb {
+namespace steem { namespace plugins { namespace account_history_rocksdb {
 
-using dpn::protocol::account_name_type;
-using dpn::protocol::block_id_type;
-using dpn::protocol::operation;
-using dpn::protocol::signed_block;
-using dpn::protocol::signed_block_header;
-using dpn::protocol::signed_transaction;
+using steem::protocol::account_name_type;
+using steem::protocol::block_id_type;
+using steem::protocol::operation;
+using steem::protocol::signed_block;
+using steem::protocol::signed_block_header;
+using steem::protocol::signed_transaction;
 
-using dpn::chain::operation_notification;
-using dpn::chain::transaction_id_type;
+using steem::chain::operation_notification;
+using steem::chain::transaction_id_type;
 
-using dpn::utilities::benchmark_dumper;
+using steem::utilities::benchmark_dumper;
 
 using ::rocksdb::DB;
 using ::rocksdb::DBOptions;
@@ -361,23 +361,23 @@ class account_history_rocksdb_plugin::impl final
 public:
    impl( account_history_rocksdb_plugin& self, const bpo::variables_map& options, const bfs::path& storagePath) :
       _self(self),
-      _mainDb(appbase::app().get_plugin<dpn::plugins::chain::chain_plugin>().db()),
+      _mainDb(appbase::app().get_plugin<steem::plugins::chain::chain_plugin>().db()),
       _storagePath(storagePath),
       _writeBuffer(_storage, _columnHandles)
       {
       collectOptions(options);
 
-      _mainDb.add_pre_reindex_handler([&]( const dpn::chain::reindex_notification& note ) -> void
+      _mainDb.add_pre_reindex_handler([&]( const steem::chain::reindex_notification& note ) -> void
          {
             on_pre_reindex( note );
          }, _self, 0);
 
-      _mainDb.add_post_reindex_handler([&]( const dpn::chain::reindex_notification& note ) -> void
+      _mainDb.add_post_reindex_handler([&]( const steem::chain::reindex_notification& note ) -> void
          {
             on_post_reindex( note );
          }, _self, 0);
 
-      DPN_ADD_PLUGIN_INDEX(_mainDb, volatile_operation_index);
+      STEEM_ADD_PLUGIN_INDEX(_mainDb, volatile_operation_index);
       }
 
    ~impl()
@@ -447,8 +447,8 @@ public:
    }
 
    void printReport(uint32_t blockNo, const char* detailText) const;
-   void on_pre_reindex( const dpn::chain::reindex_notification& note );
-   void on_post_reindex( const dpn::chain::reindex_notification& note );
+   void on_pre_reindex( const steem::chain::reindex_notification& note );
+   void on_post_reindex( const steem::chain::reindex_notification& note );
 
    /// Allows to start immediate data import (outside replay process).
    void importData(unsigned int blockLimit);
@@ -708,7 +708,7 @@ void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_o
     fc::mutable_variant_object state_opts;
 
    typedef std::pair< account_name_type, account_name_type > pairstring;
-   DPN_LOAD_VALUE_SET(options, "account-history-rocksdb-track-account-range", _tracked_accounts, pairstring);
+   STEEM_LOAD_VALUE_SET(options, "account-history-rocksdb-track-account-range", _tracked_accounts, pairstring);
 
    state_opts[ "account-history-rocksdb-track-account-range" ] = _tracked_accounts;
 
@@ -793,7 +793,7 @@ inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account
 std::vector<account_name_type> account_history_rocksdb_plugin::impl::getImpactedAccounts(const operation& op) const
 {
    flat_set<account_name_type> impacted;
-   dpn::app::operation_get_impacted_accounts(op, impacted);
+   steem::app::operation_get_impacted_accounts(op, impacted);
    std::vector<account_name_type> retVal;
 
    if(impacted.empty())
@@ -841,7 +841,7 @@ void account_history_rocksdb_plugin::impl::storeOpFilteringParameters(const std:
          for(const string& op : ops)
          {
             if( op.empty() == false )
-               storage->insert( DPN_NAMESPACE_PREFIX + op );
+               storage->insert( STEEM_NAMESPACE_PREFIX + op );
          }
       }
    }
@@ -1211,7 +1211,7 @@ void account_history_rocksdb_plugin::impl::prunePotentiallyTooOldItems(account_h
    }
 }
 
-void account_history_rocksdb_plugin::impl::on_pre_reindex(const dpn::chain::reindex_notification& note)
+void account_history_rocksdb_plugin::impl::on_pre_reindex(const steem::chain::reindex_notification& note)
 {
    ilog("Received onReindexStart request, attempting to clean database storage.");
 
@@ -1236,7 +1236,7 @@ void account_history_rocksdb_plugin::impl::on_pre_reindex(const dpn::chain::rein
    ilog("onReindexStart request completed successfully.");
 }
 
-void account_history_rocksdb_plugin::impl::on_post_reindex(const dpn::chain::reindex_notification& note)
+void account_history_rocksdb_plugin::impl::on_post_reindex(const steem::chain::reindex_notification& note)
 {
    ilog("Reindex completed up to block: ${b}. Setting back write limit to non-massive level.",
       ("b", note.last_block_number));
@@ -1516,5 +1516,5 @@ uint32_t account_history_rocksdb_plugin::enum_operations_from_block_range(uint32
 
 } } }
 
-FC_REFLECT( dpn::plugins::account_history_rocksdb::account_history_info,
+FC_REFLECT( steem::plugins::account_history_rocksdb::account_history_info,
    (id)(oldestEntryId)(newestEntryId)(oldestEntryTimestamp) )

@@ -1,7 +1,7 @@
 
-#include <dpn/protocol/sign_state.hpp>
+#include <steem/protocol/sign_state.hpp>
 
-namespace dpn { namespace protocol {
+namespace steem { namespace protocol {
 
 bool sign_state::signed_by( const public_key_type& k )
 {
@@ -109,4 +109,4 @@ sign_state::sign_state(
    approved_by.insert( "temp"  );
 }
 
-} } // dpn::protocol
+} } // steem::protocol

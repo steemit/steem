@@ -1,7 +1,7 @@
-#include <dpn/plugins/rewards_api/rewards_api_plugin.hpp>
-#include <dpn/plugins/rewards_api/rewards_api.hpp>
+#include <steem/plugins/rewards_api/rewards_api_plugin.hpp>
+#include <steem/plugins/rewards_api/rewards_api.hpp>
 
-namespace dpn { namespace plugins { namespace rewards_api {
+namespace steem { namespace plugins { namespace rewards_api {
 
 rewards_api_plugin::rewards_api_plugin() {}
 rewards_api_plugin::~rewards_api_plugin() {}
@@ -20,5 +20,5 @@ void rewards_api_plugin::plugin_startup()
 
 void rewards_api_plugin::plugin_shutdown() {}
 
-} } } // dpn::plugins::rewards_api
+} } } // steem::plugins::rewards_api
 

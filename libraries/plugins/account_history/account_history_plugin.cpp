@@ -1,12 +1,12 @@
-#include <dpn/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <dpn/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <dpn/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <dpn/chain/history_object.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <dpn/utilities/plugin_utilities.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -14,11 +14,11 @@
 #include <boost/algorithm/string.hpp>
 
 
-#define DPN_NAMESPACE_PREFIX "dpn::protocol::"
+#define STEEM_NAMESPACE_PREFIX "steem::protocol::"
 
-namespace dpn { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
-using namespace dpn::protocol;
+using namespace steem::protocol;
 
 using chain::database;
 using chain::operation_notification;
@@ -30,7 +30,7 @@ class account_history_plugin_impl
 {
    public:
       account_history_plugin_impl() :
-         _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       virtual ~account_history_plugin_impl() {}
 
@@ -223,12 +223,12 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
       [&]( const operation_notification& note ){ my->on_pre_apply_operation(note); }, *this, 0 );
 
    typedef pair< account_name_type, account_name_type > pairstring;
-   DPN_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
+   STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
 
    if( options.count( "track-account-range" ) )
    {
       wlog( "track-account-range is deprecated in favor of account-history-track-account-range" );
-      DPN_LOAD_VALUE_SET( options, "track-account-range", my->_tracked_accounts, pairstring );
+      STEEM_LOAD_VALUE_SET( options, "track-account-range", my->_tracked_accounts, pairstring );
    }
 
    fc::mutable_variant_object state_opts;
@@ -253,7 +253,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
             for( const string& op : ops )
             {
                if( op.size() )
-                  my->_op_list.insert( DPN_NAMESPACE_PREFIX + op );
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
             }
          }
       }
@@ -270,7 +270,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
             for( const string& op : ops )
             {
                if( op.size() )
-                  my->_op_list.insert( DPN_NAMESPACE_PREFIX + op );
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
             }
          }
       }
@@ -297,7 +297,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
             for( const string& op : ops )
             {
                if( op.size() )
-                  my->_op_list.insert( DPN_NAMESPACE_PREFIX + op );
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
             }
          }
       }
@@ -314,7 +314,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
             for( const string& op : ops )
             {
                if( op.size() )
-                  my->_op_list.insert( DPN_NAMESPACE_PREFIX + op );
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
             }
          }
       }
@@ -348,4 +348,4 @@ flat_map< account_name_type, account_name_type > account_history_plugin::tracked
    return my->_tracked_accounts;
 }
 
-} } } // dpn::plugins::account_history
+} } } // steem::plugins::account_history

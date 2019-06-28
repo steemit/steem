@@ -7,7 +7,7 @@ PAT_FILE=$TEST_DIR/get_ops_in_block.json.pat
 
 function print_help_and_quit {
    echo "Usage: last_block_number [--pre-appbase] 1st_node_address [--pre-appbase] 2nd_node_address"
-   echo "Example: 10000 --pre-appbase https://dpnd.dpnit.com http://127.0.0.1:8090"
+   echo "Example: 10000 --pre-appbase https://steemd.steemit.com http://127.0.0.1:8090"
    exit $EXIT_CODE
 }
 
@@ -57,11 +57,11 @@ esac
 
 echo Checking $NODE1...
 pyresttest $NODE1 ./basic_smoketest.yaml
-[ $? -ne 0 ] && echo FATAL: dpnd not running at $NODE1? && exit -1
+[ $? -ne 0 ] && echo FATAL: steemd not running at $NODE1? && exit -1
 
 echo Checking $NODE2...
 pyresttest $NODE2 ./basic_smoketest.yaml
-[ $? -ne 0 ] && echo FATAL: dpnd not running at $NODE2? && exit -1
+[ $? -ne 0 ] && echo FATAL: steemd not running at $NODE2? && exit -1
 
 # Delete .out & .pat files here.
 rm -f $OUT_FILE $PAT_FILE

@@ -38,7 +38,7 @@ build_version.cc
 
 libraries/appbase/examples/appbase_example
 libraries/chainbase/test/chainbase_test
-libraries/protocol/include/dpn/protocol/hardfork.hpp
+libraries/protocol/include/steem/protocol/hardfork.hpp
 libraries/fc/git_revision.cpp
 libraries/fc/tests/all_tests
 libraries/fc/tests/api
@@ -70,8 +70,8 @@ libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
 libraries/wallet/doxygen
 
-programs/build_helpers/dpn_build_helpers/__pycache__/
-programs/util/dump_dpn_schema
+programs/build_helpers/steem_build_helpers/__pycache__/
+programs/util/dump_steem_schema
 programs/util/schema_test
 programs/util/serialize_set_properties
 programs/util/sign_digest
@@ -82,8 +82,8 @@ programs/util/test_shared_mem
 programs/util/test_sqrt
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
-programs/dpnd/dpnd
-programs/dpnd/test
+programs/steemd/steemd
+programs/steemd/test
 programs/delayed_node
 programs/build_helpers/cat-parts
 programs/size_checker/size_checker
@@ -101,5 +101,3 @@ tests/performance_test
 build/
 build.*/
 build-*/
-
-.idea/*

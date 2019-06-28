@@ -1,7 +1,7 @@
-#include <dpn/plugins/webserver/webserver_plugin.hpp>
-#include <dpn/plugins/webserver/local_endpoint.hpp>
+#include <steem/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/webserver/local_endpoint.hpp>
 
-#include <dpn/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
@@ -25,7 +25,7 @@
 #include <memory>
 #include <iostream>
 
-namespace dpn { namespace plugins { namespace webserver {
+namespace steem { namespace plugins { namespace webserver {
 
 namespace asio = boost::asio;
 
@@ -506,4 +506,4 @@ void webserver_plugin::plugin_shutdown()
    my->stop_webserver();
 }
 
-} } } // dpn::plugins::webserver
+} } } // steem::plugins::webserver

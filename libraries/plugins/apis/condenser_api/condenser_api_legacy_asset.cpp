@@ -1,6 +1,6 @@
-#include <dpn/plugins/condenser_api/condenser_api_legacy_asset.hpp>
+#include <steem/plugins/condenser_api/condenser_api_legacy_asset.hpp>
 
-namespace dpn { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 uint32_t string_to_asset_num( const char* p, uint8_t decimals )
 {
@@ -42,17 +42,17 @@ uint32_t string_to_asset_num( const char* p, uint8_t decimals )
          }
          switch( name_u64 )
          {
-            case DPN_SYMBOL_U64:
+            case STEEM_SYMBOL_U64:
                FC_ASSERT( decimals == 3, "Incorrect decimal places" );
-               asset_num = DPN_ASSET_NUM_DPN;
+               asset_num = STEEM_ASSET_NUM_STEEM;
                break;
-            case DBD_SYMBOL_U64:
+            case SBD_SYMBOL_U64:
                FC_ASSERT( decimals == 3, "Incorrect decimal places" );
-               asset_num = DPN_ASSET_NUM_DBD;
+               asset_num = STEEM_ASSET_NUM_SBD;
                break;
             case VESTS_SYMBOL_U64:
                FC_ASSERT( decimals == 6, "Incorrect decimal places" );
-               asset_num = DPN_ASSET_NUM_VESTS;
+               asset_num = STEEM_ASSET_NUM_VESTS;
                break;
             default:
                FC_ASSERT( false, "Cannot parse asset symbol" );
@@ -87,17 +87,17 @@ std::string asset_num_to_string( uint32_t asset_num )
    switch( asset_num )
    {
 #ifdef IS_TEST_NET
-      case DPN_ASSET_NUM_DPN:
+      case STEEM_ASSET_NUM_STEEM:
          return "TESTS";
-      case DPN_ASSET_NUM_DBD:
+      case STEEM_ASSET_NUM_SBD:
          return "TBD";
 #else
-      case DPN_ASSET_NUM_DPN:
-         return "DPN";
-      case DPN_ASSET_NUM_DBD:
-         return "DBD";
+      case STEEM_ASSET_NUM_STEEM:
+         return "STEEM";
+      case STEEM_ASSET_NUM_SBD:
+         return "SBD";
 #endif
-      case DPN_ASSET_NUM_VESTS:
+      case STEEM_ASSET_NUM_VESTS:
          return "VESTS";
       default:
          return "UNKN"; // SMTs will return this symbol if returned as a legacy asset
@@ -159,7 +159,7 @@ legacy_asset legacy_asset::from_string( const string& from )
 
          int64_t prec = precision( result.symbol );
 
-         //Max amount = 9223372036854775.807 DPN/DBD
+         //Max amount = 9223372036854775.807 STEEM/SBD
          //`inpart` * `prec` can cause overflow, better is to emulate multiplication using additional zeros
          auto _prec = std::to_string( prec );
          if( !_prec.empty() )

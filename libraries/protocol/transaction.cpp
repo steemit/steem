@@ -1,6 +1,6 @@
 
-#include <dpn/protocol/transaction.hpp>
-#include <dpn/protocol/transaction_util.hpp>
+#include <steem/protocol/transaction.hpp>
+#include <steem/protocol/transaction_util.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace dpn { namespace protocol {
+namespace steem { namespace protocol {
 
 digest_type signed_transaction::merkle_digest()const
 {
@@ -39,7 +39,7 @@ void transaction::validate() const
       operation_validate(op);
 }
 
-dpn::protocol::transaction_id_type dpn::protocol::transaction::id() const
+steem::protocol::transaction_id_type steem::protocol::transaction::id() const
 {
    auto h = digest();
    transaction_id_type result;
@@ -47,14 +47,14 @@ dpn::protocol::transaction_id_type dpn::protocol::transaction::id() const
    return result;
 }
 
-const signature_type& dpn::protocol::signed_transaction::sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type )
+const signature_type& steem::protocol::signed_transaction::sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type )
 {
    digest_type h = sig_digest( chain_id );
    signatures.push_back( key.sign_compact( h, canon_type ) );
    return signatures.back();
 }
 
-signature_type dpn::protocol::signed_transaction::sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type )const
+signature_type steem::protocol::signed_transaction::sign( const private_key_type& key, const chain_id_type& chain_id, canonical_signature_type canon_type )const
 {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
@@ -88,7 +88,7 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    flat_set<public_key_type> result;
    for( const auto&  sig : signatures )
    {
-      DPN_ASSERT(
+      STEEM_ASSERT(
          result.insert( fc::ecc::public_key( sig, d, canon_type ) ).second,
          tx_duplicate_sig,
          "Duplicate Signature detected" );
@@ -182,7 +182,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         dpn::protocol::verify_authority(
+         steem::protocol::verify_authority(
             operations,
             result,
             get_active,
@@ -216,7 +216,7 @@ void signed_transaction::verify_authority(
    uint32_t max_account_auths,
    canonical_signature_type canon_type )const
 { try {
-   dpn::protocol::verify_authority(
+   steem::protocol::verify_authority(
       operations,
       get_signature_keys( chain_id, canon_type ),
       get_active,
@@ -231,4 +231,4 @@ void signed_transaction::verify_authority(
       flat_set< account_name_type >() );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-} } // dpn::protocol
+} } // steem::protocol

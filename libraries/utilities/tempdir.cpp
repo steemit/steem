@@ -22,18 +22,18 @@
  * THE SOFTWARE.
  */
 
-#include <dpn/utilities/tempdir.hpp>
+#include <steem/utilities/tempdir.hpp>
 
 #include <cstdlib>
 
-namespace dpn { namespace utilities {
+namespace steem { namespace utilities {
 
 fc::path temp_directory_path()
 {
-   const char* dpnit_tempdir = getenv("DPN_TEMPDIR");
-   if( dpnit_tempdir != nullptr )
-      return fc::path( dpnit_tempdir );
-   return fc::temp_directory_path() / "dpn-tmp";
+   const char* steemit_tempdir = getenv("STEEM_TEMPDIR");
+   if( steemit_tempdir != nullptr )
+      return fc::path( steemit_tempdir );
+   return fc::temp_directory_path() / "steem-tmp";
 }
 
-} } // dpn::utilities
+} } // steem::utilities

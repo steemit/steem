@@ -1,7 +1,7 @@
 
-#include <dpn/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/benchmark_dumper.hpp>
 
-namespace dpn { namespace utilities {
+namespace steem { namespace utilities {
 
 #define PROC_STATUS_LINE_LENGTH 1028
 

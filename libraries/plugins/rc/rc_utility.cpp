@@ -1,10 +1,10 @@
 
-#include <dpn/plugins/rc/rc_utility.hpp>
+#include <steem/plugins/rc/rc_utility.hpp>
 
 #include <fc/reflect/variant.hpp>
 #include <fc/uint128.hpp>
 
-namespace dpn { namespace plugins { namespace rc {
+namespace steem { namespace plugins { namespace rc {
 
 using fc::uint128_t;
 

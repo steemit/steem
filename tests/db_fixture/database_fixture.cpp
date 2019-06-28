@@ -1,22 +1,22 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <dpn/utilities/tempdir.hpp>
-#include <dpn/utilities/database_configuration.hpp>
+#include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
-#include <dpn/chain/history_object.hpp>
-#include <dpn/chain/dpn_objects.hpp>
-#include <dpn/chain/sps_objects.hpp>
+#include <steem/chain/history_object.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 
-#include <dpn/plugins/account_history/account_history_plugin.hpp>
-#include <dpn/plugins/chain/chain_plugin.hpp>
-#include <dpn/plugins/rc/rc_plugin.hpp>
-#include <dpn/plugins/webserver/webserver_plugin.hpp>
-#include <dpn/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
+#include <steem/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
 
-#include <dpn/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
-#include <dpn/chain/smt_objects/nai_pool_object.hpp>
+#include <steem/chain/smt_objects/nai_pool_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -27,16 +27,16 @@
 
 #include "database_fixture.hpp"
 
-//using namespace dpn::chain::test;
+//using namespace steem::chain::test;
 
-uint32_t DPN_TESTING_GENESIS_TIMESTAMP = 1431700000;
+uint32_t STEEM_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
-using namespace dpn::plugins::webserver;
-using namespace dpn::plugins::database_api;
-using namespace dpn::plugins::block_api;
-using dpn::plugins::condenser_api::condenser_api_plugin;
+using namespace steem::plugins::webserver;
+using namespace steem::plugins::database_api;
+using namespace steem::plugins::block_api;
+using steem::plugins::condenser_api::condenser_api_plugin;
 
-namespace dpn { namespace chain {
+namespace steem { namespace chain {
 
 using std::cout;
 using std::cerr;
@@ -55,27 +55,27 @@ clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb 
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
 
-   appbase::app().register_plugin< dpn::plugins::account_history::account_history_plugin >();
-   db_plugin = &appbase::app().register_plugin< dpn::plugins::debug_node::debug_node_plugin >();
-   appbase::app().register_plugin< dpn::plugins::rc::rc_plugin >();
-   appbase::app().register_plugin< dpn::plugins::witness::witness_plugin >();
+   appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   appbase::app().register_plugin< steem::plugins::rc::rc_plugin >();
+   appbase::app().register_plugin< steem::plugins::witness::witness_plugin >();
 
    db_plugin->logging = false;
    appbase::app().initialize<
-      dpn::plugins::account_history::account_history_plugin,
-      dpn::plugins::debug_node::debug_node_plugin,
-      dpn::plugins::rc::rc_plugin,
-      dpn::plugins::witness::witness_plugin
+      steem::plugins::account_history::account_history_plugin,
+      steem::plugins::debug_node::debug_node_plugin,
+      steem::plugins::rc::rc_plugin,
+      steem::plugins::witness::witness_plugin
       >( argc, argv );
 
-   dpn::plugins::rc::rc_plugin_skip_flags rc_skip;
+   steem::plugins::rc::rc_plugin_skip_flags rc_skip;
    rc_skip.skip_reject_not_enough_rc = 1;
    rc_skip.skip_deduct_rc = 0;
    rc_skip.skip_negative_rc_balance = 1;
    rc_skip.skip_reject_unknown_delta_vests = 0;
-   appbase::app().get_plugin< dpn::plugins::rc::rc_plugin >().set_rc_plugin_skip_flags( rc_skip );
+   appbase::app().get_plugin< steem::plugins::rc::rc_plugin >().set_rc_plugin_skip_flags( rc_skip );
 
-   db = &appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
    BOOST_REQUIRE( db );
 
    init_account_pub_key = init_account_priv_key.get_public_key();
@@ -83,17 +83,17 @@ clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb 
    open_database( shared_file_size_in_mb );
 
    generate_block();
-   db->set_hardfork( DPN_BLOCKCHAIN_VERSION.minor_v() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = DPN_NUM_INIT_MINERS; i < DPN_MAX_WITNESSES; i++ )
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
    {
-      account_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-      fund( DPN_INIT_MINER_NAME + fc::to_string( i ), DPN_MIN_PRODUCER_REWARD.amount.value );
-      witness_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, DPN_MIN_PRODUCER_REWARD.amount );
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
    validate_database();
@@ -125,7 +125,7 @@ clean_database_fixture::~clean_database_fixture()
 void clean_database_fixture::validate_database()
 {
    database_fixture::validate_database();
-   appbase::app().get_plugin< dpn::plugins::rc::rc_plugin >().validate_database();
+   appbase::app().get_plugin< steem::plugins::rc::rc_plugin >().validate_database();
 }
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
@@ -148,9 +148,9 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
-      args.dbd_initial_supply = DBD_INITIAL_TEST_SUPPLY;
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
       args.shared_file_size = size;
-      args.database_cfg = dpn::utilities::default_database_configuration();
+      args.database_cfg = steem::utilities::default_database_configuration();
       db->open( args );
    }
 
@@ -158,17 +158,17 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
 
 
    generate_block();
-   db->set_hardfork( DPN_BLOCKCHAIN_VERSION.minor_v() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = DPN_NUM_INIT_MINERS; i < DPN_MAX_WITNESSES; i++ )
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
    {
-      account_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-      fund( DPN_INIT_MINER_NAME + fc::to_string( i ), DPN_MIN_PRODUCER_REWARD.amount.value );
-      witness_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, DPN_MIN_PRODUCER_REWARD.amount );
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
    validate_database();
@@ -185,19 +185,19 @@ live_database_fixture::live_database_fixture()
       _chain_dir = fc::current_path() / "test_blockchain";
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
-      appbase::app().register_plugin< dpn::plugins::account_history::account_history_plugin >();
+      appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
       appbase::app().initialize<
-         dpn::plugins::account_history::account_history_plugin
+         steem::plugins::account_history::account_history_plugin
          >( argc, argv );
 
-      db = &appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
+      db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
       {
          database::open_args args;
          args.data_dir = _chain_dir;
          args.shared_mem_dir = args.data_dir;
-         args.database_cfg = dpn::utilities::default_database_configuration();
+         args.database_cfg = steem::utilities::default_database_configuration();
          db->open( args );
       }
 
@@ -236,7 +236,7 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
    return fc::ecc::private_key::regenerate( fc::sha256::hash( seed ) );
 }
 
-#ifdef DPN_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
@@ -253,7 +253,7 @@ void database_fixture::open_database( uint16_t shared_file_size_in_mb )
 {
    if( !data_dir )
    {
-      data_dir = fc::temp_directory( dpn::utilities::temp_directory_path() );
+      data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
 
       idump( (data_dir->path()) );
@@ -262,9 +262,9 @@ void database_fixture::open_database( uint16_t shared_file_size_in_mb )
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
-      args.dbd_initial_supply = DBD_INITIAL_TEST_SUPPLY;
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
       args.shared_file_size = 1024 * 1024 * shared_file_size_in_mb; // 8MB(default) or more:  file for testing
-      args.database_cfg = dpn::utilities::default_database_configuration();
+      args.database_cfg = steem::utilities::default_database_configuration();
       args.sps_remove_threshold = 20;
       db->open(args);
    }
@@ -277,7 +277,7 @@ void database_fixture::open_database( uint16_t shared_file_size_in_mb )
 void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
    skip |= default_skip;
-   db_plugin->debug_generate_blocks( dpn::utilities::key_to_wif( key ), 1, skip, miss_blocks );
+   db_plugin->debug_generate_blocks( steem::utilities::key_to_wif( key ), 1, skip, miss_blocks );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
@@ -289,7 +289,7 @@ void database_fixture::generate_blocks( uint32_t block_count )
 void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks)
 {
    db_plugin->debug_generate_blocks_until( debug_key, timestamp, miss_intermediate_blocks, default_skip );
-   BOOST_REQUIRE( ( db->head_block_time() - timestamp ).to_seconds() < DPN_BLOCK_INTERVAL );
+   BOOST_REQUIRE( ( db->head_block_time() - timestamp ).to_seconds() < STEEM_BLOCK_INTERVAL );
 }
 
 const account_object& database_fixture::account_create(
@@ -310,7 +310,7 @@ const account_object& database_fixture::account_create(
       account_create_operation op;
       op.new_account_name = name;
       op.creator = creator;
-      op.fee = asset( actual_fee, DPN_SYMBOL );
+      op.fee = asset( actual_fee, STEEM_SYMBOL );
       op.owner = authority( 1, key, 1 );
       op.active = authority( 1, key, 1 );
       op.posting = authority( 1, post_key, 1 );
@@ -319,7 +319,7 @@ const account_object& database_fixture::account_create(
 
       trx.operations.push_back( op );
 
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( trx, creator_key );
       trx.validate();
       db->push_transaction( trx, 0 );
@@ -327,7 +327,7 @@ const account_object& database_fixture::account_create(
 
       if( fee_remainder > 0 )
       {
-         vest( DPN_INIT_MINER_NAME, name, asset( fee_remainder, DPN_SYMBOL ) );
+         vest( STEEM_INIT_MINER_NAME, name, asset( fee_remainder, STEEM_SYMBOL ) );
       }
 
       const account_object& acct = db->get_account( name );
@@ -347,9 +347,9 @@ const account_object& database_fixture::account_create(
    {
       return account_create(
          name,
-         DPN_INIT_MINER_NAME,
+         STEEM_INIT_MINER_NAME,
          init_account_priv_key,
-         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * DPN_CREATE_ACCOUNT_WITH_DPN_MODIFIER, share_type( 100 ) ),
+         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
          key,
          post_key,
          "" );
@@ -378,10 +378,10 @@ const witness_object& database_fixture::witness_create(
       op.owner = owner;
       op.url = url;
       op.block_signing_key = signing_key;
-      op.fee = asset( fee, DPN_SYMBOL );
+      op.fee = asset( fee, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( trx, owner_key );
       trx.validate();
       db->push_transaction( trx, 0 );
@@ -399,7 +399,7 @@ void database_fixture::fund(
 {
    try
    {
-      transfer( DPN_INIT_MINER_NAME, account_name, asset( amount, DPN_SYMBOL ) );
+      transfer( STEEM_INIT_MINER_NAME, account_name, asset( amount, STEEM_SYMBOL ) );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -417,36 +417,36 @@ void database_fixture::fund(
          {
             db.adjust_balance(account_name, amount);
             db.adjust_supply(amount);
-            // Note that SMT have no equivalent of DBD, hence no virtual supply, hence no need to update it.
+            // Note that SMT have no equivalent of SBD, hence no virtual supply, hence no need to update it.
             return;
          }
 
          db.modify( db.get_account( account_name ), [&]( account_object& a )
          {
-            if( amount.symbol == DPN_SYMBOL )
+            if( amount.symbol == STEEM_SYMBOL )
                a.balance += amount;
-            else if( amount.symbol == DBD_SYMBOL )
+            else if( amount.symbol == SBD_SYMBOL )
             {
-               a.dbd_balance += amount;
-               a.dbd_seconds_last_update = db.head_block_time();
+               a.sbd_balance += amount;
+               a.sbd_seconds_last_update = db.head_block_time();
             }
          });
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            if( amount.symbol == DPN_SYMBOL )
+            if( amount.symbol == STEEM_SYMBOL )
                gpo.current_supply += amount;
-            else if( amount.symbol == DBD_SYMBOL )
-               gpo.current_dbd_supply += amount;
+            else if( amount.symbol == SBD_SYMBOL )
+               gpo.current_sbd_supply += amount;
          });
 
-         if( amount.symbol == DBD_SYMBOL )
+         if( amount.symbol == SBD_SYMBOL )
          {
             const auto& median_feed = db.get_feed_history();
             if( median_feed.current_median_history.is_null() )
                db.modify( median_feed, [&]( feed_history_object& f )
                {
-                  f.current_median_history = price( asset( 1, DBD_SYMBOL ), asset( 1, DPN_SYMBOL ) );
+                  f.current_median_history = price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
                });
          }
 
@@ -462,19 +462,19 @@ void database_fixture::convert(
 {
    try
    {
-      if ( amount.symbol == DPN_SYMBOL )
+      if ( amount.symbol == STEEM_SYMBOL )
       {
          db->adjust_balance( account_name, -amount );
-         db->adjust_balance( account_name, db->to_dbd( amount ) );
+         db->adjust_balance( account_name, db->to_sbd( amount ) );
          db->adjust_supply( -amount );
-         db->adjust_supply( db->to_dbd( amount ) );
+         db->adjust_supply( db->to_sbd( amount ) );
       }
-      else if ( amount.symbol == DBD_SYMBOL )
+      else if ( amount.symbol == SBD_SYMBOL )
       {
          db->adjust_balance( account_name, -amount );
-         db->adjust_balance( account_name, db->to_dpn( amount ) );
+         db->adjust_balance( account_name, db->to_steem( amount ) );
          db->adjust_supply( -amount );
-         db->adjust_supply( db->to_dpn( amount ) );
+         db->adjust_supply( db->to_steem( amount ) );
       }
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -492,10 +492,10 @@ void database_fixture::transfer(
       op.amount = amount;
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
 
-      if( from == DPN_INIT_MINER_NAME )
+      if( from == STEEM_INIT_MINER_NAME )
       {
          sign( trx, init_account_priv_key );
       }
@@ -509,7 +509,7 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 {
    try
    {
-      FC_ASSERT( amount.symbol == DPN_SYMBOL, "Can only vest TESTS" );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
 
       transfer_to_vesting_operation op;
       op.from = from;
@@ -517,12 +517,12 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
       op.amount = amount;
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
 
       // This sign() call fixes some tests, like withdraw_vesting_apply, that use this method
       //   with debug_plugin such that trx may be re-applied with less generous skip flags.
-      if( from == DPN_INIT_MINER_NAME )
+      if( from == STEEM_INIT_MINER_NAME )
       {
          sign( trx, init_account_priv_key );
       }
@@ -539,13 +539,13 @@ void database_fixture::vest( const string& from, const share_type& amount )
       transfer_to_vesting_operation op;
       op.from = from;
       op.to = "";
-      op.amount = asset( amount, DPN_SYMBOL );
+      op.amount = asset( amount, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
 
-      if( from == DPN_INIT_MINER_NAME )
+      if( from == STEEM_INIT_MINER_NAME )
       {
          sign( trx, init_account_priv_key );
       }
@@ -573,17 +573,17 @@ void database_fixture::set_price_feed( const price& new_price )
    for( size_t i = 1; i < 8; i++ )
    {
       witness_set_properties_operation op;
-      op.owner = DPN_INIT_MINER_NAME + fc::to_string( i );
-      op.props[ "dbd_exchange_rate" ] = fc::raw::pack_to_vector( new_price );
+      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i );
+      op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( new_price );
       op.props[ "key" ] = fc::raw::pack_to_vector( init_account_pub_key );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       db->push_transaction( trx, ~0 );
       trx.clear();
    }
 
-   generate_blocks( DPN_BLOCKS_PER_HOUR );
+   generate_blocks( STEEM_BLOCKS_PER_HOUR );
 
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
@@ -596,16 +596,16 @@ void database_fixture::set_price_feed( const price& new_price )
 void database_fixture::set_witness_props( const flat_map< string, vector< char > >& props )
 {
    trx.clear();
-   for( size_t i=0; i<DPN_MAX_WITNESSES; i++ )
+   for( size_t i=0; i<STEEM_MAX_WITNESSES; i++ )
    {
       witness_set_properties_operation op;
-      op.owner = DPN_INIT_MINER_NAME + (i == 0 ? "" : fc::to_string( i ));
+      op.owner = STEEM_INIT_MINER_NAME + (i == 0 ? "" : fc::to_string( i ));
       op.props = props;
       if( props.find( "key" ) == props.end() )
          op.props["key"] = fc::raw::pack_to_vector( init_account_pub_key );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       db->push_transaction( trx, ~0 );
       trx.clear();
    }
@@ -613,14 +613,14 @@ void database_fixture::set_witness_props( const flat_map< string, vector< char >
    const witness_schedule_object* wso = &(db->get_witness_schedule_object());
    uint32_t old_next_shuffle = wso->next_shuffle_block_num;
 
-   for( size_t i=0; i<2*DPN_MAX_WITNESSES+1; i++ )
+   for( size_t i=0; i<2*STEEM_MAX_WITNESSES+1; i++ )
    {
       generate_block();
       wso = &(db->get_witness_schedule_object());
       if( wso->next_shuffle_block_num != old_next_shuffle )
          return;
    }
-   FC_ASSERT( false, "Couldn't apply properties in ${n} blocks", ("n", 2*DPN_MAX_WITNESSES+1) );
+   FC_ASSERT( false, "Couldn't apply properties in ${n} blocks", ("n", 2*STEEM_MAX_WITNESSES+1) );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
@@ -646,7 +646,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
       std::vector<char> serialized_op;
       serialized_op.reserve( _serialized_op.size() );
       std::copy( _serialized_op.begin(), _serialized_op.end(), std::back_inserter( serialized_op ) );
-      ops.push_back( fc::raw::unpack_from_vector< dpn::chain::operation >( serialized_op ) );
+      ops.push_back( fc::raw::unpack_from_vector< steem::chain::operation >( serialized_op ) );
    }
 
    return ops;
@@ -657,14 +657,14 @@ void database_fixture::validate_database()
    try
    {
       db->validate_invariants();
-#ifdef DPN_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
       db->validate_smt_invariants();
 #endif
    }
    FC_LOG_AND_RETHROW();
 }
 
-#ifdef DPN_ENABLE_SMT
+#ifdef STEEM_ENABLE_SMT
 
 template< typename T >
 asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
@@ -686,7 +686,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string
       op.control_account = account_name;
 
       tx.operations.push_back( op );
-      tx.set_expiration( this->db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( key, this->db->get_chain_id(), fc::ecc::bip_0062 );
 
       this->db->push_transaction( tx, 0 );
@@ -755,7 +755,7 @@ std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const
       tx.operations.push_back( op0 );
       tx.operations.push_back( op1 );
       tx.operations.push_back( op2 );
-      tx.set_expiration( this->db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( this->db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( key, this->db->get_chain_id(), fc::ecc::bip_0062 );
       this->db->push_transaction( tx, 0 );
 
@@ -779,9 +779,9 @@ void push_invalid_operation(const operation& invalid_op, const fc::ecc::private_
 {
    signed_transaction tx;
    tx.operations.push_back( invalid_op );
-   tx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    tx.sign( key, db->get_chain_id(), fc::ecc::bip_0062 );
-   DPN_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 }
 
 template< typename T >
@@ -789,7 +789,7 @@ void t_smt_database_fixture< T >::create_invalid_smt( const char* control_accoun
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
-   DPN_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, DPN_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
+   STEEM_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
 }
 
 template< typename T >
@@ -807,11 +807,11 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
 }
 
 template< typename T >
-smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const units& dpn_unit, const units& token_unit )
+smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const units& steem_unit, const units& token_unit )
 {
    smt_generation_unit ret;
 
-   ret.dpn_unit = dpn_unit;
+   ret.steem_unit = steem_unit;
    ret.token_unit = token_unit;
 
    return ret;
@@ -830,8 +830,8 @@ smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type a
       reveal.nonce = nonce;
 
       ret.hash = fc::sha256::hash( reveal );
-      ret.lower_bound = SMT_MIN_HARD_CAP_DPN_UNITS; // See smt_capped_generation_policy::validate
-      ret.upper_bound = DPN_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
+      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy::validate
+      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
    }
 
    return ret;
@@ -842,8 +842,8 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_dpn_units_commitment,
-   const smt_cap_commitment& hard_cap_dpn_units_commitment,
+   const smt_cap_commitment& min_steem_units_commitment,
+   const smt_cap_commitment& hard_cap_steem_units_commitment,
    uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
@@ -854,8 +854,8 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
    ret.pre_soft_cap_unit = pre_soft_cap_unit;
    ret.post_soft_cap_unit = post_soft_cap_unit;
 
-   ret.min_dpn_units_commitment = min_dpn_units_commitment;
-   ret.hard_cap_dpn_units_commitment = hard_cap_dpn_units_commitment;
+   ret.min_steem_units_commitment = min_steem_units_commitment;
+   ret.hard_cap_steem_units_commitment = hard_cap_steem_units_commitment;
 
    ret.soft_cap_percent = soft_cap_percent;
 
@@ -873,14 +873,14 @@ template void t_smt_database_fixture< clean_database_fixture >::create_invalid_s
 template void t_smt_database_fixture< clean_database_fixture >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
 
-template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& dpn_unit, const units& token_unit );
+template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
 template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount, uint128_t nonce );
 template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_dpn_units_commitment,
-   const smt_cap_commitment& hard_cap_dpn_units_commitment,
+   const smt_cap_commitment& min_steem_units_commitment,
+   const smt_cap_commitment& hard_cap_steem_units_commitment,
    uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
@@ -901,21 +901,21 @@ void sps_proposal_database_fixture::plugin_prepare()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
 
-   db_plugin = &appbase::app().register_plugin< dpn::plugins::debug_node::debug_node_plugin >();
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    db_plugin->logging = false;
    appbase::app().initialize<
-      dpn::plugins::debug_node::debug_node_plugin
+      steem::plugins::debug_node::debug_node_plugin
    >( argc, argv );
 
-   db = &appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
    BOOST_REQUIRE( db );
 
    open_database();
 
    generate_block();
-   db->set_hardfork( DPN_NUM_HARDFORKS );
+   db->set_hardfork( STEEM_NUM_HARDFORKS );
    generate_block();
 
 
@@ -946,7 +946,7 @@ int64_t sps_proposal_database_fixture::create_proposal( std::string creator, std
    op.permlink = permlink;
 
    tx.operations.push_back( op );
-   tx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( tx, key );
    db->push_transaction( tx, 0 );
    tx.signatures.clear();
@@ -973,7 +973,7 @@ void sps_proposal_database_fixture::vote_proposal( std::string voter, const std:
    op.approve = approve;
 
    signed_transaction tx;
-   tx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    tx.operations.push_back( op );
    sign( tx, key );
    db->push_transaction( tx, 0 );
@@ -1004,7 +1004,7 @@ void sps_proposal_database_fixture::remove_proposal(account_name_type _deleter, 
 
    signed_transaction trx;
    trx.operations.push_back( rp );
-   trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( trx, _key );
    db->push_transaction( trx, 0 );
    trx.signatures.clear();
@@ -1023,7 +1023,7 @@ uint64_t sps_proposal_database_fixture::get_nr_blocks_until_maintenance_block()
    auto block_time = db->head_block_time();
 
    auto next_maintenance_time = db->get_dynamic_global_properties().next_maintenance_time;
-   auto ret = ( next_maintenance_time - block_time ).to_seconds() / DPN_BLOCK_INTERVAL;
+   auto ret = ( next_maintenance_time - block_time ).to_seconds() / STEEM_BLOCK_INTERVAL;
 
    FC_ASSERT( next_maintenance_time >= block_time );
 
@@ -1032,7 +1032,7 @@ uint64_t sps_proposal_database_fixture::get_nr_blocks_until_maintenance_block()
 
 void sps_proposal_database_fixture::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key)
 {
-   generate_blocks( db->head_block_time() + DPN_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( DPN_BLOCK_INTERVAL ), true );
+   generate_blocks( db->head_block_time() + STEEM_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEM_BLOCK_INTERVAL ), true );
    comment_operation comment;
 
    comment.author = _authro;
@@ -1043,7 +1043,7 @@ void sps_proposal_database_fixture::post_comment( std::string _authro, std::stri
 
    signed_transaction trx;
    trx.operations.push_back( comment );
-   trx.set_expiration( db->head_block_time() + DPN_MAX_TIME_UNTIL_EXPIRATION );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( trx, _key );
    db->push_transaction( trx, 0 );
    trx.signatures.clear();
@@ -1064,27 +1064,27 @@ json_rpc_database_fixture::json_rpc_database_fixture()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
 
-   appbase::app().register_plugin< dpn::plugins::account_history::account_history_plugin >();
-   db_plugin = &appbase::app().register_plugin< dpn::plugins::debug_node::debug_node_plugin >();
-   appbase::app().register_plugin< dpn::plugins::witness::witness_plugin >();
-   rpc_plugin = &appbase::app().register_plugin< dpn::plugins::json_rpc::json_rpc_plugin >();
-   appbase::app().register_plugin< dpn::plugins::block_api::block_api_plugin >();
-   appbase::app().register_plugin< dpn::plugins::database_api::database_api_plugin >();
-   appbase::app().register_plugin< dpn::plugins::condenser_api::condenser_api_plugin >();
+   appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   appbase::app().register_plugin< steem::plugins::witness::witness_plugin >();
+   rpc_plugin = &appbase::app().register_plugin< steem::plugins::json_rpc::json_rpc_plugin >();
+   appbase::app().register_plugin< steem::plugins::block_api::block_api_plugin >();
+   appbase::app().register_plugin< steem::plugins::database_api::database_api_plugin >();
+   appbase::app().register_plugin< steem::plugins::condenser_api::condenser_api_plugin >();
 
    db_plugin->logging = false;
    appbase::app().initialize<
-      dpn::plugins::account_history::account_history_plugin,
-      dpn::plugins::debug_node::debug_node_plugin,
-      dpn::plugins::json_rpc::json_rpc_plugin,
-      dpn::plugins::block_api::block_api_plugin,
-      dpn::plugins::database_api::database_api_plugin,
-      dpn::plugins::condenser_api::condenser_api_plugin
+      steem::plugins::account_history::account_history_plugin,
+      steem::plugins::debug_node::debug_node_plugin,
+      steem::plugins::json_rpc::json_rpc_plugin,
+      steem::plugins::block_api::block_api_plugin,
+      steem::plugins::database_api::database_api_plugin,
+      steem::plugins::condenser_api::condenser_api_plugin
       >( argc, argv );
 
-   appbase::app().get_plugin< dpn::plugins::condenser_api::condenser_api_plugin >().plugin_startup();
+   appbase::app().get_plugin< steem::plugins::condenser_api::condenser_api_plugin >().plugin_startup();
 
-   db = &appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db();
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
    BOOST_REQUIRE( db );
 
    init_account_pub_key = init_account_priv_key.get_public_key();
@@ -1092,17 +1092,17 @@ json_rpc_database_fixture::json_rpc_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( DPN_BLOCKCHAIN_VERSION.minor_v() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
    generate_block();
 
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = DPN_NUM_INIT_MINERS; i < DPN_MAX_WITNESSES; i++ )
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
    {
-      account_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-      fund( DPN_INIT_MINER_NAME + fc::to_string( i ), DPN_MIN_PRODUCER_REWARD.amount.value );
-      witness_create( DPN_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, DPN_MIN_PRODUCER_REWARD.amount );
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
    validate_database();
@@ -1245,6 +1245,6 @@ void _push_transaction( database& db, const signed_transaction& tx, uint32_t ski
    db.push_transaction( tx, skip_flags );
 } FC_CAPTURE_AND_RETHROW((tx)) }
 
-} // dpn::chain::test
+} // steem::chain::test
 
-} } // dpn::chain
+} } // steem::chain

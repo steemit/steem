@@ -14,7 +14,7 @@
 
 execute_process(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.mm_generate_ticks
+   python3 -m steem_build_helpers.mm_generate_ticks
    -o ${CMAKE_CURRENT_BINARY_DIR}/template_context/mm_ticks.json
    RESULT_VARIABLE RETURN_VALUE
 )
@@ -25,7 +25,7 @@ endif()
 
 execute_process(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.rc_generate_resource_parameters
+   python3 -m steem_build_helpers.rc_generate_resource_parameters
    -i ${CMAKE_CURRENT_SOURCE_DIR}/data/resource_parameters.json
    -o ${CMAKE_CURRENT_BINARY_DIR}/template_context/resource_parameters.json
    RESULT_VARIABLE RETURN_VALUE
@@ -43,7 +43,7 @@ endif()
 
 execute_process(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.buildj2
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -59,7 +59,7 @@ message( STATUS "TEMPLATE_DEPS: ${TEMPLATE_DEPS}" )
 
 execute_process(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.buildj2
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -75,7 +75,7 @@ message( STATUS "TEMPLATE_OUTPUTS: ${TEMPLATE_OUTPUTS}" )
 
 add_custom_command(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.buildj2
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
@@ -87,7 +87,7 @@ add_custom_command(
 
 execute_process(
    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers
-   python3 -m dpn_build_helpers.buildj2
+   python3 -m steem_build_helpers.buildj2
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
    -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
