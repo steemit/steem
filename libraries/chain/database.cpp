@@ -3089,7 +3089,7 @@ void database::_apply_block( const signed_block& next_block )
       uint32_t n;
       for( n=0; n<STEEM_NUM_HARDFORKS; n++ )
       {
-         if( _hardfork_times[n+1] > next_block.timestamp )
+         if( _hardfork_versions.times[n+1] > next_block.timestamp )
             break;
       }
 
@@ -3099,7 +3099,7 @@ void database::_apply_block( const signed_block& next_block )
          set_hardfork( n, true );
 
          const hardfork_property_object& hardfork_state = get_hardfork_property_object();
-         FC_ASSERT( hardfork_state.current_hardfork_version == _hardfork_versions[n], "Unexpected genesis hardfork state" );
+         FC_ASSERT( hardfork_state.current_hardfork_version == _hardfork_versions.versions[n], "Unexpected genesis hardfork state" );
 
          const auto& witness_idx = get_index<witness_index>().indices().get<by_id>();
          vector<witness_id_type> wit_ids_to_update;
@@ -3110,9 +3110,9 @@ void database::_apply_block( const signed_block& next_block )
          {
             modify( get( wit_id ), [&]( witness_object& wit )
             {
-               wit.running_version = _hardfork_versions[n];
-               wit.hardfork_version_vote = _hardfork_versions[n];
-               wit.hardfork_time_vote = _hardfork_times[n];
+               wit.running_version = _hardfork_versions.versions[n];
+               wit.hardfork_version_vote = _hardfork_versions.versions[n];
+               wit.hardfork_time_vote = _hardfork_versions.times[n];
             } );
          }
       }
@@ -4765,83 +4765,83 @@ void database::generate_optional_actions()
 
 void database::init_hardforks()
 {
-   _hardfork_times[ 0 ] = fc::time_point_sec( STEEM_GENESIS_TIME );
-   _hardfork_versions[ 0 ] = hardfork_version( 0, 0 );
+   _hardfork_versions.times[ 0 ] = fc::time_point_sec( STEEM_GENESIS_TIME );
+   _hardfork_versions.versions[ 0 ] = hardfork_version( 0, 0 );
    FC_ASSERT( STEEM_HARDFORK_0_1 == 1, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_1 ] = fc::time_point_sec( STEEM_HARDFORK_0_1_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_1 ] = STEEM_HARDFORK_0_1_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_1 ] = fc::time_point_sec( STEEM_HARDFORK_0_1_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_1 ] = STEEM_HARDFORK_0_1_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_2 == 2, "Invlaid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_2 ] = fc::time_point_sec( STEEM_HARDFORK_0_2_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_2 ] = STEEM_HARDFORK_0_2_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_2 ] = fc::time_point_sec( STEEM_HARDFORK_0_2_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_2 ] = STEEM_HARDFORK_0_2_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_3 == 3, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_3 ] = fc::time_point_sec( STEEM_HARDFORK_0_3_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_3 ] = STEEM_HARDFORK_0_3_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_3 ] = fc::time_point_sec( STEEM_HARDFORK_0_3_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_3 ] = STEEM_HARDFORK_0_3_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_4 == 4, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_4 ] = fc::time_point_sec( STEEM_HARDFORK_0_4_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_4 ] = STEEM_HARDFORK_0_4_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_4 ] = fc::time_point_sec( STEEM_HARDFORK_0_4_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_4 ] = STEEM_HARDFORK_0_4_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_5 == 5, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_5 ] = fc::time_point_sec( STEEM_HARDFORK_0_5_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_5 ] = STEEM_HARDFORK_0_5_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_5 ] = fc::time_point_sec( STEEM_HARDFORK_0_5_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_5 ] = STEEM_HARDFORK_0_5_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_6 == 6, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_6 ] = fc::time_point_sec( STEEM_HARDFORK_0_6_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_6 ] = STEEM_HARDFORK_0_6_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_6 ] = fc::time_point_sec( STEEM_HARDFORK_0_6_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_6 ] = STEEM_HARDFORK_0_6_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_7 == 7, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_7 ] = fc::time_point_sec( STEEM_HARDFORK_0_7_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_7 ] = STEEM_HARDFORK_0_7_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_7 ] = fc::time_point_sec( STEEM_HARDFORK_0_7_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_7 ] = STEEM_HARDFORK_0_7_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_8 == 8, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_8 ] = fc::time_point_sec( STEEM_HARDFORK_0_8_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_8 ] = STEEM_HARDFORK_0_8_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_8 ] = fc::time_point_sec( STEEM_HARDFORK_0_8_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_8 ] = STEEM_HARDFORK_0_8_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_9 == 9, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_9 ] = fc::time_point_sec( STEEM_HARDFORK_0_9_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_9 ] = STEEM_HARDFORK_0_9_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_9 ] = fc::time_point_sec( STEEM_HARDFORK_0_9_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_9 ] = STEEM_HARDFORK_0_9_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_10 == 10, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_10 ] = fc::time_point_sec( STEEM_HARDFORK_0_10_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_10 ] = STEEM_HARDFORK_0_10_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_10 ] = fc::time_point_sec( STEEM_HARDFORK_0_10_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_10 ] = STEEM_HARDFORK_0_10_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_11 == 11, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_11 ] = fc::time_point_sec( STEEM_HARDFORK_0_11_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_11 ] = STEEM_HARDFORK_0_11_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_11 ] = fc::time_point_sec( STEEM_HARDFORK_0_11_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_11 ] = STEEM_HARDFORK_0_11_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_12 == 12, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_12 ] = fc::time_point_sec( STEEM_HARDFORK_0_12_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_12 ] = STEEM_HARDFORK_0_12_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_12 ] = fc::time_point_sec( STEEM_HARDFORK_0_12_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_12 ] = STEEM_HARDFORK_0_12_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_13 == 13, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_13 ] = fc::time_point_sec( STEEM_HARDFORK_0_13_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_13 ] = STEEM_HARDFORK_0_13_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_13 ] = fc::time_point_sec( STEEM_HARDFORK_0_13_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_13 ] = STEEM_HARDFORK_0_13_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_14 == 14, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_14 ] = fc::time_point_sec( STEEM_HARDFORK_0_14_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_14 ] = STEEM_HARDFORK_0_14_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_14 ] = fc::time_point_sec( STEEM_HARDFORK_0_14_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_14 ] = STEEM_HARDFORK_0_14_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_15 == 15, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_15 ] = fc::time_point_sec( STEEM_HARDFORK_0_15_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_15 ] = STEEM_HARDFORK_0_15_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_15 ] = fc::time_point_sec( STEEM_HARDFORK_0_15_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_15 ] = STEEM_HARDFORK_0_15_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_16 == 16, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_16 ] = fc::time_point_sec( STEEM_HARDFORK_0_16_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_16 ] = STEEM_HARDFORK_0_16_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_16 ] = fc::time_point_sec( STEEM_HARDFORK_0_16_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_16 ] = STEEM_HARDFORK_0_16_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_17 == 17, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_17 ] = fc::time_point_sec( STEEM_HARDFORK_0_17_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_17 ] = STEEM_HARDFORK_0_17_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_17 ] = fc::time_point_sec( STEEM_HARDFORK_0_17_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_17 ] = STEEM_HARDFORK_0_17_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_18 == 18, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_18 ] = fc::time_point_sec( STEEM_HARDFORK_0_18_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_18 ] = STEEM_HARDFORK_0_18_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_18 ] = fc::time_point_sec( STEEM_HARDFORK_0_18_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_18 ] = STEEM_HARDFORK_0_18_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_19 ] = fc::time_point_sec( STEEM_HARDFORK_0_19_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_19 ] = STEEM_HARDFORK_0_19_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_19 ] = fc::time_point_sec( STEEM_HARDFORK_0_19_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_19 ] = STEEM_HARDFORK_0_19_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
 #ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
-   _hardfork_versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
+   _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
 #endif
 
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEM_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );
-   FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEM_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
+   FC_ASSERT( _hardfork_versions.versions[ hardforks.last_hardfork ] <= STEEM_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
    FC_ASSERT( STEEM_BLOCKCHAIN_HARDFORK_VERSION >= STEEM_BLOCKCHAIN_VERSION );
-   FC_ASSERT( STEEM_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions[ STEEM_NUM_HARDFORKS ] );
+   FC_ASSERT( STEEM_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions.versions[ STEEM_NUM_HARDFORKS ] );
 }
 
 void database::process_hardforks()
@@ -4853,7 +4853,7 @@ void database::process_hardforks()
 
       if( has_hardfork( STEEM_HARDFORK_0_5__54 ) )
       {
-         while( _hardfork_versions[ hardforks.last_hardfork ] < hardforks.next_hardfork
+         while( _hardfork_versions.versions[ hardforks.last_hardfork ] < hardforks.next_hardfork
             && hardforks.next_hardfork_time <= head_block_time() )
          {
             if( hardforks.last_hardfork < STEEM_NUM_HARDFORKS ) {
@@ -4866,7 +4866,7 @@ void database::process_hardforks()
       else
       {
          while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
-               && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
+               && _hardfork_versions.times[ hardforks.last_hardfork + 1 ] <= head_block_time()
                && hardforks.last_hardfork < STEEM_HARDFORK_0_5__54 )
          {
             apply_hardfork( hardforks.last_hardfork + 1 );
@@ -4893,12 +4893,12 @@ void database::set_hardfork( uint32_t hardfork, bool apply_now )
    for( uint32_t i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEM_NUM_HARDFORKS; i++ )
    {
       if( i <= STEEM_HARDFORK_0_5__54 )
-         _hardfork_times[i] = head_block_time();
+         _hardfork_versions.times[i] = head_block_time();
       else
       {
          modify( hardforks, [&]( hardfork_property_object& hpo )
          {
-            hpo.next_hardfork = _hardfork_versions[i];
+            hpo.next_hardfork = _hardfork_versions.versions[i];
             hpo.next_hardfork_time = head_block_time();
          } );
       }
@@ -5263,10 +5263,10 @@ void database::apply_hardfork( uint32_t hardfork )
    {
       FC_ASSERT( hardfork == hfp.last_hardfork + 1, "Hardfork being applied out of order", ("hardfork",hardfork)("hfp.last_hardfork",hfp.last_hardfork) );
       FC_ASSERT( hfp.processed_hardforks.size() == hardfork, "Hardfork being applied out of order" );
-      hfp.processed_hardforks.push_back( _hardfork_times[ hardfork ] );
+      hfp.processed_hardforks.push_back( _hardfork_versions.times[ hardfork ] );
       hfp.last_hardfork = hardfork;
-      hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
-      FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
+      hfp.current_hardfork_version = _hardfork_versions.versions[ hardfork ];
+      FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_versions.times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
 
    post_push_virtual_operation( hardfork_vop );
