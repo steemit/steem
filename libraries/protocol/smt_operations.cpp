@@ -234,9 +234,9 @@ void smt_setup_operation::validate()const
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
    validate_visitor vtor;
    initial_generation_policy.visit( vtor );
-   FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
-   FC_ASSERT( generation_end_time > generation_begin_time );
-   FC_ASSERT( launch_time >= generation_end_time );
+   FC_ASSERT( contribution_begin_time > STEEM_GENESIS_TIME );
+   FC_ASSERT( contribution_end_time > contribution_begin_time );
+   FC_ASSERT( launch_time >= contribution_end_time );
    FC_ASSERT( steem_units_min_cap <= steem_units_hard_cap );
    FC_ASSERT( steem_units_min_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS );
    FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS );

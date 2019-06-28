@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE( setup_validate )
 
       //FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME )
       op.max_supply = STEEM_MAX_SHARE_SUPPLY / 1000;
-      op.generation_begin_time = STEEM_GENESIS_TIME;
+      op.contribution_begin_time = STEEM_GENESIS_TIME;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       fc::time_point_sec start_time = fc::variant( "2018-03-07T00:00:00" ).as< fc::time_point_sec >();
@@ -274,23 +274,19 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       fc::time_point_sec t200 = start_time + fc::seconds( 200 );
       fc::time_point_sec t300 = start_time + fc::seconds( 300 );
 
-      //FC_ASSERT( generation_end_time > generation_begin_time )
-      op.generation_begin_time = t100;
-      op.generation_end_time = t50;
+      op.contribution_begin_time = t100;
+      op.contribution_end_time = t50;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      //FC_ASSERT( generation_end_time > generation_begin_time )
-      op.generation_end_time = t100;
+      op.contribution_begin_time = t100;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      //FC_ASSERT( announced_launch_time >= generation_end_time )
       op.launch_time = t200;
-      op.generation_end_time = t300;
+      op.contribution_end_time = t300;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      //FC_ASSERT( launch_expiration_time >= announced_launch_time )
-      op.generation_begin_time = t50;
-      op.generation_end_time = t100;
+      op.contribution_begin_time = t50;
+      op.contribution_end_time = t100;
       op.launch_time = t300;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -529,8 +525,8 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
 
       op.initial_generation_policy = gp;
-      op.generation_begin_time = start_time;
-      op.generation_end_time = op.launch_time = start_time_plus_1;
+      op.contribution_begin_time = start_time;
+      op.contribution_end_time = op.launch_time = start_time_plus_1;
 
       signed_transaction tx;
 

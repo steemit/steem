@@ -126,13 +126,11 @@ public:
    asset_symbol_type             symbol;
    steem::protocol::
    smt_capped_generation_policy  capped_generation_policy;
-   time_point_sec                generation_begin_time;
-   time_point_sec                generation_end_time;
+   time_point_sec                contribution_begin_time;
+   time_point_sec                contribution_end_time;
    time_point_sec                launch_time;
-
-   // smt_cap_reveal
-   share_type  steem_units_min_cap = -1;
-   share_type  steem_units_hard_cap = -1;
+   share_type                    steem_units_min_cap = -1;
+   share_type                    steem_units_hard_cap = -1;
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
@@ -308,8 +306,8 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (id)
    (symbol)
    (capped_generation_policy)
-   (generation_begin_time)
-   (generation_end_time)
+   (contribution_begin_time)
+   (contribution_end_time)
    (launch_time)
    (steem_units_min_cap)
    (steem_units_hard_cap)

@@ -99,8 +99,8 @@ struct smt_setup_operation : public smt_base_operation
 
    smt_generation_policy   initial_generation_policy;
 
-   time_point_sec          generation_begin_time;
-   time_point_sec          generation_end_time;
+   time_point_sec          contribution_begin_time;
+   time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
    share_type              steem_units_min_cap;
@@ -237,8 +237,8 @@ FC_REFLECT_DERIVED(
    (decimal_places)
    (max_supply)
    (initial_generation_policy)
-   (generation_begin_time)
-   (generation_end_time)
+   (contribution_begin_time)
+   (contribution_end_time)
    (launch_time)
    (steem_units_min_cap)
    (steem_units_hard_cap)

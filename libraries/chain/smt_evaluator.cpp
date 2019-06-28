@@ -157,8 +157,8 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    auto token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
       token_ico_obj.symbol = _token->liquid_symbol;
-      token_ico_obj.generation_begin_time = o.generation_begin_time;
-      token_ico_obj.generation_end_time = o.generation_end_time;
+      token_ico_obj.contribution_begin_time = o.contribution_begin_time;
+      token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
       token_ico_obj.steem_units_min_cap = o.steem_units_min_cap;
       token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
